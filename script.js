@@ -1,3 +1,71 @@
+// הוסף לתחילת script.js - מנגנון מניעת כפילויות גלובלי
+class LoadingManager {
+    constructor() {
+        this.activeOperations = new Set();
+        this.loadingOverlay = null;
+        this.init();
+    }
+    
+    init() {
+        // יצירת overlay loading גלובלי
+        this.loadingOverlay = document.createElement('div');
+        this.loadingOverlay.className = 'global-loading-overlay hidden';
+        this.loadingOverlay.innerHTML = `
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">מעבד...</div>
+                <div class="loading-subtext">אנא המתן</div>
+            </div>
+        `;
+        document.body.appendChild(this.loadingOverlay);
+    }
+    
+    startOperation(operationId, message = 'מעבד...', subtext = 'אנא המתן') {
+        if (this.activeOperations.has(operationId)) {
+            console.warn(`⚠️ פעולה ${operationId} כבר פעילה - מונע כפילות`);
+            return false; // מונע כפילות
+        }
+        
+        this.activeOperations.add(operationId);
+        this.showLoading(message, subtext);
+        
+        console.log(`🔄 התחיל: ${operationId}`);
+        return true;
+    }
+    
+    finishOperation(operationId, delay = 800) {
+        setTimeout(() => {
+            this.activeOperations.delete(operationId);
+            
+            if (this.activeOperations.size === 0) {
+                this.hideLoading();
+            }
+            
+            console.log(`✅ הסתיים: ${operationId}`);
+        }, delay);
+    }
+    
+    showLoading(message, subtext) {
+        this.loadingOverlay.querySelector('.loading-text').textContent = message;
+        this.loadingOverlay.querySelector('.loading-subtext').textContent = subtext;
+        this.loadingOverlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // מונע גלילה
+    }
+    
+    hideLoading() {
+        this.loadingOverlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
+    isOperationActive(operationId) {
+        return this.activeOperations.has(operationId);
+    }
+}
+
+// יצירת מופע גלובלי
+const loadingManager = new LoadingManager();
+
+
 // ===== רשימת העובדים והגדרות =====
 const EMPLOYEES = {
     'חיים': { password: '2025', name: 'חיים' },
@@ -145,7 +213,7 @@ class NotificationBellSystem {
             `;
         }).join('');
     }
-
+    
     // פונקציה לעדכון התראות מהמערכת
     updateFromSystem(blockedClients, criticalClients, urgentTasks) {
         // נקה התראות קיימות מהמערכת
@@ -555,15 +623,163 @@ function confirmLogout() {
 }
 
 function showClientFormWithSidebar() {
-    showDisabledFeatureMessage('הוספת לקוח');
-    toggleSidebar();
+    showPasswordDialog(true); // true מציין שצריך לסגור את הסרגל
 }
 
 // פונקציות גלובליות מהקוד המקורי
 function showClientForm() {
-    showDisabledFeatureMessage('הוספת לקוח');
+    showPasswordDialog();
 }
 
+function showPasswordDialog(shouldCloseSidebar = false) {
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    
+    overlay.innerHTML = `
+        <div class="popup" style="max-width: 450px;">
+            <div class="popup-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                <i class="fas fa-shield-alt"></i>
+                אזור מוגן
+            </div>
+            
+            <div style="text-align: center; padding: 30px 20px;">
+                <div style="font-size: 48px; margin-bottom: 20px; color: #dc2626;">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
+                    הוספת לקוח חדש מוגנת בסיסמה
+                </h3>
+                <p style="color: #6b7280; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">
+                    מטעמי אבטחה, נדרשת סיסמה מיוחדת<br>
+                    ליצירת לקוחות חדשים במערכת
+                </p>
+                
+                <form id="passwordCheckForm" style="text-align: center;">
+                    <div style="position: relative; margin-bottom: 20px;">
+                        <input type="password" 
+                               id="adminPassword" 
+                               placeholder="הכנס סיסמת מנהל" 
+                               style="width: 100%; padding: 15px 50px 15px 20px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 16px; text-align: center; letter-spacing: 2px; font-weight: bold; transition: all 0.3s ease;"
+                               required>
+                        <i class="fas fa-key" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 18px;"></i>
+                    </div>
+                    
+                    <div id="passwordError" class="error-message hidden" style="margin-bottom: 15px; color: #dc2626; font-weight: 600;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        סיסמה שגויה - נסה שוב
+                    </div>
+                    
+                    <div class="popup-buttons" style="margin-top: 20px;">
+                        <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);">
+                            <i class="fas fa-times"></i>
+                            ביטול
+                        </button>
+                        <button type="submit" class="popup-btn popup-btn-confirm" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+                            <i class="fas fa-unlock"></i>
+                            אמת סיסמה
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-radius: 12px; padding: 15px; margin-top: 20px; border: 1px solid #fecaca;">
+                <div style="display: flex; align-items: center; gap: 10px; color: #991b1b; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i>
+                    <span><strong>הערה:</strong> פנה למנהל המערכת לקבלת הסיסמה</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // פוקוס על שדה הסיסמה
+    setTimeout(() => {
+        document.getElementById('adminPassword').focus();
+    }, 100);
+    
+    // הוספת אפקט hover לשדה הסיסמה
+    const passwordInput = document.getElementById('adminPassword');
+    passwordInput.addEventListener('focus', () => {
+        passwordInput.style.borderColor = '#dc2626';
+        passwordInput.style.boxShadow = '0 0 0 3px rgba(220, 38, 38, 0.1)';
+    });
+    
+    passwordInput.addEventListener('blur', () => {
+        passwordInput.style.borderColor = '#e5e7eb';
+        passwordInput.style.boxShadow = 'none';
+    });
+    
+    // טיפול בשליחת הטופס
+    const form = overlay.querySelector('#passwordCheckForm');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        checkAdminPassword(overlay, shouldCloseSidebar);
+    });
+    
+    // אפשרות לאמת בEnter
+    passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            checkAdminPassword(overlay, shouldCloseSidebar);
+        }
+    });
+}
+
+function checkAdminPassword(overlay, shouldCloseSidebar = false) {
+    const password = document.getElementById('adminPassword').value;
+    const errorDiv = document.getElementById('passwordError');
+    
+    if (password === '9668') {
+        // סיסמה נכונה - סגור דיאלוג ופתח טופס לקוח
+        overlay.remove();
+        
+        // הודעת הצלחה
+        if (window.manager) {
+            window.manager.showNotification('אומת בהצלחה! פותח טופס הוספת לקוח...', 'success');
+        }
+        
+        // פתח טופס לקוח אחרי רגע
+        setTimeout(() => {
+            openClientForm();
+        }, 500);
+        
+    } else {
+        // סיסמה שגויה
+        errorDiv.classList.remove('hidden');
+        
+        // אפקט רעד לשדה הסיסמה
+        const passwordInput = document.getElementById('adminPassword');
+        passwordInput.style.animation = 'shake 0.5s ease-in-out';
+        passwordInput.style.borderColor = '#dc2626';
+        passwordInput.value = '';
+        passwordInput.focus();
+        
+        // הסר את האפקט אחרי האנימציה
+        setTimeout(() => {
+            passwordInput.style.animation = '';
+            errorDiv.classList.add('hidden');
+            passwordInput.style.borderColor = '#e5e7eb';
+        }, 2000);
+    }
+}
+
+function openClientForm() {
+    document.getElementById('clientFormOverlay').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    if (window.manager) {
+        window.manager.updateClientTypeDisplay();
+    }
+}
+
+function hideClientForm() {
+    document.getElementById('clientFormOverlay').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    document.getElementById('clientForm').reset();
+    if (window.manager) {
+        window.manager.updateClientTypeDisplay();
+    }
+}
 
 function switchTab(tabName) {
     // עדכון כפתורי הטאבים
@@ -1784,109 +2000,129 @@ class LawOfficeManager {
         tbody.innerHTML = rowsHtml;
     }
 
-    // ===== דיאלוגים מתקדמים =====
-    showAdvancedTimeDialog(taskId) {
-        const task = this.budgetTasks.find(t => t.id === taskId);
-        if (!task) {
-            this.showNotification('המשימה לא נמצאה', 'error');
-            return;
-        }
+    // החלף את הפונקציה showAdvancedTimeDialog במלואה:
 
-        const overlay = document.createElement('div');
-        overlay.className = 'popup-overlay';
-        
-        const recentHistory = task.history.slice(-3).reverse();
-        const historyHtml = recentHistory.length > 0 ?
-            recentHistory.map(entry => `
-                <div class="recent-work">
-                    ${this.formatDate(entry.date)}: ${entry.minutes} דק' - ${entry.description}
-                </div>
-            `).join('') :
-            '<div class="no-history">טרם נרשמה עבודה על משימה זו</div>';
-
-        overlay.innerHTML = `
-            <div class="popup time-entry-popup">
-                <div class="popup-header">
-                    <i class="fas fa-clock"></i>
-                    רישום זמן עבודה
-                </div>
-                
-                <div class="task-summary">
-                    <h3>${task.description}</h3>
-                    <p><strong>לקוח:</strong> ${task.clientName}</p>
-                    <div class="task-stats">
-                        <div class="stat">
-                            <span class="stat-label">התקדמות</span>
-                            <span class="stat-value">${task.actualMinutes}/${task.estimatedMinutes} דק'</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">רישומים</span>
-                            <span class="stat-value">${task.history.length}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin-bottom: 10px; color: #374151;">עבודה אחרונה:</h4>
-                    ${historyHtml}
-                    ${task.history.length > 3 ? 
-                        `<div style="text-align: center; margin-top: 10px;">
-                            <button type="button" onclick="manager.showTaskHistory(${taskId}); this.closest('.popup-overlay').remove();" 
-                                    style="background: none; border: none; color: #6366f1; cursor: pointer; text-decoration: underline;">
-                                רואה את כל ה-${task.history.length} רישומים
-                            </button>
-                        </div>` : ''
-                    }
-                </div>
-                
-                <form id="timeEntryForm">
-                    <div class="popup-section">
-                        <label for="workMinutes">דקות עבודה:</label>
-                        <input type="number" id="workMinutes" min="1" max="600" required>
-                    </div>
-                    
-                    <div class="popup-section">
-                        <label for="workDate">תאריך:</label>
-                        <input type="date" id="workDate" value="${new Date().toISOString().split('T')[0]}" required>
-                    </div>
-                    
-                    <div class="popup-section">
-                        <label for="workDescription">מה עשיתי:</label>
-                        <textarea id="workDescription" rows="3" placeholder="תיאור מפורט של העבודה שבוצעה..." required></textarea>
-                    </div>
-                    
-                    <div class="popup-buttons">
-                        <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                            <i class="fas fa-times"></i> ביטול
-                        </button>
-                        <button type="submit" class="popup-btn popup-btn-confirm">
-                            <i class="fas fa-save"></i> שמור זמן
-                        </button>
-                    </div>
-                </form>
-            </div>
-        `;
-        
-        document.body.appendChild(overlay);
-        
-        // טיפול בשליחת הטופס
-        const form = overlay.querySelector('#timeEntryForm');
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const timeData = {
-                taskId: taskId,
-                minutes: parseInt(document.getElementById('workMinutes').value),
-                date: document.getElementById('workDate').value,
-                description: document.getElementById('workDescription').value
-            };
-            
-            await this.addTimeToTask(timeData);
-            overlay.remove();
-        });
+// שיפור דיאלוג הזמן עם מניעת לחיצות כפולות
+showAdvancedTimeDialog(taskId) {
+    const task = this.budgetTasks.find(t => t.id === taskId);
+    if (!task) {
+        this.showNotification('המשימה לא נמצאה', 'error');
+        return;
     }
 
-    showTaskHistory(taskId) {
+    // מניעת פתיחת דיאלוגים כפולים
+    if (loadingManager.isOperationActive(`dialog_${taskId}`)) {
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    
+    const recentHistory = task.history.slice(-3).reverse();
+    const historyHtml = recentHistory.length > 0 ?
+        recentHistory.map(entry => `
+            <div class="recent-work ${entry.isPending ? 'pending' : ''}">
+                ${this.formatDate(entry.date)}: ${entry.minutes} דק'
+                ${entry.isPending ? ' <span class="pending-badge">ממתין...</span>' : ''}
+            </div>
+        `).join('') :
+        '<div class="no-history">טרם נרשמה עבודה על משימה זו</div>';
+
+    overlay.innerHTML = `
+        <div class="popup time-entry-popup">
+            <div class="popup-header">
+                <i class="fas fa-clock"></i>
+                רישום זמן עבודה
+            </div>
+            
+            <div class="task-summary">
+                <h3>${task.description}</h3>
+                <p><strong>לקוח:</strong> ${task.clientName}</p>
+                <div class="task-stats">
+                    <div class="stat">
+                        <span class="stat-label">התקדמות</span>
+                        <span class="stat-value">${task.actualMinutes}/${task.estimatedMinutes} דק'</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">רישומים</span>
+                        <span class="stat-value">${task.history.length}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin-bottom: 10px; color: #374151;">רישומי זמן אחרונים:</h4>
+                ${historyHtml}
+            </div>
+            
+            <form id="timeEntryForm">
+                <div class="popup-section">
+                    <label for="workMinutes">⏱️ כמה דקות עבדת על המשימה?</label>
+                    <input type="number" id="workMinutes" min="1" max="600" placeholder="לדוגמה: 60" required style="font-size: 18px; text-align: center; font-weight: bold;">
+                    <small style="color: #6b7280; margin-top: 8px; display: block;">
+                        הזן את מספר הדקות שעבדת על המשימה
+                    </small>
+                </div>
+                
+                <div class="popup-section">
+                    <label for="workDate">📅 תאריך העבודה:</label>
+                    <input type="date" id="workDate" value="${new Date().toISOString().split('T')[0]}" required>
+                </div>
+                
+                <div class="popup-buttons">
+                    <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                        <i class="fas fa-times"></i> ביטול
+                    </button>
+                    <button type="submit" class="popup-btn popup-btn-confirm" id="submitTimeBtn">
+                        <i class="fas fa-save"></i> רשום זמן
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // פוקוס על שדה הדקות
+    setTimeout(() => {
+        document.getElementById('workMinutes').focus();
+    }, 100);
+    
+    // טיפול בשליחת הטופס עם מניעת כפילויות
+    const form = overlay.querySelector('#timeEntryForm');
+    const submitBtn = overlay.querySelector('#submitTimeBtn');
+    let isSubmitting = false;
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // מניעת לחיצות כפולות
+        if (isSubmitting) {
+            console.log('⚠️ כבר שולח - מונע כפילות');
+            return;
+        }
+        
+        isSubmitting = true;
+        
+        // שינוי כפתור מיידי
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> רושם זמן...';
+        submitBtn.disabled = true;
+        
+        const timeData = {
+            taskId: taskId,
+            minutes: parseInt(document.getElementById('workMinutes').value),
+            date: document.getElementById('workDate').value,
+            description: 'רישום זמן על משימה'
+        };
+        
+        await this.addTimeToTask(timeData);
+        
+        // סגירת דיאלוג
+        overlay.remove();
+    });
+}
+
+showTaskHistory(taskId) {
         const task = this.budgetTasks.find(t => t.id === taskId);
         if (!task) {
             this.showNotification('המשימה לא נמצאה', 'error');
@@ -1896,22 +2132,29 @@ class LawOfficeManager {
         const overlay = document.createElement('div');
         overlay.className = 'popup-overlay';
         
+        // חישוב סטטיסטיקות
         const totalMinutes = task.history.reduce((sum, entry) => sum + (entry.minutes || 0), 0);
+        const totalHours = Math.round((totalMinutes / 60) * 100) / 100;
+        const progressPercentage = task.estimatedMinutes > 0 ? 
+            Math.round((totalMinutes / task.estimatedMinutes) * 100) : 0;
+        const avgMinutes = task.history.length > 0 ? 
+            Math.round(totalMinutes / task.history.length) : 0;
         
         overlay.innerHTML = `
             <div class="popup history-popup">
                 <div class="popup-header">
                     <i class="fas fa-history"></i>
-                    היסטוריית עבודה מלאה
+                    היסטוריית עבודה
                 </div>
                 
                 <div class="task-summary">
                     <h3>${task.description}</h3>
                     <p><strong>לקוח:</strong> ${task.clientName}</p>
+                    
                     <div class="summary-stats">
                         <div class="stat">
-                            <span class="stat-label">סה"כ עבודה</span>
-                            <span class="stat-value">${totalMinutes} דק'</span>
+                            <span class="stat-label">סה"כ זמן</span>
+                            <span class="stat-value">${totalHours}h</span>
                         </div>
                         <div class="stat">
                             <span class="stat-label">רישומים</span>
@@ -1919,11 +2162,11 @@ class LawOfficeManager {
                         </div>
                         <div class="stat">
                             <span class="stat-label">תקצוב</span>
-                            <span class="stat-value">${task.estimatedMinutes} דק'</span>
+                            <span class="stat-value">${Math.round(task.estimatedMinutes / 60 * 10) / 10}h</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-label">התקדמות</span>
-                            <span class="stat-value">${Math.round((totalMinutes/task.estimatedMinutes)*100)}%</span>
+                            <span class="stat-label">ממוצע</span>
+                            <span class="stat-value">${avgMinutes}m</span>
                         </div>
                     </div>
                 </div>
@@ -1934,8 +2177,8 @@ class LawOfficeManager {
                         task.history.slice().reverse().map(entry => `
                             <div class="history-entry">
                                 <div class="history-entry-header">
-                                    <span class="history-date">${this.formatDate(entry.date)}</span>
-                                    <span class="history-minutes">${entry.minutes} דק'</span>
+                                    <div class="history-date">${this.formatDate(entry.date)}</div>
+                                    <div class="history-minutes">${entry.minutes} דק'</div>
                                 </div>
                                 <div class="history-description">${entry.description}</div>
                             </div>
@@ -2113,46 +2356,89 @@ class LawOfficeManager {
         });
     }
 
-    async addTimeToTask(timeData) {
-        try {
-            const data = {
-                action: 'addTimeToTask',
-                employee: this.currentUser,
-                timeEntry: {
-                    taskId: timeData.taskId,
-                    date: timeData.date,
-                    minutes: timeData.minutes,
-                    description: timeData.description,
-                    timestamp: new Date().toLocaleString('he-IL')
-                }
-            };
-            
-            // עדכון מקומי אופטימיסטי
-            const taskIndex = this.budgetTasks.findIndex(t => t.id === timeData.taskId);
-            if (taskIndex !== -1) {
-                this.budgetTasks[taskIndex].actualMinutes += timeData.minutes;
-                this.budgetTasks[taskIndex].history.push({
-                    id: Date.now(),
-                    date: timeData.date,
-                    minutes: timeData.minutes,
-                    description: timeData.description,
-                    timestamp: new Date().toLocaleString('he-IL')
-                });
-                this.filteredBudgetTasks = [...this.budgetTasks];
-                this.renderBudgetTasks();
-            }
-            
-            await this.sendToGoogleSheets(data);
-            this.showNotification('זמן נוסף בהצלחה למשימה');
-            
-            // רענון נתונים
-            await this.loadBudgetTasksFromSheet();
-            
-        } catch (error) {
-            console.error('❌ שגיאה בהוספת זמן:', error);
-            this.showNotification('שגיאה בהוספת זמן', 'error');
-        }
+    // שיפור הפונקציה addTimeToTask עם feedback מיידי
+async addTimeToTask(timeData) {
+    const operationId = `addTime_${timeData.taskId}_${Date.now()}`;
+    
+    // שכבת הגנה 1: בדיקת כפילות
+    if (!loadingManager.startOperation(operationId, 'רושם זמן למשימה...', 'מעדכן את הגליון')) {
+        this.showNotification('רישום זמן כבר בתהליך...', 'warning');
+        return;
     }
+    
+    try {
+        // שכבת הגנה 2: עדכון אופטימיסטי מיידי (לפני השרת)
+        const taskIndex = this.budgetTasks.findIndex(t => t.id === timeData.taskId);
+        let originalTask = null;
+        
+        if (taskIndex !== -1) {
+            // שמור מצב מקורי לגיבוי
+            originalTask = JSON.parse(JSON.stringify(this.budgetTasks[taskIndex]));
+            
+            // עדכון מיידי בממשק
+            this.budgetTasks[taskIndex].actualMinutes += timeData.minutes;
+            this.budgetTasks[taskIndex].history.push({
+                id: Date.now(),
+                date: timeData.date,
+                minutes: timeData.minutes,
+                description: timeData.description,
+                timestamp: new Date().toLocaleString('he-IL'),
+                isPending: true // סימון שזה עדיין ממתין לאישור שרת
+            });
+            
+            // רענון תצוגה מיידי
+            this.filteredBudgetTasks = [...this.budgetTasks];
+            this.renderBudgetTasks();
+            
+            // הודעה מיידית למשתמש
+            this.showNotification('⏳ רושם זמן... (עדכון מיידי)', 'info');
+        }
+        
+        // שכבת הגנה 3: שליחה לשרת עם retry
+        const data = {
+            action: 'addTimeToTask',
+            employee: this.currentUser,
+            timeEntry: {
+                taskId: timeData.taskId,
+                date: timeData.date,
+                minutes: timeData.minutes,
+                description: timeData.description,
+                timestamp: new Date().toLocaleString('he-IL')
+            }
+        };
+        
+        await this.sendToGoogleSheets(data);
+        
+        // הצלחה - עדכון סטטוס ההיסטוריה
+        if (taskIndex !== -1) {
+            const lastHistoryItem = this.budgetTasks[taskIndex].history[this.budgetTasks[taskIndex].history.length - 1];
+            if (lastHistoryItem && lastHistoryItem.isPending) {
+                delete lastHistoryItem.isPending;
+            }
+        }
+        
+        this.showNotification('✅ זמן נוסף בהצלחה למשימה!', 'success');
+        
+        // רענון נתונים מהשרת (ללא loading)
+        setTimeout(() => {
+            this.loadBudgetTasksFromSheet();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ שגיאה בהוספת זמן:', error);
+        
+        // במקרה של שגיאה - החזרת המצב המקורי
+        if (originalTask && taskIndex !== -1) {
+            this.budgetTasks[taskIndex] = originalTask;
+            this.filteredBudgetTasks = [...this.budgetTasks];
+            this.renderBudgetTasks();
+        }
+        
+        this.showNotification('❌ שגיאה ברישום זמן - נסה שוב', 'error');
+    } finally {
+        loadingManager.finishOperation(operationId);
+    }
+}
 
     async extendTaskDeadline(taskId, newDeadline, reason = '') {
         try {
@@ -2385,19 +2671,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 // פונקציה לחיפוש לקוחות
 function searchClients(formType, query) {
     const resultsContainer = document.getElementById(`${formType}SearchResults`);
@@ -2475,3 +2748,35 @@ document.addEventListener('click', function(event) {
         }
     });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
