@@ -298,30 +298,12 @@ function clearAllNotifications() {
     }
 }
 
-// פונקציות ממשק
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const toggle = document.getElementById('sidebarToggle');
-    const overlay = document.getElementById('sidebarOverlay');
-    const body = document.body;
-    
-    const isOpen = sidebar.classList.contains('open');
-    
-    if (isOpen) {
-        sidebar.classList.remove('open');
-        toggle.classList.remove('open');
-        overlay.classList.remove('active');
-        body.classList.remove('sidebar-open');
-    } else {
-        sidebar.classList.add('open');
-        toggle.classList.add('open');
-        overlay.classList.add('active');
-        body.classList.add('sidebar-open');
-    }
-}
 
+
+// מצא את הפונקציה sendFeedback והחלף אותה:
 function sendFeedback() {
     showFeedbackDialog();
+    // הסר את השורה: toggleSidebar(); (אם קיימת)
 }
 
 function showFeedbackDialog() {
@@ -623,7 +605,7 @@ function confirmLogout() {
 }
 
 function showClientFormWithSidebar() {
-    showPasswordDialog(true); // true מציין שצריך לסגור את הסרגל
+    showPasswordDialog();
 }
 
 // פונקציות גלובליות מהקוד המקורי
@@ -781,30 +763,46 @@ function hideClientForm() {
     }
 }
 
+// מצא את הפונקציה switchTab והחלף אותה:
 function switchTab(tabName) {
-    // עדכון כפתורי הטאבים
+    console.log('🔄 מחליף טאב:', tabName);
+    
+    // עדכון כפתורי הטאבים (קוד קיים)
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active');
     });
-    event.target.classList.add('active');
+    
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
 
-    // עדכון התוכן
+    // עדכון התוכן (קוד קיים)
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
     
     if (tabName === 'budget') {
         document.getElementById('budgetTab').classList.add('active');
+        setActiveNavItem('תקצוב'); // הדגש בסרגל
+        console.log('✅ עבר לטאב תקצוב');
     } else if (tabName === 'timesheet') {
         document.getElementById('timesheetTab').classList.add('active');
+        setActiveNavItem('שעתון'); // הדגש בסרגל
+        
         // עדכון תאריך לתאריך הנוכחי
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById('actionDate').value = today;
+        const dateField = document.getElementById('actionDate');
+        if (dateField) {
+            dateField.value = today;
+        }
+        console.log('✅ עבר לטאב שעתון');
     }
 }
 
+// מצא את הפונקציה logout והחלף אותה:
 function logout() {
     showLogoutDialog();
+    // הסר את השורה: toggleSidebar(); (אם קיימת)
 }
 
 // ===== מחלקת בקרת חסימת לקוחות =====
@@ -1105,6 +1103,15 @@ class LawOfficeManager {
         
         // רישום כניסה למערכת
         this.logUserLogin();
+
+         // הוסף את השורות הבאות בסוף הפונקציה:
+    
+    // עדכון הסרגל עם פרטי המשתמש
+    setTimeout(() => {
+        updateSidebarUser(this.currentUser);
+        console.log('👤 משתמש עודכן בסרגל:', this.currentUser);
+    }, 500);
+        
     }
 
     async logUserLogin() {
@@ -2657,13 +2664,31 @@ window.addEventListener('resize', function() {
 
 // הוספת התראות דמו בטעינת הדף
 document.addEventListener('DOMContentLoaded', function() {
-    // התראות לדוגמה רק לצורך הדגמה
+    console.log('🚀 DOM נטען - מאתחל סרגל מינימליסטי');
+    
+    // חכה קצת שהדף יסתדר
     setTimeout(() => {
-        if (notificationBell && window.manager && window.manager.currentUser) {
-            // נוסיף התראות רק אחרי שהמערכת נטענה
+        // הדגש את הפריט הראשון כברירת מחדל
+        const firstNavItem = document.querySelector('.nav-item');
+        if (firstNavItem) {
+            firstNavItem.classList.add('active');
+            console.log('✅ פריט ראשון הודגש');
         }
-    }, 3000);
+        
+        // הפעל אנימציות
+        initializeSidebarAnimations();
+        
+        // הגדר אפקטי hover
+        setupAdvancedHoverEffects();
+        
+        // בדוק אם המשתמש כבר מחובר
+        if (window.manager && window.manager.currentUser) {
+            updateSidebarUser(window.manager.currentUser);
+        }
+        
+    }, 200);
 });
+
 
 
 
@@ -2756,27 +2781,276 @@ document.addEventListener('click', function(event) {
 
 
 
+// ✨ שלב 3: הוספת פונקציות חדשות
+// =================================
+
+// הוסף את הפונקציות הבאות בסוף הקובץ script.js:
+
+// פונקציה להדגשת פריט פעיל בסרגל
+function setActiveNavItem(itemName) {
+    console.log('🎯 מעדכן פריט פעיל:', itemName);
+    
+    // הסר הדגשה מכל הפריטים
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // נסה למצוא את הפריט לפי כמה שיטות
+    let activeItem = null;
+    
+    // שיטה 1: חיפוש לפי onclick
+    activeItem = document.querySelector(`[onclick*="${itemName}"]`);
+    
+    // שיטה 2: חיפוש לפי title
+    if (!activeItem) {
+        activeItem = document.querySelector(`[title*="${itemName}"]`);
+    }
+    
+    // שיטה 3: חיפוש לפי טקסט
+    if (!activeItem) {
+        const navItems = document.querySelectorAll('.nav-item span');
+        navItems.forEach(span => {
+            if (span.textContent.includes(itemName)) {
+                activeItem = span.closest('.nav-item');
+            }
+        });
+    }
+    
+    // הדגש את הפריט שנמצא
+    if (activeItem) {
+        activeItem.classList.add('active');
+        console.log('✅ פריט הודגש בהצלחה');
+    } else {
+        console.log('⚠️ לא נמצא פריט להדגשה');
+    }
+}
+
+// פונקציה לעדכון מידע המשתמש בסרגל
+function updateSidebarUser(userName) {
+    console.log('👤 מעדכן משתמש בסרגל:', userName);
+    
+    const userAvatar = document.querySelector('.user-avatar');
+    if (!userAvatar) {
+        console.log('⚠️ לא נמצא avatar במערכת');
+        return;
+    }
+    
+    if (userName) {
+        // הוסף טיפ עם שם המשתמש
+        userAvatar.setAttribute('title', `מחובר: ${userName}`);
+        userAvatar.setAttribute('data-user', userName);
+        
+        // מערך צבעים לבחירה
+        const colors = [
+            'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', // סגול
+            'linear-gradient(135deg, #10b981 0%, #059669 100%)', // ירוק
+            'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', // כתום
+            'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', // אדום
+            'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', // כחול
+            'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)', // סגול בהיר
+            'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', // תכלת
+            'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)'  // ירוק בהיר
+        ];
+        
+        // בחירת צבע לפי שם המשתמש
+        const colorIndex = userName.charCodeAt(0) % colors.length;
+        userAvatar.style.background = colors[colorIndex];
+        
+        // הוספת אפקט מיוחד
+        userAvatar.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+            userAvatar.style.transform = '';
+        }, 300);
+        
+        console.log(`✅ משתמש עודכן: ${userName}, צבע: ${colorIndex}`);
+    }
+}
+
+// פונקציה לאנימציית כניסה של הסרגל
+function initializeSidebarAnimations() {
+    console.log('🎨 מאתחל אנימציות סרגל');
+    
+    // חכה שהסרגל יטען
+    setTimeout(() => {
+        const navItems = document.querySelectorAll('.nav-item');
+        const sidebar = document.querySelector('.minimal-sidebar');
+        
+        if (!sidebar) {
+            console.log('⚠️ סרגל לא נמצא - מדלג על אנימציות');
+            return;
+        }
+        
+        // אנימציית כניסה לסרגל
+        sidebar.style.transform = 'translateX(100%)';
+        sidebar.style.opacity = '0';
+        
+        setTimeout(() => {
+            sidebar.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            sidebar.style.transform = 'translateX(0)';
+            sidebar.style.opacity = '1';
+        }, 100);
+        
+        // אנימציית כניסה לפריטים
+        navItems.forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(20px)';
+            
+            setTimeout(() => {
+                item.style.transition = 'all 0.4s ease';
+                item.style.opacity = '1';
+                item.style.transform = 'translateX(0)';
+            }, 200 + (index * 100));
+        });
+        
+        console.log('✅ אנימציות הופעלו');
+    }, 500);
+}
+
+// פונקציה לטיפול באירועי hover מתקדמים
+function setupAdvancedHoverEffects() {
+    console.log('✨ מגדיר אפקטי hover מתקדמים');
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    const sidebar = document.querySelector('.minimal-sidebar');
+    
+    if (!navItems.length || !sidebar) {
+        console.log('⚠️ לא נמצאו אלמנטים לhover');
+        return;
+    }
+    
+    navItems.forEach((item, index) => {
+        // אפקט כניסה
+        item.addEventListener('mouseenter', function(e) {
+            // אפקט ripple
+            const ripple = document.createElement('div');
+            ripple.style.cssText = `
+                position: absolute;
+                background: rgba(59, 130, 246, 0.2);
+                border-radius: 50%;
+                width: 0;
+                height: 0;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+                animation: ripple 0.6s ease-out;
+            `;
+            
+            this.style.position = 'relative';
+            this.appendChild(ripple);
+            
+            // הסרת ripple אחרי האנימציה
+            setTimeout(() => {
+                if (ripple && ripple.parentNode) {
+                    ripple.parentNode.removeChild(ripple);
+                }
+            }, 600);
+            
+            // אפקט תזוזה
+            this.style.transform = 'translateX(-3px) scale(1.02)';
+            this.style.zIndex = '10';
+        });
+        
+        // אפקט יציאה
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = '';
+            this.style.zIndex = '';
+        });
+        
+        // אפקט לחיצה
+        item.addEventListener('mousedown', function() {
+            this.style.transform = 'translateX(-2px) scale(0.98)';
+        });
+        
+        item.addEventListener('mouseup', function() {
+            this.style.transform = 'translateX(-3px) scale(1.02)';
+        });
+    });
+    
+    // הוספת CSS לאנימציית ripple
+    if (!document.getElementById('ripple-animation')) {
+        const style = document.createElement('style');
+        style.id = 'ripple-animation';
+        style.textContent = `
+            @keyframes ripple {
+                from {
+                    width: 0;
+                    height: 0;
+                    opacity: 1;
+                }
+                to {
+                    width: 200px;
+                    height: 200px;
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    console.log('✅ אפקטי hover הוגדרו');
+}
+
+// 🔄 שלב 4: עדכון event listeners קיימים
+// ==========================================
+
+// מצא את הקטע הזה ומחק אותו (אם קיים):
+/*
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar.classList.contains('open')) {
+            toggleSidebar();
+        }
+        
+        // סגירת דרופדאון התראות
+        if (notificationBell.isDropdownOpen) {
+            notificationBell.hideDropdown();
+        }
+    }
+});
+
+window.addEventListener('resize', function() {
+    const sidebar = document.getElementById('sidebar');
+    if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+        toggleSidebar();
+    }
+});
+*/
 
 
 
+// הוסף פונקציה לבדיקת תקינות הסרגל:
+function checkSidebarIntegrity() {
+    console.log('🔍 בודק תקינות הסרגל החדש...');
+    
+    const sidebar = document.querySelector('.minimal-sidebar');
+    const navItems = document.querySelectorAll('.nav-item');
+    const userAvatar = document.querySelector('.user-avatar');
+    
+    const results = {
+        sidebar: !!sidebar,
+        navItems: navItems.length,
+        userAvatar: !!userAvatar,
+        isVisible: sidebar ? getComputedStyle(sidebar).display !== 'none' : false
+    };
+    
+    console.log('📊 תוצאות בדיקה:', results);
+    
+    if (results.sidebar && results.navItems >= 4 && results.userAvatar && results.isVisible) {
+        console.log('✅ הסרגל החדש עובד תקין!');
+        return true;
+    } else {
+        console.log('❌ יש בעיה עם הסרגל החדש');
+        console.log('🔧 בדוק שהקוד הועתק נכון לכל הקבצים');
+        return false;
+    }
+}
 
+// הפעל בדיקה אוטומטית אחרי 3 שניות
+setTimeout(() => {
+    checkSidebarIntegrity();
+}, 3000);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ===== סוף העדכונים ל-JavaScript =====
+// קרא להוסיף את הקוד למטה לסוף הקובץ script.js

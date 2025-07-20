@@ -79,11 +79,11 @@ body.sidebar-open {
     display: inline-block;
 }
 
-/* ===== פעמון התראות ===== */
+/* ===== פעמון התראות - פינה שמאלית תחתונה ===== */
 .notification-bell {
     position: fixed;
-    top: 20px;
-    left: 20px;
+    bottom: 20px;  /* תחתית */
+    left: 20px;    /* שמאל */
     width: 60px;
     height: 60px;
     background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
@@ -101,8 +101,8 @@ body.sidebar-open {
     border: 2px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    position: relative;
 }
+
 
 .notification-bell:hover {
     transform: scale(1.1) rotate(10deg);
@@ -157,11 +157,11 @@ body.sidebar-open {
     50% { transform: scale(1.1); }
 }
 
-/* ===== דרופדאון התראות ===== */
+/* ===== דרופדאון התראות - מיקום מתואם ===== */
 .notifications-dropdown {
     position: fixed;
-    top: 90px;
-    left: 20px;
+    bottom: 90px;  /* מעל הפעמון */
+    left: 20px;    /* שמאל - מתואם עם הפעמון */
     width: 350px;
     max-height: 500px;
     background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
@@ -169,7 +169,7 @@ body.sidebar-open {
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
     border: 2px solid rgba(59, 130, 246, 0.2);
     z-index: 1400;
-    transform: translateY(-20px) scale(0.9);
+    transform: translateY(20px) scale(0.9);
     opacity: 0;
     pointer-events: none;
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1862,14 +1862,20 @@ body.sidebar-open {
         min-width: 45%;
     }
 
-    .notifications-dropdown {
-        left: 10px;
-        right: 10px;
+     .notifications-dropdown {
+        bottom: 75px;  /* מותאם לגודל פעמון קטן יותר */
+        left: 10px;    /* שמאל במובייל */
+        right: 10px;   /* מלא רוחב במובייל */
         width: auto;
     }
+}
 
-    .notification-bell {
-        left: 10px;
+     .notification-bell {
+        bottom: 10px;
+        left: 10px;    /* שמאל גם במובייל */
+        width: 55px;
+        height: 55px;
+        font-size: 22px;
     }
 
     .advanced-table-container {
@@ -1890,7 +1896,7 @@ body.sidebar-open {
     .timesheet-table td {
         padding: 8px 4px;
     }
-}
+
 
 @media (max-width: 480px) {
     .popup {
@@ -2777,4 +2783,335 @@ button:disabled::after {
     .history-entry::after {
         left: -25px;
     }
+}
+
+/* ===== Skeleton Loading UI ===== */
+
+/* אנימציית הזוהר הזורמת */
+@keyframes skeleton-loading {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+/* בסיס לכל skeleton element */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 8px;
+}
+
+/* כרטיס skeleton למשימות */
+.skeleton-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e2e8f0;
+    animation: skeleton-pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes skeleton-pulse {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.7;
+    }
+}
+
+.skeleton-title {
+    height: 20px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #cbd5e1 50%, #e2e8f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.skeleton-subtitle {
+    height: 14px;
+    width: 60%;
+    background: linear-gradient(90deg, #e2e8f0 25%, #cbd5e1 50%, #e2e8f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 16px;
+}
+
+.skeleton-text {
+    height: 12px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #cbd5e1 50%, #e2e8f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.skeleton-text.short {
+    width: 70%;
+}
+
+.skeleton-text.medium {
+    width: 85%;
+}
+
+.skeleton-text.long {
+    width: 95%;
+}
+
+/* שורת skeleton לטבלה */
+.skeleton-row {
+    height: 60px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 8px;
+    animation: skeleton-pulse 1.5s ease-in-out infinite alternate;
+}
+
+/* אנימציית fade out כשהtrue content מגיע */
+.skeleton-fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+
+
+
+/* ===== sidebar.css - עיצוב סרגל צד בלבד ===== */
+
+/* בסיס הסרגל - ללא תזוזות מעצבנות */
+.minimal-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 70px;
+    height: 100vh;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-left: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 0;
+    z-index: 1000;
+    box-shadow: -3px 0 15px rgba(0, 0, 0, 0.08);
+    
+    /* אנימציה חלקה רק לרוחב */
+    transition: width 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+/* הרחבה חלקה בhover */
+.minimal-sidebar:hover {
+    width: 200px;
+    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.12);
+}
+
+/* לוגו/ברנד עליון */
+.sidebar-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: white;
+    transition: transform 0.3s ease;
+    min-height: 60px;
+    justify-content: center;
+}
+
+/* אייקון הלוגו */
+.brand-icon {
+    font-size: 22px;
+    margin-bottom: 4px;
+    transition: transform 0.3s ease;
+}
+
+.minimal-sidebar:hover .brand-icon {
+    transform: scale(1.1);
+}
+
+/* טקסט הלוגו */
+.brand-text {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s ease 0.1s;
+    white-space: nowrap;
+}
+
+.minimal-sidebar:hover .brand-text {
+    opacity: 1;
+}
+
+/* תפריט הניווט */
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    padding: 0 10px;
+}
+
+/* פריטי תפריט */
+.nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    height: 48px;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    padding: 0 12px;
+}
+
+/* אייקונים בתפריט */
+.nav-item i {
+    font-size: 18px;
+    min-width: 20px;
+    text-align: center;
+    transition: color 0.3s ease;
+}
+
+/* טקסט בתפריט */
+.nav-item span {
+    margin-right: 12px;
+    opacity: 0;
+    transform: translateX(-15px);
+    transition: all 0.3s ease 0.05s;
+    white-space: nowrap;
+}
+
+.minimal-sidebar:hover .nav-item span {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* אפקטי hover לפריטי תפריט */
+.nav-item:hover {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    color: #1e40af;
+    transform: translateX(-3px);
+}
+
+.nav-item:active {
+    transform: translateX(-2px) scale(0.98);
+}
+
+/* פריט יציאה - צבע מיוחד */
+.nav-item.logout:hover {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    color: #dc2626;
+}
+
+/* פריט פעיל */
+.nav-item.active {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    font-weight: 600;
+}
+
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #1e40af 0%, #3b82f6 100%);
+    border-radius: 2px 0 0 2px;
+}
+
+/* מפריד */
+.nav-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #e2e8f0 50%, transparent 100%);
+    margin: 8px 0;
+    width: 80%;
+    align-self: center;
+}
+
+/* אווטר משתמש */
+.sidebar-footer {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.25);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.user-avatar:hover {
+    transform: scale(1.08);
+}
+
+/* התאמות מובייל */
+@media (max-width: 768px) {
+    .minimal-sidebar {
+        width: 60px;
+    }
+    
+    .minimal-sidebar:hover {
+        width: 180px;
+    }
+}
+
+@media (max-width: 480px) {
+    .minimal-sidebar {
+        width: 55px;
+    }
+    
+    .minimal-sidebar:hover {
+        width: 160px;
+    }
+}
+
+/* ביטול אנימציות ישנות שגורמות לתזוזות */
+body {
+    padding-left: 0 !important;
+    transition: none !important;
+}
+
+.sidebar,
+.sidebar-toggle,
+.sidebar-overlay {
+    display: none !important;
+}
+
+/* מניעת גלילה אופקית */
+html, body {
+    overflow-x: hidden;
 }

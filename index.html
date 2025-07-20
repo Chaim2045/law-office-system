@@ -36,38 +36,51 @@
         </div>
 
         <!-- סרגל צד -->
-        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+       <div class="minimal-sidebar" id="minimalSidebar">
+    <div class="sidebar-brand">
+        <!-- 🎯 בחר את האייקון המועדף עליך - מחק את ההערה 
         
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-content">
-                <div class="sidebar-header">
-                    <div class="sidebar-title">תפריט מערכת</div>
-                    <div class="sidebar-subtitle">ניהול מתקדם</div>
-                </div>
-                
-                <div class="sidebar-menu">
-                    <button class="sidebar-item primary" onclick="showClientFormWithSidebar();">
-                        <span class="sidebar-item-icon"><i class="fas fa-user-plus"></i></span>
-                        הוסף לקוח חדש
-                    </button>
-                    
-                    <button class="sidebar-item success" onclick="manager.loadDataFromSheets(); toggleSidebar();">
-                        <span class="sidebar-item-icon"><i class="fas fa-sync-alt"></i></span>
-                        רענן נתוני מערכת
-                    </button>
-                    
-                    <button class="sidebar-item warning" onclick="sendFeedback(); toggleSidebar();">
-                        <span class="sidebar-item-icon"><i class="fas fa-comments"></i></span>
-                        שלח משוב
-                    </button>
-                    
-                    <button class="sidebar-item danger" onclick="logout(); toggleSidebar();">
-                        <span class="sidebar-item-icon"><i class="fas fa-power-off"></i></span>
-                        יציאה מהמערכת
-                    </button>
-                </div>
-            </div>
+        אפשרות 1: בניין משרד (מקצועי ונקי) - מומלץ -->
+        <div class="brand-icon">
+    <i class="fas fa-briefcase"></i>
+</div>
+        
+
+
+        <div class="brand-text">משרד ע"ד</div>
+    </div>
+    
+       <nav class="sidebar-nav">
+        <button class="nav-item" onclick="showClientFormWithSidebar();" title="הוסף לקוח חדש">
+            <i class="fas fa-user-plus"></i>
+            <span>לקוח חדש</span>
+        </button>
+        
+        <button class="nav-item" onclick="manager.loadDataFromSheets();" title="רענן נתונים">
+            <i class="fas fa-sync-alt"></i>
+            <span>רענן</span>
+        </button>
+        
+        <button class="nav-item" onclick="sendFeedback();" title="שלח משוב">
+            <i class="fas fa-comments"></i>
+            <span>משוב</span>
+        </button>
+        
+        <div class="nav-divider"></div>
+        
+        <button class="nav-item logout" onclick="logout();" title="יציאה מהמערכת">
+            <i class="fas fa-power-off"></i>
+            <span>יציאה</span>
+        </button>
+    </nav>
+    
+    <div class="sidebar-footer">
+        <div class="user-avatar">
+            <i class="fas fa-user"></i>
         </div>
+    </div>
+</div>
+
         
         <!-- לשונית פתיחה -->
         <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
