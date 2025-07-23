@@ -2446,58 +2446,351 @@ getAverageProgress() {
 }
 
     // החלף את הפונקציה renderBudgetTable במחלקת LawOfficeManager:
+// ===== INTEGRATED TABLE WITH CONTROLS - JavaScript =====
+
+// החלף את הפונקציה renderBudgetTable:
 renderBudgetTable() {
     const tableContainer = document.getElementById('budgetTableContainer');
     
     if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
-        tableContainer.innerHTML = this.createEmptyTableState();
+        tableContainer.innerHTML = this.createIntegratedEmptyState('budget');
         return;
     }
     
     const tableHtml = `
-        <div class="modern-table-container">
-            <div class="modern-table-header">
-                <h3 class="modern-table-title">
-                    <i class="fas fa-chart-bar"></i>
-                    משימות מתוקצבות
-                </h3>
-                <div class="modern-table-subtitle">
-                    ${this.filteredBudgetTasks.length} משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
+        <div class="integrated-table-container">
+            <!-- סרגל בקרה מאוחד -->
+            <div class="integrated-controls">
+                <div class="integrated-view-tabs">
+                    <button class="integrated-view-tab" data-view="cards" onclick="manager.switchBudgetView('cards')">
+                        <i class="fas fa-th-large"></i>
+                        כרטיסיות
+                    </button>
+                    <button class="integrated-view-tab active" data-view="table" onclick="manager.switchBudgetView('table')">
+                        <i class="fas fa-table"></i>
+                        טבלה
+                    </button>
+                </div>
+
+                <div class="integrated-filter-row">
+                    <div class="integrated-filter-group">
+                        <span class="integrated-filter-label">הצג:</span>
+                        <select class="integrated-filter-select" id="budgetTaskFilter" onchange="manager.filterBudgetTasks()">
+                            <option value="active">פעילות בלבד</option>
+                            <option value="completed">שהושלמו (חודש אחרון)</option>
+                            <option value="all">הכל</option>
+                        </select>
+                    </div>
+                    
+                    <div class="integrated-search-container">
+                        <input type="text" class="integrated-search-box" id="budgetSearchBox" 
+                               placeholder="חפש משימות..." 
+                               oninput="manager.searchBudgetTasks()">
+                        <i class="fas fa-search integrated-search-icon"></i>
+                    </div>
                 </div>
             </div>
             
-            <table class="modern-budget-table">
-                <thead>
-                    <tr>
-                        <th class="sortable" data-sort="clientName" onclick="manager.sortTable('clientName')">
-                            לקוח
-                            <i class="sort-icon"></i>
-                        </th>
-                        <th class="sortable" data-sort="description" onclick="manager.sortTable('description')">
-                            תיאור משימה
-                            <i class="sort-icon"></i>
-                        </th>
-                        <th class="sortable" data-sort="progress" onclick="manager.sortTable('progress')">
-                            התקדמות
-                            <i class="sort-icon"></i>
-                        </th>
-                        <th class="sortable" data-sort="deadline" onclick="manager.sortTable('deadline')">
-                            תאריך יעד
-                            <i class="sort-icon"></i>
-                        </th>
-                        <th class="sortable" data-sort="status" onclick="manager.sortTable('status')">
-                            סטטוס
-                            <i class="sort-icon"></i>
-                        </th>
-                        <th>פעולות</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${this.generateModernTableRows()}
-                </tbody>
-            </table>
+            <!-- כותרת טבלה -->
+            <div class="integrated-table-header">
+                <h3 class="integrated-table-title">
+                    <i class="fas fa-chart-bar"></i>
+                    משימות מתוקצבות
+                </h3>
+                <div class="integrated-table-subtitle">
+                    ${this.filteredBudgetTasks.length} משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
+                </div>
+                <div class="integrated-stats">
+                    <div class="integrated-stat">
+                        <i class="fas fa-tasks"></i>
+                        <span>סה"כ זמן: ${this.getTotalHoursBudget()}h</span>
+                    </div>
+                    <div class="integrated-stat">
+                        <i class="fas fa-percentage"></i>
+                        <span>ממוצע התקדמות: ${this.getAverageProgress()}%</span>
+                    </div>
+                    <div class="integrated-stat">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>יעדים השבוע: ${this.getThisWeekDeadlines()}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- הטבלה -->
+            <div class="integrated-table-content">
+                <table class="modern-budget-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="clientName" onclick="manager.sortTable('clientName')">
+                                לקוח
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="description" onclick="manager.sortTable('description')">
+                                תיאור משימה
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="progress" onclick="manager.sortTable('progress')">
+                                התקדמות
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="deadline" onclick="manager.sortTable('deadline')">
+                                תאריך יעד
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="status" onclick="manager.sortTable('status')">
+                                סטטוס
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${this.generateModernTableRows()}
+                    </tbody>
+                </table>
+            </div>
         </div>
     `;
+    
+    tableContainer.innerHTML = tableHtml;
+    this.updateBudgetViewTabs();
+    this.updateSortIndicators();
+    
+    // אנימציה חלקה
+    setTimeout(() => {
+        const rows = tableContainer.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                row.style.transition = 'all 0.3s ease';
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 50);
+        });
+    }, 100);
+}
+
+// החלף את הפונקציה renderTimesheetTable:
+renderTimesheetTable() {
+    const tableContainer = document.getElementById('timesheetTableContainer');
+    
+    if (!this.filteredTimesheetEntries || this.filteredTimesheetEntries.length === 0) {
+        tableContainer.innerHTML = this.createIntegratedEmptyState('timesheet');
+        return;
+    }
+    
+    const tableHtml = `
+        <div class="integrated-table-container">
+            <!-- סרגל בקרה מאוחד -->
+            <div class="integrated-controls">
+                <div class="integrated-view-tabs">
+                    <button class="integrated-view-tab" data-view="cards" onclick="manager.switchTimesheetView('cards')">
+                        <i class="fas fa-th-large"></i>
+                        כרטיסיות
+                    </button>
+                    <button class="integrated-view-tab active" data-view="table" onclick="manager.switchTimesheetView('table')">
+                        <i class="fas fa-table"></i>
+                        טבלה
+                    </button>
+                </div>
+
+                <div class="integrated-filter-row">
+                    <div class="integrated-filter-group">
+                        <span class="integrated-filter-label">הצג:</span>
+                        <select class="integrated-filter-select" id="timesheetFilter" onchange="manager.filterTimesheetEntries()">
+                            <option value="month">חודש אחרון</option>
+                            <option value="today">היום בלבד</option>
+                            <option value="all">הכל</option>
+                        </select>
+                    </div>
+                    
+                    <div class="integrated-search-container">
+                        <input type="text" class="integrated-search-box" id="timesheetSearchBox" 
+                               placeholder="חפש רשומות..." 
+                               oninput="manager.searchTimesheetEntries()">
+                        <i class="fas fa-search integrated-search-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- כותרת טבלה -->
+            <div class="integrated-table-header" style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);">
+                <h3 class="integrated-table-title">
+                    <i class="fas fa-clock" style="color: #16a34a;"></i>
+                    רשומות שעתון
+                </h3>
+                <div class="integrated-table-subtitle" style="color: #059669;">
+                    ${this.filteredTimesheetEntries.length} רשומות • ${this.getTotalHoursTimesheet()} שעות סה"כ
+                </div>
+                <div class="integrated-stats">
+                    <div class="integrated-stat">
+                        <i class="fas fa-calendar-day" style="color: #16a34a;"></i>
+                        <span>היום: ${this.getTodayEntries()} רשומות</span>
+                    </div>
+                    <div class="integrated-stat">
+                        <i class="fas fa-chart-line" style="color: #16a34a;"></i>
+                        <span>השבוע: ${this.getWeekEntries()} רשומות</span>
+                    </div>
+                    <div class="integrated-stat">
+                        <i class="fas fa-users" style="color: #16a34a;"></i>
+                        <span>${this.getUniqueClientsCount()} לקוחות</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- הטבלה -->
+            <div class="integrated-table-content">
+                <table class="modern-timesheet-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="date" onclick="manager.sortTimesheetTable('date')">
+                                תאריך
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="action" onclick="manager.sortTimesheetTable('action')">
+                                פעולה שבוצעה
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="minutes" onclick="manager.sortTimesheetTable('minutes')">
+                                זמן
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="clientName" onclick="manager.sortTimesheetTable('clientName')">
+                                לקוח
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th class="sortable" data-sort="fileNumber" onclick="manager.sortTimesheetTable('fileNumber')">
+                                מס׳ תיק
+                                <i class="sort-icon"></i>
+                            </th>
+                            <th>הערות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${this.generateModernTimesheetRows()}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    tableContainer.innerHTML = tableHtml;
+    this.updateTimesheetViewTabs();
+    this.updateTimesheetSortIndicators();
+    
+    // אנימציה חלקה
+    setTimeout(() => {
+        const rows = tableContainer.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                row.style.transition = 'all 0.3s ease';
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 30);
+        });
+    }, 100);
+}
+
+// פונקציות עזר נוספות:
+
+// עדכון טאבי תצוגה לתקצוב
+updateBudgetViewTabs() {
+    const tabs = document.querySelectorAll('#budgetTableContainer .integrated-view-tab');
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.view === this.currentBudgetView) {
+            tab.classList.add('active');
+        }
+    });
+}
+
+// עדכון טאבי תצוגה לשעתון
+updateTimesheetViewTabs() {
+    const tabs = document.querySelectorAll('#timesheetTableContainer .integrated-view-tab');
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.view === this.currentTimesheetView) {
+            tab.classList.add('active');
+        }
+    });
+}
+
+// סטטיסטיקות נוספות לתקצוב
+getTotalHoursBudget() {
+    const totalMinutes = this.filteredBudgetTasks.reduce((sum, task) => {
+        return sum + (Number(task.actualMinutes) || 0);
+    }, 0);
+    return Math.round((totalMinutes / 60) * 10) / 10;
+}
+
+getThisWeekDeadlines() {
+    const now = new Date();
+    const oneWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    return this.filteredBudgetTasks.filter(task => {
+        const deadline = new Date(task.deadline);
+        return deadline >= now && deadline <= oneWeek && task.status === 'פעיל';
+    }).length;
+}
+
+// מצב ריק מאוחד
+createIntegratedEmptyState(type) {
+    const isTimesheet = type === 'timesheet';
+    const color = isTimesheet ? '#16a34a' : '#3b82f6';
+    const bgColor = isTimesheet ? 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)' : 'linear-gradient(135deg, #ffffff 0%, #fafbfc 100%)';
+    const icon = isTimesheet ? 'fas fa-clock' : 'fas fa-chart-bar';
+    const title = isTimesheet ? 'רשומות שעתון' : 'משימות מתוקצבות';
+    const emptyTitle = isTimesheet ? 'אין רשומות שעתון' : 'אין משימות מתוקצבות';
+    const emptyDesc = isTimesheet ? 'רשום את הפעולה הראשונה שלך' : 'הוסף משימה חדשה כדי להתחיל';
+    
+    return `
+        <div class="integrated-table-container">
+            <div class="integrated-controls">
+                <div class="integrated-view-tabs">
+                    <button class="integrated-view-tab" data-view="cards">
+                        <i class="fas fa-th-large"></i>
+                        כרטיסיות
+                    </button>
+                    <button class="integrated-view-tab active" data-view="table">
+                        <i class="fas fa-table"></i>
+                        טבלה
+                    </button>
+                </div>
+                <div class="integrated-filter-row">
+                    <div class="integrated-filter-group">
+                        <span class="integrated-filter-label">הצג:</span>
+                        <select class="integrated-filter-select" disabled>
+                            <option>אין נתונים</option>
+                        </select>
+                    </div>
+                    <div class="integrated-search-container">
+                        <input type="text" class="integrated-search-box" placeholder="אין מה לחפש..." disabled>
+                        <i class="fas fa-search integrated-search-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="integrated-table-header" style="background: ${bgColor};">
+                <h3 class="integrated-table-title">
+                    <i class="${icon}" style="color: ${color};"></i>
+                    ${title}
+                </h3>
+                <div class="integrated-table-subtitle">אין נתונים להצגה</div>
+            </div>
+            
+            <div class="integrated-empty-state">
+                <div class="integrated-empty-icon">
+                    <i class="${icon}" style="color: ${color};"></i>
+                </div>
+                <h4 class="integrated-empty-title">${emptyTitle}</h4>
+                <p class="integrated-empty-description">${emptyDesc}</p>
+            </div>
+        </div>
+    `;
+
     
     tableContainer.innerHTML = tableHtml;
     this.updateSortIndicators();
