@@ -1,4 +1,223 @@
 // הוסף לתחילת script.js - מנגנון מניעת כפילויות גלובלי
+// ===== מערכת תצוגה רספונסיבית מתקדמת =====
+class ResponsiveManager {
+    constructor() {
+        this.breakpoints = {
+            mobile: 768,
+            tablet: 1024, 
+            laptop: 1366,
+            desktop: 1920,
+            ultrawide: 2560
+        };
+        
+        this.currentSize = null;
+        this.elements = {};
+        this.init();
+    }
+    
+    init() {
+        // זיהוי אלמנטים לניהול
+        this.elements = {
+            topBar: document.querySelector('.top-user-bar'),
+            userDropdown: document.querySelector('.user-dropdown-top'),
+            plusButton: document.querySelector('.plus-container-new'),
+            mainContent: document.querySelector('.main-content'),
+            sidebar: document.querySelector('.minimal-sidebar'),
+            mainTabs: document.querySelector('.main-tabs-container')
+        };
+        
+        // הוספת event listeners
+        window.addEventListener('resize', () => this.handleResize());
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => this.handleResize(), 100);
+        });
+        
+        // התאמה ראשונית
+        this.handleResize();
+        
+        console.log('🎨 מערכת רספונסיבית אותחלה');
+    }
+    
+    handleResize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const newSize = this.getScreenSize(width);
+        
+        // עדכון רק אם השתנה הגודל
+        if (newSize !== this.currentSize) {
+            this.currentSize = newSize;
+            this.applyResponsiveStyles(width, height);
+            console.log(`📐 התאמה ל: ${newSize} (${width}x${height})`);
+        }
+    }
+    
+    getScreenSize(width) {
+        if (width <= this.breakpoints.mobile) return 'mobile';
+        if (width <= this.breakpoints.tablet) return 'tablet';
+        if (width <= this.breakpoints.laptop) return 'laptop';
+        if (width <= this.breakpoints.desktop) return 'desktop';
+        return 'ultrawide';
+    }
+    
+    applyResponsiveStyles(width, height) {
+        const size = this.currentSize;
+        
+        // התאמות לפי גודל מסך
+        switch(size) {
+            case 'laptop':
+                this.applyLaptopStyles();
+                break;
+            case 'desktop':
+                this.applyDesktopStyles();
+                break;
+            case 'ultrawide':
+                this.applyUltrawideStyles(width);
+                break;
+            default:
+                this.applyDefaultStyles();
+        }
+        
+        // התאמות מיוחדות לגובה
+        if (height < 720) {
+            this.applyShortScreenStyles();
+        }
+        
+        // עדכון CSS variables דינמי
+        this.updateCSSVariables(width, height);
+    }
+    
+    applyLaptopStyles() {
+        this.setStyles(this.elements.userDropdown, {
+            fontSize: '13px',
+            padding: '6px 12px',
+            right: '180px'
+        });
+        
+        this.setStyles(this.elements.plusButton, {
+            top: '75px',
+            left: '15px'
+        });
+        
+        this.setStyles(this.elements.mainTabs, {
+            margin: '5px auto 15px auto'
+        });
+    }
+    
+    applyDesktopStyles() {
+        this.setStyles(this.elements.userDropdown, {
+            fontSize: '14px',
+            padding: '8px 16px',
+            right: '200px'
+        });
+        
+        this.setStyles(this.elements.plusButton, {
+            top: '80px',
+            left: '20px'
+        });
+        
+        this.setStyles(this.elements.mainTabs, {
+            margin: '10px auto 20px auto'
+        });
+    }
+    
+    applyUltrawideStyles(width) {
+        // מגבילים רוחב מקסימלי למסכים גדולים
+        const maxWidth = Math.min(width * 0.85, 2000);
+        
+        this.setStyles(this.elements.topBar, {
+            maxWidth: `${maxWidth}px`,
+            margin: '0 auto',
+            left: 'auto',
+            right: 'auto'
+        });
+        
+        this.setStyles(this.elements.userDropdown, {
+            fontSize: '15px',
+            padding: '10px 20px',
+            right: '150px'
+        });
+        
+        this.setStyles(this.elements.mainContent, {
+            maxWidth: `${maxWidth - 200}px`,
+            margin: '70px auto 0 auto'
+        });
+    }
+    
+    applyShortScreenStyles() {
+        // התאמה למסכים נמוכים
+        this.setStyles(this.elements.topBar, {
+            height: '50px'
+        });
+        
+        this.setStyles(this.elements.plusButton, {
+            top: '60px'
+        });
+        
+        this.setStyles(this.elements.mainContent, {
+            marginTop: '50px'
+        });
+    }
+    
+    applyDefaultStyles() {
+        // איפוס לסטיילים בסיסיים
+        this.setStyles(this.elements.userDropdown, {
+            fontSize: '14px',
+            padding: '8px 16px',
+            right: '200px'
+        });
+    }
+    
+    updateCSSVariables(width, height) {
+        const root = document.documentElement;
+        
+        // עדכון משתנים דינמיים
+        root.style.setProperty('--screen-width', `${width}px`);
+        root.style.setProperty('--screen-height', `${height}px`);
+        root.style.setProperty('--screen-ratio', width/height);
+        
+        // עדכון גדלים יחסיים
+        const scaleFactor = Math.min(Math.max(width / 1920, 0.8), 1.5);
+        root.style.setProperty('--scale-factor', scaleFactor);
+        
+        // עדכון מרווחים דינמיים
+        const baseSpacing = Math.max(width / 200, 8);
+        root.style.setProperty('--dynamic-space', `${baseSpacing}px`);
+    }
+    
+    setStyles(element, styles) {
+        if (!element) return;
+        
+        Object.keys(styles).forEach(property => {
+            element.style[property] = styles[property];
+        });
+    }
+    
+    // פונקציה לקבלת מידע על המסך הנוכחי
+    getScreenInfo() {
+        return {
+            size: this.currentSize,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            devicePixelRatio: window.devicePixelRatio || 1,
+            orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
+        };
+    }
+    
+    // פונקציה לבדיקת תמיכה בתכונות
+    checkFeatureSupport() {
+        return {
+            containerQueries: CSS.supports('container-type: inline-size'),
+            cssCustomProperties: CSS.supports('color', 'var(--test)'),
+            viewportUnits: CSS.supports('height', '100vh'),
+            clamp: CSS.supports('font-size', 'clamp(1rem, 2vw, 2rem)')
+        };
+    }
+}
+
+// יצירת מופע גלובלי
+const responsiveManager = new ResponsiveManager();
+window.responsiveManager = responsiveManager;
+
 class LoadingManager {
     constructor() {
         this.activeOperations = new Set();
@@ -137,19 +356,24 @@ class NotificationBellSystem {
         this.renderNotifications();
     }
 
-    updateBell() {
-        const bell = document.getElementById('notificationBell');
-        const count = document.getElementById('notificationCount');
+updateBell() {
+    const bell = document.getElementById('notificationBell');
+    const count = document.getElementById('notificationCount');
+    
+    if (this.notifications.length > 0) {
+        bell.classList.add('has-notifications');
+        count.classList.remove('hidden');
         
-        if (this.notifications.length > 0) {
-            bell.classList.add('has-notifications');
-            count.classList.remove('hidden');
-            count.textContent = this.notifications.length;
-        } else {
-            bell.classList.remove('has-notifications');
-            count.classList.add('hidden');
-        }
+        // הצגת מספר התראות (מקסימום 99)
+        const displayCount = this.notifications.length > 99 ? '99+' : this.notifications.length;
+        count.textContent = displayCount;
+        
+        console.log(`🔔 ${this.notifications.length} התראות פעילות`);
+    } else {
+        bell.classList.remove('has-notifications');
+        count.classList.add('hidden');
     }
+}
 
     showDropdown() {
         const dropdown = document.getElementById('notificationsDropdown');
@@ -766,6 +990,9 @@ function hideClientForm() {
 // מצא את הפונקציה switchTab והחלף אותה:
 function switchTab(tabName) {
     console.log('🔄 מחליף טאב:', tabName);
+    // סגור את כל הטפסים הפתוחים
+    document.getElementById('budgetFormContainer').classList.add('hidden');
+    document.getElementById('timesheetFormContainer').classList.add('hidden');
     
     // עדכון כפתורי הטאבים (קוד קיים)
     document.querySelectorAll('.tab-button').forEach(btn => {
@@ -797,7 +1024,11 @@ function switchTab(tabName) {
         }
         console.log('✅ עבר לטאב שעתון');
     }
+    
+    // 👈 הוסף את השורה הזאת כאן - ממש לפני הסוגריים הסופיים:
+    updatePlusTooltip(tabName);
 }
+
 
 // מצא את הפונקציה logout והחלף אותה:
 function logout() {
@@ -1077,6 +1308,8 @@ class LawOfficeManager {
 
         if (password === employee.password) {
             this.currentUser = employee.name;
+            // הוסף את השורה הזאת:
+            updateUserDisplay(this.currentUser);
             this.showApp();
             this.loadData();
         } else {
@@ -1733,107 +1966,763 @@ class LawOfficeManager {
     }
 
     // ===== רינדור משימות מתקדם =====
-    renderBudgetTasks() {
-        const container = document.getElementById('budgetContainer');
-        const tableContainer = document.getElementById('budgetTableContainer');
-        const emptyState = document.getElementById('budgetEmptyState');
-        
-        try {
-            if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
-                container.style.display = 'none';
-                tableContainer.style.display = 'none';
-                emptyState.style.display = 'block';
-                return;
-            }
+    // ===== IMPROVED RENDERING FUNCTIONS ===== 
 
-            emptyState.style.display = 'none';
-
-            if (this.currentBudgetView === 'cards') {
-                container.style.display = 'block';
-                tableContainer.style.display = 'none';
-                
-                const tasksHtml = this.filteredBudgetTasks.map(task => this.createAdvancedTaskCard(task)).join('');
-                container.innerHTML = `<div class="items-container">${tasksHtml}</div>`;
-            } else {
-                container.style.display = 'none';
-                tableContainer.style.display = 'block';
-                
-                this.renderBudgetTable();
-            }
-            
-        } catch (error) {
-            console.error('❌ שגיאה ברינדור משימות:', error);
-            container.innerHTML = '<div class="error-message">שגיאה בהצגת המשימות</div>';
+// החלף את הפונקציה renderBudgetTasks() במחלקת LawOfficeManager
+renderBudgetTasks() {
+    const container = document.getElementById('budgetContainer');
+    const tableContainer = document.getElementById('budgetTableContainer');
+    const emptyState = document.getElementById('budgetEmptyState');
+    
+    try {
+        if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
+            container.style.display = 'none';
+            tableContainer.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
         }
-    }
 
-    renderBudgetTable() {
-        const tbody = document.getElementById('budgetTableBody');
+        emptyState.style.display = 'none';
+
+        if (this.currentBudgetView === 'cards') {
+            container.style.display = 'block';
+            tableContainer.style.display = 'none';
+            this.renderBudgetCards();
+        } else {
+            container.style.display = 'none';
+            tableContainer.style.display = 'block';
+            this.renderBudgetTable();
+        }
         
-        const rowsHtml = this.filteredBudgetTasks.map(task => {
-            const safeTask = {
-                id: task.id || Date.now(),
-                clientName: task.clientName || 'לקוח לא ידוע',
-                description: task.description || 'משימה ללא תיאור',
-                estimatedMinutes: Number(task.estimatedMinutes) || 0,
-                actualMinutes: Number(task.actualMinutes) || 0,
-                deadline: task.deadline || new Date().toISOString(),
-                status: task.status || 'פעיל'
-            };
+    } catch (error) {
+        console.error('❌ שגיאה ברינדור משימות:', error);
+        container.innerHTML = '<div class="error-message">שגיאה בהצגת המשימות</div>';
+    }
+}
 
-            const progressPercentage = safeTask.estimatedMinutes > 0 ? 
-                Math.round((safeTask.actualMinutes / safeTask.estimatedMinutes) * 100) : 0;
+// פונקציה חדשה לרינדור כרטיסיות משופרות
+renderBudgetCards() {
+    const container = document.getElementById('budgetContainer');
+    const tasksHtml = this.filteredBudgetTasks.map(task => this.createModernTaskCard(task)).join('');
+    
+    container.innerHTML = `
+        <div class="budget-cards-grid">
+            ${tasksHtml}
+        </div>
+    `;
+    
+    // הוספת אנימציה חלקה
+    setTimeout(() => {
+        const cards = container.querySelectorAll('.modern-task-card');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                card.style.transition = 'all 0.4s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    }, 50);
+}
+
+// פונקציה משופרת ליצירת כרטיסייה מודרנית
+createModernTaskCard(task) {
+    const safeTask = this.sanitizeTaskData(task);
+    const cardStatus = this.getTaskCardStatus(safeTask);
+    const progressData = this.calculateProgress(safeTask);
+    const metaData = this.getTaskMetaData(safeTask);
+    
+    return `
+        <div class="modern-task-card ${cardStatus.cssClass}" data-task-id="${safeTask.id}">
+            <!-- Header -->
+            <div class="card-header">
+                <h3 class="client-name">${safeTask.clientName}</h3>
+                <span class="status-badge ${cardStatus.badgeClass}">
+                    <i class="${cardStatus.icon}"></i>
+                    ${cardStatus.text}
+                </span>
+            </div>
             
-            let progressClass = 'table-progress-normal';
-            if (progressPercentage > 100) {
-                progressClass = 'table-progress-critical';
-            } else if (progressPercentage > 80) {
-                progressClass = 'table-progress-over';
-            }
-
-            let statusClass = 'table-status-active';
-            const now = new Date();
-            const deadline = new Date(safeTask.deadline);
+            <!-- Description -->
+            <div class="task-description">
+                <strong>📋 משימה:</strong> ${safeTask.description}
+                ${safeTask.branch ? `<br><strong>🏢 סניף:</strong> ${safeTask.branch}` : ''}
+                ${safeTask.fileNumber ? `<br><strong>📁 תיק:</strong> ${safeTask.fileNumber}` : ''}
+            </div>
             
-            if (safeTask.status === 'הושלם') {
-                statusClass = 'table-status-completed';
-            } else if (deadline < now) {
-                statusClass = 'table-status-overdue';
-            } else if ((deadline - now) < 24 * 60 * 60 * 1000) {
-                statusClass = 'table-status-urgent';
-            }
+            <!-- Progress Section -->
+            <div class="progress-section">
+                <div class="progress-header">
+                    <span>התקדמות</span>
+                    <span class="progress-percentage">${progressData.percentage}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill ${progressData.statusClass}" 
+                         style="width: ${Math.min(progressData.percentage, 100)}%"></div>
+                </div>
+                <div class="progress-details">
+                    <small>${safeTask.actualMinutes} מתוך ${safeTask.estimatedMinutes} דקות</small>
+                </div>
+            </div>
+            
+            <!-- Meta Information -->
+            <div class="card-meta">
+                <div class="meta-item ${metaData.deadline.class}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>${metaData.deadline.text}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-history"></i>
+                    <span>${safeTask.history?.length || 0} רישומים</span>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card-actions">
+                <button class="action-btn primary" onclick="manager.showAdvancedTimeDialog(${safeTask.id})" title="הוסף זמן">
+                    <i class="fas fa-plus"></i> זמן
+                </button>
+                <button class="action-btn info" onclick="manager.showTaskHistory(${safeTask.id})" title="היסטוריה">
+                    <i class="fas fa-history"></i> היסטוריה
+                </button>
+                ${safeTask.status === 'פעיל' ? `
+                    <button class="action-btn warning" onclick="manager.showExtendDeadlineDialog(${safeTask.id})" title="הארך יעד">
+                        <i class="fas fa-calendar-plus"></i> הארך
+                    </button>
+                    <button class="action-btn success" onclick="manager.completeTask(${safeTask.id})" title="סיים משימה">
+                        <i class="fas fa-check"></i> סיים
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
 
-            return `
-                <tr>
-                    <td class="td-client">${safeTask.clientName}</td>
-                    <td class="td-description">${safeTask.description}</td>
-                    <td class="td-progress ${progressClass}">${progressPercentage}% (${safeTask.actualMinutes}/${safeTask.estimatedMinutes})</td>
-                    <td class="td-deadline">${this.formatDateTime(new Date(safeTask.deadline))}</td>
-                    <td class="td-status">
-                        <span class="${statusClass}">${safeTask.status}</span>
-                    </td>
-                    <td class="td-actions">
-                        <button class="table-action-btn primary" onclick="manager.showAdvancedTimeDialog(${safeTask.id})" title="הוסף זמן">
+// פונקציה משופרת לרינדור טבלה
+renderBudgetTable() {
+    const tableContainer = document.getElementById('budgetTableContainer');
+    
+    const tableHtml = `
+        <div class="advanced-table-container">
+            <div class="table-header">
+                <h3 class="table-title">
+                    <i class="fas fa-chart-bar"></i>
+                    משימות מתוקצבות
+                </h3>
+                <div class="table-controls">
+                    <div class="table-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="חפש משימות..." 
+                               oninput="manager.handleTableSearch(this.value)">
+                    </div>
+                    <select class="table-filter" onchange="manager.handleTableFilter(this.value)">
+                        <option value="all">הכל</option>
+                        <option value="active">פעילות</option>
+                        <option value="completed">הושלמו</option>
+                        <option value="overdue">באיחור</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="table-stats">
+                <div class="stats-item">
+                    <i class="fas fa-tasks"></i>
+                    <span>סה"כ משימות: <strong>${this.filteredBudgetTasks.length}</strong></span>
+                </div>
+                <div class="stats-item">
+                    <i class="fas fa-clock"></i>
+                    <span>זמן כולל: <strong>${this.getTotalMinutes()} דק'</strong></span>
+                </div>
+                <div class="stats-item">
+                    <i class="fas fa-percentage"></i>
+                    <span>ממוצע התקדמות: <strong>${this.getAverageProgress()}%</strong></span>
+                </div>
+            </div>
+            
+            <table class="advanced-table" id="budgetTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="clientName" onclick="manager.sortTable('clientName')">
+                            לקוח
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="description" onclick="manager.sortTable('description')">
+                            תיאור משימה
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="progress" onclick="manager.sortTable('progress')">
+                            התקדמות
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="deadline" onclick="manager.sortTable('deadline')">
+                            תאריך יעד
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="status" onclick="manager.sortTable('status')">
+                            סטטוס
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody id="budgetTableBody">
+                    ${this.generateTableRows()}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    tableContainer.innerHTML = tableHtml;
+    this.updateSortIndicators();
+}
+
+// פונקציה ליצירת שורות הטבלה
+generateTableRows() {
+    return this.filteredBudgetTasks.map(task => {
+        const safeTask = this.sanitizeTaskData(task);
+        const progressData = this.calculateProgress(safeTask);
+        const statusData = this.getTaskCardStatus(safeTask);
+        const deadlineData = this.getDeadlineStatus(safeTask);
+        
+        return `
+            <tr data-task-id="${safeTask.id}">
+                <td class="cell-client">${safeTask.clientName}</td>
+                <td class="cell-description" title="${safeTask.description}">
+                    ${safeTask.description}
+                </td>
+                <td class="cell-progress">
+                    <div class="progress-cell">
+                        <div class="progress-bar-mini">
+                            <div class="progress-fill-mini ${progressData.statusClass}" 
+                                 style="width: ${Math.min(progressData.percentage, 100)}%"></div>
+                        </div>
+                        <span class="progress-text-mini">
+                            ${progressData.percentage}% (${safeTask.actualMinutes}/${safeTask.estimatedMinutes})
+                        </span>
+                    </div>
+                </td>
+                <td class="cell-deadline ${deadlineData.class}">
+                    ${this.formatDateTime(new Date(safeTask.deadline))}
+                </td>
+                <td class="cell-status">
+                    <span class="status-pill ${statusData.badgeClass}">
+                        <i class="${statusData.icon}"></i>
+                        ${statusData.text}
+                    </span>
+                </td>
+                <td class="cell-actions">
+                    <div class="table-action-group">
+                        <button class="table-action-btn primary" 
+                                onclick="manager.showAdvancedTimeDialog(${safeTask.id})" 
+                                title="הוסף זמן">
                             <i class="fas fa-plus"></i>
                         </button>
-                        <button class="table-action-btn info" onclick="manager.showTaskHistory(${safeTask.id})" title="היסטוריה">
+                        <button class="table-action-btn info" 
+                                onclick="manager.showTaskHistory(${safeTask.id})" 
+                                title="היסטוריה">
                             <i class="fas fa-history"></i>
                         </button>
                         ${safeTask.status === 'פעיל' ? `
-                            <button class="table-action-btn warning" onclick="manager.showExtendDeadlineDialog(${safeTask.id})" title="הארך יעד">
+                            <button class="table-action-btn warning" 
+                                    onclick="manager.showExtendDeadlineDialog(${safeTask.id})" 
+                                    title="הארך יעד">
                                 <i class="fas fa-calendar-plus"></i>
                             </button>
-                            <button class="table-action-btn success" onclick="manager.completeTask(${safeTask.id})" title="סיים משימה">
+                            <button class="table-action-btn success" 
+                                    onclick="manager.completeTask(${safeTask.id})" 
+                                    title="סיים משימה">
                                 <i class="fas fa-check"></i>
                             </button>
                         ` : ''}
-                    </td>
-                </tr>
-            `;
-        }).join('');
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
-        tbody.innerHTML = rowsHtml;
+// פונקציות עזר
+sanitizeTaskData(task) {
+    return {
+        id: task.id || Date.now(),
+        clientName: task.clientName || 'לקוח לא ידוע',
+        description: task.description || 'משימה ללא תיאור',
+        estimatedMinutes: Number(task.estimatedMinutes) || 0,
+        actualMinutes: Number(task.actualMinutes) || 0,
+        deadline: task.deadline || new Date().toISOString(),
+        status: task.status || 'פעיל',
+        branch: task.branch || '',
+        fileNumber: task.fileNumber || '',
+        history: task.history || []
+    };
+}
+
+getTaskCardStatus(task) {
+    const now = new Date();
+    const deadline = new Date(task.deadline);
+    const isOverdue = deadline < now;
+    const isCompleted = task.status === 'הושלם';
+    
+    if (isCompleted) {
+        return {
+            cssClass: 'completed',
+            badgeClass: 'completed',
+            icon: 'fas fa-check-circle',
+            text: 'הושלם'
+        };
+    } else if (isOverdue) {
+        return {
+            cssClass: 'overdue',
+            badgeClass: 'overdue', 
+            icon: 'fas fa-exclamation-triangle',
+            text: 'באיחור'
+        };
+    } else {
+        return {
+            cssClass: 'active',
+            badgeClass: 'active',
+            icon: 'fas fa-play-circle',
+            text: 'פעיל'
+        };
     }
+}
+
+calculateProgress(task) {
+    const percentage = task.estimatedMinutes > 0 ? 
+        Math.round((task.actualMinutes / task.estimatedMinutes) * 100) : 0;
+    
+    let statusClass = 'normal';
+    if (percentage >= 100) {
+        statusClass = 'completed';
+    } else if (percentage > 80) {
+        statusClass = 'overdue';
+    }
+    
+    return { percentage, statusClass };
+}
+
+getTaskMetaData(task) {
+    const now = new Date();
+    const deadline = new Date(task.deadline);
+    const timeUntilDeadline = deadline - now;
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    let deadlineData = {
+        text: this.formatDateTime(deadline),
+        class: ''
+    };
+    
+    if (timeUntilDeadline < 0) {
+        deadlineData.class = 'deadline overdue';
+        deadlineData.text = `⚠️ ${this.formatDateTime(deadline)}`;
+    } else if (timeUntilDeadline < oneDay) {
+        deadlineData.class = 'deadline soon';
+        deadlineData.text = `🚨 ${this.formatDateTime(deadline)}`;
+    }
+    
+    return { deadline: deadlineData };
+}
+
+getDeadlineStatus(task) {
+    const now = new Date();
+    const deadline = new Date(task.deadline);
+    const timeUntilDeadline = deadline - now;
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    if (timeUntilDeadline < 0) {
+        return { class: 'overdue' };
+    } else if (timeUntilDeadline < oneDay) {
+        return { class: 'soon' };
+    }
+    return { class: '' };
+}
+
+// פונקציות לחיפוש ומיון בטבלה
+handleTableSearch(searchTerm) {
+    const searchLower = searchTerm.toLowerCase();
+    
+    if (!searchTerm) {
+        this.filteredBudgetTasks = [...this.budgetTasks];
+    } else {
+        this.filteredBudgetTasks = this.budgetTasks.filter(task => {
+            return (
+                task.clientName.toLowerCase().includes(searchLower) ||
+                task.description.toLowerCase().includes(searchLower) ||
+                (task.branch && task.branch.toLowerCase().includes(searchLower)) ||
+                (task.fileNumber && task.fileNumber.toLowerCase().includes(searchLower))
+            );
+        });
+    }
+    
+    this.renderBudgetTable();
+}
+
+handleTableFilter(filterValue) {
+    const now = new Date();
+    
+    switch (filterValue) {
+        case 'active':
+            this.filteredBudgetTasks = this.budgetTasks.filter(task => 
+                task.status === 'פעיל');
+            break;
+        case 'completed':
+            this.filteredBudgetTasks = this.budgetTasks.filter(task => 
+                task.status === 'הושלם');
+            break;
+        case 'overdue':
+            this.filteredBudgetTasks = this.budgetTasks.filter(task => 
+                new Date(task.deadline) < now && task.status !== 'הושלם');
+            break;
+        default:
+            this.filteredBudgetTasks = [...this.budgetTasks];
+    }
+    
+    this.renderBudgetTable();
+}
+
+sortTable(field) {
+    // עדכון כיוון המיון
+    if (this.budgetSortField === field) {
+        this.budgetSortDirection = this.budgetSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        this.budgetSortField = field;
+        this.budgetSortDirection = 'asc';
+    }
+    
+    // מיון הנתונים
+    this.filteredBudgetTasks.sort((a, b) => {
+        let valueA = a[field];
+        let valueB = b[field];
+        
+        // טיפול במקרים מיוחדים
+        if (field === 'deadline') {
+            valueA = new Date(valueA);
+            valueB = new Date(valueB);
+        } else if (field === 'progress') {
+            valueA = a.estimatedMinutes > 0 ? (a.actualMinutes / a.estimatedMinutes) * 100 : 0;
+            valueB = b.estimatedMinutes > 0 ? (b.actualMinutes / b.estimatedMinutes) * 100 : 0;
+        }
+        
+        if (valueA < valueB) return this.budgetSortDirection === 'asc' ? -1 : 1;
+        if (valueA > valueB) return this.budgetSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    this.renderBudgetTable();
+}
+
+updateSortIndicators() {
+    // עדכון אייקוני המיון
+    document.querySelectorAll('#budgetTable th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    if (this.budgetSortField) {
+        const currentTh = document.querySelector(`#budgetTable th[data-sort="${this.budgetSortField}"]`);
+        if (currentTh) {
+            currentTh.classList.add(`sort-${this.budgetSortDirection}`);
+        }
+    }
+}
+
+// פונקציות לחישוב סטטיסטיקות
+getTotalMinutes() {
+    return this.filteredBudgetTasks.reduce((total, task) => {
+        return total + (Number(task.actualMinutes) || 0);
+    }, 0);
+}
+
+getAverageProgress() {
+    if (this.filteredBudgetTasks.length === 0) return 0;
+    
+    const totalProgress = this.filteredBudgetTasks.reduce((total, task) => {
+        const progress = task.estimatedMinutes > 0 ? 
+            (task.actualMinutes / task.estimatedMinutes) * 100 : 0;
+        return total + progress;
+    }, 0);
+    
+    return Math.round(totalProgress / this.filteredBudgetTasks.length);
+}
+
+    // החלף את הפונקציה renderBudgetTable במחלקת LawOfficeManager:
+renderBudgetTable() {
+    const tableContainer = document.getElementById('budgetTableContainer');
+    
+    if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
+        tableContainer.innerHTML = this.createEmptyTableState();
+        return;
+    }
+    
+    const tableHtml = `
+        <div class="modern-table-container">
+            <div class="modern-table-header">
+                <h3 class="modern-table-title">
+                    <i class="fas fa-chart-bar"></i>
+                    משימות מתוקצבות
+                </h3>
+                <div class="modern-table-subtitle">
+                    ${this.filteredBudgetTasks.length} משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
+                </div>
+            </div>
+            
+            <table class="modern-budget-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="clientName" onclick="manager.sortTable('clientName')">
+                            לקוח
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="description" onclick="manager.sortTable('description')">
+                            תיאור משימה
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="progress" onclick="manager.sortTable('progress')">
+                            התקדמות
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="deadline" onclick="manager.sortTable('deadline')">
+                            תאריך יעד
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="status" onclick="manager.sortTable('status')">
+                            סטטוס
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.generateModernTableRows()}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    tableContainer.innerHTML = tableHtml;
+    this.updateSortIndicators();
+    
+    // הוספת אנימציה חלקה לשורות
+    setTimeout(() => {
+        const rows = tableContainer.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                row.style.transition = 'all 0.3s ease';
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 50);
+        });
+    }, 100);
+}
+
+// פונקציה חדשה ליצירת שורות הטבלה המודרנית
+generateModernTableRows() {
+    return this.filteredBudgetTasks.map(task => {
+        const safeTask = this.sanitizeTaskData(task);
+        const progressData = this.calculateModernProgress(safeTask);
+        const deadlineData = this.getModernDeadlineStatus(safeTask);
+        const statusData = this.getModernStatus(safeTask);
+        
+        return `
+            <tr data-task-id="${safeTask.id}" class="modern-table-row">
+                <td class="table-cell-client">
+                    ${safeTask.clientName}
+                    ${safeTask.fileNumber ? `<br><small style="color: #94a3b8; font-weight: 400;">תיק: ${safeTask.fileNumber}</small>` : ''}
+                </td>
+                
+                <td class="table-cell-description ${this.shouldTruncateDescription(safeTask.description) ? 'truncated' : ''}" 
+                    title="${safeTask.description}">
+                    ${safeTask.description}
+                    ${safeTask.branch ? `<br><small style="color: #94a3b8; font-weight: 400;">📍 ${safeTask.branch}</small>` : ''}
+                </td>
+                
+                <td class="table-cell-progress">
+                    ${this.createModernProgressBar(progressData, safeTask)}
+                </td>
+                
+                <td class="table-cell-deadline ${deadlineData.cssClass}">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        ${deadlineData.icon}
+                        <span>${this.formatDateTime(new Date(safeTask.deadline))}</span>
+                    </div>
+                </td>
+                
+                <td class="table-cell-status">
+                    <span class="modern-status-badge ${statusData.cssClass}">
+                        <i class="${statusData.icon}"></i>
+                        ${statusData.text}
+                    </span>
+                </td>
+                
+                <td class="table-cell-actions">
+                    ${this.createModernActionButtons(safeTask)}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// פונקציה ליצירת בר התקדמות מודרני
+createModernProgressBar(progressData, task) {
+    return `
+        <div class="modern-progress-container">
+            <div class="modern-progress-header">
+                <span class="modern-progress-label">התקדמות</span>
+                <span class="modern-progress-percentage">${progressData.percentage}%</span>
+            </div>
+            <div class="modern-progress-bar">
+                <div class="modern-progress-fill ${progressData.colorClass}" 
+                     style="width: ${Math.min(progressData.percentage, 100)}%"></div>
+            </div>
+            <div class="modern-progress-details">
+                ${task.actualMinutes} מתוך ${task.estimatedMinutes} דק' • ${Math.round(task.actualMinutes / 60 * 10) / 10}h/${Math.round(task.estimatedMinutes / 60 * 10) / 10}h
+            </div>
+        </div>
+    `;
+}
+
+// פונקציה ליצירת כפתורי פעולות מודרניים
+createModernActionButtons(task) {
+    const baseButtons = `
+        <div class="modern-actions-group">
+            <button class="modern-action-btn primary" 
+                    onclick="manager.showAdvancedTimeDialog(${task.id})" 
+                    title="הוסף זמן">
+                <i class="fas fa-plus"></i>
+            </button>
+            <button class="modern-action-btn info" 
+                    onclick="manager.showTaskHistory(${task.id})" 
+                    title="היסטוריה">
+                <i class="fas fa-history"></i>
+            </button>
+    `;
+    
+    const activeButtons = task.status === 'פעיל' ? `
+            <button class="modern-action-btn warning" 
+                    onclick="manager.showExtendDeadlineDialog(${task.id})" 
+                    title="הארך יעד">
+                <i class="fas fa-calendar-plus"></i>
+            </button>
+            <button class="modern-action-btn success" 
+                    onclick="manager.completeTask(${task.id})" 
+                    title="סיים משימה">
+                <i class="fas fa-check"></i>
+            </button>
+    ` : '';
+    
+    return baseButtons + activeButtons + '</div>';
+}
+
+// פונקציות עזר מעודכנות
+calculateModernProgress(task) {
+    const percentage = task.estimatedMinutes > 0 ? 
+        Math.round((task.actualMinutes / task.estimatedMinutes) * 100) : 0;
+    
+    let colorClass = 'normal';
+    if (percentage >= 100) {
+        colorClass = 'complete';
+    } else if (percentage >= 85) {
+        colorClass = 'danger';
+    } else if (percentage >= 70) {
+        colorClass = 'warning';
+    }
+    
+    return { percentage, colorClass };
+}
+
+getModernDeadlineStatus(task) {
+    const now = new Date();
+    const deadline = new Date(task.deadline);
+    const timeUntilDeadline = deadline - now;
+    const oneDay = 24 * 60 * 60 * 1000;
+    const threeDays = oneDay * 3;
+    
+    if (timeUntilDeadline < 0) {
+        return {
+            cssClass: 'overdue',
+            icon: '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>'
+        };
+    } else if (timeUntilDeadline < oneDay) {
+        return {
+            cssClass: 'soon',
+            icon: '<i class="fas fa-clock" style="color: #f59e0b;"></i>'
+        };
+    } else if (timeUntilDeadline < threeDays) {
+        return {
+            cssClass: 'soon',
+            icon: '<i class="fas fa-calendar-check" style="color: #f59e0b;"></i>'
+        };
+    }
+    
+    return {
+        cssClass: 'normal',
+        icon: '<i class="fas fa-calendar-alt" style="color: #64748b;"></i>'
+    };
+}
+
+getModernStatus(task) {
+    const now = new Date();
+    const deadline = new Date(task.deadline);
+    const isOverdue = deadline < now;
+    const isCompleted = task.status === 'הושלם';
+    
+    if (isCompleted) {
+        return {
+            cssClass: 'completed',
+            icon: 'fas fa-check-circle',
+            text: 'הושלם'
+        };
+    } else if (isOverdue) {
+        return {
+            cssClass: 'overdue',
+            icon: 'fas fa-exclamation-triangle',
+            text: 'באיחור'
+        };
+    } else {
+        return {
+            cssClass: 'active',
+            icon: 'fas fa-play-circle',
+            text: 'פעיל'
+        };
+    }
+}
+
+// פונקציות נוספות
+shouldTruncateDescription(description) {
+    return description && description.length > 50;
+}
+
+getActiveTasksCount() {
+    return this.filteredBudgetTasks.filter(task => task.status === 'פעיל').length;
+}
+
+getCompletedTasksCount() {
+    return this.filteredBudgetTasks.filter(task => task.status === 'הושלם').length;
+}
+
+createEmptyTableState() {
+    return `
+        <div class="modern-table-container">
+            <div class="modern-table-header">
+                <h3 class="modern-table-title">
+                    <i class="fas fa-chart-bar"></i>
+                    משימות מתוקצבות
+                </h3>
+                <div class="modern-table-subtitle">אין משימות להצגה</div>
+            </div>
+            <div style="padding: 60px 40px; text-align: center; color: #94a3b8;">
+                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h4 style="color: #475569; margin-bottom: 8px;">אין משימות מתוקצבות</h4>
+                <p style="margin: 0; font-size: 14px;">הוסף משימה חדשה כדי להתחיל</p>
+            </div>
+        </div>
+    `;
+}
+
 
     createAdvancedTaskCard(task) {
         const safeTask = {
@@ -1990,103 +2879,286 @@ class LawOfficeManager {
         }
     }
 
-    renderTimesheetTable() {
-        const tbody = document.getElementById('timesheetTableBody');
-        
-        const rowsHtml = this.filteredTimesheetEntries.map(entry => `
-            <tr>
-                <td>${this.formatDate(entry.date)}</td>
-                <td class="action-cell">${entry.action}</td>
-                <td class="minutes">${entry.minutes} דק'</td>
-                <td class="client-cell">${entry.clientName}</td>
-                <td class="file-number">${entry.fileNumber}</td>
-                <td>${entry.notes || '-'}</td>
-            </tr>
-        `).join('');
-        
-        tbody.innerHTML = rowsHtml;
-    }
+    // ===== MODERN TIMESHEET TABLE 2025 - JavaScript =====
 
-    // החלף את הפונקציה showAdvancedTimeDialog במלואה:
-
-// שיפור דיאלוג הזמן עם מניעת לחיצות כפולות
-showAdvancedTimeDialog(taskId) {
-    const task = this.budgetTasks.find(t => t.id === taskId);
-    if (!task) {
-        this.showNotification('המשימה לא נמצאה', 'error');
-        return;
-    }
-
-    // מניעת פתיחת דיאלוגים כפולים
-    if (loadingManager.isOperationActive(`dialog_${taskId}`)) {
-        return;
-    }
-
-    const overlay = document.createElement('div');
-    overlay.className = 'popup-overlay';
+// החלף את הפונקציה renderTimesheetTable במחלקת LawOfficeManager:
+renderTimesheetTable() {
+    const tableContainer = document.getElementById('timesheetTableContainer');
     
-    const recentHistory = task.history.slice(-3).reverse();
-    const historyHtml = recentHistory.length > 0 ?
-        recentHistory.map(entry => `
-            <div class="recent-work ${entry.isPending ? 'pending' : ''}">
-                ${this.formatDate(entry.date)}: ${entry.minutes} דק'
-                ${entry.isPending ? ' <span class="pending-badge">ממתין...</span>' : ''}
-            </div>
-        `).join('') :
-        '<div class="no-history">טרם נרשמה עבודה על משימה זו</div>';
-
-    overlay.innerHTML = `
-        <div class="popup time-entry-popup">
-            <div class="popup-header">
-                <i class="fas fa-clock"></i>
-                רישום זמן עבודה
-            </div>
-            
-            <div class="task-summary">
-                <h3>${task.description}</h3>
-                <p><strong>לקוח:</strong> ${task.clientName}</p>
-                <div class="task-stats">
-                    <div class="stat">
-                        <span class="stat-label">התקדמות</span>
-                        <span class="stat-value">${task.actualMinutes}/${task.estimatedMinutes} דק'</span>
+    if (!this.filteredTimesheetEntries || this.filteredTimesheetEntries.length === 0) {
+        tableContainer.innerHTML = this.createEmptyTimesheetState();
+        return;
+    }
+    
+    const tableHtml = `
+        <div class="modern-table-container">
+            <div class="modern-timesheet-header">
+                <h3 class="modern-timesheet-title">
+                    <i class="fas fa-clock"></i>
+                    רשומות שעתון
+                </h3>
+                <div class="modern-timesheet-subtitle">
+                    ${this.filteredTimesheetEntries.length} רשומות • ${this.getTotalHoursTimesheet()} שעות סה"כ
+                </div>
+                <div class="timesheet-stats">
+                    <div class="timesheet-stat">
+                        <i class="fas fa-calendar-day"></i>
+                        <span>היום: ${this.getTodayEntries()} רשומות</span>
                     </div>
-                    <div class="stat">
-                        <span class="stat-label">רישומים</span>
-                        <span class="stat-value">${task.history.length}</span>
+                    <div class="timesheet-stat">
+                        <i class="fas fa-chart-line"></i>
+                        <span>השבוע: ${this.getWeekEntries()} רשומות</span>
+                    </div>
+                    <div class="timesheet-stat">
+                        <i class="fas fa-users"></i>
+                        <span>${this.getUniqueClientsCount()} לקוחות</span>
                     </div>
                 </div>
             </div>
             
-            <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px; color: #374151;">רישומי זמן אחרונים:</h4>
-                ${historyHtml}
-            </div>
-            
-            <form id="timeEntryForm">
-                <div class="popup-section">
-                    <label for="workMinutes">⏱️ כמה דקות עבדת על המשימה?</label>
-                    <input type="number" id="workMinutes" min="1" max="600" placeholder="לדוגמה: 60" required style="font-size: 18px; text-align: center; font-weight: bold;">
-                    <small style="color: #6b7280; margin-top: 8px; display: block;">
-                        הזן את מספר הדקות שעבדת על המשימה
-                    </small>
-                </div>
-                
-                <div class="popup-section">
-                    <label for="workDate">📅 תאריך העבודה:</label>
-                    <input type="date" id="workDate" value="${new Date().toISOString().split('T')[0]}" required>
-                </div>
-                
-                <div class="popup-buttons">
-                    <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                        <i class="fas fa-times"></i> ביטול
-                    </button>
-                    <button type="submit" class="popup-btn popup-btn-confirm" id="submitTimeBtn">
-                        <i class="fas fa-save"></i> רשום זמן
-                    </button>
-                </div>
-            </form>
+            <table class="modern-timesheet-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="date" onclick="manager.sortTimesheetTable('date')">
+                            תאריך
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="action" onclick="manager.sortTimesheetTable('action')">
+                            פעולה שבוצעה
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="minutes" onclick="manager.sortTimesheetTable('minutes')">
+                            זמן
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="clientName" onclick="manager.sortTimesheetTable('clientName')">
+                            לקוח
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th class="sortable" data-sort="fileNumber" onclick="manager.sortTimesheetTable('fileNumber')">
+                            מס׳ תיק
+                            <i class="sort-icon"></i>
+                        </th>
+                        <th>הערות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.generateModernTimesheetRows()}
+                </tbody>
+            </table>
         </div>
     `;
+    
+    tableContainer.innerHTML = tableHtml;
+    this.updateTimesheetSortIndicators();
+    
+    // הוספת אנימציה חלקה לשורות
+    setTimeout(() => {
+        const rows = tableContainer.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                row.style.transition = 'all 0.3s ease';
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 30);
+        });
+    }, 100);
+}
+
+// פונקציה ליצירת שורות טבלת שעתון מודרנית
+generateModernTimesheetRows() {
+    return this.filteredTimesheetEntries.map(entry => {
+        const safeEntry = this.sanitizeTimesheetData(entry);
+        
+        return `
+            <tr data-entry-id="${safeEntry.id}" class="modern-timesheet-row">
+                <td class="timesheet-cell-date">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-calendar-alt" style="color: #16a34a;"></i>
+                        <span>${this.formatDateModern(safeEntry.date)}</span>
+                    </div>
+                </td>
+                
+                <td class="timesheet-cell-action ${this.shouldTruncateAction(safeEntry.action) ? 'truncated' : ''}" 
+                    title="${safeEntry.action}">
+                    ${safeEntry.action}
+                </td>
+                
+                <td class="timesheet-cell-time">
+                    ${this.createTimeBadge(safeEntry.minutes)}
+                </td>
+                
+                <td class="timesheet-cell-client">
+                    ${safeEntry.clientName}
+                    ${safeEntry.lawyer ? `<br><small style="color: #94a3b8; font-weight: 400;">👤 ${safeEntry.lawyer}</small>` : ''}
+                </td>
+                
+                <td class="timesheet-cell-file">
+                    ${this.createFileBadge(safeEntry.fileNumber)}
+                </td>
+                
+                <td class="timesheet-cell-notes ${safeEntry.notes ? '' : 'empty'} ${this.shouldTruncateNotes(safeEntry.notes) ? 'truncated' : ''}" 
+                    title="${safeEntry.notes || ''}">
+                    ${safeEntry.notes || '—'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// פונקציה ליצירת באדג' זמן מודרני
+createTimeBadge(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    let timeDisplay = '';
+    if (hours > 0) {
+        timeDisplay = `<span class="time-hours">${hours}</span><span class="time-minutes">h</span>`;
+        if (mins > 0) {
+            timeDisplay += ` <span class="time-minutes">${mins}m</span>`;
+        }
+    } else {
+        timeDisplay = `<span class="time-minutes">${mins}m</span>`;
+    }
+    
+    return `
+        <div class="time-badge">
+            <i class="fas fa-clock"></i>
+            ${timeDisplay}
+        </div>
+    `;
+}
+
+// פונקציה ליצירת באדג' תיק מודרני
+createFileBadge(fileNumber) {
+    return `
+        <div class="file-badge">
+            <i class="fas fa-folder"></i>
+            ${fileNumber}
+        </div>
+    `;
+}
+
+// פונקציות עזר לטבלת שעתון
+sanitizeTimesheetData(entry) {
+    return {
+        id: entry.id || Date.now(),
+        date: entry.date || new Date().toISOString().split('T')[0],
+        action: entry.action || 'פעולה לא ידועה',
+        minutes: Number(entry.minutes) || 0,
+        clientName: entry.clientName || 'לקוח לא ידוע',
+        fileNumber: entry.fileNumber || 'לא ידוע',
+        notes: entry.notes || '',
+        lawyer: entry.lawyer || ''
+    };
+}
+
+formatDateModern(dateString) {
+    try {
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // בדיקה אם זה היום
+        if (date.toDateString() === today.toDateString()) {
+            return 'היום';
+        }
+        
+        // בדיקה אם זה אתמול
+        if (date.toDateString() === yesterday.toDateString()) {
+            return 'אתמול';
+        }
+        
+        // תאריך רגיל
+        return date.toLocaleDateString('he-IL', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    } catch (error) {
+        return 'תאריך לא תקין';
+    }
+}
+
+shouldTruncateAction(action) {
+    return action && action.length > 60;
+}
+
+shouldTruncateNotes(notes) {
+    return notes && notes.length > 40;
+}
+
+// סטטיסטיקות שעתון
+getTotalHoursTimesheet() {
+    const totalMinutes = this.filteredTimesheetEntries.reduce((sum, entry) => {
+        return sum + (Number(entry.minutes) || 0);
+    }, 0);
+    return Math.round((totalMinutes / 60) * 10) / 10;
+}
+
+getTodayEntries() {
+    const today = new Date().toISOString().split('T')[0];
+    return this.filteredTimesheetEntries.filter(entry => 
+        entry.date === today
+    ).length;
+}
+
+getWeekEntries() {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    return this.filteredTimesheetEntries.filter(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= oneWeekAgo;
+    }).length;
+}
+
+getUniqueClientsCount() {
+    const uniqueClients = new Set(
+        this.filteredTimesheetEntries.map(entry => entry.clientName)
+    );
+    return uniqueClients.size;
+}
+
+// מיון טבלת שעתון
+updateTimesheetSortIndicators() {
+    // עדכון אייקוני המיון
+    document.querySelectorAll('#timesheetTable th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    if (this.timesheetSortField) {
+        const currentTh = document.querySelector(`#timesheetTable th[data-sort="${this.timesheetSortField}"]`);
+        if (currentTh) {
+            currentTh.classList.add(`sort-${this.timesheetSortDirection}`);
+        }
+    }
+}
+
+// מצב ריק לטבלת שעתון
+createEmptyTimesheetState() {
+    return `
+        <div class="modern-table-container">
+            <div class="modern-timesheet-header">
+                <h3 class="modern-timesheet-title">
+                    <i class="fas fa-clock"></i>
+                    רשומות שעתון
+                </h3>
+                <div class="modern-timesheet-subtitle">אין רשומות להצגה</div>
+            </div>
+            <div style="padding: 60px 40px; text-align: center; color: #94a3b8;">
+                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5; color: #16a34a;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h4 style="color: #475569; margin-bottom: 8px;">אין רשומות שעתון</h4>
+                <p style="margin: 0; font-size: 14px;">רשום את הפעולה הראשונה שלך</p>
+            </div>
+        </div>
+    `;
+
     
     document.body.appendChild(overlay);
     
@@ -3054,3 +4126,1154 @@ setTimeout(() => {
 
 // ===== סוף העדכונים ל-JavaScript =====
 // קרא להוסיף את הקוד למטה לסוף הקובץ script.js
+
+// ===== הוסף את הקוד הזה לסוף script.js =====
+
+// החלף את הפונקציה toggleSidebar ב:
+function toggleSidebar() {
+    const sidebar = document.getElementById('minimalSidebar');
+    
+    // אפשרות להחביא/להציג את הסרגל הצף
+    if (sidebar.style.display === 'none') {
+        sidebar.style.display = 'flex';
+        sidebar.style.animation = 'fadeInScale 0.3s ease forwards';
+    } else {
+        sidebar.style.display = 'none';
+    }
+}
+
+// הוסף אנימציה יפה לכותרת ה-CSS:
+const style = document.createElement('style');
+style.textContent = `
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+`;
+document.head.appendChild(style);
+// 2. מחק או הוסף הערה לשורות האלה אם הן קיימות:
+/*
+.app-container.sidebar-expanded .brand-text {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.app-container.sidebar-expanded .nav-item span {
+    opacity: 1;
+    transform: translateX(0);
+}
+*/
+// התאמה אוטומטית לגודל מסך
+function handleResize() {
+    const container = document.getElementById('appContainer');
+    const sidebar = document.getElementById('minimalSidebar');
+    
+    if (window.innerWidth > 600) {
+        sidebar.classList.remove('open');
+        if (window.innerWidth > 1200) {
+            container.classList.add('sidebar-expanded');
+        }
+    }
+}
+
+// אתחול הסרגל החדש
+function initializeNewSidebar() {
+    console.log('🚀 מאתחל סרגל מינימליסטי חדש...');
+    
+    // הוסף event listeners
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('load', handleResize);
+    
+    // הוסף אפקטים לכפתורי התפריט
+    document.querySelectorAll('.nav-item').forEach(item => {
+        // רק אם אין onclick קיים
+        if (!item.onclick && !item.getAttribute('onclick')) {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        }
+    });
+    
+    // סגירת חיפושים וההתראות בלחיצה בחוץ
+    document.addEventListener('click', function(e) {
+        // סגירת תוצאות חיפוש
+        if (!e.target.closest('.modern-client-search')) {
+            document.querySelectorAll('.search-results').forEach(results => {
+                results.classList.remove('show');
+            });
+        }
+        
+        // סגירת התראות
+        if (!e.target.closest('.notification-bell') && !e.target.closest('.notifications-dropdown')) {
+            const dropdown = document.getElementById('notificationsDropdown');
+            if (dropdown) {
+                dropdown.classList.remove('show');
+            }
+        }
+        
+        // סגירת סרגל צד במובייל
+        if (window.innerWidth <= 600 && !e.target.closest('.minimal-sidebar') && !e.target.closest('.btn')) {
+            const sidebar = document.getElementById('minimalSidebar');
+            if (sidebar && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        }
+    });
+    
+    console.log('✅ סרגל חדש מוכן!');
+}
+
+// פונקציות מתקדמות לחיפוש (שיפור של הקיימות)
+function enhancedSearchClients(formType, query) {
+    const resultsContainer = document.getElementById(`${formType}SearchResults`);
+    
+    if (!resultsContainer) {
+        console.warn(`לא נמצא מיכל תוצאות: ${formType}SearchResults`);
+        return;
+    }
+    
+    if (query.length < 1) {
+        resultsContainer.classList.remove('show');
+        return;
+    }
+
+    // קבלת הלקוחות מהמנג'ר (אם קיים)
+    const allClients = window.manager ? window.manager.clients : [];
+    
+    // סינון מתקדם
+    const matches = allClients.filter(client => {
+        const searchText = `${client.fullName} ${client.fileNumber} ${client.branch || ''}`.toLowerCase();
+        return searchText.includes(query.toLowerCase());
+    }).slice(0, 8);
+
+    // הצגת תוצאות משופרת
+    if (matches.length === 0) {
+        resultsContainer.innerHTML = '<div class="no-results">לא נמצאו לקוחות מתאימים</div>';
+    } else {
+        resultsContainer.innerHTML = matches.map(client => {
+            const icon = client.type === 'fixed' ? '📋' : '⏰';
+            const status = client.remainingHours <= 0 ? ' (חסום)' : 
+                          client.remainingHours <= 5 ? ' (קריטי)' : '';
+            
+            return `
+                <div class="search-result-item" onclick="selectClientEnhanced('${formType}', '${client.id}', '${client.fullName}', '${client.fileNumber}')">
+                    <span class="result-icon">${icon}</span>
+                    <div class="result-text">
+                        <div class="result-name">${client.fullName}${status}</div>
+                        <div class="result-details">תיק: ${client.fileNumber} • ${client.type === 'fixed' ? 'פיקס' : client.remainingHours + ' שעות'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    resultsContainer.classList.add('show');
+}
+
+function selectClientEnhanced(formType, clientId, clientName, fileNumber) {
+    const searchInput = document.getElementById(`${formType}ClientSearch`);
+    const hiddenInput = document.getElementById(`${formType}ClientSelect`);
+    const resultsContainer = document.getElementById(`${formType}SearchResults`);
+    
+    if (searchInput) searchInput.value = `${clientName} - תיק ${fileNumber}`;
+    if (hiddenInput) hiddenInput.value = clientId;
+    if (resultsContainer) resultsContainer.classList.remove('show');
+    
+    console.log(`✅ נבחר לקוח: ${clientName} (${clientId})`);
+}
+
+// פונקציות שיפור לטפסים
+function enhanceFormExperience() {
+    // הגדרת תאריך נוכחי לשעתון
+    const timesheetDate = document.getElementById('timesheetDate');
+    if (timesheetDate && !timesheetDate.value) {
+        timesheetDate.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // שיפור validation לטפסים
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.style.borderColor = '#ef4444';
+                    isValid = false;
+                } else {
+                    field.style.borderColor = '#e5e7eb';
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                console.warn('⚠️ אנא מלא את כל השדות הנדרשים');
+            }
+        });
+    });
+    
+    // אנימציות לאינפוטים
+    document.querySelectorAll('input, textarea, select').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.style.transform = 'translateY(-1px)';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+// פונקציית דיבוג למערכת החדשה
+function debugNewSystem() {
+    console.log('🔍 בדיקת מערכת חדשה:');
+    console.log('📱 גודל מסך:', window.innerWidth, 'x', window.innerHeight);
+    
+    const elements = {
+        appContainer: !!document.getElementById('appContainer'),
+        sidebar: !!document.getElementById('minimalSidebar'),
+        navItems: document.querySelectorAll('.nav-item').length,
+        searchInputs: document.querySelectorAll('.search-input').length
+    };
+    
+    console.log('📊 אלמנטים:', elements);
+    
+    if (elements.appContainer && elements.sidebar && elements.navItems >= 4) {
+        console.log('✅ המערכת החדשה עובדת תקין!');
+        return true;
+    } else {
+        console.log('❌ יש בעיה במערכת החדשה');
+        return false;
+    }
+}
+
+// קישור הפונקציות הקיימות לחדשות
+if (typeof searchClients === 'undefined') {
+    window.searchClients = enhancedSearchClients;
+}
+
+if (typeof selectClient === 'undefined') {
+    window.selectClient = selectClientEnhanced;
+}
+
+// אתחול כשהדף נטען
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 מערכת חדשה נטענת...');
+    
+    // המתן קצת לטעינה
+    setTimeout(() => {
+        initializeNewSidebar();
+        enhanceFormExperience();
+        debugNewSystem();
+        
+        console.log('🚀 המערכת החדשה מוכנה לשימוש!');
+    }, 500);
+});
+
+// התאמה מיוחדת למובייל
+if (window.innerWidth <= 600) {
+    // הוסף כפתור המבורגר אם לא קיים
+    setTimeout(() => {
+        if (!document.querySelector('.mobile-menu-btn')) {
+            const headerActions = document.querySelector('.header-actions');
+            if (headerActions) {
+                const menuBtn = document.createElement('button');
+                menuBtn.className = 'btn btn-secondary mobile-menu-btn';
+                menuBtn.innerHTML = '<i class="fas fa-bars"></i> תפריט';
+                menuBtn.onclick = toggleSidebar;
+                headerActions.insertBefore(menuBtn, headerActions.firstChild);
+            }
+        }
+    }, 1000);
+}
+
+// ===== סוף הקוד החדש ל-script.js =====
+
+// ===== החלף את כל הפונקציות הקודמות - JavaScript נקי ופשוט =====
+
+function showClientFormWithSidebar() {
+    const content = `
+        <div class="popup-header">
+            <i class="fas fa-user-plus"></i>
+            הוסף לקוח/תיק חדש
+        </div>
+        
+        <div class="popup-content">
+            <div class="popup-section">
+                <h4><i class="fas fa-search"></i> חיפוש לקוח קיים</h4>
+                <button type="button" class="search-existing-btn" onclick="searchExistingClient()">
+                    <i class="fas fa-search"></i>
+                    חפש לקוח קיים במערכת
+                </button>
+            </div>
+            
+            <div class="popup-section">
+                <h4><i class="fas fa-user"></i> פרטי לקוח</h4>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="clientName">שם הלקוח</label>
+                        <input type="text" id="clientName" placeholder="דנה לוי" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="fileNumberInput">מספר תיק</label>
+                        <input type="text" id="fileNumberInput" placeholder="2025001" required>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label for="clientDescription">תיאור/הבחנה (אופציונלי)</label>
+                    <input type="text" id="clientDescription" placeholder="תוכנית שעות, מחוזי, ביהד לעבודה...">
+                </div>
+            </div>
+            
+            <div class="popup-section">
+                <h4><i class="fas fa-cog"></i> סוג התיק</h4>
+                <div class="client-type-grid">
+                    <div class="type-option">
+                        <input type="radio" id="typeHours" name="clientType" value="hours" checked>
+                        <label for="typeHours" class="type-label">
+                            <div class="type-icon"><i class="fas fa-clock"></i></div>
+                            <div class="type-text">
+                                <strong>תוכנית שעות</strong>
+                                <span>מעקב אחר שעות עבודה</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="type-option">
+                        <input type="radio" id="typeFixed" name="clientType" value="fixed">
+                        <label for="typeFixed" class="type-label">
+                            <div class="type-icon"><i class="fas fa-list-ol"></i></div>
+                            <div class="type-text">
+                                <strong>פיקס (3 שלבים)</strong>
+                                <span>עבודה לפי שלבים קבועים</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="popup-section" id="hoursSection">
+                <h4><i class="fas fa-calculator"></i> כמות שעות</h4>
+                <div class="hours-input-container">
+                    <input type="number" id="hoursAmount" placeholder="30" min="1" max="500" required>
+                    <div class="hours-note">
+                        <i class="fas fa-info-circle"></i>
+                        התראה תופיע כאשר יישארו 5 שעות בלבד
+                    </div>
+                </div>
+            </div>
+            
+            <div class="popup-section hidden" id="stagesSection">
+                <h4><i class="fas fa-check-circle"></i> שלבי העבודה</h4>
+                <div class="stages-preview">
+                    <div class="stage-item">
+                        <i class="far fa-square"></i>
+                        <span>שלב 1 - לא הושלם</span>
+                    </div>
+                    <div class="stage-item">
+                        <i class="far fa-square"></i>
+                        <span>שלב 2 - לא הושלם</span>
+                    </div>
+                    <div class="stage-item">
+                        <i class="far fa-square"></i>
+                        <span>שלב 3 - לא הושלם</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="popup-buttons">
+            <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                <i class="fas fa-times"></i>
+                ביטול
+            </button>
+            <button class="popup-btn popup-btn-confirm" onclick="createClientFromPopup()">
+                <i class="fas fa-check"></i>
+                צור תיק
+            </button>
+        </div>
+    `;
+    
+    const overlay = popupManager.createPopup('client', content, 'large');
+    
+    // הוספת event listeners
+    setTimeout(() => {
+        const typeRadios = overlay.querySelectorAll('input[name="clientType"]');
+        typeRadios.forEach(radio => {
+            radio.addEventListener('change', toggleClientTypeDisplay);
+        });
+    }, 100);
+
+    
+    document.body.appendChild(overlay);
+    
+    // טיפול בסוג תיק
+    const typeSelect = overlay.querySelector('#clientType');
+    const hoursInput = overlay.querySelector('#hoursInput');
+    
+    typeSelect.addEventListener('change', function() {
+        hoursInput.style.display = this.value === 'hours' ? 'block' : 'none';
+    });
+}
+
+function createClient() {
+    const name = document.getElementById('newClientName').value;
+    const fileNumber = document.getElementById('newFileNumber').value;
+    const type = document.getElementById('clientType').value;
+    const hours = document.getElementById('hoursAmount').value;
+    
+    if (!name || !fileNumber) {
+        alert('אנא מלא את כל השדות');
+        return;
+    }
+    
+    console.log('יוצר לקוח:', { name, fileNumber, type, hours });
+    
+    // סגור פופאפ
+    document.querySelector('.popup-overlay').remove();
+    
+    // הודעת הצלחה
+    showNotification(`לקוח "${name}" נוצר בהצלחה`, 'success');
+}
+
+// ===== פונקציית יציאה פשוטה =====
+function logout() {
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    
+    overlay.innerHTML = `
+        <div class="popup" style="max-width: 400px;">
+            <div class="popup-header">
+                <i class="fas fa-power-off"></i>
+                יציאה מהמערכת
+            </div>
+            
+            <div class="popup-content" style="text-align: center; padding: 20px 0;">
+                <div style="font-size: 48px; margin-bottom: 16px;">👋</div>
+                <h3 style="color: #1f2937; margin-bottom: 12px;">האם לצאת מהמערכת?</h3>
+                <p style="color: #6b7280;">כל הנתונים הלא שמורים יאבדו</p>
+            </div>
+            
+            <div class="popup-buttons">
+                <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                    <i class="fas fa-times"></i>
+                    ביטול
+                </button>
+                <button class="popup-btn popup-btn-danger" onclick="confirmLogout()">
+                    <i class="fas fa-power-off"></i>
+                    כן, צא
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+function confirmLogout() {
+    // החזר למסך התחברות
+    document.getElementById('interfaceElements').classList.add('hidden');
+    document.getElementById('appContent').classList.add('hidden');
+    document.getElementById('loginSection').classList.remove('hidden');
+    
+    // סגור פופאפ
+    document.querySelector('.popup-overlay').remove();
+    
+    // הודעה
+    showNotification('יצאת מהמערכת', 'info');
+}
+
+// ===== פונקציית משוב פשוטה =====
+function sendFeedback() {
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    
+    overlay.innerHTML = `
+        <div class="popup" style="max-width: 500px;">
+            <div class="popup-header">
+                <i class="fas fa-comments"></i>
+                שלח משוב
+            </div>
+            
+            <div class="popup-content">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">סוג משוב</label>
+                    <select id="feedbackType" style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;">
+                        <option value="bug">דיווח על באג</option>
+                        <option value="feature">בקשה לתכונה חדשה</option>
+                        <option value="improvement">הצעה לשיפור</option>
+                        <option value="other">אחר</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">המשוב שלך</label>
+                    <textarea id="feedbackText" rows="4" placeholder="כתוב כאן את המשוב שלך..." 
+                             style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            
+            <div class="popup-buttons">
+                <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                    <i class="fas fa-times"></i>
+                    ביטול
+                </button>
+                <button class="popup-btn popup-btn-success" onclick="submitFeedback()">
+                    <i class="fas fa-paper-plane"></i>
+                    שלח
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+function submitFeedback() {
+    const type = document.getElementById('feedbackType').value;
+    const text = document.getElementById('feedbackText').value;
+    
+    if (!text.trim()) {
+        alert('אנא כתוב את המשוב שלך');
+        return;
+    }
+    
+    console.log('משוב:', { type, text });
+    
+    // סגור פופאפ
+    document.querySelector('.popup-overlay').remove();
+    
+    // הודעה
+    showNotification('המשוב נשלח בהצלחה', 'success');
+}
+
+// ===== מערכת הודעות פשוטה =====
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type} show`;
+    
+    const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-times-circle',
+        warning: 'fas fa-exclamation-triangle',
+        info: 'fas fa-info-circle'
+    };
+    
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="${icons[type]}" style="color: ${colors[type]}; font-size: 18px;"></i>
+            <span style="flex: 1; font-weight: 500;">${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // הסר אחרי 4 שניות
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 4000);
+}
+
+function toggleNotifications() {
+    // אם הדרופדאון פתוח - סגור אותו ופתח פופ-אפ
+    const dropdown = document.getElementById('notificationsDropdown');
+    if (dropdown.classList.contains('show')) {
+        dropdown.classList.remove('show');
+    }
+    
+    const content = `
+        <div class="popup-header">
+            <i class="fas fa-bell"></i>
+            מרכז ההתראות
+        </div>
+        
+        <div class="popup-content">
+            <div class="popup-section">
+                <h4><i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> התראות דחופות</h4>
+                <div class="notifications-list urgent">
+                    <div class="notification-item urgent">
+                        <div class="notification-icon"><i class="fas fa-clock"></i></div>
+                        <div class="notification-content">
+                            <strong>משימה באיחור</strong>
+                            <p>תיק לקוח ABC - עבר תאריך היעד ב-2 ימים</p>
+                            <small>לפני 30 דקות</small>
+                        </div>
+                    </div>
+                    <div class="notification-item critical">
+                        <div class="notification-icon"><i class="fas fa-ban"></i></div>
+                        <div class="notification-content">
+                            <strong>לקוח חסום</strong>
+                            <p>לקוח XYZ - נגמרו השעות בתוכנית</p>
+                            <small>לפני שעה</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="popup-section">
+                <h4><i class="fas fa-info-circle" style="color: #3b82f6;"></i> התראות כלליות</h4>
+                <div class="notifications-list general">
+                    <div class="notification-item">
+                        <div class="notification-icon"><i class="fas fa-user-plus"></i></div>
+                        <div class="notification-content">
+                            <strong>לקוח חדש נוסף</strong>
+                            <p>תיק 2025001 - דנה לוי נוצר בהצלחה</p>
+                            <small>לפני 3 שעות</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="popup-section">
+                <div class="stats-summary">
+                    <div class="stat-item">
+                        <span class="stat-number">3</span>
+                        <span class="stat-label">משימות להיום</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">7</span>
+                        <span class="stat-label">שעות נרשמו</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">2</span>
+                        <span class="stat-label">לקוחות דחופים</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="popup-buttons">
+            <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                <i class="fas fa-times"></i>
+                סגור
+            </button>
+            <button class="popup-btn popup-btn-success" onclick="clearAllNotifications(); this.closest('.popup-overlay').remove()">
+                <i class="fas fa-check-double"></i>
+                סמן הכל כנקרא
+            </button>
+        </div>
+    `;
+    
+    popupManager.createPopup('notification', content, 'large');
+}
+
+function clearAllNotifications() {
+    const content = document.getElementById('notificationsContent');
+    if (content) {
+        content.innerHTML = '<div style="padding: 20px; text-align: center; color: #6b7280;">אין התראות</div>';
+    }
+    
+    const count = document.getElementById('notificationCount');
+    if (count) {
+        count.classList.add('hidden');
+    }
+}
+
+// ===== פונקציות עזר =====
+function resetBudgetForm() {
+    document.getElementById('budgetForm').reset();
+    const searchResults = document.getElementById('budgetSearchResults');
+    if (searchResults) {
+        searchResults.classList.remove('show');
+    }
+}
+
+function resetTimesheetForm() {
+    document.getElementById('timesheetForm').reset();
+    const searchResults = document.getElementById('timesheetSearchResults');
+    if (searchResults) {
+        searchResults.classList.remove('show');
+    }
+    
+    // הגדר תאריך נוכחי
+    const dateField = document.getElementById('actionDate');
+    if (dateField) {
+        dateField.value = new Date().toISOString().split('T')[0];
+    }
+}
+
+function selectClient(formType, clientId, clientName) {
+    const searchInput = document.getElementById(`${formType}ClientSearch`);
+    const hiddenInput = document.getElementById(`${formType}ClientSelect`);
+    const resultsContainer = document.getElementById(`${formType}SearchResults`);
+    
+    if (searchInput) searchInput.value = clientName;
+    if (hiddenInput) hiddenInput.value = clientId;
+    if (resultsContainer) resultsContainer.classList.remove('show');
+}
+
+// ===== אתחול =====
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 מערכת נקייה נטענה');
+    
+    // הגדר תאריך נוכחי בטופס השעתון
+    const dateField = document.getElementById('actionDate');
+    if (dateField) {
+        dateField.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // סגירת פופאפים ותוצאות חיפוש בלחיצה בחוץ
+    document.addEventListener('click', function(e) {
+        // סגירת תוצאות חיפוש
+        if (!e.target.closest('.modern-client-search')) {
+            document.querySelectorAll('.search-results').forEach(results => {
+                results.classList.remove('show');
+            });
+        }
+        
+        // סגירת התראות
+        if (!e.target.closest('.notification-bell') && !e.target.closest('.notifications-dropdown')) {
+            const dropdown = document.getElementById('notificationsDropdown');
+            if (dropdown) {
+                dropdown.classList.remove('show');
+            }
+        }
+        
+        // סגירת פופאפים בלחיצה על הרקע
+        if (e.target.classList.contains('popup-overlay')) {
+            e.target.remove();
+        }
+    });
+});
+
+// ===== סוף הקוד הנקי =====
+
+
+// ===== פונקציות עדכון אינדיקטור חיבור =====
+
+function updateConnectionIndicator(status, message) {
+    const indicator = document.getElementById('connectionIndicator');
+    const text = document.getElementById('connectionText');
+    const dot = indicator.querySelector('.connection-dot');
+    
+    if (!indicator || !text) return;
+    
+    text.textContent = message;
+    
+    // עדכון צבעים לפי סטטוס
+    indicator.style.borderColor = getStatusColor(status, 0.2);
+    indicator.style.color = getStatusColor(status, 1);
+    dot.style.background = getStatusColor(status, 1);
+    
+    // הוספת אפקט
+    indicator.style.transform = 'scale(1.05)';
+    setTimeout(() => {
+        indicator.style.transform = 'scale(1)';
+    }, 200);
+}
+
+function getStatusColor(status, opacity) {
+    const colors = {
+        'connected': `rgba(16, 185, 129, ${opacity})`,
+        'disconnected': `rgba(239, 68, 68, ${opacity})`,
+        'connecting': `rgba(245, 158, 11, ${opacity})`,
+        'error': `rgba(239, 68, 68, ${opacity})`
+    };
+    return colors[status] || colors.connecting;
+}
+
+// ===== עדכון שם המשתמש בסרגל =====
+function updateSidebarUser(userName) {
+    const userNameElement = document.getElementById('currentUserName');
+    const userAvatar = document.querySelector('.user-avatar');
+    
+    if (userNameElement && userName) {
+        userNameElement.textContent = userName;
+        console.log('✅ שם משתמש עודכן בסרגל:', userName);
+    }
+    
+    if (userAvatar && userName) {
+        // הוספת טיפ עם שם המשתמש
+        userAvatar.setAttribute('title', `מחובר: ${userName}`);
+        
+        // צבע אווטאר לפי שם
+        const colors = [
+            'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+        ];
+        
+        const colorIndex = userName.charCodeAt(0) % colors.length;
+        userAvatar.style.background = colors[colorIndex];
+    }
+}
+
+// ===== הדגשת פריט פעיל בסרגל =====
+function setActiveNavItem(itemName) {
+    // הסרת הדגשה מכל הפריטים
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // הדגשת הפריט הנכון
+    let activeItem = null;
+    
+    if (itemName === 'תקצוב') {
+        activeItem = document.querySelector('[onclick*="budget"]');
+    } else if (itemName === 'שעתון') {
+        activeItem = document.querySelector('[onclick*="timesheet"]');
+    }
+    
+    if (activeItem) {
+        activeItem.classList.add('active');
+        console.log('✅ פריט הודגש:', itemName);
+    }
+}
+
+// ===== עדכון הפונקציה showApp הקיימת =====
+// הוסף את השורות האלה לתוך הפונקציה showApp במנהג'ר:
+
+/*
+// במקום userInfo.innerHTML, הוסף:
+updateSidebarUser(this.currentUser);
+updateConnectionIndicator('connecting', 'מתחבר לשרת...');
+
+// במקום updateConnectionStatus, הוסף:
+updateConnectionIndicator('connected', 'מחובר לגליון');
+*/
+
+// ===== עדכון הפונקציה switchTab הקיימת =====
+// הוסף בסוף הפונקציה switchTab:
+
+/*
+// הוסף את השורה הזאת בסוף הפונקציה:
+if (tabName === 'budget') {
+    setActiveNavItem('תקצוב');
+} else if (tabName === 'timesheet') {
+    setActiveNavItem('שעתון');
+}
+*/
+
+// ===== אתחול הסרגל החדש =====
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 מאתחל ממשק חדש...');
+    
+    // הדגש את הטאב הראשון
+    setTimeout(() => {
+        setActiveNavItem('תקצוב');
+        updateConnectionIndicator('connecting', 'מאתחל מערכת...');
+    }, 500);
+    
+    // סימולציה של חיבור מוצלח
+    setTimeout(() => {
+        updateConnectionIndicator('connected', 'מערכת מוכנה');
+    }, 2000);
+});
+
+// ===== טיפול במובייל =====
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('minimalSidebar');
+    if (window.innerWidth <= 768) {
+        sidebar.classList.toggle('open');
+    }
+}
+
+// סגירת סרגל במובייל בלחיצה בחוץ
+document.addEventListener('click', function(e) {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('minimalSidebar');
+        if (!sidebar.contains(e.target) && !e.target.closest('.menu-btn')) {
+            sidebar.classList.remove('open');
+        }
+    }
+});
+
+// ===== טאבים צפים בגלילה =====
+
+let isScrolled = false;
+let currentActiveTab = 'budget'; // ברירת מחדל
+
+// זיהוי גלילה
+function handleScroll() {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const shouldShow = scrollTop > 200; // מופיע אחרי 200px גלילה
+    
+    const floatingTabs = document.getElementById('floatingTabs');
+    if (!floatingTabs) return;
+    
+    if (shouldShow && !isScrolled) {
+        // הצגת הטאבים
+        floatingTabs.classList.add('visible');
+        isScrolled = true;
+        console.log('🔼 טאבים צפים מופיעים');
+    } else if (!shouldShow && isScrolled) {
+        // הסתרת הטאבים
+        floatingTabs.classList.remove('visible');
+        isScrolled = false;
+        console.log('🔽 טאבים צפים נעלמים');
+    }
+}
+
+// מעבר בין טאבים
+function switchToTab(tabName) {
+    console.log('🔄 מעבר לטאב:', tabName);
+    
+    // עדכון הטאב הפעיל
+    currentActiveTab = tabName;
+    
+    // עדכון הטאבים הרגילים
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // הפעלת הטאב החדש
+    if (tabName === 'budget') {
+        document.querySelector('[onclick*="budget"]').classList.add('active');
+        document.getElementById('budgetTab').classList.add('active');
+    } else if (tabName === 'timesheet') {
+        document.querySelector('[onclick*="timesheet"]').classList.add('active');
+        document.getElementById('timesheetTab').classList.add('active');
+    }
+    
+    // עדכון הטאבים הצפים
+    updateFloatingTabs();
+    
+    // גלילה חלקה לטאב (אופציונלי)
+    const targetTab = document.getElementById(tabName + 'Tab');
+    if (targetTab) {
+        targetTab.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    }
+}
+
+// עדכון מצב הטאבים הצפים
+function updateFloatingTabs() {
+    document.querySelectorAll('.floating-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    const activeFloatingTab = document.querySelector(`[data-tab="${currentActiveTab}"]`);
+    if (activeFloatingTab) {
+        activeFloatingTab.classList.add('active');
+    }
+}
+
+// ===== טפסים מכווצים (אקורדיון) =====
+
+// פתיחה/סגירה של טופס
+function toggleForm(formId) {
+    const form = document.getElementById(formId);
+    const header = form.querySelector('.form-header');
+    const content = form.querySelector('.form-content');
+    const toggleBtn = form.querySelector('.form-toggle-btn');
+    const toggleText = toggleBtn.querySelector('.form-toggle-text');
+    const toggleIcon = toggleBtn.querySelector('.form-toggle-icon');
+    
+    const isExpanded = content.classList.contains('expanded');
+    
+    if (isExpanded) {
+        // כיווץ הטופס
+        header.classList.remove('active');
+        content.classList.remove('expanded');
+        form.classList.remove('active');
+        form.classList.add('collapsing');
+        
+        toggleText.textContent = toggleText.dataset.openText;
+        toggleIcon.className = 'form-toggle-icon fas fa-chevron-down';
+        
+        console.log('📤 טופס מתכווץ:', formId);
+        
+        // הסרת אפקט אחרי אנימציה
+        setTimeout(() => {
+            form.classList.remove('collapsing');
+        }, 400);
+        
+    } else {
+        // פתיחת הטופס
+        header.classList.add('active');
+        content.classList.add('expanded');
+        form.classList.add('active', 'expanding');
+        
+        toggleText.textContent = toggleText.dataset.closeText;
+        toggleIcon.className = 'form-toggle-icon fas fa-chevron-up';
+        
+        console.log('📥 טופס מתרחב:', formId);
+        
+        // הסרת אפקט אחרי אנימציה
+        setTimeout(() => {
+            form.classList.remove('expanding');
+        }, 400);
+        
+        // סגירת טפסים אחרים (אופציונלי)
+        closeOtherForms(formId);
+    }
+}
+
+// סגירת טפסים אחרים
+function closeOtherForms(currentFormId) {
+    const allForms = document.querySelectorAll('.collapsible-form');
+    allForms.forEach(form => {
+        if (form.id !== currentFormId && form.querySelector('.form-content').classList.contains('expanded')) {
+            toggleForm(form.id);
+        }
+    });
+}
+
+// ===== אתחול המערכת =====
+
+function initializeFloatingTabsAndAccordion() {
+    console.log('🚀 מאתחל טאבים צפים וטפסים מכווצים...');
+    
+    // הוספת event listener לגלילה
+    let scrollTimeout;
+    window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(handleScroll, 10); // מיטוב ביצועים
+    });
+    
+    // אתחול מצב הטאבים
+    updateFloatingTabs();
+    
+    // בדיקה ראשונית של מצב הגלילה
+    handleScroll();
+    
+    console.log('✅ מערכת מוכנה!');
+}
+
+// ===== פונקציות עזר =====
+
+// חזרה למעלה
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
+// עדכון הפונקציה הקיימת switchTab
+const originalSwitchTab = window.switchTab;
+window.switchTab = function(tabName) {
+    if (originalSwitchTab) {
+        originalSwitchTab(tabName);
+    }
+    
+    // עדכון הטאבים הצפים
+    currentActiveTab = tabName;
+    updateFloatingTabs();
+};
+
+// אתחול כשהדף נטען
+document.addEventListener('DOMContentLoaded', function() {
+    // חכה קצת שהדף יסתדר
+    setTimeout(() => {
+        initializeFloatingTabsAndAccordion();
+    }, 500);
+});
+
+// נקה listeners כשיוצאים מהדף (אופטימיזציה)
+window.addEventListener('beforeunload', function() {
+    window.removeEventListener('scroll', handleScroll);
+});
+
+
+// ===== כפתור פלוס חכם =====
+// ===== כפתור פלוס חכם עם אנימציה =====
+function openSmartForm() {
+    const plusButton = document.getElementById('smartPlusBtn');
+    const activeTab = document.querySelector('.tab-button.active');
+    
+    let currentForm;
+    if (activeTab.onclick.toString().includes('budget')) {
+        currentForm = document.getElementById('budgetFormContainer');
+    } else if (activeTab.onclick.toString().includes('timesheet')) {
+        currentForm = document.getElementById('timesheetFormContainer');
+    }
+    
+    // בדיקה אם הטופס כבר פתוח
+    if (currentForm.classList.contains('hidden')) {
+        // פתח טופס
+        currentForm.classList.remove('hidden');
+        plusButton.classList.add('active');
+        console.log('🎯 פותח טופס');
+    } else {
+        // סגור טופס
+        currentForm.classList.add('hidden');
+        plusButton.classList.remove('active');
+        console.log('❌ סוגר טופס');
+    }
+}
+
+function updateUserDisplay(userName) {
+    const userDisplay = document.getElementById('currentUserDisplay');
+    if (userDisplay && userName) {
+        userDisplay.textContent = `${userName} - משרד עו"ד גיא הרשקוביץ`;
+    }
+}
+
+
+function updatePlusTooltip(tabName) {
+    const tooltip = document.getElementById('plusTooltip');
+    
+    if (tooltip) {
+        if (tabName === 'budget') {
+            tooltip.textContent = 'הוספת משימה לתקצוב';
+        } else if (tabName === 'timesheet') {
+            tooltip.textContent = 'הוסף רישום שעתון';
+        }
+    }
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        updatePlusTooltip('budget'); // התחל עם טאב התקצוב
+    }, 500);
+});
+
+
+// הוסף לסוף הקובץ JS - פונקציה לבדיקה
+function checkResponsiveSystem() {
+    console.log('🔍 בדיקת מערכת רספונסיבית:');
+    console.log('📊 מידע מסך:', responsiveManager.getScreenInfo());
+    console.log('🛠️ תמיכה בתכונות:', responsiveManager.checkFeatureSupport());
+}
+
+// אפשר להפעיל בקונסול
+window.checkResponsive = checkResponsiveSystem;
+
+
+// הוסף לסוף הקובץ JS - סימולציה של התראות
+function addDemoNotifications() {
+    setTimeout(() => {
+        notificationBell.addNotification('urgent', 'משימה דחופה', 'תאריך יעד מתקרב למשימת לקוח ABC', true);
+        notificationBell.addNotification('critical', '3 לקוחות קריטיים', 'לקוחות עם מעט שעות נותרות', false);
+        notificationBell.addNotification('blocked', 'לקוח חסום', 'לקוח XYZ נגמרו השעות', true);
+    }, 3000);
+}
+
+// הפעל את הדמו
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(addDemoNotifications, 2000);
+});
+
+
+
+
