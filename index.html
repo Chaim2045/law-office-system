@@ -15,6 +15,13 @@
     
     <!-- אלמנטי ממשק שמופיעים רק אחרי התחברות -->
     <div id="interfaceElements" class="hidden">
+        <!-- Mobile Menu Button & Overlay -->
+        <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+        
         <!-- פעמון התראות -->
         <button class="notification-bell" id="notificationBell" onclick="toggleNotifications()">
             <i class="fas fa-bell"></i>
@@ -35,9 +42,7 @@
                 <!-- התראות יוכנסו כאן דינמית -->
             </div>
         </div>
-    </div>
-
-    <div class="app-container" id="appContainer">
+        
         <!-- סרגל צד -->
         <div class="minimal-sidebar" id="minimalSidebar">
             <div class="sidebar-brand">
@@ -92,7 +97,9 @@
                 </button>
             </div>
         </header>
+    </div>
 
+    <div class="app-container" id="appContainer">
         <!-- תוכן ראשי -->
         <main class="main-content">
             <!-- מסך התחברות -->
@@ -114,16 +121,19 @@
 
             <!-- תוכן המערכת -->
             <div id="appContent" class="hidden">
+               <!-- סרגל עליון קבוע -->
+               <div class="top-user-bar">
+                   <div class="user-dropdown-top">
+                       <span id="currentUserDisplay">טוען...</span>
+                       <i class="fas fa-chevron-down"></i>
+                   </div>
+               </div>
+
                <!-- טאבים עיקריים עם כפתור פלוס -->
 <!-- כפתור פלוס בפינה עליונה -->
 <!-- כפתור פלוס בפינה עליונה -->
 <!-- סרגל עליון קבוע -->
-<div class="top-user-bar">
-    <div class="user-dropdown-top">
-        <span id="currentUserDisplay">טוען...</span>
-        <i class="fas fa-chevron-down"></i>
-    </div>
-</div>
+
 
 <!-- כפתור פלוס מתחת לסרגל -->
 <div class="plus-container-new">
@@ -136,7 +146,7 @@
 <div class="main-tabs-container">
     <div class="main-tabs">
         <button class="tab-button active" onclick="switchTab('budget')">
-            <i class="fas fa-chart-bar"></i>
+            <i class="fas fa-chart-line"></i>
             תקצוב משימות
         </button>
         <button class="tab-button" onclick="switchTab('timesheet')">
@@ -236,7 +246,7 @@
                     <!-- רשימת משימות מתוקצבות -->
                     <div>
                         <h3 style="color: #1e293b; font-size: 24px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
-                            <i class="fas fa-chart-bar"></i>
+                            <i class="fas fa-chart-line"></i>
                             משימות מתוקצבות
                         </h3>
                         
@@ -247,47 +257,25 @@
                             </div>
                         </div>
                         
-                        <!-- ===== מצא את הקטע הזה בקובץ HTML שלך ===== -->
-
-<div id="budgetTableContainer" class="hidden">
-    <div class="advanced-table-container">
-        <table class="advanced-table" id="budgetTable">
-            <thead>
-                <tr>
-                    <th class="sortable" data-sort="clientName">לקוח</th>
-                    <th class="sortable" data-sort="description">תיאור משימה</th>
-                    <th class="sortable" data-sort="progress">התקדמות</th>
-                    <th class="sortable" data-sort="deadline">תאריך יעד</th>
-                    <th class="sortable" data-sort="status">סטטוס</th>
-                    <th>פעולות</th>
-                </tr>
-            </thead>
-            <tbody id="budgetTableBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<!-- ===== והחלף אותו בקוד הזה ===== -->
-
-<div id="budgetTableContainer" class="hidden">
-    <!-- הטבלה המודרנית תיווצר כאן דינמית ב-JavaScript -->
-    <div class="modern-table-container">
-        <div class="modern-table-header">
-            <h3 class="modern-table-title">
-                <i class="fas fa-chart-bar"></i>
-                משימות מתוקצבות
-            </h3>
-            <div class="modern-table-subtitle">טוען נתונים...</div>
-        </div>
-        <div style="padding: 40px; text-align: center; color: #94a3b8;">
-            <div class="loading-spinner" style="display: inline-block; width: 24px; height: 24px; border: 2px solid #e2e8f0; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <span style="margin-right: 12px;">טוען משימות...</span>
-        </div>
-    </div>
-</div>
+                        <div id="budgetTableContainer" class="hidden">
+                            <!-- הטבלה המודרנית תיווצר כאן דינמית ב-JavaScript -->
+                            <div class="modern-table-container">
+                                <div class="modern-table-header">
+                                    <h3 class="modern-table-title">
+                                        <i class="fas fa-chart-line"></i>
+                                        משימות מתוקצבות
+                                    </h3>
+                                    <div class="modern-table-subtitle">טוען נתונים...</div>
+                                </div>
+                                <div style="padding: 40px; text-align: center; color: #94a3b8;">
+                                    <div class="loading-spinner" style="display: inline-block; width: 24px; height: 24px; border: 2px solid #e2e8f0; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                    <span style="margin-right: 12px;">טוען משימות...</span>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div id="budgetEmptyState" class="empty-state" style="display: none;">
-                            <div class="empty-icon"><i class="fas fa-chart-bar"></i></div>
+                            <div class="empty-icon"><i class="fas fa-chart-line"></i></div>
                             <h4>אין משימות מתוקצבות</h4>
                             <p>הוסף משימה חדשה לתקצוב</p>
                         </div>
@@ -412,7 +400,7 @@
                         </div>
                         
                         <div id="timesheetEmptyState" class="empty-state" style="display: none;">
-                            <div class="empty-icon"><i class="fas fa-clock"></i></div>
+                            <div class="empty-icon"><i class="fas fa-clock"></i>
                             <h4>אין פעולות רשומות</h4>
                             <p>רשום את הפעולה הראשונה שלך</p>
                         </div>
@@ -421,26 +409,7 @@
             </div>
         </main>
     </div>
-<footer class="main-footer">
-    <div class="footer-content">
-        <div class="system-status">
-            <span class="status-dot"></span>
-            <span>מערכת פעילה</span>
-        </div>
-        <div class="footer-divider"></div>
-        <a href="#" class="footer-link">
-            <i class="fas fa-question-circle"></i>
-            עזרה
-        </a>
-        <div class="footer-divider"></div>
-        <a href="#" class="footer-link">
-            <i class="fas fa-cog"></i>
-            הגדרות
-        </a>
-        <div class="footer-divider"></div>
-        <span>© 2025 משרד עו"ד גיא הרשקוביץ</span>
-    </div>
-</footer>
+
     <!-- פופאפ לקוח חדש -->
     <div id="clientFormOverlay" class="popup-overlay hidden">
         <div class="popup">
@@ -532,43 +501,34 @@
     
     <!-- קישור לקובץ JavaScript -->
     <script src="script.js"></script>
-   <!-- ===== מצא את הקטע הזה בקובץ HTML שלך ===== -->
 
-<div id="budgetTableContainer" class="hidden">
-    <div class="advanced-table-container">
-        <table class="advanced-table" id="budgetTable">
-            <thead>
-                <tr>
-                    <th class="sortable" data-sort="clientName">לקוח</th>
-                    <th class="sortable" data-sort="description">תיאור משימה</th>
-                    <th class="sortable" data-sort="progress">התקדמות</th>
-                    <th class="sortable" data-sort="deadline">תאריך יעד</th>
-                    <th class="sortable" data-sort="status">סטטוס</th>
-                    <th>פעולות</th>
-                </tr>
-            </thead>
-            <tbody id="budgetTableBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<!-- ===== והחלף אותו בקוד הזה ===== -->
-
-<div id="budgetTableContainer" class="hidden">
-    <!-- הטבלה המודרנית תיווצר כאן דינמית ב-JavaScript -->
-    <div class="modern-table-container">
-        <div class="modern-table-header">
-            <h3 class="modern-table-title">
-                <i class="fas fa-chart-bar"></i>
-                משימות מתוקצבות
-            </h3>
-            <div class="modern-table-subtitle">טוען נתונים...</div>
+    <!-- פוטר נפרד - יוצג רק אחרי התחברות -->
+    <footer class="main-footer hidden" id="mainFooter">
+        <div class="footer-content">
+            <div class="system-status">
+                <span class="status-dot"></span>
+                <span>מערכת פעילה</span>
+            </div>
+            <div class="footer-divider"></div>
+            <a href="#" class="footer-link">
+                <i class="fas fa-question-circle"></i>
+                עזרה
+            </a>
+            <div class="footer-divider"></div>
+            <a href="#" class="footer-link">
+                <i class="fas fa-cog"></i>
+                הגדרות
+            </a>
+            <div class="footer-divider"></div>
+            <span>© 2025 משרד עו"ד גיא הרשקוביץ</span>
         </div>
-        <div style="padding: 40px; text-align: center; color: #94a3b8;">
-            <div class="loading-spinner" style="display: inline-block; width: 24px; height: 24px; border: 2px solid #e2e8f0; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <span style="margin-right: 12px;">טוען משימות...</span>
-        </div>
-    </div>
-</div>
+    </footer>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
 </body>
 </html>
