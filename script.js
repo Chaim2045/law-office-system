@@ -1,3 +1,5 @@
+
+
 // ==========================================================================
 //   ORGANIZED LAW OFFICE MANAGEMENT SYSTEM - JAVASCRIPT
 //   Version: 2025 - Clean & Structured
@@ -236,7 +238,7 @@ class NotificationBellSystem {
             const iconMap = {
                 'blocked': 'fas fa-ban',
                 'critical': 'fas fa-exclamation-triangle',
-                'urgent': 'fas fa-business-time'
+                'urgent': 'fas fa-clock'
             };
 
             return `
@@ -438,7 +440,7 @@ class ClientValidation {
                     <ul>
                         <li><i class="fas fa-phone"></i> צור קשר עם הלקוח לרכישת שעות נוספות</li>
                         <li><i class="fas fa-dollar-sign"></i> עדכן את מערכת הביליטס</li>
-                        <li><i class="fas fa-user-tie-tie"></i> פנה למנהל המשרד</li>
+                        <li><i class="fas fa-user-tie"></i> פנה למנהל המשרד</li>
                     </ul>
                 </div>
                 
@@ -1031,7 +1033,6 @@ class LawOfficeManager {
             if (cachedData) {
                 this.budgetTasks = cachedData;
                 this.applyBudgetTaskFilters();
-                this.renderBudgetTasks(); // ✅ הוסף את השורה הזאת
                 console.log('✅ משימות נטענו מה-Cache');
                 return;
             }
@@ -1047,10 +1048,10 @@ class LawOfficeManager {
             if (result.success && result.tasks) {
                 dataCache.set(cacheKey, result.tasks);
                 
-             this.budgetTasks = result.tasks;
-             this.applyBudgetTaskFilters();
-             this.renderBudgetTasks(); // ✅ הוסף את השורה הזאת
-             console.log(`✅ נטענו ${this.budgetTasks.length} משימות תקצוב מהגליון ונשמרו ב-Cache`);
+                this.budgetTasks = result.tasks;
+                this.applyBudgetTaskFilters();
+                console.log(`✅ נטענו ${this.budgetTasks.length} משימות תקצוב מהגליון ונשמרו ב-Cache`);
+            } else {
                 throw new Error(result.message || 'שגיאה בטעינת משימות');
             }
         } catch (error) {
@@ -1075,7 +1076,6 @@ class LawOfficeManager {
             if (cachedData) {
                 this.timesheetEntries = cachedData;
                 this.applyTimesheetFilters();
-                this.renderTimesheetEntries(); // ✅ הוסף את השורה הזאת
                 console.log('✅ שעתון נטען מה-Cache');
                 return;
             }
@@ -1098,7 +1098,6 @@ class LawOfficeManager {
                 
                 this.timesheetEntries = result.entries;
                 this.applyTimesheetFilters();
-                this.renderTimesheetEntries(); // ✅ הוסף את השורה הזאת
                 console.log(`✅ נטענו ${this.timesheetEntries.length} רשומות שעתון מהגליון ונשמרו ב-Cache`);
             } else {
                 throw new Error(result.message || 'שגיאה בטעינת שעתון');
@@ -1584,95 +1583,77 @@ class LawOfficeManager {
     }
 
     showAdvancedTimeDialog(taskId) {
-    try {
-        const task = this.budgetTasks.find(t => t.id === taskId);
-        if (!task) {
-            this.showNotification('המשימה לא נמצאה', 'error');
-            return;
-        }
+        try {
+            const task = this.budgetTasks.find(t => t.id === taskId);
+            if (!task) {
+                this.showNotification('המשימה לא נמצאה', 'error');
+                return;
+            }
 
-        const overlay = document.createElement('div');
-        overlay.className = 'popup-overlay';
-        
-        const currentDate = new Date().toISOString().split('T')[0];
-        const progressPercentage = task.estimatedMinutes > 0 ? 
-            Math.round((task.actualMinutes / task.estimatedMinutes) * 100) : 0;
-        
-        overlay.innerHTML = `
-            <div class="popup time-entry-popup">
-                <div class="popup-header">
-                    <i class="fas fa-business-time"></i>
-                    הוספת זמן למשימה
-                </div>
-                
-                <div class="popup-content">
-                    <div class="task-info-section">
-                        <h4>
-                            <i class="fas fa-briefcase"></i>
-                            פרטי המשימה
-                        </h4>
-                        <p><strong>לקוח:</strong> ${task.clientName}</p>
-                        <p><strong>תיאור:</strong> ${task.description}</p>
-                        <p><strong>סניף:</strong> ${task.branch || 'לא צוין'}</p>
-                        <p><strong>זמן נוכחי:</strong> ${task.actualMinutes} דקות מתוך ${task.estimatedMinutes} (${progressPercentage}%)</p>
+            const overlay = document.createElement('div');
+            overlay.className = 'popup-overlay';
+            
+            overlay.innerHTML = `
+                <div class="popup" style="max-width: 500px;">
+                    <div class="popup-header">
+                        <i class="fas fa-clock"></i>
+                        הוספת זמן למשימה
                     </div>
                     
-                    <form id="advancedTimeForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-calendar-check-day"></i>
-                                    תאריך עבודה
-                                </label>
-                                <input type="date" id="workDate" class="form-input" value="${currentDate}" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-stopwatch"></i>
-                                    דקות עבודה
-                                </label>
-                                <input type="number" id="workMinutes" class="form-input" min="1" max="999" placeholder="כמה דקות?" required>
-                            </div>
+                    <div class="popup-content">
+                        <div class="task-info-section">
+                            <h4 style="color: #1e40af; margin-bottom: 10px;">פרטי המשימה:</h4>
+                            <p><strong>לקוח:</strong> ${task.clientName}</p>
+                            <p><strong>תיאור:</strong> ${task.description}</p>
+                            <p><strong>זמן נוכחי:</strong> ${task.actualMinutes} דקות מתוך ${task.estimatedMinutes}</p>
                         </div>
                         
-                        <div class="form-row single">
+                        <form id="advancedTimeForm">
                             <div class="form-group">
-                                <label class="form-label">
-                                    <i class="fas fa-edit"></i>
-                                    תיאור העבודה
-                                </label>
-                                <textarea id="workDescription" class="form-input" rows="3" placeholder="תאר בקצרה מה עשית..." required></textarea>
+                                <label for="workDate">תאריך העבודה</label>
+                                <input type="date" id="workDate" required 
+                                       value="${new Date().toISOString().split('T')[0]}">
                             </div>
-                        </div>
-                    </form>
+                            
+                            <div class="form-group">
+                                <label for="workMinutes">דקות עבודה</label>
+                                <input type="number" id="workMinutes" min="1" max="999" 
+                                       placeholder="60" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="workDescription">תיאור העבודה שבוצעה</label>
+                                <textarea id="workDescription" rows="3" 
+                                          placeholder="תיאור מפורט של העבודה שבוצעה..." required></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="popup-buttons">
+                        <button class="popup-btn popup-btn-confirm" onclick="manager.submitTimeEntry(${taskId})">
+                            <i class="fas fa-save"></i>
+                            שמור זמן
+                        </button>
+                        <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                            <i class="fas fa-times"></i>
+                            ביטול
+                        </button>
+                    </div>
                 </div>
-                
-                <div class="popup-buttons">
-                    <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                        <i class="fas fa-times"></i>
-                        ביטול
-                    </button>
-                    <button type="button" class="popup-btn popup-btn-confirm" onclick="manager.submitTimeEntry(${taskId})">
-                        <i class="fas fa-save"></i>
-                        שמור זמן
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(overlay);
-        
-        // Focus על שדה הדקות
-        setTimeout(() => {
-            const minutesInput = document.getElementById('workMinutes');
-            if (minutesInput) minutesInput.focus();
-        }, 100);
-        
-    } catch (error) {
-        console.error('❌ שגיאה בהצגת דיאלוג זמן:', error);
-        this.showNotification('שגיאה בפתיחת הדיאלוג', 'error');
+            `;
+            
+            document.body.appendChild(overlay);
+            
+            setTimeout(() => {
+                const workMinutes = document.getElementById('workMinutes');
+                if (workMinutes) workMinutes.focus();
+            }, 100);
+            
+        } catch (error) {
+            console.error('❌ שגיאה בפתיחת דיאלוג זמן:', error);
+            this.showNotification('שגיאה בפתיחת הדיאלוג', 'error');
+        }
     }
-}
 
     submitTimeEntry(taskId) {
         try {
@@ -1717,87 +1698,67 @@ class LawOfficeManager {
         }
     }
 
-   showTaskHistory(taskId) {
-    try {
-        const task = this.budgetTasks.find(t => t.id === taskId);
-        if (!task) {
-            this.showNotification('המשימה לא נמצאה', 'error');
-            return;
-        }
+    showTaskHistory(taskId) {
+        try {
+            const task = this.budgetTasks.find(t => t.id === taskId);
+            if (!task) {
+                this.showNotification('המשימה לא נמצאה', 'error');
+                return;
+            }
 
-        const overlay = document.createElement('div');
-        overlay.className = 'popup-overlay';
-        
-        let historyHtml = '';
-        if (task.history && task.history.length > 0) {
-            historyHtml = task.history.map(entry => `
-                <div class="history-entry">
-                    <div class="history-header">
-                        <span class="history-date">
-                            <i class="fas fa-calendar-check-day"></i>
-                            ${this.formatDate(entry.date)}
-                        </span>
-                        <span class="history-minutes">${entry.minutes} דקות</span>
+            const overlay = document.createElement('div');
+            overlay.className = 'popup-overlay';
+            
+            let historyHtml = '';
+            if (task.history && task.history.length > 0) {
+                historyHtml = task.history.map(entry => `
+                    <div class="history-entry">
+                        <div class="history-header">
+                            <span class="history-date">${this.formatDate(entry.date)}</span>
+                            <span class="history-minutes">${entry.minutes} דקות</span>
+                        </div>
+                        <div class="history-description">${entry.description}</div>
+                        <div class="history-timestamp">נוסף ב: ${entry.timestamp}</div>
                     </div>
-                    <div class="history-description">${entry.description}</div>
-                    <div class="history-timestamp">
-                        <i class="fas fa-business-time"></i>
-                        נוסף ב: ${entry.timestamp}
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            historyHtml = `
-                <div style="text-align: center; color: #6b7280; padding: 40px;">
-                    <i class="fas fa-history" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
-                    <h4 style="margin: 0 0 8px 0; color: #9ca3af;">אין היסטוריה עדיין</h4>
-                    <p style="margin: 0; font-size: 14px;">עדיין לא נרשמו זמנים למשימה זו</p>
-                </div>
-            `;
-        }
-        
-        const progressPercentage = task.estimatedMinutes > 0 ? 
-            Math.round((task.actualMinutes / task.estimatedMinutes) * 100) : 0;
-        
-        overlay.innerHTML = `
-            <div class="popup task-history-popup">
-                <div class="popup-header">
-                    <i class="fas fa-history"></i>
-                    היסטוריית זמנים
-                </div>
-                
-                <div class="popup-content">
-                    <div class="task-summary">
-                        <h4>
-                            <i class="fas fa-briefcase"></i>
-                            ${task.description}
-                        </h4>
-                        <p><strong>לקוח:</strong> ${task.clientName}</p>
-                        <p><strong>סניף:</strong> ${task.branch || 'לא צוין'}</p>
-                        <p><strong>התקדמות:</strong> ${task.actualMinutes} דקות מתוך ${task.estimatedMinutes} (${progressPercentage}%)</p>
+                `).join('');
+            } else {
+                historyHtml = '<div style="text-align: center; color: #6b7280; padding: 40px;">אין היסטוריה עדיין</div>';
+            }
+            
+            overlay.innerHTML = `
+                <div class="popup" style="max-width: 600px;">
+                    <div class="popup-header">
+                        <i class="fas fa-history"></i>
+                        היסטוריית זמנים - ${task.clientName}
                     </div>
                     
-                    <div class="history-container">
-                        ${historyHtml}
+                    <div class="popup-content">
+                        <div class="task-summary">
+                            <h4>${task.description}</h4>
+                            <p>סה"כ זמן: ${task.actualMinutes} דקות מתוך ${task.estimatedMinutes}</p>
+                        </div>
+                        
+                        <div class="history-container">
+                            ${historyHtml}
+                        </div>
+                    </div>
+                    
+                    <div class="popup-buttons">
+                        <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                            <i class="fas fa-times"></i>
+                            סגור
+                        </button>
                     </div>
                 </div>
-                
-                <div class="popup-buttons">
-                    <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                        <i class="fas fa-times"></i>
-                        סגור
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(overlay);
-        
-    } catch (error) {
-        console.error('❌ שגיאה בהצגת היסטוריה:', error);
-        this.showNotification('שגיאה בהצגת ההיסטוריה', 'error');
+            `;
+            
+            document.body.appendChild(overlay);
+            
+        } catch (error) {
+            console.error('❌ שגיאה בהצגת היסטוריה:', error);
+            this.showNotification('שגיאה בהצגת ההיסטוריה', 'error');
+        }
     }
-}
 
     clearBudgetForm() {
         const budgetForm = document.getElementById('budgetForm');
@@ -1930,7 +1891,7 @@ class LawOfficeManager {
                 
                 <div class="card-meta">
                     <div class="meta-item ${metaData.deadline.class}">
-                        <i class="fas fa-calendar-check-alt"></i>
+                        <i class="fas fa-calendar-alt"></i>
                         <span>${metaData.deadline.text}</span>
                     </div>
                     <div class="meta-item">
@@ -1948,7 +1909,7 @@ class LawOfficeManager {
                     </button>
                     ${safeTask.status === 'פעיל' ? `
                         <button class="action-btn warning" onclick="manager.showExtendDeadlineDialog(${safeTask.id})" title="הארך יעד">
-                            <i class="fas fa-calendar-check-plus"></i> הארך
+                            <i class="fas fa-calendar-plus"></i> הארך
                         </button>
                         <button class="action-btn success" onclick="manager.completeTask(${safeTask.id})" title="סיים משימה">
                             <i class="fas fa-check"></i> סיים
@@ -2113,7 +2074,7 @@ class LawOfficeManager {
                 <button class="modern-action-btn warning" 
                         onclick="manager.showExtendDeadlineDialog(${task.id})" 
                         title="הארך יעד">
-                    <i class="fas fa-calendar-check-plus"></i>
+                    <i class="fas fa-calendar-plus"></i>
                 </button>
                 <button class="modern-action-btn success" 
                         onclick="manager.completeTask(${task.id})" 
@@ -2156,18 +2117,18 @@ class LawOfficeManager {
         } else if (timeUntilDeadline < oneDay) {
             return {
                 cssClass: 'soon',
-                icon: '<i class="fas fa-business-time" style="color: #f59e0b;"></i>'
+                icon: '<i class="fas fa-clock" style="color: #f59e0b;"></i>'
             };
         } else if (timeUntilDeadline < threeDays) {
             return {
                 cssClass: 'soon',
-                icon: '<i class="fas fa-calendar-check-check" style="color: #f59e0b;"></i>'
+                icon: '<i class="fas fa-calendar-check" style="color: #f59e0b;"></i>'
             };
         }
         
         return {
             cssClass: 'normal',
-            icon: '<i class="fas fa-calendar-check-alt" style="color: #64748b;"></i>'
+            icon: '<i class="fas fa-calendar-alt" style="color: #64748b;"></i>'
         };
     }
 
@@ -2268,7 +2229,7 @@ class LawOfficeManager {
             <div class="modern-table-container">
                 <div class="modern-timesheet-header">
                     <h3 class="modern-timesheet-title">
-                        <i class="fas fa-business-time"></i>
+                        <i class="fas fa-clock"></i>
                         רשומות שעתון
                     </h3>
                     <div class="modern-timesheet-subtitle">
@@ -2276,7 +2237,7 @@ class LawOfficeManager {
                     </div>
                     <div class="timesheet-stats">
                         <div class="timesheet-stat">
-                            <i class="fas fa-calendar-check-day"></i>
+                            <i class="fas fa-calendar-day"></i>
                             <span>היום: ${this.getTodayEntries()} רשומות</span>
                         </div>
                         <div class="timesheet-stat">
@@ -2284,7 +2245,7 @@ class LawOfficeManager {
                             <span>השבוע: ${this.getWeekEntries()} רשומות</span>
                         </div>
                         <div class="timesheet-stat">
-                            <i class="fas fa-handshake"></i>
+                            <i class="fas fa-users"></i>
                             <span>${this.getUniqueClientsCount()} לקוחות</span>
                         </div>
                     </div>
@@ -2348,7 +2309,7 @@ class LawOfficeManager {
                 <tr data-entry-id="${safeEntry.id}" class="modern-timesheet-row">
                     <td class="timesheet-cell-date">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-calendar-check-alt" style="color: #16a34a;"></i>
+                            <i class="fas fa-calendar-alt" style="color: #16a34a;"></i>
                             <span>${this.formatDateModern(safeEntry.date)}</span>
                         </div>
                     </td>
@@ -2396,7 +2357,7 @@ class LawOfficeManager {
         
         return `
             <div class="time-badge">
-                <i class="fas fa-business-time"></i>
+                <i class="fas fa-clock"></i>
                 ${timeDisplay}
             </div>
         `;
@@ -2506,7 +2467,7 @@ class LawOfficeManager {
             <div class="modern-table-container">
                 <div class="modern-timesheet-header">
                     <h3 class="modern-timesheet-title">
-                        <i class="fas fa-business-time"></i>
+                        <i class="fas fa-clock"></i>
                         רשומות שעתון
                     </h3>
                     <div class="modern-timesheet-subtitle">אין רשומות להצגה</div>
@@ -2624,341 +2585,46 @@ class LawOfficeManager {
         }
     }
 
-   async completeTask(taskId) {
-    const task = this.budgetTasks.find(t => t.id === taskId);
-    if (!task) {
-        this.showNotification('המשימה לא נמצאה', 'error');
-        return;
-    }
-
-    // יצירת פופאפ סיום משימה עם ניתוח מפורט
-    const overlay = document.createElement('div');
-    overlay.className = 'popup-overlay';
-    
-    const now = new Date();
-    const deadline = new Date(task.deadline);
-    const progressPercentage = task.estimatedMinutes > 0 ? 
-        Math.round((task.actualMinutes / task.estimatedMinutes) * 100) : 0;
-    const hoursWorked = Math.round(task.actualMinutes / 60 * 10) / 10;
-    const hoursEstimated = Math.round(task.estimatedMinutes / 60 * 10) / 10;
-    
-    // ניתוח סטטוס תאריך
-    const dateAnalysis = this.analyzeDatePerformance(task, now, deadline);
-    
-    // ניתוח הארכות
-    const extensionAnalysis = this.analyzeExtensions(task);
-    
-    overlay.innerHTML = `
-        <div class="popup task-completion-popup">
-            <div class="popup-header">
-                <i class="fas fa-check-circle"></i>
-                סיום משימה
-            </div>
-            
-            <div class="popup-content">
-                <div class="completion-overview">
-                    <h3>
-                        <i class="fas fa-briefcase"></i>
-                        ${task.description}
-                    </h3>
-                    <p><strong>לקוח:</strong> ${task.clientName}</p>
-                    <p><strong>סניף:</strong> ${task.branch || 'לא צוין'}</p>
-                    <p><strong>תאריך יעד נוכחי:</strong> ${this.formatDateTime(deadline)}</p>
-                </div>
-                
-                <!-- ניתוח ביצועי זמן -->
-                <div class="performance-analysis">
-                    <h4>
-                        <i class="fas fa-chart-line"></i>
-                        ניתוח ביצועים
-                    </h4>
-                    
-                    <div class="analysis-grid">
-                        <!-- ביצועי זמן -->
-                        <div class="analysis-card time-performance ${this.getTimePerformanceClass(progressPercentage)}">
-                            <div class="analysis-icon">
-                                <i class="fas fa-stopwatch"></i>
-                            </div>
-                            <div class="analysis-content">
-                                <h5>ביצועי זמן</h5>
-                                <div class="analysis-value">${progressPercentage}%</div>
-                                <div class="analysis-detail">${task.actualMinutes} דקות מתוך ${task.estimatedMinutes}</div>
-                                <div class="analysis-status ${this.getTimeStatusClass(progressPercentage)}">
-                                    ${this.getTimeStatusText(progressPercentage)}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- ביצועי תאריך -->
-                        <div class="analysis-card date-performance ${dateAnalysis.cssClass}">
-                            <div class="analysis-icon">
-                                <i class="${dateAnalysis.icon}"></i>
-                            </div>
-                            <div class="analysis-content">
-                                <h5>ביצועי תאריך</h5>
-                                <div class="analysis-value">${dateAnalysis.statusText}</div>
-                                <div class="analysis-detail">${dateAnalysis.timeDetail}</div>
-                                <div class="analysis-status ${dateAnalysis.cssClass}">
-                                    ${dateAnalysis.description}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                ${extensionAnalysis.hasExtensions ? `
-                <!-- ניתוח הארכות -->
-                <div class="extension-analysis">
-                    <h4>
-                        <i class="fas fa-calendar-check-plus"></i>
-                        היסטוריית הארכות
-                    </h4>
-                    <div class="extension-summary-card">
-                        <div class="extension-stats">
-                            <div class="extension-stat">
-                                <span class="stat-label">מספר הארכות:</span>
-                                <span class="stat-value">${extensionAnalysis.extensionCount}</span>
-                            </div>
-                            <div class="extension-stat">
-                                <span class="stat-label">זמן נוסף סה"כ:</span>
-                                <span class="stat-value">${extensionAnalysis.totalExtensionTime}</span>
-                            </div>
-                        </div>
-                        <div class="original-vs-final">
-                            <div class="date-comparison">
-                                <div class="date-item original">
-                                    <div class="date-label">יעד מקורי</div>
-                                    <div class="date-value">${extensionAnalysis.originalDeadline}</div>
-                                </div>
-                                <div class="arrow">→</div>
-                                <div class="date-item final">
-                                    <div class="date-label">יעד סופי</div>
-                                    <div class="date-value">${this.formatDateTime(deadline)}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                ` : ''}
-                
-                <!-- סיכום כללי -->
-                <div class="completion-summary">
-                    <h4>
-                        <i class="fas fa-clipboard-check"></i>
-                        סיכום ביצוע
-                    </h4>
-                    <div class="summary-items">
-                        <div class="summary-item">
-                            <span class="summary-label">דירוג כללי:</span>
-                            <span class="summary-value overall-grade ${this.getOverallGradeClass(progressPercentage, dateAnalysis.onTime, extensionAnalysis.hasExtensions)}">
-                                ${this.getOverallGrade(progressPercentage, dateAnalysis.onTime, extensionAnalysis.hasExtensions)}
-                            </span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">שעות בפועל:</span>
-                            <span class="summary-value">${hoursWorked}h</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">שעות מתוקצבות:</span>
-                            <span class="summary-value">${hoursEstimated}h</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">הפרש זמן:</span>
-                            <span class="summary-value ${task.actualMinutes > task.estimatedMinutes ? 'text-danger' : 'text-success'}">
-                                ${task.actualMinutes - task.estimatedMinutes > 0 ? '+' : ''}${task.actualMinutes - task.estimatedMinutes} דקות
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="completion-notes">
-                    <label class="form-label">
-                        <i class="fas fa-sticky-note"></i>
-                        הערות סיום ותובנות (מומלץ)
-                    </label>
-                    <textarea id="completionNotes" placeholder="שתף תובנות: האם זמן התקצוב היה מדויק? מה גרם להארכות? מה ניתן לשפר בפעם הבאה?"></textarea>
-                </div>
-            </div>
-            
-            <div class="popup-buttons">
-                <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                    <i class="fas fa-times"></i>
-                    ביטול
-                </button>
-                <button type="button" class="popup-btn popup-btn-success" onclick="manager.confirmTaskCompletion(${taskId})">
-                    <i class="fas fa-check-circle"></i>
-                    סיים משימה
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(overlay);
-    
-    // Focus על תיבת ההערות
-    setTimeout(() => {
-        const notesTextarea = document.getElementById('completionNotes');
-        if (notesTextarea) notesTextarea.focus();
-    }, 100);
-}
-
-// פונקציות עזר לניתוח ביצועים
-analyzeDatePerformance(task, now, deadline) {
-    const timeDiff = now - deadline;
-    const daysDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
-    const hoursDiff = Math.round(timeDiff / (1000 * 60 * 60));
-    
-    if (timeDiff <= 0) {
-        // סיים בזמן או מוקדם
-        const earlyBy = Math.abs(daysDiff);
-        return {
-            onTime: true,
-            cssClass: 'success',
-            icon: 'fas fa-check-circle',
-            statusText: 'בזמן',
-            timeDetail: earlyBy > 0 ? `${earlyBy} ימים מוקדם` : 'ביום האחרון',
-            description: earlyBy > 0 ? 'סיים לפני המועד!' : 'סיים בדיוק בזמן'
-        };
-    } else {
-        // סיים באיחור
-        const lateDays = daysDiff;
-        const lateHours = hoursDiff;
-        
-        return {
-            onTime: false,
-            cssClass: 'warning',
-            icon: 'fas fa-business-time',
-            statusText: 'באיחור',
-            timeDetail: lateDays > 0 ? `${lateDays} ימים איחור` : `${lateHours} שעות איחור`,
-            description: lateDays > 7 ? 'איחור משמעותי' : lateDays > 0 ? 'איחור קל' : 'איחור של שעות'
-        };
-    }
-}
-
-analyzeExtensions(task) {
-    // כרגע אין מעקב מלא אחר הארכות במערכת הקיימת
-    // נוסיף תמיכה בסיסית
-    const hasExtensions = task.extended || false;
-    
-    if (hasExtensions) {
-        return {
-            hasExtensions: true,
-            extensionCount: 1, // יעודכן בעתיד כשנוסיף מעקב מלא
-            totalExtensionTime: 'לא ידוע', // יחושב בעתיד
-            originalDeadline: 'לא זמין' // יישמר בעתיד
-        };
-    }
-    
-    return {
-        hasExtensions: false,
-        extensionCount: 0,
-        totalExtensionTime: '0 ימים',
-        originalDeadline: this.formatDateTime(new Date(task.deadline))
-    };
-}
-
-getTimePerformanceClass(percentage) {
-    if (percentage <= 100) return 'excellent';
-    if (percentage <= 120) return 'good';
-    if (percentage <= 150) return 'fair';
-    return 'poor';
-}
-
-getTimeStatusClass(percentage) {
-    if (percentage <= 100) return 'status-excellent';
-    if (percentage <= 120) return 'status-good';
-    if (percentage <= 150) return 'status-fair';
-    return 'status-poor';
-}
-
-getTimeStatusText(percentage) {
-    if (percentage <= 80) return 'יעיל מאוד';
-    if (percentage <= 100) return 'עמד בתקצוב';
-    if (percentage <= 120) return 'חריגה קלה';
-    if (percentage <= 150) return 'חריגה בינונית';
-    return 'חריגה גדולה';
-}
-
-getOverallGrade(timePercentage, onTime, hasExtensions) {
-    let score = 100;
-    
-    // ניקוד זמן (50% מהציון)
-    if (timePercentage <= 100) score -= 0;
-    else if (timePercentage <= 120) score -= 10;
-    else if (timePercentage <= 150) score -= 25;
-    else score -= 40;
-    
-    // ניקוד תאריך (30% מהציון)
-    if (!onTime) score -= 20;
-    
-    // ניקוד הארכות (20% מהציון)
-    if (hasExtensions) score -= 15;
-    
-    if (score >= 90) return 'מצוין';
-    if (score >= 80) return 'טוב מאוד';
-    if (score >= 70) return 'טוב';
-    if (score >= 60) return 'בסדר';
-    return 'זקוק שיפור';
-}
-
-getOverallGradeClass(timePercentage, onTime, hasExtensions) {
-    const score = this.calculateScore(timePercentage, onTime, hasExtensions);
-    if (score >= 90) return 'grade-excellent';
-    if (score >= 80) return 'grade-very-good';
-    if (score >= 70) return 'grade-good';
-    if (score >= 60) return 'grade-fair';
-    return 'grade-poor';
-}
-
-calculateScore(timePercentage, onTime, hasExtensions) {
-    let score = 100;
-    if (timePercentage <= 100) score -= 0;
-    else if (timePercentage <= 120) score -= 10;
-    else if (timePercentage <= 150) score -= 25;
-    else score -= 40;
-    
-    if (!onTime) score -= 20;
-    if (hasExtensions) score -= 15;
-    
-    return score;
-}
-
-async confirmTaskCompletion(taskId) {
-    try {
-        const notesTextarea = document.getElementById('completionNotes');
-        const notes = notesTextarea ? notesTextarea.value.trim() : '';
-        
-        const data = {
-            action: 'completeBudgetTask',
-            employee: this.currentUser,
-            taskId: taskId,
-            completionNotes: notes || ''
-        };
-        
-        const taskIndex = this.budgetTasks.findIndex(t => t.id === taskId);
-        if (taskIndex !== -1) {
-            this.budgetTasks[taskIndex].status = 'הושלם';
-            this.budgetTasks[taskIndex].completedAt = new Date().toLocaleString('he-IL');
-            this.filteredBudgetTasks = [...this.budgetTasks];
-            this.renderBudgetTasks();
+    async completeTask(taskId) {
+        const task = this.budgetTasks.find(t => t.id === taskId);
+        if (!task) {
+            this.showNotification('המשימה לא נמצאה', 'error');
+            return;
         }
+
+        const notes = prompt(
+            `סיום משימה: ${task.description}\n\nהערות סיום (אופציונלי):`,
+            ''
+        );
         
-        // סגירת הפופאפ
-        const popup = document.querySelector('.popup-overlay');
-        if (popup) popup.remove();
-        
-        await this.sendToGoogleSheets(data);
-        this.showNotification('המשימה הושלמה בהצלחה', 'success');
-        
-        setTimeout(() => {
-            this.loadBudgetTasksFromSheetOriginal();
-        }, 1000);
-        
-    } catch (error) {
-        console.error('❌ שגיאה בסיום משימה:', error);
-        this.showNotification('שגיאה בסיום המשימה', 'error');
+        if (notes !== null) {
+            try {
+                const data = {
+                    action: 'completeBudgetTask',
+                    employee: this.currentUser,
+                    taskId: taskId,
+                    completionNotes: notes || ''
+                };
+                
+                const taskIndex = this.budgetTasks.findIndex(t => t.id === taskId);
+                if (taskIndex !== -1) {
+                    this.budgetTasks[taskIndex].status = 'הושלם';
+                    this.budgetTasks[taskIndex].completedAt = new Date().toLocaleString('he-IL');
+                    this.filteredBudgetTasks = [...this.budgetTasks];
+                    this.renderBudgetTasks();
+                }
+                
+                await this.sendToGoogleSheets(data);
+                this.showNotification('המשימה הושלמה בהצלחה');
+                
+                await this.loadBudgetTasksFromSheetOriginal();
+                
+            } catch (error) {
+                console.error('❌ שגיאה בהשלמת משימה:', error);
+                this.showNotification('שגיאה בהשלמת המשימה', 'error');
+            }
+        }
     }
-}
 
     async createClientComplete(client) {
         const data = {
@@ -3247,26 +2913,26 @@ async confirmTaskCompletion(taskId) {
     }
 
     getTaskMetaData(task) {
-    const now = new Date();
-    const deadline = new Date(task.deadline);
-    const timeUntilDeadline = deadline - now;
-    const oneDay = 24 * 60 * 60 * 1000;
-    
-    let deadlineData = {
-        text: this.formatDateTime(deadline),
-        class: ''
-    };
-    
-    if (timeUntilDeadline < 0) {
-        deadlineData.class = 'deadline overdue';
-        deadlineData.text = `${this.formatDateTime(deadline)} - באיחור`;
-    } else if (timeUntilDeadline < oneDay) {
-        deadlineData.class = 'deadline soon';
-        deadlineData.text = `${this.formatDateTime(deadline)} - דחוף`;
+        const now = new Date();
+        const deadline = new Date(task.deadline);
+        const timeUntilDeadline = deadline - now;
+        const oneDay = 24 * 60 * 60 * 1000;
+        
+        let deadlineData = {
+            text: this.formatDateTime(deadline),
+            class: ''
+        };
+        
+        if (timeUntilDeadline < 0) {
+            deadlineData.class = 'deadline overdue';
+            deadlineData.text = `⚠️ ${this.formatDateTime(deadline)}`;
+        } else if (timeUntilDeadline < oneDay) {
+            deadlineData.class = 'deadline soon';
+            deadlineData.text = `🚨 ${this.formatDateTime(deadline)}`;
+        }
+        
+        return { deadline: deadlineData };
     }
-    
-    return { deadline: deadlineData };
-}
 
     updateSortIndicators() {
         document.querySelectorAll('#budgetTable th').forEach(th => {
@@ -3299,57 +2965,49 @@ async confirmTaskCompletion(taskId) {
         return Math.round(totalProgress / this.filteredBudgetTasks.length);
     }
 
-   showExtendDeadlineDialog(taskId) {
-    const task = this.budgetTasks.find(t => t.id === taskId);
-    if (!task) {
-        this.showNotification('המשימה לא נמצאה', 'error');
-        return;
-    }
+    showExtendDeadlineDialog(taskId) {
+        const task = this.budgetTasks.find(t => t.id === taskId);
+        if (!task) {
+            this.showNotification('המשימה לא נמצאה', 'error');
+            return;
+        }
 
-    const overlay = document.createElement('div');
-    overlay.className = 'popup-overlay';
-    
-    const currentDeadline = new Date(task.deadline);
-    const defaultNewDate = new Date(currentDeadline);
-    defaultNewDate.setDate(defaultNewDate.getDate() + 1);
-    
-    const defaultDateValue = defaultNewDate.toISOString().split('T')[0];
-    const defaultTimeValue = defaultNewDate.toTimeString().slice(0, 5);
-    const progressPercentage = task.estimatedMinutes > 0 ? 
-        Math.round((task.actualMinutes / task.estimatedMinutes) * 100) : 0;
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        
+        const currentDeadline = new Date(task.deadline);
+        const defaultNewDate = new Date(currentDeadline);
+        defaultNewDate.setDate(defaultNewDate.getDate() + 1);
+        
+        const defaultDateValue = defaultNewDate.toISOString().split('T')[0];
+        const defaultTimeValue = defaultNewDate.toTimeString().slice(0, 5);
 
-    overlay.innerHTML = `
-        <div class="popup extend-deadline-popup">
-            <div class="popup-header">
-                <i class="fas fa-calendar-check-plus"></i>
-                הארכת תאריך יעד
-            </div>
-            
-            <div class="popup-content">
-                <div class="task-info-section">
-                    <h4>
-                        <i class="fas fa-briefcase"></i>
-                        פרטי המשימה
-                    </h4>
+        overlay.innerHTML = `
+            <div class="popup extend-deadline-popup">
+                <div class="popup-header">
+                    <i class="fas fa-calendar-plus"></i>
+                    הארכת תאריך יעד
+                </div>
+                
+                <div class="task-overview">
+                    <h3><i class="fas fa-tasks"></i> ${task.description}</h3>
                     <p><strong>לקוח:</strong> ${task.clientName}</p>
-                    <p><strong>תיאור:</strong> ${task.description}</p>
-                    <p><strong>סניף:</strong> ${task.branch || 'לא צוין'}</p>
-                    <p><strong>התקדמות:</strong> ${task.actualMinutes} דקות מתוך ${task.estimatedMinutes} (${progressPercentage}%)</p>
+                    <p><strong>סניף:</strong> ${task.branch}</p>
                 </div>
                 
                 <div class="dates-comparison">
                     <div class="date-section">
                         <div class="date-label">
-                            <i class="fas fa-business-time"></i>
+                            <i class="fas fa-clock"></i>
                             תאריך יעד נוכחי
                         </div>
                         <div class="date-value" id="currentDeadlineDisplay">
                             ${this.formatDateTime(currentDeadline)}
                         </div>
                     </div>
-                    <div class="date-section">
+                    <div class="date-section new-date-section">
                         <div class="date-label">
-                            <i class="fas fa-calendar-check-check"></i>
+                            <i class="fas fa-calendar-check"></i>
                             תאריך יעד חדש
                         </div>
                         <div class="date-value" id="newDeadlineDisplay">
@@ -3359,30 +3017,21 @@ async confirmTaskCompletion(taskId) {
                 </div>
                 
                 <form id="extendDeadlineForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-calendar-check-day"></i>
-                                תאריך חדש
-                            </label>
-                            <input type="date" id="newDeadlineDate" class="form-input" value="${defaultDateValue}" required>
+                    <div class="datetime-inputs">
+                        <div class="popup-section">
+                            <label for="newDeadlineDate">תאריך חדש:</label>
+                            <input type="date" id="newDeadlineDate" value="${defaultDateValue}" required>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-business-time"></i>
-                                שעה
-                            </label>
-                            <input type="time" id="newDeadlineTime" class="form-input" value="${defaultTimeValue}" required>
+                        <div class="popup-section">
+                            <label for="newDeadlineTime">שעה:</label>
+                            <input type="time" id="newDeadlineTime" value="${defaultTimeValue}" required>
                         </div>
                     </div>
                     
-                    <div class="form-row single">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-edit"></i>
-                                סיבת ההארכה (אופציונלי)
-                            </label>
-                            <textarea id="extensionReason" class="form-input" rows="3" placeholder="הסבר קצר לסיבת ההארכה..." maxlength="200"></textarea>
+                    <div class="reason-section">
+                        <div class="popup-section">
+                            <label for="extensionReason">סיבת ההארכה:</label>
+                            <textarea id="extensionReason" rows="3" placeholder="הסבר קצר לסיבת ההארכה (אופציונלי)..." maxlength="200"></textarea>
                         </div>
                     </div>
                     
@@ -3404,81 +3053,72 @@ async confirmTaskCompletion(taskId) {
                             <span class="summary-value time-difference" id="timeDifference">יום אחד</span>
                         </div>
                     </div>
+                    
+                    <div class="popup-buttons">
+                        <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                            <i class="fas fa-times"></i>
+                            ביטול
+                        </button>
+                        <button type="submit" class="popup-btn popup-btn-confirm">
+                            <i class="fas fa-calendar-check"></i>
+                            אשר הארכה
+                        </button>
+                    </div>
                 </form>
             </div>
-            
-            <div class="popup-buttons">
-                <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                    <i class="fas fa-times"></i>
-                    ביטול
-                </button>
-                <button type="button" class="popup-btn popup-btn-confirm" onclick="manager.confirmExtendDeadline(${taskId})">
-                    <i class="fas fa-calendar-check-check"></i>
-                    אשר הארכה
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(overlay);
-    
-    const dateInput = document.getElementById('newDeadlineDate');
-    const timeInput = document.getElementById('newDeadlineTime');
-    const newDeadlineDisplay = document.getElementById('newDeadlineDisplay');
-    const summaryNewDate = document.getElementById('summaryNewDate');
-    const timeDifference = document.getElementById('timeDifference');
-    
-    const updateDisplays = () => {
-        const newDate = new Date(`${dateInput.value}T${timeInput.value}`);
-        const formattedDate = this.formatDateTime(newDate);
+        `;
         
-        newDeadlineDisplay.textContent = formattedDate;
-        summaryNewDate.textContent = formattedDate;
+        document.body.appendChild(overlay);
         
-        const diffMs = newDate - currentDeadline;
-        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-        const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-        
-        let timeDiffText;
-        if (diffDays > 0) {
-            timeDiffText = `${diffDays} ימים קדימה`;
-        } else if (diffDays < 0) {
-            timeDiffText = `${Math.abs(diffDays)} ימים אחורה`;
-        } else if (diffHours > 0) {
-            timeDiffText = `${diffHours} שעות קדימה`;
-        } else if (diffHours < 0) {
-            timeDiffText = `${Math.abs(diffHours)} שעות אחורה`;
-        } else {
-            timeDiffText = 'אותו זמן';
-        }
-        
-        timeDifference.textContent = timeDiffText;
-    };
-    
-    dateInput.addEventListener('change', updateDisplays);
-    timeInput.addEventListener('change', updateDisplays);
-}
-
-async confirmExtendDeadline(taskId) {
-    try {
         const dateInput = document.getElementById('newDeadlineDate');
         const timeInput = document.getElementById('newDeadlineTime');
-        const reasonInput = document.getElementById('extensionReason');
+        const newDeadlineDisplay = document.getElementById('newDeadlineDisplay');
+        const summaryNewDate = document.getElementById('summaryNewDate');
+        const timeDifference = document.getElementById('timeDifference');
         
-        const newDeadline = `${dateInput.value}T${timeInput.value}`;
-        const reason = reasonInput ? reasonInput.value.trim() : '';
+        const updateDisplays = () => {
+            const newDate = new Date(`${dateInput.value}T${timeInput.value}`);
+            const formattedDate = this.formatDateTime(newDate);
+            
+            newDeadlineDisplay.textContent = formattedDate;
+            summaryNewDate.textContent = formattedDate;
+            
+            const diffMs = newDate - currentDeadline;
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+            const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+            
+            let timeDiffText;
+            if (diffDays > 0) {
+                timeDiffText = `${diffDays} ימים קדימה`;
+            } else if (diffDays < 0) {
+                timeDiffText = `${Math.abs(diffDays)} ימים אחורה`;
+            } else if (diffHours > 0) {
+                timeDiffText = `${diffHours} שעות קדימה`;
+            } else if (diffHours < 0) {
+                timeDiffText = `${Math.abs(diffHours)} שעות אחורה`;
+            } else {
+                timeDiffText = 'אותו זמן';
+            }
+            
+            timeDifference.textContent = timeDiffText;
+        };
         
-        await this.extendTaskDeadline(taskId, newDeadline, reason);
+        dateInput.addEventListener('change', updateDisplays);
+        timeInput.addEventListener('change', updateDisplays);
         
-        // סגירת הפופאפ
-        const popup = document.querySelector('.popup-overlay');
-        if (popup) popup.remove();
-        
-    } catch (error) {
-        console.error('❌ שגיאה בהארכת יעד:', error);
-        this.showNotification('שגיאה בהארכת היעד', 'error');
+        const form = overlay.querySelector('#extendDeadlineForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newDeadline = `${dateInput.value}T${timeInput.value}`;
+            const reason = document.getElementById('extensionReason').value.trim();
+            
+            if (confirm(`האם אתה בטוח שברצונך להאריך את המשימה ל-${this.formatDateTime(new Date(newDeadline))}?`)) {
+                await this.extendTaskDeadline(taskId, newDeadline, reason);
+                overlay.remove();
+            }
+        });
     }
-}
 }
 
 // ===== 3. GLOBAL INSTANCES =====
@@ -3518,19 +3158,19 @@ function showFeedbackDialog() {
                         <div class="category-option">
                             <input type="radio" id="cat-tasks" name="feedbackCategory" value="תקצוב משימות" class="category-radio">
                             <label for="cat-tasks" class="category-label">
-                                <i class="fas fa-briefcase"></i> תקצוב משימות
+                                <i class="fas fa-tasks"></i> תקצוב משימות
                             </label>
                         </div>
                         <div class="category-option">
                             <input type="radio" id="cat-timesheet" name="feedbackCategory" value="שעתון" class="category-radio">
                             <label for="cat-timesheet" class="category-label">
-                                <i class="fas fa-business-time"></i> שעתון
+                                <i class="fas fa-clock"></i> שעתון
                             </label>
                         </div>
                         <div class="category-option">
                             <input type="radio" id="cat-clients" name="feedbackCategory" value="ניהול לקוחות" class="category-radio">
                             <label for="cat-clients" class="category-label">
-                                <i class="fas fa-handshake"></i> ניהול לקוחות
+                                <i class="fas fa-users"></i> ניהול לקוחות
                             </label>
                         </div>
                         <div class="category-option">
@@ -3965,7 +3605,11 @@ function switchTab(tabName) {
     
     if (budgetFormContainer) budgetFormContainer.classList.add('hidden');
     if (timesheetFormContainer) timesheetFormContainer.classList.add('hidden');
-    
+    // הסרת מצב active מכפתור הפלוס כשעוברים בין טאבים
+const plusButton = document.getElementById('smartPlusBtn');
+if (plusButton) {
+    plusButton.classList.remove('active');
+}
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -3994,10 +3638,8 @@ function switchTab(tabName) {
             dateField.value = today;
         }
         console.log('✅ עבר לטאב שעתון');
+        updatePlusTooltip();
     }
-    
-    // ✅ הוסף את השורה הזאת - עדכון הטוליפ אחרי כל החלפת טאב
-    updatePlusTooltip();
 }
 
 // Notification Functions
@@ -4333,14 +3975,14 @@ function updatePlusTooltip() {
             return;
         }
         
-        // ✅ שינוי הסלקטורים לחיפוש נכון יותר
-        const budgetTab = document.querySelector('.tab-button.active');
+        const budgetTab = document.querySelector('[onclick*="budget"]');
+        const timesheetTab = document.querySelector('[onclick*="timesheet"]');
         
         let tooltipText = 'הוספת פריט חדש';
         
-        if (budgetTab && budgetTab.textContent.includes('תקצוב')) {
+        if (budgetTab && budgetTab.classList.contains('active')) {
             tooltipText = 'הוספת משימה חדשה';
-        } else if (budgetTab && budgetTab.textContent.includes('שעתון')) {
+        } else if (timesheetTab && timesheetTab.classList.contains('active')) {
             tooltipText = 'הוספת רשומת שעתון';
         }
         
