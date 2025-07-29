@@ -1840,7 +1840,7 @@ class LawOfficeManager {
         `;
         
         setTimeout(() => {
-            const cards = container.querySelectorAll('.modern-task-card');
+            const cards = container.querySelectorAll('.linear-minimal-card');
             cards.forEach((card, index) => {
                 card.style.opacity = '0';
                 card.style.transform = 'translateY(20px)';
@@ -1853,72 +1853,128 @@ class LawOfficeManager {
         }, 50);
     }
 
-    createModernTaskCard(task) {
-        const safeTask = this.sanitizeTaskData(task);
-        const cardStatus = this.getTaskCardStatus(safeTask);
-        const progressData = this.calculateProgress(safeTask);
-        const metaData = this.getTaskMetaData(safeTask);
-        
-        return `
-            <div class="modern-task-card ${cardStatus.cssClass}" data-task-id="${safeTask.id}">
-                <div class="card-header">
-                    <h3 class="client-name">${safeTask.clientName}</h3>
-                    <span class="status-badge ${cardStatus.badgeClass}">
-                        <i class="${cardStatus.icon}"></i>
-                        ${cardStatus.text}
-                    </span>
-                </div>
-                
-                <div class="task-description">
-                    <strong>📋 משימה:</strong> ${safeTask.description}
-                    ${safeTask.branch ? `<br><strong>🏢 סניף:</strong> ${safeTask.branch}` : ''}
-                    ${safeTask.fileNumber ? `<br><strong>📁 תיק:</strong> ${safeTask.fileNumber}` : ''}
-                </div>
-                
-                <div class="progress-section">
-                    <div class="progress-header">
-                        <span>התקדמות</span>
-                        <span class="progress-percentage">${progressData.percentage}%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill ${progressData.statusClass}" 
-                             style="width: ${Math.min(progressData.percentage, 100)}%"></div>
-                    </div>
-                    <div class="progress-details">
-                        <small>${safeTask.actualMinutes} מתוך ${safeTask.estimatedMinutes} דקות</small>
-                    </div>
-                </div>
-                
-                <div class="card-meta">
-                    <div class="meta-item ${metaData.deadline.class}">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>${metaData.deadline.text}</span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-history"></i>
-                        <span>${safeTask.history?.length || 0} רישומים</span>
-                    </div>
-                </div>
-                
-                <div class="card-actions">
-                    <button class="action-btn primary" onclick="manager.showAdvancedTimeDialog(${safeTask.id})" title="הוסף זמן">
-                        <i class="fas fa-plus"></i> זמן
+
+    calculateSimpleProgress(task) {
+    if (!task.estimatedMinutes || task.estimatedMinutes <= 0) return 0;
+    const progress = Math.round((task.actualMinutes || 0) / task.estimatedMinutes * 100);
+    return Math.min(progress, 100);
+}
+
+expandTaskCard(taskId, event) {
+    event.stopPropagation();
+    const task = this.filteredBudgetTasks.find(t => t.id == taskId);
+    if (!task) return;
+    
+    const cardElement = event.target.closest('.linear-minimal-card');
+    if (!cardElement) return;
+    
+    // אנימציה של הרחבת הכרטיס
+    this.showExpandedCard(cardElement, task);
+}
+
+showExpandedCard(cardElement, task) {
+    const safeTask = this.sanitizeTaskData(task);
+    const progressData = this.calculateProgress(safeTask);
+    const cardStatus = this.getTaskCardStatus(safeTask);
+    
+    // יצירת תוכן מורחב
+    const expandedContent = `
+        <div class="linear-expanded-overlay" onclick="manager.closeExpandedCard(event)">
+            <div class="linear-expanded-card" onclick="event.stopPropagation()">
+                <div class="linear-expanded-header">
+                    <h2 class="linear-expanded-title">${safeTask.description}</h2>
+                    <button class="linear-close-btn" onclick="manager.closeExpandedCard(event)">
+                        <i class="fas fa-times"></i>
                     </button>
-                    <button class="action-btn info" onclick="manager.showTaskHistory(${safeTask.id})" title="היסטוריה">
-                        <i class="fas fa-history"></i> היסטוריה
-                    </button>
-                    ${safeTask.status === 'פעיל' ? `
-                        <button class="action-btn warning" onclick="manager.showExtendDeadlineDialog(${safeTask.id})" title="הארך יעד">
-                            <i class="fas fa-calendar-plus"></i> הארך
+                </div>
+                
+                <div class="linear-expanded-body">
+                    <div class="linear-info-grid">
+                        <div class="linear-info-item">
+                            <label>לקוח:</label>
+                            <span>${safeTask.clientName}</span>
+                        </div>
+                        <div class="linear-info-item">
+                            <label>סטטוס:</label>
+                            <span class="status-badge ${cardStatus.badgeClass}">${cardStatus.text}</span>
+                        </div>
+                        <div class="linear-info-item">
+                            <label>זמן מתוכנן:</label>
+                            <span>${Math.round(safeTask.estimatedMinutes / 60 * 10) / 10} שעות</span>
+                        </div>
+                        <div class="linear-info-item">
+                            <label>זמן בפועל:</label>
+                            <span>${Math.round(safeTask.actualMinutes / 60 * 10) / 10} שעות</span>
+                        </div>
+                        <div class="linear-info-item">
+                            <label>התקדמות:</label>
+                            <span>${progressData.percentage}%</span>
+                        </div>
+                        <div class="linear-info-item">
+                            <label>תאריך יעד:</label>
+                            <span>${this.formatDateTime(new Date(safeTask.deadline))}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="linear-actions-section">
+                        <button class="linear-action-btn primary" onclick="manager.showAdvancedTimeDialog(${safeTask.id})">
+                            <i class="fas fa-plus"></i> הוסף זמן
                         </button>
-                        <button class="action-btn success" onclick="manager.completeTask(${safeTask.id})" title="סיים משימה">
-                            <i class="fas fa-check"></i> סיים
+                        <button class="linear-action-btn info" onclick="manager.showTaskHistory(${safeTask.id})">
+                            <i class="fas fa-history"></i> היסטוריה
                         </button>
-                    ` : ''}
+                        <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog(${safeTask.id})">
+                            <i class="fas fa-calendar-plus"></i> הארך יעד
+                        </button>
+                        <button class="linear-action-btn success" onclick="manager.completeTask(${safeTask.id})">
+                            <i class="fas fa-check"></i> סיים משימה
+                        </button>
+                    </div>
                 </div>
             </div>
-        `;
+        </div>
+    `;
+    
+    // הוספה לDOM
+    document.body.insertAdjacentHTML('beforeend', expandedContent);
+    
+    // אנימציה
+    setTimeout(() => {
+        const overlay = document.querySelector('.linear-expanded-overlay');
+        if (overlay) {
+            overlay.classList.add('active');
+        }
+    }, 10);
+}
+
+closeExpandedCard(event) {
+    const overlay = document.querySelector('.linear-expanded-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        setTimeout(() => {
+            overlay.remove();
+        }, 300);
     }
+}
+
+   createModernTaskCard(task) {
+    const safeTask = this.sanitizeTaskData(task);
+    
+    return `
+        <div class="linear-minimal-card" data-task-id="${safeTask.id}">
+            <div class="linear-card-content">
+                <h3 class="linear-card-title">${safeTask.description}</h3>
+                <div class="linear-card-meta">
+                    <span class="linear-client-name">${safeTask.clientName}</span>
+                    <span class="linear-progress">${this.calculateSimpleProgress(safeTask)}%</span>
+                </div>
+            </div>
+            <button class="linear-expand-btn" onclick="manager.expandTaskCard(${safeTask.id}, event)">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    `;
+}
 
     renderBudgetTable() {
         const tableContainer = document.getElementById('budgetTableContainer');
@@ -2982,144 +3038,177 @@ class LawOfficeManager {
         const defaultDateValue = defaultNewDate.toISOString().split('T')[0];
         const defaultTimeValue = defaultNewDate.toTimeString().slice(0, 5);
 
-        overlay.innerHTML = `
-            <div class="popup extend-deadline-popup">
-                <div class="popup-header">
-                    <i class="fas fa-calendar-plus"></i>
-                    הארכת תאריך יעד
-                </div>
-                
-                <div class="task-overview">
-                    <h3><i class="fas fa-tasks"></i> ${task.description}</h3>
-                    <p><strong>לקוח:</strong> ${task.clientName}</p>
-                    <p><strong>סניף:</strong> ${task.branch}</p>
-                </div>
-                
-                <div class="dates-comparison">
-                    <div class="date-section">
-                        <div class="date-label">
-                            <i class="fas fa-clock"></i>
-                            תאריך יעד נוכחי
-                        </div>
-                        <div class="date-value" id="currentDeadlineDisplay">
-                            ${this.formatDateTime(currentDeadline)}
-                        </div>
+overlay.innerHTML = `
+    <div class="popup" style="max-width: 550px;">
+        <div class="popup-header">
+            <i class="fas fa-calendar-plus"></i>
+            הארכת תאריך יעד
+            <button type="button" onclick="this.closest('.popup-overlay').remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="popup-content">
+            <div class="popup-section">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-tasks"></i> ${task.description}
+                    </h4>
+                    <div style="display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px;">
+                        <span style="color: #64748b;">לקוח:</span>
+                        <span style="font-weight: 500;">${task.clientName}</span>
                     </div>
-                    <div class="date-section new-date-section">
-                        <div class="date-label">
-                            <i class="fas fa-calendar-check"></i>
-                            תאריך יעד חדש
-                        </div>
-                        <div class="date-value" id="newDeadlineDisplay">
-                            ${this.formatDateTime(defaultNewDate)}
-                        </div>
+                    <div style="display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px;">
+                        <span style="color: #64748b;">סניף:</span>
+                        <span style="font-weight: 500;">${task.branch}</span>
                     </div>
                 </div>
-                
-                <form id="extendDeadlineForm">
-                    <div class="datetime-inputs">
-                        <div class="popup-section">
-                            <label for="newDeadlineDate">תאריך חדש:</label>
-                            <input type="date" id="newDeadlineDate" value="${defaultDateValue}" required>
-                        </div>
-                        <div class="popup-section">
-                            <label for="newDeadlineTime">שעה:</label>
-                            <input type="time" id="newDeadlineTime" value="${defaultTimeValue}" required>
-                        </div>
-                    </div>
-                    
-                    <div class="reason-section">
-                        <div class="popup-section">
-                            <label for="extensionReason">סיבת ההארכה:</label>
-                            <textarea id="extensionReason" rows="3" placeholder="הסבר קצר לסיבת ההארכה (אופציונלי)..." maxlength="200"></textarea>
-                        </div>
-                    </div>
-                    
-                    <div class="extension-summary" id="extensionSummary">
-                        <h4>
-                            <i class="fas fa-info-circle"></i>
-                            סיכום השינוי
-                        </h4>
-                        <div class="summary-item">
-                            <span class="summary-label">תאריך מקורי:</span>
-                            <span class="summary-value">${this.formatDateTime(currentDeadline)}</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">תאריך חדש:</span>
-                            <span class="summary-value" id="summaryNewDate">${this.formatDateTime(defaultNewDate)}</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">זמן נוסף:</span>
-                            <span class="summary-value time-difference" id="timeDifference">יום אחד</span>
-                        </div>
-                    </div>
-                    
-                    <div class="popup-buttons">
-                        <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                            <i class="fas fa-times"></i>
-                            ביטול
-                        </button>
-                        <button type="submit" class="popup-btn popup-btn-confirm">
-                            <i class="fas fa-calendar-check"></i>
-                            אשר הארכה
-                        </button>
-                    </div>
-                </form>
             </div>
-        `;
+            
+            <form id="extendDeadlineForm">
+                <div class="popup-section">
+                    <label>תאריך יעד נוכחי:</label>
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; font-weight: 500; color: #991b1b;">
+                        ${this.formatDateTime(currentDeadline)}
+                    </div>
+                </div>
+                
+                <div class="popup-section">
+                    <label for="newDeadlineDate">תאריך חדש:</label>
+                    <input type="date" id="newDeadlineDate" value="${defaultDateValue}" required>
+                </div>
+                
+                <div class="popup-section">
+                    <label for="newDeadlineTime">שעה:</label>
+                    <input type="time" id="newDeadlineTime" value="${defaultTimeValue}" required>
+                </div>
+                
+                <div class="popup-section">
+                    <label for="extensionReason">סיבת ההארכה (אופציונלי):</label>
+                    <textarea id="extensionReason" rows="3" placeholder="הסבר קצר לסיבת ההארכה..." maxlength="200"></textarea>
+                </div>
+                
+                <!-- סיכום השינוי -->
+                <div class="popup-section">
+                    <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 16px;">
+                        <div style="font-weight: 600; color: #1e40af; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-info-circle"></i> סיכום השינוי
+                        </div>
+                        
+                        <div style="margin: 8px 0; font-size: 14px; border-bottom: 1px solid #dbeafe; padding-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #64748b;">מ:</span>
+                                <span id="currentDeadlineShow">${this.formatDateTime(currentDeadline)}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 8px 0; font-size: 14px; border-bottom: 1px solid #dbeafe; padding-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #64748b;">ל:</span>
+                                <span id="newDeadlineShow" style="font-weight: 600; color: #1e40af;">${this.formatDateTime(defaultNewDate)}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 8px 0; font-size: 14px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #64748b;">הבדל:</span>
+                                <span id="timeDifferenceShow" style="font-weight: 600; color: #059669;">יום אחד קדימה</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
         
-        document.body.appendChild(overlay);
-        
-        const dateInput = document.getElementById('newDeadlineDate');
-        const timeInput = document.getElementById('newDeadlineTime');
-        const newDeadlineDisplay = document.getElementById('newDeadlineDisplay');
-        const summaryNewDate = document.getElementById('summaryNewDate');
-        const timeDifference = document.getElementById('timeDifference');
-        
-        const updateDisplays = () => {
-            const newDate = new Date(`${dateInput.value}T${timeInput.value}`);
-            const formattedDate = this.formatDateTime(newDate);
-            
-            newDeadlineDisplay.textContent = formattedDate;
-            summaryNewDate.textContent = formattedDate;
-            
-            const diffMs = newDate - currentDeadline;
-            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-            const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-            
-            let timeDiffText;
-            if (diffDays > 0) {
-                timeDiffText = `${diffDays} ימים קדימה`;
-            } else if (diffDays < 0) {
-                timeDiffText = `${Math.abs(diffDays)} ימים אחורה`;
-            } else if (diffHours > 0) {
-                timeDiffText = `${diffHours} שעות קדימה`;
-            } else if (diffHours < 0) {
-                timeDiffText = `${Math.abs(diffHours)} שעות אחורה`;
-            } else {
-                timeDiffText = 'אותו זמן';
-            }
-            
-            timeDifference.textContent = timeDiffText;
-        };
-        
-        dateInput.addEventListener('change', updateDisplays);
-        timeInput.addEventListener('change', updateDisplays);
-        
-        const form = overlay.querySelector('#extendDeadlineForm');
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const newDeadline = `${dateInput.value}T${timeInput.value}`;
-            const reason = document.getElementById('extensionReason').value.trim();
-            
-            if (confirm(`האם אתה בטוח שברצונך להאריך את המשימה ל-${this.formatDateTime(new Date(newDeadline))}?`)) {
-                await this.extendTaskDeadline(taskId, newDeadline, reason);
-                overlay.remove();
-            }
-        });
+        <div class="popup-buttons">
+            <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                <i class="fas fa-times"></i> ביטול
+            </button>
+            <button type="submit" class="popup-btn popup-btn-confirm" id="confirmExtendBtn" onclick="document.getElementById('extendDeadlineForm').dispatchEvent(new Event('submit'))">
+                <i class="fas fa-calendar-check"></i> אשר הארכה
+            </button>
+        </div>
+    </div>
+`;
+document.body.appendChild(overlay);
+
+const dateInput = document.getElementById('newDeadlineDate');
+const timeInput = document.getElementById('newDeadlineTime');
+const newDeadlineShow = document.getElementById('newDeadlineShow');
+const timeDifferenceShow = document.getElementById('timeDifferenceShow');
+const confirmBtn = document.getElementById('confirmExtendBtn');
+
+// פונקציה לעדכון הסיכום
+const updateSummary = () => {
+    const newDate = new Date(`${dateInput.value}T${timeInput.value}`);
+    const formattedDate = this.formatDateTime(newDate);
+    
+    newDeadlineShow.textContent = formattedDate;
+    
+    const diffMs = newDate - currentDeadline;
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+    
+    let timeDiffText;
+    let colorClass = '#059669'; // ירוק - הארכה
+    
+    if (diffDays > 0) {
+        timeDiffText = `${diffDays} ${diffDays === 1 ? 'יום' : 'ימים'} קדימה`;
+    } else if (diffDays < 0) {
+        timeDiffText = `${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'יום' : 'ימים'} אחורה`;
+        colorClass = '#dc2626'; // אדום - קיצור
+    } else if (diffHours > 0) {
+        timeDiffText = `${diffHours} ${diffHours === 1 ? 'שעה' : 'שעות'} קדימה`;
+    } else if (diffHours < 0) {
+        timeDiffText = `${Math.abs(diffHours)} ${Math.abs(diffHours) === 1 ? 'שעה' : 'שעות'} אחורה`;
+        colorClass = '#dc2626';
+    } else {
+        timeDiffText = 'אותו זמן';
+        colorClass = '#6b7280'; // אפור
+    }
+    
+    timeDifferenceShow.textContent = timeDiffText;
+    timeDifferenceShow.style.color = colorClass;
+    
+    // שינוי טקסט הכפתור בהתאם
+    if (diffMs > 0) {
+        confirmBtn.innerHTML = '<i class="fas fa-calendar-plus"></i> אשר הארכה';
+    } else if (diffMs < 0) {
+        confirmBtn.innerHTML = '<i class="fas fa-calendar-minus"></i> אשר קיצור';
+    } else {
+        confirmBtn.innerHTML = '<i class="fas fa-calendar-check"></i> אשר שינוי';
+    }
+};
+
+// האזנה לשינויים
+dateInput.addEventListener('change', updateSummary);
+timeInput.addEventListener('change', updateSummary);
+
+// הפעלת הטופס
+const form = overlay.querySelector('#extendDeadlineForm');
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const newDeadline = `${dateInput.value}T${timeInput.value}`;
+    const reason = document.getElementById('extensionReason').value.trim();
+    
+    const newDate = new Date(newDeadline);
+    const confirmMessage = `האם אתה בטוח שברצונך לשנות את המשימה ל-${this.formatDateTime(newDate)}?`;
+    
+    if (confirm(confirmMessage)) {
+        await this.extendTaskDeadline(taskId, newDeadline, reason);
+        overlay.remove();
+    }
+});
+
+// הצגת הפופ-אפ
+setTimeout(() => {
+    overlay.classList.remove('hidden');
+}, 10);
     }
 }
+
+
 
 // ===== 3. GLOBAL INSTANCES =====
 
@@ -3143,149 +3232,184 @@ function showFeedbackDialog() {
     
     overlay.innerHTML = `
         <div class="popup" style="max-width: 450px;">
-            <div class="feedback-header">
-                <div class="feedback-title">
-                    <i class="fas fa-comments"></i>
-                    שתף את המשוב שלך
-                </div>
-                <div class="feedback-subtitle">עזור לנו לשפר את המערכת עבורך</div>
+            <div class="popup-header">
+                <i class="fas fa-comments"></i>
+                שתף את המשוב שלך
+                <button type="button" onclick="this.closest('.popup-overlay').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             
-            <form id="feedbackForm">
-                <div class="popup-section">
-                    <label>איזה חלק במערכת הרצת לשתף עליו משוב?</label>
-                    <div class="feedback-categories">
-                        <div class="category-option">
-                            <input type="radio" id="cat-tasks" name="feedbackCategory" value="תקצוב משימות" class="category-radio">
-                            <label for="cat-tasks" class="category-label">
-                                <i class="fas fa-tasks"></i> תקצוב משימות
-                            </label>
-                        </div>
-                        <div class="category-option">
-                            <input type="radio" id="cat-timesheet" name="feedbackCategory" value="שעתון" class="category-radio">
-                            <label for="cat-timesheet" class="category-label">
-                                <i class="fas fa-clock"></i> שעתון
-                            </label>
-                        </div>
-                        <div class="category-option">
-                            <input type="radio" id="cat-clients" name="feedbackCategory" value="ניהול לקוחות" class="category-radio">
-                            <label for="cat-clients" class="category-label">
-                                <i class="fas fa-users"></i> ניהול לקוחות
-                            </label>
-                        </div>
-                        <div class="category-option">
-                            <input type="radio" id="cat-interface" name="feedbackCategory" value="עיצוב וממשק" class="category-radio">
-                            <label for="cat-interface" class="category-label">
-                                <i class="fas fa-palette"></i> עיצוב וממשק
-                            </label>
-                        </div>
-                        <div class="category-option">
-                            <input type="radio" id="cat-performance" name="feedbackCategory" value="ביצועים ומהירות" class="category-radio">
-                            <label for="cat-performance" class="category-label">
-                                <i class="fas fa-tachometer-alt"></i> ביצועים ומהירות
-                            </label>
-                        </div>
-                        <div class="category-option">
-                            <input type="radio" id="cat-other" name="feedbackCategory" value="אחר" class="category-radio" checked>
-                            <label for="cat-other" class="category-label">
-                                <i class="fas fa-ellipsis-h"></i> אחר
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="popup-section priority-section">
-                    <label>רמת דחיפות:</label>
-                    <div class="priority-options">
-                        <div class="priority-option">
-                            <input type="radio" id="priority-low" name="feedbackPriority" value="נמוך" class="priority-radio" checked>
-                            <label for="priority-low" class="priority-label">
-                                <i class="fas fa-arrow-down"></i> נמוך
-                            </label>
-                        </div>
-                        <div class="priority-option">
-                            <input type="radio" id="priority-medium" name="feedbackPriority" value="בינוני" class="priority-radio">
-                            <label for="priority-medium" class="priority-label">
-                                <i class="fas fa-arrow-right"></i> בינוני
-                            </label>
-                        </div>
-                        <div class="priority-option">
-                            <input type="radio" id="priority-high" name="feedbackPriority" value="גבוה" class="priority-radio">
-                            <label for="priority-high" class="priority-label">
-                                <i class="fas fa-arrow-up"></i> גבוה
-                            </label>
-                        </div>
-                        <div class="priority-option">
-                            <input type="radio" id="priority-critical" name="feedbackPriority" value="קריטי" class="priority-radio">
-                            <label for="priority-critical" class="priority-label">
-                                <i class="fas fa-exclamation-triangle"></i> קריטי
-                            </label>
+            <div class="popup-content">
+                <form id="feedbackForm">
+                    <!-- שלב 1: בחירת קטגוריה -->
+                    <div class="popup-section" id="categorySection">
+                        <label>איזה חלק במערכת?</label>
+                        <div class="feedback-categories">
+                            <div class="category-option">
+                                <input type="radio" id="cat-tasks" name="feedbackCategory" value="תקצוב משימות" class="category-radio">
+                                <label for="cat-tasks" class="category-label">
+                                    <i class="fas fa-tasks"></i> תקצוב משימות
+                                </label>
+                            </div>
+                            <div class="category-option">
+                                <input type="radio" id="cat-timesheet" name="feedbackCategory" value="שעתון" class="category-radio">
+                                <label for="cat-timesheet" class="category-label">
+                                    <i class="fas fa-clock"></i> שעתון
+                                </label>
+                            </div>
+                            <div class="category-option">
+                                <input type="radio" id="cat-clients" name="feedbackCategory" value="ניהול לקוחות" class="category-radio">
+                                <label for="cat-clients" class="category-label">
+                                    <i class="fas fa-users"></i> ניהול לקוחות
+                                </label>
+                            </div>
+                            <div class="category-option">
+                                <input type="radio" id="cat-interface" name="feedbackCategory" value="עיצוב וממשק" class="category-radio">
+                                <label for="cat-interface" class="category-label">
+                                    <i class="fas fa-palette"></i> עיצוב וממשק
+                                </label>
+                            </div>
+                            <div class="category-option">
+                                <input type="radio" id="cat-performance" name="feedbackCategory" value="ביצועים ומהירות" class="category-radio">
+                                <label for="cat-performance" class="category-label">
+                                    <i class="fas fa-tachometer-alt"></i> ביצועים ומהירות
+                                </label>
+                            </div>
+                            <div class="category-option">
+                                <input type="radio" id="cat-other" name="feedbackCategory" value="אחר" class="category-radio">
+                                <label for="cat-other" class="category-label">
+                                    <i class="fas fa-ellipsis-h"></i> אחר
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="popup-section">
-                    <label for="feedbackText">המשוב שלך:</label>
-                    <textarea id="feedbackText" rows="4" placeholder="כתוב כאן את המשוב, ההצעות לשיפור או הבעיות שנתקלת בהן..." required></textarea>
-                </div>
-                
-                <div class="popup-section contact-method-section">
-                    <label>איך תעדיף לקבל תגובה?</label>
-                    <div class="contact-methods">
-                        <div class="contact-option">
-                            <input type="radio" id="contact-email" name="contactMethod" value="email" class="contact-radio" checked>
-                            <label for="contact-email" class="contact-label">
-                                <i class="fas fa-envelope"></i> אימייל
-                            </label>
-                        </div>
-                        <div class="contact-option">
-                            <input type="radio" id="contact-whatsapp" name="contactMethod" value="whatsapp" class="contact-radio">
-                            <label for="contact-whatsapp" class="contact-label">
-                                <i class="fab fa-whatsapp"></i> WhatsApp
-                            </label>
+                    
+                    <!-- שלב 2: רמת דחיפות (מוסתר בהתחלה) -->
+                    <div class="popup-section hidden" id="prioritySection">
+                        <label>כמה דחוף זה?</label>
+                        <div class="priority-options">
+                            <div class="priority-option">
+                                <input type="radio" id="priority-low" name="feedbackPriority" value="נמוך" class="priority-radio">
+                                <label for="priority-low" class="priority-label">
+                                    <i class="fas fa-arrow-down"></i> לא דחוף
+                                </label>
+                            </div>
+                            <div class="priority-option">
+                                <input type="radio" id="priority-medium" name="feedbackPriority" value="בינוני" class="priority-radio">
+                                <label for="priority-medium" class="priority-label">
+                                    <i class="fas fa-minus"></i> בינוני
+                                </label>
+                            </div>
+                            <div class="priority-option">
+                                <input type="radio" id="priority-high" name="feedbackPriority" value="גבוה" class="priority-radio">
+                                <label for="priority-high" class="priority-label">
+                                    <i class="fas fa-arrow-up"></i> דחוף
+                                </label>
+                            </div>
+                            <div class="priority-option">
+                                <input type="radio" id="priority-critical" name="feedbackPriority" value="קריטי" class="priority-radio">
+                                <label for="priority-critical" class="priority-label">
+                                    <i class="fas fa-exclamation-triangle"></i> קריטי
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="tech-info">
-                    <h4><i class="fas fa-info-circle"></i> פרטים טכניים שיועברו אוטומטית:</h4>
-                    <div id="techDetails"></div>
-                </div>
-                
-                <div class="popup-buttons">
-                    <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-                        <i class="fas fa-times"></i> ביטול
-                    </button>
-                    <button type="submit" class="popup-btn popup-btn-confirm">
-                        <i class="fas fa-paper-plane"></i> שלח משוב
-                    </button>
-                </div>
-            </form>
+                    
+                    <!-- שלב 3: המשוב עצמו (מוסתר בהתחלה) -->
+                    <div class="popup-section hidden" id="textSection">
+                        <label for="feedbackText">המשוב שלך:</label>
+                        <textarea id="feedbackText" rows="4" placeholder="כתוב כאן את המשוב, ההצעות לשיפור או הבעיות שנתקלת בהן..." required></textarea>
+                    </div>
+                    
+                    <!-- שלב 4: אופן התקשרות (מוסתר בהתחלה) -->
+                    <div class="popup-section hidden" id="contactSection">
+                        <label>איך תעדיף לקבל תגובה?</label>
+                        <div class="contact-methods">
+                            <div class="contact-option">
+                                <input type="radio" id="contact-email" name="contactMethod" value="email" class="contact-radio" checked>
+                                <label for="contact-email" class="contact-label">
+                                    <i class="fas fa-envelope"></i> אימייל
+                                </label>
+                            </div>
+                            <div class="contact-option">
+                                <input type="radio" id="contact-whatsapp" name="contactMethod" value="whatsapp" class="contact-radio">
+                                <label for="contact-whatsapp" class="contact-label">
+                                    <i class="fab fa-whatsapp"></i> WhatsApp
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="popup-buttons">
+                <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+                    <i class="fas fa-times"></i> ביטול
+                </button>
+                <button type="submit" class="popup-btn popup-btn-confirm hidden" id="submitBtn" onclick="document.getElementById('feedbackForm').dispatchEvent(new Event('submit'))">
+                    <i class="fas fa-paper-plane"></i> שלח משוב
+                </button>
+            </div>
         </div>
     `;
     
     document.body.appendChild(overlay);
     
-    const techDetails = document.getElementById('techDetails');
-    const now = new Date();
-    const techInfo = {
-        משתמש: window.manager?.currentUser || 'לא מזוהה',
-        תאריך: now.toLocaleDateString('he-IL'),
-        שעה: now.toLocaleTimeString('he-IL'),
-        דפדפן: navigator.userAgent.split(' ').slice(-2).join(' '),
-        רזולוציה: `${screen.width}x${screen.height}`,
-        גרסת_מערכת: 'מתקדמת 2025'
-    };
+    // הפעלת Logic של השלבים
+    setupFeedbackSteps();
     
-    techDetails.innerHTML = Object.entries(techInfo)
-        .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
-        .join(' • ');
-    
+    // הפעלת פונקציונליות הטופס
     const form = overlay.querySelector('#feedbackForm');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         await handleFeedbackSubmission(form);
         overlay.remove();
+    });
+    
+    // הצגת הפופ-אפ
+    setTimeout(() => {
+        overlay.classList.remove('hidden');
+    }, 10);
+}
+
+function setupFeedbackSteps() {
+    const categoryRadios = document.querySelectorAll('input[name="feedbackCategory"]');
+    const priorityRadios = document.querySelectorAll('input[name="feedbackPriority"]');
+    const textArea = document.getElementById('feedbackText');
+    const contactRadios = document.querySelectorAll('input[name="contactMethod"]');
+    
+    const prioritySection = document.getElementById('prioritySection');
+    const textSection = document.getElementById('textSection');
+    const contactSection = document.getElementById('contactSection');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // כשבוחרים קטגוריה - הראה דחיפות
+    categoryRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            prioritySection.classList.remove('hidden');
+        });
+    });
+    
+    // כשבוחרים דחיפות - הראה טקסט
+    priorityRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            textSection.classList.remove('hidden');
+        });
+    });
+    
+    // כשמקלידים טקסט - הראה אופן התקשרות
+    textArea.addEventListener('input', () => {
+        if (textArea.value.trim().length > 10) {
+            contactSection.classList.remove('hidden');
+        }
+    });
+    
+    // כשבוחרים אופן התקשרות - הראה כפתור שלח
+    contactRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            submitBtn.classList.remove('hidden');
+        });
     });
 }
 
