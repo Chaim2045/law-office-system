@@ -1,3 +1,5 @@
+
+
 /* ==========================================================================
    מערכת ניהול משרד עורכי דין - קובץ CSS מסודר ונקי
    גרסה: 2025 מנוקה
@@ -171,8 +173,8 @@ body {
     overflow: auto;
     min-height: calc(100vh - 120px);
     position: relative;
-    margin-right: 80px; /* התאם לסרגל החדש */
-    margin-top: 60px; /* מרווח מהסרגל העליון */
+    margin-right: 70px; /* הקטנה מ-80px ל-40px */
+    margin-top: px; /* מרווח מהסרגל העליון */
 }
 
 .main-content::before {
@@ -221,33 +223,7 @@ body {
     gap: var(--space-lg);
 }
 
-/* Grid layouts */
-.cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 16px;
-    padding: 0;
-    margin: 20px 0;
-    direction: rtl;
-}
 
-.budget-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 16px;
-    padding: 0;
-    margin: 20px 0;
-    direction: rtl;
-}
-
-.timesheet-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 16px;
-    padding: 0;
-    margin: 20px 0;
-    direction: rtl;
-}
 
 /* ==========================================================================
    4. HEADER & NAVIGATION - כותרת וניווט
@@ -1875,111 +1851,370 @@ button[onclick*="addBudget"]:hover {
     color: white;
 }
 
-/* Modern Table styles */
-.modern-table-container {
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 0;
-    margin: 24px auto;
-    max-width: 100%;
-    overflow: hidden;
-    box-shadow: 
-        0 1px 3px 0 rgba(0, 0, 0, 0.05),
-        0 4px 12px 0 rgba(0, 0, 0, 0.03);
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.modern-table-container:hover {
-    box-shadow: 
-        0 4px 12px 0 rgba(0, 0, 0, 0.08),
-        0 8px 24px 0 rgba(0, 0, 0, 0.06);
-    transform: translateY(-1px);
-}
-
-.modern-table-header {
-    background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
-    padding: 24px 32px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+/* וודא שעמודת הפעולות תמיד נראית */
+.modern-budget-table th:last-child,
+.modern-budget-table td:last-child {
+    min-width: 80px;
+    width: 80px;
+    padding: 16px 8px;
+    text-align: center;
 }
 
 .modern-table-title {
     margin: 0;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
-    color: #0f172a;
+    color: #1f2328;
     letter-spacing: -0.02em;
     display: flex;
     align-items: center;
     gap: 12px;
+    text-align: right;
+    direction: rtl;
 }
 
 .modern-table-title i {
-    font-size: 20px;
+    font-size: 18px;
     color: #3b82f6;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
 }
 
 .modern-table-subtitle {
-    margin: 4px 0 0 0;
-    font-size: 14px;
-    color: #64748b;
-    font-weight: 500;
+    margin: 8px 0 0 0;
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 600;
+    text-align: right;
+    direction: rtl;
 }
 
-.modern-budget-table,
-.modern-timesheet-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: #ffffff;
-    font-size: 14px;
-    line-height: 1.5;
+
+
+
+
+
+
+
+
+/* הבחנה בין שורות - זברה מודרנית */
+.modern-budget-table tbody tr:nth-child(even),
+.modern-timesheet-table tbody tr:nth-child(even) {
+    background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
 }
 
+.modern-budget-table tbody tr:nth-child(odd),
+.modern-timesheet-table tbody tr:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* שורות זוגיות על hover */
+.modern-budget-table tbody tr:nth-child(even):hover,
+.modern-timesheet-table tbody tr:nth-child(even):hover {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border-left: 4px solid #3b82f6;
+}
+
+/* שורות אי זוגיות על hover */
+.modern-budget-table tbody tr:nth-child(odd):hover,
+.modern-timesheet-table tbody tr:nth-child(odd):hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-left: 4px solid #3b82f6;
+}
+
+/* גבול עדין בין השורות */
+.modern-budget-table tbody tr,
+.modern-timesheet-table tbody tr {
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+/* כפתורי פעולה גדולים יותר */
+.table-action-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+}
+
+.table-actions-group {
+    gap: 8px; /* רווח גדול יותר בין הכפתורים */
+}
+
+/* Headers כמו הכרטיסיות */
 .modern-budget-table thead th,
 .modern-timesheet-table thead th {
-    background: #ffffff;
-    padding: 20px 24px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 16px 20px;
     text-align: right;
-    font-weight: 600;
-    color: #374151;
-    font-size: 13px;
+    font-weight: 700;
+    color: #1f2328;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #f1f5f9;
+    border-bottom: 2px solid #e2e8f0;
     position: sticky;
     top: 0;
     z-index: 10;
     white-space: nowrap;
+    border: 1px solid #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
 }
 
+.modern-budget-table thead th:first-child,
+.modern-timesheet-table thead th:first-child {
+    border-right: 1px solid #e2e8f0;
+    border-top-right-radius: 8px;
+}
+
+.modern-budget-table thead th:last-child,
+.modern-timesheet-table thead th:last-child {
+    border-left: 1px solid #e2e8f0;
+    border-top-left-radius: 8px;
+}
+
+/* Rows עם אפקטים יפים */
 .modern-budget-table tbody tr,
 .modern-timesheet-table tbody tr {
-    transition: all 0.2s ease;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-}
-
-.modern-budget-table tbody tr:last-child,
-.modern-timesheet-table tbody tr:last-child {
-    border-bottom: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+    background: rgba(255, 255, 255, 0.8);
 }
 
 .modern-budget-table tbody tr:hover,
 .modern-timesheet-table tbody tr:hover {
-    background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
-    transform: scale(1.005);
-    box-shadow: 
-        0 2px 8px rgba(0, 0, 0, 0.04),
-        inset 0 0 0 1px rgba(59, 130, 246, 0.08);
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    /* ללא transform ו-box-shadow מוגזם */
+    border-left: 3px solid #3b82f6; /* גבול עדין בלבד */
 }
 
 .modern-budget-table tbody td,
 .modern-timesheet-table tbody td {
-    padding: 20px 24px;
+    padding: 16px 20px;
     color: #374151;
     font-weight: 500;
     vertical-align: middle;
-    border: none;
+    border-right: 1px solid rgba(226, 232, 240, 0.3);
+    border-left: 1px solid rgba(226, 232, 240, 0.3);
+    text-align: right;
+    direction: rtl;
+}
+
+.modern-budget-table tbody td:first-child,
+.modern-timesheet-table tbody td:first-child {
+    border-right: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.modern-budget-table tbody td:last-child,
+.modern-timesheet-table tbody td:last-child {
+    border-left: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+/* Progress bars בטבלה זהים לכרטיסיות */
+.table-progress-container {
+    min-width: 160px;
+    direction: rtl;
+}
+
+.table-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    direction: rtl;
+}
+
+.table-progress-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.table-progress-percentage {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2328;
+}
+
+.table-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.table-progress-fill {
+    height: 100%;
+    border-radius: 12px;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+/* צבעים זהים לכרטיסיות */
+.table-progress-fill.progress-low { 
+    background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); 
+}
+.table-progress-fill.progress-medium { 
+    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); 
+}
+.table-progress-fill.progress-high { 
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%); 
+}
+.table-progress-fill.progress-complete { 
+    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); 
+}
+
+.table-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: progressShine 2s ease-in-out infinite;
+}
+
+/* כפתורי פעולה משופרים */
+.table-actions-group {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    direction: rtl;
+}
+
+.table-action-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    font-size: 12px;
+    position: relative;
+}
+
+.table-action-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.table-action-btn.primary {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.table-action-btn.primary:hover {
+    background: #3b82f6;
+    color: white;
+}
+
+.table-action-btn.info {
+    border-color: #6b7280;
+    color: #6b7280;
+}
+
+.table-action-btn.info:hover {
+    background: #6b7280;
+    color: white;
+}
+
+.table-action-btn.warning {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.table-action-btn.warning:hover {
+    background: #f59e0b;
+    color: white;
+}
+
+.table-action-btn.success {
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.table-action-btn.success:hover {
+    background: #10b981;
+    color: white;
+}
+
+/* Pagination Controls */
+.table-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    margin: 0 20px 20px 20px;
+    border-top: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
+    border-radius: 0 0 12px 12px;
+    direction: rtl;
+}
+
+.pagination-btn {
+    padding: 10px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 44px;
+    justify-content: center;
+}
+
+.pagination-btn:hover:not(.disabled) {
+    border-color: #3b82f6;
+    background: #3b82f6;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+.pagination-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+
+.pagination-btn.page-number {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.pagination-btn.page-number.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    transform: scale(1.1);
+}
+
+.pagination-btn i {
+    font-size: 12px;
 }
 
 /* Modern timesheet header */
@@ -2473,112 +2708,899 @@ button[onclick*="addBudget"]:hover {
 }
 
 /* ==========================================================================
-   9. CARDS - כרטיסיות
+   CARDS - כרטיסיות בסגנון Linear
    ========================================================================== */
 
 
+/* Grid layouts - 3 כרטיסיות ריבועיות בשורה כמו Linear */
+.cards-grid,
+.budget-cards-grid,
+.timesheet-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding: 0;
+    margin: 32px auto;
+    direction: rtl;
+    max-width: 1000px;
+    width: 100%;
+}
+
+.modern-table-container {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    margin: 20px 30px;
+    width: calc(100% - 60px);
+    max-width: none;
+    overflow: visible; /* שנה מ-hidden ל-visible */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modern-table-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modern-table-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2328;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: right;
+    direction: rtl;
+}
+
+.modern-table-title i {
+    color: #3b82f6;
+}
+
+.modern-table-subtitle {
+    margin: 8px 0 0 0;
+    font-size: 13px;
+    color: #6b7280;
+    text-align: right;
+    direction: rtl;
+}
+
+.modern-budget-table {
+    width: calc(100% - 20px); /* הקטן קצת את הרוחב */
+    margin: 10px; /* מרווח פנימי מסביב לטבלה */
+    border-collapse: collapse;
+    font-size: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px; /* פינות מעוגלות לטבלה עצמה */
+}
+
+.modern-budget-table th,
+.modern-budget-table td {
+    padding: 16px 12px;
+    text-align: right;
+    border-bottom: 1px solid #e2e8f0; /* גבול תחתון */
+    border-right: 1px solid #e2e8f0; /* גבול ימני */
+    vertical-align: middle;
+}
+
+.modern-budget-table th:last-child,
+.modern-budget-table td:last-child {
+    border-right: none; /* בטל גבול ימני לעמודה האחרונה */
+}
+
+.modern-budget-table tbody tr:last-child td {
+    border-bottom: none; /* בטל גבול תחתון לשורה האחרונה */
+}
+
+
+/* פינות מעוגלות לטבלה */
+.modern-budget-table th:first-child {
+    border-top-right-radius: 12px; /* פינה ימנית עליונה */
+}
+
+.modern-budget-table th:last-child {
+    border-top-left-radius: 12px; /* פינה שמאלית עליונה */
+}
+
+.modern-budget-table tbody tr:last-child td:first-child {
+    border-bottom-right-radius: 12px; /* פינה ימנית תחתונה */
+}
+
+.modern-budget-table tbody tr:last-child td:last-child {
+    border-bottom-left-radius: 12px; /* פינה שמאלית תחתונה */
+}
+
+.modern-table-container {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    margin: 20px 30px;
+    width: calc(100% - 60px);
+    max-width: none;
+    overflow: visible; /* זה החלק החשוב! */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modern-budget-table th {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    font-weight: 700;
+    color: #1f2328;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.modern-budget-table tbody tr:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    /* ללא transform - רק צבע רקע */
+}
+
+.modern-budget-table tbody tr:nth-child(even) {
+    background: rgba(248, 250, 252, 0.5);
+}
+
+/* תפריט פשוט ועובד */
+.actions-dropdown-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.actions-dropdown-btn {
+    padding: 6px 10px; /* הקטנה נוספת */
+    border: 2px solid #3b82f6;
+    border-radius: 4px; /* הקטנה */
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color: #3b82f6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3px; /* הקטנה */
+    direction: rtl;
+    width: 60px; /* הקטנה ל-60px */
+    white-space: nowrap;
+}
+
+.actions-dropdown-btn:hover {
+    background: #3b82f6;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.actions-dropdown-btn i {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.actions-dropdown-btn:hover i {
+    transform: rotate(180deg);
+}
+
+
+
+
+.dropdown-action-item {
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: right;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.dropdown-action-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-action-item:hover {
+    background: #f8fafc;
+}
+
+.dropdown-action-item.primary:hover {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color: #3b82f6;
+}
+
+.dropdown-action-item.info:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #6b7280;
+}
+
+.dropdown-action-item.warning:hover {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    color: #f59e0b;
+}
+
+.dropdown-action-item.success:hover {
+    background: linear-gradient(135deg, #ecfdf5 0%, #dcfce7 100%);
+    color: #10b981;
+}
+
+.dropdown-action-item i {
+    font-size: 11px;
+    width: 12px;
+    text-align: center;
+}
+
+
+/* וודא שעמודת הפעולות תמיד נראית */
+.modern-budget-table th:last-child,
+.modern-budget-table td:last-child {
+    min-width: 100px; /* הרחבה ל-100px */
+    width: 100px;
+    padding: 16px 12px; /* יותר padding */
+    text-align: center;
+}
+
+/* Progress bars בטבלה */
+.table-progress-container {
+    width: 100%;
+    direction: rtl;
+}
+
+.table-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.table-progress-label {
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.table-progress-percentage {
+    font-weight: 700;
+    color: #1f2328;
+}
+
+.table-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.table-progress-fill {
+    height: 100%;
+    border-radius: 12px;
+    transition: all 0.6s ease;
+}
+
+.table-progress-fill.progress-low { 
+    background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); 
+}
+.table-progress-fill.progress-medium { 
+    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); 
+}
+.table-progress-fill.progress-high { 
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%); 
+}
+.table-progress-fill.progress-complete { 
+    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); 
+}
+
+/* Pagination Controls */
+.table-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
+    border-top: 1px solid #e2e8f0;
+    direction: rtl;
+}
+
+.pagination-btn {
+    padding: 8px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 44px;
+    justify-content: center;
+}
+
+.pagination-btn:hover:not(.disabled) {
+    border-color: #3b82f6;
+    background: #3b82f6;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+.pagination-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+
+.pagination-btn.page-number {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.pagination-btn.page-number.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    transform: scale(1.05);
+}
+
+.pagination-btn i {
+    font-size: 10px;
+}
+
+.page-info {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+    padding: 0 20px;
+    white-space: nowrap;
+}
+
+.page-info strong {
+    color: #1f2328;
+    font-weight: 700;
+}
+
+/* כרטיסיות ריבועיות מושלמות - פתרון גמיש */
+.task-card,
+.budget-card,
+.timesheet-card {
+    background: #ffffff;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    
+    /* ריבוע מושלם באמצעות padding-bottom */
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%; /* יוצר ריבוע מושלם */
+    
+    /* תמיכה בעברית */
+    direction: rtl;
+    text-align: right;
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+/* תוכן הכרטיס - במיקום אבסולוטי */
+.task-card > *,
+.budget-card > *,
+.timesheet-card > * {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* וודא שהכותרות והתוכן נראים טוב */
+.task-card-title,
+.budget-card-title,
+.timesheet-card-title,
+.client-name {
+    font-size: 16px !important;
+    font-weight: 600;
+    color: #1f2328;
+    margin: 0 0 12px 0;
+    line-height: 1.3;
+    text-align: right;
+    direction: rtl;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* כפתורי פעולות בתחתית הכרטיס */
+.card-actions,
+.task-card-actions,
+.budget-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    direction: rtl;
+    align-self: flex-end;
+}
+
+.task-card:hover,
+.budget-card:hover,
+.timesheet-card:hover {
+    border-color: #d0d7de;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* כרטיס לינארי ריבועי */
+.linear-minimal-card {
+    background: #ffffff;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    
+    /* ריבוע מושלם עם padding-bottom */
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%; /* יוצר ריבוע מושלם */
+    
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    direction: rtl;
+    text-align: right;
+}
+
+/* תוכן הכרטיס הלינארי - טקסט למעלה */
+.linear-card-content {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 60px; /* משאיר מקום לכפתור למטה */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* תוכן למעלה */
+    gap: 8px;
+}
+
+/* כפתור הרחבה - למטה בצד שמאל */
+.linear-expand-btn {
+    position: absolute;
+    bottom: 15px; /* למטה */
+    left: 15px;   /* צד שמאל */
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #f6f8fa;
+    border: 1px solid #d1d9e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+/* מטא-נתונים משופרים של הכרטיס */
+.linear-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    color: #656d76;
+    direction: rtl;
+    text-align: right;
+    margin-top: auto; /* דוחף למטה בתוך התוכן */
+    padding-bottom: 10px; /* מרווח מהכפתור */
+}
+
+/* שורת לקוח */
+.linear-client-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    direction: rtl;
+}
+
+.linear-client-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.linear-client-name {
+    font-weight: 600;
+    color: #1f2328;
+    text-align: right;
+    direction: rtl;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+}
+
+/* שורת התקדמות */
+.linear-progress-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    direction: rtl;
+}
+
+.linear-progress-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.linear-progress {
+    font-weight: 700;
+    color: #0969da;
+    font-size: 12px;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    padding: 4px 10px;
+    border-radius: 12px;
+    min-width: fit-content;
+    text-align: center;
+    border: 1px solid #93c5fd;
+}
+
+.linear-expand-btn:hover {
+    background: #e2e8f0;
+    transform: scale(1.1);
+    border-color: #3b82f6;
+}
+
+/* אזור התקדמות ויזואלי באמצע הכרטיס */
+.linear-progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 8px 0;
+    padding: 12px 0;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* בר התקדמות ויזואלי */
+.linear-visual-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.linear-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.linear-progress-fill {
+    height: 100%;
+    border-radius: 12px;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+}
+
+/* צבעים לפי אחוז */
+.progress-low { background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); }
+.progress-medium { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+.progress-high { background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+.progress-complete { background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
+
+/* אפקט ברק על הבר */
+.linear-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: progressShine 2s ease-in-out infinite;
+}
+
+@keyframes progressShine {
+    0% { left: -100%; }
+    50% { left: 100%; }
+    100% { left: 100%; }
+}
+
+/* טקסט אחוז ליד הבר - סדר נכון לעברית */
+.linear-progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    direction: rtl;
+    flex-direction: row-reverse; /* הופך את הסדר */
+}
+
+.progress-percentage {
+    color: #1f2328;
+}
+
+.progress-status {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+}
+
+/* מידע זמנים */
+.linear-time-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 11px;
+    direction: rtl;
+}
+
+.time-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+    padding: 6px;
+    background: rgba(59, 130, 246, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.time-label {
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.time-value {
+    font-weight: 700;
+    color: #1f2328;
+    font-size: 12px;
+}
+
+/* צבע שונה לזמן בפועל */
+.time-item.actual {
+    background: rgba(16, 185, 129, 0.05);
+    border-color: rgba(16, 185, 129, 0.1);
+}
+
+.time-item.actual .time-value {
+    color: #059669;
+}
+
+/* כותרת יפה עם מסגרת מתרחבת */
+.linear-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2328;
+    line-height: 1.4;
+    margin: 0 0 12px 0;
+    text-align: right;
+    direction: rtl;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* 3 שורות במקום 2 */
+    -webkit-box-orient: vertical;
+    
+    /* מסגרת יפה עם פינות מעוגלות */
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 14px; /* padding קצת יותר קטן */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    position: relative;
+    cursor: help; /* מראה שיש tooltip */
+    min-height: 60px; /* גובה מינימלי */
+    max-height: 85px; /* גובה מקסימלי */
+}
+
+/* הוספת tooltip לכותרת ארוכה */
+.linear-card-title::after {
+    content: attr(data-full-text);
+    position: absolute;
+    bottom: 100%;
+    right: 50%;
+    transform: translateX(50%);
+    background: #1f2328;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    max-width: 300px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.linear-card-title:hover::after {
+    opacity: 1;
+    visibility: visible;
+    bottom: calc(100% + 8px);
+}
+
+/* אנימציה על hover - הרחבה קלה */
+.linear-minimal-card:hover .linear-card-title {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+    max-height: 95px; /* הרחבה קלה על hover */
+}
+
+.linear-minimal-card:hover .linear-card-title::before {
+    opacity: 1;
+}
+
+/* אם הטקסט ארוך מדי - הוספת gradient fade */
+.linear-card-title::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(transparent 0%, rgba(248, 250, 252, 0.8) 70%, rgba(248, 250, 252, 1) 100%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.linear-card-title::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(16, 185, 129, 0.02) 100%);
+    border-radius: 7px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.linear-minimal-card:hover .linear-card-title {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+}
+
+.linear-minimal-card:hover .linear-card-title::before {
+    opacity: 1;
+}
+
+
+/* כותרות */
+.task-card-title,
+.budget-card-title,
+.timesheet-card-title,
+.client-name {
+    font-size: 16px !important;
+    font-weight: 600;
+    color: #1f2328;
+    margin: 0 0 12px 0;
+    line-height: 1.3;
+    text-align: right;
+    direction: rtl;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+
+
+.linear-client-name {
+    font-weight: 500;
+    text-align: right;
+    direction: rtl;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+.linear-progress {
+    font-weight: 600;
+    color: #0969da;
+    font-size: 12px;
+    background: #dbeafe;
+    padding: 2px 8px;
+    border-radius: 12px;
+    min-width: fit-content;
+    text-align: center;
+}
+
+/* רספונסיביות ריבועית */
+@media (max-width: 900px) {
+    .cards-grid,
+    .budget-cards-grid,
+    .timesheet-cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        max-width: 600px;
+    }
+}
+
+@media (max-width: 600px) {
+    .cards-grid,
+    .budget-cards-grid,
+    .timesheet-cards-grid { 
+        grid-template-columns: 1fr;
+        gap: 16px;
+        max-width: 300px;
+    }
+}
 
 @media (max-width: 480px) {
     .cards-grid,
     .budget-cards-grid,
     .timesheet-cards-grid {
         grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 16px;
         margin: 16px 0;
     }
     
     .task-card,
     .budget-card,
     .timesheet-card {
-        padding: 14px 16px;
-        margin-bottom: 10px;
+        padding: 20px;
+        aspect-ratio: 1.2/1; /* קצת פחות ריבועי בנייד */
+    }
+    
+    .linear-minimal-card {
+        height: 72px;
+        padding: 16px 20px;
     }
     
     .client-name,
     .task-card-title,
     .budget-card-title {
-        font-size: 16px;
-    }
-    
-    .card-header,
-    .task-card-header,
-    .budget-card-header,
-    .timesheet-card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+        font-size: 15px !important;
     }
 }
-
-/* Professional focus states */
-.action-btn:focus,
-.task-action-btn:focus,
-.budget-action-btn:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
-
-/* Remove emoji and clean up grades */
-.overall-grade {
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    padding: 6px 12px;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid;
-}
-
-.overall-grade.grade-excellent {
-    background: #f0fdf4;
-    color: #166534;
-    border-color: #bbf7d0;
-}
-
-.overall-grade.grade-excellent::before {
-    content: "מצוין";
-}
-
-.overall-grade.grade-very-good {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border-color: #bfdbfe;
-}
-
-.overall-grade.grade-very-good::before {
-    content: "טוב מאוד";
-}
-
-.overall-grade.grade-good {
-    background: #f0f9ff;
-    color: #0369a1;
-    border-color: #bae6fd;
-}
-
-.overall-grade.grade-good::before {
-    content: "טוב";
-}
-
-.overall-grade.grade-fair {
-    background: #fffbeb;
-    color: #92400e;
-    border-color: #fde68a;
-}
-
-.overall-grade.grade-fair::before {
-    content: "בסדר";
-}
-
-.overall-grade.grade-poor {
-    background: #fef2f2;
-    color: #991b1b;
-    border-color: #fecaca;
-}
-
-.overall-grade.grade-poor::before {
-    content: "זקוק שיפור";
-}
-
 /* ==========================================================================
    10. MODALS & POPUPS - פופאפים ומודלים
    ========================================================================== */
@@ -6422,96 +7444,8 @@ button[onclick*="addBudget"]:hover {
 
 
 
-/* ===== LINEAR STYLE MINIMAL CARDS - NEW DESIGN ===== */
-.budget-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 16px;
-    padding: 0;
-    margin: 24px 0;
-}
 
-.linear-minimal-card {
-    background: #ffffff;
-    border: 1px solid #e1e5e9;
-    border-radius: 8px;
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 72px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
 
-.linear-minimal-card:hover {
-    border-color: #d0d7de;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-1px);
-}
-
-.linear-card-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.linear-card-title {
-    font-size: 15px;
-    font-weight: 500;
-    color: #1f2328;
-    line-height: 1.4;
-    margin: 0 0 6px 0;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-}
-
-.linear-card-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 13px;
-    color: #656d76;
-    margin-top: 8px;
-}
-
-.linear-client-name {
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 200px;
-}
-
-.linear-progress {
-    font-weight: 600;
-    color: #0969da;
-    font-size: 12px;
-    background: #dbeafe;
-    padding: 2px 8px;
-    border-radius: 12px;
-    min-width: fit-content;
-}
-
-.linear-expand-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: #f6f8fa;
-    border: 1px solid #d1d9e0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    color: #656d76;
-    font-size: 14px;
-    margin-left: 20px;
-    flex-shrink: 0;
-}
 
 .linear-expand-btn:hover {
     background: #eaeef2;
@@ -7088,4 +8022,130 @@ button[onclick*="addBudget"]:hover {
 .popup-overlay .popup-section {
     direction: rtl !important;
     text-align: right !important;
+}
+
+
+
+/* וודא שהקונטיינר פעולות תמיד נראה */
+.actions-dropdown-container {
+    position: relative;
+    display: block !important;
+    width: 100% !important;
+    min-width: 120px;
+    z-index: 10;
+}
+
+
+
+.actions-dropdown-btn:hover {
+    background: #3b82f6;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.actions-dropdown-btn i {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.actions-dropdown-btn:hover i {
+    transform: rotate(180deg);
+}
+
+.actions-dropdown-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.actions-dropdown-menu {
+    position: fixed; /* fixed ביחס לחלון */
+    min-width: 150px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease;
+    direction: rtl;
+}
+
+.actions-dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+}
+/* וודא שהטבלה לא מפריעה */
+.modern-table-container {
+    position: relative;
+    z-index: 1; /* נמוך מאוד */
+}
+
+.modern-budget-table {
+    position: relative;
+    z-index: 1; /* נמוך מאוד */
+}
+
+.modern-budget-table tbody tr {
+    position: relative;
+    z-index: 1; /* נמוך מאוד */
+}
+
+.dropdown-action-item {
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: right;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.dropdown-action-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-action-item:hover {
+    background: #f8fafc;
+    color: #1f2328;
+}
+
+.dropdown-action-item.primary:hover {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color: #3b82f6;
+}
+
+.dropdown-action-item.info:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #6b7280;
+}
+
+.dropdown-action-item.warning:hover {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    color: #f59e0b;
+}
+
+.dropdown-action-item.success:hover {
+    background: linear-gradient(135deg, #ecfdf5 0%, #dcfce7 100%);
+    color: #10b981;
+}
+
+.dropdown-action-item i {
+    font-size: 12px;
+    width: 14px;
+    text-align: center;
+}
+
+.dropdown-action-item span {
+    flex: 1;
 }

@@ -724,7 +724,10 @@ class LawOfficeManager {
         this.budgetSortDirection = 'asc';
         this.timesheetSortField = null;
         this.timesheetSortDirection = 'asc';
-        
+        // Pagination variables
+        this.currentBudgetPage = 1;
+        this.itemsPerPage = 5;
+        this.totalPages = 1;
         this.clientValidation = new ClientValidation(this);
         this.init();
     }
@@ -747,6 +750,11 @@ class LawOfficeManager {
         }
 
         this.setupEventListeners();
+        document.addEventListener('click', (e) => {
+    if (!e.target.closest('.actions-dropdown-container')) {
+        this.closeAllActionMenus();
+    }
+});
     }
 
     setupEventListeners() {
@@ -910,14 +918,24 @@ class LawOfficeManager {
     }
 
     async loadData() {
-        try {
-            await this.loadDataFromSheets();
-        } catch (error) {
-            console.error('❌ נכשלה טעינה מהגליון:', error);
-            this.connectionStatus = 'offline';
-            this.updateConnectionStatus('🔴 שגיאה בחיבור');
-        }
+    try {
+        await this.loadDataFromSheets();
+        
+        // 🎯 עדכון אוטומטי של התצוגה לאחר טעינת נתונים
+        setTimeout(() => {
+            this.applyBudgetTaskFilters();
+            this.applyTimesheetFilters();
+            this.renderBudgetTasks();
+            this.renderTimesheetEntries();
+            console.log('✅ נתונים נטענו והתצוגה עודכנה אוטומטית');
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ נכשלה טעינה מהגליון:', error);
+        this.connectionStatus = 'offline';
+        this.updateConnectionStatus('🔴 שגיאה בחיבור');
     }
+}
 
     updateConnectionStatus(status) {
         const indicator = document.getElementById('connectionIndicator');
@@ -926,33 +944,31 @@ class LawOfficeManager {
         }
     }
 
-    showActiveTabContent() {
-        try {
-            const activeTab = document.querySelector('.tab-button.active');
-            if (!activeTab) {
-                console.log('🎯 אין טאב פעיל - מציג תקצוב כברירת מחדל');
-                this.showBudgetTab();
-                return;
-            }
-            
-            const tabText = activeTab.textContent || '';
-            
-            if (tabText.includes('תקצוב') || tabText.includes('משימות')) {
-                console.log('🎯 מציג טאב תקצוב');
-                this.showBudgetTab();
-            } else if (tabText.includes('שעתון') || tabText.includes('זמן')) {
-                console.log('🎯 מציג טאב שעתון');
-                this.showTimesheetTab();
-            } else {
-                console.log('🎯 טאב לא מזוהה - מציג תקצוב');
-                this.showBudgetTab();
-            }
-            
-        } catch (error) {
-            console.error('❌ שגיאה ב-showActiveTabContent:', error);
-            this.showBudgetTab();
+showActiveTabContent() {
+    try {
+        const activeTab = document.querySelector('.tab-button.active');
+        
+        // 🎯 עדכון אוטומטי של התצוגה הפעילה
+        if (!activeTab || activeTab.textContent.includes('תקצוב') || activeTab.textContent.includes('משימות')) {
+            console.log('🎯 מציג טאב תקצוב');
+            this.applyBudgetTaskFilters();
+            this.renderBudgetTasks();
+        } else if (activeTab.textContent.includes('שעתון') || activeTab.textContent.includes('זמן')) {
+            console.log('🎯 מציג טאב שעתון');
+            this.applyTimesheetFilters();
+            this.renderTimesheetEntries();
+        } else {
+            console.log('🎯 טאב לא מזוהה - מציג תקצוב');
+            this.applyBudgetTaskFilters();
+            this.renderBudgetTasks();
         }
+        
+    } catch (error) {
+        console.error('❌ שגיאה ב-showActiveTabContent:', error);
+        this.applyBudgetTaskFilters();
+        this.renderBudgetTasks();
     }
+}
 
     async loadDataFromSheets() {
         try {
@@ -1173,52 +1189,96 @@ class LawOfficeManager {
     }
 
     switchBudgetView(view) {
-        this.currentBudgetView = view;
-        
-        document.querySelectorAll('#budgetTab .view-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        const activeTab = document.querySelector(`#budgetTab .view-tab[data-view="${view}"]`);
-        if (activeTab) activeTab.classList.add('active');
-        
-        if (view === 'cards') {
-            const budgetContainer = document.getElementById('budgetContainer');
-            const budgetTableContainer = document.getElementById('budgetTableContainer');
-            if (budgetContainer) budgetContainer.classList.remove('hidden');
-            if (budgetTableContainer) budgetTableContainer.classList.add('hidden');
-        } else {
-            const budgetContainer = document.getElementById('budgetContainer');
-            const budgetTableContainer = document.getElementById('budgetTableContainer');
-            if (budgetContainer) budgetContainer.classList.add('hidden');
-            if (budgetTableContainer) budgetTableContainer.classList.remove('hidden');
-        }
-        
-        this.renderBudgetTasks();
+    this.currentBudgetView = view;
+    
+    // עדכון הטאבים הויזואליים
+    document.querySelectorAll('#budgetTab .view-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    const activeTab = document.querySelector(`#budgetTab .view-tab[data-view="${view}"]`);
+    if (activeTab) activeTab.classList.add('active');
+    
+    // החלפת הקונטיינרים
+    if (view === 'cards') {
+        const budgetContainer = document.getElementById('budgetContainer');
+        const budgetTableContainer = document.getElementById('budgetTableContainer');
+        if (budgetContainer) budgetContainer.classList.remove('hidden');
+        if (budgetTableContainer) budgetTableContainer.classList.add('hidden');
+    } else {
+        const budgetContainer = document.getElementById('budgetContainer');
+        const budgetTableContainer = document.getElementById('budgetTableContainer');
+        if (budgetContainer) budgetContainer.classList.add('hidden');
+        if (budgetTableContainer) budgetTableContainer.classList.remove('hidden');
     }
+    
+    // 🎯 בדיקה והבטחה שיש נתונים לרינדור
+    if (!this.budgetTasks || this.budgetTasks.length === 0) {
+        console.log('🔄 טוען נתוני משימות לפני רינדור...');
+        this.loadBudgetTasksFromSheetOriginal()
+            .then(() => {
+                this.applyBudgetTaskFilters();
+                this.renderBudgetTasks();
+                console.log('✅ נתונים נטענו ורונדרו בהצלחה');
+            })
+            .catch(error => {
+                console.error('❌ שגיאה בטעינת נתונים:', error);
+                this.showNotification('שגיאה בטעינת נתונים', 'error');
+            });
+    } else {
+        // יש נתונים - צריך לוודא שהם ב-filtered array
+        if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
+            this.applyBudgetTaskFilters();
+        }
+        this.renderBudgetTasks();
+        console.log('✅ רינדור מיידי עם נתונים קיימים');
+    }
+}
 
     switchTimesheetView(view) {
-        this.currentTimesheetView = view;
-        
-        document.querySelectorAll('#timesheetTab .view-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        const activeTab = document.querySelector(`#timesheetTab .view-tab[data-view="${view}"]`);
-        if (activeTab) activeTab.classList.add('active');
-        
-        if (view === 'cards') {
-            const timesheetContainer = document.getElementById('timesheetContainer');
-            const timesheetTableContainer = document.getElementById('timesheetTableContainer');
-            if (timesheetContainer) timesheetContainer.classList.remove('hidden');
-            if (timesheetTableContainer) timesheetTableContainer.classList.add('hidden');
-        } else {
-            const timesheetContainer = document.getElementById('timesheetContainer');
-            const timesheetTableContainer = document.getElementById('timesheetTableContainer');
-            if (timesheetContainer) timesheetContainer.classList.add('hidden');
-            if (timesheetTableContainer) timesheetTableContainer.classList.remove('hidden');
-        }
-        
-        this.renderTimesheetEntries();
+    this.currentTimesheetView = view;
+    
+    // עדכון הטאבים הויזואליים
+    document.querySelectorAll('#timesheetTab .view-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    const activeTab = document.querySelector(`#timesheetTab .view-tab[data-view="${view}"]`);
+    if (activeTab) activeTab.classList.add('active');
+    
+    // החלפת הקונטיינרים
+    if (view === 'cards') {
+        const timesheetContainer = document.getElementById('timesheetContainer');
+        const timesheetTableContainer = document.getElementById('timesheetTableContainer');
+        if (timesheetContainer) timesheetContainer.classList.remove('hidden');
+        if (timesheetTableContainer) timesheetTableContainer.classList.add('hidden');
+    } else {
+        const timesheetContainer = document.getElementById('timesheetContainer');
+        const timesheetTableContainer = document.getElementById('timesheetTableContainer');
+        if (timesheetContainer) timesheetContainer.classList.add('hidden');
+        if (timesheetTableContainer) timesheetTableContainer.classList.remove('hidden');
     }
+    
+    // 🎯 בדיקה והבטחה שיש נתונים לרינדור
+    if (!this.timesheetEntries || this.timesheetEntries.length === 0) {
+        console.log('🔄 טוען נתוני שעתון לפני רינדור...');
+        this.loadTimesheetEntriesFromSheetOriginal()
+            .then(() => {
+                this.applyTimesheetFilters();
+                this.renderTimesheetEntries();
+                console.log('✅ נתוני שעתון נטענו ורונדרו בהצלחה');
+            })
+            .catch(error => {
+                console.error('❌ שגיאה בטעינת נתוני שעתון:', error);
+                this.showNotification('שגיאה בטעינת נתונים', 'error');
+            });
+    } else {
+        // יש נתונים - צריך לוודא שהם ב-filtered array
+        if (!this.filteredTimesheetEntries || this.filteredTimesheetEntries.length === 0) {
+            this.applyTimesheetFilters();
+        }
+        this.renderTimesheetEntries();
+        console.log('✅ רינדור מיידי עם נתוני שעתון קיימים');
+    }
+}
 
     searchBudgetTasks() {
         const searchBox = document.getElementById('budgetSearchBox');
@@ -1957,16 +2017,58 @@ closeExpandedCard(event) {
     }
 }
 
-   createModernTaskCard(task) {
+  createModernTaskCard(task) {
     const safeTask = this.sanitizeTaskData(task);
+    const progress = this.calculateSimpleProgress(safeTask);
+    const estimatedHours = Math.round((safeTask.estimatedMinutes || 0) / 60 * 10) / 10;
+    const actualHours = Math.round((safeTask.actualMinutes || 0) / 60 * 10) / 10;
+    
+    // קביעת מחלקת צבע לפי אחוז
+    let progressClass = 'progress-low';
+    if (progress >= 100) progressClass = 'progress-complete';
+    else if (progress >= 70) progressClass = 'progress-high';
+    else if (progress >= 40) progressClass = 'progress-medium';
+    
+    // סטטוס טקסטואלי
+    let statusText = 'בתחילת הדרך';
+    if (progress >= 100) statusText = 'הושלם';
+    else if (progress >= 80) statusText = 'כמעט גמור';
+    else if (progress >= 50) statusText = 'בתהליך טוב';
+    else if (progress >= 25) statusText = 'בתהליך';
     
     return `
         <div class="linear-minimal-card" data-task-id="${safeTask.id}">
             <div class="linear-card-content">
-                <h3 class="linear-card-title">${safeTask.description}</h3>
+                <h3 class="linear-card-title" data-full-text="${safeTask.description}">${safeTask.description}</h3>
+                
+                <div class="linear-progress-section">
+                    <div class="linear-visual-progress">
+                        <div class="linear-progress-bar">
+                            <div class="linear-progress-fill ${progressClass}" style="width: ${progress}%"></div>
+                        </div>
+                      <div class="linear-progress-text">
+    <span class="progress-status">${statusText}</span>
+    <span class="progress-percentage">${progress}%</span>
+</div>
+                    </div>
+                    
+                    <div class="linear-time-info">
+                        <div class="time-item">
+                            <span class="time-label">זמן משוער</span>
+                            <span class="time-value">${estimatedHours} שעות</span>
+                        </div>
+                        <div class="time-item actual">
+                            <span class="time-label">זמן בפועל</span>
+                            <span class="time-value">${actualHours} שעות</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="linear-card-meta">
-                    <span class="linear-client-name">${safeTask.clientName}</span>
-                    <span class="linear-progress">${this.calculateSimpleProgress(safeTask)}%</span>
+                    <div class="linear-client-row">
+                        <span class="linear-client-label">לקוח:</span>
+                        <span class="linear-client-name">${safeTask.clientName}</span>
+                    </div>
                 </div>
             </div>
             <button class="linear-expand-btn" onclick="manager.expandTaskCard(${safeTask.id}, event)">
@@ -1976,76 +2078,182 @@ closeExpandedCard(event) {
     `;
 }
 
-    renderBudgetTable() {
-        const tableContainer = document.getElementById('budgetTableContainer');
-        if (!tableContainer) return;
-        
-        if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
-            tableContainer.innerHTML = this.createEmptyTableState();
-            return;
-        }
-        
-        const tableHtml = `
-            <div class="modern-table-container">
-                <div class="modern-table-header">
-                    <h3 class="modern-table-title">
-                        <i class="fas fa-chart-bar"></i>
-                        משימות מתוקצבות
-                    </h3>
-                    <div class="modern-table-subtitle">
-                        ${this.filteredBudgetTasks.length} משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
-                    </div>
-                </div>
-                
-                <table class="modern-budget-table">
-                    <thead>
-                        <tr>
-                            <th class="sortable" data-sort="clientName" onclick="manager.sortBudgetTable('clientName')">
-                                לקוח
-                                <i class="sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-sort="description" onclick="manager.sortBudgetTable('description')">
-                                תיאור משימה
-                                <i class="sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-sort="progress" onclick="manager.sortBudgetTable('progress')">
-                                התקדמות
-                                <i class="sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-sort="deadline" onclick="manager.sortBudgetTable('deadline')">
-                                תאריך יעד
-                                <i class="sort-icon"></i>
-                            </th>
-                            <th class="sortable" data-sort="status" onclick="manager.sortBudgetTable('status')">
-                                סטטוס
-                                <i class="sort-icon"></i>
-                            </th>
-                            <th>פעולות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${this.generateModernTableRows()}
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
-        tableContainer.innerHTML = tableHtml;
-        this.updateSortIndicators();
-        
-        setTimeout(() => {
-            const rows = tableContainer.querySelectorAll('tbody tr');
-            rows.forEach((row, index) => {
-                row.style.opacity = '0';
-                row.style.transform = 'translateY(10px)';
-                setTimeout(() => {
-                    row.style.transition = 'all 0.3s ease';
-                    row.style.opacity = '1';
-                    row.style.transform = 'translateY(0)';
-                }, index * 50);
-            });
-        }, 100);
+  renderBudgetTable() {
+    const tableContainer = document.getElementById('budgetTableContainer');
+    if (!tableContainer) return;
+    
+    if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
+        tableContainer.innerHTML = this.createEmptyTableState();
+        return;
     }
+    
+    // חישוב pagination
+    this.calculatePagination();
+    const currentPageTasks = this.getCurrentPageTasks();
+    
+    // יצירת שורות הטבלה
+    const tableRows = currentPageTasks.map(task => {
+        const safeTask = this.sanitizeTaskData(task);
+        const progress = this.calculateSimpleProgress(safeTask);
+        const estimatedHours = Math.round((safeTask.estimatedMinutes || 0) / 60 * 10) / 10;
+        const actualHours = Math.round((safeTask.actualMinutes || 0) / 60 * 10) / 10;
+        
+        // קביעת מחלקת צבע לפי אחוז
+        let progressClass = 'progress-low';
+        if (progress >= 100) progressClass = 'progress-complete';
+        else if (progress >= 70) progressClass = 'progress-high';
+        else if (progress >= 40) progressClass = 'progress-medium';
+        
+        // סטטוס טקסטואלי
+        let statusText = 'בתחילת הדרך';
+        if (progress >= 100) statusText = 'הושלם';
+        else if (progress >= 80) statusText = 'כמעט גמור';
+        else if (progress >= 50) statusText = 'בתהליך טוב';
+        else if (progress >= 25) statusText = 'בתהליך';
+        
+        // תאריך יעד
+        const deadlineDate = new Date(safeTask.deadline);
+        const formattedDeadline = this.formatDateTime(deadlineDate);
+        
+        return `
+            <tr data-task-id="${safeTask.id}">
+                <td>
+                    <strong>${safeTask.clientName}</strong>
+                </td>
+                <td>
+                    <div style="max-width: 300px; word-wrap: break-word;">
+                        ${safeTask.description}
+                    </div>
+                </td>
+                <td>
+                    <div class="table-progress-container">
+                        <div class="table-progress-header">
+                            <span class="table-progress-label">${statusText}</span>
+                            <span class="table-progress-percentage">${progress}%</span>
+                        </div>
+                        <div class="table-progress-bar">
+                            <div class="table-progress-fill ${progressClass}" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size: 12px;">
+                        <div>משוער: ${estimatedHours}ש</div>
+                        <div style="color: #059669; font-weight: 600;">בפועל: ${actualHours}ש</div>
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size: 12px; color: #6b7280;">
+                        ${formattedDeadline}
+                    </div>
+                </td>
+                <td>
+                    <div class="actions-dropdown-container">
+                        <button class="actions-dropdown-btn" onclick="manager.toggleActionMenu(${safeTask.id}, event)">
+                            <span>עוד</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown-menu" id="actionsMenu-${safeTask.id}">
+                            <button class="dropdown-action-item primary" onclick="manager.showAdvancedTimeDialog(${safeTask.id}); manager.closeAllActionMenus();">
+                                <i class="fas fa-plus"></i>
+                                <span>הוסף זמן</span>
+                            </button>
+                            <button class="dropdown-action-item info" onclick="manager.showTaskHistory(${safeTask.id}); manager.closeAllActionMenus();">
+                                <i class="fas fa-history"></i>
+                                <span>היסטוריה</span>
+                            </button>
+                            <button class="dropdown-action-item warning" onclick="manager.showExtendDeadlineDialog(${safeTask.id}); manager.closeAllActionMenus();">
+                                <i class="fas fa-calendar-plus"></i>
+                                <span>הארך יעד</span>
+                            </button>
+                            <button class="dropdown-action-item success" onclick="manager.completeTask(${safeTask.id}); manager.closeAllActionMenus();">
+                                <i class="fas fa-check"></i>
+                                <span>סיים משימה</span>
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // יצירת כפתורי pagination
+    const paginationControls = this.createPaginationControls();
+    
+    const tableHtml = `
+        <div class="modern-table-container">
+            <div class="modern-table-header">
+                <h3 class="modern-table-title">
+                    <i class="fas fa-chart-bar"></i>
+                    משימות מתוקצבות
+                </h3>
+                <div class="modern-table-subtitle">
+                    ${this.filteredBudgetTasks.length} משימות • עמוד ${this.currentBudgetPage} מתוך ${this.totalPages} • מציג ${currentPageTasks.length} מתוך ${this.filteredBudgetTasks.length}
+                </div>
+            </div>
+            
+            <table class="modern-budget-table">
+                <thead>
+                    <tr>
+                        <th onclick="manager.sortBudgetTable('clientName')">לקוח</th>
+                        <th onclick="manager.sortBudgetTable('description')">תיאור משימה</th>
+                        <th onclick="manager.sortBudgetTable('progress')">התקדמות</th>
+                        <th onclick="manager.sortBudgetTable('time')">זמנים</th>
+                        <th onclick="manager.sortBudgetTable('deadline')">תאריך יעד</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            
+            ${paginationControls}
+        </div>
+    `;
+    
+    tableContainer.innerHTML = tableHtml;
+    
+    // אנימציה לשורות הטבלה
+    setTimeout(() => {
+        const rows = tableContainer.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                row.style.transition = 'all 0.4s ease';
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    }, 100);
+}
+
+createPaginationControls() {
+    if (this.totalPages <= 1) return '';
+    
+    return `
+        <div class="table-pagination">
+            <button class="pagination-btn nav-btn ${this.currentBudgetPage === 1 ? 'disabled' : ''}" 
+                    onclick="manager.prevBudgetPage()" 
+                    ${this.currentBudgetPage === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+                קודם
+            </button>
+            
+            <div class="page-info">
+                עמוד <strong>${this.currentBudgetPage}</strong> מתוך <strong>${this.totalPages}</strong>
+            </div>
+            
+            <button class="pagination-btn nav-btn ${this.currentBudgetPage === this.totalPages ? 'disabled' : ''}" 
+                    onclick="manager.nextBudgetPage()" 
+                    ${this.currentBudgetPage === this.totalPages ? 'disabled' : ''}>
+                הבא
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+    `;
+}
 
     generateModernTableRows() {
         return this.filteredBudgetTasks.map(task => {
@@ -3205,7 +3413,98 @@ form.addEventListener('submit', async (e) => {
 setTimeout(() => {
     overlay.classList.remove('hidden');
 }, 10);
+
     }
+// ===== DROPDOWN MENU FUNCTIONS =====
+toggleActionMenu(taskId, event) {
+    event.stopPropagation();
+    this.closeAllActionMenus();
+    
+    const menu = document.getElementById(`actionsMenu-${taskId}`);
+    if (menu) {
+        menu.classList.add('show');
+    }
+}
+
+closeAllActionMenus() {
+    const allMenus = document.querySelectorAll('.actions-dropdown-menu');
+    allMenus.forEach(menu => {
+        menu.classList.remove('show');
+    });
+}
+    // ===== PAGINATION FUNCTIONS =====
+calculatePagination() {
+    this.totalPages = Math.ceil(this.filteredBudgetTasks.length / this.itemsPerPage);
+    if (this.currentBudgetPage > this.totalPages) {
+        this.currentBudgetPage = 1;
+    }
+}
+
+getCurrentPageTasks() {
+    const startIndex = (this.currentBudgetPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    return this.filteredBudgetTasks.slice(startIndex, endIndex);
+}
+
+nextBudgetPage() {
+    if (this.currentBudgetPage < this.totalPages) {
+        this.currentBudgetPage++;
+        this.renderBudgetTable();
+    }
+}
+
+prevBudgetPage() {
+    if (this.currentBudgetPage > 1) {
+        this.currentBudgetPage--;
+        this.renderBudgetTable();
+    }
+}
+
+goToBudgetPage(pageNumber) {
+    if (pageNumber >= 1 && pageNumber <= this.totalPages) {
+        this.currentBudgetPage = pageNumber;
+        this.renderBudgetTable();
+    }
+}
+
+createPaginationControls() {
+    if (this.totalPages <= 1) return '';
+    
+    let paginationHtml = '<div class="table-pagination">';
+    
+    // כפתור קודם
+    paginationHtml += `
+        <button class="pagination-btn ${this.currentBudgetPage === 1 ? 'disabled' : ''}" 
+                onclick="manager.prevBudgetPage()" 
+                ${this.currentBudgetPage === 1 ? 'disabled' : ''}>
+            <i class="fas fa-chevron-right"></i>
+            קודם
+        </button>
+    `;
+    
+    // מספרי עמודים
+    for (let i = 1; i <= this.totalPages; i++) {
+        paginationHtml += `
+            <button class="pagination-btn page-number ${i === this.currentBudgetPage ? 'active' : ''}" 
+                    onclick="manager.goToBudgetPage(${i})">
+                ${i}
+            </button>
+        `;
+    }
+    
+    // כפתור הבא
+    paginationHtml += `
+        <button class="pagination-btn ${this.currentBudgetPage === this.totalPages ? 'disabled' : ''}" 
+                onclick="manager.nextBudgetPage()" 
+                ${this.currentBudgetPage === this.totalPages ? 'disabled' : ''}>
+            הבא
+            <i class="fas fa-chevron-left"></i>
+        </button>
+    `;
+    
+    paginationHtml += '</div>';
+    return paginationHtml;
+}
 }
 
 
@@ -4790,6 +5089,9 @@ function toggleMobileSidebar() {
         sidebar.classList.toggle('open');
     }
 }
+
+
+
 
 // Final console log
 console.log('🎉 המערכת המסודרת מוכנה לשימוש מלא!');
