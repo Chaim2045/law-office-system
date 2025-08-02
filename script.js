@@ -2297,16 +2297,34 @@ class LawOfficeManager {
   renderBudgetCards() {
     const container = document.getElementById("budgetContainer");
     if (!container) return;
+    // עדכון הסטטיסטיקות
+    const statsDiv = document.getElementById("budgetStats");
+    if (statsDiv) {
+      statsDiv.textContent = `${
+        this.filteredBudgetTasks.length
+      } משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו`;
+    }
 
     const tasksHtml = this.filteredBudgetTasks
       .map((task) => this.createModernTaskCard(task))
       .join("");
 
     container.innerHTML = `
-            <div class="budget-cards-grid">
-                ${tasksHtml}
-            </div>
-        `;
+    <div class="modern-cards-header">
+        <h3 class="modern-cards-title">
+            <i class="fas fa-chart-bar"></i>
+            משימות מתוקצבות
+        </h3>
+        <div class="modern-cards-subtitle">
+            ${
+              this.filteredBudgetTasks.length
+            } משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
+        </div>
+    </div>
+    <div class="budget-cards-grid">
+        ${tasksHtml}
+    </div>
+`;
 
     setTimeout(() => {
       const cards = container.querySelectorAll(".linear-minimal-card");
