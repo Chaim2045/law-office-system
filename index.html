@@ -1,532 +1,871 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ</title>
-    
+
     <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
     <!-- קישור לקובץ CSS -->
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
     <!-- אלמנטי ממשק שמופיעים רק אחרי התחברות -->
     <div id="interfaceElements" class="hidden">
-        <!-- פעמון התראות -->
-        <button class="notification-bell" id="notificationBell" onclick="toggleNotifications()">
-            <i class="fas fa-bell"></i>
-            <span class="notification-count hidden" id="notificationCount">0</span>
-        </button>
+      <!-- פעמון התראות -->
+      <button
+        class="notification-bell"
+        id="notificationBell"
+        onclick="toggleNotifications()"
+      >
+        <i class="fas fa-bell"></i>
+        <span class="notification-count hidden" id="notificationCount">0</span>
+      </button>
 
-        <!-- דרופדאון התראות -->
-        <div class="notifications-dropdown" id="notificationsDropdown">
-            <div class="notifications-header">
-                <div class="notifications-title">
-                    <span><i class="fas fa-bell"></i> התראות מערכת</span>
-                    <button class="clear-all-btn" onclick="clearAllNotifications()">
-                        <i class="fas fa-trash"></i> נקה הכל
-                    </button>
-                </div>
-            </div>
-            <div class="notifications-content" id="notificationsContent">
-                <!-- התראות יוכנסו כאן דינמית -->
-            </div>
+      <!-- דרופדאון התראות -->
+      <div class="notifications-dropdown" id="notificationsDropdown">
+        <div class="notifications-header">
+          <div class="notifications-title">
+            <span><i class="fas fa-bell"></i> התראות מערכת</span>
+            <button class="clear-all-btn" onclick="clearAllNotifications()">
+              <i class="fas fa-trash"></i> נקה הכל
+            </button>
+          </div>
         </div>
+        <div class="notifications-content" id="notificationsContent">
+          <!-- התראות יוכנסו כאן דינמית -->
+        </div>
+      </div>
     </div>
 
     <div class="app-container" id="appContainer">
-        <!-- סרגל צד -->
-        <div class="minimal-sidebar" id="minimalSidebar">
-            <div class="sidebar-brand">
-                <div class="brand-icon">
-                    <i class="fas fa-balance-scale"></i>
-                </div>
-                <div class="brand-text">משרד ע"ד</div>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <button class="nav-item" onclick="showClientFormWithSidebar();" title="הוסף לקוח חדש">
-                    <i class="fas fa-user-plus"></i>
-                    <span>לקוח חדש</span>
-                </button>
-                
-                <button class="nav-item" onclick="manager.loadDataFromSheets();" title="רענן נתונים">
-                    <i class="fas fa-sync-alt"></i>
-                    <span>רענן</span>
-                </button>
-                
-                <button class="nav-item" onclick="sendFeedback();" title="שלח משוב">
-                    <i class="fas fa-comments"></i>
-                    <span>משוב</span>
-                </button>
-                
-                <div class="nav-divider"></div>
-                
-                <button class="nav-item logout" onclick="logout();" title="יציאה מהמערכת">
-                    <i class="fas fa-power-off"></i>
-                    <span>יציאה</span>
-                </button>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <div class="user-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-            </div>
+      <!-- סרגל צד -->
+      <div class="minimal-sidebar" id="minimalSidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon">
+            <i class="fas fa-balance-scale"></i>
+          </div>
+          <div class="brand-text">משרד ע"ד</div>
         </div>
 
-        <!-- כותרת -->
-        <header class="header">
-            <div class="header-content">
-                <h1>מערכת ניהול מתקדמת</h1>
-                <p>משרד עו"ד גיא הרשקוביץ</p>
-                <div class="user-info hidden" id="userInfo"></div>
+        <nav class="sidebar-nav">
+          <button
+            class="nav-item"
+            onclick="showClientFormWithSidebar();"
+            title="הוסף לקוח חדש"
+          >
+            <i class="fas fa-user-plus"></i>
+            <span>לקוח חדש</span>
+          </button>
+
+          <button
+            class="nav-item"
+            onclick="manager.loadDataFromSheets();"
+            title="רענן נתונים"
+          >
+            <i class="fas fa-sync-alt"></i>
+            <span>רענן</span>
+          </button>
+
+          <button class="nav-item" onclick="sendFeedback();" title="שלח משוב">
+            <i class="fas fa-comments"></i>
+            <span>משוב</span>
+          </button>
+
+          <div class="nav-divider"></div>
+
+          <button
+            class="nav-item logout"
+            onclick="logout();"
+            title="יציאה מהמערכת"
+          >
+            <i class="fas fa-power-off"></i>
+            <span>יציאה</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- כותרת -->
+      <header class="header">
+        <div class="header-content">
+          <h1>מערכת ניהול מתקדמת</h1>
+          <p>משרד עו"ד גיא הרשקוביץ</p>
+          <div class="user-info hidden" id="userInfo"></div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+            תפריט
+          </button>
+        </div>
+      </header>
+
+      <!-- תוכן ראשי -->
+      <main class="main-content">
+        <!-- מסך התחברות -->
+        <div class="login-section" id="loginSection">
+          <h3>כניסה למערכת</h3>
+          <form id="loginForm">
+            <div class="form-group">
+              <label for="password">סיסמה</label>
+              <input
+                type="password"
+                id="password"
+                placeholder="הזן סיסמה"
+                required
+              />
             </div>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="toggleSidebar()">
-                    <i class="fas fa-bars"></i>
-                    תפריט
+            <div class="error-message hidden" id="errorMessage">
+              סיסמה שגויה
+            </div>
+            <br />
+            <button type="submit" class="btn">
+              <i class="fas fa-sign-in-alt"></i>
+              כניסה
+            </button>
+          </form>
+        </div>
+
+        <!-- תוכן המערכת -->
+        <div id="appContent" class="hidden">
+          <!-- סרגל עליון קבוע -->
+          <div class="top-user-bar">
+            <div class="user-dropdown-top">
+              <span id="currentUserDisplay">טוען...</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+          </div>
+
+          <!-- כפתור פלוס מתחת לסרגל -->
+          <div class="plus-container-new">
+            <button
+              class="plus-button-top"
+              id="smartPlusBtn"
+              onclick="openSmartForm()"
+            >
+              <i class="fas fa-plus"></i>
+            </button>
+            <div class="tooltip" id="plusTooltip">הוספת משימה חדשה</div>
+          </div>
+
+          <div class="main-tabs-container">
+            <div class="main-tabs">
+              <button class="tab-button active" onclick="switchTab('budget')">
+                <i class="fas fa-chart-bar"></i>
+                תקצוב משימות
+              </button>
+              <button class="tab-button" onclick="switchTab('timesheet')">
+                <i class="fas fa-clock"></i>
+                שעתון
+              </button>
+            </div>
+          </div>
+
+          <!-- טאב תקצוב משימות -->
+          <div id="budgetTab" class="tab-content active">
+            <div class="compact-form hidden" id="budgetFormContainer">
+              <form id="budgetForm">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="budgetClientSelect">לקוח/תיק</label>
+                    <div class="modern-client-search">
+                      <input
+                        type="text"
+                        class="search-input"
+                        id="budgetClientSearch"
+                        placeholder="התחל להקליד שם לקוח או מספר תיק..."
+                        oninput="searchClients('budget', this.value)"
+                      />
+
+                      <div
+                        class="search-results"
+                        id="budgetSearchResults"
+                      ></div>
+                      <input type="hidden" id="budgetClientSelect" required />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="budgetBranch">סניף מטפל</label>
+                    <select id="budgetBranch" required>
+                      <option value="">בחר סניף</option>
+                      <option value="רחובות">רחובות</option>
+                      <option value="תל אביב">תל אביב</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="budgetDescription">תיאור המשימה</label>
+                    <textarea
+                      id="budgetDescription"
+                      rows="2"
+                      placeholder="תיאור מפורט של המשימה..."
+                      required
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div class="form-row" style="grid-template-columns: 1fr 2fr">
+                  <div class="form-group">
+                    <label for="estimatedTime">דקות משוערות</label>
+                    <input
+                      type="number"
+                      id="estimatedTime"
+                      placeholder="120"
+                      min="1"
+                      max="999"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="budgetDeadline">תאריך יעד</label>
+                    <input type="datetime-local" id="budgetDeadline" required />
+                  </div>
+                </div>
+
+                <div class="form-buttons">
+                  <button type="submit" class="btn btn-success">
+                    <i class="fas fa-plus"></i>
+                    הוסף לתקצוב
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="document.getElementById('budgetFormContainer').classList.add('hidden')"
+                  >
+                    <i class="fas fa-times"></i>
+                    ביטול
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- שורת חיפוש וטאבי תצוגה -->
+            <div class="search-and-view-controls">
+              <div class="view-tabs">
+                <button
+                  class="view-tab active"
+                  data-view="cards"
+                  onclick="manager.switchBudgetView('cards')"
+                >
+                  <i class="fas fa-th-large"></i>
+                  כרטיסיות
                 </button>
+                <button
+                  class="view-tab"
+                  data-view="table"
+                  onclick="manager.switchBudgetView('table')"
+                >
+                  <i class="fas fa-table"></i>
+                  טבלה
+                </button>
+              </div>
+
+              <div class="search-filter-row">
+                <div class="filter-container">
+                  <span class="filter-label">הצג:</span>
+                  <select
+                    class="filter-select"
+                    id="budgetTaskFilter"
+                    onchange="manager.filterBudgetTasks()"
+                  >
+                    <option value="active">פעילות בלבד</option>
+                    <option value="completed">שהושלמו (חודש אחרון)</option>
+                    <option value="all">הכל</option>
+                  </select>
+                </div>
+
+                <div class="search-container">
+                  <input
+                    type="text"
+                    class="search-box"
+                    id="budgetSearchBox"
+                    placeholder="חפש משימות..."
+                    oninput="manager.searchBudgetTasks()"
+                  />
+                  <i class="fas fa-search search-icon"></i>
+                </div>
+              </div>
             </div>
-        </header>
 
-        <!-- תוכן ראשי -->
-        <main class="main-content">
-            <!-- מסך התחברות -->
-            <div class="login-section" id="loginSection">
-                <h3>כניסה למערכת</h3>
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label for="password">סיסמה</label>
-                        <input type="password" id="password" placeholder="הזן סיסמה" required>
+            <!-- רשימת משימות מתוקצבות -->
+            <div>
+              <h3
+                style="
+                  color: #1e293b;
+                  font-size: 24px;
+                  font-weight: 800;
+                  margin-bottom: 24px;
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                "
+              >
+                <i class="fas fa-chart-bar"></i>
+                משימות מתוקצבות
+              </h3>
+
+              <div id="budgetContainer">
+                <div class="loading-message">
+                  <div class="loader"></div>
+                  <span>טוען משימות...</span>
+                </div>
+              </div>
+
+              <div id="budgetTableContainer" class="hidden">
+                <!-- הטבלה המודרנית תיווצר כאן דינמית ב-JavaScript -->
+                <div class="modern-table-container">
+                  <div class="modern-table-header">
+                    <h3 class="modern-table-title">
+                      <i class="fas fa-chart-bar"></i>
+                      משימות מתוקצבות
+                    </h3>
+                    <div class="modern-table-subtitle">טוען נתונים...</div>
+                  </div>
+                  <div
+                    style="padding: 40px; text-align: center; color: #94a3b8"
+                  >
+                    <div
+                      class="loading-spinner"
+                      style="
+                        display: inline-block;
+                        width: 24px;
+                        height: 24px;
+                        border: 2px solid #e2e8f0;
+                        border-top: 2px solid #3b82f6;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                      "
+                    ></div>
+                    <span style="margin-right: 12px">טוען משימות...</span>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                id="budgetEmptyState"
+                class="empty-state"
+                style="display: none"
+              >
+                <div class="empty-icon"><i class="fas fa-chart-bar"></i></div>
+                <h4>אין משימות מתוקצבות</h4>
+                <p>הוסף משימה חדשה לתקצוב</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- טאב שעתון -->
+          <div id="timesheetTab" class="tab-content">
+            <div class="compact-form hidden" id="timesheetFormContainer">
+              <form id="timesheetForm">
+                <div class="form-row" style="grid-template-columns: 2fr 1fr">
+                  <div class="form-group">
+                    <label for="actionDate">תאריך</label>
+                    <input type="date" id="actionDate" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="actionMinutes">דקות</label>
+                    <input
+                      type="number"
+                      id="actionMinutes"
+                      placeholder="60"
+                      min="1"
+                      max="999"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="timesheetClientSelect">שם לקוח</label>
+                    <div class="modern-client-search">
+                      <input
+                        type="text"
+                        class="search-input"
+                        id="timesheetClientSearch"
+                        placeholder="התחל להקליד שם לקוח או מספר תיק..."
+                        oninput="searchClients('timesheet', this.value)"
+                      />
+
+                      <div
+                        class="search-results"
+                        id="timesheetSearchResults"
+                      ></div>
+                      <input
+                        type="hidden"
+                        id="timesheetClientSelect"
+                        required
+                      />
                     </div>
-                    <div class="error-message hidden" id="errorMessage">סיסמה שגויה</div>
-                    <br>
-                    <button type="submit" class="btn">
-                        <i class="fas fa-sign-in-alt"></i>
-                        כניסה
-                    </button>
-                </form>
+                  </div>
+                  <div class="form-group">
+                    <label for="fileNumber">מס' תיק</label>
+                    <input
+                      type="text"
+                      id="fileNumber"
+                      placeholder="מס' תיק"
+                      readonly
+                      style="background: #f1f5f9; color: #64748b"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="actionDescription">פעולה שבוצעה</label>
+                    <textarea
+                      id="actionDescription"
+                      rows="2"
+                      placeholder="תיאור מפורט של הפעולה שבוצעה..."
+                      required
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="actionNotes">הערות (אופציונלי)</label>
+                    <textarea
+                      id="actionNotes"
+                      rows="1"
+                      placeholder="הערות נוספות..."
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div class="form-buttons">
+                  <button type="submit" class="btn btn-success">
+                    <i class="fas fa-plus"></i>
+                    הוסף לשעתון
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="document.getElementById('timesheetFormContainer').classList.add('hidden')"
+                  >
+                    <i class="fas fa-times"></i>
+                    ביטול
+                  </button>
+                </div>
+              </form>
             </div>
 
-            <!-- תוכן המערכת -->
-            <div id="appContent" class="hidden">
-                <!-- סרגל עליון קבוע -->
-                <div class="top-user-bar">
-                    <div class="user-dropdown-top">
-                        <span id="currentUserDisplay">טוען...</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
+            <!-- שורת חיפוש ופילטר לשעתון -->
+            <div class="search-and-view-controls">
+              <div class="view-tabs">
+                <button
+                  class="view-tab"
+                  data-view="cards"
+                  onclick="manager.switchTimesheetView('cards')"
+                >
+                  <i class="fas fa-th-large"></i>
+                  כרטיסיות
+                </button>
+                <button
+                  class="view-tab active"
+                  data-view="table"
+                  onclick="manager.switchTimesheetView('table')"
+                >
+                  <i class="fas fa-table"></i>
+                  טבלה
+                </button>
+              </div>
+
+              <div class="search-filter-row">
+                <div class="filter-container">
+                  <span class="filter-label">הצג:</span>
+                  <select
+                    class="filter-select"
+                    id="timesheetFilter"
+                    onchange="manager.filterTimesheetEntries()"
+                  >
+                    <option value="month">חודש אחרון</option>
+                    <option value="today">היום בלבד</option>
+                    <option value="all">הכל</option>
+                  </select>
                 </div>
 
-                <!-- כפתור פלוס מתחת לסרגל -->
-                <div class="plus-container-new">
-                    <button class="plus-button-top" id="smartPlusBtn" onclick="openSmartForm()">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <div class="tooltip" id="plusTooltip">הוספת משימה חדשה</div>
+                <div class="search-container">
+                  <input
+                    type="text"
+                    class="search-box"
+                    id="timesheetSearchBox"
+                    placeholder="חפש רשומות..."
+                    oninput="manager.searchTimesheetEntries()"
+                  />
+                  <i class="fas fa-search search-icon"></i>
                 </div>
-
-                <div class="main-tabs-container">
-                    <div class="main-tabs">
-                        <button class="tab-button active" onclick="switchTab('budget')">
-                            <i class="fas fa-chart-bar"></i>
-                            תקצוב משימות
-                        </button>
-                        <button class="tab-button" onclick="switchTab('timesheet')">
-                            <i class="fas fa-clock"></i>
-                            שעתון
-                        </button>
-                    </div>
-                </div>
-
-                <!-- טאב תקצוב משימות -->
-                <div id="budgetTab" class="tab-content active">
-                    <div class="compact-form hidden" id="budgetFormContainer">
-                        <form id="budgetForm">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="budgetClientSelect">לקוח/תיק</label>
-                                    <div class="modern-client-search">
-                                        <input type="text" 
-                                               class="search-input" 
-                                               id="budgetClientSearch"
-                                               placeholder="התחל להקליד שם לקוח או מספר תיק..."
-                                               oninput="searchClients('budget', this.value)">
-                                        
-                                        <div class="search-results" id="budgetSearchResults"></div>
-                                        <input type="hidden" id="budgetClientSelect" required>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="budgetBranch">סניף מטפל</label>
-                                    <select id="budgetBranch" required>
-                                        <option value="">בחר סניף</option>
-                                        <option value="רחובות">רחובות</option>
-                                        <option value="תל אביב">תל אביב</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="budgetDescription">תיאור המשימה</label>
-                                    <textarea id="budgetDescription" rows="2" placeholder="תיאור מפורט של המשימה..." required></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="form-row" style="grid-template-columns: 1fr 2fr;">
-                                <div class="form-group">
-                                    <label for="estimatedTime">דקות משוערות</label>
-                                    <input type="number" id="estimatedTime" placeholder="120" min="1" max="999" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="budgetDeadline">תאריך יעד</label>
-                                    <input type="datetime-local" id="budgetDeadline" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-buttons">
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-plus"></i>
-                                    הוסף לתקצוב
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('budgetFormContainer').classList.add('hidden')">
-                                    <i class="fas fa-times"></i>
-                                    ביטול
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- שורת חיפוש וטאבי תצוגה -->
-                    <div class="search-and-view-controls">
-                        <div class="view-tabs">
-                            <button class="view-tab active" data-view="cards" onclick="manager.switchBudgetView('cards')">
-                                <i class="fas fa-th-large"></i>
-                                כרטיסיות
-                            </button>
-                            <button class="view-tab" data-view="table" onclick="manager.switchBudgetView('table')">
-                                <i class="fas fa-table"></i>
-                                טבלה
-                            </button>
-                        </div>
-
-                        <div class="search-filter-row">
-                            <div class="filter-container">
-                                <span class="filter-label">הצג:</span>
-                                <select class="filter-select" id="budgetTaskFilter" onchange="manager.filterBudgetTasks()">
-                                    <option value="active">פעילות בלבד</option>
-                                    <option value="completed">שהושלמו (חודש אחרון)</option>
-                                    <option value="all">הכל</option>
-                                </select>
-                            </div>
-                            
-                            <div class="search-container">
-                                <input type="text" class="search-box" id="budgetSearchBox" placeholder="חפש משימות..." oninput="manager.searchBudgetTasks()">
-                                <i class="fas fa-search search-icon"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- רשימת משימות מתוקצבות -->
-                    <div>
-                        <h3 style="color: #1e293b; font-size: 24px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
-                            <i class="fas fa-chart-bar"></i>
-                            משימות מתוקצבות
-                        </h3>
-                        
-                        <div id="budgetContainer">
-                            <div class="loading-message">
-                                <div class="loader"></div>
-                                <span>טוען משימות...</span>
-                            </div>
-                        </div>
-                        
-                        <div id="budgetTableContainer" class="hidden">
-                            <!-- הטבלה המודרנית תיווצר כאן דינמית ב-JavaScript -->
-                            <div class="modern-table-container">
-                                <div class="modern-table-header">
-                                    <h3 class="modern-table-title">
-                                        <i class="fas fa-chart-bar"></i>
-                                        משימות מתוקצבות
-                                    </h3>
-                                    <div class="modern-table-subtitle">טוען נתונים...</div>
-                                </div>
-                                <div style="padding: 40px; text-align: center; color: #94a3b8;">
-                                    <div class="loading-spinner" style="display: inline-block; width: 24px; height: 24px; border: 2px solid #e2e8f0; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                                    <span style="margin-right: 12px;">טוען משימות...</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="budgetEmptyState" class="empty-state" style="display: none;">
-                            <div class="empty-icon"><i class="fas fa-chart-bar"></i></div>
-                            <h4>אין משימות מתוקצבות</h4>
-                            <p>הוסף משימה חדשה לתקצוב</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- טאב שעתון -->
-                <div id="timesheetTab" class="tab-content">
-                    <div class="compact-form hidden" id="timesheetFormContainer">
-                        <form id="timesheetForm">
-                            <div class="form-row" style="grid-template-columns: 2fr 1fr;">
-                                <div class="form-group">
-                                    <label for="actionDate">תאריך</label>
-                                    <input type="date" id="actionDate" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="actionMinutes">דקות</label>
-                                    <input type="number" id="actionMinutes" placeholder="60" min="1" max="999" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="timesheetClientSelect">שם לקוח</label>
-                                    <div class="modern-client-search">
-                                        <input type="text" 
-                                               class="search-input" 
-                                               id="timesheetClientSearch"
-                                               placeholder="התחל להקליד שם לקוח או מספר תיק..."
-                                               oninput="searchClients('timesheet', this.value)">
-                                        
-                                        <div class="search-results" id="timesheetSearchResults"></div>
-                                        <input type="hidden" id="timesheetClientSelect" required>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="fileNumber">מס' תיק</label>
-                                    <input type="text" id="fileNumber" placeholder="מס' תיק" readonly style="background: #f1f5f9; color: #64748b;">
-                                </div>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="actionDescription">פעולה שבוצעה</label>
-                                    <textarea id="actionDescription" rows="2" placeholder="תיאור מפורט של הפעולה שבוצעה..." required></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="actionNotes">הערות (אופציונלי)</label>
-                                    <textarea id="actionNotes" rows="1" placeholder="הערות נוספות..."></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="form-buttons">
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-plus"></i>
-                                    הוסף לשעתון
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('timesheetFormContainer').classList.add('hidden')">
-                                    <i class="fas fa-times"></i>
-                                    ביטול
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- שורת חיפוש ופילטר לשעתון -->
-                    <div class="search-and-view-controls">
-                        <div class="view-tabs">
-                            <button class="view-tab" data-view="cards" onclick="manager.switchTimesheetView('cards')">
-                                <i class="fas fa-th-large"></i>
-                                כרטיסיות
-                            </button>
-                            <button class="view-tab active" data-view="table" onclick="manager.switchTimesheetView('table')">
-                                <i class="fas fa-table"></i>
-                                טבלה
-                            </button>
-                        </div>
-
-                        <div class="search-filter-row">
-                            <div class="filter-container">
-                                <span class="filter-label">הצג:</span>
-                                <select class="filter-select" id="timesheetFilter" onchange="manager.filterTimesheetEntries()">
-                                    <option value="month">חודש אחרון</option>
-                                    <option value="today">היום בלבד</option>
-                                    <option value="all">הכל</option>
-                                </select>
-                            </div>
-                            
-                            <div class="search-container">
-                                <input type="text" class="search-box" id="timesheetSearchBox" placeholder="חפש רשומות..." oninput="manager.searchTimesheetEntries()">
-                                <i class="fas fa-search search-icon"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- רשימת פעולות -->
-                    <div>
-                        <h3 style="color: #1e293b; font-size: 24px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
-                            <i class="fas fa-clock"></i>
-                            רשומות שעתון
-                        </h3>
-                        
-                        <div id="timesheetContainer" class="hidden">
-                            <div class="loading-message">
-                                <div class="loader"></div>
-                                <span>טוען רשומות...</span>
-                            </div>
-                        </div>
-                        
-                        <div id="timesheetTableContainer">
-                            <table class="timesheet-table" id="timesheetTable">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" data-sort="date">תאריך</th>
-                                        <th class="sortable" data-sort="action">פעולה</th>
-                                        <th class="sortable" data-sort="minutes">זמן</th>
-                                        <th class="sortable" data-sort="clientName">לקוח</th>
-                                        <th class="sortable" data-sort="fileNumber">מס׳ תיק</th>
-                                        <th>הערות</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="timesheetTableBody"></tbody>
-                            </table>
-                        </div>
-                        
-                        <div id="timesheetEmptyState" class="empty-state" style="display: none;">
-                            <div class="empty-icon"><i class="fas fa-clock"></i></div>
-                            <h4>אין פעולות רשומות</h4>
-                            <p>רשום את הפעולה הראשונה שלך</p>
-                        </div>
-                    </div>
-                </div>
+              </div>
             </div>
-        </main>
+
+            <!-- רשימת פעולות -->
+            <div>
+              <h3
+                style="
+                  color: #1e293b;
+                  font-size: 24px;
+                  font-weight: 800;
+                  margin-bottom: 24px;
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                "
+              >
+                <i class="fas fa-clock"></i>
+                רשומות שעתון
+              </h3>
+
+              <div id="timesheetContainer" class="hidden">
+                <div class="loading-message">
+                  <div class="loader"></div>
+                  <span>טוען רשומות...</span>
+                </div>
+              </div>
+
+              <div id="timesheetTableContainer">
+                <table class="timesheet-table" id="timesheetTable">
+                  <thead>
+                    <tr>
+                      <th class="sortable" data-sort="date">תאריך</th>
+                      <th class="sortable" data-sort="action">פעולה</th>
+                      <th class="sortable" data-sort="minutes">זמן</th>
+                      <th class="sortable" data-sort="clientName">לקוח</th>
+                      <th class="sortable" data-sort="fileNumber">מס׳ תיק</th>
+                      <th>הערות</th>
+                    </tr>
+                  </thead>
+                  <tbody id="timesheetTableBody"></tbody>
+                </table>
+              </div>
+
+              <div
+                id="timesheetEmptyState"
+                class="empty-state"
+                style="display: none"
+              >
+                <div class="empty-icon"><i class="fas fa-clock"></i></div>
+                <h4>אין פעולות רשומות</h4>
+                <p>רשום את הפעולה הראשונה שלך</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
 
     <footer class="main-footer">
-        <div class="footer-content">
-            <div class="system-status">
-                <span class="status-dot"></span>
-                <span>מערכת פעילה</span>
-            </div>
-            <div class="footer-divider"></div>
-            <a href="#" class="footer-link">
-                <i class="fas fa-question-circle"></i>
-                עזרה
-            </a>
-            <div class="footer-divider"></div>
-            <a href="#" class="footer-link">
-                <i class="fas fa-cog"></i>
-                הגדרות
-            </a>
-            <div class="footer-divider"></div>
-            <span>© 2025 משרד עו"ד גיא הרשקוביץ</span>
+      <div class="footer-content">
+        <div class="system-status">
+          <span class="status-dot"></span>
+          <span>מערכת פעילה</span>
         </div>
+        <div class="footer-divider"></div>
+        <a href="#" class="footer-link">
+          <i class="fas fa-question-circle"></i>
+          עזרה
+        </a>
+        <div class="footer-divider"></div>
+        <a href="#" class="footer-link">
+          <i class="fas fa-cog"></i>
+          הגדרות
+        </a>
+        <div class="footer-divider"></div>
+        <span>© 2025 משרד עו"ד גיא הרשקוביץ</span>
+      </div>
     </footer>
 
     <!-- פופאפ לקוח חדש מתוקן -->
-    <div id="clientFormOverlay" class="popup-overlay hidden" onclick="hideClientFormOnOverlay(event)" style="z-index: 3000;">
-        <div class="popup" style="max-width: 580px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
-            <div class="popup-header" style="position: sticky; top: 0; z-index: 1;">
-                <i class="fas fa-user-plus"></i>
-                הוסף לקוח/תיק חדש
-                <button type="button" style="margin-right: auto; background: none; border: none; color: white; font-size: 18px; cursor: pointer;" onclick="hideClientForm()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div style="padding: 20px;">
-                <form id="clientForm">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <button type="button" class="btn btn-warning" onclick="manager.searchExistingClient()" style="width: 100%;">
-                            <i class="fas fa-search"></i>
-                            חפש לקוח קיים
-                        </button>
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">שם הלקוח</label>
-                        <input type="text" id="clientName" placeholder="דנה לוי" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">מספר תיק</label>
-                        <input type="text" id="fileNumberInput" placeholder="2024001" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">תיאור/הבחנה (אופציונלי)</label>
-                        <input type="text" id="clientDescription" placeholder="תוכנית שעות, מחוזי, ביהד לעבודה..." style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">סוג התיק</label>
-                        <div class="client-type-options">
-                            <div class="client-type-option">
-                                <input type="radio" id="typeHours" name="clientType" value="hours" class="client-type-radio" checked>
-                                <label for="typeHours" class="client-type-label">
-                                    <i class="fas fa-clock"></i>
-                                    תוכנית שעות
-                                </label>
-                            </div>
-                            <div class="client-type-option">
-                                <input type="radio" id="typeFixed" name="clientType" value="fixed" class="client-type-radio">
-                                <label for="typeFixed" class="client-type-label">
-                                    <i class="fas fa-list-ol"></i>
-                                    פיקס (3 שלבים)
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="hoursSection" class="hours-input-section">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #374151;">כמות שעות</label>
-                        <input type="number" id="hoursAmount" placeholder="30" min="1" max="500" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                        <small style="color: #6b7280; margin-top: 8px; display: block;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            התראה תופיע כאשר יישארו 5 שעות בלבד
-                        </small>
-                    </div>
-
-                    <div id="stagesSection" class="stages-info hidden">
-                        <h4 style="color: #059669; margin: 0 0 10px 0; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-check-circle"></i>
-                            התיק יכלול 3 שלבים:
-                        </h4>
-                        <div class="stages-list" style="color: #6b7280; line-height: 1.8;">
-                            <i class="far fa-square"></i> שלב 1 - לא הושלם<br>
-                            <i class="far fa-square"></i> שלב 2 - לא הושלם<br>
-                            <i class="far fa-square"></i> שלב 3 - לא הושלם
-                        </div>
-                    </div>
-
-                    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                        <button type="button" class="popup-btn popup-btn-cancel" onclick="hideClientForm()" style="padding: 12px 24px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #374151; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-times"></i>
-                            ביטול
-                        </button>
-                        <button type="submit" class="popup-btn popup-btn-confirm" style="padding: 12px 24px; border: none; border-radius: 6px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-check"></i>
-                            צור תיק
-                        </button>
-                    </div>
-                </form>
-            </div>
+    <div
+      id="clientFormOverlay"
+      class="popup-overlay hidden"
+      onclick="hideClientFormOnOverlay(event)"
+      style="z-index: 3000"
+    >
+      <div
+        class="popup"
+        style="max-width: 580px; max-height: 90vh; overflow-y: auto"
+        onclick="event.stopPropagation()"
+      >
+        <div class="popup-header" style="position: sticky; top: 0; z-index: 1">
+          <i class="fas fa-user-plus"></i>
+          הוסף לקוח/תיק חדש
+          <button
+            type="button"
+            style="
+              margin-right: auto;
+              background: none;
+              border: none;
+              color: white;
+              font-size: 18px;
+              cursor: pointer;
+            "
+            onclick="hideClientForm()"
+          >
+            <i class="fas fa-times"></i>
+          </button>
         </div>
+
+        <div style="padding: 20px">
+          <form id="clientForm">
+            <div style="text-align: center; margin-bottom: 20px">
+              <button
+                type="button"
+                class="btn btn-warning"
+                onclick="manager.searchExistingClient()"
+                style="width: 100%"
+              >
+                <i class="fas fa-search"></i>
+                חפש לקוח קיים
+              </button>
+            </div>
+
+            <div style="margin-bottom: 15px">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 5px;
+                  font-weight: 600;
+                  color: #374151;
+                "
+                >שם הלקוח</label
+              >
+              <input
+                type="text"
+                id="clientName"
+                placeholder="דנה לוי"
+                required
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 14px;
+                "
+              />
+            </div>
+
+            <div style="margin-bottom: 15px">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 5px;
+                  font-weight: 600;
+                  color: #374151;
+                "
+                >מספר תיק</label
+              >
+              <input
+                type="text"
+                id="fileNumberInput"
+                placeholder="2024001"
+                required
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 14px;
+                "
+              />
+            </div>
+
+            <div style="margin-bottom: 15px">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 5px;
+                  font-weight: 600;
+                  color: #374151;
+                "
+                >תיאור/הבחנה (אופציונלי)</label
+              >
+              <input
+                type="text"
+                id="clientDescription"
+                placeholder="תוכנית שעות, מחוזי, ביהד לעבודה..."
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 14px;
+                "
+              />
+            </div>
+
+            <div style="margin-bottom: 15px">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 8px;
+                  font-weight: 600;
+                  color: #374151;
+                "
+                >סוג התיק</label
+              >
+              <div class="client-type-options">
+                <div class="client-type-option">
+                  <input
+                    type="radio"
+                    id="typeHours"
+                    name="clientType"
+                    value="hours"
+                    class="client-type-radio"
+                    checked
+                  />
+                  <label for="typeHours" class="client-type-label">
+                    <i class="fas fa-clock"></i>
+                    תוכנית שעות
+                  </label>
+                </div>
+                <div class="client-type-option">
+                  <input
+                    type="radio"
+                    id="typeFixed"
+                    name="clientType"
+                    value="fixed"
+                    class="client-type-radio"
+                  />
+                  <label for="typeFixed" class="client-type-label">
+                    <i class="fas fa-list-ol"></i>
+                    פיקס (3 שלבים)
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div id="hoursSection" class="hours-input-section">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 5px;
+                  font-weight: 600;
+                  color: #374151;
+                "
+                >כמות שעות</label
+              >
+              <input
+                type="number"
+                id="hoursAmount"
+                placeholder="30"
+                min="1"
+                max="500"
+                required
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 14px;
+                "
+              />
+              <small style="color: #6b7280; margin-top: 8px; display: block">
+                <i class="fas fa-exclamation-triangle"></i>
+                התראה תופיע כאשר יישארו 5 שעות בלבד
+              </small>
+            </div>
+
+            <div id="stagesSection" class="stages-info hidden">
+              <h4
+                style="
+                  color: #059669;
+                  margin: 0 0 10px 0;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                "
+              >
+                <i class="fas fa-check-circle"></i>
+                התיק יכלול 3 שלבים:
+              </h4>
+              <div class="stages-list" style="color: #6b7280; line-height: 1.8">
+                <i class="far fa-square"></i> שלב 1 - לא הושלם<br />
+                <i class="far fa-square"></i> שלב 2 - לא הושלם<br />
+                <i class="far fa-square"></i> שלב 3 - לא הושלם
+              </div>
+            </div>
+
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                justify-content: flex-end;
+                margin-top: 25px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+              "
+            >
+              <button
+                type="button"
+                class="popup-btn popup-btn-cancel"
+                onclick="hideClientForm()"
+                style="
+                  padding: 12px 24px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  background: white;
+                  color: #374151;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                "
+              >
+                <i class="fas fa-times"></i>
+                ביטול
+              </button>
+              <button
+                type="submit"
+                class="popup-btn popup-btn-confirm"
+                style="
+                  padding: 12px 24px;
+                  border: none;
+                  border-radius: 6px;
+                  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+                  color: white;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                "
+              >
+                <i class="fas fa-check"></i>
+                צור תיק
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- התראות -->
     <div id="notification" class="notification"></div>
-    
+
     <!-- קישור לקובץ JavaScript -->
     <script src="script.js"></script>
 
     <style>
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
     </style>
-</body>
+  </body>
 </html>
