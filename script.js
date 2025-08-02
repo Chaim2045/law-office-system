@@ -2564,10 +2564,8 @@ class LawOfficeManager {
                         </span>
                     </div>
                     
-                    
+                   
                 </div>
-                
-      </div>
             </div>
             
             <!-- כפתור הפלוס הקטן שמישהו אוהב -->
