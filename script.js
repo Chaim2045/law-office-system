@@ -2564,24 +2564,18 @@ class LawOfficeManager {
                         </span>
                     </div>
                     
-                    ${
-                      safeTask.fileNumber
-                        ? `
-                    <div class="linear-file-row">
-                        <span class="linear-file-number">תיק: ${safeTask.fileNumber}</span>
-                    </div>
-                    `
-                        : ""
-                    }
+                    
                 </div>
                 
-                <!-- כפתור הפלוס הקטן שמישהו אוהב -->
-                <button class="linear-expand-btn" onclick="manager.expandTaskCard(${
-                  safeTask.id
-                }, event)" title="הרחב פרטים">
-                    <i class="fas fa-plus"></i>
-                </button>
+      </div>
             </div>
+            
+            <!-- כפתור הפלוס הקטן שמישהו אוהב -->
+            <button class="linear-expand-btn" onclick="manager.expandTaskCard(${
+              safeTask.id
+            }, event)" title="הרחב פרטים">
+                <i class="fas fa-plus"></i>
+            </button>
         </div>
     `;
   }

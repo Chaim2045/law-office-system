@@ -3096,7 +3096,8 @@ button[onclick*="addBudget"]:hover {
   top: 20px;
   left: 20px;
   right: 20px;
-  bottom: 60px; /* משאיר מקום לכפתור למטה */
+  bottom: 50px; /* מקום לכפתור + מרווח */
+  overflow: hidden; /* מונע חריגה מהכרטיסייה */
   display: flex;
   flex-direction: column;
   justify-content: flex-start; /* תוכן למעלה */
@@ -3123,6 +3124,8 @@ button[onclick*="addBudget"]:hover {
 
 /* מטא-נתונים משופרים של הכרטיס */
 .linear-card-meta {
+  max-height: 50px; /* מגביל גובה למטא-נתונים */
+  overflow: hidden; /* חותך טקסט עודף */
   display: flex;
   flex-direction: column;
   gap: 8px;
