@@ -2295,10 +2295,7 @@ class LawOfficeManager {
   }
 
   renderBudgetCards() {
-    his.domCache = {
-      budgetContainer: document.getElementById("budgetContainer"),
-      budgetTableContainer: document.getElementById("budgetTableContainer"),
-    };
+    const container = document.getElementById("budgetContainer");
     if (!container) return;
 
     const tasksHtml = this.filteredBudgetTasks
