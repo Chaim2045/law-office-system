@@ -2295,15 +2295,11 @@ class LawOfficeManager {
   }
 
   renderBudgetCards() {
-    const container = document.getElementById("budgetContainer");
+    his.domCache = {
+      budgetContainer: document.getElementById("budgetContainer"),
+      budgetTableContainer: document.getElementById("budgetTableContainer"),
+    };
     if (!container) return;
-    // עדכון הסטטיסטיקות
-    const statsDiv = document.getElementById("budgetStats");
-    if (statsDiv) {
-      statsDiv.textContent = `${
-        this.filteredBudgetTasks.length
-      } משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו`;
-    }
 
     const tasksHtml = this.filteredBudgetTasks
       .map((task) => this.createModernTaskCard(task))
@@ -5658,13 +5654,13 @@ function switchToTab(tabName) {
     if (timesheetTab) timesheetTab.classList.add("active");
   }
 
-  const targetTab = document.getElementById(tabName + "Tab");
-  if (targetTab) {
-    targetTab.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }
+  // const targetTab = document.getElementById(tabName + "Tab");
+  // if (targetTab) {
+  //   targetTab.scrollIntoView({
+  //     behavior: "smooth",
+  //     block: "start",
+  //   });
+  // }
 }
 
 function toggleForm(formId) {
