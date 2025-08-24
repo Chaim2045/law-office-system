@@ -1,23 +1,91 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
+  <!-- Firebase Optimized Config -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // Firebase Configuration - מהיר ומאופטמ
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8",
+    };
+
+    try {
+      // Initialize Firebase with performance settings
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      // אופטימיזציות ביצועים
+      db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+        merge: true,
+      });
+
+      // הפוך זמין למערכת
+      window.firebaseDB = db;
+      window.firebaseApp = firebase.app();
+
+      // פונקציות פשוטות ומהירות
+      window.firebaseUtils = {
+        collection: (name) => db.collection(name),
+        doc: (collection, id) => db.collection(collection).doc(id),
+        addDoc: (collectionRef, data) => collectionRef.add(data),
+        getDocs: (query) => query.get(),
+        updateDoc: (docRef, data) => docRef.update(data),
+        deleteDoc: (docRef) => docRef.delete(),
+        where: (field, operator, value) =>
+          firebase.firestore.FieldPath.documentId(),
+        orderBy: (field, direction = "asc") => direction,
+      };
+
+      console.log("🔥 Firebase מחובר בהצלחה - מצב מהיר!");
+      console.log("✅ Database מוכן עם אופטימיזציות");
+      console.log("✅ Project ID:", firebaseConfig.projectId);
+
+      // בדיקת חיבור מהירה (ללא timeout)
+      setTimeout(() => {
+        db.collection("test")
+          .limit(1)
+          .get()
+          .then(() => {
+            console.log("🚀 חיבור לFirestore מהיר ותקין!");
+          })
+          .catch((error) => {
+            console.warn("⚠️ בעיה בחיבור:", error.message);
+          });
+      }, 100);
+    } catch (error) {
+      console.error("❌ Firebase Error:", error);
+      alert("שגיאה בחיבור לFirebase: " + error.message);
+    }
+  </script>
   <head>
+    <!-- ===== META TAGS & BASIC SETUP ===== -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ</title>
 
+    <!-- ===== EXTERNAL RESOURCES ===== -->
     <!-- Font Awesome Icons -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
 
-    <!-- קישור לקובץ CSS -->
+    <!-- Main CSS Stylesheet -->
     <link rel="stylesheet" href="style.css" />
   </head>
+
   <body>
-    <!-- אלמנטי ממשק שמופיעים רק אחרי התחברות -->
+    <!-- ===== NOTIFICATION SYSTEM (Hidden until login) ===== -->
     <div id="interfaceElements" class="hidden">
-      <!-- פעמון התראות -->
+      <!-- Notification Bell -->
       <button
         class="notification-bell"
         id="notificationBell"
@@ -27,7 +95,7 @@
         <span class="notification-count hidden" id="notificationCount">0</span>
       </button>
 
-      <!-- דרופדאון התראות -->
+      <!-- Notifications Dropdown -->
       <div class="notifications-dropdown" id="notificationsDropdown">
         <div class="notifications-header">
           <div class="notifications-title">
@@ -38,13 +106,14 @@
           </div>
         </div>
         <div class="notifications-content" id="notificationsContent">
-          <!-- התראות יוכנסו כאן דינמית -->
+          <!-- Dynamic notifications will be inserted here -->
         </div>
       </div>
     </div>
 
+    <!-- ===== MAIN APPLICATION CONTAINER ===== -->
     <div class="app-container" id="appContainer">
-      <!-- סרגל צד -->
+      <!-- ===== SIDEBAR NAVIGATION ===== -->
       <div class="minimal-sidebar" id="minimalSidebar">
         <div class="sidebar-brand">
           <div class="brand-icon">
@@ -56,7 +125,7 @@
         <nav class="sidebar-nav">
           <button
             class="nav-item"
-            onclick="showClientFormWithSidebar();"
+            onclick="showClientForm();"
             title="הוסף לקוח חדש"
           >
             <i class="fas fa-user-plus"></i>
@@ -65,7 +134,7 @@
 
           <button
             class="nav-item"
-            onclick="manager.loadDataFromSheets();"
+            onclick="manager.loadDataFromFirebase();"
             title="רענן נתונים"
           >
             <i class="fas fa-sync-alt"></i>
@@ -96,7 +165,7 @@
         </div>
       </div>
 
-      <!-- כותרת -->
+      <!-- ===== MAIN HEADER ===== -->
       <header class="header">
         <div class="header-content">
           <h1>מערכת ניהול מתקדמת</h1>
@@ -111,9 +180,9 @@
         </div>
       </header>
 
-      <!-- תוכן ראשי -->
+      <!-- ===== MAIN CONTENT AREA ===== -->
       <main class="main-content">
-        <!-- מסך התחברות -->
+        <!-- ===== LOGIN SECTION ===== -->
         <div class="login-section" id="loginSection">
           <h3>כניסה למערכת</h3>
           <form id="loginForm">
@@ -123,6 +192,7 @@
                 type="password"
                 id="password"
                 placeholder="הזן סיסמה"
+                autocomplete="current-password"
                 required
               />
             </div>
@@ -137,9 +207,9 @@
           </form>
         </div>
 
-        <!-- תוכן המערכת -->
+        <!-- ===== APP CONTENT (Hidden until login) ===== -->
         <div id="appContent" class="hidden">
-          <!-- סרגל עליון קבוע -->
+          <!-- ===== TOP USER BAR ===== -->
           <div class="top-user-bar">
             <div class="user-dropdown-top">
               <span id="currentUserDisplay">טוען...</span>
@@ -147,7 +217,7 @@
             </div>
           </div>
 
-          <!-- כפתור פלוס מתחת לסרגל -->
+          <!-- ===== SMART PLUS BUTTON ===== -->
           <div class="plus-container-new">
             <button
               class="plus-button-top"
@@ -159,6 +229,7 @@
             <div class="tooltip" id="plusTooltip">הוספת משימה חדשה</div>
           </div>
 
+          <!-- ===== MAIN TABS NAVIGATION ===== -->
           <div class="main-tabs-container">
             <div class="main-tabs">
               <button class="tab-button active" onclick="switchTab('budget')">
@@ -172,8 +243,9 @@
             </div>
           </div>
 
-          <!-- טאב תקצוב משימות -->
+          <!-- ===== BUDGET TAB CONTENT ===== -->
           <div id="budgetTab" class="tab-content active">
+            <!-- Budget Form (Hidden by default) -->
             <div class="compact-form hidden" id="budgetFormContainer">
               <form id="budgetForm">
                 <div class="form-row">
@@ -185,9 +257,9 @@
                         class="search-input"
                         id="budgetClientSearch"
                         placeholder="התחל להקליד שם לקוח או מספר תיק..."
+                        autocomplete="off"
                         oninput="searchClients('budget', this.value)"
                       />
-
                       <div
                         class="search-results"
                         id="budgetSearchResults"
@@ -197,7 +269,7 @@
                   </div>
                   <div class="form-group">
                     <label for="budgetBranch">סניף מטפל</label>
-                    <select id="budgetBranch" required>
+                    <select id="budgetBranch" autocomplete="off" required>
                       <option value="">בחר סניף</option>
                       <option value="רחובות">רחובות</option>
                       <option value="תל אביב">תל אביב</option>
@@ -212,6 +284,7 @@
                       id="budgetDescription"
                       rows="2"
                       placeholder="תיאור מפורט של המשימה..."
+                      autocomplete="off"
                       required
                     ></textarea>
                   </div>
@@ -226,12 +299,18 @@
                       placeholder="120"
                       min="1"
                       max="999"
+                      autocomplete="off"
                       required
                     />
                   </div>
                   <div class="form-group">
                     <label for="budgetDeadline">תאריך יעד</label>
-                    <input type="datetime-local" id="budgetDeadline" required />
+                    <input
+                      type="datetime-local"
+                      id="budgetDeadline"
+                      autocomplete="off"
+                      required
+                    />
                   </div>
                 </div>
 
@@ -252,7 +331,7 @@
               </form>
             </div>
 
-            <!-- שורת חיפוש וטאבי תצוגה -->
+            <!-- Search and View Controls -->
             <div class="search-and-view-controls">
               <div class="view-tabs">
                 <button
@@ -293,6 +372,7 @@
                     class="search-box"
                     id="budgetSearchBox"
                     placeholder="חפש משימות..."
+                    autocomplete="off"
                     oninput="manager.searchBudgetTasks()"
                   />
                   <i class="fas fa-search search-icon"></i>
@@ -300,10 +380,8 @@
               </div>
             </div>
 
-            <!-- רשימת משימות מתוקצבות -->
+            <!-- Budget Tasks Container -->
             <div>
-              <!-- 🎯 הכותרת הריקה נמחקה! -->
-
               <div id="budgetContainer">
                 <div class="loading-message">
                   <div class="loader"></div>
@@ -312,7 +390,6 @@
               </div>
 
               <div id="budgetTableContainer" class="hidden">
-                <!-- הטבלה המודרנית תיווצר כאן דינמית ב-JavaScript -->
                 <div class="modern-table-container">
                   <div class="modern-table-header">
                     <h3 class="modern-table-title">
@@ -353,14 +430,20 @@
             </div>
           </div>
 
-          <!-- טאב שעתון -->
+          <!-- ===== TIMESHEET TAB CONTENT ===== -->
           <div id="timesheetTab" class="tab-content">
+            <!-- Timesheet Form (Hidden by default) -->
             <div class="compact-form hidden" id="timesheetFormContainer">
               <form id="timesheetForm">
                 <div class="form-row" style="grid-template-columns: 2fr 1fr">
                   <div class="form-group">
                     <label for="actionDate">תאריך</label>
-                    <input type="date" id="actionDate" required />
+                    <input
+                      type="date"
+                      id="actionDate"
+                      autocomplete="off"
+                      required
+                    />
                   </div>
                   <div class="form-group">
                     <label for="actionMinutes">דקות</label>
@@ -370,6 +453,7 @@
                       placeholder="60"
                       min="1"
                       max="999"
+                      autocomplete="off"
                       required
                     />
                   </div>
@@ -384,9 +468,9 @@
                         class="search-input"
                         id="timesheetClientSearch"
                         placeholder="התחל להקליד שם לקוח או מספר תיק..."
+                        autocomplete="off"
                         oninput="searchClients('timesheet', this.value)"
                       />
-
                       <div
                         class="search-results"
                         id="timesheetSearchResults"
@@ -404,6 +488,7 @@
                       type="text"
                       id="fileNumber"
                       placeholder="מס' תיק"
+                      autocomplete="off"
                       readonly
                       style="background: #f1f5f9; color: #64748b"
                     />
@@ -417,6 +502,7 @@
                       id="actionDescription"
                       rows="2"
                       placeholder="תיאור מפורט של הפעולה שבוצעה..."
+                      autocomplete="off"
                       required
                     ></textarea>
                   </div>
@@ -429,6 +515,7 @@
                       id="actionNotes"
                       rows="1"
                       placeholder="הערות נוספות..."
+                      autocomplete="off"
                     ></textarea>
                   </div>
                 </div>
@@ -450,7 +537,7 @@
               </form>
             </div>
 
-            <!-- שורת חיפוש ופילטר לשעתון -->
+            <!-- Timesheet Search and View Controls -->
             <div class="search-and-view-controls">
               <div class="view-tabs">
                 <button
@@ -491,6 +578,7 @@
                     class="search-box"
                     id="timesheetSearchBox"
                     placeholder="חפש רשומות..."
+                    autocomplete="off"
                     oninput="manager.searchTimesheetEntries()"
                   />
                   <i class="fas fa-search search-icon"></i>
@@ -498,7 +586,7 @@
               </div>
             </div>
 
-            <!-- רשימת פעולות -->
+            <!-- Timesheet Entries Container -->
             <div>
               <h3
                 style="
@@ -553,6 +641,7 @@
       </main>
     </div>
 
+    <!-- ===== MAIN FOOTER ===== -->
     <footer class="main-footer">
       <div class="footer-content">
         <div class="system-status">
@@ -574,7 +663,7 @@
       </div>
     </footer>
 
-    <!-- פופאפ לקוח חדש מתוקן -->
+    <!-- ===== CLIENT FORM POPUP ===== -->
     <div
       id="clientFormOverlay"
       class="popup-overlay hidden"
@@ -607,18 +696,6 @@
 
         <div style="padding: 20px">
           <form id="clientForm">
-            <div style="text-align: center; margin-bottom: 20px">
-              <button
-                type="button"
-                class="btn btn-warning"
-                onclick="manager.searchExistingClient()"
-                style="width: 100%"
-              >
-                <i class="fas fa-search"></i>
-                חפש לקוח קיים
-              </button>
-            </div>
-
             <div style="margin-bottom: 15px">
               <label
                 style="
@@ -633,6 +710,7 @@
                 type="text"
                 id="clientName"
                 placeholder="דנה לוי"
+                autocomplete="organization"
                 required
                 style="
                   width: 100%;
@@ -658,6 +736,7 @@
                 type="text"
                 id="fileNumberInput"
                 placeholder="2024001"
+                autocomplete="off"
                 required
                 style="
                   width: 100%;
@@ -683,6 +762,7 @@
                 type="text"
                 id="clientDescription"
                 placeholder="תוכנית שעות, מחוזי, ביהד לעבודה..."
+                autocomplete="off"
                 style="
                   width: 100%;
                   padding: 10px;
@@ -750,6 +830,7 @@
                 placeholder="30"
                 min="1"
                 max="500"
+                autocomplete="off"
                 required
                 style="
                   width: 100%;
@@ -838,13 +919,15 @@
       </div>
     </div>
 
-    <!-- התראות -->
+    <!-- ===== NOTIFICATION TOAST ===== -->
     <div id="notification" class="notification"></div>
 
-    <!-- קישור לקובץ JavaScript -->
-
+    <!-- ===== SCRIPTS AND STYLES ===== -->
+    <!-- Main JavaScript -->
+    <script src="api.js"></script>
     <script src="script.js"></script>
 
+    <!-- Additional CSS for animations -->
     <style>
       @keyframes spin {
         0% {
