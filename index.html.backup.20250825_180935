@@ -279,13 +279,14 @@
 
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="budgetDescription"
-                      >סוג המשימה
-                      <span class="category-required">*</span></label
-                    >
-                    <div id="budgetDescriptionContainer">
-                      <!-- הקוד JavaScript ייצור את השדה כאן -->
-                    </div>
+                    <label for="budgetDescription">תיאור המשימה</label>
+                    <textarea
+                      id="budgetDescription"
+                      rows="2"
+                      placeholder="תיאור מפורט של המשימה..."
+                      autocomplete="off"
+                      required
+                    ></textarea>
                   </div>
                 </div>
 
@@ -395,46 +396,24 @@
                       <i class="fas fa-chart-bar"></i>
                       משימות מתוקצבות
                     </h3>
-                    <div class="modern-table-subtitle">
-                      רשימת המשימות המתוקצבות
-                    </div>
+                    <div class="modern-table-subtitle">טוען נתונים...</div>
                   </div>
-
-                  <!-- הטבלה עצמה -->
-                  <div class="table-wrapper">
-                    <table class="modern-budget-table">
-                      <thead>
-                        <tr>
-                          <th class="text-center" style="width: 50px">#</th>
-                          <th style="width: 200px">תיאור משימה</th>
-                          <th style="width: 150px">לקוח</th>
-                          <th class="text-center" style="width: 80px">תקצוב</th>
-                          <th class="text-center" style="width: 80px">בוצע</th>
-                          <th class="text-center" style="width: 80px">נותר</th>
-                          <th class="text-center" style="width: 100px">
-                            תאריך יעד
-                          </th>
-                          <th class="text-center" style="width: 80px">סטטוס</th>
-                          <th class="text-center" style="width: 100px">
-                            פעולות
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <!-- כאן יטענו המשימות דינמית -->
-                        <tr>
-                          <td
-                            colspan="9"
-                            style="text-align: center; padding: 40px"
-                          >
-                            <div class="loading-message">
-                              <div class="loader"></div>
-                              <span>טוען משימות...</span>
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                  <div
+                    style="padding: 40px; text-align: center; color: #94a3b8"
+                  >
+                    <div
+                      class="loading-spinner"
+                      style="
+                        display: inline-block;
+                        width: 24px;
+                        height: 24px;
+                        border: 2px solid #e2e8f0;
+                        border-top: 2px solid #3b82f6;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                      "
+                    ></div>
+                    <span style="margin-right: 12px">טוען משימות...</span>
                   </div>
                 </div>
               </div>
@@ -518,13 +497,14 @@
 
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="actionDescription"
-                      >סוג הפעולה
-                      <span class="category-required">*</span></label
-                    >
-                    <div id="actionDescriptionContainer">
-                      <!-- הקוד JavaScript ייצור את השדה כאן -->
-                    </div>
+                    <label for="actionDescription">פעולה שבוצעה</label>
+                    <textarea
+                      id="actionDescription"
+                      rows="2"
+                      placeholder="תיאור מפורט של הפעולה שבוצעה..."
+                      autocomplete="off"
+                      required
+                    ></textarea>
                   </div>
                 </div>
 

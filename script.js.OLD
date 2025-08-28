@@ -10,7 +10,6 @@ const startMemory = performance.memory?.usedJSHeapSize || 0;
 /* === Global Constants === */
 const EMPLOYEES = {
   חיים: { password: "2025", name: "חיים" },
-  ישי: { password: "2025", name: "ישי" },
   גיא: { password: "2025", name: "גיא" },
   מרווה: { password: "2025", name: "מרווה" },
   אלומה: { password: "2025", name: "אלומה" },
@@ -146,7 +145,6 @@ function initializeFirebase() {
       throw new Error("Firebase Database לא מחובר");
     }
 
-    console.log("✅ Database מוכן עם אופטימיזציות");
     console.log("✅ Project ID: law-office-system-e4801");
     return true;
   } catch (error) {
@@ -198,70 +196,90 @@ async function testFirebaseConnection() {
 /* === Firebase Data Operations === */
 
 /**
- * Load clients from Firebase
+ * Load clients from new server (replacing direct Firestore access)
  */
 async function loadClientsFromFirebase() {
   try {
-    showSimpleLoading("טוען לקוחות...");
+    console.log("🔄 Loading clients from new server...");
 
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
-    }
+    // Use the new API instead of direct Firestore
+    const clients = await loadClientsFromServer();
 
-    const snapshot = await db.collection("clients").get();
-    const clients = [];
+    console.log(`🔥 Server: נטענו ${clients.length} לקוחות`);
 
-    snapshot.forEach((doc) => {
-      clients.push({
-        id: doc.id,
-        ...doc.data(),
-      });
+    // Keep the same processing logic as before
+    const processedClients = clients.map((client) => {
+      // Calculate hours and status using existing functions
+      const hoursData = calculateClientHoursAccurate(
+        client.name || client.fullName
+      );
+
+      return {
+        id: client.id,
+        fullName: client.name || client.fullName,
+        name: client.name || client.fullName,
+        email: client.email || "",
+        phone: client.phone || "",
+        type: client.type,
+        hourlyRate: client.hourlyRate || 0,
+        fixedPayment: client.fixedPayment || 0,
+        bonusHours: client.bonusHours || 0,
+        totalHours: hoursData.totalHours,
+        hoursRemaining: hoursData.hoursRemaining,
+        totalPayment: hoursData.totalPayment,
+        isBlocked: hoursData.isBlocked,
+        isCritical: hoursData.isCritical,
+        createdAt: client.createdAt,
+        updatedAt: client.updatedAt,
+      };
     });
 
-    console.log(`🔥 Firebase: נטענו ${clients.length} לקוחות`);
-    hideSimpleLoading();
-    return clients;
+    console.log("✅ Clients processed successfully via new server");
+    return processedClients;
   } catch (error) {
-    console.error("Firebase error:", error);
-    hideSimpleLoading();
-    throw new Error("שגיאה בטעינת לקוחות: " + error.message);
+    console.error("❌ Error loading clients from server:", error);
+
+    // Fallback to show user-friendly error
+    if (window.manager && window.manager.showNotification) {
+      window.manager.showNotification(
+        "⚠️ שגיאה בטעינת לקוחות מהשרת החדש",
+        "error"
+      );
+    }
+
+    throw error;
   }
 }
 
 /**
  * Load budget tasks from Firebase
  */
+/**
+ * Load budget tasks from new server (replacing direct Firestore access)
+ */
 async function loadBudgetTasksFromFirebase(employee) {
   try {
-    showSimpleLoading("טוען משימות...");
+    console.log("🔄 Loading budget tasks from new server...", employee);
 
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
-    }
+    // Use the new API instead of direct Firestore
+    const tasks = await loadBudgetTasksFromServer(employee);
 
-    const snapshot = await db
-      .collection("budget_tasks")
-      .where("employee", "==", employee)
-      .get();
+    console.log(`🔥 Server: נטענו ${tasks.length} משימות עבור ${employee}`);
 
-    const tasks = [];
-
-    snapshot.forEach((doc) => {
-      tasks.push({
-        id: doc.id,
-        ...doc.data(),
-      });
-    });
-
-    console.log(`🔥 Firebase: נטענו ${tasks.length} משימות`);
-    hideSimpleLoading();
+    // Keep the same data structure as expected by existing code
     return tasks;
   } catch (error) {
-    console.error("Firebase error:", error);
-    hideSimpleLoading();
-    throw new Error("שגיאה בטעינת משימות: " + error.message);
+    console.error("❌ Error loading budget tasks from server:", error);
+
+    // Show user-friendly error
+    if (window.manager && window.manager.showNotification) {
+      window.manager.showNotification(
+        "⚠️ שגיאה בטעינת משימות מהשרת החדש",
+        "error"
+      );
+    }
+
+    throw error;
   }
 }
 
@@ -311,110 +329,99 @@ async function loadTimesheetFromFirebase(employee) {
 /**
  * Save client to Firebase
  */
+/**
+ * Save client to new server (replacing direct Firestore access)
+ */
 async function saveClientToFirebase(clientData) {
   try {
-    showSimpleLoading("שומר לקוח...");
+    console.log("🔄 Saving client to new server...", clientData.name);
 
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
+    // Use the new API instead of direct Firestore
+    const result = await saveClientToServer(clientData);
+
+    console.log(`✅ Client saved to server with ID: ${result}`);
+
+    // Return the client ID as expected by existing code
+    return result;
+  } catch (error) {
+    console.error("❌ Error saving client to server:", error);
+
+    // Show user-friendly error
+    if (window.manager && window.manager.showNotification) {
+      window.manager.showNotification(
+        "⚠️ שגיאה בשמירת לקוח לשרת החדש",
+        "error"
+      );
     }
 
-    const docRef = await db.collection("clients").add({
-      ...clientData,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
-
-    console.log(`🔥 Firebase: לקוח נשמר עם ID: ${docRef.id}`);
-    hideSimpleLoading();
-    return docRef.id;
-  } catch (error) {
-    console.error("Firebase error:", error);
-    hideSimpleLoading();
-    throw new Error("שגיאה בשמירת לקוח: " + error.message);
+    throw error;
   }
 }
 
 /**
  * Save budget task to Firebase
  */
+/**
+ * Save budget task to new server (replacing direct Firestore access)
+ */
 async function saveBudgetTaskToFirebase(taskData) {
   try {
-    showSimpleLoading("שומר משימה...");
+    console.log("🔄 Saving budget task to new server...", taskData);
 
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
-    }
+    // Use the new API instead of direct Firestore
+    const result = await saveBudgetTaskToServer(taskData);
 
-    const currentUser = window.manager?.currentUser;
-    if (!currentUser) {
-      throw new Error("משתמש לא מזוהה");
-    }
+    console.log(`✅ Budget task saved to server with ID: ${result}`);
 
-    const dataToSave = {
-      ...taskData,
-      employee: currentUser,
-      lawyer: currentUser,
-      createdBy: currentUser,
-      lastModifiedBy: currentUser,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await db.collection("budget_tasks").add(dataToSave);
-
-    console.log(
-      `🔥 Firebase: משימה נשמרה - ID: ${docRef.id}, עובד: ${currentUser}`
-    );
-    hideSimpleLoading();
-    return docRef.id;
+    // Return the task ID as expected by existing code
+    return result;
   } catch (error) {
-    console.error("Firebase error:", error);
-    hideSimpleLoading();
-    throw new Error("שגיאה בשמירת משימה: " + error.message);
+    console.error("❌ Error saving budget task to server:", error);
+
+    // Show user-friendly error
+    if (window.manager && window.manager.showNotification) {
+      window.manager.showNotification(
+        "⚠️ שגיאה בשמירת משימה לשרת החדש",
+        "error"
+      );
+    }
+
+    throw error;
   }
 }
 
 /**
  * Save timesheet entry to Firebase
  */
-async function saveTimesheetToFirebase(entryData) {
+/**
+ * Save timesheet to new server (replacing direct Firestore access)
+ */
+/**
+ * Save timesheet to new server (replacing direct Firestore access)
+ */
+async function saveTimesheetToFirebase(timesheetData) {
   try {
-    showSimpleLoading("שומר שעתון...");
+    console.log("🔄 Saving timesheet to new server...", timesheetData);
 
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
-    }
+    // Use the new API instead of direct Firestore
+    const result = await saveTimesheetToServer(timesheetData);
 
-    const currentUser = window.manager?.currentUser;
-    if (!currentUser) {
-      throw new Error("משתמש לא מזוהה");
-    }
+    console.log(`✅ Timesheet saved to server with ID: ${result}`);
 
-    const dataToSave = {
-      ...entryData,
-      employee: currentUser,
-      lawyer: currentUser,
-      createdBy: currentUser,
-      lastModifiedBy: currentUser,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await db.collection("timesheet_entries").add(dataToSave);
-
-    console.log(
-      `🔥 Firebase: שעתון נשמר - ID: ${docRef.id}, עובד: ${currentUser}`
-    );
-    hideSimpleLoading();
-    return docRef.id;
+    // Return the entry ID as expected by existing code
+    return result;
   } catch (error) {
-    console.error("Firebase error:", error);
-    hideSimpleLoading();
-    throw new Error("שגיאה בשמירת שעתון: " + error.message);
+    console.error("❌ Error saving timesheet to server:", error);
+
+    // Show user-friendly error
+    if (window.manager && window.manager.showNotification) {
+      window.manager.showNotification(
+        "⚠️ שגיאה בשמירת שעתון לשרת החדש",
+        "error"
+      );
+    }
+
+    throw error;
   }
 }
 
@@ -428,7 +435,7 @@ async function calculateClientHoursAccurate(clientName) {
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
-    console.log(`🧮 מחשב שעות מדויקות עבור: ${clientName}`);
+    console.log(`// 🧮 מחשב שעות מדויקות עבור: ${clientName}`);
 
     // Get client data
     const clientsSnapshot = await db
@@ -504,7 +511,7 @@ async function calculateClientHoursAccurate(clientName) {
       lastCalculated: new Date(),
     };
 
-    console.log(`✅ חישוב הושלם עבור ${clientName}:`, {
+    console.log(`// ✅ חישוב הושלם עבור ${clientName}:`, {
       remainingHours: result.remainingHours,
       status: result.status,
       entriesCount: result.entriesCount,
@@ -1859,638 +1866,7 @@ class LawOfficeManager {
       </div>
     `;
   }
-  /**
-   * דיאלוג עריכת שעתון מורחב - החלפה של showEditTimesheetDialog במחלקת Manager
-   */
-  showEditTimesheetDialog(entryId) {
-    console.log("🔧 פותח דיאלוג עריכת שעתון מורחב:", entryId);
 
-    const entry = this.timesheetEntries.find(
-      (e) =>
-        (e.id && e.id.toString() === entryId.toString()) ||
-        (e.entryId && e.entryId.toString() === entryId.toString())
-    );
-
-    if (!entry) {
-      this.showNotification("רשומת שעתון לא נמצאה", "error");
-      console.error("❌ רשומה לא נמצאה:", entryId);
-      return;
-    }
-
-    console.log("✅ רשומה נמצאה:", entry);
-
-    // מכין את תאריך לפורמט input date
-    let entryDateForInput = "";
-    try {
-      const dateObj = new Date(entry.date);
-      entryDateForInput = dateObj.toISOString().split("T")[0];
-    } catch (error) {
-      entryDateForInput = new Date().toISOString().split("T")[0];
-    }
-
-    const overlay = document.createElement("div");
-    overlay.className = "popup-overlay";
-
-    overlay.innerHTML = `
-    <div class="popup edit-timesheet-popup" style="max-width: 600px;">
-      <div class="popup-header">
-        <i class="fas fa-edit"></i>
-        ערוך רשומת שעתון
-      </div>
-      <div class="popup-content">
-        <div class="task-overview">
-          <h3>
-            <i class="fas fa-info-circle"></i>
-            רשומה מקורית
-          </h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 13px; color: #6b7280; background: #f9fafb; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-            <p><strong>תאריך מקורי:</strong> ${formatDate(entry.date)}</p>
-            <p><strong>לקוח מקורי:</strong> ${safeText(entry.clientName)}</p>
-            <p><strong>זמן מקורי:</strong> ${entry.minutes} דקות</p>
-            <p><strong>פעולה:</strong> ${safeText(entry.action)}</p>
-          </div>
-        </div>
-        
-        <form id="editTimesheetForm">
-          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div class="form-group">
-              <label for="editDate">תאריך <span class="required">*</span></label>
-              <input 
-                type="date" 
-                id="editDate" 
-                value="${entryDateForInput}" 
-                required
-                style="
-                  width: 100%;
-                  padding: 10px 12px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 14px;
-                  transition: all 0.2s ease;
-                "
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="editMinutes">זמן (דקות) <span class="required">*</span></label>
-              <input 
-                type="number" 
-                id="editMinutes" 
-                min="1" 
-                max="999" 
-                value="${entry.minutes}" 
-                required
-                placeholder="60"
-                style="
-                  width: 100%;
-                  padding: 10px 12px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 16px;
-                  font-weight: 600;
-                  text-align: center;
-                  transition: all 0.2s ease;
-                "
-              >
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="editClientName">שם לקוח <span class="required">*</span></label>
-            <div class="modern-client-search">
-              <input
-                type="text"
-                class="search-input"
-                id="editClientSearch"
-                placeholder="התחל להקליד שם לקוח..."
-                value="${safeText(entry.clientName)}"
-                autocomplete="off"
-                oninput="manager.searchClientsForEdit(this.value)"
-                style="
-                  width: 100%;
-                  padding: 12px 16px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 14px;
-                  font-weight: 500;
-                  transition: all 0.2s ease;
-                "
-              />
-              <div
-                class="search-results"
-                id="editClientSearchResults"
-                style="
-                  position: absolute;
-                  top: 100%;
-                  left: 0;
-                  right: 0;
-                  background: white;
-                  border: 1px solid #d1d5db;
-                  border-top: none;
-                  border-radius: 0 0 8px 8px;
-                  max-height: 200px;
-                  overflow-y: auto;
-                  z-index: 1000;
-                  display: none;
-                "
-              ></div>
-              <input
-                type="hidden"
-                id="editClientSelect"
-                value="${safeText(entry.clientName)}"
-                required
-              />
-            </div>
-            <small class="form-help">
-              <i class="fas fa-search"></i> 
-              התחל להקליד לחיפוש לקוחות קיימים
-            </small>
-          </div>
-          
-          <div class="form-group">
-            <label for="editReason">סיבת העריכה <span class="required">*</span></label>
-            <textarea 
-              id="editReason" 
-              rows="3" 
-              placeholder="הסבר מדוע אתה משנה את הפרטים (חובה למעקב)"
-              required
-              style="
-                width: 100%;
-                padding: 10px 12px;
-                border: 2px solid #e1e5e9;
-                border-radius: 8px;
-                font-size: 14px;
-                resize: vertical;
-                transition: all 0.2s ease;
-              "
-            ></textarea>
-            <small class="form-help">
-              <i class="fas fa-exclamation-circle"></i> 
-              סיבת העריכה נדרשת למעקב ובקרה
-            </small>
-          </div>
-        </form>
-      </div>
-      <div class="popup-buttons">
-        <button class="popup-btn popup-btn-confirm" onclick="manager.submitAdvancedTimesheetEdit('${entryId}')" style="min-width: 140px;">
-          <i class="fas fa-save"></i> שמור שינויים
-        </button>
-        <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-          <i class="fas fa-times"></i> ביטול
-        </button>
-      </div>
-    </div>
-  `;
-
-    document.body.appendChild(overlay);
-
-    // הוספת עיצוב focus למקומות שנערכים
-    setTimeout(() => {
-      const editInputs = overlay.querySelectorAll("input, textarea");
-      editInputs.forEach((input) => {
-        input.addEventListener("focus", function () {
-          this.style.borderColor = "#3b82f6";
-          this.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
-        });
-
-        input.addEventListener("blur", function () {
-          this.style.borderColor = "#e1e5e9";
-          this.style.boxShadow = "none";
-        });
-      });
-
-      // פוקוס על שדה הזמן
-      const minutesInput = document.getElementById("editMinutes");
-      if (minutesInput) {
-        minutesInput.select();
-        minutesInput.focus();
-      }
-    }, 100);
-  }
-
-  /**
-   * חיפוש לקוחות לעריכת שעתון
-   */
-  searchClientsForEdit(searchTerm) {
-    const resultsContainer = document.getElementById("editClientSearchResults");
-    const hiddenInput = document.getElementById("editClientSelect");
-
-    if (!resultsContainer) return;
-
-    if (!searchTerm || searchTerm.length < 1) {
-      resultsContainer.style.display = "none";
-      return;
-    }
-
-    // סינון לקוחות
-    const filteredClients = this.clients.filter(
-      (client) =>
-        client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.fileNumber.includes(searchTerm) ||
-        client.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    if (filteredClients.length === 0) {
-      resultsContainer.innerHTML = `
-      <div style="padding: 12px; color: #6b7280; text-align: center;">
-        <i class="fas fa-search"></i> לא נמצאו לקוחות תואמים
-      </div>
-    `;
-      resultsContainer.style.display = "block";
-      return;
-    }
-
-    const resultsHtml = filteredClients
-      .slice(0, 8)
-      .map(
-        (client) => `
-    <div class="client-result" onclick="manager.selectClientForEdit('${
-      client.fullName
-    }', '${client.fileNumber}')" 
-         style="
-           padding: 10px 12px;
-           cursor: pointer;
-           border-bottom: 1px solid #f3f4f6;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           transition: background 0.2s ease;
-         "
-         onmouseover="this.style.background='#f8fafc'"
-         onmouseout="this.style.background='white'">
-      <div>
-        <div style="font-weight: 600; color: #374151;">${safeText(
-          client.fullName
-        )}</div>
-        ${
-          client.description
-            ? `<div style="font-size: 12px; color: #6b7280;">${safeText(
-                client.description
-              )}</div>`
-            : ""
-        }
-      </div>
-      <div style="font-size: 12px; color: #3b82f6; font-weight: 500;">
-        ${client.fileNumber}
-      </div>
-    </div>
-  `
-      )
-      .join("");
-
-    resultsContainer.innerHTML = resultsHtml;
-    resultsContainer.style.display = "block";
-  }
-
-  /**
-   * בחירת לקוח לעריכה
-   */
-  selectClientForEdit(clientName, fileNumber) {
-    const searchInput = document.getElementById("editClientSearch");
-    const hiddenInput = document.getElementById("editClientSelect");
-    const resultsContainer = document.getElementById("editClientSearchResults");
-
-    if (searchInput && hiddenInput && resultsContainer) {
-      searchInput.value = clientName;
-      hiddenInput.value = clientName;
-      resultsContainer.style.display = "none";
-
-      // אנימציה קצרה להצגת הבחירה
-      searchInput.style.background = "#ecfdf5";
-      searchInput.style.borderColor = "#10b981";
-      setTimeout(() => {
-        searchInput.style.background = "white";
-        searchInput.style.borderColor = "#e1e5e9";
-      }, 500);
-    }
-  }
-
-  /**
-   * שמירת עריכה מתקדמת של שעתון
-   */
-  async submitAdvancedTimesheetEdit(entryId) {
-    console.log("💾 שומר עריכה מתקדמת של שעתון:", entryId);
-
-    try {
-      // קבלת הערכים החדשים
-      const newDate = document.getElementById("editDate").value;
-      const newMinutes = parseInt(document.getElementById("editMinutes").value);
-      const newClientName = document
-        .getElementById("editClientSelect")
-        .value.trim();
-      const reason = document.getElementById("editReason").value.trim();
-
-      // ולידציה
-      const validationErrors = [];
-
-      if (!newDate) validationErrors.push("תאריך חובה");
-      if (!newMinutes || newMinutes < 1 || newMinutes > 999) {
-        validationErrors.push("זמן חייב להיות בין 1 ל-999 דקות");
-      }
-      if (!newClientName) validationErrors.push("שם לקוח חובה");
-      if (!reason || reason.length < 5) {
-        validationErrors.push("סיבת עריכה חובה (לפחות 5 תווים)");
-      }
-
-      if (validationErrors.length > 0) {
-        this.showNotification(
-          "❌ שגיאות בטופס:\n• " + validationErrors.join("\n• "),
-          "error"
-        );
-        return;
-      }
-
-      // מציאת הרשומה המקומית
-      const entry = this.timesheetEntries.find(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (!entry) {
-        this.showNotification("❌ רשומת שעתון לא נמצאה", "error");
-        return;
-      }
-
-      const originalData = {
-        date: entry.date,
-        minutes: entry.minutes,
-        clientName: entry.clientName,
-      };
-
-      // בדיקה אם יש שינוי
-      const dateChanged =
-        new Date(newDate).toDateString() !==
-        new Date(originalData.date).toDateString();
-      const minutesChanged = newMinutes !== originalData.minutes;
-      const clientChanged = newClientName !== originalData.clientName;
-
-      if (!dateChanged && !minutesChanged && !clientChanged) {
-        document.querySelector(".popup-overlay").remove();
-        this.showNotification("⚠️ לא בוצעו שינויים", "info");
-        return;
-      }
-
-      // עדכון מקומי מיידי (אופטימיסטי)
-      const entryIndex = this.timesheetEntries.findIndex(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (entryIndex !== -1) {
-        // שמירת הנתונים החדשים
-        this.timesheetEntries[entryIndex].date = newDate;
-        this.timesheetEntries[entryIndex].minutes = newMinutes;
-        this.timesheetEntries[entryIndex].clientName = newClientName;
-        this.timesheetEntries[entryIndex].lastModified =
-          new Date().toLocaleString("he-IL");
-        this.timesheetEntries[entryIndex].editReason = reason;
-        this.timesheetEntries[entryIndex].edited = true;
-
-        // הוספת לוג עריכה מפורט
-        if (!this.timesheetEntries[entryIndex].editHistory) {
-          this.timesheetEntries[entryIndex].editHistory = [];
-        }
-
-        this.timesheetEntries[entryIndex].editHistory.push({
-          timestamp: new Date().toLocaleString("he-IL"),
-          changes: {
-            date: {
-              old: originalData.date,
-              new: newDate,
-              changed: dateChanged,
-            },
-            minutes: {
-              old: originalData.minutes,
-              new: newMinutes,
-              changed: minutesChanged,
-            },
-            clientName: {
-              old: originalData.clientName,
-              new: newClientName,
-              changed: clientChanged,
-            },
-          },
-          reason: reason,
-          editor: this.currentUser,
-        });
-
-        this.filteredTimesheetEntries = [...this.timesheetEntries];
-      }
-
-      // עדכון התצוגה מיידי
-      this.renderTimesheetEntries();
-
-      // הסרת הדיאלוג
-      document.querySelector(".popup-overlay").remove();
-
-      // הודעת הצלחה מפורטת
-      const changes = [];
-      if (dateChanged)
-        changes.push(
-          `תאריך: ${formatDate(originalData.date)} → ${formatDate(newDate)}`
-        );
-      if (minutesChanged)
-        changes.push(`זמן: ${originalData.minutes} → ${newMinutes} דק'`);
-      if (clientChanged)
-        changes.push(`לקוח: ${originalData.clientName} → ${newClientName}`);
-
-      this.showNotification(
-        `✅ שעתון עודכן בהצלחה!\n• ${changes.join("\n• ")}`,
-        "success"
-      );
-
-      // כאן תוסיף בעתיד קריאה לשרת Firebase:
-      // await updateAdvancedTimesheetEntryFirebase(entryId, { newDate, newMinutes, newClientName, reason });
-
-      console.log(`✅ עריכה מתקדמת הושלמה:`, {
-        originalData,
-        newData: { newDate, newMinutes, newClientName },
-      });
-    } catch (error) {
-      console.error("Error in advanced timesheet edit:", error);
-      this.showNotification(
-        "❌ שגיאה בעדכון השעתון: " + error.message,
-        "error"
-      );
-
-      // החזרת השינוי במקרה של שגיאה
-      await this.loadDataFromFirebase();
-    }
-  }
-
-  /**
-   * עדכון רשומת שעתון - הוספה למחלקת Manager
-   */
-  async submitTimesheetEdit(entryId) {
-    console.log("💾 שומר עריכת שעתון:", entryId);
-
-    try {
-      const newMinutes = parseInt(document.getElementById("editMinutes").value);
-      const reason = document.getElementById("editReason").value.trim();
-
-      if (!newMinutes || newMinutes < 1 || newMinutes > 999) {
-        this.showNotification("❌ מספר דקות חייב להיות בין 1 ל-999", "error");
-        return;
-      }
-
-      // מציאת הרשומה המקומית
-      const entry = this.timesheetEntries.find(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (!entry) {
-        this.showNotification("❌ רשומת שעתון לא נמצאה", "error");
-        return;
-      }
-
-      const oldMinutes = entry.minutes;
-
-      // אם אין שינוי בזמן, לא צריך לעדכן
-      if (oldMinutes === newMinutes) {
-        document.querySelector(".popup-overlay").remove();
-        this.showNotification("⚠️ לא בוצע שינוי בזמן", "info");
-        return;
-      }
-
-      // עדכון מקומי מיידי (אופטימיסטי)
-      const entryIndex = this.timesheetEntries.findIndex(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (entryIndex !== -1) {
-        this.timesheetEntries[entryIndex].minutes = newMinutes;
-        this.timesheetEntries[entryIndex].lastModified =
-          new Date().toLocaleString("he-IL");
-        this.timesheetEntries[entryIndex].editReason =
-          reason || `שונה מ-${oldMinutes} ל-${newMinutes} דקות`;
-        this.timesheetEntries[entryIndex].edited = true;
-        this.filteredTimesheetEntries = [...this.timesheetEntries];
-      }
-
-      // עדכון התצוגה מיידי
-      this.renderTimesheetEntries();
-
-      // הסרת הדיאלוג
-      document.querySelector(".popup-overlay").remove();
-
-      // הודעת הצלחה עם פרטים
-      const difference = newMinutes - oldMinutes;
-      const diffText = difference > 0 ? `+${difference}` : `${difference}`;
-      this.showNotification(
-        `✅ שעתון עודכן: ${oldMinutes} → ${newMinutes} דק' (${diffText})`,
-        "success"
-      );
-
-      // כאן תוסיף בעתיד קריאה לשרת Firebase:
-      // await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
-
-      console.log(`✅ עריכת שעתון הושלמה: ${oldMinutes} → ${newMinutes}`);
-    } catch (error) {
-      console.error("Error editing timesheet:", error);
-      this.showNotification(
-        "❌ שגיאה בעדכון השעתון: " + error.message,
-        "error"
-      );
-
-      // החזרת השינוי במקרה של שגיאה
-      await this.loadDataFromFirebase();
-    }
-  }
-
-  /**
-   * הצגת היסטוריית עריכות - הוספה למחלקת Manager
-   */
-  showTimesheetEditHistory(entryId) {
-    console.log("📜 מציג היסטוריית עריכות:", entryId);
-
-    const entry = this.timesheetEntries.find(
-      (e) =>
-        (e.id && e.id.toString() === entryId.toString()) ||
-        (e.entryId && e.entryId.toString() === entryId.toString())
-    );
-
-    if (!entry || !entry.editHistory || entry.editHistory.length === 0) {
-      this.showNotification("אין היסטוריית עריכות לרשומה זו", "info");
-      return;
-    }
-
-    const overlay = document.createElement("div");
-    overlay.className = "popup-overlay";
-
-    const historyHtml = entry.editHistory
-      .map(
-        (edit, index) => `
-      <div class="history-edit-entry" style="
-        background: ${index === 0 ? "#fef3c7" : "#f3f4f6"};
-        border: 1px solid ${index === 0 ? "#f59e0b" : "#d1d5db"};
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 10px;
-      ">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-          <strong style="color: #374151;">עריכה #${
-            entry.editHistory.length - index
-          }</strong>
-          <span style="color: #6b7280; font-size: 12px;">${
-            edit.timestamp
-          }</span>
-        </div>
-        <div style="color: #4b5563; font-size: 14px;">
-          <strong>שונה מ-${edit.oldMinutes} ל-${edit.newMinutes} דקות</strong>
-          (הפרש: ${edit.difference > 0 ? "+" : ""}${edit.difference})
-        </div>
-        ${
-          edit.reason
-            ? `
-          <div style="color: #6b7280; font-size: 13px; margin-top: 6px; font-style: italic;">
-            "${edit.reason}"
-          </div>
-        `
-            : ""
-        }
-      </div>
-    `
-      )
-      .join("");
-
-    overlay.innerHTML = `
-    <div class="popup" style="max-width: 600px;">
-      <div class="popup-header">
-        <i class="fas fa-history"></i>
-        היסטוריית עריכות - ${entry.action}
-      </div>
-      <div class="popup-content">
-        <div class="task-overview">
-          <h4><i class="fas fa-info-circle"></i> פרטי הרשומה</h4>
-          <p><strong>לקוח:</strong> ${entry.clientName}</p>
-          <p><strong>תאריך:</strong> ${formatDate(entry.date)}</p>
-          <p><strong>זמן נוכחי:</strong> ${entry.minutes} דקות</p>
-          <p><strong>מספר עריכות:</strong> ${entry.editHistory.length}</p>
-        </div>
-        
-        <div style="max-height: 300px; overflow-y: auto;">
-          <h4 style="margin-bottom: 15px; color: #374151;">
-            <i class="fas fa-list"></i> היסטוריית שינויים
-          </h4>
-          ${historyHtml}
-        </div>
-      </div>
-      <div class="popup-buttons">
-        <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-          <i class="fas fa-times"></i> סגור
-        </button>
-      </div>
-    </div>
-  `;
-
-    document.body.appendChild(overlay);
-  }
   createTableRow(task) {
     const safeTask = this.sanitizeTaskData(task);
     const progress = this.calculateSimpleProgress(safeTask);
@@ -2502,26 +1878,9 @@ class LawOfficeManager {
         <td>${progress}%</td>
         <td>${formatDate(safeTask.deadline)}</td>
         <td>${safeText(safeTask.status)}</td>
-        <td class="actions-column">
-          <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog(${
-            safeTask.id
-          })" title="הוסף זמן">
-            <i class="fas fa-clock"></i>
-          </button>
-          <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog(${
-            safeTask.id
-          })" title="האריך יעד">
-            <i class="fas fa-calendar-plus"></i>
-          </button>
-          <button class="action-btn history-btn" onclick="manager.showTaskHistory(${
-            safeTask.id
-          })" title="היסטוריה">
-            <i class="fas fa-history"></i>
-          </button>
-          <button class="action-btn complete-btn" onclick="manager.completeTask(${
-            safeTask.id
-          })" title="סיים משימה">
-            <i class="fas fa-check"></i>
+        <td>
+          <button onclick="manager.showAdvancedTimeDialog(${safeTask.id})">
+            <i class="fas fa-plus"></i>
           </button>
         </td>
       </tr>
@@ -2599,49 +1958,37 @@ class LawOfficeManager {
     const rowsHtml = entries
       .map(
         (entry) => `
-        <tr data-entry-id="${entry.id || entry.entryId || Date.now()}">
-          <td class="timesheet-cell-date">${formatDate(entry.date)}</td>
-          <td class="timesheet-cell-action">${safeText(entry.action || "")}</td>
-          <td class="timesheet-cell-time">
-            <span class="time-badge">${entry.minutes || 0} דק'</span>
-          </td>
-          <td class="timesheet-cell-client">${safeText(
-            entry.clientName || ""
-          )}</td>
-          <td>${safeText(entry.fileNumber || "")}</td>
-          <td>${safeText(entry.notes || "—")}</td>
-          <td class="actions-column">
-            <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${
-              entry.id || entry.entryId || Date.now()
-            }')" title="ערוך שעתון">
-              <i class="fas fa-edit"></i>
-            </button>
-          </td>
-        </tr>
-      `
+          <tr>
+            <td>${formatDate(entry.date)}</td>
+            <td>${safeText(entry.action || "")}</td>
+            <td>${entry.minutes || 0} דק'</td>
+            <td>${safeText(entry.clientName || "")}</td>
+            <td>${safeText(entry.fileNumber || "")}</td>
+            <td>${safeText(entry.notes || "—")}</td>
+          </tr>
+        `
       )
       .join("");
 
     tableContainer.innerHTML = `
-    <div class="modern-table-container">
-      <table class="modern-timesheet-table">
-        <thead>
-          <tr>
-            <th>תאריך</th>
-            <th>פעולה</th>
-            <th>זמן</th>
-            <th>לקוח</th>
-            <th>תיק</th>
-            <th>הערות</th>
-            <th>פעולות</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
-      </table>
-    </div>
-  `;
+      <div class="modern-table-container">
+        <table class="modern-timesheet-table">
+          <thead>
+            <tr>
+              <th>תאריך</th>
+              <th>פעולה</th>
+              <th>זמן</th>
+              <th>לקוח</th>
+              <th>תיק</th>
+              <th>הערות</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
   }
 
   createEmptyTableState() {
@@ -2944,11 +2291,6 @@ class LawOfficeManager {
                 safeTask.id
               })">
                 <i class="fas fa-history"></i> היסטוריה
-              </button>
-              <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog(${
-                safeTask.id
-              })">
-                <i class="fas fa-calendar-plus"></i> האריך יעד
               </button>
               <button class="linear-action-btn success" onclick="manager.completeTask(${
                 safeTask.id
@@ -4031,110 +3373,6 @@ window.calculateClientHoursAccurate = calculateClientHoursAccurate;
 window.updateClientHoursImmediately = updateClientHoursImmediately;
 window.testFirebaseConnection = testFirebaseConnection;
 
-console.log("🔥 Firebase functions loaded - מערכת מהירה פעילה!");
-console.log("🔍 פונקציות Debug זמינות:");
-console.log("   debugClientHoursMismatch() - אבחון מלא");
-console.log("   fixClientHoursMismatch() - תיקון אוטומטי");
-console.log("   showClientStatusSummary() - סיכום מהיר");
-console.log("   testFirebaseConnection() - בדיקת חיבור Firebase");
-// 🔍 סקריפט אבחון - בדוק אילו פונקציות חסרות
-console.log("🔍 ==> בודק פונקציות קיימות...");
-
-// רשימת הפונקציות שצריכות להיות קיימות
-const requiredFunctions = [
-  // Firebase Core
-  "initializeFirebase",
-  "testFirebaseConnection",
-  "loadClientsFromFirebase",
-  "saveClientToFirebase",
-  "loadBudgetTasksFromFirebase",
-  "saveBudgetTaskToFirebase",
-  "loadTimesheetFromFirebase",
-  "saveTimesheetToFirebase",
-  "calculateClientHoursAccurate",
-  "updateClientHoursImmediately",
-
-  // UI Functions
-  "showSimpleLoading",
-  "hideSimpleLoading",
-  "formatDateTime",
-  "formatDate",
-  "formatShort",
-  "safeText",
-
-  // Manager & Classes
-  "LawOfficeManager",
-  "NotificationBellSystem",
-  "ClientValidation",
-
-  // Public Functions
-  "updateUserDisplay",
-  "switchTab",
-  "showClientForm",
-  "hideClientForm",
-  "logout",
-  "searchClients",
-  "selectClient",
-
-  // Missing Firebase Functions (שצריכות להיות אחרי שתוסיף הקוד)
-  "addTimeToTaskFirebase",
-  "completeTaskFirebase",
-  "extendTaskDeadlineFirebase",
-  "logUserLoginFirebase",
-];
-
-// בדיקה
-const missing = [];
-const existing = [];
-
-requiredFunctions.forEach((funcName) => {
-  if (typeof window[funcName] !== "undefined") {
-    existing.push(funcName);
-  } else {
-    missing.push(funcName);
-  }
-});
-
-console.log("✅ ==> פונקציות קיימות:", existing.length);
-existing.forEach((f) => console.log(`   ✓ ${f}`));
-
-console.log("❌ ==> פונקציות חסרות:", missing.length);
-missing.forEach((f) => console.log(`   ✗ ${f}`));
-
-// בדיקות נוספות
-console.log("🔍 ==> בדיקות נוספות:");
-console.log("   Firebase DB:", window.firebaseDB ? "✓ מחובר" : "✗ לא מחובר");
-console.log("   Manager:", window.manager ? "✓ קיים" : "✗ לא קיים");
-console.log("   Current User:", window.manager?.currentUser || "לא מזוהה");
-console.log("   DataCache:", window.dataCache ? "✓ קיים" : "✗ לא קיים");
-console.log(
-  "   NotificationBell:",
-  window.notificationBell ? "✓ קיים" : "✗ לא קיים"
-);
-
-// בדיקת גיגציות פונקציות Google Apps Script שאולי עדיין נקראות
-const legacyFunctions = [
-  "sendToGoogleSheets",
-  "loadClientsFromSheetOriginal",
-  "loadBudgetTasksFromSheetOriginal",
-  "loadTimesheetEntriesFromSheetOriginal",
-  "saveBudgetTaskToSheet",
-  "saveTimesheetAndUpdateClient",
-];
-
-console.log("🔍 ==> פונקציות Legacy (צריכות להיות מוחלפות):");
-legacyFunctions.forEach((funcName) => {
-  const exists =
-    typeof window[funcName] !== "undefined" ||
-    typeof window.manager?.[funcName] !== "undefined";
-  console.log(
-    `   ${exists ? "⚠️" : "✓"} ${funcName} - ${
-      exists ? "עדיין קיימת" : "הוסרה"
-    }`
-  );
-});
-
-console.log("🎯 ==> סיכום:");
 if (missing.length === 0) {
   console.log("🎉 כל הפונקציות קיימות!");
 } else {
@@ -4592,12 +3830,6 @@ window.completeTaskFirebase = completeTaskFirebase;
 window.extendTaskDeadlineFirebase = extendTaskDeadlineFirebase;
 window.logUserLoginFirebase = logUserLoginFirebase;
 
-console.log("🔥 Firebase Functions Integration Complete!");
-console.log("✅ addTimeToTaskFirebase - הוספת זמן למשימה");
-console.log("✅ completeTaskFirebase - סיום משימה");
-console.log("✅ extendTaskDeadlineFirebase - הארכת יעד");
-console.log("✅ logUserLoginFirebase - רישום כניסה");
-console.log("🎯 כל הפונקציות מוחלפות לFirebase!");
 /* ===== 🔥 Firebase Functions - הוסף בסוف script.js ===== */
 
 // הוספת זמן למשימה מתוקצבת (Firebase)
@@ -4880,1286 +4112,10 @@ if (window.manager) {
   };
 }
 
-/* ===== פונקציות Firebase לעריכת שעתון לפי משתמש ===== */
-
-/**
- * עדכון רשומת שעתון ב-Firebase
- * מאפשר רק למשתמש שיצר את הרשומה לערוך אותה
- */
-async function updateTimesheetEntryFirebase(entryId, newMinutes, reason = "") {
-  try {
-    showSimpleLoading("מעדכן שעתון...");
-
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    const currentUser = window.manager?.currentUser;
-    if (!currentUser) throw new Error("משתמש לא מזוהה");
-
-    console.log(
-      `🔥 Firebase: מעדכן רשומת שעתון ${entryId} עבור ${currentUser}`
-    );
-
-    const entryRef = db.collection("timesheet_entries").doc(entryId);
-
-    await db.runTransaction(async (transaction) => {
-      const entryDoc = await transaction.get(entryRef);
-
-      if (!entryDoc.exists) {
-        throw new Error("רשומת שעתון לא נמצאה");
-      }
-
-      const entryData = entryDoc.data();
-
-      // בדיקת הרשאה - רק המשתמש שיצר את הרשומה יכול לערוך
-      if (entryData.employee !== currentUser) {
-        throw new Error("אין הרשאה לערוך רשומת שעתון זו - שייכת למשתמש אחר");
-      }
-
-      const oldMinutes = entryData.minutes || 0;
-
-      // יצירת לוג עריכה מפורט
-      const editLog = {
-        oldMinutes: oldMinutes,
-        newMinutes: newMinutes,
-        difference: newMinutes - oldMinutes,
-        reason: reason || `שונה מ-${oldMinutes} ל-${newMinutes} דקות`,
-        editedBy: currentUser,
-        editedAt: new Date().toISOString(),
-        timestamp: new Date().toLocaleString("he-IL"),
-        clientName: entryData.clientName,
-        originalAction: entryData.action,
-      };
-
-      const updates = {
-        minutes: newMinutes,
-        editHistory: firebase.firestore.FieldValue.arrayUnion(editLog),
-        lastModified: new Date().toLocaleString("he-IL"),
-        lastModifiedBy: currentUser,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        totalEdits: firebase.firestore.FieldValue.increment(1),
-        edited: true, // סימון שהרשומה נערכה
-      };
-
-      transaction.update(entryRef, updates);
-
-      console.log(
-        `✅ עדכון הושלם: ${oldMinutes} → ${newMinutes} דקות (${
-          newMinutes - oldMinutes > 0 ? "+" : ""
-        }${newMinutes - oldMinutes})`
-      );
-    });
-
-    hideSimpleLoading();
-    return {
-      success: true,
-      message: "רשומת השעתון עודכנה בהצלחה",
-      oldMinutes: oldMinutes,
-      newMinutes: newMinutes,
-    };
-  } catch (error) {
-    console.error("❌ שגיאה בעדכון רשומת שעתון:", error);
-    hideSimpleLoading();
-    throw new Error("שגיאה בעדכון שעתון: " + error.message);
-  }
-}
-
-/**
- * טעינת רשומות שעתון של משתמש ספציפי עם היסטוריית עריכות
- */
-async function loadTimesheetWithEditHistory(employee) {
-  try {
-    showSimpleLoading("טוען שעתון עם היסטוריה...");
-
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    console.log(`🔍 טוען רשומות שעתון עבור: ${employee}`);
-
-    const snapshot = await db
-      .collection("timesheet_entries")
-      .where("employee", "==", employee)
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const entries = [];
-    let totalEdits = 0;
-    let totalOriginalMinutes = 0;
-    let totalCurrentMinutes = 0;
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const entry = {
-        id: doc.id,
-        ...data,
-        hasEditHistory: data.editHistory && data.editHistory.length > 0,
-      };
-
-      entries.push(entry);
-
-      // סטטיסטיקות
-      if (data.edited) totalEdits++;
-      if (data.editHistory && data.editHistory.length > 0) {
-        // המינוטים המקוריים הם מהעריכה הראשונה או המינוטים הנוכחיים אם אין עריכות
-        const firstEdit = data.editHistory[0];
-        totalOriginalMinutes += firstEdit.oldMinutes;
-      } else {
-        totalOriginalMinutes += data.minutes || 0;
-      }
-      totalCurrentMinutes += data.minutes || 0;
-    });
-
-    console.log(`📊 סטטיסטיקות עבור ${employee}:`);
-    console.log(`   📋 סה"כ רשומות: ${entries.length}`);
-    console.log(`   ✏️ רשומות ערוכות: ${totalEdits}`);
-    console.log(`   ⏰ דקות מקוריות: ${totalOriginalMinutes}`);
-    console.log(`   ⏱️ דקות נוכחיות: ${totalCurrentMinutes}`);
-    console.log(
-      `   📈 הפרש: ${
-        totalCurrentMinutes - totalOriginalMinutes > 0 ? "+" : ""
-      }${totalCurrentMinutes - totalOriginalMinutes} דקות`
-    );
-
-    hideSimpleLoading();
-    return {
-      entries,
-      stats: {
-        totalEntries: entries.length,
-        editedEntries: totalEdits,
-        originalMinutes: totalOriginalMinutes,
-        currentMinutes: totalCurrentMinutes,
-        minutesDifference: totalCurrentMinutes - totalOriginalMinutes,
-      },
-    };
-  } catch (error) {
-    console.error("Firebase error:", error);
-    hideSimpleLoading();
-    throw new Error("שגיאה בטעינת שעתון: " + error.message);
-  }
-}
-
-/**
- * עדכון פונקציית עריכת השעתון להשתמש ב-Firebase
- */
-if (window.manager) {
-  window.manager.submitTimesheetEdit = async function (entryId) {
-    try {
-      const newMinutes = parseInt(document.getElementById("editMinutes").value);
-      const reason = document.getElementById("editReason").value.trim();
-
-      if (!newMinutes || newMinutes < 1 || newMinutes > 999) {
-        this.showNotification("❌ מספר דקות חייב להיות בין 1 ל-999", "error");
-        return;
-      }
-
-      // מציאת הרשומה המקומית
-      const entry = this.timesheetEntries.find(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (!entry) {
-        this.showNotification("❌ רשומת שעתון לא נמצאה", "error");
-        return;
-      }
-
-      const oldMinutes = entry.minutes;
-
-      // אם אין שינוי בזמן, לא צריך לעדכן
-      if (oldMinutes === newMinutes) {
-        document.querySelector(".popup-overlay").remove();
-        this.showNotification("⚠️ לא בוצע שינוי בזמן", "info");
-        return;
-      }
-
-      // עדכון ב-Firebase
-      const result = await updateTimesheetEntryFirebase(
-        entryId,
-        newMinutes,
-        reason
-      );
-
-      // עדכון מקומי רק אחרי הצלחה ב-Firebase
-      const entryIndex = this.timesheetEntries.findIndex(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (entryIndex !== -1) {
-        this.timesheetEntries[entryIndex].minutes = newMinutes;
-        this.timesheetEntries[entryIndex].lastModified =
-          new Date().toLocaleString("he-IL");
-        this.timesheetEntries[entryIndex].editReason =
-          reason || `שונה מ-${oldMinutes} ל-${newMinutes} דקות`;
-        this.timesheetEntries[entryIndex].edited = true;
-        this.filteredTimesheetEntries = [...this.timesheetEntries];
-      }
-
-      // הסרת הדיאלוג
-      document.querySelector(".popup-overlay").remove();
-
-      // הודעת הצלחה עם פרטים
-      const difference = newMinutes - oldMinutes;
-      const diffText = difference > 0 ? `+${difference}` : `${difference}`;
-      this.showNotification(
-        `✅ שעתון עודכן: ${oldMinutes} → ${newMinutes} דק' (${diffText})`,
-        "success"
-      );
-
-      // עדכון התצוגה
-      this.renderTimesheetEntries();
-
-      // טעינה מחדש מהשרת לוודא סנכרון
-      setTimeout(async () => {
-        try {
-          await this.loadDataFromFirebase();
-          console.log("🔄 נתונים סונכרנו מהשרת אחרי עדכון שעתון");
-        } catch (error) {
-          console.error("שגיאה בסנכרון נתונים:", error);
-        }
-      }, 1500);
-    } catch (error) {
-      console.error("Error editing timesheet:", error);
-
-      let errorMessage = "שגיאה בעדכון השעתון";
-      if (error.message.includes("אין הרשאה")) {
-        errorMessage = "❌ אין לך הרשאה לערוך רשומה זו";
-      } else if (error.message.includes("לא נמצאה")) {
-        errorMessage = "❌ רשומת השעתון לא נמצאה";
-      } else if (error.message.includes("Firebase לא מחובר")) {
-        errorMessage = "❌ בעיית חיבור - נסה שוב";
-      }
-
-      this.showNotification(errorMessage, "error");
-    }
-  };
-
-  /**
-   * הוספת אפשרות להציג היסטוריית עריכות
-   */
-  window.manager.showTimesheetEditHistory = function (entryId) {
-    const entry = this.timesheetEntries.find(
-      (e) =>
-        (e.id && e.id.toString() === entryId.toString()) ||
-        (e.entryId && e.entryId.toString() === entryId.toString())
-    );
-
-    if (!entry || !entry.editHistory || entry.editHistory.length === 0) {
-      this.showNotification("אין היסטוריית עריכות לרשומה זו", "info");
-      return;
-    }
-
-    const overlay = document.createElement("div");
-    overlay.className = "popup-overlay";
-
-    const historyHtml = entry.editHistory
-      .map(
-        (edit, index) => `
-        <div class="history-edit-entry" style="
-          background: ${index === 0 ? "#fef3c7" : "#f3f4f6"};
-          border: 1px solid ${index === 0 ? "#f59e0b" : "#d1d5db"};
-          border-radius: 8px;
-          padding: 12px;
-          margin-bottom: 10px;
-        ">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <strong style="color: #374151;">עריכה #${
-              entry.editHistory.length - index
-            }</strong>
-            <span style="color: #6b7280; font-size: 12px;">${
-              edit.timestamp
-            }</span>
-          </div>
-          <div style="color: #4b5563; font-size: 14px;">
-            <strong>שונה מ-${edit.oldMinutes} ל-${edit.newMinutes} דקות</strong>
-            (הפרש: ${edit.difference > 0 ? "+" : ""}${edit.difference})
-          </div>
-          ${
-            edit.reason
-              ? `
-            <div style="color: #6b7280; font-size: 13px; margin-top: 6px; font-style: italic;">
-              "${edit.reason}"
-            </div>
-          `
-              : ""
-          }
-        </div>
-      `
-      )
-      .join("");
-
-    overlay.innerHTML = `
-      <div class="popup" style="max-width: 600px;">
-        <div class="popup-header">
-          <i class="fas fa-history"></i>
-          היסטוריית עריכות - ${entry.action}
-        </div>
-        <div class="popup-content">
-          <div class="task-overview">
-            <h4><i class="fas fa-info-circle"></i> פרטי הרשומה</h4>
-            <p><strong>לקוח:</strong> ${entry.clientName}</p>
-            <p><strong>תאריך:</strong> ${formatDate(entry.date)}</p>
-            <p><strong>זמן נוכחי:</strong> ${entry.minutes} דקות</p>
-            <p><strong>מספר עריכות:</strong> ${entry.editHistory.length}</p>
-          </div>
-          
-          <div style="max-height: 300px; overflow-y: auto;">
-            <h4 style="margin-bottom: 15px; color: #374151;">
-              <i class="fas fa-list"></i> היסטוריית שינויים
-            </h4>
-            ${historyHtml}
-          </div>
-        </div>
-        <div class="popup-buttons">
-          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-            <i class="fas fa-times"></i> סגור
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-  };
-}
-
-/**
- * הוספת כפתור היסטוריה לכרטיס שעתון (אם יש עריכות)
- */
-if (window.manager && window.manager.createTimesheetCard) {
-  const originalCreateTimesheetCard = window.manager.createTimesheetCard;
-
-  window.manager.createTimesheetCard = function (entry) {
-    const safeEntry = this.sanitizeTimesheetData(entry);
-    const minutesClass =
-      safeEntry.minutes >= 120
-        ? "high-time"
-        : safeEntry.minutes >= 60
-        ? "medium-time"
-        : "low-time";
-
-    // כפתור היסטוריה רק אם יש עריכות
-    const historyButton =
-      entry.editHistory && entry.editHistory.length > 0
-        ? `
-      <button class="action-btn history-btn" onclick="manager.showTimesheetEditHistory('${safeEntry.id}')" title="היסטוריית עריכות">
-        <i class="fas fa-history"></i>
-        עריכות (${entry.editHistory.length})
-      </button>
-    `
-        : "";
-
-    return `
-      <div class="timesheet-card ${minutesClass}" data-entry-id="${
-      safeEntry.id
-    }">
-        <div class="timesheet-card-content">
-          <div class="timesheet-card-header">
-            <div class="timesheet-card-date">
-              <i class="fas fa-calendar-day"></i>
-              ${formatDate(safeEntry.date)}
-            </div>
-            <div class="timesheet-card-time">
-              <span class="time-badge ${minutesClass}">
-                <i class="fas fa-clock"></i>
-                ${safeEntry.minutes} דק'
-                ${
-                  entry.edited
-                    ? '<i class="fas fa-edit" style="margin-right: 4px; font-size: 10px;" title="נערך"></i>'
-                    : ""
-                }
-              </span>
-            </div>
-          </div>
-          
-          <div class="timesheet-card-main">
-            <div class="timesheet-card-client">
-              <i class="fas fa-user-tie"></i>
-              ${safeText(safeEntry.clientName)}
-            </div>
-            <div class="timesheet-card-action">
-              ${safeText(safeEntry.action)}
-            </div>
-            ${
-              safeEntry.fileNumber
-                ? `
-              <div class="timesheet-card-file">
-                <i class="fas fa-folder"></i>
-                תיק: ${safeText(safeEntry.fileNumber)}
-              </div>
-            `
-                : ""
-            }
-          </div>
-          
-          ${
-            safeEntry.notes && safeEntry.notes !== "—"
-              ? `
-            <div class="timesheet-card-notes">
-              <i class="fas fa-sticky-note"></i>
-              ${safeText(safeEntry.notes)}
-            </div>
-          `
-              : ""
-          }
-          
-          <div class="card-actions timesheet-card-actions">
-            <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${
-              safeEntry.id
-            }')" title="ערוך זמן">
-              <i class="fas fa-edit"></i>
-              ערוך שעתון
-            </button>
-            ${historyButton}
-          </div>
-        </div>
-      </div>
-    `;
-  };
-}
 // הוסף פונקציות ל-window
 window.addTimeToTaskFirebase = addTimeToTaskFirebase;
 window.completeTaskFirebase = completeTaskFirebase;
 window.extendTaskDeadlineFirebase = extendTaskDeadlineFirebase;
 window.logUserLoginFirebase = logUserLoginFirebase;
 
-console.log("🔥 Firebase Functions Integration Complete!");
-console.log("✅ addTimeToTaskFirebase - הוספת זמן למשימה");
-console.log("✅ completeTaskFirebase - סיום משימה");
-console.log("✅ extendTaskDeadlineFirebase - הארכת יעד");
-console.log("✅ logUserLoginFirebase - רישום כניסה");
-console.log("🎯 כל הפונקציות מוחלפות לFirebase!");
-
 /* ===== 🔚 סוף הקוד החדש ===== */
-// בדוק שהכל באמת עובד
-console.log("🔍 בדיקה אמיתית:");
-console.log("Manager:", !!window.manager);
-console.log("NotificationBell:", !!window.notificationBell);
-console.log("ClientValidation:", !!window.manager?.clientValidation);
-console.log("Firebase Functions:", !!window.addTimeToTaskFirebase);
-console.log("🎉 הכל עובד!");
-// ===== הוספת הפונקציות לכל מופע של Manager =====
-// הוסף את הקוד הזה בסוף הקובץ script.js, אחרי שמחלקת LawOfficeManager מוגדרת:
-
-// וידוא שהפונקציות זמינות גלובלית למקרה חירום
-window.showEditTimesheetDialog = function (entryId) {
-  if (window.manager && window.manager.showEditTimesheetDialog) {
-    return window.manager.showEditTimesheetDialog(entryId);
-  } else {
-    console.error("❌ Manager לא זמין");
-    alert("שגיאה: מערכת לא מוכנה. רענן את הדף.");
-  }
-};
-
-window.submitTimesheetEdit = function (entryId) {
-  if (window.manager && window.manager.submitTimesheetEdit) {
-    return window.manager.submitTimesheetEdit(entryId);
-  } else {
-    console.error("❌ Manager לא זמין");
-    alert("שגיאה: מערכת לא מוכנה. רענן את הדף.");
-  }
-};
-
-// Debug: בדוק שהפונקציות קיימות
-console.log("🔧 בדיקת פונקציות עריכת שעתון:");
-console.log("showEditTimesheetDialog:", typeof window.showEditTimesheetDialog);
-console.log("submitTimesheetEdit:", typeof window.submitTimesheetEdit);
-console.log(
-  "manager.showEditTimesheetDialog:",
-  window.manager?.showEditTimesheetDialog ? "✅ קיים" : "❌ חסר"
-);
-
-/**
- * תצוגת כרטיסיות משופרת לשעתון - מותאמת לנתוני השעתון
- * החלפת הפונקציה renderTimesheetCards ב-LawOfficeManager
- */
-
-// החלפת הפונקציה הקיימת במחלקת LawOfficeManager
-if (window.manager) {
-  /**
-   * יצירת כרטיסיות מעוצבות לשעתון
-   */
-  window.manager.renderTimesheetCards = function (entries) {
-    const container = document.getElementById("timesheetContainer");
-    if (!container) return;
-
-    if (!entries || entries.length === 0) {
-      container.innerHTML = this.createEmptyTimesheetState();
-      return;
-    }
-
-    const cardsHtml = entries
-      .map((entry) => this.createTimesheetCard(entry))
-      .join("");
-
-    container.innerHTML = `
-      <div class="modern-cards-header">
-        <h3 class="modern-cards-title">
-          <i class="fas fa-clock"></i>
-          רשומות שעתון
-        </h3>
-        <div class="modern-cards-subtitle">
-          ${this.filteredTimesheetEntries.length} רשומות • 
-          ${this.getTotalHoursFromEntries()} שעות • 
-          ${this.getEntriesThisWeek()} השבוע
-        </div>
-      </div>
-      <div class="timesheet-cards-grid">
-        ${cardsHtml}
-      </div>
-    `;
-  };
-
-  /**
-   * יצירת כרטיס יחיד לשעתון
-   */
-  window.manager.createTimesheetCard = function (entry) {
-    const safeEntry = this.sanitizeTimesheetData(entry);
-
-    // חישוב סוג הזמן לעיצוב
-    const minutesClass =
-      safeEntry.minutes >= 120
-        ? "high-time"
-        : safeEntry.minutes >= 60
-        ? "medium-time"
-        : "low-time";
-
-    // בדיקת תאריך לעיצוב
-    const entryDate = new Date(safeEntry.date);
-    const today = new Date();
-    const diffDays = Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
-
-    let dateClass = "";
-    let dateIcon = "📅";
-    if (diffDays === 0) {
-      dateClass = "today";
-      dateIcon = "🔥";
-    } else if (diffDays === 1) {
-      dateClass = "yesterday";
-      dateIcon = "🕐";
-    } else if (diffDays <= 7) {
-      dateClass = "this-week";
-      dateIcon = "📆";
-    } else if (diffDays > 30) {
-      dateClass = "old";
-      dateIcon = "🗓️";
-    }
-
-    const safeDescription = safeText(safeEntry.action);
-    const safeClientName = safeText(safeEntry.clientName);
-    const clientDisplayName =
-      safeEntry.clientName.length > 25
-        ? safeText(safeEntry.clientName.substring(0, 25) + "...")
-        : safeClientName;
-
-    return `
-      <div class="timesheet-linear-card" data-entry-id="${safeEntry.id}">
-        <div class="timesheet-card-content">
-          <div class="timesheet-card-header">
-            <div class="timesheet-date-info ${dateClass}">
-              <span class="date-icon">${dateIcon}</span>
-              <span class="date-text">${formatDate(safeEntry.date)}</span>
-              ${diffDays === 0 ? '<span class="today-badge">היום</span>' : ""}
-            </div>
-            <div class="timesheet-time-badge ${minutesClass}">
-              <i class="fas fa-stopwatch"></i>
-              <span class="time-value">${safeEntry.minutes}</span>
-              <span class="time-unit">דק'</span>
-            </div>
-          </div>
-
-          <div class="timesheet-main-content">
-            <h3 class="timesheet-action-title" title="${safeDescription}">
-              ${safeDescription}
-            </h3>
-            
-            <div class="timesheet-client-info">
-              <div class="client-row">
-                <i class="fas fa-user-tie"></i>
-                <span class="client-name" title="${safeClientName}">
-                  ${clientDisplayName}
-                </span>
-              </div>
-              ${
-                safeEntry.fileNumber
-                  ? `
-                <div class="file-row">
-                  <i class="fas fa-folder-open"></i>
-                  <span class="file-number">תיק ${safeText(
-                    safeEntry.fileNumber
-                  )}</span>
-                </div>
-              `
-                  : ""
-              }
-            </div>
-
-            ${
-              safeEntry.notes && safeEntry.notes !== "—"
-                ? `
-              <div class="timesheet-notes">
-                <i class="fas fa-sticky-note"></i>
-                <span class="notes-text">${safeText(safeEntry.notes)}</span>
-              </div>
-            `
-                : ""
-            }
-          </div>
-
-          <div class="timesheet-card-footer">
-            <div class="timesheet-meta">
-              <span class="created-time">
-                <i class="fas fa-clock"></i>
-                ${safeEntry.createdAt || "לא ידוע"}
-              </span>
-              ${
-                safeEntry.edited
-                  ? `
-                <span class="edited-indicator" title="רשומה נערכה">
-                  <i class="fas fa-edit"></i>
-                  נערך
-                </span>
-              `
-                  : ""
-              }
-            </div>
-            
-            <div class="card-actions">
-              <button class="timesheet-action-btn edit-btn" 
-                      onclick="manager.showEditTimesheetDialog('${
-                        safeEntry.id
-                      }')" 
-                      title="ערוך רשומה">
-                <i class="fas fa-edit"></i>
-              </button>
-              ${
-                safeEntry.editHistory && safeEntry.editHistory.length > 0
-                  ? `
-                <button class="timesheet-action-btn history-btn" 
-                        onclick="manager.showTimesheetEditHistory('${safeEntry.id}')" 
-                        title="היסטוריית עריכות">
-                  <i class="fas fa-history"></i>
-                  <span class="history-count">${safeEntry.editHistory.length}</span>
-                </button>
-              `
-                  : ""
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  };
-
-  /**
-   * פונקציות עזר לסטטיסטיקות
-   */
-  window.manager.sanitizeTimesheetData = function (entry) {
-    if (!entry) return {};
-
-    return {
-      id: entry.id || entry.entryId || Date.now(),
-      date: entry.date || new Date().toISOString(),
-      action: entry.action || "פעולה ללא תיאור",
-      minutes: Number(entry.minutes) || 0,
-      clientName: entry.clientName || "לקוח לא ידוע",
-      fileNumber: entry.fileNumber || "",
-      notes: entry.notes || "",
-      createdAt: entry.createdAt || "",
-      edited: entry.edited || false,
-      editHistory: entry.editHistory || [],
-    };
-  };
-
-  window.manager.getTotalHoursFromEntries = function () {
-    if (!this.filteredTimesheetEntries) return "0";
-
-    const totalMinutes = this.filteredTimesheetEntries.reduce((sum, entry) => {
-      return sum + (Number(entry.minutes) || 0);
-    }, 0);
-
-    return (totalMinutes / 60).toFixed(1);
-  };
-
-  window.manager.getEntriesThisWeek = function () {
-    if (!this.filteredTimesheetEntries) return 0;
-
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    return this.filteredTimesheetEntries.filter((entry) => {
-      const entryDate = new Date(entry.date);
-      return entryDate >= oneWeekAgo;
-    }).length;
-  };
-
-  /**
-   * עדכון פונקציית החלפת תצוגה
-   */
-  window.manager.switchTimesheetView = function (view) {
-    this.currentTimesheetView = view;
-
-    // עדכן את הכפתורים
-    document.querySelectorAll("#timesheetTab .view-tab").forEach((tab) => {
-      tab.classList.remove("active");
-    });
-
-    const activeTab = document.querySelector(
-      `#timesheetTab .view-tab[data-view="${view}"]`
-    );
-    if (activeTab) activeTab.classList.add("active");
-
-    // החלף תצוגות
-    const timesheetContainer = document.getElementById("timesheetContainer");
-    const timesheetTableContainer = document.getElementById(
-      "timesheetTableContainer"
-    );
-
-    if (view === "cards") {
-      if (timesheetContainer) timesheetContainer.classList.remove("hidden");
-      if (timesheetTableContainer)
-        timesheetTableContainer.classList.add("hidden");
-    } else {
-      if (timesheetContainer) timesheetContainer.classList.add("hidden");
-      if (timesheetTableContainer)
-        timesheetTableContainer.classList.remove("hidden");
-    }
-
-    // טען נתונים אם צריך
-    if (!this.timesheetEntries || this.timesheetEntries.length === 0) {
-      this.loadDataFromFirebase()
-        .then(() => {
-          this.applyTimesheetFilters();
-          this.renderTimesheetEntries();
-        })
-        .catch((error) => {
-          console.error("Error loading timesheet data:", error);
-          this.showNotification("שגיאה בטעינת נתונים", "error");
-        });
-    } else {
-      if (
-        !this.filteredTimesheetEntries ||
-        this.filteredTimesheetEntries.length === 0
-      ) {
-        this.applyTimesheetFilters();
-      }
-      this.renderTimesheetEntries();
-    }
-  };
-
-  console.log("✅ תצוגת כרטיסיות לשעתון הושלמה!");
-} else {
-  console.error("❌ Manager לא זמין - לא ניתן להוסיף פונקציות");
-}
-// החלף את הקוד הקיים ב-script.js עם הגרסה המשופרת הזו
-
-const ACTION_CATEGORIES = {
-  "כתבי טענות ראשוניים": ["כתב תביעה", "כתב הגנה", "כתב תשובה"],
-
-  "הליכי ביניים": ["בקשה בכתב", "תגובה לבקשה בכתב"],
-
-  "כתבי טענות מיוחדים": ["כתב ערעור", "עתירה מנהלית"],
-
-  "כתבי טענות במהלך ההליכים המשפטיים": [
-    "הליכים מקדמיים (גילוי מסמכים כללי/גילוי מסמכים ספציפי/שאלון)",
-    "היערכות לדיון מקדמי",
-    "ייצוג בדיון מקדמי",
-    "היערכות לקדם מסכם",
-    "ייצוג בדיון קדם מסכם",
-    "תצהירי עדות ראשית/הכנת תיק מוצגים",
-    "הכנת חקירות נגדיות לעדי הצד שכנגד",
-    "הכנת הלקוח ועדי הלקוח לחקירות נגדיות",
-    "ייצוג בדיון הוכחות",
-    "עריכת סיכומים",
-    "עריכת סיכומי תשובה",
-  ],
-
-  מכתבים: ["עריכת מכתב התראה"],
-
-  הסכמים: [
-    "הסכם מייסדים",
-    "תקנון חברה לא סטנדרטי",
-    "הסכם שותפות",
-    "עבודה",
-    "שיתוף פעולה",
-    "נותן שירותים",
-    "מכר דירה/בית/שטח",
-  ],
-
-  "צוואה/ירושה": ["עריכת צוואה", "בקשה לצו ירושה"],
-};
-
-// פעולות פופולריות (יותר נפוצות)
-const POPULAR_ACTIONS = [
-  "כתב תביעה",
-  "כתב הגנה",
-  "היערכות לדיון מקדמי",
-  "ייצוג בדיון מקדמי",
-  "עריכת מכתב התראה",
-  "הסכם שותפות",
-];
-
-const CategoryUtils = {
-  getAllActions() {
-    const actions = [];
-    Object.values(ACTION_CATEGORIES).forEach((categoryActions) => {
-      actions.push(...categoryActions);
-    });
-    return actions;
-  },
-
-  searchActions(searchText) {
-    if (!searchText) return this.getPopularActions();
-
-    const lowerSearch = searchText.toLowerCase();
-    const allActions = this.getAllActions();
-
-    // חיפוש מדויק ברמת מילים
-    const exactMatches = allActions.filter((action) =>
-      action.toLowerCase().includes(lowerSearch)
-    );
-
-    // חיפוש במילים נפרדות
-    const words = lowerSearch.split(" ").filter((w) => w.length > 1);
-    const partialMatches = allActions.filter((action) => {
-      const actionLower = action.toLowerCase();
-      return (
-        words.some((word) => actionLower.includes(word)) &&
-        !exactMatches.includes(action)
-      );
-    });
-
-    // מיון לפי רלוונטיות - פעולות פופולריות קודם
-    const sortByRelevance = (matches) => {
-      return matches.sort((a, b) => {
-        const aPopular = POPULAR_ACTIONS.includes(a);
-        const bPopular = POPULAR_ACTIONS.includes(b);
-
-        if (aPopular && !bPopular) return -1;
-        if (!aPopular && bPopular) return 1;
-
-        // אם שניהם פופולריים או לא, מיין לפי התחלת המילה
-        const aStartsWith = a.toLowerCase().startsWith(lowerSearch);
-        const bStartsWith = b.toLowerCase().startsWith(lowerSearch);
-
-        if (aStartsWith && !bStartsWith) return -1;
-        if (!aStartsWith && bStartsWith) return 1;
-
-        return a.length - b.length; // קצרים קודם
-      });
-    };
-
-    return [
-      ...sortByRelevance(exactMatches),
-      ...sortByRelevance(partialMatches),
-    ].slice(0, 10);
-  },
-
-  getPopularActions() {
-    return POPULAR_ACTIONS;
-  },
-
-  findCategoryForAction(actionName) {
-    for (const [category, actions] of Object.entries(ACTION_CATEGORIES)) {
-      if (actions.includes(actionName)) {
-        return category;
-      }
-    }
-    return null;
-  },
-
-  isValidAction(actionName) {
-    return this.getAllActions().includes(actionName);
-  },
-
-  getCategoryIcon(categoryName) {
-    const icons = {
-      "כתבי טענות ראשוניים": "📄",
-      "הליכי ביניים": "📋",
-      "כתבי טענות מיוחדים": "⚖️",
-      "כתבי טענות במהלך ההליכים המשפטיים": "🏛️",
-      מכתבים: "✉️",
-      הסכמים: "📝",
-      "צוואה/ירושה": "📜",
-    };
-    return icons[categoryName] || "📁";
-  },
-
-  highlightMatch(text, searchTerm) {
-    if (!searchTerm) return text;
-
-    const regex = new RegExp(
-      `(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-      "gi"
-    );
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
-  },
-
-  createProfessionalCombobox(
-    containerId,
-    inputId,
-    placeholder = "בחר או חפש פעולה..."
-  ) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    container.innerHTML = `
-      <div class="professional-combobox">
-        <div class="combobox-input-wrapper">
-          <input 
-            type="text" 
-            id="${inputId}" 
-            placeholder="${placeholder}"
-            autocomplete="off"
-            class="combobox-input"
-            required
-            spellcheck="false"
-          />
-          <button type="button" class="combobox-dropdown-btn" id="${inputId}DropdownBtn">
-            <i class="fas fa-chevron-down"></i>
-          </button>
-          <input type="hidden" id="${inputId}Selected" required />
-        </div>
-        
-        <div class="combobox-dropdown" id="${inputId}Dropdown">
-          <div class="dropdown-header">
-            <span class="dropdown-title">בחר פעולה</span>
-            <span class="dropdown-count" id="${inputId}Count"></span>
-          </div>
-          <div class="dropdown-content" id="${inputId}Content">
-            <!-- תוצאות יוצגו כאן -->
-          </div>
-        </div>
-        
-        <div class="combobox-help">
-          התחל להקליד לחיפוש או לחץ על החץ לרשימה המלאה
-        </div>
-      </div>
-    `;
-
-    this.setupComboboxListeners(inputId);
-    this.showInitialOptions(inputId);
-  },
-
-  setupComboboxListeners(inputId) {
-    const input = document.getElementById(inputId);
-    const dropdown = document.getElementById(`${inputId}Dropdown`);
-    const dropdownBtn = document.getElementById(`${inputId}DropdownBtn`);
-    const hiddenInput = document.getElementById(`${inputId}Selected`);
-
-    if (!input || !dropdown || !dropdownBtn || !hiddenInput) return;
-
-    let isOpen = false;
-
-    // פתיחה/סגירה של הרשימה
-    const toggleDropdown = () => {
-      if (isOpen) {
-        this.closeDropdown(inputId);
-      } else {
-        this.openDropdown(inputId);
-      }
-    };
-
-    // הקלדה בשדה
-    input.addEventListener("input", (e) => {
-      const value = e.target.value.trim();
-      this.updateDropdownContent(inputId, value);
-
-      if (!isOpen) {
-        this.openDropdown(inputId);
-      }
-
-      // איפוס הערך הנסתר אם המשתמש משנה את הטקסט
-      if (hiddenInput.value && hiddenInput.value !== value) {
-        hiddenInput.value = "";
-        input.classList.remove("selected");
-      }
-    });
-
-    // פוקוס על השדה
-    input.addEventListener("focus", () => {
-      if (!isOpen) {
-        this.openDropdown(inputId);
-      }
-    });
-
-    // לחיצה על כפתור הרשימה
-    dropdownBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      toggleDropdown();
-      input.focus();
-    });
-
-    // מקלדת ניווט
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        this.navigateDropdown(inputId, "down");
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        this.navigateDropdown(inputId, "up");
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        this.selectHighlighted(inputId);
-      } else if (e.key === "Escape") {
-        this.closeDropdown(inputId);
-      }
-    });
-
-    // סגירה בלחיצה מחוץ לרכיב
-    document.addEventListener("click", (e) => {
-      const combobox = input.closest(".professional-combobox");
-      if (combobox && !combobox.contains(e.target)) {
-        this.closeDropdown(inputId);
-      }
-    });
-
-    // שמירה של מצב הרשימה
-    dropdown.addEventListener("transitionend", () => {
-      isOpen = dropdown.classList.contains("open");
-    });
-  },
-
-  openDropdown(inputId) {
-    const dropdown = document.getElementById(`${inputId}Dropdown`);
-    const dropdownBtn = document.getElementById(`${inputId}DropdownBtn`);
-
-    if (dropdown && dropdownBtn) {
-      dropdown.classList.add("open");
-      dropdownBtn.classList.add("open");
-      this.updateDropdownContent(
-        inputId,
-        document.getElementById(inputId).value
-      );
-    }
-  },
-
-  closeDropdown(inputId) {
-    const dropdown = document.getElementById(`${inputId}Dropdown`);
-    const dropdownBtn = document.getElementById(`${inputId}DropdownBtn`);
-
-    if (dropdown && dropdownBtn) {
-      dropdown.classList.remove("open");
-      dropdownBtn.classList.remove("open");
-      this.clearHighlight(inputId);
-    }
-  },
-
-  updateDropdownContent(inputId, searchValue) {
-    const content = document.getElementById(`${inputId}Content`);
-    const count = document.getElementById(`${inputId}Count`);
-
-    if (!content || !count) return;
-
-    const matches = this.searchActions(searchValue);
-    count.textContent = `${matches.length} פעולות`;
-
-    if (matches.length === 0) {
-      content.innerHTML = `
-        <div class="dropdown-empty">
-          <i class="fas fa-search"></i>
-          <span>לא נמצאו פעולות מתאימות</span>
-        </div>
-      `;
-      return;
-    }
-
-    // קיבוץ לפי קטגוריות אם אין חיפוש
-    if (!searchValue) {
-      this.renderGroupedOptions(content, matches);
-    } else {
-      this.renderSearchResults(content, matches, searchValue);
-    }
-  },
-
-  renderGroupedOptions(content, actions) {
-    const grouped = {};
-
-    actions.forEach((action) => {
-      const category = this.findCategoryForAction(action);
-      if (!grouped[category]) {
-        grouped[category] = [];
-      }
-      grouped[category].push(action);
-    });
-
-    let html = "";
-    Object.entries(grouped).forEach(([category, categoryActions]) => {
-      const icon = this.getCategoryIcon(category);
-      html += `
-        <div class="dropdown-group">
-          <div class="group-header">
-            <span class="group-icon">${icon}</span>
-            <span class="group-title">${category}</span>
-          </div>
-          ${categoryActions
-            .map(
-              (action) => `
-            <div class="dropdown-option" data-value="${action}">
-              <span class="option-text">${action}</span>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `;
-    });
-
-    content.innerHTML = html;
-    this.attachOptionListeners(content);
-  },
-
-  renderSearchResults(content, actions, searchTerm) {
-    let html = actions
-      .map((action) => {
-        const category = this.findCategoryForAction(action);
-        const icon = this.getCategoryIcon(category);
-        const highlighted = this.highlightMatch(action, searchTerm);
-
-        return `
-        <div class="dropdown-option search-result" data-value="${action}">
-          <div class="option-main">
-            <span class="option-icon">${icon}</span>
-            <span class="option-text">${highlighted}</span>
-          </div>
-          <div class="option-category">${category}</div>
-        </div>
-      `;
-      })
-      .join("");
-
-    content.innerHTML = html;
-    this.attachOptionListeners(content);
-  },
-
-  attachOptionListeners(content) {
-    const options = content.querySelectorAll(".dropdown-option");
-    options.forEach((option) => {
-      option.addEventListener("click", () => {
-        const value = option.getAttribute("data-value");
-        const inputId = content.id.replace("Content", "");
-        this.selectOption(inputId, value);
-      });
-
-      option.addEventListener("mouseenter", () => {
-        this.highlightOption(option);
-      });
-    });
-  },
-
-  selectOption(inputId, value) {
-    const input = document.getElementById(inputId);
-    const hiddenInput = document.getElementById(`${inputId}Selected`);
-
-    if (input && hiddenInput) {
-      input.value = value;
-      hiddenInput.value = value;
-      input.classList.add("selected");
-
-      this.closeDropdown(inputId);
-
-      // אפקט ויזואלי
-      input.style.backgroundColor = "#f0fdf4";
-      input.style.borderColor = "#10b981";
-
-      setTimeout(() => {
-        input.style.backgroundColor = "";
-        input.style.borderColor = "";
-      }, 1500);
-
-      console.log(
-        `נבחרה פעולה: ${value} מהקטגוריה: ${this.findCategoryForAction(value)}`
-      );
-    }
-  },
-
-  showInitialOptions(inputId) {
-    this.updateDropdownContent(inputId, "");
-  },
-
-  navigateDropdown(inputId, direction) {
-    const content = document.getElementById(`${inputId}Content`);
-    if (!content) return;
-
-    const options = content.querySelectorAll(".dropdown-option");
-    const currentHighlight = content.querySelector(
-      ".dropdown-option.highlighted"
-    );
-
-    let newIndex = 0;
-    if (currentHighlight) {
-      const currentIndex = Array.from(options).indexOf(currentHighlight);
-      newIndex = direction === "down" ? currentIndex + 1 : currentIndex - 1;
-    }
-
-    // התמודדות עם גבולות
-    if (newIndex < 0) newIndex = options.length - 1;
-    if (newIndex >= options.length) newIndex = 0;
-
-    this.clearHighlight(inputId);
-    if (options[newIndex]) {
-      options[newIndex].classList.add("highlighted");
-      options[newIndex].scrollIntoView({ block: "nearest" });
-    }
-  },
-
-  selectHighlighted(inputId) {
-    const content = document.getElementById(`${inputId}Content`);
-    if (!content) return;
-
-    const highlighted = content.querySelector(".dropdown-option.highlighted");
-    if (highlighted) {
-      const value = highlighted.getAttribute("data-value");
-      this.selectOption(inputId, value);
-    }
-  },
-
-  highlightOption(option) {
-    const content = option.closest(".dropdown-content");
-    if (content) {
-      content
-        .querySelectorAll(".dropdown-option.highlighted")
-        .forEach((opt) => {
-          opt.classList.remove("highlighted");
-        });
-      option.classList.add("highlighted");
-    }
-  },
-
-  clearHighlight(inputId) {
-    const content = document.getElementById(`${inputId}Content`);
-    if (content) {
-      content
-        .querySelectorAll(".dropdown-option.highlighted")
-        .forEach((opt) => {
-          opt.classList.remove("highlighted");
-        });
-    }
-  },
-};
-
-// אתחול השדות עם הגרסה המקצועית
-setTimeout(() => {
-  if (document.getElementById("budgetDescriptionContainer")) {
-    CategoryUtils.createProfessionalCombobox(
-      "budgetDescriptionContainer",
-      "budgetDescription",
-      "בחר או חפש סוג משימה..."
-    );
-    console.log("✅ Combobox תקצוב נוצר");
-  }
-
-  if (document.getElementById("actionDescriptionContainer")) {
-    CategoryUtils.createProfessionalCombobox(
-      "actionDescriptionContainer",
-      "actionDescription",
-      "בחר או חפש סוג פעולה..."
-    );
-    console.log("✅ Combobox שעתון נוצר");
-  }
-}, 2000);
-
-window.ACTION_CATEGORIES = ACTION_CATEGORIES;
-window.CategoryUtils = CategoryUtils;
-console.log("🎯 Combobox מקצועי נטען!");

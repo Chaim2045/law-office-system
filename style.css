@@ -10024,3 +10024,1476 @@ button[onclick*="addBudget"]:hover {
     background: linear-gradient(135deg, #1e293b, #334155);
   }
 }
+
+/* כפתורי פעולות בטבלת תקצוב */
+.actions-column {
+  text-align: center;
+  white-space: nowrap;
+  padding: 8px 4px;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin: 0 2px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.time-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.extend-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.history-btn {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+}
+
+.complete-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.time-btn:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.extend-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+.history-btn:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+}
+
+.complete-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+/* ===== עיצוב כרטיסיות שעתון משופרות ===== */
+
+/* גריד כרטיסיות שעתון */
+.timesheet-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+  direction: rtl;
+}
+
+/* כרטיס שעתון בסיסי */
+.timesheet-card {
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  direction: rtl;
+  text-align: right;
+  font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
+.timesheet-card:hover {
+  border-color: #d0d7de;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* תוכן הכרטיס */
+.timesheet-card-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+/* כותרת הכרטיס - תאריך וזמן */
+.timesheet-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.timesheet-card-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.timesheet-card-date i {
+  color: #6366f1;
+  font-size: 16px;
+}
+
+.timesheet-card-time {
+  display: flex;
+  align-items: center;
+}
+
+.time-badge {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #2563eb;
+}
+
+.time-badge.high-time {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border-color: #b91c1c;
+}
+
+.time-badge.medium-time {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #d97706;
+}
+
+.time-badge.low-time {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #059669;
+}
+
+/* חלק מרכזי - לקוח ופעולה */
+.timesheet-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timesheet-card-client {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 16px;
+}
+
+.timesheet-card-client i {
+  color: #6366f1;
+  font-size: 16px;
+  min-width: 16px;
+}
+
+.timesheet-card-action {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
+  font-weight: 500;
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 8px;
+  border-right: 3px solid #6366f1;
+}
+
+.timesheet-card-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.timesheet-card-file i {
+  color: #f59e0b;
+  font-size: 14px;
+}
+
+/* הערות */
+.timesheet-card-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  background: #f9fafb;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.timesheet-card-notes i {
+  color: #f59e0b;
+  font-size: 14px;
+  margin-top: 2px;
+  min-width: 14px;
+}
+
+/* כפתורי פעולות */
+.timesheet-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  justify-content: flex-start;
+  direction: rtl;
+}
+
+.timesheet-card-actions .action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.edit-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  border: 1px solid #7c3aed;
+}
+
+.edit-btn:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+/* וריאציות כרטיס לפי כמות זמן */
+.timesheet-card.high-time {
+  border-right: 4px solid #dc2626;
+}
+
+.timesheet-card.high-time:hover {
+  border-right-color: #b91c1c;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.15);
+}
+
+.timesheet-card.medium-time {
+  border-right: 4px solid #f59e0b;
+}
+
+.timesheet-card.medium-time:hover {
+  border-right-color: #d97706;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
+}
+
+.timesheet-card.low-time {
+  border-right: 4px solid #10b981;
+}
+
+.timesheet-card.low-time:hover {
+  border-right-color: #059669;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+}
+
+/* עיצוב הטבלה המשופרת */
+.modern-timesheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  direction: rtl;
+}
+
+.modern-timesheet-table thead {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+.modern-timesheet-table th {
+  padding: 16px 12px;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: right;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.modern-timesheet-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.modern-timesheet-table tr:hover {
+  background: rgba(99, 102, 241, 0.02);
+}
+
+.modern-timesheet-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* עיצוב עמודות מיוחדות בטבלה */
+.timesheet-cell-date {
+  font-weight: 700;
+  color: #6366f1;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.timesheet-cell-action {
+  max-width: 250px;
+  line-height: 1.5;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.timesheet-cell-time {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timesheet-cell-client {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+/* דיאלוג עריכת שעתון */
+.edit-timesheet-popup {
+  max-width: 500px;
+}
+
+.edit-timesheet-popup .popup-content {
+  padding: 18px 22px;
+}
+
+.edit-timesheet-popup .form-group input[type="number"] {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  background: rgba(99, 102, 241, 0.05);
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.edit-timesheet-popup .form-group input[type="number"]:focus {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.edit-timesheet-popup .form-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.required {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* רספונסיביות */
+@media (max-width: 768px) {
+  .timesheet-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px 0;
+  }
+
+  .timesheet-card-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .timesheet-card-time {
+    justify-content: flex-end;
+  }
+
+  .modern-timesheet-table {
+    font-size: 12px;
+  }
+
+  .modern-timesheet-table th,
+  .modern-timesheet-table td {
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .timesheet-card-content {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .timesheet-card-actions .action-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+/* ===== עיצוב כרטיסיות השעתון ===== */
+
+/* גריד הכרטיסיות */
+.timesheet-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* כרטיס בודד */
+.timesheet-linear-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.timesheet-linear-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+}
+
+/* תוכן הכרטיס */
+.timesheet-card-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* כותרת הכרטיס */
+.timesheet-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* מידע התאריך */
+.timesheet-date-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.date-icon {
+  font-size: 16px;
+}
+
+.date-text {
+  color: #475569;
+}
+
+/* תגי תאריך מיוחדים */
+.timesheet-date-info.today .date-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.timesheet-date-info.yesterday .date-text {
+  color: #f59e0b;
+}
+
+.timesheet-date-info.this-week .date-text {
+  color: #3b82f6;
+}
+
+.timesheet-date-info.old .date-text {
+  color: #6b7280;
+}
+
+.today-badge {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* תג הזמן */
+.timesheet-time-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.timesheet-time-badge.high-time {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: white;
+}
+
+.timesheet-time-badge.medium-time {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: white;
+}
+
+.timesheet-time-badge.low-time {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+}
+
+.time-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.time-unit {
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+/* תוכן ראשי */
+.timesheet-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timesheet-action-title {
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+/* מידע הלקוח */
+.timesheet-client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.client-row,
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.client-row i,
+.file-row i {
+  width: 14px;
+  color: #3b82f6;
+}
+
+.client-name {
+  font-weight: 500;
+  color: #374151;
+}
+
+.file-number {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* הערות */
+.timesheet-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.timesheet-notes i {
+  color: #f59e0b;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.notes-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* פוטר הכרטיס */
+.timesheet-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* מידע מטה */
+.timesheet-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.created-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edited-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* פעולות כרטיס */
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.timesheet-action-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.timesheet-action-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.timesheet-action-btn.edit-btn {
+  color: #3b82f6;
+}
+
+.timesheet-action-btn.edit-btn:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.timesheet-action-btn.history-btn {
+  color: #6b7280;
+}
+
+.timesheet-action-btn.history-btn:hover {
+  background: #f3f4f6;
+  border-color: #6b7280;
+}
+
+.history-count {
+  background: #374151;
+  color: white;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* ריספונסיביות */
+@media (max-width: 768px) {
+  .timesheet-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .timesheet-linear-card {
+    margin: 0 8px;
+  }
+
+  .timesheet-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .timesheet-time-badge {
+    align-self: flex-end;
+  }
+}
+
+/* אנימציות */
+@keyframes slideInCard {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.timesheet-linear-card {
+  animation: slideInCard 0.3s ease-out;
+}
+
+/* מצב כהה (אופציונלי) */
+@media (prefers-color-scheme: dark) {
+  .timesheet-linear-card {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .timesheet-action-title {
+    color: #f1f5f9;
+  }
+
+  .client-name {
+    color: #cbd5e1;
+  }
+
+  .timesheet-notes {
+    background: #0f172a;
+    border-color: #334155;
+  }
+
+  .notes-text {
+    color: #94a3b8;
+  }
+}
+/* ===== CSS עבור קטגוריות פעולות ===== */
+/* הוסף את הקוד הזה לקובץ style.css הקיים שלך */
+
+/* עיצוב רכיב החיפוש הניתן לחיפוש */
+.action-category-container {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.action-search {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.action-search:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.action-search.has-value {
+  border-color: #10b981;
+  background: #f0fdf4;
+  font-weight: 500;
+}
+
+.action-search::placeholder {
+  color: #9ca3af;
+  font-weight: normal;
+}
+
+/* תוצאות החיפוש */
+.dropdown-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dropdown-results.show {
+  display: block;
+  animation: slideDown 0.15s ease-out;
+}
+
+.dropdown-result-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-result-item:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.dropdown-result-item:active {
+  background: #e2e8f0;
+}
+
+.dropdown-result-item:last-child {
+  border-bottom: none;
+}
+
+.action-name {
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.action-category {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.no-results {
+  padding: 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* הודעת עזרה */
+.category-help {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 400;
+}
+
+.category-help i {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* אנימציות ומצבי מעבר */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* עיצוב Scrollbar לתוצאות */
+.dropdown-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-results::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.dropdown-results::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dropdown-results::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* עיצוב מותאם למובייל */
+@media (max-width: 768px) {
+  .dropdown-results {
+    max-height: 200px;
+  }
+
+  .dropdown-result-item {
+    padding: 10px 12px;
+  }
+
+  .action-search {
+    font-size: 16px; /* מניעת zoom באייפון */
+    padding: 14px 16px;
+  }
+
+  .action-name {
+    font-size: 13px;
+  }
+
+  .action-category {
+    font-size: 11px;
+  }
+}
+
+/* עיצוב עבור מצב כהה */
+@media (prefers-color-scheme: dark) {
+  .action-search {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .action-search:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  }
+
+  .action-search.has-value {
+    background: #064e3b;
+    border-color: #059669;
+  }
+
+  .dropdown-results {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .dropdown-result-item:hover {
+    background: #374151;
+  }
+
+  .action-name {
+    color: #f9fafb;
+  }
+
+  .action-category {
+    color: #9ca3af;
+  }
+
+  .no-results {
+    color: #9ca3af;
+  }
+
+  .category-help {
+    color: #9ca3af;
+  }
+}
+
+/* אינטגרציה עם העיצוב הקיים */
+.form-group .action-category-container {
+  margin-top: 0;
+}
+
+.form-group label + .action-category-container {
+  margin-top: 5px;
+}
+
+/* מצב שגיאה */
+.action-search.error {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.action-search.error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* מצב loading */
+.action-search.loading {
+  background-image: url("data:image/svg+xml,%3csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3e%3cg fill='none' fill-rule='evenodd'%3e%3cg fill='%236b7280' fill-rule='nonzero'%3e%3cpath d='M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z' opacity='.2'/%3e%3cpath d='M10 3a7 7 0 0 1 7 7h-2a5 5 0 0 0-5-5V3z'%3e%3canimateTransform attributeName='transform' type='rotate' from='0 10 10' to='360 10 10' dur='1s' repeatCount='indefinite'/%3e%3c/path%3e%3c/g%3e%3c/g%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 12px center;
+  padding-right: 40px;
+}
+
+/* הסתרת סימן הנדרש עבור השדה הנסתר */
+.searchable-dropdown input[type="hidden"] {
+  display: none;
+}
+
+/* עיצוב מותאם לטאבלטים */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .action-search {
+    font-size: 15px;
+    padding: 12px 14px;
+  }
+
+  .dropdown-results {
+    max-height: 240px;
+  }
+}
+
+
+/* ===== CSS עבור Combobox מקצועי ===== */
+/* הוסף את הקוד הזה לקובץ style.css שלך */
+
+/* מיכל עיקרי */
+.professional-combobox {
+  position: relative;
+  width: 100%;
+}
+
+/* עטיפת השדה */
+.combobox-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* שדה הקלט */
+.combobox-input {
+  width: 100%;
+  padding: 12px 45px 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.combobox-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.combobox-input.selected {
+  border-color: #10b981;
+  background: #f0fdf4;
+  font-weight: 500;
+}
+
+.combobox-input::placeholder {
+  color: #9ca3af;
+  font-weight: normal;
+}
+
+/* כפתור החץ */
+.combobox-dropdown-btn {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.combobox-dropdown-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.combobox-dropdown-btn.open {
+  color: #3b82f6;
+}
+
+.combobox-dropdown-btn.open i {
+  transform: rotate(180deg);
+}
+
+.combobox-dropdown-btn i {
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+
+/* רשימה נפתחת */
+.combobox-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.combobox-dropdown.open {
+  max-height: 320px;
+  opacity: 1;
+  transform: translateY(0);
+  overflow-y: auto;
+}
+
+/* כותרת הרשימה */
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.dropdown-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dropdown-count {
+  font-size: 12px;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* תוכן הרשימה */
+.dropdown-content {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* קבוצת פעולות */
+.dropdown-group {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.dropdown-group:last-child {
+  border-bottom: none;
+}
+
+.group-header {
+  padding: 8px 16px;
+  background: #f9fafb;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 45px;
+  z-index: 1;
+}
+
+.group-icon {
+  font-size: 14px;
+}
+
+/* אפשרויות */
+.dropdown-option {
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f9fafb;
+}
+
+.dropdown-option:hover,
+.dropdown-option.highlighted {
+  background: #f1f5f9;
+  color: #1e40af;
+}
+
+.dropdown-option:active {
+  background: #e0e7ff;
+}
+
+.dropdown-option:last-child {
+  border-bottom: none;
+}
+
+/* אפשרויות תוצאות חיפוש */
+.dropdown-option.search-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.option-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.option-icon {
+  font-size: 14px;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.option-text {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+  flex: 1;
+}
+
+.option-category {
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
+  margin-right: 26px;
+}
+
+/* הדגשת טקסט חיפוש */
+.search-highlight {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 600;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
+/* מצב ריק */
+.dropdown-empty {
+  padding: 30px 20px;
+  text-align: center;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-empty i {
+  font-size: 20px;
+  opacity: 0.5;
+}
+
+/* הודעת עזרה */
+.combobox-help {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Scrollbar מותאם */
+.dropdown-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* אנימציות מתקדמות */
+.dropdown-option {
+  transform: translateX(0);
+}
+
+.dropdown-option:hover {
+  transform: translateX(2px);
+}
+
+/* מצבי שגיאה */
+.combobox-input.error {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.combobox-input.error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* עיצוב רספונסיבי */
+@media (max-width: 768px) {
+  .combobox-input {
+    font-size: 16px;
+    padding: 14px 45px 14px 16px;
+  }
+
+  .combobox-dropdown {
+    max-height: 240px;
+  }
+
+  .dropdown-content {
+    max-height: 200px;
+  }
+
+  .dropdown-option {
+    padding: 12px 16px;
+  }
+
+  .option-text {
+    font-size: 15px;
+  }
+
+  .group-header {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* עיצוב למצב כהה */
+@media (prefers-color-scheme: dark) {
+  .combobox-input {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .combobox-input:focus {
+    border-color: #60a5fa;
+  }
+
+  .combobox-input.selected {
+    background: #064e3b;
+    border-color: #059669;
+  }
+
+  .combobox-dropdown {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .dropdown-header {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
+  .dropdown-title {
+    color: #f9fafb;
+  }
+
+  .dropdown-count {
+    background: #4b5563;
+    color: #d1d5db;
+  }
+
+  .group-header {
+    background: #374151;
+    color: #d1d5db;
+  }
+
+  .dropdown-option:hover,
+  .dropdown-option.highlighted {
+    background: #374151;
+    color: #60a5fa;
+  }
+
+  .option-text {
+    color: #f9fafb;
+  }
+
+  .option-category {
+    color: #9ca3af;
+  }
+
+  .search-highlight {
+    background: #92400e;
+    color: #fef3c7;
+  }
+}
+
+/* אינטגרציה עם הטפסים הקיימים */
+.form-group .professional-combobox {
+  margin-top: 0;
+}
+
+.form-group label + .professional-combobox {
+  margin-top: 5px;
+}
+
+/* מצב טעינה */
+.combobox-input.loading {
+  background-image: url("data:image/svg+xml,%3csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3e%3cg fill='none' fill-rule='evenodd'%3e%3cg fill='%236b7280' fill-rule='nonzero'%3e%3cpath d='M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z' opacity='.2'/%3e%3cpath d='M10 3a7 7 0 0 1 7 7h-2a5 5 0 0 0-5-5V3z'%3e%3canimateTransform attributeName='transform' type='rotate' from='0 10 10' to='360 10 10' dur='1s' repeatCount='indefinite'/%3e%3c/path%3e%3c/g%3e%3c/g%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 12px center;
+  padding-left: 45px;
+}
+
+/* הסתרת השדה הנסתר */
+input[type="hidden"] {
+  display: none !important;
+}
+
+/* עיצוב עבור טאבלטים */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .combobox-input {
+    font-size: 15px;
+    padding: 12px 45px 12px 14px;
+  }
+
+  .combobox-dropdown {
+    max-height: 280px;
+  }
+}
