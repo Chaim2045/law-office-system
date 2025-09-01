@@ -1098,12 +1098,10 @@
         try {
           console.log("📊 טוען נתוני לקוחות...");
 
-          const clientsSnapshot = await db.collection("clients").get();
+          const result = await callServerFunction("getClients");
           clientsData = [];
 
-          for (const doc of clientsSnapshot.docs) {
-            const clientData = doc.data();
-
+          for (const clientData of result.data) {
             // Get real budget tasks for this client
             const tasksSnapshot = await db
               .collection("budget_tasks")
@@ -3044,5 +3042,6 @@ ${reason ? `סיבה: ${reason}` : ""}`;
 
       console.log("✅ מודול העברת משימות נטען בהצלחה!");
     </script>
+    <script src="api.js"></script>
   </body>
 </html>
