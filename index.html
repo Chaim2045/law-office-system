@@ -1,91 +1,98 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
-  <!-- Firebase Optimized Config -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <head>
+    <!-- 
+    מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ
+    נוצר: 28/08/2025
+    גרסה: 2.0.0 - קוד HTML מסודר ומנוקה
+  -->
 
-  <script>
-    // Firebase Configuration - מהיר ומאופטמ
-    const firebaseConfig = {
-      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
-      authDomain: "law-office-system-e4801.firebaseapp.com",
-      projectId: "law-office-system-e4801",
-      storageBucket: "law-office-system-e4801.firebasestorage.app",
-      messagingSenderId: "199682320505",
-      appId: "1:199682320505:web:8e4f5e34653476479b4ca8",
-    };
+    <!-- ===== ספריות חיצוניות ו-Firebase ===== -->
+    <!-- FIREBASE & EXTERNAL LIBRARIES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    try {
-      // Initialize Firebase with performance settings
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
-
-      // אופטימיזציות ביצועים
-      db.settings({
-        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-        merge: true,
-      });
-
-      // הפוך זמין למערכת
-      window.firebaseDB = db;
-      window.firebaseApp = firebase.app();
-
-      // פונקציות פשוטות ומהירות
-      window.firebaseUtils = {
-        collection: (name) => db.collection(name),
-        doc: (collection, id) => db.collection(collection).doc(id),
-        addDoc: (collectionRef, data) => collectionRef.add(data),
-        getDocs: (query) => query.get(),
-        updateDoc: (docRef, data) => docRef.update(data),
-        deleteDoc: (docRef) => docRef.delete(),
-        where: (field, operator, value) =>
-          firebase.firestore.FieldPath.documentId(),
-        orderBy: (field, direction = "asc") => direction,
+    <script>
+      // Firebase Configuration - מהיר ומאופטמ
+      const firebaseConfig = {
+        apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+        authDomain: "law-office-system-e4801.firebaseapp.com",
+        projectId: "law-office-system-e4801",
+        storageBucket: "law-office-system-e4801.firebasestorage.app",
+        messagingSenderId: "199682320505",
+        appId: "1:199682320505:web:8e4f5e34653476479b4ca8",
       };
 
-      console.log("🔥 Firebase מחובר בהצלחה - מצב מהיר!");
-      console.log("✅ Database מוכן עם אופטימיזציות");
-      console.log("✅ Project ID:", firebaseConfig.projectId);
+      try {
+        // Initialize Firebase with performance settings
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-      // בדיקת חיבור מהירה (ללא timeout)
-      setTimeout(() => {
-        db.collection("test")
-          .limit(1)
-          .get()
-          .then(() => {
-            console.log("🚀 חיבור לFirestore מהיר ותקין!");
-          })
-          .catch((error) => {
-            console.warn("⚠️ בעיה בחיבור:", error.message);
-          });
-      }, 100);
-    } catch (error) {
-      console.error("❌ Firebase Error:", error);
-      alert("שגיאה בחיבור לFirebase: " + error.message);
-    }
-  </script>
-  <head>
-    <!-- ===== META TAGS & BASIC SETUP ===== -->
+        // אופטימיזציות ביצועים
+        db.settings({
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+          merge: true,
+        });
+
+        // הפוך זמין למערכת
+        window.firebaseDB = db;
+        window.firebaseApp = firebase.app();
+
+        // פונקציות פשוטות ומהירות
+        window.firebaseUtils = {
+          collection: (name) => db.collection(name),
+          doc: (collection, id) => db.collection(collection).doc(id),
+          addDoc: (collectionRef, data) => collectionRef.add(data),
+          getDocs: (query) => query.get(),
+          updateDoc: (docRef, data) => docRef.update(data),
+          deleteDoc: (docRef) => docRef.delete(),
+          where: (field, operator, value) =>
+            firebase.firestore.FieldPath.documentId(),
+          orderBy: (field, direction = "asc") => direction,
+        };
+
+        console.log("🔥 Firebase מחובר בהצלחה - מצב מהיר!");
+        console.log("✅ Database מוכן עם אופטימיזציות");
+        console.log("✅ Project ID:", firebaseConfig.projectId);
+
+        // בדיקת חיבור מהירה (ללא timeout)
+        setTimeout(() => {
+          db.collection("test")
+            .limit(1)
+            .get()
+            .then(() => {
+              console.log("🚀 חיבור לFirestore מהיר ותקין!");
+            })
+            .catch((error) => {
+              console.warn("⚠️ בעיה בחיבור:", error.message);
+            });
+        }, 100);
+      } catch (error) {
+        console.error("❌ Firebase Error:", error);
+        alert("שגיאה בחיבור לFirebase: " + error.message);
+      }
+    </script>
+
+    <!-- ===== תגי מטא והגדרות בסיסיות ===== -->
+    <!-- META TAGS & BASIC SETUP -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ</title>
 
-    <!-- ===== EXTERNAL RESOURCES ===== -->
-    <!-- Font Awesome Icons -->
+    <!-- ===== משאבים חיצוניים ===== -->
+    <!-- EXTERNAL RESOURCES -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
-
-    <!-- Main CSS Stylesheet -->
     <link rel="stylesheet" href="style.css" />
   </head>
 
   <body>
-    <!-- ===== NOTIFICATION SYSTEM (Hidden until login) ===== -->
+    <!-- ===== מערכת התראות (מוסתרת עד כניסה למערכת) ===== -->
+    <!-- NOTIFICATION SYSTEM (Hidden until login) -->
     <div id="interfaceElements" class="hidden">
-      <!-- Notification Bell -->
       <button
         class="notification-bell"
         id="notificationBell"
@@ -95,7 +102,6 @@
         <span class="notification-count hidden" id="notificationCount">0</span>
       </button>
 
-      <!-- Notifications Dropdown -->
       <div class="notifications-dropdown" id="notificationsDropdown">
         <div class="notifications-header">
           <div class="notifications-title">
@@ -111,9 +117,11 @@
       </div>
     </div>
 
-    <!-- ===== MAIN APPLICATION CONTAINER ===== -->
+    <!-- ===== מכל האפליקציה הראשי ===== -->
+    <!-- MAIN APPLICATION CONTAINER -->
     <div class="app-container" id="appContainer">
-      <!-- ===== SIDEBAR NAVIGATION ===== -->
+      <!-- ===== ניווט צדדי ===== -->
+      <!-- SIDEBAR NAVIGATION -->
       <div class="minimal-sidebar" id="minimalSidebar">
         <div class="sidebar-brand">
           <div class="brand-icon">
@@ -165,7 +173,8 @@
         </div>
       </div>
 
-      <!-- ===== MAIN HEADER ===== -->
+      <!-- ===== כותרת ראשית ===== -->
+      <!-- MAIN HEADER -->
       <header class="header">
         <div class="header-content">
           <h1>מערכת ניהול מתקדמת</h1>
@@ -180,9 +189,11 @@
         </div>
       </header>
 
-      <!-- ===== MAIN CONTENT AREA ===== -->
+      <!-- ===== אזור תוכן ראשי ===== -->
+      <!-- MAIN CONTENT AREA -->
       <main class="main-content">
-        <!-- ===== LOGIN SECTION ===== -->
+        <!-- ===== אזור כניסה למערכת ===== -->
+        <!-- LOGIN SECTION -->
         <div class="login-section" id="loginSection">
           <h3>כניסה למערכת</h3>
           <form id="loginForm">
@@ -207,9 +218,11 @@
           </form>
         </div>
 
-        <!-- ===== APP CONTENT (Hidden until login) ===== -->
+        <!-- ===== תוכן האפליקציה (מוסתר עד כניסה) ===== -->
+        <!-- APP CONTENT (Hidden until login) -->
         <div id="appContent" class="hidden">
-          <!-- ===== TOP USER BAR ===== -->
+          <!-- ===== שורת משתמש עליונה ===== -->
+          <!-- TOP USER BAR -->
           <div class="top-user-bar">
             <div class="user-dropdown-top">
               <span id="currentUserDisplay">טוען...</span>
@@ -217,7 +230,8 @@
             </div>
           </div>
 
-          <!-- ===== SMART PLUS BUTTON ===== -->
+          <!-- ===== כפתור פלוס חכם ===== -->
+          <!-- SMART PLUS BUTTON -->
           <div class="plus-container-new">
             <button
               class="plus-button-top"
@@ -229,7 +243,8 @@
             <div class="tooltip" id="plusTooltip">הוספת משימה חדשה</div>
           </div>
 
-          <!-- ===== MAIN TABS NAVIGATION ===== -->
+          <!-- ===== ניווט לשוניות ראשיות ===== -->
+          <!-- MAIN TABS NAVIGATION -->
           <div class="main-tabs-container">
             <div class="main-tabs">
               <button class="tab-button active" onclick="switchTab('budget')">
@@ -243,7 +258,8 @@
             </div>
           </div>
 
-          <!-- ===== BUDGET TAB CONTENT ===== -->
+          <!-- ===== תוכן לשונית תקצוב ===== -->
+          <!-- BUDGET TAB CONTENT -->
           <div id="budgetTab" class="tab-content active">
             <!-- Budget Form (Hidden by default) -->
             <div class="compact-form hidden" id="budgetFormContainer">
@@ -400,7 +416,6 @@
                     </div>
                   </div>
 
-                  <!-- הטבלה עצמה -->
                   <div class="table-wrapper">
                     <table class="modern-budget-table">
                       <thead>
@@ -421,7 +436,6 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <!-- כאן יטענו המשימות דינמית -->
                         <tr>
                           <td
                             colspan="9"
@@ -451,7 +465,8 @@
             </div>
           </div>
 
-          <!-- ===== TIMESHEET TAB CONTENT ===== -->
+          <!-- ===== תוכן לשונית שעתון ===== -->
+          <!-- TIMESHEET TAB CONTENT -->
           <div id="timesheetTab" class="tab-content">
             <!-- Timesheet Form (Hidden by default) -->
             <div class="compact-form hidden" id="timesheetFormContainer">
@@ -661,7 +676,8 @@
       </main>
     </div>
 
-    <!-- ===== MAIN FOOTER ===== -->
+    <!-- ===== כותרת תחתונה ראשית ===== -->
+    <!-- MAIN FOOTER -->
     <footer class="main-footer">
       <div class="footer-content">
         <div class="system-status">
@@ -683,7 +699,8 @@
       </div>
     </footer>
 
-    <!-- ===== CLIENT FORM POPUP ===== -->
+    <!-- ===== טפסים קופצים ===== -->
+    <!-- POPUP FORMS -->
     <div
       id="clientFormOverlay"
       class="popup-overlay hidden"
@@ -939,11 +956,12 @@
       </div>
     </div>
 
-    <!-- ===== NOTIFICATION TOAST ===== -->
+    <!-- ===== הודעת טוסט ===== -->
+    <!-- NOTIFICATION TOAST -->
     <div id="notification" class="notification"></div>
 
-    <!-- ===== SCRIPTS AND STYLES ===== -->
-    <!-- Main JavaScript -->
+    <!-- ===== סקריפטים וסגנונות ===== -->
+    <!-- SCRIPTS AND STYLES -->
     <script src="api.js"></script>
     <script src="script.js"></script>
 
