@@ -108,10 +108,8 @@ async function fetchWithRetry(url, options, attempt = 1) {
  * @returns {Promise<Object>} תגובת השרת
  */
 async function callServerFunction(action, data = null, showLoading = true) {
-  if (typeof showLoading === "function") {
-    showLoading();
-  } else {
-    console.log(`מעבד ${action}...`);
+  if (showLoading) {
+    showSimpleLoading(`מעבד ${action}...`);
   }
 
   try {
@@ -159,7 +157,7 @@ async function callServerFunction(action, data = null, showLoading = true) {
     throw error;
   } finally {
     if (showLoading) {
-      console.log("סיים עיבוד");
+      hideSimpleLoading();
     }
   }
 }
