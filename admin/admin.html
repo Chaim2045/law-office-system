@@ -1098,10 +1098,11 @@
         try {
           console.log("📊 טוען נתוני לקוחות...");
 
-          const result = await callServerFunction("getClients");
+          const clientsSnapshot = await db.collection("clients").get();
           clientsData = [];
 
-          for (const clientData of result.data) {
+          for (const doc of clientsSnapshot.docs) {
+            const clientData = doc.data();
             // Get real budget tasks for this client
             const tasksSnapshot = await db
               .collection("budget_tasks")
