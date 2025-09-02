@@ -159,7 +159,7 @@ async function callServerFunction(action, data = null, showLoading = true) {
     throw error;
   } finally {
     if (showLoading) {
-      hideSimpleLoading();
+      console.log("סיים עיבוד");
     }
   }
 }
