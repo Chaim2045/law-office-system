@@ -5654,6 +5654,9 @@ if (window.manager) {
 }
 // החלף את הקוד הקיים ב-script.js עם הגרסה המשופרת הזו
 
+// מחק את כל הקוד הקיים של ACTION_CATEGORIES ו-CategoryUtils
+// והחלף אותו בקוד הזה
+
 const ACTION_CATEGORIES = {
   "כתבי טענות ראשוניים": ["כתב תביעה", "כתב הגנה", "כתב תשובה"],
 
@@ -5688,9 +5691,66 @@ const ACTION_CATEGORIES = {
   ],
 
   "צוואה/ירושה": ["עריכת צוואה", "בקשה לצו ירושה"],
+
+  // קטגוריות חדשות
+  "מסמכים דיגיטליים": [
+    "תקנון אתר",
+    "מדיניות פרטיות לאתר",
+    "תנאי שימוש באתר",
+    "מדיניות קובצי Cookies",
+    "הסכם שירות דיגיטלי",
+  ],
+
+  "הליכי הוצאה לפועל": [
+    "בקשה לצו עיקול",
+    "התנגדות לעיקול",
+    "בקשה לביטול עיקול",
+    "הליכי חלוקה",
+    "בקשה למכירה פומבית",
+  ],
+
+  "בוררות ותיווך": [
+    "הגשת כתב בוררות",
+    "כתב הגנה בבוררות",
+    "ייצוג בהליכי בוררות",
+    "הליכי תיווך",
+    "הסכם בוררות",
+  ],
+
+  "הליכי פשיטת רגל ורה״ח": [
+    "בקשה לפשיטת רגל",
+    "התנגדות לפשיטת רגל",
+    "הליכי רה״ח (ראש הנהלה חדש)",
+    "הסכם נושים",
+  ],
+
+  "פעולות ייעוץ ומחקר": [
+    "ייעוץ טלפוני",
+    "פגישת לקוח",
+    "מחקר משפטי",
+    "הכנת חוות דעת משפטית",
+    "בדיקת תקדימים",
+    "ייעוץ בכתיבת חוזה",
+  ],
+
+  "הליכי רישוי ורגולציה": [
+    "בקשה לרישיון עסק",
+    "ייצוג מול רשויות מקומיות",
+    "הליכי היתרי בנייה",
+    "ייצוג מול משרדי ממשלה",
+    "ערר מנהלי",
+  ],
+
+  "דיני משפחה": [
+    "הסכם ממון טרום נישואין",
+    "הסכם גירושין",
+    "הסכם מזונות",
+    "בקשה למשמורת",
+    "הסכם ראייה בילדים",
+  ],
 };
 
-// פעולות פופולריות (יותר נפוצות)
+// עדכון פעולות פופולריות
 const POPULAR_ACTIONS = [
   "כתב תביעה",
   "כתב הגנה",
@@ -5698,6 +5758,11 @@ const POPULAR_ACTIONS = [
   "ייצוג בדיון מקדמי",
   "עריכת מכתב התראה",
   "הסכם שותפות",
+  "תקנון אתר",
+  "מדיניות פרטיות לאתר",
+  "ייעוץ טלפוני",
+  "פגישת לקוח",
+  "מחקר משפטי",
 ];
 
 const CategoryUtils = {
@@ -5782,6 +5847,13 @@ const CategoryUtils = {
       מכתבים: "✉️",
       הסכמים: "📝",
       "צוואה/ירושה": "📜",
+      "מסמכים דיגיטליים": "💻",
+      "הליכי הוצאה לפועל": "⚖️",
+      "בוררות ותיווך": "🤝",
+      "הליכי פשיטת רגל ורה״ח": "📊",
+      "פעולות ייעוץ ומחקר": "🔍",
+      "הליכי רישוי ורגולציה": "📋",
+      "דיני משפחה": "👨‍👩‍👧‍👦",
     };
     return icons[categoryName] || "📁";
   },
@@ -6137,6 +6209,95 @@ const CategoryUtils = {
         });
     }
   },
+
+  // פונקציות חדשות שהוספת
+  getCategoriesStats() {
+    const stats = {};
+    let totalActions = 0;
+
+    Object.entries(ACTION_CATEGORIES).forEach(([category, actions]) => {
+      stats[category] = {
+        count: actions.length,
+        icon: this.getCategoryIcon(category),
+        actions: actions,
+      };
+      totalActions += actions.length;
+    });
+
+    return {
+      totalCategories: Object.keys(ACTION_CATEGORIES).length,
+      totalActions: totalActions,
+      categories: stats,
+    };
+  },
+
+  advancedSearch(searchText, filterByCategory = null) {
+    if (!searchText) return this.getPopularActions();
+
+    const lowerSearch = searchText.toLowerCase();
+    const results = [];
+
+    Object.entries(ACTION_CATEGORIES).forEach(([category, actions]) => {
+      if (filterByCategory && category !== filterByCategory) return;
+
+      actions.forEach((action) => {
+        if (action.toLowerCase().includes(lowerSearch)) {
+          results.push({
+            action: action,
+            category: category,
+            icon: this.getCategoryIcon(category),
+            relevance: this.calculateRelevance(action, searchText),
+          });
+        }
+      });
+    });
+
+    // מיון לפי רלוונטיות
+    return results
+      .sort((a, b) => b.relevance - a.relevance)
+      .map((result) => result.action)
+      .slice(0, 15);
+  },
+
+  calculateRelevance(action, searchText) {
+    const actionLower = action.toLowerCase();
+    const searchLower = searchText.toLowerCase();
+
+    let score = 0;
+
+    // משקל גבוה להתחלה מדויקת
+    if (actionLower.startsWith(searchLower)) score += 100;
+
+    // משקל בינוני להכלת המילה
+    if (actionLower.includes(searchLower)) score += 50;
+
+    // משקל נמוך ליחס אורך
+    score += (searchText.length / action.length) * 25;
+
+    // בונוס לפעולות פופולריות
+    if (POPULAR_ACTIONS.includes(action)) score += 25;
+
+    return score;
+  },
+
+  // פונקציה להצגת כל הקטגוריות והפעולות (לדיבוג)
+  printAllCategories() {
+    console.log("📋 כל הקטגוריות והפעולות:");
+    console.log("=".repeat(50));
+
+    Object.entries(ACTION_CATEGORIES).forEach(([category, actions]) => {
+      const icon = this.getCategoryIcon(category);
+      console.log(`\n${icon} ${category} (${actions.length} פעולות):`);
+      actions.forEach((action, index) => {
+        console.log(`  ${index + 1}. ${action}`);
+      });
+    });
+
+    const stats = this.getCategoriesStats();
+    console.log(
+      `\n📊 סה״כ: ${stats.totalCategories} קטגוריות, ${stats.totalActions} פעולות`
+    );
+  },
 };
 
 // אתחול השדות עם הגרסה המקצועית
@@ -6160,6 +6321,20 @@ setTimeout(() => {
   }
 }, 2000);
 
+// יצוא הקבועים
 window.ACTION_CATEGORIES = ACTION_CATEGORIES;
+window.POPULAR_ACTIONS = POPULAR_ACTIONS;
 window.CategoryUtils = CategoryUtils;
-console.log("🎯 Combobox מקצועי נטען!");
+
+console.log("🎯 מערכת הפעולות עודכנה עם קטגוריות חדשות!");
+console.log("📋 קטגוריות חדשות נוספו:");
+console.log("  • מסמכים דיגיטליים (כולל תקנון אתר ומדיניות פרטיות)");
+console.log("  • הליכי הוצאה לפועל");
+console.log("  • בוררות ותיווך");
+console.log("  • הליכי פשיטת רגל ורה״ח");
+console.log("  • פעולות ייעוץ ומחקר");
+console.log("  • הליכי רישוי ורגולציה");
+console.log("  • דיני משפחה");
+
+// הדפסת כל הקטגוריות לבדיקה
+CategoryUtils.printAllCategories();
