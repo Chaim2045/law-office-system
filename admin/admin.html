@@ -1380,6 +1380,10 @@
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">${
                   client.name
                 }</h3>
+                <button onclick="editClient('${client.id || client.name}')" 
+                class="ml-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+          ערוך
+        </button>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">${
                   client.openTasks
                 } משימות פתוחות • עו"ד ${client.lawyer}</p>
@@ -3043,6 +3047,7 @@ ${reason ? `סיבה: ${reason}` : ""}`;
 
       console.log("✅ מודול העברת משימות נטען בהצלחה!");
     </script>
-    <script src="api.js"></script>
+
+    <script src="admin-api.js"></script>
   </body>
 </html>
