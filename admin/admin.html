@@ -3046,6 +3046,200 @@ ${reason ? `סיבה: ${reason}` : ""}`;
       window.alertNoTasks = alertNoTasks;
 
       console.log("✅ מודול העברת משימות נטען בהצלחה!");
+      /**
+       * פתיחת חלונית עריכת לקוח
+       */
+      function editClient(clientId) {
+        console.log(`פותח עריכה עבור לקוח: ${clientId}`);
+
+        // מציאת הלקוח ברשימה
+        const client = clientsData.find(
+          (c) =>
+            c.id === clientId || c.name === clientId || c.fullName === clientId
+        );
+
+        if (!client) {
+          alert("לקוח לא נמצא");
+          return;
+        }
+
+        // יצירת המודל
+        createEditClientModal(client);
+      }
+
+      /**
+       * יצירת חלונית עריכה
+       */
+      function createEditClientModal(client) {
+        // הסרת מודל קיים אם יש
+        const existingModal = document.getElementById("editClientModal");
+        if (existingModal) {
+          existingModal.remove();
+        }
+
+        // יצירת המודל
+        const modal = document.createElement("div");
+        modal.id = "editClientModal";
+        modal.className =
+          "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+
+        modal.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">עריכת לקוח</h3>
+        <button onclick="closeEditClientModal()" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <form id="editClientForm" onsubmit="saveClientChanges(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              שם הלקוח
+            </label>
+            <input 
+              type="text" 
+              id="editClientName" 
+              value="${client.name || client.fullName || ""}"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              סוג תשלום
+            </label>
+            <select 
+              id="editClientType" 
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="hours" ${
+                client.type === "hours" ? "selected" : ""
+              }>שעות</option>
+              <option value="fixed" ${
+                client.type === "fixed" ? "selected" : ""
+              }>סכום קבוע</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              סה"כ שעות / סכום
+            </label>
+            <input 
+              type="number" 
+              id="editClientTotal" 
+              value="${client.totalHours || client.totalPayment || 0}"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              min="0"
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              מספר תיק
+            </label>
+            <input 
+              type="text" 
+              id="editClientFileNumber" 
+              value="${client.fileNumber || ""}"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+        </div>
+        
+        <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+          <button 
+            type="button" 
+            onclick="closeEditClientModal()"
+            class="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
+          >
+            ביטול
+          </button>
+          <button 
+            type="submit"
+            class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            שמור שינויים
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+        // הוספה לדף
+        document.body.appendChild(modal);
+
+        // מיקוד בשדה הראשון
+        document.getElementById("editClientName").focus();
+      }
+
+      /**
+       * סגירת המודל
+       */
+      function closeEditClientModal() {
+        const modal = document.getElementById("editClientModal");
+        if (modal) {
+          modal.remove();
+        }
+      }
+
+      /**
+       * שמירת שינויים
+       */
+      async function saveClientChanges(event) {
+        event.preventDefault();
+
+        try {
+          // קריאת הנתונים מהטופס
+          const updatedData = {
+            name: document.getElementById("editClientName").value.trim(),
+            type: document.getElementById("editClientType").value,
+            total:
+              parseFloat(document.getElementById("editClientTotal").value) || 0,
+            fileNumber: document
+              .getElementById("editClientFileNumber")
+              .value.trim(),
+          };
+
+          // בדיקת תקינות
+          if (!updatedData.name) {
+            alert("שם הלקוח הוא שדה חובה");
+            return;
+          }
+
+          console.log("שומר שינויים:", updatedData);
+
+          // כאן נוסיף את השמירה לFirestore
+          await updateClientInFirestore(updatedData);
+
+          // סגירת המודל
+          closeEditClientModal();
+
+          // רענון הרשימה
+          loadClientsData();
+
+          alert("הלקוח עודכן בהצלחה!");
+        } catch (error) {
+          console.error("שגיאה בשמירת שינויים:", error);
+          alert("שגיאה בשמירת השינויים: " + error.message);
+        }
+      }
+
+      /**
+       * עדכון לקוח ב-Firestore (זמנית - קריאה ישירה)
+       */
+      async function updateClientInFirestore(updatedData) {
+        // זמנית נעשה עדכון ישיר ל-Firestore
+        // אחר כך נחליף לקריאה דרך השרת
+
+        console.log("מעדכן לקוח ב-Firestore:", updatedData);
+
+        // כאן תהיה הלוגיקה לעדכון הלקוח
+        // נוסיף את זה בשלב הבא
+      }
     </script>
 
     <script src="admin-api.js"></script>
