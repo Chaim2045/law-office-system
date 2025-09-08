@@ -2302,7 +2302,7 @@ class LawOfficeManager {
       );
 
       // כאן תוסיף בעתיד קריאה לשרת Firebase:
-      // await updateAdvancedTimesheetEntryFirebase(entryId, { newDate, newMinutes, newClientName, reason });
+      await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
 
       console.log(`✅ עריכה מתקדמת הושלמה:`, {
         originalData,
@@ -2388,7 +2388,7 @@ class LawOfficeManager {
       );
 
       // כאן תוסיף בעתיד קריאה לשרת Firebase:
-      // await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
+      await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
 
       console.log(`✅ עריכת שעתון הושלמה: ${oldMinutes} → ${newMinutes}`);
     } catch (error) {
@@ -4887,6 +4887,7 @@ if (window.manager) {
  * מאפשר רק למשתמש שיצר את הרשומה לערוך אותה
  */
 async function updateTimesheetEntryFirebase(entryId, newMinutes, reason = "") {
+  let oldMinutes = 0; // הגדרה מחוץ ל-transaction
   try {
     showSimpleLoading("מעדכן שעתון...");
 
