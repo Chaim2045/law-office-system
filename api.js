@@ -238,10 +238,7 @@ window.addEventListener("load", async () => {
   if (isConnected) {
     console.log("✅ API initialized successfully!");
 
-    // Show success notification if manager is available
-    if (window.manager && window.manager.showNotification) {
-      window.manager.showNotification("🚀 מחובר לשרת החדש!", "success");
-    }
+    // Connected successfully - no notification needed
   } else {
     console.error("❌ Failed to initialize API");
 
