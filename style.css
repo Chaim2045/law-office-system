@@ -840,44 +840,7 @@ body {
 }
 
 /* Tooltip לכפתור פלוס */
-.tooltip {
-  position: absolute;
-  right: -300px;
-  top: -48px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 1003;
-  min-width: 160px;
-  text-align: center;
-}
-
-.tooltip::before {
-  content: "";
-  position: absolute;
-  left: -5px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-right: 5px solid rgba(0, 0, 0, 0.8);
-}
-
-.plus-container-new:hover .tooltip,
-.plus-button-top:hover .tooltip,
-.plus-container:hover .tooltip {
-  opacity: 1;
-  visibility: visible;
-}
+/* Tooltips removed - using notifications only */
 
 /* Button variations for specific contexts */
 #addTaskBtn,

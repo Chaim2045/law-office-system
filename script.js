@@ -64,7 +64,15 @@ function debounce(func, wait) {
 /**
  * Show loading overlay
  */
+// Global flag to suppress loading during welcome screen
+window.isInWelcomeScreen = false;
+
 function showSimpleLoading(message = "מעבד...") {
+  // Don't show loading overlay during welcome screen
+  if (window.isInWelcomeScreen) {
+    console.log("Suppressing loading overlay during welcome screen:", message);
+    return;
+  }
   const existing = document.getElementById("simple-loading");
   if (existing) existing.remove();
 
@@ -1138,6 +1146,7 @@ class LawOfficeManager {
     this.currentBudgetPage = 1;
     this.currentTimesheetPage = 1;
     this.clientValidation = new ClientValidation(this);
+    this.welcomeScreenStartTime = null; // Track welcome screen duration
     this.init();
   }
 
@@ -1159,9 +1168,9 @@ class LawOfficeManager {
   setupEventListeners() {
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
-      loginForm.addEventListener("submit", (e) => {
+      loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        this.handleLogin();
+        await this.handleLogin();
       });
     }
 
@@ -1241,20 +1250,36 @@ class LawOfficeManager {
     if (appContent) appContent.classList.add("hidden");
   }
 
-  handleLogin() {
+  async handleLogin() {
     const password = document.getElementById("password").value;
     const employee = EMPLOYEES[this.targetEmployee];
 
     if (password === employee.password) {
       this.currentUser = employee.name;
       updateUserDisplay(this.currentUser);
-      this.showApp();
+
+      // Set flag to suppress old loading spinners
+      window.isInWelcomeScreen = true;
+
+      // Show welcome screen (non-blocking)
+      this.showWelcomeScreen();
+
+      // Load data while welcome screen is showing
       try {
-        this.loadData();
+        await this.loadData();
       } catch (error) {
         this.showNotification("שגיאה בטעינת נתונים", "error");
         console.error("Error loading data:", error);
       }
+
+      // Wait for minimum welcome screen time (2 seconds total)
+      await this.waitForWelcomeMinimumTime();
+
+      // Clear flag - welcome screen is done
+      window.isInWelcomeScreen = false;
+
+      // Show app after everything loaded
+      this.showApp();
     } else {
       const errorMessage = document.getElementById("errorMessage");
       if (errorMessage) {
@@ -1264,12 +1289,85 @@ class LawOfficeManager {
     }
   }
 
+  /**
+   * מציג מסך ברוך הבא עם שם המשתמש ולוגו
+   */
+  showWelcomeScreen() {
+    const loginSection = document.getElementById("loginSection");
+    const welcomeScreen = document.getElementById("welcomeScreen");
+    const welcomeTitle = document.getElementById("welcomeTitle");
+    const lastLoginTime = document.getElementById("lastLoginTime");
+
+    // Store welcome screen start time for minimum duration
+    this.welcomeScreenStartTime = Date.now();
+
+    // הסתר את מסך הכניסה
+    if (loginSection) loginSection.classList.add("hidden");
+
+    // עדכן שם משתמש
+    if (welcomeTitle) {
+      welcomeTitle.textContent = `ברוך הבא, ${this.currentUser}`;
+    }
+
+    // Get and display last login from localStorage
+    const lastLogin = localStorage.getItem(`lastLogin_${this.currentUser}`);
+    if (lastLoginTime) {
+      if (lastLogin) {
+        const loginDate = new Date(lastLogin);
+        const formatted = loginDate.toLocaleString('he-IL', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        lastLoginTime.textContent = formatted;
+      } else {
+        lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
+      }
+    }
+
+    // Save current login time for next time
+    localStorage.setItem(`lastLogin_${this.currentUser}`, new Date().toISOString());
+
+    // הצג את מסך ברוך הבא
+    if (welcomeScreen) {
+      welcomeScreen.classList.remove("hidden");
+    }
+
+    console.log(`👋 מסך ברוך הבא מוצג עבור: ${this.currentUser}`);
+  }
+
+  /**
+   * וידוא שמסך הברוך הבא מוצג לפחות 2 שניות
+   */
+  async waitForWelcomeMinimumTime() {
+    // Ensure welcome screen shows for at least 2 seconds
+    const elapsed = Date.now() - this.welcomeScreenStartTime;
+    const remaining = Math.max(0, 2000 - elapsed);
+    if (remaining > 0) {
+      await new Promise(resolve => setTimeout(resolve, remaining));
+    }
+  }
+
+  /**
+   * עדכון טקסט הטעינה במסך ברוך הבא
+   */
+  updateLoaderText(text) {
+    const loaderText = document.getElementById("loaderText");
+    if (loaderText) {
+      loaderText.textContent = text;
+    }
+  }
+
   showApp() {
     const loginSection = document.getElementById("loginSection");
+    const welcomeScreen = document.getElementById("welcomeScreen");
     const appContent = document.getElementById("appContent");
     const interfaceElements = document.getElementById("interfaceElements");
 
     if (loginSection) loginSection.classList.add("hidden");
+    if (welcomeScreen) welcomeScreen.classList.add("hidden");
     if (appContent) appContent.classList.remove("hidden");
     if (interfaceElements) interfaceElements.classList.remove("hidden");
 
@@ -1313,7 +1411,8 @@ class LawOfficeManager {
 
   async loadDataFromFirebase() {
     try {
-      this.showNotification("טוען נתונים מFirebase...", "info");
+      // Update loader text
+      this.updateLoaderText("טוען לקוחות...");
 
       // Load clients
       this.clients = await loadClientsFromFirebase();
@@ -1338,15 +1437,23 @@ class LawOfficeManager {
         }
       }
 
+      // Update loader text
+      this.updateLoaderText("טוען משימות...");
+
       // Load budget tasks
       this.budgetTasks = await loadBudgetTasksFromFirebase(this.currentUser);
+
+      // Update loader text
+      this.updateLoaderText("טוען שעתון...");
 
       // Load timesheet entries
       this.timesheetEntries = await loadTimesheetFromFirebase(this.currentUser);
 
+      // Update loader text
+      this.updateLoaderText("מערכת מוכנה!");
+
       this.connectionStatus = "connected";
       this.updateConnectionStatus?.("🟢 מחובר");
-      this.showNotification("✅ נתונים נטענו בהצלחה!", "success");
     } catch (error) {
       console.error("Failed to load data:", error);
       this.connectionStatus = "offline";
@@ -1841,6 +1948,17 @@ class LawOfficeManager {
 
     tableContainer.innerHTML = `
       <div class="modern-table-container">
+        <div class="modern-table-header">
+          <h3 class="modern-table-title">
+            <i class="fas fa-chart-bar"></i>
+            משימות מתוקצבות
+          </h3>
+          <div class="modern-cards-subtitle">
+            ${
+              this.filteredBudgetTasks.length
+            } משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
+          </div>
+        </div>
         <table class="modern-budget-table">
           <thead>
             <tr>
