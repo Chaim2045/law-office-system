@@ -3416,6 +3416,7 @@ class LawOfficeManager {
       try {
         showProgress("משלים משימה...");
 
+        // Update UI optimistically
         const taskIndex = this.budgetTasks.findIndex((t) => t.id === taskId);
         if (taskIndex !== -1) {
           this.budgetTasks[taskIndex].status = "הושלם";
@@ -3426,7 +3427,11 @@ class LawOfficeManager {
           this.renderBudgetTasks();
         }
 
-        // Here you would add Firebase function to complete task
+        // Save to Firebase - need to get Firebase document ID
+        const firebaseTask = task.firebaseId || task.id;
+        await completeTaskFirebase(firebaseTask, notes);
+
+        // Reload data to ensure sync
         await this.loadDataFromFirebase();
 
         hideProgress();
@@ -4390,8 +4395,6 @@ if (missing.length === 0) {
 // הוספת זמן למשימה מתוקצבת (Firebase)
 async function addTimeToTaskFirebase(taskId, timeEntry) {
   try {
-    showSimpleLoading("רושם זמן למשימה...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -4433,12 +4436,9 @@ async function addTimeToTaskFirebase(taskId, timeEntry) {
     });
 
     console.log(`✅ זמן נוסף למשימה ${taskId}: ${timeEntry.minutes} דקות`);
-    hideSimpleLoading();
-
     return { success: true, message: "זמן נוסף בהצלחה למשימה" };
   } catch (error) {
     console.error("❌ שגיאה בהוספת זמן למשימה:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה ברישום זמן: " + error.message);
   }
 }
@@ -4446,8 +4446,6 @@ async function addTimeToTaskFirebase(taskId, timeEntry) {
 // סיום משימה מתוקצבת (Firebase)
 async function completeTaskFirebase(taskId, completionNotes = "") {
   try {
-    showSimpleLoading("מסיים משימה...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -4475,12 +4473,9 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
     });
 
     console.log(`✅ משימה הושלמה: ${taskId}`);
-    hideSimpleLoading();
-
     return { success: true, message: "המשימה הושלמה בהצלחה" };
   } catch (error) {
     console.error("❌ שגיאה בהשלמת משימה:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בהשלמת משימה: " + error.message);
   }
 }
@@ -4488,8 +4483,6 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
 // הארכת תאריך יעד למשימה (Firebase)
 async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
   try {
-    showSimpleLoading("מאריך תאריך יעד...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -4525,12 +4518,9 @@ async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
     });
 
     console.log(`✅ תאריך יעד הוארך למשימה ${taskId}: ${newDeadline}`);
-    hideSimpleLoading();
-
     return { success: true, message: "תאריך היעד הוארך בהצלחה" };
   } catch (error) {
     console.error("❌ שגיאה בהארכת תאריך יעד:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בהארכת יעד: " + error.message);
   }
 }
@@ -4841,8 +4831,6 @@ console.log("🎯 כל הפונקציות מוחלפות לFirebase!");
 // הוספת זמן למשימה מתוקצבת (Firebase)
 async function addTimeToTaskFirebase(taskId, timeEntry) {
   try {
-    showSimpleLoading("רושם זמן למשימה...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -4884,12 +4872,9 @@ async function addTimeToTaskFirebase(taskId, timeEntry) {
     });
 
     console.log(`✅ זמן נוסף למשימה ${taskId}: ${timeEntry.minutes} דקות`);
-    hideSimpleLoading();
-
     return { success: true, message: "זמן נוסף בהצלחה למשימה" };
   } catch (error) {
     console.error("❌ שגיאה בהוספת זמן למשימה:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה ברישום זמן: " + error.message);
   }
 }
@@ -4897,8 +4882,6 @@ async function addTimeToTaskFirebase(taskId, timeEntry) {
 // סיום משימה מתוקצבת (Firebase)
 async function completeTaskFirebase(taskId, completionNotes = "") {
   try {
-    showSimpleLoading("מסיים משימה...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -4926,12 +4909,9 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
     });
 
     console.log(`✅ משימה הושלמה: ${taskId}`);
-    hideSimpleLoading();
-
     return { success: true, message: "המשימה הושלמה בהצלחה" };
   } catch (error) {
     console.error("❌ שגיאה בהשלמת משימה:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בהשלמת משימה: " + error.message);
   }
 }
@@ -4939,8 +4919,6 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
 // הארכת תאריך יעד למשימה (Firebase)
 async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
   try {
-    showSimpleLoading("מאריך תאריך יעד...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -4976,12 +4954,9 @@ async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
     });
 
     console.log(`✅ תאריך יעד הוארך למשימה ${taskId}: ${newDeadline}`);
-    hideSimpleLoading();
-
     return { success: true, message: "תאריך היעד הוארך בהצלחה" };
   } catch (error) {
     console.error("❌ שגיאה בהארכת תאריך יעד:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בהארכת יעד: " + error.message);
   }
 }
@@ -5125,8 +5100,6 @@ if (window.manager) {
 async function updateTimesheetEntryFirebase(entryId, newMinutes, reason = "") {
   let oldMinutes = 0; // הגדרה מחוץ ל-transaction
   try {
-    showSimpleLoading("מעדכן שעתון...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -5187,7 +5160,6 @@ async function updateTimesheetEntryFirebase(entryId, newMinutes, reason = "") {
       );
     });
 
-    hideSimpleLoading();
     return {
       success: true,
       message: "רשומת השעתון עודכנה בהצלחה",
@@ -5196,7 +5168,6 @@ async function updateTimesheetEntryFirebase(entryId, newMinutes, reason = "") {
     };
   } catch (error) {
     console.error("❌ שגיאה בעדכון רשומת שעתון:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בעדכון שעתון: " + error.message);
   }
 }
