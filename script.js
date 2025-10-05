@@ -3618,11 +3618,17 @@ class LawOfficeManager {
         popup.querySelector(".popup-buttons").innerHTML = "";
       }
 
-      // Wait a moment, then reload and close
+      // Wait a moment, then close modal and animate task removal
       setTimeout(async () => {
-        await this.loadDataFromFirebase();
-        this.renderBudgetTasks();
+        // Close modal first
         document.querySelector(".popup-overlay")?.remove();
+
+        // Reload data from Firebase
+        await this.loadDataFromFirebase();
+
+        // Animate the completed task and switch to active filter
+        this.animateTaskCompletionAndFilter(taskId);
+
       }, 1500);
 
     } catch (error) {
@@ -3641,6 +3647,168 @@ class LawOfficeManager {
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = '<i class="fas fa-check"></i> אשר סיום משימה';
       }
+    }
+  }
+
+  animateTaskCompletionAndFilter(taskId) {
+    // Store completed task info for undo
+    const completedTask = this.budgetTasks.find(t => t.id === taskId);
+
+    // Find the task card element (works for both cards and table views)
+    let taskElement = null;
+
+    // Try to find in cards view
+    const allCards = document.querySelectorAll('.linear-minimal-card');
+    allCards.forEach(card => {
+      const cardId = card.getAttribute('data-task-id');
+      if (cardId && parseInt(cardId) === taskId) {
+        taskElement = card;
+      }
+    });
+
+    // If not found in cards, try table view
+    if (!taskElement) {
+      const allRows = document.querySelectorAll('.modern-budget-table tbody tr');
+      allRows.forEach(row => {
+        const rowId = row.getAttribute('data-task-id');
+        if (rowId && parseInt(rowId) === taskId) {
+          taskElement = row;
+        }
+      });
+    }
+
+    // Animate fade out
+    if (taskElement) {
+      taskElement.style.transition = 'all 0.5s ease-out';
+      taskElement.style.opacity = '0';
+      taskElement.style.transform = 'translateX(-30px)';
+    }
+
+    // After animation, switch filter and show notification with undo
+    setTimeout(() => {
+      // Switch to "active only" filter
+      const filterSelect = document.getElementById('budgetTaskFilter');
+      if (filterSelect && filterSelect.value !== 'active') {
+        filterSelect.value = 'active';
+        this.filterBudgetTasks();
+      } else {
+        // If already on active filter, just re-render
+        this.renderBudgetTasks();
+      }
+
+      // Show notification with undo option
+      this.showCompletionNotificationWithUndo(completedTask);
+    }, 500);
+  }
+
+  showCompletionNotificationWithUndo(task) {
+    // Remove any existing completion notification
+    const existing = document.getElementById('completion-notification');
+    if (existing) existing.remove();
+
+    const notification = document.createElement('div');
+    notification.id = 'completion-notification';
+    notification.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 10001;
+      animation: slideInUp 0.3s ease-out;
+      max-width: 500px;
+    `;
+
+    notification.innerHTML = `
+      <div style="flex: 1;">
+        <div style="font-weight: 600; margin-bottom: 4px;">
+          ✓ המשימה הושלמה והועברה לארכיון
+        </div>
+        <div style="font-size: 13px; color: #9ca3af;">
+          ${safeText(task.taskDescription || task.description || '')}
+        </div>
+      </div>
+      <button
+        onclick="manager.undoTaskCompletion(${task.id})"
+        style="
+          background: rgba(255,255,255,0.2);
+          border: 1px solid rgba(255,255,255,0.3);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+          transition: all 0.2s;
+          white-space: nowrap;
+        "
+        onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.2)'"
+      >
+        ⎌ בטל
+      </button>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      if (notification && notification.parentElement) {
+        notification.style.animation = 'slideOutDown 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+      }
+    }, 5000);
+  }
+
+  async undoTaskCompletion(taskId) {
+    // Remove notification
+    const notification = document.getElementById('completion-notification');
+    if (notification) notification.remove();
+
+    // Find the task
+    const task = this.budgetTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    try {
+      showProgress('מבטל השלמת משימה...');
+
+      // Update in Firebase - change status back to active
+      const firebaseTask = task.firebaseId || task.id;
+      const db = window.firebaseDB;
+      if (db) {
+        await db.collection('budget_tasks').doc(firebaseTask).update({
+          status: 'פעיל',
+          completedAt: firebase.firestore.FieldValue.delete(),
+          completionNotes: firebase.firestore.FieldValue.delete(),
+          completedBy: firebase.firestore.FieldValue.delete(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Reload data
+      await this.loadDataFromFirebase();
+
+      // Switch back to "all" filter to show the task
+      const filterSelect = document.getElementById('budgetTaskFilter');
+      if (filterSelect) {
+        filterSelect.value = 'all';
+        this.filterBudgetTasks();
+      }
+
+      hideProgress();
+      showSuccessFeedback('המשימה חזרה לפעילה');
+
+    } catch (error) {
+      console.error('Error undoing task completion:', error);
+      hideProgress();
+      this.showNotification('שגיאה בביטול השלמת המשימה', 'error');
     }
   }
 
