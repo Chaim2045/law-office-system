@@ -3431,7 +3431,8 @@ class LawOfficeManager {
 
     let deadlineStatus = "";
     let deadlineClass = "";
-    let deadlineIcon = "";
+    let deadlineIconClass = "";
+    let deadlineColor = "";
 
     if (deadline) {
       const daysRemaining = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
@@ -3439,15 +3440,18 @@ class LawOfficeManager {
       if (daysRemaining < 0) {
         deadlineStatus = `איחור של ${Math.abs(daysRemaining)} ימים`;
         deadlineClass = "deadline-late";
-        deadlineIcon = "⚠️";
+        deadlineIconClass = "fa-exclamation-triangle";
+        deadlineColor = "#ef4444";
       } else if (daysRemaining === 0) {
         deadlineStatus = "בדיוק בזמן!";
         deadlineClass = "deadline-ontime";
-        deadlineIcon = "✓";
+        deadlineIconClass = "fa-check-circle";
+        deadlineColor = "#3b82f6";
       } else {
         deadlineStatus = `${daysRemaining} ימים לפני המועד`;
         deadlineClass = "deadline-early";
-        deadlineIcon = "🎯";
+        deadlineIconClass = "fa-flag-checkered";
+        deadlineColor = "#10b981";
       }
 
       if (wasExtended && originalDeadline) {
@@ -3457,61 +3461,84 @@ class LawOfficeManager {
     } else {
       deadlineStatus = "ללא תאריך יעד";
       deadlineClass = "deadline-none";
-      deadlineIcon = "📅";
+      deadlineIconClass = "fa-calendar";
+      deadlineColor = "#9ca3af";
     }
 
     // Time status
     let timeStatus = "";
     let timeClass = "";
-    let timeIcon = "";
+    let timeIconClass = "";
+    let timeColor = "";
 
     if (timeDiff < 0) {
       timeStatus = `חסכת ${Math.abs(timeDiff)} דקות!`;
       timeClass = "time-saved";
-      timeIcon = "⚡";
+      timeIconClass = "fa-bolt";
+      timeColor = "#10b981";
     } else if (timeDiff === 0) {
       timeStatus = "בדיוק לפי התקציב!";
       timeClass = "time-exact";
-      timeIcon = "✓";
+      timeIconClass = "fa-check-circle";
+      timeColor = "#3b82f6";
     } else {
       timeStatus = `חרגת ב-${timeDiff} דקות`;
       timeClass = "time-over";
-      timeIcon = "⏱️";
+      timeIconClass = "fa-clock";
+      timeColor = "#ef4444";
     }
 
     overlay.innerHTML = `
-      <div class="popup completion-modal" style="max-width: 600px; animation: slideInUp 0.3s ease-out;">
-        <div class="popup-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-          <i class="fas fa-check-circle"></i>
-          סיום משימה
+      <div class="popup completion-modal" style="max-width: 650px; animation: slideInUp 0.3s ease-out;">
+        <!-- Header -->
+        <div class="popup-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; position: relative;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-check-circle" style="font-size: 24px;"></i>
+            <span style="font-size: 18px; font-weight: 600;">סיום משימה</span>
+          </div>
+          <button
+            onclick="this.closest('.popup-overlay').remove()"
+            style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.2)'"
+            title="סגור">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
 
         <div class="popup-content" style="padding: 30px;">
           <!-- Task Info -->
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-            <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 18px;">
+          <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
+            <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 18px; font-weight: 700;">
               ${safeText(task.taskDescription || task.description || "")}
             </h3>
-            <div style="color: #6b7280; font-size: 14px;">
-              <span>🏢 ${safeText(task.clientName || "")}</span>
-              <span style="margin: 0 10px;">•</span>
-              <span>📁 ${safeText(task.fileNumber || "")}</span>
+            <div style="color: #6b7280; font-size: 14px; display: flex; align-items: center; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-building" style="color: #3b82f6;"></i>
+                <span>${safeText(task.clientName || "")}</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-folder" style="color: #8b5cf6;"></i>
+                <span>${safeText(task.fileNumber || "")}</span>
+              </div>
             </div>
           </div>
 
           <!-- Statistics Grid -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
 
             <!-- Time Budget Card -->
-            <div class="stat-card ${timeClass}" style="background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: center;">
-              <div style="font-size: 32px; margin-bottom: 10px;">${timeIcon}</div>
-              <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">תקציב זמן</div>
-              <div style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 5px;">
-                ${actualMinutes} / ${estimatedMinutes}
+            <div class="stat-card ${timeClass}" style="background: white; border: 2px solid ${timeColor}; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="width: 56px; height: 56px; border-radius: 50%; background: ${timeColor}15; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                <i class="fas ${timeIconClass}" style="font-size: 24px; color: ${timeColor};"></i>
               </div>
-              <div style="font-size: 13px; color: #6b7280;">דקות</div>
+              <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">תקציב זמן</div>
+              <div style="font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 4px;">
+                ${actualMinutes} <span style="font-size: 18px; color: #9ca3af;">/</span> ${estimatedMinutes}
+              </div>
+              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 12px;">דקות</div>
               <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-                <div style="font-size: 13px; font-weight: 600; color: ${timeDiff <= 0 ? '#10b981' : '#ef4444'};">
+                <div style="font-size: 14px; font-weight: 600; color: ${timeColor};">
                   ${timeStatus}
                 </div>
                 <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">
@@ -3521,17 +3548,19 @@ class LawOfficeManager {
             </div>
 
             <!-- Deadline Card -->
-            <div class="stat-card ${deadlineClass}" style="background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: center;">
-              <div style="font-size: 32px; margin-bottom: 10px;">${deadlineIcon}</div>
-              <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">תאריך יעד</div>
-              <div style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 5px;">
+            <div class="stat-card ${deadlineClass}" style="background: white; border: 2px solid ${deadlineColor}; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+              <div style="width: 56px; height: 56px; border-radius: 50%; background: ${deadlineColor}15; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                <i class="fas ${deadlineIconClass}" style="font-size: 24px; color: ${deadlineColor};"></i>
+              </div>
+              <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">תאריך יעד</div>
+              <div style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 4px;">
                 ${deadline ? formatDate(deadline) : "לא הוגדר"}
               </div>
-              <div style="font-size: 13px; color: #6b7280;">
+              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 12px;">
                 ${deadline ? `יצירה: ${formatDate(createdAt)}` : ""}
               </div>
               <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-                <div style="font-size: 13px; font-weight: 600; color: ${deadlineClass === 'deadline-early' ? '#10b981' : deadlineClass === 'deadline-ontime' ? '#3b82f6' : '#ef4444'};">
+                <div style="font-size: 14px; font-weight: 600; color: ${deadlineColor};">
                   ${deadlineStatus}
                 </div>
               </div>
@@ -3539,37 +3568,42 @@ class LawOfficeManager {
           </div>
 
           <!-- Completion Notes -->
-          <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
-              ✍️ הערות סיום (אופציונלי)
+          <div style="margin-bottom: 0;">
+            <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-pen" style="color: #10b981;"></i>
+              הערות סיום (אופציונלי)
             </label>
             <textarea
               id="completionNotes"
               rows="4"
               placeholder="תאר את התוצאות, לקחים, או כל מידע רלוונטי אחר..."
-              style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; transition: border-color 0.2s;"
-              onfocus="this.style.borderColor='#10b981'"
-              onblur="this.style.borderColor='#e5e7eb'"
+              style="width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-family: inherit; resize: vertical; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
+              onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16, 185, 129, 0.1)'"
+              onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.05)'"
             ></textarea>
-            <div style="text-align: left; font-size: 12px; color: #9ca3af; margin-top: 4px;">
+            <div style="text-align: left; font-size: 12px; color: #9ca3af; margin-top: 6px;">
               <span id="notesCounter">0</span> תווים
             </div>
           </div>
 
         </div>
 
-        <div class="popup-buttons" style="padding: 20px 30px; background: #f9fafb; border-top: 1px solid #e5e7eb;">
+        <div class="popup-buttons" style="padding: 20px 30px; background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%); border-top: 1px solid #e5e7eb; display: flex; gap: 12px;">
           <button
             class="popup-btn popup-btn-confirm"
             id="confirmCompleteBtn"
             onclick="manager.submitTaskCompletion(${task.id})"
-            style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); flex: 1; padding: 14px; font-size: 16px; font-weight: 600;">
+            style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); flex: 1; padding: 15px; font-size: 16px; font-weight: 600; border-radius: 10px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;"
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(16, 185, 129, 0.4)'"
+            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)'">
             <i class="fas fa-check"></i> אשר סיום משימה
           </button>
           <button
             class="popup-btn popup-btn-cancel"
             onclick="this.closest('.popup-overlay').remove()"
-            style="flex: 0.5;">
+            style="flex: 0.4; padding: 15px; border-radius: 10px; transition: all 0.2s;"
+            onmouseover="this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.transform='translateY(0)'">
             <i class="fas fa-times"></i> ביטול
           </button>
         </div>
@@ -3611,13 +3645,35 @@ class LawOfficeManager {
       // Show success in modal
       if (popup) {
         popup.querySelector(".popup-content").innerHTML = `
-          <div style="text-align: center; padding: 60px 20px;">
-            <div style="font-size: 80px; color: #10b981; margin-bottom: 20px;">✓</div>
-            <h2 style="color: #1f2937; margin-bottom: 10px; font-size: 24px;">המשימה הושלמה בהצלחה!</h2>
-            <p style="color: #6b7280; font-size: 16px;">הנתונים נשמרו במערכת</p>
+          <div style="text-align: center; padding: 80px 40px;">
+            <div style="width: 80px; height: 80px; border-radius: 50%; background: #10b98115; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; animation: successPulse 0.5s ease-out;">
+              <i class="fas fa-check" style="font-size: 40px; color: #10b981;"></i>
+            </div>
+            <h2 style="color: #1f2937; margin-bottom: 12px; font-size: 24px; font-weight: 700;">המשימה הושלמה בהצלחה!</h2>
+            <p style="color: #6b7280; font-size: 15px; margin-bottom: 24px;">הנתונים נשמרו ב-Firebase</p>
+            <div style="font-size: 13px; color: #9ca3af;">סוגר אוטומטית בעוד רגע...</div>
           </div>
+          <style>
+            @keyframes successPulse {
+              0% { transform: scale(0); opacity: 0; }
+              50% { transform: scale(1.1); }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          </style>
         `;
-        popup.querySelector(".popup-buttons").innerHTML = "";
+
+        // Keep close button in header, remove bottom buttons
+        const buttonsDiv = popup.querySelector(".popup-buttons");
+        if (buttonsDiv) {
+          buttonsDiv.innerHTML = `
+            <button
+              class="popup-btn popup-btn-cancel"
+              onclick="this.closest('.popup-overlay').remove()"
+              style="width: 100%; padding: 14px; border-radius: 10px;">
+              <i class="fas fa-times"></i> סגור
+            </button>
+          `;
+        }
       }
 
       // Wait a moment, then close modal and animate task removal
@@ -3631,7 +3687,7 @@ class LawOfficeManager {
         // Animate the completed task and switch to active filter
         this.animateTaskCompletionAndFilter(taskId);
 
-      }, 1500);
+      }, 2000);
 
     } catch (error) {
       console.error("Error completing task:", error);
