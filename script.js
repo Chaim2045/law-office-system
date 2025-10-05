@@ -106,6 +106,135 @@ function hideSimpleLoading() {
 }
 
 /**
+ * Show subtle progress indicator
+ */
+function showProgress(message = "") {
+  // Remove existing indicator
+  const existing = document.getElementById("progress-indicator");
+  if (existing) existing.remove();
+
+  // Create new indicator
+  const indicator = document.createElement("div");
+  indicator.id = "progress-indicator";
+  indicator.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideInUp 0.3s ease-out;
+  `;
+
+  indicator.innerHTML = `
+    <div style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+    <span>${safeText(message || "מעבד...")}</span>
+    <style>
+      @keyframes slideInUp {
+        from { transform: translateY(100px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    </style>
+  `;
+
+  document.body.appendChild(indicator);
+}
+
+/**
+ * Hide progress indicator
+ */
+function hideProgress() {
+  const indicator = document.getElementById("progress-indicator");
+  if (indicator) {
+    indicator.style.animation = "slideOutDown 0.3s ease-out";
+    setTimeout(() => indicator.remove(), 300);
+  }
+}
+
+/**
+ * Show success feedback with animation
+ */
+function showSuccessFeedback(message = "בוצע בהצלחה") {
+  const feedback = document.createElement("div");
+  feedback.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideInUp 0.3s ease-out;
+  `;
+
+  feedback.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="flex-shrink: 0;">
+      <circle cx="10" cy="10" r="10" fill="rgba(255,255,255,0.2)"/>
+      <path d="M6 10l3 3 5-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>${safeText(message)}</span>
+  `;
+
+  document.body.appendChild(feedback);
+
+  setTimeout(() => {
+    feedback.style.animation = "slideOutDown 0.3s ease-out";
+    setTimeout(() => feedback.remove(), 300);
+  }, 2000);
+}
+
+// Add CSS animations for feedback system
+const feedbackStyles = document.createElement("style");
+feedbackStyles.textContent = `
+  @keyframes slideInUp {
+    from {
+      transform: translateY(100px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideOutDown {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(100px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+document.head.appendChild(feedbackStyles);
+
+/**
  * Format date functions
  */
 function formatDateTime(date) {
@@ -309,8 +438,6 @@ async function loadTimesheetFromFirebase(employee) {
  */
 async function saveClientToFirebase(clientData) {
   try {
-    showSimpleLoading("שומר לקוח...");
-
     const db = window.firebaseDB;
     if (!db) {
       throw new Error("Firebase לא מחובר");
@@ -323,11 +450,9 @@ async function saveClientToFirebase(clientData) {
     });
 
     console.log(`🔥 Firebase: לקוח נשמר עם ID: ${docRef.id}`);
-    hideSimpleLoading();
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בשמירת לקוח: " + error.message);
   }
 }
@@ -337,8 +462,6 @@ async function saveClientToFirebase(clientData) {
  */
 async function saveBudgetTaskToFirebase(taskData) {
   try {
-    showSimpleLoading("שומר משימה...");
-
     const db = window.firebaseDB;
     if (!db) {
       throw new Error("Firebase לא מחובר");
@@ -364,11 +487,9 @@ async function saveBudgetTaskToFirebase(taskData) {
     console.log(
       `🔥 Firebase: משימה נשמרה - ID: ${docRef.id}, עובד: ${currentUser}`
     );
-    hideSimpleLoading();
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בשמירת משימה: " + error.message);
   }
 }
@@ -378,8 +499,6 @@ async function saveBudgetTaskToFirebase(taskData) {
  */
 async function saveTimesheetToFirebase(entryData) {
   try {
-    showSimpleLoading("שומר שעתון...");
-
     const db = window.firebaseDB;
     if (!db) {
       throw new Error("Firebase לא מחובר");
@@ -405,11 +524,9 @@ async function saveTimesheetToFirebase(entryData) {
     console.log(
       `🔥 Firebase: שעתון נשמר - ID: ${docRef.id}, עובד: ${currentUser}`
     );
-    hideSimpleLoading();
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בשמירת שעתון: " + error.message);
   }
 }
@@ -1605,6 +1722,8 @@ class LawOfficeManager {
     };
 
     try {
+      showProgress("שומר משימה...");
+
       this.budgetTasks.unshift(budgetTask);
       this.filteredBudgetTasks = [...this.budgetTasks];
       this.renderBudgetTasks();
@@ -1613,11 +1732,15 @@ class LawOfficeManager {
 
       this.clearBudgetForm();
       setTimeout(() => this.loadDataFromFirebase(), 1000);
+
+      hideProgress();
+      showSuccessFeedback("המשימה נוספה בהצלחה");
     } catch (error) {
       console.error("Error adding budget task:", error);
       this.budgetTasks = this.budgetTasks.filter((t) => t.id !== budgetTask.id);
       this.filteredBudgetTasks = [...this.budgetTasks];
       this.renderBudgetTasks();
+      hideProgress();
       this.showNotification("❌ שגיאה בהוספת משימה", "error");
     }
   }
@@ -1747,6 +1870,8 @@ class LawOfficeManager {
       await this.saveTimesheetAndUpdateClient(timesheetEntry);
       await this.loadDataFromFirebase();
       this.clientValidation.updateBlockedClients();
+
+      showSuccessFeedback("הפעולה נרשמה בשעתון בהצלחה");
     } catch (error) {
       console.error("Error in addTimesheetEntry:", error);
       this.showNotification("שגיאה ברישום השעתון", "error");
@@ -2904,10 +3029,14 @@ class LawOfficeManager {
   // Data operations - Firebase only
   async createClientComplete(client) {
     try {
+      showProgress("שומר לקוח...");
       await saveClientToFirebase(client);
       await this.loadDataFromFirebase();
+      hideProgress();
+      showSuccessFeedback("הלקוח נוסף בהצלחה");
     } catch (error) {
       console.error("Error creating client:", error);
+      hideProgress();
       this.showNotification("שגיאה ביצירת לקוח: " + error.message, "error");
     }
   }
@@ -3165,7 +3294,7 @@ class LawOfficeManager {
 
   async addTimeToTask(timeData) {
     try {
-      showSimpleLoading("רושם זמן למשימה...");
+      showProgress("רושם זמן למשימה...");
 
       const taskIndex = this.budgetTasks.findIndex(
         (t) => t.id === timeData.taskId
@@ -3189,6 +3318,9 @@ class LawOfficeManager {
       // Here you would add Firebase function to add time to task
       // For now, just simulate success
       setTimeout(() => this.loadDataFromFirebase(), 1000);
+
+      hideProgress();
+      showSuccessFeedback("זמן נוסף למשימה בהצלחה");
     } catch (error) {
       console.error("Error adding time:", error);
 
@@ -3198,9 +3330,8 @@ class LawOfficeManager {
         this.renderBudgetTasks();
       }
 
+      hideProgress();
       this.showNotification("❌ שגיאה ברישום זמן - נסה שוב", "error");
-    } finally {
-      hideSimpleLoading();
     }
   }
 
@@ -3283,6 +3414,8 @@ class LawOfficeManager {
 
     if (notes !== null) {
       try {
+        showProgress("משלים משימה...");
+
         const taskIndex = this.budgetTasks.findIndex((t) => t.id === taskId);
         if (taskIndex !== -1) {
           this.budgetTasks[taskIndex].status = "הושלם";
@@ -3295,8 +3428,12 @@ class LawOfficeManager {
 
         // Here you would add Firebase function to complete task
         await this.loadDataFromFirebase();
+
+        hideProgress();
+        showSuccessFeedback("המשימה הושלמה בהצלחה");
       } catch (error) {
         console.error("Error completing task:", error);
+        hideProgress();
         this.showNotification("שגיאה בהשלמת המשימה", "error");
       }
     }
