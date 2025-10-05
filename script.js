@@ -1623,7 +1623,6 @@ class LawOfficeManager {
 
       await saveBudgetTaskToFirebase(budgetTask);
 
-      this.showNotification("✅ המשימה נוספה בהצלחה", "success");
       this.clearBudgetForm();
       setTimeout(() => this.loadDataFromFirebase(), 1000);
     } catch (error) {
@@ -1744,7 +1743,6 @@ class LawOfficeManager {
       this.filteredTimesheetEntries = [...this.timesheetEntries];
       this.renderTimesheetEntries();
       this.clearTimesheetForm();
-      this.showNotification("הפעולה נרשמה בשעתון בהצלחה");
 
       const timesheetEntry = {
         date,
@@ -2919,7 +2917,6 @@ class LawOfficeManager {
   async createClientComplete(client) {
     try {
       await saveClientToFirebase(client);
-      this.showNotification("לקוח נוסף בהצלחה!", "success");
       await this.loadDataFromFirebase();
     } catch (error) {
       console.error("Error creating client:", error);
@@ -3199,12 +3196,10 @@ class LawOfficeManager {
         });
         this.filteredBudgetTasks = [...this.budgetTasks];
         this.renderBudgetTasks();
-        this.showNotification("⏳ רושם זמן... (עדכון מיידי)", "info");
       }
 
       // Here you would add Firebase function to add time to task
       // For now, just simulate success
-      this.showNotification("✅ זמן נוסף בהצלחה למשימה!", "success");
       setTimeout(() => this.loadDataFromFirebase(), 1000);
     } catch (error) {
       console.error("Error adding time:", error);
@@ -3311,7 +3306,6 @@ class LawOfficeManager {
         }
 
         // Here you would add Firebase function to complete task
-        this.showNotification("המשימה הושלמה בהצלחה", "success");
         await this.loadDataFromFirebase();
       } catch (error) {
         console.error("Error completing task:", error);
@@ -4496,7 +4490,6 @@ if (window.manager) {
         }
       }
 
-      this.showNotification("✅ זמן נוסף בהצלחה!", "success");
       setTimeout(() => this.loadDataFromFirebase(), 1000);
     } catch (error) {
       if (originalTask && taskIndex !== -1) {
@@ -4538,7 +4531,6 @@ if (window.manager) {
         }
 
         await completeTaskFirebase(taskId, notes);
-        this.showNotification("המשימה הושלמה בהצלחה", "success");
 
         await this.loadDataFromFirebase();
       } catch (error) {
@@ -4622,7 +4614,6 @@ if (window.manager) {
 
     try {
       await extendTaskDeadlineFirebase(taskId, newDate, reason);
-      this.showNotification("תאריך יעד הוארך בהצלחה", "success");
       popup.remove();
 
       await this.loadDataFromFirebase();
@@ -4948,7 +4939,6 @@ if (window.manager) {
         }
       }
 
-      this.showNotification("✅ זמן נוסף בהצלחה!", "success");
       setTimeout(() => this.loadDataFromFirebase(), 1000);
     } catch (error) {
       if (originalTask && taskIndex !== -1) {
@@ -4990,7 +4980,6 @@ if (window.manager) {
         }
 
         await completeTaskFirebase(taskId, notes);
-        this.showNotification("המשימה הושלמה בהצלחה", "success");
 
         await this.loadDataFromFirebase();
       } catch (error) {
