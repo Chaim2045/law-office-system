@@ -1354,6 +1354,10 @@ class LawOfficeManager {
    * עדכון טקסט הטעינה במסך ברוך הבא
    */
   updateLoaderText(text) {
+    // Only update if welcome screen is active
+    if (!window.isInWelcomeScreen) {
+      return;
+    }
     const loaderText = document.getElementById("loaderText");
     if (loaderText) {
       loaderText.textContent = text;
