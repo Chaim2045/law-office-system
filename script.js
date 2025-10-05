@@ -380,9 +380,11 @@ async function loadBudgetTasksFromFirebase(employee) {
     const tasks = [];
 
     snapshot.forEach((doc) => {
+      const data = doc.data();
       tasks.push({
-        id: doc.id,
-        ...doc.data(),
+        ...data,
+        firebaseDocId: doc.id,  // Firebase document ID (string)
+        id: data.id || doc.id,  // Keep original ID or use Firebase ID
       });
     });
 
@@ -3602,9 +3604,9 @@ class LawOfficeManager {
         confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
       }
 
-      // Save to Firebase
-      const firebaseTask = task.firebaseId || task.id;
-      await completeTaskFirebase(firebaseTask, notes);
+      // Save to Firebase - use Firebase document ID
+      const firebaseDocId = task.firebaseDocId || task.id.toString();
+      await completeTaskFirebase(firebaseDocId, notes);
 
       // Show success in modal
       if (popup) {
@@ -3780,10 +3782,10 @@ class LawOfficeManager {
       showProgress('מבטל השלמת משימה...');
 
       // Update in Firebase - change status back to active
-      const firebaseTask = task.firebaseId || task.id;
+      const firebaseDocId = task.firebaseDocId || task.id.toString();
       const db = window.firebaseDB;
       if (db) {
-        await db.collection('budget_tasks').doc(firebaseTask).update({
+        await db.collection('budget_tasks').doc(firebaseDocId).update({
           status: 'פעיל',
           completedAt: firebase.firestore.FieldValue.delete(),
           completionNotes: firebase.firestore.FieldValue.delete(),
