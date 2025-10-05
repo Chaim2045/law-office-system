@@ -3405,41 +3405,241 @@ class LawOfficeManager {
       return;
     }
 
-    const notes = prompt(
-      `סיום משימה: ${
-        task.description || task.taskDescription
-      }\n\nהערות סיום (אופציונלי):`,
-      ""
-    );
+    // Show professional completion modal
+    this.showTaskCompletionModal(task);
+  }
 
-    if (notes !== null) {
-      try {
-        showProgress("משלים משימה...");
+  showTaskCompletionModal(task) {
+    const overlay = document.createElement("div");
+    overlay.className = "popup-overlay";
+    overlay.style.zIndex = "10000";
 
-        // Update UI optimistically
-        const taskIndex = this.budgetTasks.findIndex((t) => t.id === taskId);
-        if (taskIndex !== -1) {
-          this.budgetTasks[taskIndex].status = "הושלם";
-          this.budgetTasks[taskIndex].completedAt = new Date().toLocaleString(
-            "he-IL"
-          );
-          this.filteredBudgetTasks = [...this.budgetTasks];
-          this.renderBudgetTasks();
-        }
+    // Calculate statistics
+    const estimatedMinutes = task.estimatedMinutes || 0;
+    const actualMinutes = task.actualMinutes || 0;
+    const timeDiff = actualMinutes - estimatedMinutes;
+    const timePercentage = estimatedMinutes > 0 ? ((actualMinutes / estimatedMinutes) * 100).toFixed(0) : 0;
 
-        // Save to Firebase - need to get Firebase document ID
-        const firebaseTask = task.firebaseId || task.id;
-        await completeTaskFirebase(firebaseTask, notes);
+    // Deadline statistics
+    const now = new Date();
+    const deadline = task.deadline ? new Date(task.deadline) : null;
+    const createdAt = task.createdAt ? new Date(task.createdAt) : now;
+    const originalDeadline = task.originalDeadline ? new Date(task.originalDeadline) : deadline;
+    const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
 
-        // Reload data to ensure sync
+    let deadlineStatus = "";
+    let deadlineClass = "";
+    let deadlineIcon = "";
+
+    if (deadline) {
+      const daysRemaining = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+      if (daysRemaining < 0) {
+        deadlineStatus = `איחור של ${Math.abs(daysRemaining)} ימים`;
+        deadlineClass = "deadline-late";
+        deadlineIcon = "⚠️";
+      } else if (daysRemaining === 0) {
+        deadlineStatus = "בדיוק בזמן!";
+        deadlineClass = "deadline-ontime";
+        deadlineIcon = "✓";
+      } else {
+        deadlineStatus = `${daysRemaining} ימים לפני המועד`;
+        deadlineClass = "deadline-early";
+        deadlineIcon = "🎯";
+      }
+
+      if (wasExtended && originalDeadline) {
+        const extensionDays = Math.ceil((deadline - originalDeadline) / (1000 * 60 * 60 * 24));
+        deadlineStatus += ` (הוארך ב-${extensionDays} ימים)`;
+      }
+    } else {
+      deadlineStatus = "ללא תאריך יעד";
+      deadlineClass = "deadline-none";
+      deadlineIcon = "📅";
+    }
+
+    // Time status
+    let timeStatus = "";
+    let timeClass = "";
+    let timeIcon = "";
+
+    if (timeDiff < 0) {
+      timeStatus = `חסכת ${Math.abs(timeDiff)} דקות!`;
+      timeClass = "time-saved";
+      timeIcon = "⚡";
+    } else if (timeDiff === 0) {
+      timeStatus = "בדיוק לפי התקציב!";
+      timeClass = "time-exact";
+      timeIcon = "✓";
+    } else {
+      timeStatus = `חרגת ב-${timeDiff} דקות`;
+      timeClass = "time-over";
+      timeIcon = "⏱️";
+    }
+
+    overlay.innerHTML = `
+      <div class="popup completion-modal" style="max-width: 600px; animation: slideInUp 0.3s ease-out;">
+        <div class="popup-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+          <i class="fas fa-check-circle"></i>
+          סיום משימה
+        </div>
+
+        <div class="popup-content" style="padding: 30px;">
+          <!-- Task Info -->
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+            <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 18px;">
+              ${safeText(task.taskDescription || task.description || "")}
+            </h3>
+            <div style="color: #6b7280; font-size: 14px;">
+              <span>🏢 ${safeText(task.clientName || "")}</span>
+              <span style="margin: 0 10px;">•</span>
+              <span>📁 ${safeText(task.fileNumber || "")}</span>
+            </div>
+          </div>
+
+          <!-- Statistics Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+
+            <!-- Time Budget Card -->
+            <div class="stat-card ${timeClass}" style="background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: center;">
+              <div style="font-size: 32px; margin-bottom: 10px;">${timeIcon}</div>
+              <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">תקציב זמן</div>
+              <div style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 5px;">
+                ${actualMinutes} / ${estimatedMinutes}
+              </div>
+              <div style="font-size: 13px; color: #6b7280;">דקות</div>
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                <div style="font-size: 13px; font-weight: 600; color: ${timeDiff <= 0 ? '#10b981' : '#ef4444'};">
+                  ${timeStatus}
+                </div>
+                <div style="font-size: 12px; color: #9ca3af; margin-top: 4px;">
+                  ${timePercentage}% מהתקציב
+                </div>
+              </div>
+            </div>
+
+            <!-- Deadline Card -->
+            <div class="stat-card ${deadlineClass}" style="background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: center;">
+              <div style="font-size: 32px; margin-bottom: 10px;">${deadlineIcon}</div>
+              <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">תאריך יעד</div>
+              <div style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 5px;">
+                ${deadline ? formatDate(deadline) : "לא הוגדר"}
+              </div>
+              <div style="font-size: 13px; color: #6b7280;">
+                ${deadline ? `יצירה: ${formatDate(createdAt)}` : ""}
+              </div>
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                <div style="font-size: 13px; font-weight: 600; color: ${deadlineClass === 'deadline-early' ? '#10b981' : deadlineClass === 'deadline-ontime' ? '#3b82f6' : '#ef4444'};">
+                  ${deadlineStatus}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Completion Notes -->
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
+              ✍️ הערות סיום (אופציונלי)
+            </label>
+            <textarea
+              id="completionNotes"
+              rows="4"
+              placeholder="תאר את התוצאות, לקחים, או כל מידע רלוונטי אחר..."
+              style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; transition: border-color 0.2s;"
+              onfocus="this.style.borderColor='#10b981'"
+              onblur="this.style.borderColor='#e5e7eb'"
+            ></textarea>
+            <div style="text-align: left; font-size: 12px; color: #9ca3af; margin-top: 4px;">
+              <span id="notesCounter">0</span> תווים
+            </div>
+          </div>
+
+        </div>
+
+        <div class="popup-buttons" style="padding: 20px 30px; background: #f9fafb; border-top: 1px solid #e5e7eb;">
+          <button
+            class="popup-btn popup-btn-confirm"
+            id="confirmCompleteBtn"
+            onclick="manager.submitTaskCompletion(${task.id})"
+            style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); flex: 1; padding: 14px; font-size: 16px; font-weight: 600;">
+            <i class="fas fa-check"></i> אשר סיום משימה
+          </button>
+          <button
+            class="popup-btn popup-btn-cancel"
+            onclick="this.closest('.popup-overlay').remove()"
+            style="flex: 0.5;">
+            <i class="fas fa-times"></i> ביטול
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Add character counter
+    const textarea = overlay.querySelector("#completionNotes");
+    const counter = overlay.querySelector("#notesCounter");
+    if (textarea && counter) {
+      textarea.addEventListener("input", () => {
+        counter.textContent = textarea.value.length;
+      });
+    }
+
+    document.body.appendChild(overlay);
+  }
+
+  async submitTaskCompletion(taskId) {
+    const task = this.budgetTasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const notesTextarea = document.getElementById("completionNotes");
+    const notes = notesTextarea ? notesTextarea.value.trim() : "";
+    const confirmBtn = document.getElementById("confirmCompleteBtn");
+    const popup = document.querySelector(".completion-modal");
+
+    try {
+      // Disable button and show loading
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+      }
+
+      // Save to Firebase
+      const firebaseTask = task.firebaseId || task.id;
+      await completeTaskFirebase(firebaseTask, notes);
+
+      // Show success in modal
+      if (popup) {
+        popup.querySelector(".popup-content").innerHTML = `
+          <div style="text-align: center; padding: 60px 20px;">
+            <div style="font-size: 80px; color: #10b981; margin-bottom: 20px;">✓</div>
+            <h2 style="color: #1f2937; margin-bottom: 10px; font-size: 24px;">המשימה הושלמה בהצלחה!</h2>
+            <p style="color: #6b7280; font-size: 16px;">הנתונים נשמרו במערכת</p>
+          </div>
+        `;
+        popup.querySelector(".popup-buttons").innerHTML = "";
+      }
+
+      // Wait a moment, then reload and close
+      setTimeout(async () => {
         await this.loadDataFromFirebase();
+        this.renderBudgetTasks();
+        document.querySelector(".popup-overlay")?.remove();
+      }, 1500);
 
-        hideProgress();
-        showSuccessFeedback("המשימה הושלמה בהצלחה");
-      } catch (error) {
-        console.error("Error completing task:", error);
-        hideProgress();
-        this.showNotification("שגיאה בהשלמת המשימה", "error");
+    } catch (error) {
+      console.error("Error completing task:", error);
+
+      // Show error in modal
+      if (popup) {
+        const errorDiv = document.createElement("div");
+        errorDiv.style.cssText = "background: #fee; border: 2px solid #ef4444; padding: 15px; border-radius: 8px; margin: 20px; color: #991b1b;";
+        errorDiv.innerHTML = `<strong>❌ שגיאה:</strong> ${safeText(error.message || "שגיאה בשמירת המשימה")}`;
+        popup.querySelector(".popup-content").insertBefore(errorDiv, popup.querySelector(".popup-content").firstChild);
+      }
+
+      // Re-enable button
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-check"></i> אשר סיום משימה';
       }
     }
   }
