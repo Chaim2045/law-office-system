@@ -210,8 +210,6 @@ async function testFirebaseConnection() {
  */
 async function loadClientsFromFirebase() {
   try {
-    showSimpleLoading("טוען לקוחות...");
-
     const db = window.firebaseDB;
     if (!db) {
       throw new Error("Firebase לא מחובר");
@@ -228,11 +226,9 @@ async function loadClientsFromFirebase() {
     });
 
     console.log(`🔥 Firebase: נטענו ${clients.length} לקוחות`);
-    hideSimpleLoading();
     return clients;
   } catch (error) {
     console.error("Firebase error:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בטעינת לקוחות: " + error.message);
   }
 }
@@ -242,8 +238,6 @@ async function loadClientsFromFirebase() {
  */
 async function loadBudgetTasksFromFirebase(employee) {
   try {
-    showSimpleLoading("טוען משימות...");
-
     const db = window.firebaseDB;
     if (!db) {
       throw new Error("Firebase לא מחובר");
@@ -264,11 +258,9 @@ async function loadBudgetTasksFromFirebase(employee) {
     });
 
     console.log(`🔥 Firebase: נטענו ${tasks.length} משימות`);
-    hideSimpleLoading();
     return tasks;
   } catch (error) {
     console.error("Firebase error:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בטעינת משימות: " + error.message);
   }
 }
@@ -278,8 +270,6 @@ async function loadBudgetTasksFromFirebase(employee) {
  */
 async function loadTimesheetFromFirebase(employee) {
   try {
-    showSimpleLoading("טוען שעתון...");
-
     const db = window.firebaseDB;
     if (!db) {
       throw new Error("Firebase לא מחובר");
@@ -307,11 +297,9 @@ async function loadTimesheetFromFirebase(employee) {
     });
 
     console.log(`🔥 Firebase: נטענו ${entries.length} רשומות שעתון`);
-    hideSimpleLoading();
     return entries;
   } catch (error) {
     console.error("Firebase error:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בטעינת שעתון: " + error.message);
   }
 }
@@ -5081,8 +5069,6 @@ async function updateTimesheetEntryFirebase(entryId, newMinutes, reason = "") {
  */
 async function loadTimesheetWithEditHistory(employee) {
   try {
-    showSimpleLoading("טוען שעתון עם היסטוריה...");
-
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
@@ -5132,7 +5118,6 @@ async function loadTimesheetWithEditHistory(employee) {
       }${totalCurrentMinutes - totalOriginalMinutes} דקות`
     );
 
-    hideSimpleLoading();
     return {
       entries,
       stats: {
@@ -5145,7 +5130,6 @@ async function loadTimesheetWithEditHistory(employee) {
     };
   } catch (error) {
     console.error("Firebase error:", error);
-    hideSimpleLoading();
     throw new Error("שגיאה בטעינת שעתון: " + error.message);
   }
 }
