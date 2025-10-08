@@ -3044,7 +3044,8 @@ class LawOfficeManager {
       minutes: entry.minutes || 0,
       date: entry.date || new Date().toISOString(),
       fileNumber: entry.fileNumber || "",
-      notes: entry.notes || ""
+      notes: entry.notes || "",
+      createdAt: entry.createdAt || null
     };
 
     const hours = Math.round((safeEntry.minutes / 60) * 10) / 10;
@@ -3083,6 +3084,14 @@ class LawOfficeManager {
               <span class="linear-progress-label">תיק:</span>
               <span class="deadline-info">
                 ${safeFileNumber}
+              </span>
+            </div>
+            ` : ''}
+            ${safeEntry.createdAt ? `
+            <div class="linear-deadline-row">
+              <span class="linear-progress-label">נוצר:</span>
+              <span class="deadline-info" style="color: #6b7280; font-size: 12px;">
+                📅 ${formatShort(safeEntry.createdAt)}
               </span>
             </div>
             ` : ''}
@@ -3207,6 +3216,7 @@ class LawOfficeManager {
             entry.clientName || ""
           )}</td>
           <td>${safeText(entry.fileNumber || "")}</td>
+          <td style="color: #6b7280; font-size: 13px;">${entry.createdAt ? formatShort(entry.createdAt) : '-'}</td>
           <td>${safeText(entry.notes || "—")}</td>
           <td class="actions-column">
             <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${
@@ -3260,6 +3270,7 @@ class LawOfficeManager {
                 <th>זמן</th>
                 <th>לקוח</th>
                 <th>תיק</th>
+                <th>נוצר</th>
                 <th>הערות</th>
                 <th>פעולות</th>
               </tr>
