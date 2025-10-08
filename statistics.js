@@ -142,6 +142,7 @@ function createBudgetStatsBar(stats) {
   const smartStatusClass = `stats-status-${stats.budgetStatus}`;
 
   return `
+    <div class="stats-container">
     <div class="stats-bar ${statusClass}">
       <div class="stats-item">
         <span class="stats-label">סה"כ משימות:</span>
@@ -208,6 +209,7 @@ function createBudgetStatsBar(stats) {
       ` : ''}
       <div class="stats-separator">•</div>
       <span class="${smartStatusClass}">${stats.budgetStatusText}</span>
+    </div>
     </div>
   `;
 }
@@ -392,6 +394,7 @@ function createTimesheetStatsBar(stats) {
   const smartStatusClass = `stats-status-${stats.goalStatus}`;
 
   return `
+    <div class="stats-container">
     <div class="stats-bar ${statusClass}">
       <div class="stats-item">
         <span class="stats-label">סה"כ רשומות:</span>
@@ -450,6 +453,7 @@ function createTimesheetStatsBar(stats) {
       </div>
       <div class="stats-separator">•</div>
       <span class="${smartStatusClass}">${stats.goalStatusText}</span>
+    </div>
     </div>
   `;
 }
