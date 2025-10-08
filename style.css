@@ -138,7 +138,7 @@ body {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   background-attachment: fixed;
   position: relative;
-  overflow: hidden;
+  overflow: hidden; /* ללא גלילה רק במסך כניסה */
   background-image: radial-gradient(
       circle at 25% 25%,
       rgba(59, 130, 246, 0.05) 0%,
@@ -149,7 +149,7 @@ body {
       rgba(16, 185, 129, 0.05) 0%,
       transparent 50%
     );
-  height: 100vh;
+  height: 100vh; /* גובה מלא רק במסך כניסה */
   direction: rtl;
   color: var(--gray-700);
   line-height: 1.6;
@@ -161,6 +161,10 @@ body {
 /* Add small padding to body when logged in for better spacing on all screens */
 body.logged-in {
   padding: clamp(4px, 0.5vw, 8px);
+  overflow-y: auto; /* לאפשר גלילה אנכית */
+  overflow-x: hidden; /* למנוע גלילה אופקית */
+  height: auto; /* גובה אוטומטי */
+  min-height: 100vh; /* לפחות מסך מלא */
 }
 
 /* ==========================================================================
@@ -176,15 +180,19 @@ body.logged-in {
   grid-template-rows: auto 1fr;
   gap: 0;
   max-width: 100vw;
-  height: 100vh;
+  height: 100vh; /* גובה מלא רק למסך כניסה */
   padding: 0;
-  overflow: hidden;
+  overflow: hidden; /* ללא גלילה במסך כניסה */
 }
 
 /* Add gap between header and content when logged in */
 body.logged-in .app-container {
   gap: clamp(12px, 1.5vw, 20px);
   padding: clamp(8px, 1vw, 16px);
+  height: auto; /* גובה אוטומטי כשמחובר */
+  min-height: 100vh; /* לפחות מסך מלא */
+  overflow: visible; /* לאפשר גלילה */
+  grid-template-rows: auto auto; /* שתי שורות אוטומטיות */
 }
 
 .main-content {
@@ -209,15 +217,14 @@ body.logged-in .app-container {
 body.logged-in .main-content {
   padding: var(--space-lg);
   padding-bottom: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: visible; /* ללא overflow - הגלילה תהיה ב-body */
   justify-content: flex-start;
   background: transparent;
   border: none;
   box-shadow: none;
   border-radius: 0;
-  height: auto; /* גובה אוטומטי כדי לאפשר גלילה מלאה */
-  min-height: 100vh; /* לפחות מסך מלא */
+  height: auto; /* גובה אוטומטי לפי התוכן */
+  min-height: 0; /* ללא הגבלת מינימום */
 }
 
 /* Hide decorative background when logged in */
