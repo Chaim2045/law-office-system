@@ -2745,7 +2745,7 @@ button[onclick*="addBudget"]:hover {
   background: white;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
-  margin: 20px 0;
+  margin: 30px 0 20px; /* מרווח גדול יותר מלעלה */
   width: 100%;
   max-width: none;
   overflow: visible;
