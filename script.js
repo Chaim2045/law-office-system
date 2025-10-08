@@ -1697,13 +1697,22 @@ class LawOfficeManager {
   }
 
   sortTimesheetEntries() {
-    const sortSelect = document.getElementById('timesheetSortSelect');
-    if (!sortSelect) return;
+    // קבלת כל ה-selects (גם כרטיסים וגם טבלה)
+    const allSelects = document.querySelectorAll('#timesheetSortSelect');
+    if (allSelects.length === 0) return;
 
-    const sortValue = sortSelect.value;
+    // קבלת הערך מה-select שהופעל (event.target) או מהראשון
+    const sortValue = event?.target?.value || allSelects[0].value;
 
     // שמירת הבחירה הנוכחית
     this.currentTimesheetSort = sortValue;
+
+    // סינכרון כל ה-selects לאותו ערך
+    allSelects.forEach(select => {
+      if (select.value !== sortValue) {
+        select.value = sortValue;
+      }
+    });
 
     // מיון מהיר ויעיל
     this.filteredTimesheetEntries.sort((a, b) => {
@@ -4159,13 +4168,22 @@ class LawOfficeManager {
   }
 
   sortBudgetTasks() {
-    const sortSelect = document.getElementById('budgetSortSelect');
-    if (!sortSelect) return;
+    // קבלת כל ה-selects (גם כרטיסים וגם טבלה)
+    const allSelects = document.querySelectorAll('#budgetSortSelect');
+    if (allSelects.length === 0) return;
 
-    const sortValue = sortSelect.value;
+    // קבלת הערך מה-select שהופעל (event.target) או מהראשון
+    const sortValue = event?.target?.value || allSelects[0].value;
 
     // שמירת הבחירה הנוכחית
     this.currentBudgetSort = sortValue;
+
+    // סינכרון כל ה-selects לאותו ערך
+    allSelects.forEach(select => {
+      if (select.value !== sortValue) {
+        select.value = sortValue;
+      }
+    });
 
     // מיון מהיר ויעיל
     this.filteredBudgetTasks.sort((a, b) => {
