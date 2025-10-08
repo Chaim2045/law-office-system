@@ -1385,8 +1385,20 @@ class LawOfficeManager {
   showLogin() {
     const loginSection = document.getElementById("loginSection");
     const appContent = document.getElementById("appContent");
+    const minimalSidebar = document.getElementById("minimalSidebar");
+    const interfaceElements = document.getElementById("interfaceElements");
+    const mainFooter = document.getElementById("mainFooter");
+    const bubblesContainer = document.getElementById("bubblesContainer");
+
     if (loginSection) loginSection.classList.remove("hidden");
     if (appContent) appContent.classList.add("hidden");
+    if (minimalSidebar) minimalSidebar.classList.add("hidden");
+    if (interfaceElements) interfaceElements.classList.add("hidden");
+    if (mainFooter) mainFooter.classList.add("hidden");
+    if (bubblesContainer) bubblesContainer.classList.remove("hidden");
+
+    // Remove class from body when logged out
+    document.body.classList.remove("logged-in");
   }
 
   async handleLogin() {
@@ -1436,6 +1448,7 @@ class LawOfficeManager {
     const welcomeScreen = document.getElementById("welcomeScreen");
     const welcomeTitle = document.getElementById("welcomeTitle");
     const lastLoginTime = document.getElementById("lastLoginTime");
+    const bubblesContainer = document.getElementById("bubblesContainer");
 
     // Store welcome screen start time for minimum duration
     this.welcomeScreenStartTime = Date.now();
@@ -1477,6 +1490,9 @@ class LawOfficeManager {
       welcomeScreen.classList.remove("hidden");
     }
 
+    // Keep bubbles visible during welcome screen
+    if (bubblesContainer) bubblesContainer.classList.remove("hidden");
+
     console.log(`👋 מסך ברוך הבא מוצג עבור: ${this.currentUser}`);
   }
 
@@ -1511,11 +1527,20 @@ class LawOfficeManager {
     const welcomeScreen = document.getElementById("welcomeScreen");
     const appContent = document.getElementById("appContent");
     const interfaceElements = document.getElementById("interfaceElements");
+    const minimalSidebar = document.getElementById("minimalSidebar");
+    const mainFooter = document.getElementById("mainFooter");
+    const bubblesContainer = document.getElementById("bubblesContainer");
 
     if (loginSection) loginSection.classList.add("hidden");
     if (welcomeScreen) welcomeScreen.classList.add("hidden");
     if (appContent) appContent.classList.remove("hidden");
     if (interfaceElements) interfaceElements.classList.remove("hidden");
+    if (minimalSidebar) minimalSidebar.classList.remove("hidden");
+    if (mainFooter) mainFooter.classList.remove("hidden");
+    if (bubblesContainer) bubblesContainer.classList.add("hidden");
+
+    // Add class to body when logged in
+    document.body.classList.add("logged-in");
 
     const userInfo = document.getElementById("userInfo");
     if (userInfo) {
@@ -1964,18 +1989,18 @@ class LawOfficeManager {
 
     const tasksHtml = tasks.map((task) => this.createTaskCard(task)).join("");
 
+    // שימוש במודול הסטטיסטיקה החדש
+    const stats = window.StatisticsModule.calculateBudgetStatistics(this.filteredBudgetTasks);
+    const statsBar = window.StatisticsModule.createBudgetStatsBar(stats);
+
     container.innerHTML = `
       <div class="modern-cards-header">
         <h3 class="modern-cards-title">
           <i class="fas fa-chart-bar"></i>
           משימות מתוקצבות
         </h3>
-        <div class="modern-cards-subtitle">
-          ${
-            this.filteredBudgetTasks.length
-          } משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
-        </div>
       </div>
+      ${statsBar}
       <div class="budget-cards-grid">
         ${tasksHtml}
       </div>
@@ -2109,6 +2134,10 @@ class LawOfficeManager {
       return;
     }
 
+    // שימוש במודול הסטטיסטיקה החדש
+    const stats = window.StatisticsModule.calculateBudgetStatistics(this.filteredBudgetTasks);
+    const statsBar = window.StatisticsModule.createBudgetStatsBar(stats);
+
     tableContainer.innerHTML = `
       <div class="modern-table-container">
         <div class="modern-table-header">
@@ -2116,12 +2145,8 @@ class LawOfficeManager {
             <i class="fas fa-chart-bar"></i>
             משימות מתוקצבות
           </h3>
-          <div class="modern-cards-subtitle">
-            ${
-              this.filteredBudgetTasks.length
-            } משימות • ${this.getActiveTasksCount()} פעילות • ${this.getCompletedTasksCount()} הושלמו
-          </div>
         </div>
+        ${statsBar}
         <table class="modern-budget-table">
           <thead>
             <tr>
@@ -2864,23 +2889,179 @@ class LawOfficeManager {
     if (!container) return;
 
     const cardsHtml = entries
-      .map(
-        (entry) => `
-          <div class="timesheet-card">
-            <div>${safeText(entry.clientName || "")}</div>
-            <div>${safeText(entry.action || "")}</div>
-            <div>${entry.minutes || 0} דקות</div>
-            <div>${formatDate(entry.date)}</div>
-          </div>
-        `
-      )
+      .map((entry) => this.createTimesheetCard(entry))
       .join("");
 
+    // חישוב סטטיסטיקה מלאה
+    const stats = window.StatisticsModule.calculateTimesheetStatistics(
+      this.timesheetEntries || []
+    );
+    const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
+
     container.innerHTML = `
-      <div class="timesheet-cards">
+      <div class="modern-cards-header">
+        <h3 class="modern-cards-title">
+          <i class="fas fa-clock"></i>
+          רשומות שעות
+        </h3>
+        <div class="modern-cards-subtitle">
+          ${entries.length} רשומות • ${this.getTotalMinutes(entries)} דקות
+        </div>
+      </div>
+      ${statsBar}
+      <div class="timesheet-cards-grid">
         ${cardsHtml}
       </div>
     `;
+  }
+
+  createTimesheetCard(entry) {
+    const safeEntry = {
+      id: entry.id || entry.entryId || Date.now(),
+      clientName: entry.clientName || "",
+      action: entry.action || "",
+      minutes: entry.minutes || 0,
+      date: entry.date || new Date().toISOString(),
+      fileNumber: entry.fileNumber || "",
+      notes: entry.notes || ""
+    };
+
+    const hours = Math.round((safeEntry.minutes / 60) * 10) / 10;
+    const safeClientName = safeText(safeEntry.clientName);
+    const safeAction = safeText(safeEntry.action);
+    const safeFileNumber = safeText(safeEntry.fileNumber);
+    const safeNotes = safeText(safeEntry.notes);
+
+    return `
+      <div class="linear-minimal-card timesheet-card" data-entry-id="${safeEntry.id}" onclick="manager.expandTimesheetCard('${safeEntry.id}', event)">
+        <div class="linear-card-content">
+          <h3 class="linear-card-title">
+            ${safeAction}
+          </h3>
+          <div class="linear-progress-section">
+            <div class="linear-time-info">
+              <div class="time-item actual">
+                <span class="time-value">${hours}h</span>
+                <span class="time-label">${safeEntry.minutes} דק'</span>
+              </div>
+              <div class="time-item estimated">
+                <span class="time-value">${formatShort(safeEntry.date)}</span>
+                <span class="time-label">תאריך</span>
+              </div>
+            </div>
+          </div>
+          <div class="linear-card-meta">
+            <div class="linear-client-row">
+              <span class="linear-client-label">לקוח:</span>
+              <span class="linear-client-name">
+                ${safeClientName}
+              </span>
+            </div>
+            ${safeFileNumber ? `
+            <div class="linear-deadline-row">
+              <span class="linear-progress-label">תיק:</span>
+              <span class="deadline-info">
+                ${safeFileNumber}
+              </span>
+            </div>
+            ` : ''}
+            ${safeNotes ? `
+            <div class="linear-deadline-row">
+              <span class="linear-progress-label">הערות:</span>
+              <span class="deadline-info" style="color: #6b7280; font-size: 12px;">
+                ${safeNotes}
+              </span>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+        <button class="linear-expand-btn" onclick="event.stopPropagation(); manager.showEditTimesheetDialog('${safeEntry.id}')" title="ערוך" style="position: absolute; bottom: 15px; left: 15px;">
+          <i class="fas fa-edit"></i>
+        </button>
+      </div>
+    `;
+  }
+
+  getTotalMinutes(entries) {
+    return entries.reduce((total, entry) => total + (entry.minutes || 0), 0);
+  }
+
+  expandTimesheetCard(entryId, event) {
+    event.stopPropagation();
+    const entry = this.timesheetEntries.find((e) => e.id == entryId || e.entryId == entryId);
+    if (!entry) return;
+
+    this.showExpandedTimesheetCard(entry);
+  }
+
+  showExpandedTimesheetCard(entry) {
+    const safeEntry = {
+      id: entry.id || entry.entryId || Date.now(),
+      clientName: safeText(entry.clientName || ""),
+      action: safeText(entry.action || ""),
+      minutes: entry.minutes || 0,
+      date: entry.date || new Date().toISOString(),
+      fileNumber: safeText(entry.fileNumber || ""),
+      notes: safeText(entry.notes || "")
+    };
+
+    const hours = Math.round((safeEntry.minutes / 60) * 10) / 10;
+
+    const expandedContent = `
+      <div class="linear-expanded-overlay" onclick="manager.closeExpandedCard(event)">
+        <div class="linear-expanded-card" onclick="event.stopPropagation()">
+          <div class="linear-expanded-header">
+            <h2 class="linear-expanded-title">${safeEntry.action}</h2>
+            <button class="linear-close-btn" onclick="manager.closeExpandedCard(event)">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="linear-expanded-body">
+            <div class="linear-info-grid">
+              <div class="linear-info-item">
+                <label>לקוח:</label>
+                <span>${safeEntry.clientName}</span>
+              </div>
+              <div class="linear-info-item">
+                <label>תאריך:</label>
+                <span>${formatDate(safeEntry.date)}</span>
+              </div>
+              <div class="linear-info-item">
+                <label>זמן:</label>
+                <span>${hours}h (${safeEntry.minutes} דקות)</span>
+              </div>
+              ${safeEntry.fileNumber ? `
+              <div class="linear-info-item">
+                <label>תיק:</label>
+                <span>${safeEntry.fileNumber}</span>
+              </div>
+              ` : ''}
+            </div>
+            ${safeEntry.notes ? `
+            <div class="linear-expanded-section">
+              <h3>הערות</h3>
+              <p>${safeEntry.notes}</p>
+            </div>
+            ` : ''}
+            <div class="linear-expanded-actions">
+              <button class="linear-action-btn primary" onclick="manager.showEditTimesheetDialog('${safeEntry.id}'); manager.closeExpandedCard(event)">
+                <i class="fas fa-edit"></i>
+                ערוך
+              </button>
+              <button class="linear-action-btn secondary" onclick="manager.closeExpandedCard(event)">
+                סגור
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", expandedContent);
+    setTimeout(() => {
+      const overlay = document.querySelector(".linear-expanded-overlay");
+      if (overlay) overlay.classList.add("active");
+    }, 10);
   }
 
   renderTimesheetTable(entries) {
@@ -2918,8 +3099,24 @@ class LawOfficeManager {
       )
       .join("");
 
+    // חישוב סטטיסטיקה מלאה
+    const stats = window.StatisticsModule.calculateTimesheetStatistics(
+      this.timesheetEntries || []
+    );
+    const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
+
     tableContainer.innerHTML = `
     <div class="modern-table-container">
+      <div class="modern-table-header">
+        <h3 class="modern-table-title">
+          <i class="fas fa-clock"></i>
+          רשומות שעות
+        </h3>
+        <div class="modern-cards-subtitle">
+          ${entries.length} רשומות מתוך ${(this.timesheetEntries || []).length}
+        </div>
+      </div>
+      ${statsBar}
       <table class="modern-timesheet-table">
         <thead>
           <tr>

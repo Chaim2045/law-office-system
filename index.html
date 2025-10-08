@@ -87,9 +87,30 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="statistics.css" />
   </head>
 
   <body>
+    <!-- ===== בועות מרחפות - אנימציה ברקע ===== -->
+    <!-- FLOATING BUBBLES ANIMATION -->
+    <div class="bubbles-container" id="bubblesContainer">
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+    </div>
+
     <!-- ===== מערכת התראות (מוסתרת עד כניסה למערכת) ===== -->
     <!-- NOTIFICATION SYSTEM (Hidden until login) -->
     <div id="interfaceElements" class="hidden">
@@ -122,7 +143,7 @@
     <div class="app-container" id="appContainer">
       <!-- ===== ניווט צדדי ===== -->
       <!-- SIDEBAR NAVIGATION -->
-      <div class="minimal-sidebar" id="minimalSidebar">
+      <div class="minimal-sidebar hidden" id="minimalSidebar">
         <div class="sidebar-brand">
           <div class="brand-icon">
             <i class="fas fa-balance-scale"></i>
@@ -194,28 +215,43 @@
       <main class="main-content">
         <!-- ===== אזור כניסה למערכת ===== -->
         <!-- LOGIN SECTION -->
-        <div class="login-section" id="loginSection">
-          <h3>כניסה למערכת</h3>
-          <form id="loginForm">
-            <div class="form-group">
-              <label for="password">סיסמה</label>
-              <input
-                type="password"
-                id="password"
-                placeholder="הזן סיסמה"
-                autocomplete="current-password"
-                required
-              />
-            </div>
-            <div class="error-message hidden" id="errorMessage">
-              סיסמה שגויה
-            </div>
-            <br />
-            <button type="submit" class="btn">
-              <i class="fas fa-sign-in-alt"></i>
-              כניסה
-            </button>
-          </form>
+        <div class="login-wrapper" id="loginSection">
+          <!-- Logo - Outside the card -->
+          <div class="login-logo">
+            <img src="images/logo.png" alt="משרד עו"ד גיא הרשקוביץ" class="logo-image" />
+            <h1>משרד עו"ד גיא הרשקוביץ</h1>
+            <p>מערכת ניהול מתקדמת</p>
+          </div>
+
+          <!-- Login Card -->
+          <div class="login-card">
+            <h3>כניסה למערכת</h3>
+            <form id="loginForm">
+              <div class="form-group">
+                <label for="password">סיסמה</label>
+                <input
+                  type="password"
+                  id="password"
+                  placeholder="הזן סיסמה"
+                  autocomplete="current-password"
+                  required
+                />
+              </div>
+              <div class="error-message hidden" id="errorMessage">
+                סיסמה שגויה
+              </div>
+              <br />
+              <button type="submit" class="btn">
+                <i class="fas fa-sign-in-alt"></i>
+                כניסה
+              </button>
+            </form>
+          </div>
+
+          <!-- Login Footer -->
+          <div class="login-footer">
+            <p>© 2025 כל הזכויות שמורות למשרד עורכי דין גיא הרשקוביץ וחיים פרץ</p>
+          </div>
         </div>
 
         <!-- ===== מסך ברוך הבא ===== -->
@@ -709,7 +745,7 @@
 
     <!-- ===== כותרת תחתונה ראשית ===== -->
     <!-- MAIN FOOTER -->
-    <footer class="main-footer">
+    <footer class="main-footer hidden" id="mainFooter">
       <div class="footer-content">
         <div class="system-status">
           <span class="status-dot"></span>
@@ -994,7 +1030,8 @@
     <!-- ===== סקריפטים וסגנונות ===== -->
     <!-- SCRIPTS AND STYLES -->
     <script src="api.js?v=3.3.0"></script>
-    <script src="script.js?v=3.3.0"></script>
+    <script src="statistics.js?v=1.2.0"></script>
+    <script src="script.js?v=4.10.0"></script>
 
     <!-- Additional CSS for animations -->
     <style>
