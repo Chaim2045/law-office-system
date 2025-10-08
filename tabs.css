@@ -33,27 +33,38 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-/* ===== Tab Button - דומה לview-tabs ===== */
+/* ===== Tab Button - דומה לview-tabs אבל יותר גדול ===== */
 .tab-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: 10px;
+  padding: 12px 28px;
   background: transparent;
   border: none;
-  border-radius: 9px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 15px;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
   transition: all 0.25s ease;
-  min-width: 140px;
+  min-width: 160px;
   justify-content: center;
   position: relative;
 }
 
+.tab-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  opacity: 0;
+  transition: all 0.25s ease;
+  z-index: -1;
+}
+
 .tab-button i {
-  font-size: 16px;
+  font-size: 17px;
   transition: all 0.25s ease;
 }
 
@@ -68,18 +79,35 @@
   transform: scale(1.1);
 }
 
-/* ===== Active State - gradient כמו view-tabs ===== */
+/* ===== Active State - עם עיגול יפה ===== */
+.tab-button.active::before {
+  opacity: 1;
+}
+
 .tab-button.active {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   transform: translateY(-1px);
+  position: relative;
+  z-index: 1;
+}
+
+.tab-button.active::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px white;
 }
 
 .tab-button.active i {
   color: white;
-  font-size: 17px;
+  font-size: 18px;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
