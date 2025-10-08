@@ -1171,98 +1171,7 @@ class ClientValidation {
 /**
  * Table pagination helper
  */
-class TablePagination {
-  constructor(pageSize = 20) {
-    this.pageSize = pageSize;
-    this.currentPage = 1;
-  }
-
-  getPage(data, page = this.currentPage) {
-    if (!data || !Array.isArray(data)) {
-      return {
-        data: [],
-        currentPage: 1,
-        totalPages: 0,
-        totalItems: 0,
-        hasNext: false,
-        hasPrev: false,
-      };
-    }
-
-    const startIndex = (page - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-
-    return {
-      data: data.slice(startIndex, endIndex),
-      currentPage: page,
-      totalPages: Math.ceil(data.length / this.pageSize),
-      totalItems: data.length,
-      hasNext: endIndex < data.length,
-      hasPrev: page > 1,
-    };
-  }
-
-  renderControls(containerId, paginationData, onPageChange) {
-    const container = document.getElementById(containerId);
-    if (!container || paginationData.totalPages <= 1) {
-      if (container) container.innerHTML = "";
-      return;
-    }
-
-    let controlsHTML = `
-      <div class="table-pagination">
-        <button class="pagination-btn ${
-          !paginationData.hasPrev ? "disabled" : ""
-        }" 
-                onclick="${onPageChange}(${paginationData.currentPage - 1})" 
-                ${!paginationData.hasPrev ? "disabled" : ""}>
-          <i class="fas fa-chevron-right"></i> הקודם
-        </button>
-    `;
-
-    const maxButtons = 5;
-    let startPage = Math.max(
-      1,
-      paginationData.currentPage - Math.floor(maxButtons / 2)
-    );
-    let endPage = Math.min(
-      paginationData.totalPages,
-      startPage + maxButtons - 1
-    );
-
-    if (endPage - startPage + 1 < maxButtons) {
-      startPage = Math.max(1, endPage - maxButtons + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      controlsHTML += `
-        <button class="pagination-btn page-number ${
-          i === paginationData.currentPage ? "active" : ""
-        }" 
-                onclick="${onPageChange}(${i})">
-          ${i}
-        </button>
-      `;
-    }
-
-    controlsHTML += `
-        <button class="pagination-btn ${
-          !paginationData.hasNext ? "disabled" : ""
-        }" 
-                onclick="${onPageChange}(${paginationData.currentPage + 1})" 
-                ${!paginationData.hasNext ? "disabled" : ""}>
-          הבא <i class="fas fa-chevron-left"></i>
-        </button>
-        <div class="pagination-info">
-          עמוד ${paginationData.currentPage} מתוך ${paginationData.totalPages} 
-          (${paginationData.totalItems} רשומות)
-        </div>
-      </div>
-    `;
-
-    container.innerHTML = controlsHTML;
-  }
-}
+// Old TablePagination class removed - now using PaginationModule from pagination.js
 
 /* === Main Application Manager === */
 
@@ -1288,8 +1197,14 @@ class LawOfficeManager {
     this.timesheetSortDirection = "asc";
     this.currentBudgetSort = "recent";
     this.currentTimesheetSort = "recent";
-    this.budgetPagination = new TablePagination(20);
-    this.timesheetPagination = new TablePagination(20);
+
+    // Initialize Pagination Managers
+    this.budgetPagination = window.PaginationModule.create({ pageSize: 20 });
+    this.timesheetPagination = window.PaginationModule.create({ pageSize: 20 });
+
+    // Initialize Activity Logger
+    this.activityLogger = null; // Will be initialized after Firebase setup
+
     this.currentBudgetPage = 1;
     this.currentTimesheetPage = 1;
     this.clientValidation = new ClientValidation(this);
@@ -1426,6 +1341,11 @@ class LawOfficeManager {
       // Load data while welcome screen is showing
       try {
         await this.loadData();
+
+        // Log login activity (after data loaded and activity logger initialized)
+        if (this.activityLogger) {
+          await this.activityLogger.logLogin();
+        }
       } catch (error) {
         this.showNotification("שגיאה בטעינת נתונים", "error");
         console.error("Error loading data:", error);
@@ -1630,6 +1550,17 @@ class LawOfficeManager {
       // Update loader text
       this.updateLoaderText("מערכת מוכנה!");
 
+      // Initialize Activity Logger now that Firebase is ready
+      if (!this.activityLogger && window.ActivityLoggerModule) {
+        this.activityLogger = window.ActivityLoggerModule.create(firebase);
+        this.activityLogger.setCurrentUser({
+          uid: this.currentUser,
+          email: this.currentUser,
+          displayName: this.currentUser
+        });
+        console.log('✅ Activity Logger initialized');
+      }
+
       this.connectionStatus = "connected";
       this.updateConnectionStatus?.("🟢 מחובר");
     } catch (error) {
@@ -1743,6 +1674,11 @@ class LawOfficeManager {
       }
     });
 
+    this.renderTimesheetEntries();
+  }
+
+  loadMoreTimesheetEntries() {
+    const result = this.timesheetPagination.loadMore();
     this.renderTimesheetEntries();
   }
 
@@ -1880,6 +1816,11 @@ class LawOfficeManager {
       // Reload from Firebase to get the saved task
       await this.loadDataFromFirebase();
 
+      // Log activity
+      if (this.activityLogger) {
+        await this.activityLogger.logCreateTask(budgetTask.id, budgetTask);
+      }
+
       this.clearBudgetForm();
       hideProgress();
       showSuccessFeedback("המשימה נוספה בהצלחה");
@@ -2016,6 +1957,11 @@ class LawOfficeManager {
       await this.loadDataFromFirebase();
       this.clientValidation.updateBlockedClients();
 
+      // Log activity
+      if (this.activityLogger) {
+        await this.activityLogger.logCreateTimesheet(tempEntry.id, timesheetEntry);
+      }
+
       showSuccessFeedback("הפעולה נרשמה בשעתון בהצלחה");
     } catch (error) {
       console.error("Error in addTimesheetEntry:", error);
@@ -2053,11 +1999,9 @@ class LawOfficeManager {
     }
 
     const tasksToShow = this.filteredBudgetTasks || this.budgetTasks || [];
-    const paginationData = this.budgetPagination.getPage(
-      tasksToShow,
-      this.currentBudgetPage
-    );
-    const paginatedTasks = paginationData.data;
+
+    // Use new PaginationModule: set items and get current page
+    const paginatedTasks = this.budgetPagination.setItems(tasksToShow);
 
     if (budgetContainer && !budgetContainer.classList.contains("hidden")) {
       this.renderBudgetCards(paginatedTasks);
@@ -2066,12 +2010,6 @@ class LawOfficeManager {
     if (tableContainer && !tableContainer.classList.contains("hidden")) {
       this.renderBudgetTable(paginatedTasks);
     }
-
-    this.budgetPagination.renderControls(
-      "budgetPaginationControls",
-      paginationData,
-      "window.manager.changeBudgetPage"
-    );
   }
 
   renderBudgetCards(tasks) {
@@ -2083,6 +2021,22 @@ class LawOfficeManager {
     // שימוש במודול הסטטיסטיקה החדש - חישוב על כל המשימות (לא מסוננות)
     const stats = window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks);
     const statsBar = window.StatisticsModule.createBudgetStatsBar(stats, this.currentTaskFilter || 'active');
+
+    // Get pagination status
+    const paginationStatus = this.budgetPagination.getStatus();
+
+    // Generate load more button HTML
+    const loadMoreButton = paginationStatus.hasMore ? `
+      <div class="pagination-controls">
+        <button class="load-more-btn" onclick="manager.loadMoreBudgetTasks()">
+          <i class="fas fa-chevron-down"></i>
+          טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
+        </button>
+        <div class="pagination-info">
+          מציג ${paginationStatus.displayedItems} מתוך ${paginationStatus.filteredItems} רשומות
+        </div>
+      </div>
+    ` : '';
 
     container.innerHTML = `
       <div class="modern-cards-container">
@@ -2110,6 +2064,7 @@ class LawOfficeManager {
         <div class="budget-cards-grid">
           ${tasksHtml}
         </div>
+        ${loadMoreButton}
       </div>
     `;
   }
@@ -2238,6 +2193,22 @@ class LawOfficeManager {
     const stats = window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks);
     const statsBar = window.StatisticsModule.createBudgetStatsBar(stats, this.currentTaskFilter || 'active');
 
+    // Get pagination status
+    const paginationStatus = this.budgetPagination.getStatus();
+
+    // Generate load more button HTML
+    const loadMoreButton = paginationStatus.hasMore ? `
+      <div class="pagination-controls">
+        <button class="load-more-btn" onclick="manager.loadMoreBudgetTasks()">
+          <i class="fas fa-chevron-down"></i>
+          טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
+        </button>
+        <div class="pagination-info">
+          מציג ${paginationStatus.displayedItems} מתוך ${paginationStatus.filteredItems} רשומות
+        </div>
+      </div>
+    ` : '';
+
     tableContainer.innerHTML = `
       <div class="modern-table-container">
         <div class="modern-table-header">
@@ -2277,6 +2248,7 @@ class LawOfficeManager {
             ${tasks.map((task) => this.createTableRow(task)).join("")}
           </tbody>
         </table>
+        ${loadMoreButton}
       </div>
     `;
   }
@@ -2974,11 +2946,9 @@ class LawOfficeManager {
 
     const entriesToShow =
       this.filteredTimesheetEntries || this.timesheetEntries || [];
-    const paginationData = this.timesheetPagination.getPage(
-      entriesToShow,
-      this.currentTimesheetPage
-    );
-    const paginatedEntries = paginationData.data;
+
+    // Use new PaginationModule: set items and get current page
+    const paginatedEntries = this.timesheetPagination.setItems(entriesToShow);
 
     if (
       timesheetContainer &&
@@ -2990,12 +2960,6 @@ class LawOfficeManager {
     if (tableContainer && !tableContainer.classList.contains("hidden")) {
       this.renderTimesheetTable(paginatedEntries);
     }
-
-    this.timesheetPagination.renderControls(
-      "timesheetPaginationControls",
-      paginationData,
-      "window.manager.changeTimesheetPage"
-    );
   }
 
   renderTimesheetCards(entries) {
@@ -3011,6 +2975,22 @@ class LawOfficeManager {
       this.timesheetEntries || []
     );
     const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
+
+    // Get pagination status
+    const paginationStatus = this.timesheetPagination.getStatus();
+
+    // Generate load more button HTML
+    const loadMoreButton = paginationStatus.hasMore ? `
+      <div class="pagination-controls">
+        <button class="load-more-btn" onclick="manager.loadMoreTimesheetEntries()">
+          <i class="fas fa-chevron-down"></i>
+          טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
+        </button>
+        <div class="pagination-info">
+          מציג ${paginationStatus.displayedItems} מתוך ${paginationStatus.filteredItems} רשומות
+        </div>
+      </div>
+    ` : '';
 
     container.innerHTML = `
       <div class="modern-cards-container">
@@ -3040,6 +3020,7 @@ class LawOfficeManager {
         <div class="timesheet-cards-grid">
           ${cardsHtml}
         </div>
+        ${loadMoreButton}
       </div>
     `;
   }
@@ -3237,6 +3218,22 @@ class LawOfficeManager {
     );
     const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
 
+    // Get pagination status
+    const paginationStatus = this.timesheetPagination.getStatus();
+
+    // Generate load more button HTML
+    const loadMoreButton = paginationStatus.hasMore ? `
+      <div class="pagination-controls">
+        <button class="load-more-btn" onclick="manager.loadMoreTimesheetEntries()">
+          <i class="fas fa-chevron-down"></i>
+          טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
+        </button>
+        <div class="pagination-info">
+          מציג ${paginationStatus.displayedItems} מתוך ${paginationStatus.filteredItems} רשומות
+        </div>
+      </div>
+    ` : '';
+
     tableContainer.innerHTML = `
       <div class="modern-table-container">
         <div class="modern-table-header">
@@ -3281,6 +3278,7 @@ class LawOfficeManager {
             </tbody>
           </table>
         </div>
+        ${loadMoreButton}
       </div>
     `;
   }
@@ -4062,6 +4060,14 @@ class LawOfficeManager {
       }
       await completeTaskFirebase(task.firebaseDocId, notes);
 
+      // Log activity
+      if (this.activityLogger) {
+        await this.activityLogger.logCompleteTask(
+          task.id,
+          task.taskDescription || task.description
+        );
+      }
+
       // Show success in modal
       if (popup) {
         popup.querySelector(".popup-content").innerHTML = `
@@ -4220,6 +4226,11 @@ class LawOfficeManager {
       }
     });
 
+    this.renderBudgetTasks();
+  }
+
+  loadMoreBudgetTasks() {
+    const result = this.budgetPagination.loadMore();
     this.renderBudgetTasks();
   }
 
