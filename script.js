@@ -446,9 +446,14 @@ async function loadTimesheetFromFirebase(employee) {
     const entries = [];
 
     snapshot.forEach((doc) => {
+      const data = doc.data();
+
+      // Convert Firebase Timestamps to JavaScript Date objects
       entries.push({
         id: doc.id,
-        ...doc.data(),
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
       });
     });
 
