@@ -4,59 +4,73 @@
  *
  * נוצר: 08/10/2025
  * עודכן: 08/10/2025
- * גרסה: 1.2.0
+ * גרסה: 2.0.0
  *
  * תכונות:
- * - סרגלי סטטיסטיקה נייטרליים מקצועיים
- * - שורת מידע חכם (stats-smart-row) עם מטרות והתקדמות
- * - סטטוסים צבעוניים: מעולה (ירוק) / אזהרה (צהוב) / סכנה (אדום)
+ * - Grid layout מודרני עם כרטיסים
+ * - כל פריט בכרטיס נפרד עם hover effects
+ * - צבעים וגרדיאנטים לפי סוג הסטטיסטיקה
+ * - פס כחול מסביב לשורת המידע החכמה
  * - Responsive מלא לכל גדלי מסך
  */
 
 /* ===== סרגל סטטיסטיקה ראשי ===== */
 .stats-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 12px;
   border: 1px solid #e5e7eb;
   direction: rtl;
-  flex-wrap: wrap;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
 }
 
 .stats-bar:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 /* ===== פריט בסרגל ===== */
 .stats-item {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.stats-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
 }
 
 .stats-label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stats-value {
-  font-size: 14px;
+  font-size: 24px;
   font-weight: 700;
   color: #111827;
+  line-height: 1;
 }
 
 /* ===== מפריד בין פריטים ===== */
 .stats-separator {
-  color: #d1d5db;
-  font-weight: 600;
-  user-select: none;
+  display: none; /* מוסתר כי עכשיו יש grid */
 }
 
 /* ===== סטטוסים שונים ===== */
@@ -80,87 +94,120 @@
 /* ===== פריטים מיוחדים ===== */
 
 /* משימות שהושלמו */
+.stats-item.stats-completed {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-color: #059669;
+}
+
+.stats-item.stats-completed .stats-label {
+  color: #065f46;
+}
+
 .stats-item.stats-completed .stats-value {
   color: #059669;
 }
 
 /* אזהרה - חורגות תקציב */
 .stats-item.stats-warning {
-  padding: 4px 8px;
-  background: rgba(251, 191, 36, 0.15);
-  border-radius: 6px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #d97706;
 }
 
-.stats-item.stats-warning .stats-label,
+.stats-item.stats-warning .stats-label {
+  color: #92400e;
+}
+
 .stats-item.stats-warning .stats-value {
   color: #d97706;
-  font-weight: 600;
 }
 
 /* דחוף */
 .stats-item.stats-urgent {
-  padding: 4px 8px;
-  background: rgba(239, 68, 68, 0.15);
-  border-radius: 6px;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-color: #dc2626;
 }
 
-.stats-item.stats-urgent .stats-label,
+.stats-item.stats-urgent .stats-label {
+  color: #991b1b;
+}
+
 .stats-item.stats-urgent .stats-value {
   color: #dc2626;
-  font-weight: 600;
 }
 
 /* התקדמות */
+.stats-item.stats-progress {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #2563eb;
+}
+
+.stats-item.stats-progress .stats-label {
+  color: #1e40af;
+}
+
 .stats-item.stats-progress .stats-value {
   color: #2563eb;
-  font-size: 15px;
 }
 
 /* הדגשה */
 .stats-item.stats-highlight {
-  padding: 4px 8px;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: 6px;
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  border-color: #4f46e5;
 }
 
-.stats-item.stats-highlight .stats-label,
+.stats-item.stats-highlight .stats-label {
+  color: #3730a3;
+}
+
 .stats-item.stats-highlight .stats-value {
-  color: #2563eb;
-  font-weight: 600;
+  color: #4f46e5;
 }
 
 /* ===== סטטיסטיקה חכמה ===== */
 
 /* שורה נוספת עם מידע חכם */
 .stats-smart-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  padding: 10px 20px;
+  padding: 20px;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-radius: 6px;
-  margin-top: 8px;
-  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  border: 2px solid #3b82f6;
   direction: rtl;
-  flex-wrap: wrap;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  transition: all 0.3s ease;
+}
+
+.stats-smart-row:hover {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  transform: translateY(-2px);
 }
 
 .stats-smart-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .stats-smart-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   color: #1e40af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stats-smart-value {
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   color: #1e3a8a;
+  line-height: 1;
 }
 
 /* סטטוס - בקצב טוב/דורש תשומת לב */
