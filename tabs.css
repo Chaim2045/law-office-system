@@ -37,17 +37,17 @@
 .tab-button {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 28px;
+  gap: 11px;
+  padding: 14px 32px;
   background: transparent;
   border: none;
-  border-radius: 10px;
-  font-size: 15px;
+  border-radius: 11px;
+  font-size: 16px;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
   transition: all 0.25s ease;
-  min-width: 160px;
+  min-width: 170px;
   justify-content: center;
   position: relative;
 }
@@ -56,7 +56,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 10px;
+  border-radius: 11px;
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   opacity: 0;
   transition: all 0.25s ease;
@@ -64,7 +64,7 @@
 }
 
 .tab-button i {
-  font-size: 17px;
+  font-size: 18px;
   transition: all 0.25s ease;
 }
 
@@ -107,7 +107,7 @@
 
 .tab-button.active i {
   color: white;
-  font-size: 18px;
+  font-size: 19px;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 

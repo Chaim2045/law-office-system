@@ -955,10 +955,10 @@ button[onclick*="addBudget"]:hover {
 /* View tabs */
 .view-tabs {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   background: white;
   border-radius: var(--radius-md);
-  padding: 4px;
+  padding: 6px;
   border: 1px solid var(--gray-200);
   box-shadow: var(--shadow-sm);
 }
@@ -966,12 +966,12 @@ button[onclick*="addBudget"]:hover {
 .view-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--gray-600);
   cursor: pointer;
