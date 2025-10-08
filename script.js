@@ -2086,12 +2086,6 @@ class LawOfficeManager {
 
     container.innerHTML = `
       <div class="modern-cards-container">
-        <div class="modern-cards-header">
-          <h3 class="modern-cards-title">
-            <i class="fas fa-chart-bar"></i>
-            משימות מתוקצבות
-          </h3>
-        </div>
         <div class="stats-with-sort-row">
           ${statsBar}
           <div class="sort-dropdown">
@@ -3014,15 +3008,6 @@ class LawOfficeManager {
 
     container.innerHTML = `
       <div class="modern-cards-container">
-        <div class="modern-cards-header">
-          <h3 class="modern-cards-title">
-            <i class="fas fa-clock"></i>
-            רשומות שעות
-          </h3>
-          <div class="modern-cards-subtitle">
-            ${entries.length} רשומות • ${this.getTotalMinutes(entries)} דקות
-          </div>
-        </div>
         <div class="stats-with-sort-row">
           ${statsBar}
           <div class="sort-dropdown">

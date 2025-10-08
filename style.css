@@ -1565,7 +1565,7 @@ button[onclick*="addBudget"]:hover {
   align-items: center;
   margin: var(--space-md) auto var(--space-lg) auto;
   gap: var(--space-xl);
-  padding: var(--space-lg) var(--space-xl);
+  padding: 12px 20px;
   background: linear-gradient(135deg, var(--gray-50) 0%, #f8fafc 100%);
   border-radius: var(--radius-xl);
   border: 2px solid transparent;
