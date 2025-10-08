@@ -2086,12 +2086,6 @@ class LawOfficeManager {
 
     container.innerHTML = `
       <div class="modern-cards-container">
-        <div class="modern-cards-header">
-          <h3 class="modern-cards-title">
-            <i class="fas fa-chart-bar"></i>
-            משימות מתוקצבות
-          </h3>
-        </div>
         <div class="stats-with-sort-row">
           ${statsBar}
           <div class="sort-dropdown">
@@ -2240,12 +2234,6 @@ class LawOfficeManager {
 
     tableContainer.innerHTML = `
       <div class="modern-table-container">
-        <div class="modern-table-header">
-          <h3 class="modern-table-title">
-            <i class="fas fa-chart-bar"></i>
-            משימות מתוקצבות
-          </h3>
-        </div>
         <div class="stats-with-sort-row">
           ${statsBar}
           <div class="sort-dropdown">
@@ -4226,14 +4214,15 @@ class LawOfficeManager {
   switchBudgetView(view) {
     this.currentBudgetView = view;
 
-    document.querySelectorAll("#budgetTab .view-tab").forEach((tab) => {
+    // סינכרון כל הכפתורים (גם בהדר וגם בתוך הטאב)
+    document.querySelectorAll(".view-tab[data-view]").forEach((tab) => {
       tab.classList.remove("active");
     });
 
-    const activeTab = document.querySelector(
-      `#budgetTab .view-tab[data-view="${view}"]`
-    );
-    if (activeTab) activeTab.classList.add("active");
+    // הפעלת הכפתורים הנכונים
+    document.querySelectorAll(`.view-tab[data-view="${view}"]`).forEach((tab) => {
+      tab.classList.add("active");
+    });
 
     const budgetContainer = document.getElementById("budgetContainer");
     const budgetTableContainer = document.getElementById(
@@ -4269,14 +4258,15 @@ class LawOfficeManager {
   switchTimesheetView(view) {
     this.currentTimesheetView = view;
 
-    document.querySelectorAll("#timesheetTab .view-tab").forEach((tab) => {
+    // סינכרון כל הכפתורים של שעתון
+    document.querySelectorAll("#timesheetTab .view-tab, #unifiedHeaderTimesheet .view-tab").forEach((tab) => {
       tab.classList.remove("active");
     });
 
-    const activeTab = document.querySelector(
-      `#timesheetTab .view-tab[data-view="${view}"]`
-    );
-    if (activeTab) activeTab.classList.add("active");
+    // הפעלת הכפתורים הנכונים
+    document.querySelectorAll(`#timesheetTab .view-tab[data-view="${view}"], #unifiedHeaderTimesheet .view-tab[data-view="${view}"]`).forEach((tab) => {
+      tab.classList.add("active");
+    });
 
     const timesheetContainer = document.getElementById("timesheetContainer");
     const timesheetTableContainer = document.getElementById(
