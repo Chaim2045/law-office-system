@@ -4366,24 +4366,32 @@ function switchTab(tabName) {
     plusButton.classList.remove("active");
   }
 
+  // הסרת active מכל הכפתורים והתכנים
   document.querySelectorAll(".tab-button").forEach((btn) => {
     btn.classList.remove("active");
   });
-
-  if (event && event.target) {
-    event.target.classList.add("active");
-  }
 
   document.querySelectorAll(".tab-content").forEach((content) => {
     content.classList.remove("active");
   });
 
+  // הוספת active לכפתור ולתוכן הנכונים
   if (tabName === "budget") {
     const budgetTab = document.getElementById("budgetTab");
     if (budgetTab) budgetTab.classList.add("active");
+
+    // הוספת active לכפתור התקצוב
+    document.querySelectorAll('.tab-button[onclick*="budget"]').forEach(btn => {
+      btn.classList.add("active");
+    });
   } else if (tabName === "timesheet") {
     const timesheetTab = document.getElementById("timesheetTab");
     if (timesheetTab) timesheetTab.classList.add("active");
+
+    // הוספת active לכפתור השעתון
+    document.querySelectorAll('.tab-button[onclick*="timesheet"]').forEach(btn => {
+      btn.classList.add("active");
+    });
 
     const dateField = document.getElementById("actionDate");
     if (dateField) {
@@ -4392,6 +4400,11 @@ function switchTab(tabName) {
   } else if (tabName === "reports") {
     const reportsTab = document.getElementById("reportsTab");
     if (reportsTab) reportsTab.classList.add("active");
+
+    // הוספת active לכפתור הדוחות
+    document.querySelectorAll('.tab-button[onclick*="reports"], .nav-item[onclick*="reports"]').forEach(btn => {
+      btn.classList.add("active");
+    });
 
     // הסתרת כפתור הפלוס בטאב דוחות - לא רלוונטי
     if (plusButton) {
