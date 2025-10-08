@@ -2203,14 +2203,7 @@ class LawOfficeManager {
                 ${deadlineIcon} ${formatShort(safeTask.deadline)}
               </span>
             </div>
-            ${(safeTask.createdAt || safeTask.updatedAt) ? `
-            <div class="linear-deadline-row">
-              <span class="linear-progress-label">נוצר:</span>
-              <span class="deadline-info" title="${formatDate(safeTask.createdAt || safeTask.updatedAt)}" style="color: #6b7280; font-size: 12px;">
-                📅 ${formatShort(safeTask.createdAt || safeTask.updatedAt)}
-              </span>
-            </div>
-            ` : ''}
+            ${window.DatesModule.getCreationDateHTML(safeTask)}
           </div>
         </div>
         <button class="linear-expand-btn" onclick="manager.expandTaskCard(${
@@ -2932,7 +2925,7 @@ class LawOfficeManager {
         <td>${safeText(safeTask.description)}</td>
         <td>${progress}%</td>
         <td>${formatDate(safeTask.deadline)}</td>
-        <td style="color: #6b7280; font-size: 13px;">${(safeTask.createdAt || safeTask.updatedAt) ? formatShort(safeTask.createdAt || safeTask.updatedAt) : '-'}</td>
+        <td style="color: #6b7280; font-size: 13px;">${window.DatesModule.getCreationDateTableCell(safeTask)}</td>
         <td>${statusDisplay}</td>
         <td class="actions-column">
           <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog(${
@@ -3092,14 +3085,7 @@ class LawOfficeManager {
               </span>
             </div>
             ` : ''}
-            ${(safeEntry.createdAt || safeEntry.date) ? `
-            <div class="linear-deadline-row">
-              <span class="linear-progress-label">נוצר:</span>
-              <span class="deadline-info" style="color: #6b7280; font-size: 12px;">
-                📅 ${formatShort(safeEntry.createdAt || safeEntry.date)}
-              </span>
-            </div>
-            ` : ''}
+            ${window.DatesModule.getCreationDateHTML(safeEntry)}
             ${safeNotes ? `
             <div class="linear-deadline-row">
               <span class="linear-progress-label">הערות:</span>
@@ -3221,7 +3207,7 @@ class LawOfficeManager {
             entry.clientName || ""
           )}</td>
           <td>${safeText(entry.fileNumber || "")}</td>
-          <td style="color: #6b7280; font-size: 13px;">${(entry.createdAt || entry.date) ? formatShort(entry.createdAt || entry.date) : '-'}</td>
+          <td style="color: #6b7280; font-size: 13px;">${window.DatesModule.getCreationDateTableCell(entry)}</td>
           <td>${safeText(entry.notes || "—")}</td>
           <td class="actions-column">
             <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${
