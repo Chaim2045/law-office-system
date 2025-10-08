@@ -1,0 +1,151 @@
+/**
+ * Sort Dropdown Styles - עיצוב תפריט מיון
+ * משרד עורכי דין - מערכת ניהול מתקדמת
+ *
+ * נוצר: 08/10/2025
+ * עודכן: 08/10/2025
+ * גרסה: 2.0.0 - Clean & Simple Next to Badge
+ *
+ * תכונות:
+ * - תפריט מיון פשוט ונקי
+ * - ממוקם לצד ה-badge מצד שמאל
+ * - עיצוב עקבי עם המערכת
+ * - Responsive מלא
+ */
+
+/* ===== Container - מכיל את Badge + Sort ===== */
+.stats-with-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  direction: rtl;
+  flex-wrap: wrap;
+}
+
+/* ===== Sort Dropdown ===== */
+.sort-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.sort-dropdown:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.sort-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.sort-label i {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.sort-select {
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.sort-select:hover {
+  border-color: #3b82f6;
+  background: #f9fafb;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ===== Responsive ===== */
+
+/* טאבלטים */
+@media (max-width: 1024px) {
+  .stats-with-sort-row {
+    gap: 12px;
+  }
+
+  .sort-dropdown {
+    padding: 8px 12px;
+  }
+
+  .sort-label {
+    font-size: 12px;
+  }
+
+  .sort-select {
+    font-size: 12px;
+    min-width: 120px;
+  }
+}
+
+/* מובייל גדול */
+@media (max-width: 768px) {
+  .stats-with-sort-row {
+    gap: 10px;
+  }
+
+  .sort-dropdown {
+    padding: 8px 10px;
+  }
+
+  .sort-label {
+    font-size: 11px;
+  }
+
+  .sort-label i {
+    font-size: 12px;
+  }
+
+  .sort-select {
+    font-size: 11px;
+    padding: 5px 8px;
+    min-width: 110px;
+  }
+}
+
+/* מובייל קטן */
+@media (max-width: 480px) {
+  .stats-with-sort-row {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .sort-dropdown {
+    flex: 1;
+    padding: 8px;
+  }
+
+  .sort-label {
+    font-size: 10px;
+  }
+
+  .sort-select {
+    flex: 1;
+    font-size: 10px;
+    min-width: auto;
+  }
+}

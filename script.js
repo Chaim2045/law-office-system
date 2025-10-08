@@ -1280,6 +1280,8 @@ class LawOfficeManager {
     this.budgetSortDirection = "asc";
     this.timesheetSortField = null;
     this.timesheetSortDirection = "asc";
+    this.currentBudgetSort = "recent";
+    this.currentTimesheetSort = "recent";
     this.budgetPagination = new TablePagination(20);
     this.timesheetPagination = new TablePagination(20);
     this.currentBudgetPage = 1;
@@ -1655,6 +1657,80 @@ class LawOfficeManager {
     this.filteredTimesheetEntries = [...this.timesheetEntries];
   }
 
+  filterTimesheetEntries() {
+    const filterSelect = document.getElementById('timesheetFilter');
+    if (!filterSelect) return;
+
+    const filterValue = filterSelect.value;
+    const now = new Date();
+
+    // Filter based on date range
+    if (filterValue === 'today') {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      this.filteredTimesheetEntries = this.timesheetEntries.filter(entry => {
+        if (!entry.date) return false;
+        const entryDate = new Date(entry.date);
+        const entryDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
+        return entryDay.getTime() === today.getTime();
+      });
+    } else if (filterValue === 'month') {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      this.filteredTimesheetEntries = this.timesheetEntries.filter(entry => {
+        if (!entry.date) return true;
+        const entryDate = new Date(entry.date);
+        return entryDate >= oneMonthAgo;
+      });
+    } else {
+      // Show all
+      this.filteredTimesheetEntries = [...this.timesheetEntries];
+    }
+
+    // Re-render
+    this.renderTimesheetEntries();
+  }
+
+  sortTimesheetEntries() {
+    const sortSelect = document.getElementById('timesheetSortSelect');
+    if (!sortSelect) return;
+
+    const sortValue = sortSelect.value;
+
+    // שמירת הבחירה הנוכחית
+    this.currentTimesheetSort = sortValue;
+
+    // מיון מהיר ויעיל
+    this.filteredTimesheetEntries.sort((a, b) => {
+      switch (sortValue) {
+        case 'recent':
+          // מיון לפי תאריך - הכי אחרון ראשון
+          const dateA = new Date(a.date || 0).getTime();
+          const dateB = new Date(b.date || 0).getTime();
+          return dateB - dateA;
+
+        case 'client':
+          // מיון לפי שם לקוח - עברית א-ת
+          const nameA = (a.clientName || '').trim();
+          const nameB = (b.clientName || '').trim();
+          if (!nameA && !nameB) return 0;
+          if (!nameA) return 1;
+          if (!nameB) return -1;
+          return nameA.localeCompare(nameB, 'he');
+
+        case 'hours':
+          // מיון לפי שעות - הכי גבוה ראשון
+          const minutesA = a.minutes || 0;
+          const minutesB = b.minutes || 0;
+          return minutesB - minutesA;
+
+        default:
+          return 0;
+      }
+    });
+
+    this.renderTimesheetEntries();
+  }
+
   async createClient() {
     const clientNameField = document.getElementById("clientName");
     const fileNumberField = document.getElementById("fileNumberInput");
@@ -1994,15 +2070,31 @@ class LawOfficeManager {
     const statsBar = window.StatisticsModule.createBudgetStatsBar(stats);
 
     container.innerHTML = `
-      <div class="modern-cards-header">
-        <h3 class="modern-cards-title">
-          <i class="fas fa-chart-bar"></i>
-          משימות מתוקצבות
-        </h3>
-      </div>
-      ${statsBar}
-      <div class="budget-cards-grid">
-        ${tasksHtml}
+      <div class="modern-cards-container">
+        <div class="modern-cards-header">
+          <h3 class="modern-cards-title">
+            <i class="fas fa-chart-bar"></i>
+            משימות מתוקצבות
+          </h3>
+        </div>
+        <div class="stats-with-sort-row">
+          ${statsBar}
+          <div class="sort-dropdown">
+            <label class="sort-label">
+              <i class="fas fa-sort-amount-down"></i>
+              מיין לפי:
+            </label>
+            <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks()">
+              <option value="recent" ${this.currentBudgetSort === 'recent' ? 'selected' : ''}>עדכון אחרון</option>
+              <option value="name" ${this.currentBudgetSort === 'name' ? 'selected' : ''}>שם (א-ת)</option>
+              <option value="deadline" ${this.currentBudgetSort === 'deadline' ? 'selected' : ''}>תאריך יעד</option>
+              <option value="progress" ${this.currentBudgetSort === 'progress' ? 'selected' : ''}>התקדמות</option>
+            </select>
+          </div>
+        </div>
+        <div class="budget-cards-grid">
+          ${tasksHtml}
+        </div>
       </div>
     `;
   }
@@ -2146,7 +2238,21 @@ class LawOfficeManager {
             משימות מתוקצבות
           </h3>
         </div>
-        ${statsBar}
+        <div class="stats-with-sort-row">
+          ${statsBar}
+          <div class="sort-dropdown">
+            <label class="sort-label">
+              <i class="fas fa-sort-amount-down"></i>
+              מיין לפי:
+            </label>
+            <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks()">
+              <option value="recent" ${this.currentBudgetSort === 'recent' ? 'selected' : ''}>עדכון אחרון</option>
+              <option value="name" ${this.currentBudgetSort === 'name' ? 'selected' : ''}>שם (א-ת)</option>
+              <option value="deadline" ${this.currentBudgetSort === 'deadline' ? 'selected' : ''}>תאריך יעד</option>
+              <option value="progress" ${this.currentBudgetSort === 'progress' ? 'selected' : ''}>התקדמות</option>
+            </select>
+          </div>
+        </div>
         <table class="modern-budget-table">
           <thead>
             <tr>
@@ -2899,18 +3005,33 @@ class LawOfficeManager {
     const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
 
     container.innerHTML = `
-      <div class="modern-cards-header">
-        <h3 class="modern-cards-title">
-          <i class="fas fa-clock"></i>
-          רשומות שעות
-        </h3>
-        <div class="modern-cards-subtitle">
-          ${entries.length} רשומות • ${this.getTotalMinutes(entries)} דקות
+      <div class="modern-cards-container">
+        <div class="modern-cards-header">
+          <h3 class="modern-cards-title">
+            <i class="fas fa-clock"></i>
+            רשומות שעות
+          </h3>
+          <div class="modern-cards-subtitle">
+            ${entries.length} רשומות • ${this.getTotalMinutes(entries)} דקות
+          </div>
         </div>
-      </div>
-      ${statsBar}
-      <div class="timesheet-cards-grid">
-        ${cardsHtml}
+        <div class="stats-with-sort-row">
+          ${statsBar}
+          <div class="sort-dropdown">
+            <label class="sort-label">
+              <i class="fas fa-sort-amount-down"></i>
+              מיין לפי:
+            </label>
+            <select class="sort-select" id="timesheetSortSelect" onchange="manager.sortTimesheetEntries()">
+              <option value="recent" ${this.currentTimesheetSort === 'recent' ? 'selected' : ''}>תאריך אחרון</option>
+              <option value="client" ${this.currentTimesheetSort === 'client' ? 'selected' : ''}>שם לקוח (א-ת)</option>
+              <option value="hours" ${this.currentTimesheetSort === 'hours' ? 'selected' : ''}>שעות (גבוה-נמוך)</option>
+            </select>
+          </div>
+        </div>
+        <div class="timesheet-cards-grid">
+          ${cardsHtml}
+        </div>
       </div>
     `;
   }
@@ -3106,35 +3227,50 @@ class LawOfficeManager {
     const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
 
     tableContainer.innerHTML = `
-    <div class="modern-table-container">
-      <div class="modern-table-header">
-        <h3 class="modern-table-title">
-          <i class="fas fa-clock"></i>
-          רשומות שעות
-        </h3>
-        <div class="modern-cards-subtitle">
-          ${entries.length} רשומות מתוך ${(this.timesheetEntries || []).length}
+      <div class="modern-table-container">
+        <div class="modern-table-header">
+          <h3 class="modern-table-title">
+            <i class="fas fa-clock"></i>
+            רשומות שעות
+          </h3>
+          <div class="modern-table-subtitle">
+            ${entries.length} רשומות מתוך ${(this.timesheetEntries || []).length}
+          </div>
+        </div>
+        <div class="stats-with-sort-row">
+          ${statsBar}
+          <div class="sort-dropdown">
+            <label class="sort-label">
+              <i class="fas fa-sort-amount-down"></i>
+              מיין לפי:
+            </label>
+            <select class="sort-select" id="timesheetSortSelect" onchange="manager.sortTimesheetEntries()">
+              <option value="recent" ${this.currentTimesheetSort === 'recent' ? 'selected' : ''}>תאריך אחרון</option>
+              <option value="client" ${this.currentTimesheetSort === 'client' ? 'selected' : ''}>שם לקוח (א-ת)</option>
+              <option value="hours" ${this.currentTimesheetSort === 'hours' ? 'selected' : ''}>שעות (גבוה-נמוך)</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="modern-timesheet-table">
+            <thead>
+              <tr>
+                <th>תאריך</th>
+                <th>פעולה</th>
+                <th>זמן</th>
+                <th>לקוח</th>
+                <th>תיק</th>
+                <th>הערות</th>
+                <th>פעולות</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
         </div>
       </div>
-      ${statsBar}
-      <table class="modern-timesheet-table">
-        <thead>
-          <tr>
-            <th>תאריך</th>
-            <th>פעולה</th>
-            <th>זמן</th>
-            <th>לקוח</th>
-            <th>תיק</th>
-            <th>הערות</th>
-            <th>פעולות</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
-      </table>
-    </div>
-  `;
+    `;
   }
 
   createEmptyTableState() {
@@ -4017,6 +4153,53 @@ class LawOfficeManager {
     this.renderBudgetTasks();
   }
 
+  sortBudgetTasks() {
+    const sortSelect = document.getElementById('budgetSortSelect');
+    if (!sortSelect) return;
+
+    const sortValue = sortSelect.value;
+
+    // שמירת הבחירה הנוכחית
+    this.currentBudgetSort = sortValue;
+
+    // מיון מהיר ויעיל
+    this.filteredBudgetTasks.sort((a, b) => {
+      switch (sortValue) {
+        case 'recent':
+          // מיון לפי עדכון אחרון - הכי חדש ראשון
+          const dateA = new Date(a.lastUpdated || a.createdAt || 0).getTime();
+          const dateB = new Date(b.lastUpdated || b.createdAt || 0).getTime();
+          return dateB - dateA;
+
+        case 'name':
+          // מיון לפי שם לקוח - עברית א-ת
+          const nameA = (a.clientName || '').trim();
+          const nameB = (b.clientName || '').trim();
+          if (!nameA && !nameB) return 0;
+          if (!nameA) return 1;
+          if (!nameB) return -1;
+          return nameA.localeCompare(nameB, 'he');
+
+        case 'deadline':
+          // מיון לפי תאריך יעד - הכי קרוב ראשון
+          const deadlineA = new Date(a.deadline || '9999-12-31').getTime();
+          const deadlineB = new Date(b.deadline || '9999-12-31').getTime();
+          return deadlineA - deadlineB;
+
+        case 'progress':
+          // מיון לפי התקדמות - הכי גבוה ראשון
+          const progressA = a.estimatedMinutes > 0 ? (a.actualMinutes / a.estimatedMinutes) * 100 : 0;
+          const progressB = b.estimatedMinutes > 0 ? (b.actualMinutes / b.estimatedMinutes) * 100 : 0;
+          return progressB - progressA;
+
+        default:
+          return 0;
+      }
+    });
+
+    this.renderBudgetTasks();
+  }
+
   switchBudgetView(view) {
     this.currentBudgetView = view;
 
@@ -4187,10 +4370,22 @@ function switchTab(tabName) {
     const reportsTab = document.getElementById("reportsTab");
     if (reportsTab) reportsTab.classList.add("active");
 
+    // הסתרת כפתור הפלוס בטאב דוחות - לא רלוונטי
+    if (plusButton) {
+      plusButton.style.display = 'none';
+    }
+
     // Initialize reports form on first load
     if (typeof manager !== 'undefined' && manager.initReportsForm) {
       manager.initReportsForm();
     }
+  }
+
+  // הצגת כפתור הפלוס בטאבים אחרים
+  if (tabName !== 'reports' && plusButton) {
+    plusButton.style.display = '';
+    plusButton.style.visibility = 'visible';
+    plusButton.style.opacity = '1';
   }
 
   currentActiveTab = tabName;

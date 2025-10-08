@@ -1,316 +1,195 @@
 /**
- * Statistics Styles - עיצוב סרגלי סטטיסטיקה חכמים
+ * Statistics Styles - עיצוב Badge מודרני ומקצועי
  * משרד עורכי דין - מערכת ניהול מתקדמת
  *
  * נוצר: 08/10/2025
  * עודכן: 08/10/2025
- * גרסה: 2.3.0
+ * גרסה: 3.1.0 - Modern Badge Style
  *
  * תכונות:
- * - סופר קומפקטי עם מרווחים מינימליים
- * - פונט קטן: תווית 10px, ערך 13px
- * - padding קטן: 8px 12px
- * - gap קטן: 8px בין פריטים, 4px בין תווית לערך
- * - minmax קומפקטי: 100px לסרגל רגיל, 110px לחכם
+ * - עיצוב מודרני עם גלאס אפקט
+ * - פריטים מופרדים בקופסאות עדינות
+ * - אייקונים מקצועיים
+ * - צבעים ברורים וחדים
+ * - אנימציות עדינות
  * - Responsive מלא
  */
 
-/* ===== מיכל לשני הסרגלים צד לצד ===== */
-.stats-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-/* ===== סרגל סטטיסטיקה ראשי ===== */
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+/* ===== Badge Container ===== */
+.stats-badge {
+  display: inline-flex; /* שינוי ל-inline-flex כדי שיתאים לתוכן */
+  align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-  border-radius: 6px;
-  border-left: 3px solid #3b82f6;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
   direction: rtl;
-  margin-bottom: 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: all 0.15s ease;
-  flex: 1;
+  margin-top: 12px; /* מרווח מהכותרת למעלה */
+  margin-bottom: 16px;
+  margin-right: 8px; /* מרווח מצד ימין (שמאל ויזואלית) */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
+  flex-wrap: wrap;
+  max-width: fit-content; /* רוחב לפי תוכן */
 }
 
-.stats-bar:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+.stats-badge:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  border-color: #d1d5db;
 }
 
-/* ===== פריט בסרגל ===== */
-.stats-item {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  transition: all 0.15s ease;
-}
-
-.stats-item:hover .stats-value {
-  color: #3b82f6;
-}
-
-.stats-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #6b7280;
-  white-space: nowrap;
-}
-
-.stats-value {
+/* ===== Badge Items - בקופסאות נפרדות ===== */
+.badge-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
   font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.badge-item:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  transform: scale(1.02);
+}
+
+.badge-item strong {
+  font-size: 15px;
   font-weight: 700;
   color: #111827;
-  transition: color 0.15s ease;
 }
 
-/* ===== מפריד בין פריטים ===== */
-.stats-separator {
-  display: none; /* מוסתר כי עכשיו יש grid */
+/* ===== מפרידים - דקים וממוזערים ===== */
+.badge-separator {
+  font-size: 12px;
+  color: #d1d5db;
+  font-weight: 300;
+  margin: 0 2px;
 }
 
-/* ===== סטטוסים שונים ===== */
-/* כל הסרגלים יהיו בצבע נייטרלי מקצועי */
+/* ===== סוגי Badge מיוחדים ===== */
 
-.stats-bar.status-excellent,
-.stats-bar.status-good,
-.stats-bar.status-warning,
-.stats-bar.status-danger {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-color: #e5e7eb;
+/* הצלחה - משימות שהושלמו */
+.badge-item.badge-success {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-color: #6ee7b7;
 }
 
-.stats-bar.status-excellent .stats-value,
-.stats-bar.status-good .stats-value,
-.stats-bar.status-warning .stats-value,
-.stats-bar.status-danger .stats-value {
-  color: #111827;
-}
-
-/* ===== פריטים מיוחדים ===== */
-
-/* משימות שהושלמו */
-.stats-item.stats-completed .stats-value {
-  color: #059669;
-}
-
-/* אזהרה - חורגות תקציב */
-.stats-item.stats-warning {
-  padding: 2px 6px;
-  background: rgba(251, 191, 36, 0.1);
-  border-radius: 4px;
-}
-
-.stats-item.stats-warning .stats-value {
-  color: #d97706;
+.badge-item.badge-success strong {
+  color: #065f46;
 }
 
 /* דחוף */
-.stats-item.stats-urgent {
-  padding: 2px 6px;
-  background: rgba(239, 68, 68, 0.1);
-  border-radius: 4px;
+.badge-item.badge-urgent {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-color: #fca5a5;
 }
 
-.stats-item.stats-urgent .stats-value {
-  color: #dc2626;
+.badge-item.badge-urgent strong {
+  color: #991b1b;
 }
 
-/* התקדמות */
-.stats-item.stats-progress .stats-value {
-  color: #2563eb;
+/* הדגשה - נתון חשוב */
+.badge-item.badge-highlight {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #93c5fd;
 }
 
-/* הדגשה */
-.stats-item.stats-highlight {
-  padding: 2px 6px;
-  background: rgba(59, 130, 246, 0.08);
-  border-radius: 4px;
-}
-
-.stats-item.stats-highlight .stats-value {
-  color: #3b82f6;
-}
-
-/* ===== סטטיסטיקה חכמה ===== */
-
-/* שורה נוספת עם מידע חכם */
-.stats-smart-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 8px;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-radius: 6px;
-  border-left: 3px solid #3b82f6;
-  direction: rtl;
-  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.08);
-  transition: all 0.15s ease;
-  flex: 1;
-  margin-bottom: 0;
-}
-
-.stats-smart-row:hover {
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.12);
-}
-
-/* מדיה query - למסכים גדולים - סרגלים צד לצד */
-@media (min-width: 1024px) {
-  .stats-container {
-    flex-direction: row;
-    align-items: stretch;
-  }
-}
-
-.stats-smart-item {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  padding: 0;
-  background: transparent;
-  border: none;
-}
-
-.stats-smart-label {
-  font-size: 10px;
-  font-weight: 600;
+.badge-item.badge-highlight strong {
   color: #1e40af;
-  white-space: nowrap;
 }
 
-.stats-smart-value {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1e3a8a;
-  transition: color 0.15s ease;
+/* אזהרה */
+.badge-item.badge-warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #fcd34d;
 }
 
-.stats-smart-item:hover .stats-smart-value {
-  color: #3b82f6;
-}
-
-/* סטטוס - בקצב טוב/דורש תשומת לב */
-.stats-status-good {
-  padding: 2px 8px;
-  background: rgba(34, 197, 94, 0.12);
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #15803d;
-}
-
-.stats-status-warning {
-  padding: 2px 8px;
-  background: rgba(251, 191, 36, 0.12);
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #b45309;
-}
-
-.stats-status-danger {
-  padding: 2px 8px;
-  background: rgba(239, 68, 68, 0.12);
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #b91c1c;
+.badge-item.badge-warning strong {
+  color: #92400e;
 }
 
 /* ===== Responsive ===== */
+
+/* טאבלטים */
 @media (max-width: 1024px) {
-  .stats-bar {
-    gap: 10px;
-    padding: 12px 16px;
+  .stats-badge {
+    gap: 8px;
+    padding: 10px 14px;
   }
 
-  .stats-label {
+  .badge-item {
     font-size: 12px;
+    padding: 5px 10px;
   }
 
-  .stats-value {
+  .badge-item strong {
+    font-size: 14px;
+  }
+}
+
+/* מובייל גדול */
+@media (max-width: 768px) {
+  .stats-badge {
+    gap: 6px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f9fafb;
+  }
+
+  .stats-badge::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  .stats-badge::-webkit-scrollbar-track {
+    background: #f9fafb;
+    border-radius: 10px;
+  }
+
+  .stats-badge::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  .badge-item {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .badge-item strong {
     font-size: 13px;
   }
 
-  .stats-smart-row {
-    gap: 12px;
-    padding: 8px 16px;
-  }
-
-  .stats-smart-label {
-    font-size: 11px;
-  }
-
-  .stats-smart-value {
-    font-size: 12px;
+  .badge-separator {
+    display: none; /* הסתרת מפרידים במובייל */
   }
 }
 
-@media (max-width: 768px) {
-  .stats-bar {
-    gap: 8px;
-    padding: 10px 14px;
-    flex-wrap: wrap;
-  }
-
-  .stats-label {
-    font-size: 11px;
-  }
-
-  .stats-value {
-    font-size: 12px;
-  }
-
-  .stats-separator {
-    display: none;
-  }
-
-  .stats-item {
-    padding: 4px 8px;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 6px;
-  }
-
-  .stats-smart-row {
-    gap: 8px;
-    padding: 8px 12px;
-  }
-
-  .stats-smart-item {
-    padding: 3px 6px;
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: 4px;
-  }
-}
-
+/* מובייל קטן */
 @media (max-width: 480px) {
-  .stats-bar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .stats-item {
+  .stats-badge {
     width: 100%;
-    justify-content: space-between;
+    padding: 8px 10px;
+    gap: 5px;
   }
 
-  .stats-smart-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+  .badge-item {
+    font-size: 10px;
+    padding: 4px 8px;
+    flex: 1 1 auto;
+    min-width: fit-content;
   }
 
-  .stats-smart-item {
-    width: 100%;
-    justify-content: space-between;
+  .badge-item strong {
+    font-size: 12px;
   }
 }

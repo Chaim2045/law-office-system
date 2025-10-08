@@ -829,21 +829,22 @@ body.logged-in .main-content::before {
   transform: scale(1.05);
 }
 
-/* כפתור פלוס בפינה עליונה */
+/* כפתור פלוס בפינה עליונה - נקי וחזק */
 .plus-button-top {
   position: fixed;
   top: 20px;
   left: 80px;
-  width: 64px;
-  height: 64px;
+  width: 66px;
+  height: 66px;
   z-index: 1000;
 
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  /* גרדיאנט ירוק חזק וחי */
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
   border: none;
   border-radius: 50%;
   color: white;
 
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
   font-family: inherit;
 
@@ -854,41 +855,32 @@ body.logged-in .main-content::before {
   align-items: center;
   justify-content: center;
 
-  will-change: transform, box-shadow, background-color;
-  backface-visibility: hidden;
-  transform: translateZ(0);
-  transform-origin: center;
+  transition: all 0.2s ease;
+}
 
-  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.12s ease-out, background-color 0.12s ease-out;
-
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+.plus-button-top i {
+  font-size: 28px;
 }
 
 .plus-button-top:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+  /* גרדיאנט עוד יותר חזק בהובר */
+  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+  transform: scale(1.08);
 }
 
 .plus-button-top:active {
   background: linear-gradient(135deg, #047857 0%, #065f46 100%);
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-  transition-duration: 0.05s;
-}
-
-.plus-button-top:focus {
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25),
-    0 0 0 3px rgba(16, 185, 129, 0.3);
+  transform: scale(1);
 }
 
 .plus-button-top.active {
-  transform: translateZ(0) rotate(135deg);
+  transform: rotate(135deg);
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  box-shadow: 0 4px 12px rgba(180, 83, 9, 0.3);
 }
 
 .plus-button-top.active:hover {
-  box-shadow: 0 6px 16px rgba(180, 83, 9, 0.3);
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+  transform: rotate(135deg) scale(1.08);
 }
 
 /* Tooltip לכפתור פלוס */
@@ -950,110 +942,8 @@ button[onclick*="addBudget"]:hover {
    6. TABS - טאבים
    ========================================================================== */
 
-.main-tabs {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-sm);
-  margin: var(--space-lg) auto var(--space-xl) auto;
-  padding: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-radius: var(--radius-lg);
-  border: 2px solid transparent;
-  background-image: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%),
-    linear-gradient(
-      45deg,
-      var(--primary-400) 0%,
-      var(--primary-500) 25%,
-      var(--primary-600) 50%,
-      var(--primary-500) 75%,
-      var(--primary-400) 100%
-    );
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  box-shadow: var(--shadow-md), 0 0 0 1px rgba(59, 130, 246, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transition: var(--transition-normal);
-  max-width: 500px;
-  position: relative;
-}
-
-.main-tabs-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 10px auto 20px auto;
-}
-
-.main-tabs::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(
-    45deg,
-    var(--primary-300),
-    var(--primary-500),
-    var(--primary-600),
-    var(--primary-500),
-    var(--primary-300)
-  );
-  background-size: 200% 200%;
-  animation: borderFlow 4s ease infinite;
-  z-index: -1;
-  opacity: 0.2;
-}
-
-.tab-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--gray-600);
-  cursor: pointer;
-  transition: var(--transition-normal);
-  min-width: 130px;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.tab-button.active {
-  background: linear-gradient(
-    135deg,
-    var(--primary-500) 0%,
-    var(--primary-600) 100%
-  );
-  color: white;
-  border-color: var(--primary-600);
-  font-weight: 700;
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.tab-button.active::before {
-  opacity: 0;
-}
-
-.tab-button.active i {
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
-}
-
-.tab-content {
-  display: none;
-  padding: var(--space-sm) 0;
-  margin-top: 0;
-}
-
-.tab-content.active {
-  display: flex;
-  flex-direction: column;
-  min-height: auto;
-}
+/* ===== Main Tabs Styles - Moved to tabs.css ===== */
+/* כל עיצוב הטאבים הראשיים עבר לקובץ tabs.css */
 
 /* View tabs */
 .view-tabs {
@@ -2059,6 +1949,13 @@ button[onclick*="addBudget"]:hover {
   background: rgba(255, 255, 255, 0.8);
 }
 
+/* מרווח בין שורות - דומה לכרטיסיות */
+.modern-budget-table tbody tr td,
+.modern-timesheet-table tbody tr td {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
 .modern-budget-table tbody tr:hover,
 .modern-timesheet-table tbody tr:hover {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -2837,7 +2734,7 @@ button[onclick*="addBudget"]:hover {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
-  padding: 0;
+  padding: 0 12px; /* padding מצדדים לתאימות עם הטבלה */
   margin: 32px auto;
   direction: rtl;
   max-width: 1000px;
@@ -5775,19 +5672,7 @@ body.logged-in .main-footer {
     height: 45px;
   }
 
-  .main-tabs {
-    max-width: 420px;
-    gap: var(--space-sm);
-    margin: var(--space-md) auto;
-    padding: var(--space-md);
-  }
-
-  .tab-button {
-    width: 100%;
-    min-width: auto;
-    padding: var(--space-sm) var(--space-md);
-    font-size: var(--font-xs);
-  }
+  /* Main tabs - moved to tabs.css */
 }
 
 /* Mobile (max-width: 768px) */
@@ -5828,16 +5713,7 @@ body.logged-in .main-footer {
     align-items: stretch;
   }
 
-  .main-tabs {
-    max-width: 380px;
-    gap: var(--space-xs);
-    padding: var(--space-sm);
-  }
-
-  .tab-button {
-    min-width: 110px;
-    padding: var(--space-sm) var(--space-md);
-  }
+  /* Main tabs - moved to tabs.css */
 
   .form-header {
     flex-direction: column;
@@ -5878,15 +5754,7 @@ body.logged-in .main-footer {
     gap: var(--space-lg);
   }
 
-  .main-tabs {
-    max-width: 500px;
-    gap: var(--space-sm);
-  }
-
-  .tab-button {
-    min-width: 140px;
-    padding: var(--space-md) var(--space-lg);
-  }
+  /* Main tabs - moved to tabs.css */
 }
 
 /* Modern table responsive */
@@ -6684,9 +6552,7 @@ body.logged-in .main-footer {
   .task-card::before,
   .budget-card::before,
   .timesheet-card::before,
-  .main-tabs::before {
-    display: none !important;
-  }
+  /* Main tabs - moved to tabs.css */
 
   .cards-grid,
   .budget-cards-grid,

@@ -4,13 +4,13 @@
  *
  * נוצר: 08/10/2025
  * עודכן: 08/10/2025
- * גרסה: 1.2.0
+ * גרסה: 3.1.0 - Modern Badge Style
  *
  * תכונות:
- * - סטטיסטיקה בסיסית לתקצוב ושעתון
+ * - תצוגת Badge מודרנית עם קופסאות נפרדות
+ * - עיצוב נקי ומקצועי
+ * - פריטים בקופסאות עם גרדיאנטים עדינים
  * - חישובים חכמים: מטרות חודשיות, התקדמות, אזהרות
- * - ממוצעים יומיים, ימי עבודה נותרים
- * - סטטוס אוטומטי: מעולה / בקצב טוב / ניתן לשפר / דורש תשומת לב
  */
 
 // ===== תקצוב משימות - חישובי סטטיסטיקה =====
@@ -130,7 +130,7 @@ function calculateBudgetStatistics(tasks) {
 }
 
 /**
- * יצירת HTML לסרגל סטטיסטיקה של תקצוב משימות
+ * יצירת HTML לסרגל סטטיסטיקה של תקצוב משימות - Badge Style
  * @param {Object} stats - אובייקט סטטיסטיקה
  * @returns {string} HTML string
  */
@@ -138,78 +138,19 @@ function createBudgetStatsBar(stats) {
   const plannedHours = Math.round((stats.totalPlanned / 60) * 10) / 10;
   const actualHours = Math.round((stats.totalActual / 60) * 10) / 10;
 
-  const statusClass = 'status-good'; // תמיד נייטרלי
-  const smartStatusClass = `stats-status-${stats.budgetStatus}`;
-
   return `
-    <div class="stats-container">
-    <div class="stats-bar ${statusClass}">
-      <div class="stats-item">
-        <span class="stats-label">סה"כ משימות:</span>
-        <span class="stats-value">${stats.total}</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item">
-        <span class="stats-label">פעילות:</span>
-        <span class="stats-value">${stats.active}</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item stats-completed">
-        <span class="stats-label">הושלמו:</span>
-        <span class="stats-value">${stats.completed}</span>
-      </div>
-      ${stats.overBudget > 0 ? `
-      <div class="stats-separator">•</div>
-      <div class="stats-item stats-warning">
-        <span class="stats-label">חורגות:</span>
-        <span class="stats-value">${stats.overBudget}</span>
-      </div>
-      ` : ''}
+    <div class="stats-badge">
+      <span class="badge-item">משימות: <strong>${stats.total}</strong></span>
+      <span class="badge-separator">|</span>
+      <span class="badge-item">פעילות: <strong>${stats.active}</strong></span>
+      <span class="badge-separator">|</span>
+      <span class="badge-item badge-success">הושלמו: <strong>${stats.completed}</strong></span>
+      <span class="badge-separator">|</span>
+      <span class="badge-item">התקדמות: <strong>${stats.overallProgress}%</strong></span>
       ${stats.urgent > 0 ? `
-      <div class="stats-separator">•</div>
-      <div class="stats-item stats-urgent">
-        <span class="stats-label">דחופות:</span>
-        <span class="stats-value">${stats.urgent}</span>
-      </div>
+      <span class="badge-separator">|</span>
+      <span class="badge-item badge-urgent">דחופות: <strong>${stats.urgent}</strong></span>
       ` : ''}
-      <div class="stats-separator">•</div>
-      <div class="stats-item">
-        <span class="stats-label">שעות:</span>
-        <span class="stats-value">${actualHours}h / ${plannedHours}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item stats-progress">
-        <span class="stats-label">התקדמות:</span>
-        <span class="stats-value">${stats.overallProgress}%</span>
-      </div>
-    </div>
-    <div class="stats-smart-row">
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">הושלמו החודש:</span>
-        <span class="stats-smart-value">${stats.completedThisMonth}</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">אחוז השלמה:</span>
-        <span class="stats-smart-value">${stats.completionRate}%</span>
-      </div>
-      ${stats.criticalTasks > 0 ? `
-      <div class="stats-separator">•</div>
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">משימות קריטיות:</span>
-        <span class="stats-smart-value" style="color: #dc2626; font-weight: 700;">${stats.criticalTasks}</span>
-      </div>
-      ` : ''}
-      ${stats.overBudget > 0 ? `
-      <div class="stats-separator">•</div>
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">חריגות תקציב:</span>
-        <span class="stats-smart-value" style="color: #d97706; font-weight: 700;">${stats.overBudget}</span>
-      </div>
-      ` : ''}
-      <div class="stats-separator">•</div>
-      <span class="${smartStatusClass}">${stats.budgetStatusText}</span>
-    </div>
     </div>
   `;
 }
@@ -382,78 +323,22 @@ function calculateSmartGoals(monthHours, now) {
 }
 
 /**
- * יצירת HTML לסרגל סטטיסטיקה של שעתון
+ * יצירת HTML לסרגל סטטיסטיקה של שעתון - Badge Style
  * @param {Object} stats - אובייקט סטטיסטיקה
  * @returns {string} HTML string
  */
 function createTimesheetStatsBar(stats) {
-  // קביעת סטטוס CSS לפי הסטטוס החכם
-  const statusClass = 'status-good'; // תמיד נייטרלי
-
-  // קביעת סטטוס CSS למידע החכם
-  const smartStatusClass = `stats-status-${stats.goalStatus}`;
-
   return `
-    <div class="stats-container">
-    <div class="stats-bar ${statusClass}">
-      <div class="stats-item">
-        <span class="stats-label">סה"כ רשומות:</span>
-        <span class="stats-value">${stats.total}</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item">
-        <span class="stats-label">סה"כ שעות:</span>
-        <span class="stats-value">${stats.totalHours}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item stats-highlight">
-        <span class="stats-label">היום:</span>
-        <span class="stats-value">${stats.todayHours}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item">
-        <span class="stats-label">השבוע:</span>
-        <span class="stats-value">${stats.weekHours}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item">
-        <span class="stats-label">החודש:</span>
-        <span class="stats-value">${stats.monthHours}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-item">
-        <span class="stats-label">לקוחות:</span>
-        <span class="stats-value">${stats.uniqueClients}</span>
-      </div>
-    </div>
-    <div class="stats-smart-row">
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">מטרת חודש:</span>
-        <span class="stats-smart-value">${stats.monthlyGoal}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">התקדמות:</span>
-        <span class="stats-smart-value">${stats.progressPercent}%</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">נותר:</span>
-        <span class="stats-smart-value">${stats.hoursRemaining}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">ממוצע יומי נדרש:</span>
-        <span class="stats-smart-value">${stats.requiredDailyAverage}h</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <div class="stats-smart-item">
-        <span class="stats-smart-label">ימי עבודה נותרו:</span>
-        <span class="stats-smart-value">${stats.workDaysRemaining}</span>
-      </div>
-      <div class="stats-separator">•</div>
-      <span class="${smartStatusClass}">${stats.goalStatusText}</span>
-    </div>
+    <div class="stats-badge">
+      <span class="badge-item badge-highlight">החודש: <strong>${stats.monthHours}h</strong></span>
+      <span class="badge-separator">|</span>
+      <span class="badge-item">יעד: <strong>${stats.monthlyGoal}h</strong></span>
+      <span class="badge-separator">|</span>
+      <span class="badge-item">נותר: <strong>${stats.hoursRemaining}h</strong></span>
+      <span class="badge-separator">|</span>
+      <span class="badge-item">התקדמות: <strong>${stats.progressPercent}%</strong></span>
+      <span class="badge-separator">|</span>
+      <span class="badge-item">השבוע: <strong>${stats.weekHours}h</strong></span>
     </div>
   `;
 }
@@ -466,4 +351,4 @@ window.StatisticsModule = {
   createTimesheetStatsBar
 };
 
-console.log('Statistics module v1.2.0 loaded successfully!');
+console.log('Statistics module v3.1.0 - Modern Badge Style loaded successfully!');

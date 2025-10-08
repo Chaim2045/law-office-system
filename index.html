@@ -87,7 +87,9 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="statistics.css" />
+    <link rel="stylesheet" href="tabs.css?v=1.1.0" />
+    <link rel="stylesheet" href="statistics.css?v=3.1.0" />
+    <link rel="stylesheet" href="sort.css?v=2.0.0" />
     <link rel="stylesheet" href="reports.css" />
   </head>
 
@@ -455,7 +457,6 @@
                     id="budgetSearchBox"
                     placeholder="חפש משימות..."
                     autocomplete="off"
-                    oninput="manager.searchBudgetTasks()"
                   />
                   <i class="fas fa-search search-icon"></i>
                 </div>
@@ -686,7 +687,6 @@
                     id="timesheetSearchBox"
                     placeholder="חפש רשומות..."
                     autocomplete="off"
-                    oninput="manager.searchTimesheetEntries()"
                   />
                   <i class="fas fa-search search-icon"></i>
                 </div>
@@ -695,21 +695,6 @@
 
             <!-- Timesheet Entries Container -->
             <div>
-              <h3
-                style="
-                  color: #1e293b;
-                  font-size: 24px;
-                  font-weight: 800;
-                  margin-bottom: 24px;
-                  display: flex;
-                  align-items: center;
-                  gap: 10px;
-                "
-              >
-                <i class="fas fa-clock"></i>
-                רשומות שעתון
-              </h3>
-
               <div id="timesheetContainer" class="hidden">
                 <div class="loading-message">
                   <div class="loader"></div>
@@ -1212,9 +1197,9 @@
     <!-- ===== סקריפטים וסגנונות ===== -->
     <!-- SCRIPTS AND STYLES -->
     <script src="api.js?v=3.3.0"></script>
-    <script src="statistics.js?v=2.3.0"></script>
+    <script src="statistics.js?v=3.1.0"></script>
     <script src="reports.js?v=1.0.0"></script>
-    <script src="script.js?v=4.11.5"></script>
+    <script src="script.js?v=4.19.0"></script>
 
     <!-- Additional CSS for animations -->
     <style>
