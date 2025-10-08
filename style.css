@@ -2748,6 +2748,8 @@ button[onclick*="addBudget"]:hover {
   width: 100%;
 }
 
+/* Container משותף לכרטיסיות וטבלה - עיצוב אחיד */
+.modern-cards-container,
 .modern-table-container {
   background: white;
   border: 2px solid #e2e8f0;
@@ -2757,6 +2759,7 @@ button[onclick*="addBudget"]:hover {
   max-width: none;
   overflow: visible;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 20px;
 }
 
 .modern-table-header {
