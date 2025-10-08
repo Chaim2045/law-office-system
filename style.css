@@ -195,7 +195,7 @@ body.logged-in .app-container {
   border: 1px solid var(--gray-200);
   padding: 0;
   overflow: hidden;
-  height: 100vh;
+  height: 100vh; /* גובה מלא רק למסך כניסה */
   position: relative;
   margin-right: 0;
   margin-top: 0;
@@ -208,6 +208,7 @@ body.logged-in .app-container {
 /* Add padding and scrolling when logged in */
 body.logged-in .main-content {
   padding: var(--space-lg);
+  padding-bottom: 0;
   overflow-y: auto;
   overflow-x: hidden;
   justify-content: flex-start;
@@ -215,6 +216,8 @@ body.logged-in .main-content {
   border: none;
   box-shadow: none;
   border-radius: 0;
+  height: auto; /* גובה אוטומטי כדי לאפשר גלילה מלאה */
+  min-height: 100vh; /* לפחות מסך מלא */
 }
 
 /* Hide decorative background when logged in */
@@ -5240,27 +5243,36 @@ button[onclick*="addBudget"]:hover {
    ========================================================================== */
 
 .main-footer {
-  margin-top: auto;
-  padding: var(--space-lg) 0 var(--space-md) 0;
+  margin-top: 40px;
+  margin-bottom: 30px; /* מרווח מהתחתית */
+  padding: 16px 20px;
   border-top: 1px solid var(--gray-200);
   text-align: center;
-  color: var(--gray-500);
+  color: var(--gray-600);
   font-size: var(--font-xs);
   background: linear-gradient(135deg, var(--gray-50) 0%, #f8fafc 100%);
   border-radius: var(--radius-md);
-  margin-left: calc(-1 * var(--space-lg));
-  margin-right: calc(-1 * var(--space-lg));
-  margin-bottom: calc(-1 * var(--space-lg));
-  position: relative;
-  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: var(--transition-normal);
+  display: none; /* מוסתר כברירת מחדל */
+}
+
+/* הצגת הפוטר כשמחובר */
+body.logged-in .main-footer {
+  display: block;
 }
 
 .footer-content {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: var(--space-md);
+  gap: 16px;
   flex-wrap: wrap;
+}
+
+.footer-brand {
+  font-weight: 600;
+  color: var(--gray-700);
 }
 
 .footer-link {
