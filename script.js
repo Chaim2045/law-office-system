@@ -2080,8 +2080,8 @@ class LawOfficeManager {
 
     const tasksHtml = tasks.map((task) => this.createTaskCard(task)).join("");
 
-    // שימוש במודול הסטטיסטיקה החדש
-    const stats = window.StatisticsModule.calculateBudgetStatistics(this.filteredBudgetTasks);
+    // שימוש במודול הסטטיסטיקה החדש - חישוב על כל המשימות (לא מסוננות)
+    const stats = window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks);
     const statsBar = window.StatisticsModule.createBudgetStatsBar(stats);
 
     container.innerHTML = `
@@ -2234,8 +2234,8 @@ class LawOfficeManager {
       return;
     }
 
-    // שימוש במודול הסטטיסטיקה החדש
-    const stats = window.StatisticsModule.calculateBudgetStatistics(this.filteredBudgetTasks);
+    // שימוש במודול הסטטיסטיקה החדש - חישוב על כל המשימות (לא מסוננות)
+    const stats = window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks);
     const statsBar = window.StatisticsModule.createBudgetStatsBar(stats);
 
     tableContainer.innerHTML = `
