@@ -317,12 +317,17 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label for="budgetDescription"
-                      >סוג המשימה
+                      >תיאור המשימה
                       <span class="category-required">*</span></label
                     >
-                    <div id="budgetDescriptionContainer">
-                      <!-- הקוד JavaScript ייצור את השדה כאן -->
-                    </div>
+                    <textarea
+                      id="budgetDescription"
+                      placeholder="תאר את המשימה (לפחות 3 תווים)"
+                      rows="3"
+                      autocomplete="off"
+                      required
+                      style="resize: vertical; min-height: 60px;"
+                    ></textarea>
                   </div>
                 </div>
 
@@ -555,12 +560,17 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label for="actionDescription"
-                      >סוג הפעולה
+                      >תיאור הפעולה
                       <span class="category-required">*</span></label
                     >
-                    <div id="actionDescriptionContainer">
-                      <!-- הקוד JavaScript ייצור את השדה כאן -->
-                    </div>
+                    <textarea
+                      id="actionDescription"
+                      placeholder="תאר את הפעולה שביצעת (לפחות 3 תווים)"
+                      rows="2"
+                      autocomplete="off"
+                      required
+                      style="resize: vertical; min-height: 50px;"
+                    ></textarea>
                   </div>
                 </div>
 
@@ -983,8 +993,8 @@
 
     <!-- ===== סקריפטים וסגנונות ===== -->
     <!-- SCRIPTS AND STYLES -->
-    <script src="api.js"></script>
-    <script src="script.js?v=2.1.0"></script>
+    <script src="api.js?v=3.3.0"></script>
+    <script src="script.js?v=3.3.0"></script>
 
     <!-- Additional CSS for animations -->
     <style>

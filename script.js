@@ -254,7 +254,17 @@ function formatDateTime(date) {
 
 function formatDate(dateString) {
   try {
-    return new Date(dateString).toLocaleDateString("he-IL");
+    if (!dateString) return '-';
+
+    // Handle Firebase Timestamp
+    let d;
+    if (dateString.toDate && typeof dateString.toDate === 'function') {
+      d = dateString.toDate();
+    } else {
+      d = new Date(dateString);
+    }
+
+    return d.toLocaleDateString("he-IL");
   } catch (error) {
     console.warn("formatDate failed", { input: dateString, error });
     return "תאריך לא תקין";
@@ -262,7 +272,16 @@ function formatDate(dateString) {
 }
 
 function formatShort(date) {
-  const d = new Date(date);
+  if (!date) return '-';
+
+  // Handle Firebase Timestamp
+  let d;
+  if (date.toDate && typeof date.toDate === 'function') {
+    d = date.toDate();
+  } else {
+    d = new Date(date);
+  }
+
   return d.toLocaleDateString("he-IL", {
     day: "numeric",
     month: "short",
@@ -381,11 +400,24 @@ async function loadBudgetTasksFromFirebase(employee) {
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      tasks.push({
+
+      // ⚡ CRITICAL: Convert Firebase Timestamps to JavaScript Date objects
+      const taskWithFirebaseId = {
         ...data,
-        firebaseDocId: doc.id,  // Firebase document ID (string)
-        id: data.id || doc.id,  // Keep original ID or use Firebase ID
-      });
+        firebaseDocId: doc.id, // ✅ Always save Firebase document ID
+        // Convert Timestamps to Date objects for proper formatting
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+        completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : data.completedAt,
+        deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline,
+      };
+
+      // Only set 'id' if it doesn't exist in the data
+      if (!taskWithFirebaseId.id) {
+        taskWithFirebaseId.id = doc.id;
+      }
+
+      tasks.push(taskWithFirebaseId);
     });
 
     console.log(`🔥 Firebase: נטענו ${tasks.length} משימות`);
@@ -1421,12 +1453,12 @@ class LawOfficeManager {
     if (lastLoginTime) {
       if (lastLogin) {
         const loginDate = new Date(lastLogin);
-        const formatted = loginDate.toLocaleString('he-IL', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+        const formatted = loginDate.toLocaleString("he-IL", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
         });
         lastLoginTime.textContent = formatted;
       } else {
@@ -1435,7 +1467,10 @@ class LawOfficeManager {
     }
 
     // Save current login time for next time
-    localStorage.setItem(`lastLogin_${this.currentUser}`, new Date().toISOString());
+    localStorage.setItem(
+      `lastLogin_${this.currentUser}`,
+      new Date().toISOString()
+    );
 
     // הצג את מסך ברוך הבא
     if (welcomeScreen) {
@@ -1453,7 +1488,7 @@ class LawOfficeManager {
     const elapsed = Date.now() - this.welcomeScreenStartTime;
     const remaining = Math.max(0, 2000 - elapsed);
     if (remaining > 0) {
-      await new Promise(resolve => setTimeout(resolve, remaining));
+      await new Promise((resolve) => setTimeout(resolve, remaining));
     }
   }
 
@@ -1500,9 +1535,8 @@ class LawOfficeManager {
     try {
       await this.loadDataFromFirebase();
       setTimeout(() => {
-        this.applyBudgetTaskFilters();
+        this.filterBudgetTasks(); // ✅ Use the correct filter function that respects the SELECT value and renders
         this.applyTimesheetFilters();
-        this.renderBudgetTasks();
         this.renderTimesheetEntries();
         this.clientValidation.updateBlockedClients();
       }, 500);
@@ -1590,9 +1624,7 @@ class LawOfficeManager {
     }
   }
 
-  applyBudgetTaskFilters() {
-    this.filteredBudgetTasks = [...this.budgetTasks];
-  }
+  // REMOVED - use filterBudgetTasks() instead which actually filters based on SELECT value
 
   applyTimesheetFilters() {
     this.filteredTimesheetEntries = [...this.timesheetEntries];
@@ -1726,24 +1758,19 @@ class LawOfficeManager {
     try {
       showProgress("שומר משימה...");
 
-      this.budgetTasks.unshift(budgetTask);
-      this.filteredBudgetTasks = [...this.budgetTasks];
-      this.renderBudgetTasks();
-
+      // Save to Firebase ONLY - no local updates!
       await saveBudgetTaskToFirebase(budgetTask);
 
-      this.clearBudgetForm();
-      setTimeout(() => this.loadDataFromFirebase(), 1000);
+      // Reload from Firebase to get the saved task
+      await this.loadDataFromFirebase();
 
+      this.clearBudgetForm();
       hideProgress();
       showSuccessFeedback("המשימה נוספה בהצלחה");
     } catch (error) {
       console.error("Error adding budget task:", error);
-      this.budgetTasks = this.budgetTasks.filter((t) => t.id !== budgetTask.id);
-      this.filteredBudgetTasks = [...this.budgetTasks];
-      this.renderBudgetTasks();
       hideProgress();
-      this.showNotification("❌ שגיאה בהוספת משימה", "error");
+      this.showNotification("❌ שגיאה בהוספת משימה: " + error.message, "error");
     }
   }
 
@@ -1998,11 +2025,22 @@ class LawOfficeManager {
         ? safeText(safeTask.clientName.substring(0, 20) + "...")
         : safeClientName;
 
+    // Check if task is completed
+    const isCompleted = safeTask.status === 'הושלם';
+    const completedIndicator = isCompleted ? `
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #10b981; border-radius: 50%; margin-left: 8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+    ` : '';
+
     return `
       <div class="linear-minimal-card" data-task-id="${safeTask.id}">
         <div class="linear-card-content">
-          <h3 class="linear-card-title" title="${safeClientName}">
-            ${safeDescription}
+          <h3 class="linear-card-title" title="${safeClientName}" style="display: flex; align-items: center;">
+            <span style="flex: 1;">${safeDescription}</span>
+            ${completedIndicator}
           </h3>
           <div class="linear-progress-section">
             <div class="linear-visual-progress">
@@ -2043,6 +2081,14 @@ class LawOfficeManager {
                 ${deadlineIcon} ${formatShort(safeTask.deadline)}
               </span>
             </div>
+            ${safeTask.createdAt ? `
+            <div class="linear-deadline-row">
+              <span class="linear-progress-label">נוצר:</span>
+              <span class="deadline-info" title="${formatDate(safeTask.createdAt)}" style="color: #6b7280; font-size: 12px;">
+                📅 ${formatShort(safeTask.createdAt)}
+              </span>
+            </div>
+            ` : ''}
           </div>
         </div>
         <button class="linear-expand-btn" onclick="manager.expandTaskCard(${
@@ -2083,6 +2129,7 @@ class LawOfficeManager {
               <th>תיאור</th>
               <th>התקדמות</th>
               <th>יעד</th>
+              <th>נוצר</th>
               <th>סטטוס</th>
               <th>פעולות</th>
             </tr>
@@ -2730,13 +2777,27 @@ class LawOfficeManager {
     const safeTask = this.sanitizeTaskData(task);
     const progress = this.calculateSimpleProgress(safeTask);
 
+    // Visual indicator for completed tasks
+    const isCompleted = safeTask.status === 'הושלם';
+    const statusDisplay = isCompleted ? `
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #10b981; border-radius: 50%;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <span>${safeText(safeTask.status)}</span>
+      </div>
+    ` : safeText(safeTask.status);
+
     return `
       <tr data-task-id="${safeTask.id}">
         <td>${safeText(safeTask.clientName)}</td>
         <td>${safeText(safeTask.description)}</td>
         <td>${progress}%</td>
         <td>${formatDate(safeTask.deadline)}</td>
-        <td>${safeText(safeTask.status)}</td>
+        <td style="color: #6b7280; font-size: 13px;">${safeTask.createdAt ? formatShort(safeTask.createdAt) : '-'}</td>
+        <td>${statusDisplay}</td>
         <td class="actions-column">
           <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog(${
             safeTask.id
@@ -2939,13 +3000,15 @@ class LawOfficeManager {
   }
 
   getActiveTasksCount() {
-    return (this.filteredBudgetTasks || []).filter(
-      (task) => task && task.status === "פעיל"
+    // Count from ALL tasks, not filtered
+    return (this.budgetTasks || []).filter(
+      (task) => task && task.status !== "הושלם"
     ).length;
   }
 
   getCompletedTasksCount() {
-    return (this.filteredBudgetTasks || []).filter(
+    // Count from ALL tasks, not filtered
+    return (this.budgetTasks || []).filter(
       (task) => task && task.status === "הושלם"
     ).length;
   }
@@ -3420,14 +3483,20 @@ class LawOfficeManager {
     const estimatedMinutes = task.estimatedMinutes || 0;
     const actualMinutes = task.actualMinutes || 0;
     const timeDiff = actualMinutes - estimatedMinutes;
-    const timePercentage = estimatedMinutes > 0 ? ((actualMinutes / estimatedMinutes) * 100).toFixed(0) : 0;
+    const timePercentage =
+      estimatedMinutes > 0
+        ? ((actualMinutes / estimatedMinutes) * 100).toFixed(0)
+        : 0;
 
     // Deadline statistics
     const now = new Date();
     const deadline = task.deadline ? new Date(task.deadline) : null;
     const createdAt = task.createdAt ? new Date(task.createdAt) : now;
-    const originalDeadline = task.originalDeadline ? new Date(task.originalDeadline) : deadline;
-    const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
+    const originalDeadline = task.originalDeadline
+      ? new Date(task.originalDeadline)
+      : deadline;
+    const wasExtended =
+      task.deadlineExtensions && task.deadlineExtensions.length > 0;
 
     let deadlineStatus = "";
     let deadlineClass = "";
@@ -3455,7 +3524,9 @@ class LawOfficeManager {
       }
 
       if (wasExtended && originalDeadline) {
-        const extensionDays = Math.ceil((deadline - originalDeadline) / (1000 * 60 * 60 * 24));
+        const extensionDays = Math.ceil(
+          (deadline - originalDeadline) / (1000 * 60 * 60 * 24)
+        );
         deadlineStatus += ` (הוארך ב-${extensionDays} ימים)`;
       }
     } else {
@@ -3638,9 +3709,11 @@ class LawOfficeManager {
         confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
       }
 
-      // Save to Firebase - use Firebase document ID
-      const firebaseDocId = task.firebaseDocId || task.id.toString();
-      await completeTaskFirebase(firebaseDocId, notes);
+      // Save to Firebase - MUST use firebaseDocId (not task.id!)
+      if (!task.firebaseDocId) {
+        throw new Error("❌ שגיאה פנימית: firebaseDocId לא נמצא במשימה");
+      }
+      await completeTaskFirebase(task.firebaseDocId, notes);
 
       // Show success in modal
       if (popup) {
@@ -3676,7 +3749,7 @@ class LawOfficeManager {
         }
       }
 
-      // Wait a moment, then close modal and animate task removal
+      // Wait a moment, then close modal and refresh
       setTimeout(async () => {
         // Close modal first
         document.querySelector(".popup-overlay")?.remove();
@@ -3684,20 +3757,30 @@ class LawOfficeManager {
         // Reload data from Firebase
         await this.loadDataFromFirebase();
 
-        // Animate the completed task and switch to active filter
-        this.animateTaskCompletionAndFilter(taskId);
-
+        // Switch to "active only" filter
+        const filterSelect = document.getElementById("budgetTaskFilter");
+        if (filterSelect) {
+          filterSelect.value = "active";
+          this.filterBudgetTasks();
+        }
       }, 2000);
-
     } catch (error) {
       console.error("Error completing task:", error);
 
       // Show error in modal
       if (popup) {
         const errorDiv = document.createElement("div");
-        errorDiv.style.cssText = "background: #fee; border: 2px solid #ef4444; padding: 15px; border-radius: 8px; margin: 20px; color: #991b1b;";
-        errorDiv.innerHTML = `<strong>❌ שגיאה:</strong> ${safeText(error.message || "שגיאה בשמירת המשימה")}`;
-        popup.querySelector(".popup-content").insertBefore(errorDiv, popup.querySelector(".popup-content").firstChild);
+        errorDiv.style.cssText =
+          "background: #fee; border: 2px solid #ef4444; padding: 15px; border-radius: 8px; margin: 20px; color: #991b1b;";
+        errorDiv.innerHTML = `<strong>❌ שגיאה:</strong> ${safeText(
+          error.message || "שגיאה בשמירת המשימה"
+        )}`;
+        popup
+          .querySelector(".popup-content")
+          .insertBefore(
+            errorDiv,
+            popup.querySelector(".popup-content").firstChild
+          );
       }
 
       // Re-enable button
@@ -3708,166 +3791,33 @@ class LawOfficeManager {
     }
   }
 
-  animateTaskCompletionAndFilter(taskId) {
-    // Store completed task info for undo
-    const completedTask = this.budgetTasks.find(t => t.id === taskId);
+  filterBudgetTasks() {
+    const filterSelect = document.getElementById('budgetTaskFilter');
+    if (!filterSelect) return;
 
-    // Find the task card element (works for both cards and table views)
-    let taskElement = null;
+    const filterValue = filterSelect.value;
+    this.currentTaskFilter = filterValue;
 
-    // Try to find in cards view
-    const allCards = document.querySelectorAll('.linear-minimal-card');
-    allCards.forEach(card => {
-      const cardId = card.getAttribute('data-task-id');
-      if (cardId && parseInt(cardId) === taskId) {
-        taskElement = card;
-      }
-    });
-
-    // If not found in cards, try table view
-    if (!taskElement) {
-      const allRows = document.querySelectorAll('.modern-budget-table tbody tr');
-      allRows.forEach(row => {
-        const rowId = row.getAttribute('data-task-id');
-        if (rowId && parseInt(rowId) === taskId) {
-          taskElement = row;
-        }
+    // Filter based on status
+    if (filterValue === 'active') {
+      this.filteredBudgetTasks = this.budgetTasks.filter(t => t.status !== 'הושלם');
+    } else if (filterValue === 'completed') {
+      // Show completed tasks from last month
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      this.filteredBudgetTasks = this.budgetTasks.filter(t => {
+        if (t.status !== 'הושלם') return false;
+        if (!t.completedAt) return true;
+        const completedDate = new Date(t.completedAt);
+        return completedDate >= oneMonthAgo;
       });
+    } else {
+      // Show all
+      this.filteredBudgetTasks = [...this.budgetTasks];
     }
 
-    // Animate fade out
-    if (taskElement) {
-      taskElement.style.transition = 'all 0.5s ease-out';
-      taskElement.style.opacity = '0';
-      taskElement.style.transform = 'translateX(-30px)';
-    }
-
-    // After animation, switch filter and show notification with undo
-    setTimeout(() => {
-      // Switch to "active only" filter
-      const filterSelect = document.getElementById('budgetTaskFilter');
-      if (filterSelect && filterSelect.value !== 'active') {
-        filterSelect.value = 'active';
-        this.filterBudgetTasks();
-      } else {
-        // If already on active filter, just re-render
-        this.renderBudgetTasks();
-      }
-
-      // Show notification with undo option
-      this.showCompletionNotificationWithUndo(completedTask);
-    }, 500);
-  }
-
-  showCompletionNotificationWithUndo(task) {
-    // Remove any existing completion notification
-    const existing = document.getElementById('completion-notification');
-    if (existing) existing.remove();
-
-    const notification = document.createElement('div');
-    notification.id = 'completion-notification';
-    notification.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-      color: white;
-      padding: 16px 24px;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      z-index: 10001;
-      animation: slideInUp 0.3s ease-out;
-      max-width: 500px;
-    `;
-
-    notification.innerHTML = `
-      <div style="flex: 1;">
-        <div style="font-weight: 600; margin-bottom: 4px;">
-          ✓ המשימה הושלמה והועברה לארכיון
-        </div>
-        <div style="font-size: 13px; color: #9ca3af;">
-          ${safeText(task.taskDescription || task.description || '')}
-        </div>
-      </div>
-      <button
-        onclick="manager.undoTaskCompletion(${task.id})"
-        style="
-          background: rgba(255,255,255,0.2);
-          border: 1px solid rgba(255,255,255,0.3);
-          color: white;
-          padding: 8px 16px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 14px;
-          transition: all 0.2s;
-          white-space: nowrap;
-        "
-        onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-        onmouseout="this.style.background='rgba(255,255,255,0.2)'"
-      >
-        ⎌ בטל
-      </button>
-    `;
-
-    document.body.appendChild(notification);
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      if (notification && notification.parentElement) {
-        notification.style.animation = 'slideOutDown 0.3s ease-out';
-        setTimeout(() => notification.remove(), 300);
-      }
-    }, 5000);
-  }
-
-  async undoTaskCompletion(taskId) {
-    // Remove notification
-    const notification = document.getElementById('completion-notification');
-    if (notification) notification.remove();
-
-    // Find the task
-    const task = this.budgetTasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    try {
-      showProgress('מבטל השלמת משימה...');
-
-      // Update in Firebase - change status back to active
-      const firebaseDocId = task.firebaseDocId || task.id.toString();
-      const db = window.firebaseDB;
-      if (db) {
-        await db.collection('budget_tasks').doc(firebaseDocId).update({
-          status: 'פעיל',
-          completedAt: firebase.firestore.FieldValue.delete(),
-          completionNotes: firebase.firestore.FieldValue.delete(),
-          completedBy: firebase.firestore.FieldValue.delete(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-
-      // Reload data
-      await this.loadDataFromFirebase();
-
-      // Switch back to "all" filter to show the task
-      const filterSelect = document.getElementById('budgetTaskFilter');
-      if (filterSelect) {
-        filterSelect.value = 'all';
-        this.filterBudgetTasks();
-      }
-
-      hideProgress();
-      showSuccessFeedback('המשימה חזרה לפעילה');
-
-    } catch (error) {
-      console.error('Error undoing task completion:', error);
-      hideProgress();
-      this.showNotification('שגיאה בביטול השלמת המשימה', 'error');
-    }
+    // Re-render
+    this.renderBudgetTasks();
   }
 
   switchBudgetView(view) {
@@ -3898,7 +3848,7 @@ class LawOfficeManager {
     if (!this.budgetTasks || this.budgetTasks.length === 0) {
       this.loadDataFromFirebase()
         .then(() => {
-          this.applyBudgetTaskFilters();
+          this.filterBudgetTasks();
           this.renderBudgetTasks();
         })
         .catch((error) => {
@@ -4709,110 +4659,6 @@ console.log("   debugClientHoursMismatch() - אבחון מלא");
 console.log("   fixClientHoursMismatch() - תיקון אוטומטי");
 console.log("   showClientStatusSummary() - סיכום מהיר");
 console.log("   testFirebaseConnection() - בדיקת חיבור Firebase");
-// 🔍 סקריפט אבחון - בדוק אילו פונקציות חסרות
-console.log("🔍 ==> בודק פונקציות קיימות...");
-
-// רשימת הפונקציות שצריכות להיות קיימות
-const requiredFunctions = [
-  // Firebase Core
-  "initializeFirebase",
-  "testFirebaseConnection",
-  "loadClientsFromFirebase",
-  "saveClientToFirebase",
-  "loadBudgetTasksFromFirebase",
-  "saveBudgetTaskToFirebase",
-  "loadTimesheetFromFirebase",
-  "saveTimesheetToFirebase",
-  "calculateClientHoursAccurate",
-  "updateClientHoursImmediately",
-
-  // UI Functions
-  "showSimpleLoading",
-  "hideSimpleLoading",
-  "formatDateTime",
-  "formatDate",
-  "formatShort",
-  "safeText",
-
-  // Manager & Classes
-  "LawOfficeManager",
-  "NotificationBellSystem",
-  "ClientValidation",
-
-  // Public Functions
-  "updateUserDisplay",
-  "switchTab",
-  "showClientForm",
-  "hideClientForm",
-  "logout",
-  "searchClients",
-  "selectClient",
-
-  // Missing Firebase Functions (שצריכות להיות אחרי שתוסיף הקוד)
-  "addTimeToTaskFirebase",
-  "completeTaskFirebase",
-  "extendTaskDeadlineFirebase",
-  "logUserLoginFirebase",
-];
-
-// בדיקה
-const missing = [];
-const existing = [];
-
-requiredFunctions.forEach((funcName) => {
-  if (typeof window[funcName] !== "undefined") {
-    existing.push(funcName);
-  } else {
-    missing.push(funcName);
-  }
-});
-
-console.log("✅ ==> פונקציות קיימות:", existing.length);
-existing.forEach((f) => console.log(`   ✓ ${f}`));
-
-console.log("❌ ==> פונקציות חסרות:", missing.length);
-missing.forEach((f) => console.log(`   ✗ ${f}`));
-
-// בדיקות נוספות
-console.log("🔍 ==> בדיקות נוספות:");
-console.log("   Firebase DB:", window.firebaseDB ? "✓ מחובר" : "✗ לא מחובר");
-console.log("   Manager:", window.manager ? "✓ קיים" : "✗ לא קיים");
-console.log("   Current User:", window.manager?.currentUser || "לא מזוהה");
-console.log("   DataCache:", window.dataCache ? "✓ קיים" : "✗ לא קיים");
-console.log(
-  "   NotificationBell:",
-  window.notificationBell ? "✓ קיים" : "✗ לא קיים"
-);
-
-// בדיקת גיגציות פונקציות Google Apps Script שאולי עדיין נקראות
-const legacyFunctions = [
-  "sendToGoogleSheets",
-  "loadClientsFromSheetOriginal",
-  "loadBudgetTasksFromSheetOriginal",
-  "loadTimesheetEntriesFromSheetOriginal",
-  "saveBudgetTaskToSheet",
-  "saveTimesheetAndUpdateClient",
-];
-
-console.log("🔍 ==> פונקציות Legacy (צריכות להיות מוחלפות):");
-legacyFunctions.forEach((funcName) => {
-  const exists =
-    typeof window[funcName] !== "undefined" ||
-    typeof window.manager?.[funcName] !== "undefined";
-  console.log(
-    `   ${exists ? "⚠️" : "✓"} ${funcName} - ${
-      exists ? "עדיין קיימת" : "הוסרה"
-    }`
-  );
-});
-
-console.log("🎯 ==> סיכום:");
-if (missing.length === 0) {
-  console.log("🎉 כל הפונקציות קיימות!");
-} else {
-  console.log(`⚠️ חסרות ${missing.length} פונקציות - צריך להוסיף את הקוד החדש`);
-}
-/* ===== 🔥 Firebase Functions - הוסף בסוף script.js ===== */
 
 /**
  * פונקציות Firebase חסרות להשלמת המערכת
@@ -5044,44 +4890,6 @@ if (window.manager) {
     }
   };
 
-  // החלפת completeTask
-  window.manager.completeTask = async function (taskId) {
-    const task = this.budgetTasks.find((t) => t.id === taskId);
-    if (!task) {
-      this.showNotification("המשימה לא נמצאה", "error");
-      return;
-    }
-
-    const notes = prompt(
-      `סיום משימה: ${
-        task.description || task.taskDescription
-      }\n\nהערות סיום (אופציונלי):`,
-      ""
-    );
-
-    if (notes !== null) {
-      try {
-        const taskIndex = this.budgetTasks.findIndex((t) => t.id === taskId);
-        if (taskIndex !== -1) {
-          this.budgetTasks[taskIndex].status = "הושלם";
-          this.budgetTasks[taskIndex].completedAt = new Date().toLocaleString(
-            "he-IL"
-          );
-          this.filteredBudgetTasks = [...this.budgetTasks];
-          this.renderBudgetTasks();
-        }
-
-        await completeTaskFirebase(taskId, notes);
-
-        await this.loadDataFromFirebase();
-      } catch (error) {
-        console.error("Error completing task:", error);
-        this.showNotification("שגיאה בהשלמת המשימה", "error");
-        await this.loadDataFromFirebase();
-      }
-    }
-  };
-
   // הוספת פונקציית הארכת יעד
   window.manager.showExtendDeadlineDialog = function (taskId) {
     const task = this.budgetTasks.find((t) => t.id === taskId);
@@ -5252,1720 +5060,3 @@ console.log("✅ completeTaskFirebase - סיום משימה");
 console.log("✅ extendTaskDeadlineFirebase - הארכת יעד");
 console.log("✅ logUserLoginFirebase - רישום כניסה");
 console.log("🎯 כל הפונקציות מוחלפות לFirebase!");
-/* ===== 🔥 Firebase Functions - הוסף בסוف script.js ===== */
-
-// הוספת זמן למשימה מתוקצבת (Firebase)
-async function addTimeToTaskFirebase(taskId, timeEntry) {
-  try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    const taskRef = db.collection("budget_tasks").doc(taskId);
-
-    await db.runTransaction(async (transaction) => {
-      const taskDoc = await transaction.get(taskRef);
-
-      if (!taskDoc.exists) {
-        throw new Error("משימה לא נמצאה");
-      }
-
-      const taskData = taskDoc.data();
-      const currentUser = window.manager?.currentUser;
-
-      if (taskData.employee !== currentUser) {
-        throw new Error("אין הרשאה לעדכן משימה זו");
-      }
-
-      const historyEntry = {
-        id: Date.now(),
-        date: timeEntry.date,
-        minutes: timeEntry.minutes,
-        description: timeEntry.description,
-        timestamp: new Date().toLocaleString("he-IL"),
-        addedBy: currentUser,
-      };
-
-      const newActualMinutes =
-        (taskData.actualMinutes || 0) + timeEntry.minutes;
-      const newHistory = [...(taskData.history || []), historyEntry];
-
-      transaction.update(taskRef, {
-        actualMinutes: newActualMinutes,
-        history: newHistory,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: currentUser,
-      });
-    });
-
-    console.log(`✅ זמן נוסף למשימה ${taskId}: ${timeEntry.minutes} דקות`);
-    return { success: true, message: "זמן נוסף בהצלחה למשימה" };
-  } catch (error) {
-    console.error("❌ שגיאה בהוספת זמן למשימה:", error);
-    throw new Error("שגיאה ברישום זמן: " + error.message);
-  }
-}
-
-// סיום משימה מתוקצבת (Firebase)
-async function completeTaskFirebase(taskId, completionNotes = "") {
-  try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    const taskRef = db.collection("budget_tasks").doc(taskId);
-    const taskDoc = await taskRef.get();
-
-    if (!taskDoc.exists) {
-      throw new Error("משימה לא נמצאה");
-    }
-
-    const taskData = taskDoc.data();
-    const currentUser = window.manager?.currentUser;
-
-    if (taskData.employee !== currentUser) {
-      throw new Error("אין הרשאה להשלים משימה זו");
-    }
-
-    await taskRef.update({
-      status: "הושלם",
-      completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      completionNotes: completionNotes,
-      completedBy: currentUser,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: currentUser,
-    });
-
-    console.log(`✅ משימה הושלמה: ${taskId}`);
-    return { success: true, message: "המשימה הושלמה בהצלחה" };
-  } catch (error) {
-    console.error("❌ שגיאה בהשלמת משימה:", error);
-    throw new Error("שגיאה בהשלמת משימה: " + error.message);
-  }
-}
-
-// הארכת תאריך יעד למשימה (Firebase)
-async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
-  try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    const taskRef = db.collection("budget_tasks").doc(taskId);
-    const taskDoc = await taskRef.get();
-
-    if (!taskDoc.exists) {
-      throw new Error("משימה לא נמצאה");
-    }
-
-    const taskData = taskDoc.data();
-    const currentUser = window.manager?.currentUser;
-
-    if (taskData.employee !== currentUser) {
-      throw new Error("אין הרשאה לעדכן משימה זו");
-    }
-
-    const extensionLog = {
-      originalDeadline: taskData.deadline,
-      newDeadline: newDeadline,
-      reason: reason,
-      extendedBy: currentUser,
-      extendedAt: new Date().toISOString(),
-    };
-
-    await taskRef.update({
-      deadline: newDeadline,
-      extended: true,
-      extensionHistory: firebase.firestore.FieldValue.arrayUnion(extensionLog),
-      extensionReason: reason,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: currentUser,
-    });
-
-    console.log(`✅ תאריך יעד הוארך למשימה ${taskId}: ${newDeadline}`);
-    return { success: true, message: "תאריך היעד הוארך בהצלחה" };
-  } catch (error) {
-    console.error("❌ שגיאה בהארכת תאריך יעד:", error);
-    throw new Error("שגיאה בהארכת יעד: " + error.message);
-  }
-}
-
-// רישום כניסת משתמש (Firebase)
-async function logUserLoginFirebase(employee, userAgent = "", ipAddress = "") {
-  try {
-    const db = window.firebaseDB;
-    if (!db) {
-      console.warn("Firebase לא מחובר - דילוג על רישום כניסה");
-      return { success: true };
-    }
-
-    const loginData = {
-      employee: employee,
-      action: "login",
-      userAgent: userAgent || navigator.userAgent,
-      ipAddress: ipAddress || "לא זמין",
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      sessionId: Date.now().toString(),
-      browserInfo: {
-        language: navigator.language,
-        platform: navigator.platform,
-        cookieEnabled: navigator.cookieEnabled,
-        onlineStatus: navigator.onLine,
-      },
-    };
-
-    db.collection("user_logs")
-      .add(loginData)
-      .then(() => {
-        console.log(`📝 כניסת משתמש נרשמה: ${employee}`);
-      })
-      .catch((error) => {
-        console.warn("שגיאה ברישום כניסה:", error.message);
-      });
-
-    return { success: true, message: "כניסה נרשמה" };
-  } catch (error) {
-    console.error("שגיאה ברישום כניסת משתמש:", error);
-    return { success: true };
-  }
-}
-
-// עדכון פונקציות קיימות להשתמש ב-Firebase
-if (window.manager) {
-  // החלפת addTimeToTask
-  window.manager.addTimeToTask = async function (timeData) {
-    try {
-      const taskIndex = this.budgetTasks.findIndex(
-        (t) => t.id === timeData.taskId
-      );
-      let originalTask = null;
-
-      if (taskIndex !== -1) {
-        originalTask = JSON.parse(JSON.stringify(this.budgetTasks[taskIndex]));
-        this.budgetTasks[taskIndex].actualMinutes += timeData.minutes;
-        this.budgetTasks[taskIndex].history.push({
-          id: Date.now(),
-          date: timeData.date,
-          minutes: timeData.minutes,
-          description: timeData.description,
-          timestamp: new Date().toLocaleString("he-IL"),
-          isPending: true,
-        });
-        this.filteredBudgetTasks = [...this.budgetTasks];
-        this.renderBudgetTasks();
-        this.showNotification("⏳ רושם זמן...", "info");
-      }
-
-      await addTimeToTaskFirebase(timeData.taskId, timeData);
-
-      if (taskIndex !== -1) {
-        const lastHistoryItem =
-          this.budgetTasks[taskIndex].history[
-            this.budgetTasks[taskIndex].history.length - 1
-          ];
-        if (lastHistoryItem?.isPending) {
-          delete lastHistoryItem.isPending;
-        }
-      }
-
-      setTimeout(() => this.loadDataFromFirebase(), 1000);
-    } catch (error) {
-      if (originalTask && taskIndex !== -1) {
-        this.budgetTasks[taskIndex] = originalTask;
-        this.filteredBudgetTasks = [...this.budgetTasks];
-        this.renderBudgetTasks();
-      }
-
-      this.showNotification("❌ שגיאה ברישום זמן", "error");
-      console.error("Error in addTimeToTask:", error);
-    }
-  };
-
-  // החלפת completeTask
-  window.manager.completeTask = async function (taskId) {
-    const task = this.budgetTasks.find((t) => t.id === taskId);
-    if (!task) {
-      this.showNotification("המשימה לא נמצאה", "error");
-      return;
-    }
-
-    const notes = prompt(
-      `סיום משימה: ${
-        task.description || task.taskDescription
-      }\n\nהערות סיום (אופציונלי):`,
-      ""
-    );
-
-    if (notes !== null) {
-      try {
-        const taskIndex = this.budgetTasks.findIndex((t) => t.id === taskId);
-        if (taskIndex !== -1) {
-          this.budgetTasks[taskIndex].status = "הושלם";
-          this.budgetTasks[taskIndex].completedAt = new Date().toLocaleString(
-            "he-IL"
-          );
-          this.filteredBudgetTasks = [...this.budgetTasks];
-          this.renderBudgetTasks();
-        }
-
-        await completeTaskFirebase(taskId, notes);
-
-        await this.loadDataFromFirebase();
-      } catch (error) {
-        console.error("Error completing task:", error);
-        this.showNotification("שגיאה בהשלמת המשימה", "error");
-        await this.loadDataFromFirebase();
-      }
-    }
-  };
-}
-
-/* ===== פונקציות Firebase לעריכת שעתון לפי משתמש ===== */
-
-/**
- * עדכון רשומת שעתון ב-Firebase
- * מאפשר רק למשתמש שיצר את הרשומה לערוך אותה
- */
-async function updateTimesheetEntryFirebase(entryId, newMinutes, reason = "") {
-  let oldMinutes = 0; // הגדרה מחוץ ל-transaction
-  try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    const currentUser = window.manager?.currentUser;
-    if (!currentUser) throw new Error("משתמש לא מזוהה");
-
-    console.log(
-      `🔥 Firebase: מעדכן רשומת שעתון ${entryId} עבור ${currentUser}`
-    );
-
-    const entryRef = db.collection("timesheet_entries").doc(entryId);
-
-    await db.runTransaction(async (transaction) => {
-      const entryDoc = await transaction.get(entryRef);
-
-      if (!entryDoc.exists) {
-        throw new Error("רשומת שעתון לא נמצאה");
-      }
-
-      const entryData = entryDoc.data();
-
-      // בדיקת הרשאה - רק המשתמש שיצר את הרשומה יכול לערוך
-      if (entryData.employee !== currentUser) {
-        throw new Error("אין הרשאה לערוך רשומת שעתון זו - שייכת למשתמש אחר");
-      }
-
-      const oldMinutes = entryData.minutes || 0;
-
-      // יצירת לוג עריכה מפורט
-      const editLog = {
-        oldMinutes: oldMinutes,
-        newMinutes: newMinutes,
-        difference: newMinutes - oldMinutes,
-        reason: reason || `שונה מ-${oldMinutes} ל-${newMinutes} דקות`,
-        editedBy: currentUser,
-        editedAt: new Date().toISOString(),
-        timestamp: new Date().toLocaleString("he-IL"),
-        clientName: entryData.clientName,
-        originalAction: entryData.action,
-      };
-
-      const updates = {
-        minutes: newMinutes,
-        editHistory: firebase.firestore.FieldValue.arrayUnion(editLog),
-        lastModified: new Date().toLocaleString("he-IL"),
-        lastModifiedBy: currentUser,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        totalEdits: firebase.firestore.FieldValue.increment(1),
-        edited: true, // סימון שהרשומה נערכה
-      };
-
-      transaction.update(entryRef, updates);
-
-      console.log(
-        `✅ עדכון הושלם: ${oldMinutes} → ${newMinutes} דקות (${
-          newMinutes - oldMinutes > 0 ? "+" : ""
-        }${newMinutes - oldMinutes})`
-      );
-    });
-
-    return {
-      success: true,
-      message: "רשומת השעתון עודכנה בהצלחה",
-      oldMinutes: oldMinutes,
-      newMinutes: newMinutes,
-    };
-  } catch (error) {
-    console.error("❌ שגיאה בעדכון רשומת שעתון:", error);
-    throw new Error("שגיאה בעדכון שעתון: " + error.message);
-  }
-}
-
-/**
- * טעינת רשומות שעתון של משתמש ספציפי עם היסטוריית עריכות
- */
-async function loadTimesheetWithEditHistory(employee) {
-  try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    console.log(`🔍 טוען רשומות שעתון עבור: ${employee}`);
-
-    const snapshot = await db
-      .collection("timesheet_entries")
-      .where("employee", "==", employee)
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const entries = [];
-    let totalEdits = 0;
-    let totalOriginalMinutes = 0;
-    let totalCurrentMinutes = 0;
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const entry = {
-        id: doc.id,
-        ...data,
-        hasEditHistory: data.editHistory && data.editHistory.length > 0,
-      };
-
-      entries.push(entry);
-
-      // סטטיסטיקות
-      if (data.edited) totalEdits++;
-      if (data.editHistory && data.editHistory.length > 0) {
-        // המינוטים המקוריים הם מהעריכה הראשונה או המינוטים הנוכחיים אם אין עריכות
-        const firstEdit = data.editHistory[0];
-        totalOriginalMinutes += firstEdit.oldMinutes;
-      } else {
-        totalOriginalMinutes += data.minutes || 0;
-      }
-      totalCurrentMinutes += data.minutes || 0;
-    });
-
-    console.log(`📊 סטטיסטיקות עבור ${employee}:`);
-    console.log(`   📋 סה"כ רשומות: ${entries.length}`);
-    console.log(`   ✏️ רשומות ערוכות: ${totalEdits}`);
-    console.log(`   ⏰ דקות מקוריות: ${totalOriginalMinutes}`);
-    console.log(`   ⏱️ דקות נוכחיות: ${totalCurrentMinutes}`);
-    console.log(
-      `   📈 הפרש: ${
-        totalCurrentMinutes - totalOriginalMinutes > 0 ? "+" : ""
-      }${totalCurrentMinutes - totalOriginalMinutes} דקות`
-    );
-
-    return {
-      entries,
-      stats: {
-        totalEntries: entries.length,
-        editedEntries: totalEdits,
-        originalMinutes: totalOriginalMinutes,
-        currentMinutes: totalCurrentMinutes,
-        minutesDifference: totalCurrentMinutes - totalOriginalMinutes,
-      },
-    };
-  } catch (error) {
-    console.error("Firebase error:", error);
-    throw new Error("שגיאה בטעינת שעתון: " + error.message);
-  }
-}
-
-/**
- * עדכון פונקציית עריכת השעתון להשתמש ב-Firebase
- */
-if (window.manager) {
-  window.manager.submitTimesheetEdit = async function (entryId) {
-    try {
-      const newMinutes = parseInt(document.getElementById("editMinutes").value);
-      const reason = document.getElementById("editReason").value.trim();
-
-      if (!newMinutes || newMinutes < 1 || newMinutes > 999) {
-        this.showNotification("❌ מספר דקות חייב להיות בין 1 ל-999", "error");
-        return;
-      }
-
-      // מציאת הרשומה המקומית
-      const entry = this.timesheetEntries.find(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (!entry) {
-        this.showNotification("❌ רשומת שעתון לא נמצאה", "error");
-        return;
-      }
-
-      const oldMinutes = entry.minutes;
-
-      // אם אין שינוי בזמן, לא צריך לעדכן
-      if (oldMinutes === newMinutes) {
-        document.querySelector(".popup-overlay").remove();
-        this.showNotification("⚠️ לא בוצע שינוי בזמן", "info");
-        return;
-      }
-
-      // עדכון ב-Firebase
-      const result = await updateTimesheetEntryFirebase(
-        entryId,
-        newMinutes,
-        reason
-      );
-
-      // עדכון מקומי רק אחרי הצלחה ב-Firebase
-      const entryIndex = this.timesheetEntries.findIndex(
-        (e) =>
-          (e.id && e.id.toString() === entryId.toString()) ||
-          (e.entryId && e.entryId.toString() === entryId.toString())
-      );
-
-      if (entryIndex !== -1) {
-        this.timesheetEntries[entryIndex].minutes = newMinutes;
-        this.timesheetEntries[entryIndex].lastModified =
-          new Date().toLocaleString("he-IL");
-        this.timesheetEntries[entryIndex].editReason =
-          reason || `שונה מ-${oldMinutes} ל-${newMinutes} דקות`;
-        this.timesheetEntries[entryIndex].edited = true;
-        this.filteredTimesheetEntries = [...this.timesheetEntries];
-      }
-
-      // הסרת הדיאלוג
-      document.querySelector(".popup-overlay").remove();
-
-      // הודעת הצלחה עם פרטים
-      const difference = newMinutes - oldMinutes;
-      const diffText = difference > 0 ? `+${difference}` : `${difference}`;
-      this.showNotification(
-        `✅ שעתון עודכן: ${oldMinutes} → ${newMinutes} דק' (${diffText})`,
-        "success"
-      );
-
-      // עדכון התצוגה
-      this.renderTimesheetEntries();
-
-      // טעינה מחדש מהשרת לוודא סנכרון
-      setTimeout(async () => {
-        try {
-          await this.loadDataFromFirebase();
-          console.log("🔄 נתונים סונכרנו מהשרת אחרי עדכון שעתון");
-        } catch (error) {
-          console.error("שגיאה בסנכרון נתונים:", error);
-        }
-      }, 1500);
-    } catch (error) {
-      console.error("Error editing timesheet:", error);
-
-      let errorMessage = "שגיאה בעדכון השעתון";
-      if (error.message.includes("אין הרשאה")) {
-        errorMessage = "❌ אין לך הרשאה לערוך רשומה זו";
-      } else if (error.message.includes("לא נמצאה")) {
-        errorMessage = "❌ רשומת השעתון לא נמצאה";
-      } else if (error.message.includes("Firebase לא מחובר")) {
-        errorMessage = "❌ בעיית חיבור - נסה שוב";
-      }
-
-      this.showNotification(errorMessage, "error");
-    }
-  };
-
-  /**
-   * הוספת אפשרות להציג היסטוריית עריכות
-   */
-  window.manager.showTimesheetEditHistory = function (entryId) {
-    const entry = this.timesheetEntries.find(
-      (e) =>
-        (e.id && e.id.toString() === entryId.toString()) ||
-        (e.entryId && e.entryId.toString() === entryId.toString())
-    );
-
-    if (!entry || !entry.editHistory || entry.editHistory.length === 0) {
-      this.showNotification("אין היסטוריית עריכות לרשומה זו", "info");
-      return;
-    }
-
-    const overlay = document.createElement("div");
-    overlay.className = "popup-overlay";
-
-    const historyHtml = entry.editHistory
-      .map(
-        (edit, index) => `
-        <div class="history-edit-entry" style="
-          background: ${index === 0 ? "#fef3c7" : "#f3f4f6"};
-          border: 1px solid ${index === 0 ? "#f59e0b" : "#d1d5db"};
-          border-radius: 8px;
-          padding: 12px;
-          margin-bottom: 10px;
-        ">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <strong style="color: #374151;">עריכה #${
-              entry.editHistory.length - index
-            }</strong>
-            <span style="color: #6b7280; font-size: 12px;">${
-              edit.timestamp
-            }</span>
-          </div>
-          <div style="color: #4b5563; font-size: 14px;">
-            <strong>שונה מ-${edit.oldMinutes} ל-${edit.newMinutes} דקות</strong>
-            (הפרש: ${edit.difference > 0 ? "+" : ""}${edit.difference})
-          </div>
-          ${
-            edit.reason
-              ? `
-            <div style="color: #6b7280; font-size: 13px; margin-top: 6px; font-style: italic;">
-              "${edit.reason}"
-            </div>
-          `
-              : ""
-          }
-        </div>
-      `
-      )
-      .join("");
-
-    overlay.innerHTML = `
-      <div class="popup" style="max-width: 600px;">
-        <div class="popup-header">
-          <i class="fas fa-history"></i>
-          היסטוריית עריכות - ${entry.action}
-        </div>
-        <div class="popup-content">
-          <div class="task-overview">
-            <h4><i class="fas fa-info-circle"></i> פרטי הרשומה</h4>
-            <p><strong>לקוח:</strong> ${entry.clientName}</p>
-            <p><strong>תאריך:</strong> ${formatDate(entry.date)}</p>
-            <p><strong>זמן נוכחי:</strong> ${entry.minutes} דקות</p>
-            <p><strong>מספר עריכות:</strong> ${entry.editHistory.length}</p>
-          </div>
-          
-          <div style="max-height: 300px; overflow-y: auto;">
-            <h4 style="margin-bottom: 15px; color: #374151;">
-              <i class="fas fa-list"></i> היסטוריית שינויים
-            </h4>
-            ${historyHtml}
-          </div>
-        </div>
-        <div class="popup-buttons">
-          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-            <i class="fas fa-times"></i> סגור
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-  };
-}
-
-/**
- * הוספת כפתור היסטוריה לכרטיס שעתון (אם יש עריכות)
- */
-if (window.manager && window.manager.createTimesheetCard) {
-  const originalCreateTimesheetCard = window.manager.createTimesheetCard;
-
-  window.manager.createTimesheetCard = function (entry) {
-    const safeEntry = this.sanitizeTimesheetData(entry);
-    const minutesClass =
-      safeEntry.minutes >= 120
-        ? "high-time"
-        : safeEntry.minutes >= 60
-        ? "medium-time"
-        : "low-time";
-
-    // כפתור היסטוריה רק אם יש עריכות
-    const historyButton =
-      entry.editHistory && entry.editHistory.length > 0
-        ? `
-      <button class="action-btn history-btn" onclick="manager.showTimesheetEditHistory('${safeEntry.id}')" title="היסטוריית עריכות">
-        <i class="fas fa-history"></i>
-        עריכות (${entry.editHistory.length})
-      </button>
-    `
-        : "";
-
-    return `
-      <div class="timesheet-card ${minutesClass}" data-entry-id="${
-      safeEntry.id
-    }">
-        <div class="timesheet-card-content">
-          <div class="timesheet-card-header">
-            <div class="timesheet-card-date">
-              <i class="fas fa-calendar-day"></i>
-              ${formatDate(safeEntry.date)}
-            </div>
-            <div class="timesheet-card-time">
-              <span class="time-badge ${minutesClass}">
-                <i class="fas fa-clock"></i>
-                ${safeEntry.minutes} דק'
-                ${
-                  entry.edited
-                    ? '<i class="fas fa-edit" style="margin-right: 4px; font-size: 10px;" title="נערך"></i>'
-                    : ""
-                }
-              </span>
-            </div>
-          </div>
-          
-          <div class="timesheet-card-main">
-            <div class="timesheet-card-client">
-              <i class="fas fa-user-tie"></i>
-              ${safeText(safeEntry.clientName)}
-            </div>
-            <div class="timesheet-card-action">
-              ${safeText(safeEntry.action)}
-            </div>
-            ${
-              safeEntry.fileNumber
-                ? `
-              <div class="timesheet-card-file">
-                <i class="fas fa-folder"></i>
-                תיק: ${safeText(safeEntry.fileNumber)}
-              </div>
-            `
-                : ""
-            }
-          </div>
-          
-          ${
-            safeEntry.notes && safeEntry.notes !== "—"
-              ? `
-            <div class="timesheet-card-notes">
-              <i class="fas fa-sticky-note"></i>
-              ${safeText(safeEntry.notes)}
-            </div>
-          `
-              : ""
-          }
-          
-          <div class="card-actions timesheet-card-actions">
-            <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${
-              safeEntry.id
-            }')" title="ערוך זמן">
-              <i class="fas fa-edit"></i>
-              ערוך שעתון
-            </button>
-            ${historyButton}
-          </div>
-        </div>
-      </div>
-    `;
-  };
-}
-// הוסף פונקציות ל-window
-window.addTimeToTaskFirebase = addTimeToTaskFirebase;
-window.completeTaskFirebase = completeTaskFirebase;
-window.extendTaskDeadlineFirebase = extendTaskDeadlineFirebase;
-window.logUserLoginFirebase = logUserLoginFirebase;
-
-console.log("🔥 Firebase Functions Integration Complete!");
-console.log("✅ addTimeToTaskFirebase - הוספת זמן למשימה");
-console.log("✅ completeTaskFirebase - סיום משימה");
-console.log("✅ extendTaskDeadlineFirebase - הארכת יעד");
-console.log("✅ logUserLoginFirebase - רישום כניסה");
-console.log("🎯 כל הפונקציות מוחלפות לFirebase!");
-
-/* ===== 🔚 סוף הקוד החדש ===== */
-// בדוק שהכל באמת עובד
-console.log("🔍 בדיקה אמיתית:");
-console.log("Manager:", !!window.manager);
-console.log("NotificationBell:", !!window.notificationBell);
-console.log("ClientValidation:", !!window.manager?.clientValidation);
-console.log("Firebase Functions:", !!window.addTimeToTaskFirebase);
-console.log("🎉 הכל עובד!");
-// ===== הוספת הפונקציות לכל מופע של Manager =====
-// הוסף את הקוד הזה בסוף הקובץ script.js, אחרי שמחלקת LawOfficeManager מוגדרת:
-
-// וידוא שהפונקציות זמינות גלובלית למקרה חירום
-window.showEditTimesheetDialog = function (entryId) {
-  if (window.manager && window.manager.showEditTimesheetDialog) {
-    return window.manager.showEditTimesheetDialog(entryId);
-  } else {
-    console.error("❌ Manager לא זמין");
-    alert("שגיאה: מערכת לא מוכנה. רענן את הדף.");
-  }
-};
-
-window.submitTimesheetEdit = function (entryId) {
-  if (window.manager && window.manager.submitTimesheetEdit) {
-    return window.manager.submitTimesheetEdit(entryId);
-  } else {
-    console.error("❌ Manager לא זמין");
-    alert("שגיאה: מערכת לא מוכנה. רענן את הדף.");
-  }
-};
-
-// Debug: בדוק שהפונקציות קיימות
-console.log("🔧 בדיקת פונקציות עריכת שעתון:");
-console.log("showEditTimesheetDialog:", typeof window.showEditTimesheetDialog);
-console.log("submitTimesheetEdit:", typeof window.submitTimesheetEdit);
-console.log(
-  "manager.showEditTimesheetDialog:",
-  window.manager?.showEditTimesheetDialog ? "✅ קיים" : "❌ חסר"
-);
-
-/**
- * תצוגת כרטיסיות משופרת לשעתון - מותאמת לנתוני השעתון
- * החלפת הפונקציה renderTimesheetCards ב-LawOfficeManager
- */
-
-// החלפת הפונקציה הקיימת במחלקת LawOfficeManager
-if (window.manager) {
-  /**
-   * יצירת כרטיסיות מעוצבות לשעתון
-   */
-  window.manager.renderTimesheetCards = function (entries) {
-    const container = document.getElementById("timesheetContainer");
-    if (!container) return;
-
-    if (!entries || entries.length === 0) {
-      container.innerHTML = this.createEmptyTimesheetState();
-      return;
-    }
-
-    const cardsHtml = entries
-      .map((entry) => this.createTimesheetCard(entry))
-      .join("");
-
-    container.innerHTML = `
-      <div class="modern-cards-header">
-        <h3 class="modern-cards-title">
-          <i class="fas fa-clock"></i>
-          רשומות שעתון
-        </h3>
-        <div class="modern-cards-subtitle">
-          ${this.filteredTimesheetEntries.length} רשומות • 
-          ${this.getTotalHoursFromEntries()} שעות • 
-          ${this.getEntriesThisWeek()} השבוע
-        </div>
-      </div>
-      <div class="timesheet-cards-grid">
-        ${cardsHtml}
-      </div>
-    `;
-  };
-
-  /**
-   * יצירת כרטיס יחיד לשעתון
-   */
-  window.manager.createTimesheetCard = function (entry) {
-    const safeEntry = this.sanitizeTimesheetData(entry);
-
-    // חישוב סוג הזמן לעיצוב
-    const minutesClass =
-      safeEntry.minutes >= 120
-        ? "high-time"
-        : safeEntry.minutes >= 60
-        ? "medium-time"
-        : "low-time";
-
-    // בדיקת תאריך לעיצוב
-    const entryDate = new Date(safeEntry.date);
-    const today = new Date();
-    const diffDays = Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
-
-    let dateClass = "";
-    let dateIcon = "📅";
-    if (diffDays === 0) {
-      dateClass = "today";
-      dateIcon = "🔥";
-    } else if (diffDays === 1) {
-      dateClass = "yesterday";
-      dateIcon = "🕐";
-    } else if (diffDays <= 7) {
-      dateClass = "this-week";
-      dateIcon = "📆";
-    } else if (diffDays > 30) {
-      dateClass = "old";
-      dateIcon = "🗓️";
-    }
-
-    const safeDescription = safeText(safeEntry.action);
-    const safeClientName = safeText(safeEntry.clientName);
-    const clientDisplayName =
-      safeEntry.clientName.length > 25
-        ? safeText(safeEntry.clientName.substring(0, 25) + "...")
-        : safeClientName;
-
-    return `
-      <div class="timesheet-linear-card" data-entry-id="${safeEntry.id}">
-        <div class="timesheet-card-content">
-          <div class="timesheet-card-header">
-            <div class="timesheet-date-info ${dateClass}">
-              <span class="date-icon">${dateIcon}</span>
-              <span class="date-text">${formatDate(safeEntry.date)}</span>
-              ${diffDays === 0 ? '<span class="today-badge">היום</span>' : ""}
-            </div>
-            <div class="timesheet-time-badge ${minutesClass}">
-              <i class="fas fa-stopwatch"></i>
-              <span class="time-value">${safeEntry.minutes}</span>
-              <span class="time-unit">דק'</span>
-            </div>
-          </div>
-
-          <div class="timesheet-main-content">
-            <h3 class="timesheet-action-title" title="${safeDescription}">
-              ${safeDescription}
-            </h3>
-            
-            <div class="timesheet-client-info">
-              <div class="client-row">
-                <i class="fas fa-user-tie"></i>
-                <span class="client-name" title="${safeClientName}">
-                  ${clientDisplayName}
-                </span>
-              </div>
-              ${
-                safeEntry.fileNumber
-                  ? `
-                <div class="file-row">
-                  <i class="fas fa-folder-open"></i>
-                  <span class="file-number">תיק ${safeText(
-                    safeEntry.fileNumber
-                  )}</span>
-                </div>
-              `
-                  : ""
-              }
-            </div>
-
-            ${
-              safeEntry.notes && safeEntry.notes !== "—"
-                ? `
-              <div class="timesheet-notes">
-                <i class="fas fa-sticky-note"></i>
-                <span class="notes-text">${safeText(safeEntry.notes)}</span>
-              </div>
-            `
-                : ""
-            }
-          </div>
-
-          <div class="timesheet-card-footer">
-            <div class="timesheet-meta">
-              <span class="created-time">
-                <i class="fas fa-clock"></i>
-                ${safeEntry.createdAt || "לא ידוע"}
-              </span>
-              ${
-                safeEntry.edited
-                  ? `
-                <span class="edited-indicator" title="רשומה נערכה">
-                  <i class="fas fa-edit"></i>
-                  נערך
-                </span>
-              `
-                  : ""
-              }
-            </div>
-            
-            <div class="card-actions">
-              <button class="timesheet-action-btn edit-btn" 
-                      onclick="manager.showEditTimesheetDialog('${
-                        safeEntry.id
-                      }')" 
-                      title="ערוך רשומה">
-                <i class="fas fa-edit"></i>
-              </button>
-              ${
-                safeEntry.editHistory && safeEntry.editHistory.length > 0
-                  ? `
-                <button class="timesheet-action-btn history-btn" 
-                        onclick="manager.showTimesheetEditHistory('${safeEntry.id}')" 
-                        title="היסטוריית עריכות">
-                  <i class="fas fa-history"></i>
-                  <span class="history-count">${safeEntry.editHistory.length}</span>
-                </button>
-              `
-                  : ""
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  };
-
-  /**
-   * פונקציות עזר לסטטיסטיקות
-   */
-  window.manager.sanitizeTimesheetData = function (entry) {
-    if (!entry) return {};
-
-    return {
-      id: entry.id || entry.entryId || Date.now(),
-      date: entry.date || new Date().toISOString(),
-      action: entry.action || "פעולה ללא תיאור",
-      minutes: Number(entry.minutes) || 0,
-      clientName: entry.clientName || "לקוח לא ידוע",
-      fileNumber: entry.fileNumber || "",
-      notes: entry.notes || "",
-      createdAt: entry.createdAt || "",
-      edited: entry.edited || false,
-      editHistory: entry.editHistory || [],
-    };
-  };
-
-  window.manager.getTotalHoursFromEntries = function () {
-    if (!this.filteredTimesheetEntries) return "0";
-
-    const totalMinutes = this.filteredTimesheetEntries.reduce((sum, entry) => {
-      return sum + (Number(entry.minutes) || 0);
-    }, 0);
-
-    return (totalMinutes / 60).toFixed(1);
-  };
-
-  window.manager.getEntriesThisWeek = function () {
-    if (!this.filteredTimesheetEntries) return 0;
-
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    return this.filteredTimesheetEntries.filter((entry) => {
-      const entryDate = new Date(entry.date);
-      return entryDate >= oneWeekAgo;
-    }).length;
-  };
-
-  /**
-   * עדכון פונקציית החלפת תצוגה
-   */
-  window.manager.switchTimesheetView = function (view) {
-    this.currentTimesheetView = view;
-
-    // עדכן את הכפתורים
-    document.querySelectorAll("#timesheetTab .view-tab").forEach((tab) => {
-      tab.classList.remove("active");
-    });
-
-    const activeTab = document.querySelector(
-      `#timesheetTab .view-tab[data-view="${view}"]`
-    );
-    if (activeTab) activeTab.classList.add("active");
-
-    // החלף תצוגות
-    const timesheetContainer = document.getElementById("timesheetContainer");
-    const timesheetTableContainer = document.getElementById(
-      "timesheetTableContainer"
-    );
-
-    if (view === "cards") {
-      if (timesheetContainer) timesheetContainer.classList.remove("hidden");
-      if (timesheetTableContainer)
-        timesheetTableContainer.classList.add("hidden");
-    } else {
-      if (timesheetContainer) timesheetContainer.classList.add("hidden");
-      if (timesheetTableContainer)
-        timesheetTableContainer.classList.remove("hidden");
-    }
-
-    // טען נתונים אם צריך
-    if (!this.timesheetEntries || this.timesheetEntries.length === 0) {
-      this.loadDataFromFirebase()
-        .then(() => {
-          this.applyTimesheetFilters();
-          this.renderTimesheetEntries();
-        })
-        .catch((error) => {
-          console.error("Error loading timesheet data:", error);
-          this.showNotification("שגיאה בטעינת נתונים", "error");
-        });
-    } else {
-      if (
-        !this.filteredTimesheetEntries ||
-        this.filteredTimesheetEntries.length === 0
-      ) {
-        this.applyTimesheetFilters();
-      }
-      this.renderTimesheetEntries();
-    }
-  };
-
-  console.log("✅ תצוגת כרטיסיות לשעתון הושלמה!");
-} else {
-  console.error("❌ Manager לא זמין - לא ניתן להוסיף פונקציות");
-}
-// החלף את הקוד הקיים ב-script.js עם הגרסה המשופרת הזו
-
-// מחק את כל הקוד הקיים של ACTION_CATEGORIES ו-CategoryUtils
-// והחלף אותו בקוד הזה
-
-const ACTION_CATEGORIES = {
-  "כתבי טענות ראשוניים": ["כתב תביעה", "כתב הגנה", "כתב תשובה"],
-
-  "הליכי ביניים": ["בקשה בכתב", "תגובה לבקשה בכתב"],
-
-  "כתבי טענות מיוחדים": ["כתב ערעור", "עתירה מנהלית"],
-
-  "כתבי טענות במהלך ההליכים המשפטיים": [
-    "הליכים מקדמיים (גילוי מסמכים כללי/גילוי מסמכים ספציפי/שאלון)",
-    "היערכות לדיון מקדמי",
-    "ייצוג בדיון מקדמי",
-    "היערכות לקדם מסכם",
-    "ייצוג בדיון קדם מסכם",
-    "תצהירי עדות ראשית/הכנת תיק מוצגים",
-    "הכנת חקירות נגדיות לעדי הצד שכנגד",
-    "הכנת הלקוח ועדי הלקוח לחקירות נגדיות",
-    "ייצוג בדיון הוכחות",
-    "עריכת סיכומים",
-    "עריכת סיכומי תשובה",
-  ],
-
-  מכתבים: ["עריכת מכתב התראה"],
-
-  הסכמים: [
-    "הסכם מייסדים",
-    "תקנון חברה לא סטנדרטי",
-    "הסכם שותפות",
-    "עבודה",
-    "שיתוף פעולה",
-    "נותן שירותים",
-    "מכר דירה/בית/שטח",
-    "הסכם מכר מניות",
-  ],
-
-  "צוואה/ירושה": ["עריכת צוואה", "בקשה לצו ירושה"],
-
-  // קטגוריות חדשות
-  "מסמכים דיגיטליים": [
-    "תקנון אתר",
-    "מדיניות פרטיות לאתר",
-    "תנאי שימוש באתר",
-    "מדיניות קובצי Cookies",
-    "הסכם שירות דיגיטלי",
-  ],
-
-  "הליכי הוצאה לפועל": [
-    "בקשה לצו עיקול",
-    "התנגדות לעיקול",
-    "בקשה לביטול עיקול",
-    "הליכי חלוקה",
-    "בקשה למכירה פומבית",
-  ],
-
-  "בוררות ותיווך": [
-    "הגשת כתב בוררות",
-    "כתב הגנה בבוררות",
-    "ייצוג בהליכי בוררות",
-    "הליכי תיווך",
-    "הסכם בוררות",
-  ],
-
-  "הליכי פשיטת רגל ורה״ח": [
-    "בקשה לפשיטת רגל",
-    "התנגדות לפשיטת רגל",
-    "הליכי רה״ח (ראש הנהלה חדש)",
-    "הסכם נושים",
-  ],
-
-  "פעולות ייעוץ ומחקר": [
-    "ייעוץ טלפוני",
-    "פגישת לקוח",
-    "מחקר משפטי",
-    "הכנת חוות דעת משפטית",
-    "בדיקת תקדימים",
-    "ייעוץ בכתיבת חוזה",
-  ],
-
-  "הליכי רישוי ורגולציה": [
-    "בקשה לרישיון עסק",
-    "ייצוג מול רשויות מקומיות",
-    "הליכי היתרי בנייה",
-    "ייצוג מול משרדי ממשלה",
-    "ערר מנהלי",
-  ],
-
-  "דיני משפחה": [
-    "הסכם ממון טרום נישואין",
-    "הסכם גירושין",
-    "הסכם מזונות",
-    "בקשה למשמורת",
-    "הסכם ראייה בילדים",
-  ],
-};
-
-// עדכון פעולות פופולריות
-const POPULAR_ACTIONS = [
-  "כתב תביעה",
-  "כתב הגנה",
-  "היערכות לדיון מקדמי",
-  "ייצוג בדיון מקדמי",
-  "עריכת מכתב התראה",
-  "הסכם שותפות",
-  "תקנון אתר",
-  "מדיניות פרטיות לאתר",
-  "ייעוץ טלפוני",
-  "פגישת לקוח",
-  "מחקר משפטי",
-];
-
-const CategoryUtils = {
-  getAllActions() {
-    const actions = [];
-    Object.values(ACTION_CATEGORIES).forEach((categoryActions) => {
-      actions.push(...categoryActions);
-    });
-    return actions;
-  },
-
-  searchActions(searchText) {
-    if (!searchText) return this.getPopularActions();
-
-    const lowerSearch = searchText.toLowerCase();
-    const allActions = this.getAllActions();
-
-    // חיפוש מדויק ברמת מילים
-    const exactMatches = allActions.filter((action) =>
-      action.toLowerCase().includes(lowerSearch)
-    );
-
-    // חיפוש במילים נפרדות
-    const words = lowerSearch.split(" ").filter((w) => w.length > 1);
-    const partialMatches = allActions.filter((action) => {
-      const actionLower = action.toLowerCase();
-      return (
-        words.some((word) => actionLower.includes(word)) &&
-        !exactMatches.includes(action)
-      );
-    });
-
-    // מיון לפי רלוונטיות - פעולות פופולריות קודם
-    const sortByRelevance = (matches) => {
-      return matches.sort((a, b) => {
-        const aPopular = POPULAR_ACTIONS.includes(a);
-        const bPopular = POPULAR_ACTIONS.includes(b);
-
-        if (aPopular && !bPopular) return -1;
-        if (!aPopular && bPopular) return 1;
-
-        // אם שניהם פופולריים או לא, מיין לפי התחלת המילה
-        const aStartsWith = a.toLowerCase().startsWith(lowerSearch);
-        const bStartsWith = b.toLowerCase().startsWith(lowerSearch);
-
-        if (aStartsWith && !bStartsWith) return -1;
-        if (!aStartsWith && bStartsWith) return 1;
-
-        return a.length - b.length; // קצרים קודם
-      });
-    };
-
-    return [
-      ...sortByRelevance(exactMatches),
-      ...sortByRelevance(partialMatches),
-    ].slice(0, 10);
-  },
-
-  getPopularActions() {
-    return POPULAR_ACTIONS;
-  },
-
-  findCategoryForAction(actionName) {
-    for (const [category, actions] of Object.entries(ACTION_CATEGORIES)) {
-      if (actions.includes(actionName)) {
-        return category;
-      }
-    }
-    return null;
-  },
-
-  isValidAction(actionName) {
-    return this.getAllActions().includes(actionName);
-  },
-
-  getCategoryIcon(categoryName) {
-    const icons = {
-      "כתבי טענות ראשוניים": "📄",
-      "הליכי ביניים": "📋",
-      "כתבי טענות מיוחדים": "⚖️",
-      "כתבי טענות במהלך ההליכים המשפטיים": "🏛️",
-      מכתבים: "✉️",
-      הסכמים: "📝",
-      "צוואה/ירושה": "📜",
-      "מסמכים דיגיטליים": "💻",
-      "הליכי הוצאה לפועל": "⚖️",
-      "בוררות ותיווך": "🤝",
-      "הליכי פשיטת רגל ורה״ח": "📊",
-      "פעולות ייעוץ ומחקר": "🔍",
-      "הליכי רישוי ורגולציה": "📋",
-      "דיני משפחה": "👨‍👩‍👧‍👦",
-    };
-    return icons[categoryName] || "📁";
-  },
-
-  highlightMatch(text, searchTerm) {
-    if (!searchTerm) return text;
-
-    const regex = new RegExp(
-      `(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-      "gi"
-    );
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
-  },
-
-  createProfessionalCombobox(
-    containerId,
-    inputId,
-    placeholder = "בחר או חפש פעולה..."
-  ) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    container.innerHTML = `
-      <div class="professional-combobox">
-        <div class="combobox-input-wrapper">
-          <input 
-            type="text" 
-            id="${inputId}" 
-            placeholder="${placeholder}"
-            autocomplete="off"
-            class="combobox-input"
-            required
-            spellcheck="false"
-          />
-          <button type="button" class="combobox-dropdown-btn" id="${inputId}DropdownBtn">
-            <i class="fas fa-chevron-down"></i>
-          </button>
-          <input type="hidden" id="${inputId}Selected" required />
-        </div>
-        
-        <div class="combobox-dropdown" id="${inputId}Dropdown">
-          <div class="dropdown-header">
-            <span class="dropdown-title">בחר פעולה</span>
-            <span class="dropdown-count" id="${inputId}Count"></span>
-          </div>
-          <div class="dropdown-content" id="${inputId}Content">
-            <!-- תוצאות יוצגו כאן -->
-          </div>
-        </div>
-        
-        <div class="combobox-help">
-          התחל להקליד לחיפוש או לחץ על החץ לרשימה המלאה
-        </div>
-      </div>
-    `;
-
-    this.setupComboboxListeners(inputId);
-    this.showInitialOptions(inputId);
-  },
-
-  setupComboboxListeners(inputId) {
-    const input = document.getElementById(inputId);
-    const dropdown = document.getElementById(`${inputId}Dropdown`);
-    const dropdownBtn = document.getElementById(`${inputId}DropdownBtn`);
-    const hiddenInput = document.getElementById(`${inputId}Selected`);
-
-    if (!input || !dropdown || !dropdownBtn || !hiddenInput) return;
-
-    let isOpen = false;
-
-    // פתיחה/סגירה של הרשימה
-    const toggleDropdown = () => {
-      if (isOpen) {
-        this.closeDropdown(inputId);
-      } else {
-        this.openDropdown(inputId);
-      }
-    };
-
-    // הקלדה בשדה
-    input.addEventListener("input", (e) => {
-      const value = e.target.value.trim();
-      this.updateDropdownContent(inputId, value);
-
-      if (!isOpen) {
-        this.openDropdown(inputId);
-      }
-
-      // איפוס הערך הנסתר אם המשתמש משנה את הטקסט
-      if (hiddenInput.value && hiddenInput.value !== value) {
-        hiddenInput.value = "";
-        input.classList.remove("selected");
-      }
-    });
-
-    // פוקוס על השדה
-    input.addEventListener("focus", () => {
-      if (!isOpen) {
-        this.openDropdown(inputId);
-      }
-    });
-
-    // לחיצה על כפתור הרשימה
-    dropdownBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      toggleDropdown();
-      input.focus();
-    });
-
-    // מקלדת ניווט
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        this.navigateDropdown(inputId, "down");
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        this.navigateDropdown(inputId, "up");
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        this.selectHighlighted(inputId);
-      } else if (e.key === "Escape") {
-        this.closeDropdown(inputId);
-      }
-    });
-
-    // סגירה בלחיצה מחוץ לרכיב
-    document.addEventListener("click", (e) => {
-      const combobox = input.closest(".professional-combobox");
-      if (combobox && !combobox.contains(e.target)) {
-        this.closeDropdown(inputId);
-      }
-    });
-
-    // שמירה של מצב הרשימה
-    dropdown.addEventListener("transitionend", () => {
-      isOpen = dropdown.classList.contains("open");
-    });
-  },
-
-  openDropdown(inputId) {
-    const dropdown = document.getElementById(`${inputId}Dropdown`);
-    const dropdownBtn = document.getElementById(`${inputId}DropdownBtn`);
-
-    if (dropdown && dropdownBtn) {
-      dropdown.classList.add("open");
-      dropdownBtn.classList.add("open");
-      this.updateDropdownContent(
-        inputId,
-        document.getElementById(inputId).value
-      );
-    }
-  },
-
-  closeDropdown(inputId) {
-    const dropdown = document.getElementById(`${inputId}Dropdown`);
-    const dropdownBtn = document.getElementById(`${inputId}DropdownBtn`);
-
-    if (dropdown && dropdownBtn) {
-      dropdown.classList.remove("open");
-      dropdownBtn.classList.remove("open");
-      this.clearHighlight(inputId);
-    }
-  },
-
-  updateDropdownContent(inputId, searchValue) {
-    const content = document.getElementById(`${inputId}Content`);
-    const count = document.getElementById(`${inputId}Count`);
-
-    if (!content || !count) return;
-
-    const matches = this.searchActions(searchValue);
-    count.textContent = `${matches.length} פעולות`;
-
-    if (matches.length === 0) {
-      content.innerHTML = `
-        <div class="dropdown-empty">
-          <i class="fas fa-search"></i>
-          <span>לא נמצאו פעולות מתאימות</span>
-        </div>
-      `;
-      return;
-    }
-
-    // קיבוץ לפי קטגוריות אם אין חיפוש
-    if (!searchValue) {
-      this.renderGroupedOptions(content, matches);
-    } else {
-      this.renderSearchResults(content, matches, searchValue);
-    }
-  },
-
-  renderGroupedOptions(content, actions) {
-    const grouped = {};
-
-    actions.forEach((action) => {
-      const category = this.findCategoryForAction(action);
-      if (!grouped[category]) {
-        grouped[category] = [];
-      }
-      grouped[category].push(action);
-    });
-
-    let html = "";
-    Object.entries(grouped).forEach(([category, categoryActions]) => {
-      const icon = this.getCategoryIcon(category);
-      html += `
-        <div class="dropdown-group">
-          <div class="group-header">
-            <span class="group-icon">${icon}</span>
-            <span class="group-title">${category}</span>
-          </div>
-          ${categoryActions
-            .map(
-              (action) => `
-            <div class="dropdown-option" data-value="${action}">
-              <span class="option-text">${action}</span>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `;
-    });
-
-    content.innerHTML = html;
-    this.attachOptionListeners(content);
-  },
-
-  renderSearchResults(content, actions, searchTerm) {
-    let html = actions
-      .map((action) => {
-        const category = this.findCategoryForAction(action);
-        const icon = this.getCategoryIcon(category);
-        const highlighted = this.highlightMatch(action, searchTerm);
-
-        return `
-        <div class="dropdown-option search-result" data-value="${action}">
-          <div class="option-main">
-            <span class="option-icon">${icon}</span>
-            <span class="option-text">${highlighted}</span>
-          </div>
-          <div class="option-category">${category}</div>
-        </div>
-      `;
-      })
-      .join("");
-
-    content.innerHTML = html;
-    this.attachOptionListeners(content);
-  },
-
-  attachOptionListeners(content) {
-    const options = content.querySelectorAll(".dropdown-option");
-    options.forEach((option) => {
-      option.addEventListener("click", () => {
-        const value = option.getAttribute("data-value");
-        const inputId = content.id.replace("Content", "");
-        this.selectOption(inputId, value);
-      });
-
-      option.addEventListener("mouseenter", () => {
-        this.highlightOption(option);
-      });
-    });
-  },
-
-  selectOption(inputId, value) {
-    const input = document.getElementById(inputId);
-    const hiddenInput = document.getElementById(`${inputId}Selected`);
-
-    if (input && hiddenInput) {
-      input.value = value;
-      hiddenInput.value = value;
-      input.classList.add("selected");
-
-      this.closeDropdown(inputId);
-
-      // אפקט ויזואלי
-      input.style.backgroundColor = "#f0fdf4";
-      input.style.borderColor = "#10b981";
-
-      setTimeout(() => {
-        input.style.backgroundColor = "";
-        input.style.borderColor = "";
-      }, 1500);
-
-      console.log(
-        `נבחרה פעולה: ${value} מהקטגוריה: ${this.findCategoryForAction(value)}`
-      );
-    }
-  },
-
-  showInitialOptions(inputId) {
-    this.updateDropdownContent(inputId, "");
-  },
-
-  navigateDropdown(inputId, direction) {
-    const content = document.getElementById(`${inputId}Content`);
-    if (!content) return;
-
-    const options = content.querySelectorAll(".dropdown-option");
-    const currentHighlight = content.querySelector(
-      ".dropdown-option.highlighted"
-    );
-
-    let newIndex = 0;
-    if (currentHighlight) {
-      const currentIndex = Array.from(options).indexOf(currentHighlight);
-      newIndex = direction === "down" ? currentIndex + 1 : currentIndex - 1;
-    }
-
-    // התמודדות עם גבולות
-    if (newIndex < 0) newIndex = options.length - 1;
-    if (newIndex >= options.length) newIndex = 0;
-
-    this.clearHighlight(inputId);
-    if (options[newIndex]) {
-      options[newIndex].classList.add("highlighted");
-      options[newIndex].scrollIntoView({ block: "nearest" });
-    }
-  },
-
-  selectHighlighted(inputId) {
-    const content = document.getElementById(`${inputId}Content`);
-    if (!content) return;
-
-    const highlighted = content.querySelector(".dropdown-option.highlighted");
-    if (highlighted) {
-      const value = highlighted.getAttribute("data-value");
-      this.selectOption(inputId, value);
-    }
-  },
-
-  highlightOption(option) {
-    const content = option.closest(".dropdown-content");
-    if (content) {
-      content
-        .querySelectorAll(".dropdown-option.highlighted")
-        .forEach((opt) => {
-          opt.classList.remove("highlighted");
-        });
-      option.classList.add("highlighted");
-    }
-  },
-
-  clearHighlight(inputId) {
-    const content = document.getElementById(`${inputId}Content`);
-    if (content) {
-      content
-        .querySelectorAll(".dropdown-option.highlighted")
-        .forEach((opt) => {
-          opt.classList.remove("highlighted");
-        });
-    }
-  },
-
-  // פונקציות חדשות שהוספת
-  getCategoriesStats() {
-    const stats = {};
-    let totalActions = 0;
-
-    Object.entries(ACTION_CATEGORIES).forEach(([category, actions]) => {
-      stats[category] = {
-        count: actions.length,
-        icon: this.getCategoryIcon(category),
-        actions: actions,
-      };
-      totalActions += actions.length;
-    });
-
-    return {
-      totalCategories: Object.keys(ACTION_CATEGORIES).length,
-      totalActions: totalActions,
-      categories: stats,
-    };
-  },
-
-  advancedSearch(searchText, filterByCategory = null) {
-    if (!searchText) return this.getPopularActions();
-
-    const lowerSearch = searchText.toLowerCase();
-    const results = [];
-
-    Object.entries(ACTION_CATEGORIES).forEach(([category, actions]) => {
-      if (filterByCategory && category !== filterByCategory) return;
-
-      actions.forEach((action) => {
-        if (action.toLowerCase().includes(lowerSearch)) {
-          results.push({
-            action: action,
-            category: category,
-            icon: this.getCategoryIcon(category),
-            relevance: this.calculateRelevance(action, searchText),
-          });
-        }
-      });
-    });
-
-    // מיון לפי רלוונטיות
-    return results
-      .sort((a, b) => b.relevance - a.relevance)
-      .map((result) => result.action)
-      .slice(0, 15);
-  },
-
-  calculateRelevance(action, searchText) {
-    const actionLower = action.toLowerCase();
-    const searchLower = searchText.toLowerCase();
-
-    let score = 0;
-
-    // משקל גבוה להתחלה מדויקת
-    if (actionLower.startsWith(searchLower)) score += 100;
-
-    // משקל בינוני להכלת המילה
-    if (actionLower.includes(searchLower)) score += 50;
-
-    // משקל נמוך ליחס אורך
-    score += (searchText.length / action.length) * 25;
-
-    // בונוס לפעולות פופולריות
-    if (POPULAR_ACTIONS.includes(action)) score += 25;
-
-    return score;
-  },
-
-  // פונקציה להצגת כל הקטגוריות והפעולות (לדיבוג)
-  printAllCategories() {
-    console.log("📋 כל הקטגוריות והפעולות:");
-    console.log("=".repeat(50));
-
-    Object.entries(ACTION_CATEGORIES).forEach(([category, actions]) => {
-      const icon = this.getCategoryIcon(category);
-      console.log(`\n${icon} ${category} (${actions.length} פעולות):`);
-      actions.forEach((action, index) => {
-        console.log(`  ${index + 1}. ${action}`);
-      });
-    });
-
-    const stats = this.getCategoriesStats();
-    console.log(
-      `\n📊 סה״כ: ${stats.totalCategories} קטגוריות, ${stats.totalActions} פעולות`
-    );
-  },
-};
-
-// אתחול השדות עם הגרסה המקצועית
-setTimeout(() => {
-  if (document.getElementById("budgetDescriptionContainer")) {
-    CategoryUtils.createProfessionalCombobox(
-      "budgetDescriptionContainer",
-      "budgetDescription",
-      "בחר או חפש סוג משימה..."
-    );
-    console.log("✅ Combobox תקצוב נוצר");
-  }
-
-  if (document.getElementById("actionDescriptionContainer")) {
-    CategoryUtils.createProfessionalCombobox(
-      "actionDescriptionContainer",
-      "actionDescription",
-      "בחר או חפש סוג פעולה..."
-    );
-    console.log("✅ Combobox שעתון נוצר");
-  }
-}, 2000);
-
-// יצוא הקבועים
-window.ACTION_CATEGORIES = ACTION_CATEGORIES;
-window.POPULAR_ACTIONS = POPULAR_ACTIONS;
-window.CategoryUtils = CategoryUtils;
-
-console.log("🎯 מערכת הפעולות עודכנה עם קטגוריות חדשות!");
-console.log("📋 קטגוריות חדשות נוספו:");
-console.log("  • מסמכים דיגיטליים (כולל תקנון אתר ומדיניות פרטיות)");
-console.log("  • הליכי הוצאה לפועל");
-console.log("  • בוררות ותיווך");
-console.log("  • הליכי פשיטת רגל ורה״ח");
-console.log("  • פעולות ייעוץ ומחקר");
-console.log("  • הליכי רישוי ורגולציה");
-console.log("  • דיני משפחה");
-
-// הדפסת כל הקטגוריות לבדיקה
-CategoryUtils.printAllCategories();
