@@ -1,0 +1,190 @@
+/**
+ * Unified Header - שורה מאוחדת (טאבים + תצוגה + מיון)
+ * משרד עורכי דין - מערכת ניהול מתקדמת
+ *
+ * נוצר: 09/10/2025
+ * גרסה: 1.0.0 - מהודק ומדויק
+ *
+ * תכונות:
+ * - שורה אחת מאוחדת: טאבים | תצוגה | מיון
+ * - היררכיה ברורה: גדול ← קטן
+ * - מפרידים ויזואליים
+ * - spacing מדויק
+ * - Responsive מלא
+ */
+
+/* ===== Main Unified Header Container ===== */
+.unified-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 14px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin: 16px auto 20px;
+  direction: rtl;
+}
+
+/* ===== Right Section - Main Tabs ===== */
+.unified-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0; /* הטאבים עצמם כבר עם gap */
+}
+
+/* ===== Center Section - View Switcher + Sort ===== */
+.unified-header-center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ===== Visual Separator ===== */
+.header-separator {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #cbd5e1 50%,
+    transparent 100%
+  );
+  margin: 0 8px;
+}
+
+/* ===== Left Section - Sort Dropdown (בשימוש עם sort.css) ===== */
+.unified-header-left {
+  display: flex;
+  align-items: center;
+}
+
+/* ===== Responsive - Desktop Large ===== */
+@media (min-width: 1440px) {
+  .unified-header-container {
+    padding: 14px 24px;
+    gap: 24px;
+  }
+
+  .unified-header-center {
+    gap: 20px;
+  }
+
+  .header-separator {
+    margin: 0 12px;
+  }
+}
+
+/* ===== Responsive - Tablet ===== */
+@media (max-width: 1024px) {
+  .unified-header-container {
+    padding: 10px 16px;
+    gap: 16px;
+  }
+
+  .unified-header-center {
+    gap: 12px;
+  }
+
+  .header-separator {
+    height: 28px;
+    margin: 0 6px;
+  }
+}
+
+/* ===== Responsive - Mobile Large ===== */
+@media (max-width: 768px) {
+  .unified-header-container {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .unified-header-right,
+  .unified-header-center,
+  .unified-header-left {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .unified-header-center {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .header-separator {
+    display: none;
+  }
+}
+
+/* ===== Responsive - Mobile Small ===== */
+@media (max-width: 480px) {
+  .unified-header-container {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .unified-header-center {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+}
+
+/* ===== Filter Controls Row (below header) ===== */
+.filter-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+  direction: rtl;
+}
+
+.filter-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.filter-select {
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-select:hover {
+  border-color: #cbd5e1;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 768px) {
+  .filter-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}

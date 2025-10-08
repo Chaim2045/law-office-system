@@ -88,6 +88,8 @@
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="tabs.css?v=2.1.0" />
+    <link rel="stylesheet" href="view-switcher.css?v=1.0.0" />
+    <link rel="stylesheet" href="unified-header.css?v=1.0.0" />
     <link rel="stylesheet" href="statistics.css?v=3.2.0" />
     <link rel="stylesheet" href="sort.css?v=2.3.0" />
     <link rel="stylesheet" href="reports.css" />
@@ -308,18 +310,64 @@
             </button>
           </div>
 
-          <!-- ===== ניווט לשוניות ראשיות ===== -->
-          <!-- MAIN TABS NAVIGATION -->
-          <div class="main-tabs-container">
-            <div class="main-tabs">
-              <button class="tab-button active" onclick="switchTab('budget')">
-                <i class="fas fa-chart-bar"></i>
-                תקצוב משימות
-              </button>
-              <button class="tab-button" onclick="switchTab('timesheet')">
-                <i class="fas fa-clock"></i>
-                שעתון
-              </button>
+          <!-- ===== Unified Header - טאבים + תצוגה + מיון ===== -->
+          <div id="unifiedHeaderBudget" class="unified-header-container">
+            <!-- Right: Main Tabs -->
+            <div class="unified-header-right">
+              <div class="main-tabs">
+                <button class="tab-button active" onclick="switchTab('budget')">
+                  <i class="fas fa-chart-bar"></i>
+                  תקצוב משימות
+                </button>
+                <button class="tab-button" onclick="switchTab('timesheet')">
+                  <i class="fas fa-clock"></i>
+                  שעתון
+                </button>
+              </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="header-separator"></div>
+
+            <!-- Center: View Switcher -->
+            <div class="unified-header-center">
+              <div class="view-tabs">
+                <button
+                  class="view-tab active"
+                  data-view="cards"
+                  onclick="manager.switchBudgetView('cards')"
+                >
+                  <i class="fas fa-th-large"></i>
+                  כרטיסיות
+                </button>
+                <button
+                  class="view-tab"
+                  data-view="table"
+                  onclick="manager.switchBudgetView('table')"
+                >
+                  <i class="fas fa-table"></i>
+                  טבלה
+                </button>
+              </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="header-separator"></div>
+
+            <!-- Left: Sort Dropdown -->
+            <div class="unified-header-left">
+              <div class="sort-dropdown">
+                <label class="sort-label">
+                  <i class="fas fa-sort-amount-down"></i>
+                  מיין לפי:
+                </label>
+                <select class="sort-select" id="budgetSortSelectHeader" onchange="manager.sortBudgetTasks()">
+                  <option value="recent">עדכון אחרון</option>
+                  <option value="name">שם (א-ת)</option>
+                  <option value="deadline">תאריך יעד</option>
+                  <option value="progress">התקדמות</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -416,40 +464,20 @@
               </form>
             </div>
 
-            <!-- Search and View Controls -->
-            <div class="search-and-view-controls">
-              <div class="view-tabs">
-                <button
-                  class="view-tab active"
-                  data-view="cards"
-                  onclick="manager.switchBudgetView('cards')"
+            <!-- Filter Controls -->
+            <div class="filter-controls-row">
+              <div class="filter-container">
+                <span class="filter-label">הצג:</span>
+                <select
+                  class="filter-select"
+                  id="budgetTaskFilter"
+                  onchange="manager.filterBudgetTasks()"
                 >
-                  <i class="fas fa-th-large"></i>
-                  כרטיסיות
-                </button>
-                <button
-                  class="view-tab"
-                  data-view="table"
-                  onclick="manager.switchBudgetView('table')"
-                >
-                  <i class="fas fa-table"></i>
-                  טבלה
-                </button>
+                  <option value="active">פעילות בלבד</option>
+                  <option value="completed">שהושלמו (חודש אחרון)</option>
+                  <option value="all">הכל</option>
+                </select>
               </div>
-
-              <div class="search-filter-row">
-                <div class="filter-container">
-                  <span class="filter-label">הצג:</span>
-                  <select
-                    class="filter-select"
-                    id="budgetTaskFilter"
-                    onchange="manager.filterBudgetTasks()"
-                  >
-                    <option value="active">פעילות בלבד</option>
-                    <option value="completed">שהושלמו (חודש אחרון)</option>
-                    <option value="all">הכל</option>
-                  </select>
-                </div>
 
                 <div class="search-container">
                   <input
