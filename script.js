@@ -2028,7 +2028,7 @@ class LawOfficeManager {
     // Generate load more button HTML
     const loadMoreButton = paginationStatus.hasMore ? `
       <div class="pagination-controls">
-        <button class="load-more-btn" onclick="manager.loadMoreBudgetTasks()">
+        <button class="load-more-btn" onclick="window.manager.loadMoreBudgetTasks()">
           <i class="fas fa-chevron-down"></i>
           טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
         </button>
@@ -2199,7 +2199,7 @@ class LawOfficeManager {
     // Generate load more button HTML
     const loadMoreButton = paginationStatus.hasMore ? `
       <div class="pagination-controls">
-        <button class="load-more-btn" onclick="manager.loadMoreBudgetTasks()">
+        <button class="load-more-btn" onclick="window.manager.loadMoreBudgetTasks()">
           <i class="fas fa-chevron-down"></i>
           טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
         </button>
@@ -2982,7 +2982,7 @@ class LawOfficeManager {
     // Generate load more button HTML
     const loadMoreButton = paginationStatus.hasMore ? `
       <div class="pagination-controls">
-        <button class="load-more-btn" onclick="manager.loadMoreTimesheetEntries()">
+        <button class="load-more-btn" onclick="window.manager.loadMoreTimesheetEntries()">
           <i class="fas fa-chevron-down"></i>
           טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
         </button>
@@ -3224,7 +3224,7 @@ class LawOfficeManager {
     // Generate load more button HTML
     const loadMoreButton = paginationStatus.hasMore ? `
       <div class="pagination-controls">
-        <button class="load-more-btn" onclick="manager.loadMoreTimesheetEntries()">
+        <button class="load-more-btn" onclick="window.manager.loadMoreTimesheetEntries()">
           <i class="fas fa-chevron-down"></i>
           טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
         </button>
