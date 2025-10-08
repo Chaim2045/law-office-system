@@ -2198,11 +2198,11 @@ class LawOfficeManager {
                 ${deadlineIcon} ${formatShort(safeTask.deadline)}
               </span>
             </div>
-            ${safeTask.createdAt ? `
+            ${(safeTask.createdAt || safeTask.updatedAt) ? `
             <div class="linear-deadline-row">
               <span class="linear-progress-label">נוצר:</span>
-              <span class="deadline-info" title="${formatDate(safeTask.createdAt)}" style="color: #6b7280; font-size: 12px;">
-                📅 ${formatShort(safeTask.createdAt)}
+              <span class="deadline-info" title="${formatDate(safeTask.createdAt || safeTask.updatedAt)}" style="color: #6b7280; font-size: 12px;">
+                📅 ${formatShort(safeTask.createdAt || safeTask.updatedAt)}
               </span>
             </div>
             ` : ''}
@@ -2927,7 +2927,7 @@ class LawOfficeManager {
         <td>${safeText(safeTask.description)}</td>
         <td>${progress}%</td>
         <td>${formatDate(safeTask.deadline)}</td>
-        <td style="color: #6b7280; font-size: 13px;">${safeTask.createdAt ? formatShort(safeTask.createdAt) : '-'}</td>
+        <td style="color: #6b7280; font-size: 13px;">${(safeTask.createdAt || safeTask.updatedAt) ? formatShort(safeTask.createdAt || safeTask.updatedAt) : '-'}</td>
         <td>${statusDisplay}</td>
         <td class="actions-column">
           <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog(${
@@ -3087,11 +3087,11 @@ class LawOfficeManager {
               </span>
             </div>
             ` : ''}
-            ${safeEntry.createdAt ? `
+            ${(safeEntry.createdAt || safeEntry.date) ? `
             <div class="linear-deadline-row">
               <span class="linear-progress-label">נוצר:</span>
               <span class="deadline-info" style="color: #6b7280; font-size: 12px;">
-                📅 ${formatShort(safeEntry.createdAt)}
+                📅 ${formatShort(safeEntry.createdAt || safeEntry.date)}
               </span>
             </div>
             ` : ''}
@@ -3216,7 +3216,7 @@ class LawOfficeManager {
             entry.clientName || ""
           )}</td>
           <td>${safeText(entry.fileNumber || "")}</td>
-          <td style="color: #6b7280; font-size: 13px;">${entry.createdAt ? formatShort(entry.createdAt) : '-'}</td>
+          <td style="color: #6b7280; font-size: 13px;">${(entry.createdAt || entry.date) ? formatShort(entry.createdAt || entry.date) : '-'}</td>
           <td>${safeText(entry.notes || "—")}</td>
           <td class="actions-column">
             <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${
