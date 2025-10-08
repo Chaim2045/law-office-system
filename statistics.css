@@ -4,14 +4,14 @@
  *
  * נוצר: 08/10/2025
  * עודכן: 08/10/2025
- * גרסה: 2.1.0
+ * גרסה: 2.3.0
  *
  * תכונות:
- * - Grid מינימליסטי וקומפקטי
- * - תווית + ערך בשורה אחת (inline)
- * - פס כחול בצד שמאל לזיהוי מהיר
- * - גדלי פונט קטנים ומדויקים
- * - Hover effects עדינים על הערכים
+ * - סופר קומפקטי עם מרווחים מינימליים
+ * - פונט קטן: תווית 10px, ערך 13px
+ * - padding קטן: 8px 12px
+ * - gap קטן: 8px בין פריטים, 4px בין תווית לערך
+ * - minmax קומפקטי: 100px לסרגל רגיל, 110px לחכם
  * - Responsive מלא
  */
 
@@ -19,35 +19,35 @@
 .stats-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 /* ===== סרגל סטטיסטיקה ראשי ===== */
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  padding: 12px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  padding: 8px 12px;
   background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-  border-radius: 8px;
+  border-radius: 6px;
   border-left: 3px solid #3b82f6;
   direction: rtl;
   margin-bottom: 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
   flex: 1;
 }
 
 .stats-bar:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 /* ===== פריט בסרגל ===== */
 .stats-item {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 4px;
   padding: 0;
   background: transparent;
   border: none;
@@ -56,21 +56,20 @@
 
 .stats-item:hover .stats-value {
   color: #3b82f6;
-  transform: scale(1.05);
 }
 
 .stats-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #6b7280;
   white-space: nowrap;
 }
 
 .stats-value {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: #111827;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 /* ===== מפריד בין פריטים ===== */
@@ -105,9 +104,9 @@
 
 /* אזהרה - חורגות תקציב */
 .stats-item.stats-warning {
-  padding: 4px 8px;
+  padding: 2px 6px;
   background: rgba(251, 191, 36, 0.1);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .stats-item.stats-warning .stats-value {
@@ -116,9 +115,9 @@
 
 /* דחוף */
 .stats-item.stats-urgent {
-  padding: 4px 8px;
+  padding: 2px 6px;
   background: rgba(239, 68, 68, 0.1);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .stats-item.stats-urgent .stats-value {
@@ -132,9 +131,9 @@
 
 /* הדגשה */
 .stats-item.stats-highlight {
-  padding: 4px 8px;
+  padding: 2px 6px;
   background: rgba(59, 130, 246, 0.08);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .stats-item.stats-highlight .stats-value {
@@ -146,21 +145,21 @@
 /* שורה נוספת עם מידע חכם */
 .stats-smart-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  padding: 10px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 8px 12px;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-radius: 8px;
+  border-radius: 6px;
   border-left: 3px solid #3b82f6;
   direction: rtl;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.08);
+  transition: all 0.15s ease;
   flex: 1;
   margin-bottom: 0;
 }
 
 .stats-smart-row:hover {
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.12);
 }
 
 /* מדיה query - למסכים גדולים - סרגלים צד לצד */
@@ -174,55 +173,54 @@
 .stats-smart-item {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 4px;
   padding: 0;
   background: transparent;
   border: none;
 }
 
 .stats-smart-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #1e40af;
   white-space: nowrap;
 }
 
 .stats-smart-value {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   color: #1e3a8a;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .stats-smart-item:hover .stats-smart-value {
   color: #3b82f6;
-  transform: scale(1.05);
 }
 
 /* סטטוס - בקצב טוב/דורש תשומת לב */
 .stats-status-good {
-  padding: 4px 10px;
-  background: rgba(34, 197, 94, 0.15);
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 4px;
+  font-size: 10px;
   font-weight: 600;
   color: #15803d;
 }
 
 .stats-status-warning {
-  padding: 4px 10px;
-  background: rgba(251, 191, 36, 0.15);
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(251, 191, 36, 0.12);
+  border-radius: 4px;
+  font-size: 10px;
   font-weight: 600;
   color: #b45309;
 }
 
 .stats-status-danger {
-  padding: 4px 10px;
-  background: rgba(239, 68, 68, 0.15);
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border-radius: 4px;
+  font-size: 10px;
   font-weight: 600;
   color: #b91c1c;
 }
