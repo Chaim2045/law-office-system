@@ -1,6 +1,7 @@
 /**
  * Firebase-Only Law Office Management System
  * Clean version without legacy Google Apps Script integration
+ * Version: 4.22.1 - With DatesModule integration
  */
 
 /* === Performance Monitoring === */
