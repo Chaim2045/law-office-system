@@ -2091,9 +2091,6 @@ class LawOfficeManager {
             <i class="fas fa-chart-bar"></i>
             משימות מתוקצבות
           </h3>
-          <div class="modern-table-subtitle">
-            ${this.filteredBudgetTasks.length} משימות • ${stats.activeCount} פעילות • ${stats.completedCount} הושלמו
-          </div>
         </div>
         <div class="stats-with-sort-row">
           ${statsBar}
@@ -3248,7 +3245,7 @@ class LawOfficeManager {
             רשומות שעות
           </h3>
           <div class="modern-table-subtitle">
-            ${entries.length} רשומות מתוך ${(this.timesheetEntries || []).length}
+            ${entries.length} רשומות • ${stats.totalMinutes} דקות • ${stats.totalHours} שעות
           </div>
         </div>
         <div class="stats-with-sort-row">
