@@ -3,13 +3,13 @@
  * משרד עורכי דין - מערכת ניהול מתקדמת
  *
  * נוצר: 08/10/2025
- * עודכן: 09/10/2025
- * גרסה: 2.1.0 - מאוזן ונעים - לא גס
+ * עודכן: 10/10/2025
+ * גרסה: 3.0.0 - עיצוב דומה ל-view-tabs
  *
  * תכונות:
- * - מידות מאוזנות (15px font, padding סביר)
- * - ניגוד ברור אבל עדין: גבול 3px, רקע בהיר
- * - קל לזיהוי אבל לא "בולד" מדי
+ * - עיצוב הרמוני עם כפתורי תצוגה (כרטיסיות/טבלה)
+ * - gradient background כחול כשפעיל
+ * - padding מהודק יותר
  * - נעים לעין ומקצועי
  * - Responsive מלא
  */
@@ -25,65 +25,62 @@
 .main-tabs {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  padding: 0;
-  background: transparent;
-  border: none;
+  gap: 6px;
+  padding: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-/* ===== Tab Button - מאוזן ונעים ===== */
+/* ===== Tab Button - דומה לview-tabs ===== */
 .tab-button {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 14px 28px; /* מאוזן - לא גדול מדי */
-  background: #ffffff;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 15px; /* מאוזן */
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  font-size: 14px;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
   transition: all 0.25s ease;
-  min-width: 150px;
+  min-width: 140px;
   justify-content: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   position: relative;
 }
 
 .tab-button i {
-  font-size: 17px; /* מאוזן */
+  font-size: 16px;
   transition: all 0.25s ease;
 }
 
 /* ===== Hover State ===== */
-.tab-button:hover {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-color: #cbd5e1;
+.tab-button:hover:not(.active) {
+  background: #f8fafc;
   color: #374151;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
-.tab-button:hover i {
+.tab-button:hover:not(.active) i {
   color: #3b82f6;
-  transform: scale(1.15);
+  transform: scale(1.1);
 }
 
-/* ===== Active State - עדין אבל ברור ===== */
+/* ===== Active State - gradient כמו view-tabs ===== */
 .tab-button.active {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); /* עדין יותר */
-  border: 3px solid #3b82f6; /* גבול בינוני - 3px */
-  color: #1e40af; /* כחול בינוני */
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); /* צל בינוני */
-  transform: translateY(-2px); /* הרמה עדינה */
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
 }
 
 .tab-button.active i {
-  color: #3b82f6; /* כחול סטנדרט */
-  font-size: 18px; /* קצת גדול יותר */
-  filter: drop-shadow(0 1px 3px rgba(59, 130, 246, 0.3));
+  color: white;
+  font-size: 17px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
 /* ===== Tab Content ===== */
