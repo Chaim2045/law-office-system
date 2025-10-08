@@ -4,13 +4,13 @@
  *
  * נוצר: 08/10/2025
  * עודכן: 09/10/2025
- * גרסה: 2.0.0 - הגדלה + ניגוד - נוכחות חזקה
+ * גרסה: 2.1.0 - מאוזן ונעים - לא גס
  *
  * תכונות:
- * - גדול יותר (20px font, padding מוגבר)
- * - ניגוד חזק: רקע כהה + גבול עבה לטאב פעיל
- * - קל לזיהוי מה הטאב הפעיל
- * - נוכחות UI ברורה וחזקה
+ * - מידות מאוזנות (15px font, padding סביר)
+ * - ניגוד ברור אבל עדין: גבול 3px, רקע בהיר
+ * - קל לזיהוי אבל לא "בולד" מדי
+ * - נעים לעין ומקצועי
  * - Responsive מלא
  */
 
@@ -31,28 +31,28 @@
   border: none;
 }
 
-/* ===== Tab Button - הגדלה + ניגוד ===== */
+/* ===== Tab Button - מאוזן ונעים ===== */
 .tab-button {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 16px 32px; /* הגדלה */
+  gap: 9px;
+  padding: 14px 28px; /* מאוזן - לא גדול מדי */
   background: #ffffff;
-  border: 2px solid #d1d5db;
-  border-radius: 14px;
-  font-size: 16px; /* הגדלה מ-14px */
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px; /* מאוזן */
   font-weight: 600;
-  color: #4b5563;
+  color: #64748b;
   cursor: pointer;
   transition: all 0.25s ease;
-  min-width: 160px;
+  min-width: 150px;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   position: relative;
 }
 
 .tab-button i {
-  font-size: 18px; /* הגדלה מ-16px */
+  font-size: 17px; /* מאוזן */
   transition: all 0.25s ease;
 }
 
@@ -70,20 +70,20 @@
   transform: scale(1.15);
 }
 
-/* ===== Active State - ניגוד חזק ===== */
+/* ===== Active State - עדין אבל ברור ===== */
 .tab-button.active {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); /* כהה יותר */
-  border: 4px solid #3b82f6; /* גבול עבה יותר - 4px */
-  color: #1e3a8a; /* כהה יותר לניגוד */
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); /* עדין יותר */
+  border: 3px solid #3b82f6; /* גבול בינוני - 3px */
+  color: #1e40af; /* כחול בינוני */
   font-weight: 700;
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3); /* צל חזק יותר */
-  transform: translateY(-3px); /* הרמה גדולה יותר */
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); /* צל בינוני */
+  transform: translateY(-2px); /* הרמה עדינה */
 }
 
 .tab-button.active i {
-  color: #2563eb; /* כחול חזק */
-  font-size: 20px; /* גדול יותר */
-  filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.4));
+  color: #3b82f6; /* כחול סטנדרט */
+  font-size: 18px; /* קצת גדול יותר */
+  filter: drop-shadow(0 1px 3px rgba(59, 130, 246, 0.3));
 }
 
 /* ===== Tab Content ===== */
@@ -102,21 +102,21 @@
 /* ===== Responsive - Desktop Large ===== */
 @media (min-width: 1440px) {
   .main-tabs {
-    gap: 18px;
+    gap: 14px;
   }
 
   .tab-button {
-    min-width: 180px;
-    padding: 18px 36px;
-    font-size: 18px;
+    min-width: 165px;
+    padding: 15px 30px;
+    font-size: 16px;
   }
 
   .tab-button i {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .tab-button.active i {
-    font-size: 22px;
+    font-size: 19px;
   }
 }
 
