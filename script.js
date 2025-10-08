@@ -2082,7 +2082,7 @@ class LawOfficeManager {
 
     // שימוש במודול הסטטיסטיקה החדש - חישוב על כל המשימות (לא מסוננות)
     const stats = window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks);
-    const statsBar = window.StatisticsModule.createBudgetStatsBar(stats);
+    const statsBar = window.StatisticsModule.createBudgetStatsBar(stats, this.currentTaskFilter || 'active');
 
     container.innerHTML = `
       <div class="modern-cards-container">
@@ -2236,7 +2236,7 @@ class LawOfficeManager {
 
     // שימוש במודול הסטטיסטיקה החדש - חישוב על כל המשימות (לא מסוננות)
     const stats = window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks);
-    const statsBar = window.StatisticsModule.createBudgetStatsBar(stats);
+    const statsBar = window.StatisticsModule.createBudgetStatsBar(stats, this.currentTaskFilter || 'active');
 
     tableContainer.innerHTML = `
       <div class="modern-table-container">

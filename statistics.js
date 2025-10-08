@@ -77,17 +77,18 @@ function calculateBudgetStatistics(tasks) {
       stats.overBudget++;
     }
 
-    // בדיקת דחיפות - deadline עבר או עד 3 ימים
-    if (task.deadline) {
+    // בדיקת דחיפות - רק למשימות שלא הושלמו
+    if (task.deadline && task.status !== 'הושלם') {
       const deadline = new Date(task.deadline);
       const daysUntil = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
 
-      if (daysUntil < 0 || (daysUntil <= 3 && task.status !== 'הושלם')) {
+      // דחופות: deadline עבר או עד 3 ימים
+      if (daysUntil <= 3) {
         stats.urgent++;
       }
 
-      // משימות קריטיות - deadline עד שבוע או עבר, וטרם הושלם
-      if (daysUntil <= 7 && task.status !== 'הושלם') {
+      // משימות קריטיות: deadline עד שבוע
+      if (daysUntil <= 7) {
         stats.criticalTasks++;
       }
     }
@@ -132,19 +133,20 @@ function calculateBudgetStatistics(tasks) {
 /**
  * יצירת HTML לסרגל סטטיסטיקה של תקצוב משימות - Badge Style
  * @param {Object} stats - אובייקט סטטיסטיקה
+ * @param {string} currentFilter - הפילטר הנוכחי (active/completed/all)
  * @returns {string} HTML string
  */
-function createBudgetStatsBar(stats) {
+function createBudgetStatsBar(stats, currentFilter = 'all') {
   const plannedHours = Math.round((stats.totalPlanned / 60) * 10) / 10;
   const actualHours = Math.round((stats.totalActual / 60) * 10) / 10;
 
   return `
     <div class="stats-badge">
-      <span class="badge-item">משימות: <strong>${stats.total}</strong></span>
+      <span class="badge-item ${currentFilter === 'all' ? 'badge-highlight' : ''}">משימות: <strong>${stats.total}</strong></span>
       <span class="badge-separator">|</span>
-      <span class="badge-item">פעילות: <strong>${stats.active}</strong></span>
+      <span class="badge-item ${currentFilter === 'active' ? 'badge-highlight' : ''}">פעילות: <strong>${stats.active}</strong></span>
       <span class="badge-separator">|</span>
-      <span class="badge-item badge-success">הושלמו: <strong>${stats.completed}</strong></span>
+      <span class="badge-item ${currentFilter === 'completed' ? 'badge-highlight' : ''} badge-success">הושלמו: <strong>${stats.completed}</strong></span>
       <span class="badge-separator">|</span>
       <span class="badge-item">התקדמות: <strong>${stats.overallProgress}%</strong></span>
       ${stats.urgent > 0 ? `
