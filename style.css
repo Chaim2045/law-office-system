@@ -3192,6 +3192,26 @@ button[onclick*="addBudget"]:hover {
   overflow: hidden; /* מונע יציאה מחוץ לכרטיס */
 }
 
+/* תאריך יצירה בפינה שמאלית עליונה */
+.card-creation-date {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 10px;
+  color: #9ca3af;
+  opacity: 0.8;
+  font-style: italic;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.linear-minimal-card:hover .card-creation-date {
+  opacity: 1;
+}
+
 /* תוכן הכרטיס הלינארי - טקסט למעלה */
 .linear-card-content {
   position: absolute;

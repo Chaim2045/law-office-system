@@ -2160,6 +2160,7 @@ class LawOfficeManager {
 
     return `
       <div class="linear-minimal-card" data-task-id="${safeTask.id}">
+        ${window.DatesModule.getCreationDateCorner(safeTask)}
         <div class="linear-card-content">
           <h3 class="linear-card-title" title="${safeClientName}" style="display: flex; align-items: center;">
             <span style="flex: 1;">${safeDescription}</span>
@@ -2204,7 +2205,6 @@ class LawOfficeManager {
                 ${deadlineIcon} ${formatShort(safeTask.deadline)}
               </span>
             </div>
-            ${window.DatesModule.getCreationDateHTML(safeTask)}
           </div>
         </div>
         <button class="linear-expand-btn" onclick="manager.expandTaskCard(${

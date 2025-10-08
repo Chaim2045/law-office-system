@@ -173,6 +173,21 @@ ${shortDate}
 }
 
 /**
+ * מחזיר HTML לתצוגת תאריך יצירה בפינת הכרטיס
+ * @param {Object} item - אובייקט עם createdAt ו/או updatedAt
+ * @returns {string} HTML מפורמט לפינה או string ריק
+ */
+function getCreationDateCorner(item) {
+  const date = getCreationDate(item);
+  if (!date) return '';
+
+  const shortDate = formatShort(date);
+  const fullDate = formatDate(date);
+
+  return `<div class="card-creation-date" title="תאריך יצירה: ${fullDate}">${shortDate}</div>`;
+}
+
+/**
  * מחזיר תא טבלה לתצוגת תאריך יצירה
  * @param {Object} item - אובייקט עם createdAt ו/או updatedAt
  * @returns {string} תוכן תא הטבלה
@@ -198,6 +213,7 @@ window.DatesModule = {
   getCreationDate,
   getFormattedCreationDate,
   getCreationDateHTML,
+  getCreationDateCorner,
   getCreationDateTableCell,
 };
 
