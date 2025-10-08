@@ -166,9 +166,9 @@ function getCreationDateHTML(item) {
 
   return `
     <div class="linear-deadline-row">
-      <span class="linear-progress-label">נוצר:</span>
-      <span class="deadline-info" title="${fullDate}" style="color: #6b7280; font-size: 12px;">
-        📅 ${shortDate}
+      <span class="linear-progress-label" style="opacity: 0.7;">נוצר:</span>
+      <span class="deadline-info" title="${fullDate}" style="color: #9ca3af; font-size: 11px; opacity: 0.7; font-style: italic;">
+        ${shortDate}
       </span>
     </div>
   `;
