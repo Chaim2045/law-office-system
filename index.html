@@ -88,6 +88,7 @@
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="statistics.css" />
+    <link rel="stylesheet" href="reports.css" />
   </head>
 
   <body>
@@ -311,6 +312,10 @@
               <button class="tab-button" onclick="switchTab('timesheet')">
                 <i class="fas fa-clock"></i>
                 שעתון
+              </button>
+              <button class="tab-button" onclick="switchTab('reports')">
+                <i class="fas fa-chart-line"></i>
+                דוחות וסטטיסטיקות
               </button>
             </div>
           </div>
@@ -739,6 +744,188 @@
               </div>
             </div>
           </div>
+
+          <!-- ===== תוכן לשונית דוחות ===== -->
+          <!-- REPORTS TAB CONTENT -->
+          <div id="reportsTab" class="tab-content">
+            <div class="reports-container">
+              <!-- Reports Header -->
+              <div class="reports-header">
+                <div>
+                  <div class="reports-title">
+                    <i class="fas fa-chart-line"></i>
+                    דוחות וניתוח נתונים
+                  </div>
+                  <div class="reports-subtitle">
+                    צפייה מפורטת בנתונים, השוואות ומגמות לאורך זמן
+                  </div>
+                </div>
+              </div>
+
+              <!-- Reports Controls -->
+              <div class="reports-controls">
+                <div class="reports-controls-header">
+                  <div class="reports-controls-title">
+                    <i class="fas fa-filter"></i>
+                    בחירת תקופה וסינון
+                  </div>
+                </div>
+
+                <div class="reports-controls-grid">
+                  <!-- Data Type Selection -->
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">סוג נתונים</label>
+                    <select id="reportsDataType" class="reports-control-select">
+                      <option value="timesheet">שעתון</option>
+                      <option value="budget">תקצוב משימות</option>
+                    </select>
+                  </div>
+
+                  <!-- Report Type Selection -->
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">סוג דוח</label>
+                    <select id="reportsType" class="reports-control-select">
+                      <option value="monthly">חודשי</option>
+                      <option value="yearly">שנתי</option>
+                      <option value="range">טווח מותאם</option>
+                      <option value="comparison">השוואה</option>
+                    </select>
+                  </div>
+
+                  <!-- Month Selection -->
+                  <div class="reports-control-group" id="monthSelect">
+                    <label class="reports-control-label">חודש</label>
+                    <select id="reportsMonth" class="reports-control-select">
+                      <option value="0">ינואר</option>
+                      <option value="1">פברואר</option>
+                      <option value="2">מרץ</option>
+                      <option value="3">אפריל</option>
+                      <option value="4">מאי</option>
+                      <option value="5">יוני</option>
+                      <option value="6">יולי</option>
+                      <option value="7">אוגוסט</option>
+                      <option value="8">ספטמבר</option>
+                      <option value="9">אוקטובר</option>
+                      <option value="10">נובמבר</option>
+                      <option value="11">דצמבר</option>
+                    </select>
+                  </div>
+
+                  <!-- Year Selection -->
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">שנה</label>
+                    <select id="reportsYear" class="reports-control-select">
+                      <!-- Will be populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Range Dates (Hidden by default) -->
+                <div class="reports-controls-grid" id="rangeDates" style="display: none">
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תאריך התחלה</label>
+                    <input
+                      type="date"
+                      id="reportsStartDate"
+                      class="reports-control-input"
+                    />
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תאריך סיום</label>
+                    <input
+                      type="date"
+                      id="reportsEndDate"
+                      class="reports-control-input"
+                    />
+                  </div>
+                </div>
+
+                <!-- Comparison Dates (Hidden by default) -->
+                <div
+                  class="reports-controls-grid"
+                  id="comparisonDates"
+                  style="display: none"
+                >
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 1 - חודש</label>
+                    <select id="reportsMonth1" class="reports-control-select">
+                      <option value="0">ינואר</option>
+                      <option value="1">פברואר</option>
+                      <option value="2">מרץ</option>
+                      <option value="3">אפריל</option>
+                      <option value="4">מאי</option>
+                      <option value="5">יוני</option>
+                      <option value="6">יולי</option>
+                      <option value="7">אוגוסט</option>
+                      <option value="8">ספטמבר</option>
+                      <option value="9">אוקטובר</option>
+                      <option value="10">נובמבר</option>
+                      <option value="11">דצמבר</option>
+                    </select>
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 1 - שנה</label>
+                    <select id="reportsYear1" class="reports-control-select">
+                      <!-- Will be populated dynamically -->
+                    </select>
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 2 - חודש</label>
+                    <select id="reportsMonth2" class="reports-control-select">
+                      <option value="0">ינואר</option>
+                      <option value="1">פברואר</option>
+                      <option value="2">מרץ</option>
+                      <option value="3">אפריל</option>
+                      <option value="4">מאי</option>
+                      <option value="5">יוני</option>
+                      <option value="6">יולי</option>
+                      <option value="7">אוגוסט</option>
+                      <option value="8">ספטמבר</option>
+                      <option value="9">אוקטובר</option>
+                      <option value="10">נובמבר</option>
+                      <option value="11">דצמבר</option>
+                    </select>
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 2 - שנה</label>
+                    <select id="reportsYear2" class="reports-control-select">
+                      <!-- Will be populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="reports-actions">
+                  <button
+                    class="reports-btn reports-btn-primary"
+                    onclick="manager.generateReport()"
+                  >
+                    <i class="fas fa-chart-bar"></i>
+                    צור דוח
+                  </button>
+                  <button
+                    class="reports-btn reports-btn-secondary"
+                    onclick="manager.resetReportsForm()"
+                  >
+                    <i class="fas fa-redo"></i>
+                    איפוס
+                  </button>
+                  <button
+                    class="reports-btn reports-btn-export"
+                    onclick="manager.exportReport()"
+                    id="exportReportBtn"
+                    style="display: none"
+                  >
+                    <i class="fas fa-file-export"></i>
+                    ייצוא
+                  </button>
+                </div>
+              </div>
+
+              <!-- Reports Results Container -->
+              <div id="reportsResults"></div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -1031,7 +1218,8 @@
     <!-- SCRIPTS AND STYLES -->
     <script src="api.js?v=3.3.0"></script>
     <script src="statistics.js?v=1.2.0"></script>
-    <script src="script.js?v=4.10.0"></script>
+    <script src="reports.js?v=1.0.0"></script>
+    <script src="script.js?v=4.11.0"></script>
 
     <!-- Additional CSS for animations -->
     <style>
