@@ -3314,6 +3314,8 @@ class LawOfficeManager {
       branch: task.branch || "",
       fileNumber: task.fileNumber || "",
       history: task.history || [],
+      createdAt: task.createdAt || null,
+      updatedAt: task.updatedAt || null,
     };
   }
 
