@@ -3201,7 +3201,7 @@ button[onclick*="addBudget"]:hover {
   font-weight: 500;
   color: #6b7280;
   opacity: 0.75;
-  font-style: italic;
+  font-style: normal;
   z-index: 10;
   background: rgba(255, 255, 255, 0.95);
   padding: 3px 7px;
