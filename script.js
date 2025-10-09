@@ -1686,8 +1686,28 @@ class LawOfficeManager {
   }
 
   loadMoreTimesheetEntries() {
-    const result = this.timesheetPagination.loadMore();
-    this.renderTimesheetEntries();
+    // Show skeleton
+    if (window.SkeletonLoaderModule) {
+      const skeletonType = this.currentTimesheetView === 'cards' ? 'card' : 'row';
+      const containerId = this.currentTimesheetView === 'cards' ? 'timesheetCardsContainer' : 'timesheetTableContainer';
+      window.SkeletonLoaderModule.show(containerId, {
+        count: 3,
+        type: skeletonType,
+        columns: 8
+      });
+    }
+
+    // Small delay to show skeleton (simulates loading)
+    setTimeout(() => {
+      const result = this.timesheetPagination.loadMore();
+      this.renderTimesheetEntries();
+
+      // Hide skeleton after render
+      if (window.SkeletonLoaderModule) {
+        const containerId = this.currentTimesheetView === 'cards' ? 'timesheetCardsContainer' : 'timesheetTableContainer';
+        window.SkeletonLoaderModule.hide(containerId);
+      }
+    }, 300);
   }
 
   async createClient() {
@@ -3776,7 +3796,7 @@ class LawOfficeManager {
             ${historyHtml}
           </div>
         </div>
-        <div class="popup-buttons">
+        <div class="popup-buttons" style="justify-content: flex-start;">
           <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
             <i class="fas fa-times"></i> סגור
           </button>
@@ -4209,8 +4229,28 @@ class LawOfficeManager {
   }
 
   loadMoreBudgetTasks() {
-    const result = this.budgetPagination.loadMore();
-    this.renderBudgetTasks();
+    // Show skeleton
+    if (window.SkeletonLoaderModule) {
+      const skeletonType = this.currentBudgetView === 'cards' ? 'card' : 'row';
+      const containerId = this.currentBudgetView === 'cards' ? 'budgetCardsContainer' : 'budgetTableContainer';
+      window.SkeletonLoaderModule.show(containerId, {
+        count: 3,
+        type: skeletonType,
+        columns: 8
+      });
+    }
+
+    // Small delay to show skeleton (simulates loading)
+    setTimeout(() => {
+      const result = this.budgetPagination.loadMore();
+      this.renderBudgetTasks();
+
+      // Hide skeleton after render
+      if (window.SkeletonLoaderModule) {
+        const containerId = this.currentBudgetView === 'cards' ? 'budgetCardsContainer' : 'budgetTableContainer';
+        window.SkeletonLoaderModule.hide(containerId);
+      }
+    }, 300);
   }
 
   switchBudgetView(view) {
