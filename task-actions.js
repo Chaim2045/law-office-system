@@ -78,8 +78,8 @@
       // אם המשימה הושלמה - רק כפתור היסטוריה
       if (isCompleted) {
         return `
-          <div class="linear-actions" style="justify-content: flex-start; gap: 12px;">
-            <button class="linear-action-btn info" onclick="manager.showTaskHistory(${taskId})">
+          <div class="linear-actions" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <button class="linear-action-btn info" onclick="manager.showTaskHistory(${taskId})" style="margin: 0;">
               <i class="fas fa-history"></i> היסטוריה
             </button>
             <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #10b981; color: white; border-radius: 6px; font-weight: 500; font-size: 13px; white-space: nowrap;">
