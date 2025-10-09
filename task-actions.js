@@ -1,0 +1,233 @@
+/**
+ * Task Actions Module - מודול פעולות על משימות
+ * משרד עורכי דין - מערכת ניהול מתקדמת
+ *
+ * נוצר: 10/10/2025
+ * גרסה: 1.0.0
+ *
+ * תכונות:
+ * - ניהול כפתורי פעולות על משימות (הוספת זמן, הארכת יעד, סיום, היסטוריה)
+ * - הסתרת כפתורים לא רלוונטיים במשימות שהושלמו
+ * - תמיכה בתצוגת טבלה וכרטיסיות
+ * - אינטגרציה מלאה עם ActivityLogger
+ */
+
+(function() {
+  'use strict';
+
+  /**
+   * מחלקת TaskActionsManager - מנהלת כפתורי פעולות על משימות
+   */
+  class TaskActionsManager {
+    constructor() {
+      this.manager = null; // Reference to main manager
+    }
+
+    /**
+     * הגדרת ה-manager הראשי
+     * @param {Object} manager
+     */
+    setManager(manager) {
+      this.manager = manager;
+    }
+
+    /**
+     * יצירת כפתורי פעולות לתצוגת טבלה
+     * @param {Object} task - המשימה
+     * @param {boolean} isCompleted - האם המשימה הושלמה
+     * @returns {string} HTML של כפתורי הפעולות
+     */
+    createTableActionButtons(task, isCompleted) {
+      const taskId = task.id;
+
+      // אם המשימה הושלמה - רק כפתור היסטוריה
+      if (isCompleted) {
+        return `
+          <button class="action-btn history-btn" onclick="manager.showTaskHistory(${taskId})" title="היסטוריה">
+            <i class="fas fa-history"></i>
+          </button>
+        `;
+      }
+
+      // משימה פעילה - כל הכפתורים
+      return `
+        <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog(${taskId})" title="הוסף זמן">
+          <i class="fas fa-clock"></i>
+        </button>
+        <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog(${taskId})" title="האריך יעד">
+          <i class="fas fa-calendar-plus"></i>
+        </button>
+        <button class="action-btn history-btn" onclick="manager.showTaskHistory(${taskId})" title="היסטוריה">
+          <i class="fas fa-history"></i>
+        </button>
+        <button class="action-btn complete-btn" onclick="manager.completeTask(${taskId})" title="סיים משימה">
+          <i class="fas fa-check"></i>
+        </button>
+      `;
+    }
+
+    /**
+     * יצירת כפתורי פעולות לתצוגת כרטיסיות
+     * @param {Object} task - המשימה
+     * @param {boolean} isCompleted - האם המשימה הושלמה
+     * @returns {string} HTML של כפתורי הפעולות
+     */
+    createCardActionButtons(task, isCompleted) {
+      const taskId = task.id;
+
+      // אם המשימה הושלמה - רק כפתור היסטוריה
+      if (isCompleted) {
+        return `
+          <div class="linear-actions">
+            <button class="linear-action-btn info" onclick="manager.showTaskHistory(${taskId})">
+              <i class="fas fa-history"></i> היסטוריה
+            </button>
+            <div style="padding: 8px 12px; background: #10b981; color: white; border-radius: 6px; font-weight: 500; font-size: 13px;">
+              <i class="fas fa-check-circle"></i> משימה הושלמה
+            </div>
+          </div>
+        `;
+      }
+
+      // משימה פעילה - כל הכפתורים
+      return `
+        <div class="linear-actions">
+          <button class="linear-action-btn primary" onclick="manager.showAdvancedTimeDialog(${taskId})">
+            <i class="fas fa-clock"></i> הוסף זמן
+          </button>
+          <button class="linear-action-btn info" onclick="manager.showTaskHistory(${taskId})">
+            <i class="fas fa-history"></i> היסטוריה
+          </button>
+          <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog(${taskId})">
+            <i class="fas fa-calendar-plus"></i> האריך יעד
+          </button>
+          <button class="linear-action-btn success" onclick="manager.completeTask(${taskId})">
+            <i class="fas fa-check"></i> סיים משימה
+          </button>
+        </div>
+      `;
+    }
+
+    /**
+     * בדיקה האם כפתור מסוים זמין למשימה
+     * @param {string} actionType - סוג הפעולה (time/extend/complete/history)
+     * @param {Object} task - המשימה
+     * @returns {boolean}
+     */
+    isActionAvailable(actionType, task) {
+      const isCompleted = task.status === 'הושלם';
+
+      switch (actionType) {
+        case 'time':
+          return !isCompleted; // הוספת זמן רק למשימות פעילות
+
+        case 'extend':
+          return !isCompleted; // הארכת יעד רק למשימות פעילות
+
+        case 'complete':
+          return !isCompleted; // סיום משימה רק למשימות פעילות
+
+        case 'history':
+          return true; // היסטוריה תמיד זמינה
+
+        default:
+          return false;
+      }
+    }
+
+    /**
+     * יצירת סטטוס ויזואלי למשימה מושלמת
+     * @param {Object} task - המשימה
+     * @returns {string} HTML של הסטטוס
+     */
+    createCompletedStatusBadge(task) {
+      if (task.status !== 'הושלם') {
+        return '';
+      }
+
+      const completedAt = task.completedAt ? new Date(task.completedAt).toLocaleDateString('he-IL') : 'לא ידוע';
+      const completedBy = task.completedBy || 'לא ידוע';
+
+      return `
+        <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #10b981; color: white; border-radius: 6px; font-size: 12px; font-weight: 500;">
+          <i class="fas fa-check-circle"></i>
+          <span>הושלם ב-${completedAt}</span>
+        </div>
+      `;
+    }
+
+    /**
+     * בדיקה האם ניתן לבצע פעולה על משימה
+     * @param {string} actionType - סוג הפעולה
+     * @param {Object} task - המשימה
+     * @returns {Object} {allowed: boolean, reason: string}
+     */
+    canPerformAction(actionType, task) {
+      const isCompleted = task.status === 'הושלם';
+
+      if (isCompleted && actionType !== 'history') {
+        return {
+          allowed: false,
+          reason: `לא ניתן לבצע פעולה "${actionType}" על משימה שכבר הושלמה. משימה זו הושלמה ב-${task.completedAt ? new Date(task.completedAt).toLocaleDateString('he-IL') : 'תאריך לא ידוע'}.`
+        };
+      }
+
+      return {
+        allowed: true,
+        reason: ''
+      };
+    }
+
+    /**
+     * הוספת אינדיקטור ויזואלי למשימה מושלמת בטבלה
+     * @param {Object} task - המשימה
+     * @returns {string} HTML של האינדיקטור
+     */
+    createCompletedIndicatorForTable(task) {
+      if (task.status !== 'הושלם') {
+        return '';
+      }
+
+      return `
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #10b981; border-radius: 50%; margin-left: 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+      `;
+    }
+
+    /**
+     * יצירת טקסט הסבר למשימה מושלמת
+     * @param {Object} task - המשימה
+     * @returns {string} טקסט ההסבר
+     */
+    getCompletedTaskTooltip(task) {
+      if (task.status !== 'הושלם') {
+        return '';
+      }
+
+      const completedAt = task.completedAt ? new Date(task.completedAt).toLocaleDateString('he-IL') : 'תאריך לא ידוע';
+      const completedBy = task.completedBy || 'לא ידוע';
+      const notes = task.completionNotes || 'אין הערות';
+
+      return `משימה הושלמה ב-${completedAt} על ידי ${completedBy}. הערות: ${notes}`;
+    }
+  }
+
+  // חשיפה כ-module גלובלי
+  window.TaskActionsModule = {
+    TaskActionsManager,
+
+    /**
+     * יצירת instance חדש
+     * @returns {TaskActionsManager}
+     */
+    create() {
+      return new TaskActionsManager();
+    }
+  };
+
+  console.log('✅ TaskActionsModule loaded successfully');
+
+})();

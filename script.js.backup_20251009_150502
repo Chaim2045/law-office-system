@@ -1204,7 +1204,6 @@ class LawOfficeManager {
 
     // Initialize Activity Logger
     this.activityLogger = null; // Will be initialized after Firebase setup
-    this.taskActionsManager = null; // Will be initialized after module loads
 
     this.currentBudgetPage = 1;
     this.currentTimesheetPage = 1;
@@ -1560,13 +1559,6 @@ class LawOfficeManager {
           displayName: this.currentUser
         });
         console.log('✅ Activity Logger initialized');
-      }
-
-      // Initialize TaskActionsManager
-      if (window.TaskActionsModule) {
-        this.taskActionsManager = window.TaskActionsModule.create();
-        this.taskActionsManager.setManager(this);
-        console.log('✅ TaskActionsManager initialized');
       }
 
       this.connectionStatus = "connected";
@@ -2923,7 +2915,26 @@ class LawOfficeManager {
         <td style="color: #6b7280; font-size: 13px;">${window.DatesModule.getCreationDateTableCell(safeTask)}</td>
         <td>${statusDisplay}</td>
         <td class="actions-column">
-          ${this.taskActionsManager ? this.taskActionsManager.createTableActionButtons(safeTask, isCompleted) : ''}
+          <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog(${
+            safeTask.id
+          })" title="הוסף זמן">
+            <i class="fas fa-clock"></i>
+          </button>
+          <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog(${
+            safeTask.id
+          })" title="האריך יעד">
+            <i class="fas fa-calendar-plus"></i>
+          </button>
+          <button class="action-btn history-btn" onclick="manager.showTaskHistory(${
+            safeTask.id
+          })" title="היסטוריה">
+            <i class="fas fa-history"></i>
+          </button>
+          <button class="action-btn complete-btn" onclick="manager.completeTask(${
+            safeTask.id
+          })" title="סיים משימה">
+            <i class="fas fa-check"></i>
+          </button>
         </td>
       </tr>
     `;
@@ -3544,7 +3555,6 @@ class LawOfficeManager {
   showExpandedCard(cardElement, task) {
     const safeTask = this.sanitizeTaskData(task);
     const progress = this.calculateSimpleProgress(safeTask);
-    const isCompleted = safeTask.status === 'הושלם';
 
     const safeDescription = safeText(
       safeTask.taskDescription || safeTask.description
@@ -3580,7 +3590,28 @@ class LawOfficeManager {
                 <span>${formatDateTime(new Date(safeTask.deadline))}</span>
               </div>
             </div>
-            ${this.taskActionsManager ? this.taskActionsManager.createCardActionButtons(safeTask, isCompleted) : ''}
+            <div class="linear-actions-section">
+              <button class="linear-action-btn primary" onclick="manager.showAdvancedTimeDialog(${
+                safeTask.id
+              })">
+                <i class="fas fa-plus"></i> הוסף זמן
+              </button>
+              <button class="linear-action-btn info" onclick="manager.showTaskHistory(${
+                safeTask.id
+              })">
+                <i class="fas fa-history"></i> היסטוריה
+              </button>
+              <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog(${
+                safeTask.id
+              })">
+                <i class="fas fa-calendar-plus"></i> האריך יעד
+              </button>
+              <button class="linear-action-btn success" onclick="manager.completeTask(${
+                safeTask.id
+              })">
+                <i class="fas fa-check"></i> סיים משימה
+              </button>
+            </div>
           </div>
         </div>
       </div>
