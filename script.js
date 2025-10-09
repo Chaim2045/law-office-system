@@ -2000,8 +2000,13 @@ class LawOfficeManager {
 
     const tasksToShow = this.filteredBudgetTasks || this.budgetTasks || [];
 
-    // Use new PaginationModule: set items and get current page
-    const paginatedTasks = this.budgetPagination.setItems(tasksToShow);
+    // Update items only if data changed (don't reset page)
+    if (JSON.stringify(this.budgetPagination.items) !== JSON.stringify(tasksToShow)) {
+      this.budgetPagination.setItems(tasksToShow);
+    }
+
+    // Get current page items (maintains current page number)
+    const paginatedTasks = this.budgetPagination.getCurrentPageItems();
 
     if (budgetContainer && !budgetContainer.classList.contains("hidden")) {
       this.renderBudgetCards(paginatedTasks);
@@ -2947,8 +2952,13 @@ class LawOfficeManager {
     const entriesToShow =
       this.filteredTimesheetEntries || this.timesheetEntries || [];
 
-    // Use new PaginationModule: set items and get current page
-    const paginatedEntries = this.timesheetPagination.setItems(entriesToShow);
+    // Update items only if data changed (don't reset page)
+    if (JSON.stringify(this.timesheetPagination.items) !== JSON.stringify(entriesToShow)) {
+      this.timesheetPagination.setItems(entriesToShow);
+    }
+
+    // Get current page items (maintains current page number)
+    const paginatedEntries = this.timesheetPagination.getCurrentPageItems();
 
     if (
       timesheetContainer &&
