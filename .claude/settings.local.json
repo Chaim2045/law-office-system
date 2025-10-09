@@ -46,7 +46,10 @@
       "Bash(git check-ignore:*)",
       "Bash(git ls-tree:*)",
       "Bash(curl -I \"https://law-office-system.netlify.app/pagination.js\")",
-      "Bash(curl -s \"https://law-office-system.netlify.app\")"
+      "Bash(curl -s \"https://law-office-system.netlify.app\")",
+      "Bash(git merge:*)",
+      "Bash(curl -s -I \"https://law-office-system.netlify.app/firebase-pagination.js\")",
+      "Bash(curl -s \"https://law-office-system.netlify.app/firebase-pagination.js\")"
     ],
     "deny": [],
     "ask": []

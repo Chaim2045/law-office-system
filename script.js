@@ -23,22 +23,6 @@ const EMPLOYEES = {
   עוזי: { password: "2025", name: "עוזי" },
 };
 
-/* === Feature Configuration === */
-/**
- * תצורת פיצ'רים - מאפשר להדליק/לכבות פונקציונליות
- *
- * IMPORTANT FOR FUTURE DASHBOARD:
- * - USE_FIREBASE_PAGINATION: false = טוען הכל (למנהלים/דשבורד)
- * - USE_FIREBASE_PAGINATION: true = טוען רק 20 (למשתמשים רגילים)
- */
-const FEATURE_CONFIG = {
-  USE_FIREBASE_PAGINATION: false, // 🚨 כבוי כרגע - נדליק רק אחרי בדיקות!
-  PAGINATION_PAGE_SIZE: 20,
-  SKELETON_DELAY_MS: 800,
-  ENABLE_SCROLL_PRESERVATION: true,
-  DEBUG_MODE: true
-};
-
 // Global state
 let currentActiveTab = "budget";
 let isScrolled = false;
@@ -64,27 +48,6 @@ function safeText(text) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * שמירת והחזרת scroll position
- * מונע קפיצה למעלה כשמוסיפים תוכן לדף
- */
-function preserveScrollPosition(callback) {
-  if (!FEATURE_CONFIG.ENABLE_SCROLL_PRESERVATION) {
-    callback();
-    return;
-  }
-
-  const scrollY = window.scrollY;
-  const scrollX = window.scrollX;
-
-  callback();
-
-  // Restore scroll after DOM updates
-  requestAnimationFrame(() => {
-    window.scrollTo(scrollX, scrollY);
-  });
 }
 
 function debounce(func, wait) {
@@ -1239,18 +1202,12 @@ class LawOfficeManager {
     this.budgetPagination = window.PaginationModule.create({ pageSize: 20 });
     this.timesheetPagination = window.PaginationModule.create({ pageSize: 20 });
 
-    // Initialize Firebase Pagination Manager (server-side pagination)
-    if (window.FirebasePaginationModule) {
-      this.firebasePagination = window.FirebasePaginationModule.create();
-      console.log('✅ Firebase Pagination Manager initialized');
-    } else {
-      this.firebasePagination = null;
-      console.warn('⚠️ FirebasePaginationModule not available - using legacy pagination');
-    }
-
     // Initialize Activity Logger
     this.activityLogger = null; // Will be initialized after Firebase setup
     this.taskActionsManager = null; // Will be initialized after module loads
+
+    // Initialize Integration Manager
+    this.integrationManager = window.IntegrationManagerModule ? window.IntegrationManagerModule.create() : null;
 
     this.currentBudgetPage = 1;
     this.currentTimesheetPage = 1;
@@ -1559,19 +1516,10 @@ class LawOfficeManager {
       // Update loader text
       this.updateLoaderText("טוען לקוחות...");
 
-      // Load clients - with Firebase Pagination if enabled
-      if (FEATURE_CONFIG.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Using Firebase Pagination for clients');
-        const result = await this.firebasePagination.loadClientsPaginated(
-          FEATURE_CONFIG.PAGINATION_PAGE_SIZE,
-          false // Initial load
-        );
-        this.clients = result.items;
-        console.log(`📄 Loaded ${result.items.length} clients from Firebase (hasMore: ${result.hasMore})`);
-      } else {
-        console.log('📦 Using legacy loadClientsFromFirebase');
-        this.clients = await loadClientsFromFirebase();
-      }
+      // Load clients (via IntegrationManager)
+      this.clients = this.integrationManager
+        ? await this.integrationManager.loadClients()
+        : await loadClientsFromFirebase();
 
       // Calculate accurate hours for each client
       for (const client of this.clients) {
@@ -1596,38 +1544,18 @@ class LawOfficeManager {
       // Update loader text
       this.updateLoaderText("טוען משימות...");
 
-      // Load budget tasks - with Firebase Pagination if enabled
-      if (FEATURE_CONFIG.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Using Firebase Pagination for budget tasks');
-        const result = await this.firebasePagination.loadBudgetTasksPaginated(
-          this.currentUser,
-          FEATURE_CONFIG.PAGINATION_PAGE_SIZE,
-          false // Initial load
-        );
-        this.budgetTasks = result.items;
-        console.log(`📄 Loaded ${result.items.length} budget tasks from Firebase (hasMore: ${result.hasMore})`);
-      } else {
-        console.log('📦 Using legacy loadBudgetTasksFromFirebase');
-        this.budgetTasks = await loadBudgetTasksFromFirebase(this.currentUser);
-      }
+      // Load budget tasks (via IntegrationManager)
+      this.budgetTasks = this.integrationManager
+        ? await this.integrationManager.loadBudgetTasks(this.currentUser)
+        : await loadBudgetTasksFromFirebase(this.currentUser);
 
       // Update loader text
       this.updateLoaderText("טוען שעתון...");
 
-      // Load timesheet entries - with Firebase Pagination if enabled
-      if (FEATURE_CONFIG.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Using Firebase Pagination for timesheet');
-        const result = await this.firebasePagination.loadTimesheetPaginated(
-          this.currentUser,
-          FEATURE_CONFIG.PAGINATION_PAGE_SIZE,
-          false // Initial load
-        );
-        this.timesheetEntries = result.items;
-        console.log(`📄 Loaded ${result.items.length} timesheet entries from Firebase (hasMore: ${result.hasMore})`);
-      } else {
-        console.log('📦 Using legacy loadTimesheetFromFirebase');
-        this.timesheetEntries = await loadTimesheetFromFirebase(this.currentUser);
-      }
+      // Load timesheet entries (via IntegrationManager)
+      this.timesheetEntries = this.integrationManager
+        ? await this.integrationManager.loadTimesheet(this.currentUser)
+        : await loadTimesheetFromFirebase(this.currentUser);
 
       // Update loader text
       this.updateLoaderText("מערכת מוכנה!");
@@ -1778,39 +1706,32 @@ class LawOfficeManager {
       });
     }
 
-    // Delay to show skeleton animation properly (800ms = professional UX)
+    const delay = this.integrationManager ? this.integrationManager.getSkeletonDelay() : 300;
+
     setTimeout(async () => {
-      // Firebase Pagination if enabled
-      if (FEATURE_CONFIG.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Loading more timesheet entries from Firebase');
-        const result = await this.firebasePagination.loadTimesheetPaginated(
-          this.currentUser,
-          FEATURE_CONFIG.PAGINATION_PAGE_SIZE,
-          true // loadMore = true
-        );
-
-        // Add new items to timesheetEntries array
-        this.timesheetEntries = [...this.timesheetEntries, ...result.items];
-        console.log(`📄 Loaded ${result.items.length} more timesheet entries (hasMore: ${result.hasMore})`);
-
-        // Re-filter and re-render
+      // Use IntegrationManager if available
+      if (this.integrationManager) {
+        this.timesheetEntries = await this.integrationManager.loadMoreTimesheet(this.currentUser, this.timesheetEntries);
         this.filterTimesheetEntries();
       } else {
-        // Legacy memory pagination
         const result = this.timesheetPagination.loadMore();
       }
 
-      // Use scroll preservation when rendering
-      preserveScrollPosition(() => {
+      // Render with scroll preservation
+      if (this.integrationManager) {
+        this.integrationManager.executeWithScrollPreservation(() => {
+          this.renderTimesheetEntries();
+        });
+      } else {
         this.renderTimesheetEntries();
-      });
+      }
 
       // Hide skeleton after render
       if (window.SkeletonLoaderModule) {
         const containerId = this.currentTimesheetView === 'cards' ? 'timesheetCardsContainer' : 'timesheetTableContainer';
         window.SkeletonLoaderModule.hide(containerId);
       }
-    }, 800);
+    }, delay);
   }
 
   async createClient() {
@@ -4343,39 +4264,32 @@ class LawOfficeManager {
       });
     }
 
-    // Delay to show skeleton animation properly (800ms = professional UX)
+    const delay = this.integrationManager ? this.integrationManager.getSkeletonDelay() : 300;
+
     setTimeout(async () => {
-      // Firebase Pagination if enabled
-      if (FEATURE_CONFIG.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Loading more budget tasks from Firebase');
-        const result = await this.firebasePagination.loadBudgetTasksPaginated(
-          this.currentUser,
-          FEATURE_CONFIG.PAGINATION_PAGE_SIZE,
-          true // loadMore = true
-        );
-
-        // Add new items to budgetTasks array
-        this.budgetTasks = [...this.budgetTasks, ...result.items];
-        console.log(`📄 Loaded ${result.items.length} more budget tasks (hasMore: ${result.hasMore})`);
-
-        // Re-filter and re-render
+      // Use IntegrationManager if available
+      if (this.integrationManager) {
+        this.budgetTasks = await this.integrationManager.loadMoreBudgetTasks(this.currentUser, this.budgetTasks);
         this.filterBudgetTasks();
       } else {
-        // Legacy memory pagination
         const result = this.budgetPagination.loadMore();
       }
 
-      // Use scroll preservation when rendering
-      preserveScrollPosition(() => {
+      // Render with scroll preservation
+      if (this.integrationManager) {
+        this.integrationManager.executeWithScrollPreservation(() => {
+          this.renderBudgetTasks();
+        });
+      } else {
         this.renderBudgetTasks();
-      });
+      }
 
       // Hide skeleton after render
       if (window.SkeletonLoaderModule) {
         const containerId = this.currentBudgetView === 'cards' ? 'budgetCardsContainer' : 'budgetTableContainer';
         window.SkeletonLoaderModule.hide(containerId);
       }
-    }, 800);
+    }, delay);
   }
 
   switchBudgetView(view) {
