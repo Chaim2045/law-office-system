@@ -3487,11 +3487,7 @@ class LawOfficeManager {
           );
 
           if (hoursResult.success && hoursResult.hoursData) {
-            // console.log(
-              `✅ שעות לקוח עודכנו: ${hoursResult.hoursData.remainingHours.toFixed(
-                1
-              )} שעות נותרות`
-            );
+            // Production mode - client hours updated silently
 
             // Show alert if client became critical or blocked
             if (hoursResult.hoursData.isBlocked) {
@@ -5432,9 +5428,7 @@ async function debugClientHoursMismatch() {
     // console.log("\n=== 📊 נתוני מערכת מקומית ===");
 
     if (window.manager && window.manager.clients) {
-      // console.log(
-        `📈 סה"כ לקוחות במערכת מקומית: ${window.manager.clients.length}`
-      );
+      // Production mode - log removed
 
       window.manager.clients.forEach((client, index) => {
         // console.log(`\n👤 לקוח ${index + 1}:`);
@@ -5513,20 +5507,12 @@ async function debugClientHoursMismatch() {
         // Show entry details
         // console.log(`   📋 פירוט רשומות:`);
         entriesDetails.forEach((entry, i) => {
-          // console.log(
-            `      ${i + 1}. ${entry.date} | ${entry.employee} | ${
-              entry.minutes
-            } דק' | ${entry.action}`
-          );
+          // Production mode - log removed
         });
 
         // console.log(`   👥 פירוט לפי עובד:`);
         Object.entries(entriesByEmployee).forEach(([employee, minutes]) => {
-          // console.log(
-            `      ${employee}: ${minutes} דקות (${(minutes / 60).toFixed(
-              1
-            )} שעות)`
-          );
+          // Production mode - log removed
         });
 
         // Calculate remaining hours
@@ -5535,48 +5521,24 @@ async function debugClientHoursMismatch() {
         const remainingHours = remainingMinutes / 60;
 
         // console.log(`   📊 חישוב מדויק:`);
-        // console.log(
-          `      📦 סה"כ דקות מוקצות: ${totalMinutesAllocated} (${client.totalHours} שעות)`
-        );
-        // console.log(
-          `      ⏱️ סה"כ דקות בשימוש: ${totalMinutesUsed} (${(
-            totalMinutesUsed / 60
-          ).toFixed(1)} שעות)`
-        );
-        // console.log(
-          `      ⏰ דקות נותרות: ${remainingMinutes} (${remainingHours.toFixed(
-            1
-          )} שעות)`
-        );
-        // console.log(
-          `      🚨 צריך להיות חסום: ${remainingMinutes <= 0 ? "כן" : "לא"}`
-        );
-        // console.log(
-          `      ⚠️ צריך להיות קריטי: ${
-            remainingHours > 0 && remainingHours <= 5 ? "כן" : "לא"
-          }`
-        );
+        // Production mode - log removed
+        // Production mode - log removed
+        // Production mode - log removed
+        // Production mode - log removed
+        // Production mode - log removed
 
         // Compare to saved data
         // console.log(`   🔍 השוואה לנתונים שמורים:`);
         // console.log(`      Firebase רשום: ${client.hoursRemaining} שעות`);
         // console.log(`      חישוב אמיתי: ${remainingHours.toFixed(1)} שעות`);
-        // console.log(
-          `      הפרש: ${Math.abs(
-            (client.hoursRemaining || 0) - remainingHours
-          ).toFixed(1)} שעות`
-        );
+        // Production mode - log removed
 
         const localClient = window.manager?.clients?.find(
           (c) => c.fullName === client.fullName
         );
         if (localClient) {
           // console.log(`      מקומי רשום: ${localClient.hoursRemaining} שעות`);
-          // console.log(
-            `      הפרש ממקומי: ${Math.abs(
-              localClient.hoursRemaining - remainingHours
-            ).toFixed(1)} שעות`
-          );
+          // Production mode - log removed
         }
       }
     }
@@ -5619,11 +5581,7 @@ async function fixClientHoursMismatch() {
           fixedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 
-        // console.log(
-          `✅ תוקן: ${clientData.fullName} - ${hoursData.remainingHours.toFixed(
-            1
-          )} שעות`
-        );
+        // Production mode - log removed
 
         // Update local system
         if (window.manager && window.manager.clients) {
@@ -5691,16 +5649,10 @@ function showClientStatusSummary() {
       summary.normal++;
     }
 
-    // console.log(
-      `${i + 1}. ${client.fullName} - ${
-        client.hoursRemaining?.toFixed(1) || 0
-      } שעות - ${status}`
-    );
+    // Production mode - log removed
   });
 
-  // console.log(
-    `\n📊 סיכום: ${summary.total} לקוחות | ${summary.blocked} חסומים | ${summary.critical} קריטיים | ${summary.normal} תקינים | ${summary.fixed} פיקס`
-  );
+  // Production mode - log removed
 }
 
 // Add debug functions to global scope
