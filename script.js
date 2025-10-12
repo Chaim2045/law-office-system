@@ -647,11 +647,7 @@ async function calculateClientHoursAccurate(clientName) {
       lastCalculated: new Date(),
     };
 
-    // console.log(`✅ חישוב הושלם עבור ${clientName}:`, {
-      remainingHours: result.remainingHours,
-      status: result.status,
-      entriesCount: result.entriesCount,
-    });
+    // Production mode - calculation completed silently
 
     return result;
   } catch (error) {
@@ -704,11 +700,7 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
       isCritical: hoursData.isCritical,
     });
 
-    // console.log(`✅ שעות עודכנו עבור ${clientName}:`, {
-      totalUsed: (hoursData.totalMinutesUsed / 60).toFixed(1),
-      remaining: hoursData.remainingHours.toFixed(1),
-      status: hoursData.status,
-    });
+    // Production mode - hours updated silently
 
     // Update local system data
     if (window.manager && window.manager.clients) {
@@ -2744,10 +2736,7 @@ class LawOfficeManager {
       // כאן תוסיף בעתיד קריאה לשרת Firebase:
       await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
 
-      // console.log(`✅ עריכה מתקדמת הושלמה:`, {
-        originalData,
-        newData: { newDate, newMinutes, newClientName },
-      });
+      // Production mode - advanced edit completed silently
     } catch (error) {
       console.error("Error in advanced timesheet edit:", error);
       this.showNotification(
