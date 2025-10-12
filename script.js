@@ -3654,10 +3654,11 @@ class LawOfficeManager {
     document.body.appendChild(overlay);
   }
 
-  submitTimeEntry(taskId) {
+  async submitTimeEntry(taskId) {
     const workDate = document.getElementById("workDate");
     const workMinutes = document.getElementById("workMinutes");
     const workDescription = document.getElementById("workDescription");
+    const submitButton = document.activeElement;
 
     if (!workDate || !workMinutes || !workDescription) {
       this.showNotification("שדות לא נמצאו", "error");
@@ -3678,11 +3679,31 @@ class LawOfficeManager {
       return;
     }
 
-    const timeData = { taskId, date, minutes, description };
-    this.addTimeToTask(timeData);
+    // Disable button and show loading
+    if (submitButton && submitButton.classList.contains('popup-btn-confirm')) {
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+    }
 
-    const popup = document.querySelector(".popup-overlay");
-    if (popup) popup.remove();
+    try {
+      const timeData = { taskId, date, minutes, description };
+      await this.addTimeToTask(timeData);
+
+      // Close popup only on success
+      const popup = document.querySelector(".popup-overlay");
+      if (popup) popup.remove();
+
+      this.showNotification("✅ הזמן נרשם בהצלחה!", "success");
+    } catch (error) {
+      console.error("Error submitting time entry:", error);
+      this.showNotification("❌ שגיאה ברישום הזמן", "error");
+
+      // Re-enable button on error
+      if (submitButton && submitButton.classList.contains('popup-btn-confirm')) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fas fa-save"></i> שמור';
+      }
+    }
   }
 
   async addTimeToTask(timeData) {
