@@ -518,9 +518,7 @@ async function saveBudgetTaskToFirebase(taskData) {
 
     const docRef = await db.collection("budget_tasks").add(dataToSave);
 
-    // console.log(
-      `🔥 Firebase: משימה נשמרה - ID: ${docRef.id}, עובד: ${currentUser}`
-    );
+    // Production mode - task saved silently
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
@@ -555,9 +553,7 @@ async function saveTimesheetToFirebase(entryData) {
 
     const docRef = await db.collection("timesheet_entries").add(dataToSave);
 
-    // console.log(
-      `🔥 Firebase: שעתון נשמר - ID: ${docRef.id}, עובד: ${currentUser}`
-    );
+    // Production mode - timesheet saved silently
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
