@@ -49,7 +49,16 @@
       "Bash(curl -s \"https://law-office-system.netlify.app\")",
       "Bash(git merge:*)",
       "Bash(curl -s -I \"https://law-office-system.netlify.app/firebase-pagination.js\")",
-      "Bash(curl -s \"https://law-office-system.netlify.app/firebase-pagination.js\")"
+      "Bash(curl -s \"https://law-office-system.netlify.app/firebase-pagination.js\")",
+      "Bash(curl -s -I \"https://law-office-system.netlify.app/integration-manager.js\")",
+      "Bash(curl -s \"https://law-office-system.netlify.app/integration-manager.js\")",
+      "Bash(curl -s \"https://gh-law-office-system.netlify.app/integration-manager.js\")",
+      "Bash(curl -s \"https://gh-law-office-system.netlify.app/firebase-pagination.js\")",
+      "Bash(curl -s \"https://gh-law-office-system.netlify.app/script.js\")",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(firebase functions:list:*)",
+      "Bash(start test-functions.html)"
     ],
     "deny": [],
     "ask": []

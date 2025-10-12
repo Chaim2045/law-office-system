@@ -32,7 +32,7 @@
     USE_FUNCTIONS_FOR_BUDGET: true,
 
     // Debug mode
-    DEBUG: false // כבוי למצב פרודקשן
+    DEBUG: true // זמני - לבדיקה
   };
 
   /* === Logger === */
@@ -80,12 +80,15 @@
    * גרסה חדשה - דרך Functions
    */
   async function loadClientsFromFirebase_NEW() {
+    logger.log('🔥 loadClientsFromFirebase_NEW called - using Firebase Functions!');
+
     if (!initializeClientV2()) {
       return await loadClientsFromFirebase_ORIGINAL();
     }
 
     try {
       const clients = await apiClientV2.getClients(true); // עם cache
+      logger.log(`✅ Loaded ${clients.length} clients via Firebase Functions`);
       return clients;
     } catch (error) {
       logger.error('Failed to load clients from Functions, falling back:', error);
@@ -117,12 +120,15 @@
    * גרסה חדשה - טעינת שעתון דרך Functions
    */
   async function loadTimesheetFromFirebase_NEW(employee) {
+    logger.log(`🔥 loadTimesheetFromFirebase_NEW called for ${employee} - using Firebase Functions!`);
+
     if (!initializeClientV2()) {
       return await loadTimesheetFromFirebase_ORIGINAL(employee);
     }
 
     try {
       const entries = await apiClientV2.getTimesheetEntries(employee);
+      logger.log(`✅ Loaded ${entries.length} timesheet entries via Firebase Functions`);
       return entries;
     } catch (error) {
       logger.error('Failed to load timesheet from Functions, falling back:', error);
@@ -203,12 +209,15 @@
    * גרסה חדשה - טעינת משימות דרך Functions
    */
   async function loadBudgetTasksFromFirebase_NEW(employee) {
+    logger.log(`🔥 loadBudgetTasksFromFirebase_NEW called for ${employee} - using Firebase Functions!`);
+
     if (!initializeClientV2()) {
       return await loadBudgetTasksFromFirebase_ORIGINAL(employee);
     }
 
     try {
       const tasks = await apiClientV2.getBudgetTasks(employee);
+      logger.log(`✅ Loaded ${tasks.length} budget tasks via Firebase Functions`);
       return tasks;
     } catch (error) {
       logger.error('Failed to load budget tasks from Functions, falling back:', error);
