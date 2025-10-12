@@ -52,9 +52,7 @@
           orderBy: (field, direction = "asc") => direction,
         };
 
-        console.log("🔥 Firebase מחובר בהצלחה - מצב מהיר!");
-        console.log("✅ Database מוכן עם אופטימיזציות");
-        console.log("✅ Project ID:", firebaseConfig.projectId);
+        // Production mode - Firebase initialized silently
 
         // בדיקת חיבור מהירה (ללא timeout)
         setTimeout(() => {
@@ -62,7 +60,7 @@
             .limit(1)
             .get()
             .then(() => {
-              console.log("🚀 חיבור לFirestore מהיר ותקין!");
+              // Connection successful - silent mode
             })
             .catch((error) => {
               console.warn("⚠️ בעיה בחיבור:", error.message);

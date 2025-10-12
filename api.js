@@ -89,9 +89,7 @@ async function fetchWithRetry(url, options, attempt = 1) {
     clearTimeout(timeoutId);
 
     if (attempt < API_CONFIG.RETRY_ATTEMPTS && !controller.signal.aborted) {
-      console.log(
-        `🔄 Retry attempt ${attempt + 1}/${API_CONFIG.RETRY_ATTEMPTS}`
-      );
+      // Retry silently in production mode
       await delay(API_CONFIG.RETRY_DELAY * attempt);
       return fetchWithRetry(url, options, attempt + 1);
     }
@@ -113,7 +111,7 @@ async function callServerFunction(action, data = null, showLoading = true) {
   }
 
   try {
-    console.log(`🚀 API Call: ${action}`, data);
+    // Production mode - silent API calls
 
     const requestBody = {
       action: action,
@@ -141,7 +139,7 @@ async function callServerFunction(action, data = null, showLoading = true) {
       throw new Error(result.error || "שגיאה לא ידועה בשרת");
     }
 
-    console.log(`✅ API Success: ${action}`, result);
+    // Production mode - silent success
     return result;
   } catch (error) {
     console.error(`❌ API Error: ${action}`, error);
@@ -172,7 +170,7 @@ async function callServerFunction(action, data = null, showLoading = true) {
 async function testServerConnection() {
   try {
     const result = await callServerFunction("testConnection", null, false);
-    console.log("🎉 Server connection successful!", result);
+    // Production mode - silent success
     return true;
   } catch (error) {
     console.error("❌ Server connection failed!", error);
@@ -188,12 +186,7 @@ async function testServerConnection() {
 async function loadClientsFromServer() {
   const result = await callServerFunction("getClients");
 
-  // 🔍 DEBUG - הדפס מה מגיע מהשרת
-  console.log("🔍 Raw server response:", result);
-  console.log("🔍 Clients data:", result.data);
-  if (result.data && result.data[0]) {
-    console.log("🔍 First client structure:", result.data[0]);
-  }
+  // Production mode - no debug logs
 
   return result.data || [];
 }
@@ -230,14 +223,12 @@ async function saveTimesheetToServer(timesheetData) {
  * אתחול API בטעינת הדף
  */
 window.addEventListener("load", async () => {
-  console.log("🔌 Initializing API connection...");
+  // Production mode - silent initialization
 
   // Test server connection
   const isConnected = await testServerConnection();
 
   if (isConnected) {
-    console.log("✅ API initialized successfully!");
-
     // Connected successfully - no notification needed
   } else {
     console.error("❌ Failed to initialize API");

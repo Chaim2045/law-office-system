@@ -21,7 +21,7 @@
     PAGINATION_PAGE_SIZE: 20,
     SKELETON_DELAY_MS: 800,
     ENABLE_SCROLL_PRESERVATION: true,
-    DEBUG_MODE: true
+    DEBUG_MODE: false // מצב פרודקשן - ללא הדפסות
   };
 
   /**
@@ -58,7 +58,7 @@
       // אתחול Firebase Pagination אם זמין
       if (window.FirebasePaginationModule) {
         this.firebasePagination = window.FirebasePaginationModule.create();
-        console.log('✅ Firebase Pagination Manager initialized');
+        // Production mode - Firebase Pagination initialized silently
       } else {
         console.warn('⚠️ FirebasePaginationModule not available - using legacy pagination');
       }
@@ -69,15 +69,14 @@
      */
     async loadClients() {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Using Firebase Pagination for clients');
+        // Production mode - using Firebase Pagination silently
         const result = await this.firebasePagination.loadClientsPaginated(
           this.config.PAGINATION_PAGE_SIZE,
           false
         );
-        console.log(`📄 Loaded ${result.items.length} clients from Firebase (hasMore: ${result.hasMore})`);
         return result.items;
       } else {
-        console.log('📦 Using legacy loadClientsFromFirebase');
+        // Production mode - using legacy method silently
         return await window.loadClientsFromFirebase();
       }
     }
@@ -87,16 +86,15 @@
      */
     async loadBudgetTasks(employee) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Using Firebase Pagination for budget tasks');
+        // Production mode - using Firebase Pagination silently
         const result = await this.firebasePagination.loadBudgetTasksPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
           false
         );
-        console.log(`📄 Loaded ${result.items.length} budget tasks from Firebase (hasMore: ${result.hasMore})`);
         return result.items;
       } else {
-        console.log('📦 Using legacy loadBudgetTasksFromFirebase');
+        // Production mode - using legacy method silently
         return await window.loadBudgetTasksFromFirebase(employee);
       }
     }
@@ -106,16 +104,15 @@
      */
     async loadTimesheet(employee) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Using Firebase Pagination for timesheet');
+        // Production mode - using Firebase Pagination silently
         const result = await this.firebasePagination.loadTimesheetPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
           false
         );
-        console.log(`📄 Loaded ${result.items.length} timesheet entries from Firebase (hasMore: ${result.hasMore})`);
         return result.items;
       } else {
-        console.log('📦 Using legacy loadTimesheetFromFirebase');
+        // Production mode - using legacy method silently
         return await window.loadTimesheetFromFirebase(employee);
       }
     }
@@ -125,13 +122,12 @@
      */
     async loadMoreBudgetTasks(employee, currentTasks) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Loading more budget tasks from Firebase');
+        // Production mode - loading more silently
         const result = await this.firebasePagination.loadBudgetTasksPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
           true
         );
-        console.log(`📄 Loaded ${result.items.length} more budget tasks (hasMore: ${result.hasMore})`);
         return [...currentTasks, ...result.items];
       }
       // אם לא משתמשים ב-Firebase Pagination, המנהל עושה זאת עם pagination.js
@@ -143,13 +139,12 @@
      */
     async loadMoreTimesheet(employee, currentEntries) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        console.log('🔥 Loading more timesheet entries from Firebase');
+        // Production mode - loading more silently
         const result = await this.firebasePagination.loadTimesheetPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
           true
         );
-        console.log(`📄 Loaded ${result.items.length} more timesheet entries (hasMore: ${result.hasMore})`);
         return [...currentEntries, ...result.items];
       }
       return currentEntries;

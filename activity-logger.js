@@ -89,7 +89,7 @@
      */
     async log(action, entityType, entityId = null, details = {}) {
       if (!this.enabled) {
-        console.log('[ActivityLogger] Logging disabled');
+        // Production mode - logging disabled silently
         return;
       }
 
@@ -115,7 +115,7 @@
         }
 
         await this.db.collection(this.collectionName).add(logEntry);
-        console.log('[ActivityLogger] Logged:', action, entityType);
+        // Production mode - activity logged silently
       } catch (error) {
         console.error('[ActivityLogger] Error logging activity:', error);
         // שמירה לתור offline
@@ -129,7 +129,7 @@
     async flushOfflineQueue() {
       if (this.offlineQueue.length === 0 || !this.db) return;
 
-      console.log(`[ActivityLogger] Flushing ${this.offlineQueue.length} offline logs`);
+      // Production mode - flushing offline queue silently
 
       const batch = this.db.batch();
       const collectionRef = this.db.collection(this.collectionName);
@@ -142,7 +142,7 @@
       try {
         await batch.commit();
         this.offlineQueue = [];
-        console.log('[ActivityLogger] Offline queue flushed successfully');
+        // Production mode - offline queue flushed silently
       } catch (error) {
         console.error('[ActivityLogger] Error flushing offline queue:', error);
       }
@@ -379,7 +379,7 @@
      */
     setEnabled(enabled) {
       this.enabled = enabled;
-      console.log(`[ActivityLogger] Logging ${enabled ? 'enabled' : 'disabled'}`);
+      // Production mode - logging toggle silent
     }
   }
 

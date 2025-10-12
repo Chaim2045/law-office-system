@@ -71,7 +71,7 @@ window.isInWelcomeScreen = false;
 function showSimpleLoading(message = "מעבד...") {
   // Don't show loading overlay during welcome screen
   if (window.isInWelcomeScreen) {
-    console.log("Suppressing loading overlay during welcome screen:", message);
+    // console.log("Suppressing loading overlay during welcome screen:", message);
     return;
   }
   const existing = document.getElementById("simple-loading");
@@ -296,15 +296,14 @@ function formatShort(date) {
  */
 function initializeFirebase() {
   try {
-    console.log("🔥 Firebase מחובר בהצלחה - מצב מהיר!");
+    // Production mode - Firebase initialized silently
 
     if (!window.firebaseDB) {
       console.error("❌ Firebase Database לא זמין");
       throw new Error("Firebase Database לא מחובר");
     }
 
-    console.log("✅ Database מוכן עם אופטימיזציות");
-    console.log("✅ Project ID: law-office-system-e4801");
+    // Database ready - silent mode
     return true;
   } catch (error) {
     console.error("❌ שגיאה באתחול Firebase:", error);
@@ -317,34 +316,29 @@ function initializeFirebase() {
  */
 async function testFirebaseConnection() {
   try {
-    console.log("🚀 מתחיל בדיקת Firebase...");
+    // Production mode - silent Firebase test
 
     const db = window.firebaseDB;
     if (!db) {
       throw new Error("Firebase לא מחובר");
     }
 
-    // Test write
-    console.log("📝 בודק כתיבה ל-Firebase...");
+    // Test write - silent
     const testDoc = await db.collection("test").add({
       message: "בדיקה",
       timestamp: new Date(),
       user: "test",
     });
-    console.log("✅ בדיקת כתיבה הצליחה! ID:", testDoc.id);
 
-    // Test read
-    console.log("📖 בודק קריאה מFirebase...");
+    // Test read - silent
     const snapshot = await db.collection("test").limit(1).get();
-    console.log("✅ בדיקת קריאה הצליחה! נמצאו:", snapshot.size, "מסמכים");
 
     // Cleanup
     if (!snapshot.empty) {
       await snapshot.docs[0].ref.delete();
-      console.log("🗑️ מסמך בדיקה נמחק");
     }
 
-    console.log("🎉 Firebase עובד מושלם!");
+    // Firebase working - silent mode
     return true;
   } catch (error) {
     console.error("❌ שגיאה בבדיקת Firebase:", error);
@@ -374,7 +368,7 @@ async function loadClientsFromFirebase() {
       });
     });
 
-    console.log(`🔥 Firebase: נטענו ${clients.length} לקוחות`);
+    // console.log(`🔥 Firebase: נטענו ${clients.length} לקוחות`);
     return clients;
   } catch (error) {
     console.error("Firebase error:", error);
@@ -421,7 +415,7 @@ async function loadBudgetTasksFromFirebase(employee) {
       tasks.push(taskWithFirebaseId);
     });
 
-    console.log(`🔥 Firebase: נטענו ${tasks.length} משימות`);
+    // console.log(`🔥 Firebase: נטענו ${tasks.length} משימות`);
     return tasks;
   } catch (error) {
     console.error("Firebase error:", error);
@@ -465,7 +459,7 @@ async function loadTimesheetFromFirebase(employee) {
       return new Date(b.date) - new Date(a.date);
     });
 
-    console.log(`🔥 Firebase: נטענו ${entries.length} רשומות שעתון`);
+    // console.log(`🔥 Firebase: נטענו ${entries.length} רשומות שעתון`);
     return entries;
   } catch (error) {
     console.error("Firebase error:", error);
@@ -489,7 +483,7 @@ async function saveClientToFirebase(clientData) {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
 
-    console.log(`🔥 Firebase: לקוח נשמר עם ID: ${docRef.id}`);
+    // console.log(`🔥 Firebase: לקוח נשמר עם ID: ${docRef.id}`);
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
@@ -524,7 +518,7 @@ async function saveBudgetTaskToFirebase(taskData) {
 
     const docRef = await db.collection("budget_tasks").add(dataToSave);
 
-    console.log(
+    // console.log(
       `🔥 Firebase: משימה נשמרה - ID: ${docRef.id}, עובד: ${currentUser}`
     );
     return docRef.id;
@@ -561,7 +555,7 @@ async function saveTimesheetToFirebase(entryData) {
 
     const docRef = await db.collection("timesheet_entries").add(dataToSave);
 
-    console.log(
+    // console.log(
       `🔥 Firebase: שעתון נשמר - ID: ${docRef.id}, עובד: ${currentUser}`
     );
     return docRef.id;
@@ -581,7 +575,7 @@ async function calculateClientHoursAccurate(clientName) {
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
-    console.log(`🧮 מחשב שעות מדויקות עבור: ${clientName}`);
+    // console.log(`🧮 מחשב שעות מדויקות עבור: ${clientName}`);
 
     // Get client data
     const clientsSnapshot = await db
@@ -657,7 +651,7 @@ async function calculateClientHoursAccurate(clientName) {
       lastCalculated: new Date(),
     };
 
-    console.log(`✅ חישוב הושלם עבור ${clientName}:`, {
+    // console.log(`✅ חישוב הושלם עבור ${clientName}:`, {
       remainingHours: result.remainingHours,
       status: result.status,
       entriesCount: result.entriesCount,
@@ -678,7 +672,7 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
-    console.log(`⏰ מעדכן שעות עבור ${clientName}: ${minutesUsed} דקות`);
+    // console.log(`⏰ מעדכן שעות עבור ${clientName}: ${minutesUsed} דקות`);
 
     // Find the client
     const clientsSnapshot = await db
@@ -696,7 +690,7 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
 
     // Only for hours-based clients
     if (clientData.type !== "hours") {
-      console.log(`ℹ️ לקוח ${clientName} הוא פיקס - לא מעדכן שעות`);
+      // console.log(`ℹ️ לקוח ${clientName} הוא פיקס - לא מעדכן שעות`);
       return { success: true, message: "לקוח פיקס - לא נדרש עדכון" };
     }
 
@@ -714,7 +708,7 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
       isCritical: hoursData.isCritical,
     });
 
-    console.log(`✅ שעות עודכנו עבור ${clientName}:`, {
+    // console.log(`✅ שעות עודכנו עבור ${clientName}:`, {
       totalUsed: (hoursData.totalMinutesUsed / 60).toFixed(1),
       remaining: hoursData.remainingHours.toFixed(1),
       status: hoursData.status,
@@ -1425,7 +1419,7 @@ class LawOfficeManager {
     // Keep bubbles visible during welcome screen
     if (bubblesContainer) bubblesContainer.classList.remove("hidden");
 
-    console.log(`👋 מסך ברוך הבא מוצג עבור: ${this.currentUser}`);
+    // console.log(`👋 מסך ברוך הבא מוצג עבור: ${this.currentUser}`);
   }
 
   /**
@@ -1568,14 +1562,14 @@ class LawOfficeManager {
           email: this.currentUser,
           displayName: this.currentUser
         });
-        console.log('✅ Activity Logger initialized');
+        // console.log('✅ Activity Logger initialized');
       }
 
       // Initialize TaskActionsManager
       if (window.TaskActionsModule) {
         this.taskActionsManager = window.TaskActionsModule.create();
         this.taskActionsManager.setManager(this);
-        console.log('✅ TaskActionsManager initialized');
+        // console.log('✅ TaskActionsManager initialized');
       }
 
       this.connectionStatus = "connected";
@@ -2313,7 +2307,7 @@ class LawOfficeManager {
    * דיאלוג עריכת שעתון מורחב - החלפה של showEditTimesheetDialog במחלקת Manager
    */
   showEditTimesheetDialog(entryId) {
-    console.log("🔧 פותח דיאלוג עריכת שעתון מורחב:", entryId);
+    // console.log("🔧 פותח דיאלוג עריכת שעתון מורחב:", entryId);
 
     const entry = this.timesheetEntries.find(
       (e) =>
@@ -2327,7 +2321,7 @@ class LawOfficeManager {
       return;
     }
 
-    console.log("✅ רשומה נמצאה:", entry);
+    // console.log("✅ רשומה נמצאה:", entry);
 
     // מכין את תאריך לפורמט input date
     let entryDateForInput = "";
@@ -2619,7 +2613,7 @@ class LawOfficeManager {
    * שמירת עריכה מתקדמת של שעתון
    */
   async submitAdvancedTimesheetEdit(entryId) {
-    console.log("💾 שומר עריכה מתקדמת של שעתון:", entryId);
+    // console.log("💾 שומר עריכה מתקדמת של שעתון:", entryId);
 
     try {
       // קבלת הערכים החדשים
@@ -2754,7 +2748,7 @@ class LawOfficeManager {
       // כאן תוסיף בעתיד קריאה לשרת Firebase:
       await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
 
-      console.log(`✅ עריכה מתקדמת הושלמה:`, {
+      // console.log(`✅ עריכה מתקדמת הושלמה:`, {
         originalData,
         newData: { newDate, newMinutes, newClientName },
       });
@@ -2774,7 +2768,7 @@ class LawOfficeManager {
    * עדכון רשומת שעתון - הוספה למחלקת Manager
    */
   async submitTimesheetEdit(entryId) {
-    console.log("💾 שומר עריכת שעתון:", entryId);
+    // console.log("💾 שומר עריכת שעתון:", entryId);
 
     try {
       const newMinutes = parseInt(document.getElementById("editMinutes").value);
@@ -2840,7 +2834,7 @@ class LawOfficeManager {
       // כאן תוסיף בעתיד קריאה לשרת Firebase:
       await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
 
-      console.log(`✅ עריכת שעתון הושלמה: ${oldMinutes} → ${newMinutes}`);
+      // console.log(`✅ עריכת שעתון הושלמה: ${oldMinutes} → ${newMinutes}`);
     } catch (error) {
       console.error("Error editing timesheet:", error);
       this.showNotification(
@@ -2857,7 +2851,7 @@ class LawOfficeManager {
    * הצגת היסטוריית עריכות - הוספה למחלקת Manager
    */
   showTimesheetEditHistory(entryId) {
-    console.log("📜 מציג היסטוריית עריכות:", entryId);
+    // console.log("📜 מציג היסטוריית עריכות:", entryId);
 
     const entry = this.timesheetEntries.find(
       (e) =>
@@ -3508,7 +3502,7 @@ class LawOfficeManager {
           );
 
           if (hoursResult.success && hoursResult.hoursData) {
-            console.log(
+            // console.log(
               `✅ שעות לקוח עודכנו: ${hoursResult.hoursData.remainingHours.toFixed(
                 1
               )} שעות נותרות`
@@ -3539,7 +3533,7 @@ class LawOfficeManager {
         }
       }
 
-      console.log("✅ רשומה נשמרה ושעות עודכנו ב-Firebase");
+      // console.log("✅ רשומה נשמרה ושעות עודכנו ב-Firebase");
     } catch (error) {
       console.error("Error saving timesheet:", error);
       throw error;
@@ -5424,14 +5418,13 @@ document.addEventListener("DOMContentLoaded", () => {
     firstNavItem.classList.add("active");
   }
 
-  // Log performance metrics
+  // Production mode - silent performance metrics
   const loadTime = performance.now() - startTime;
-  console.log(`System loaded in ${Math.round(loadTime)}ms`);
 
   if (performance.memory) {
     const memoryUsed =
       (performance.memory.usedJSHeapSize - startMemory) / 1024 / 1024;
-    console.log(`Memory used: ${Math.round(memoryUsed)}MB`);
+    // Memory tracking available but silent in production
   }
 });
 
@@ -5441,7 +5434,7 @@ document.addEventListener("DOMContentLoaded", () => {
  * Full client hours mismatch diagnostic
  */
 async function debugClientHoursMismatch() {
-  console.log("🔍 מתחיל אבחון מלא של סתירה בשעות לקוח...");
+  // console.log("🔍 מתחיל אבחון מלא של סתירה בשעות לקוח...");
 
   try {
     const db = window.firebaseDB;
@@ -5451,62 +5444,62 @@ async function debugClientHoursMismatch() {
     }
 
     // Check local system data
-    console.log("\n=== 📊 נתוני מערכת מקומית ===");
+    // console.log("\n=== 📊 נתוני מערכת מקומית ===");
 
     if (window.manager && window.manager.clients) {
-      console.log(
+      // console.log(
         `📈 סה"כ לקוחות במערכת מקומית: ${window.manager.clients.length}`
       );
 
       window.manager.clients.forEach((client, index) => {
-        console.log(`\n👤 לקוח ${index + 1}:`);
-        console.log(`   📛 שם: "${client.fullName}"`);
-        console.log(`   🆔 מספר תיק: "${client.fileNumber}"`);
-        console.log(`   🎯 סוג: "${client.type}"`);
-        console.log(`   📦 סה"כ שעות: ${client.totalHours}`);
-        console.log(`   ⏰ שעות נותרות (מקומי): ${client.hoursRemaining}`);
-        console.log(`   🚨 חסום (מקומי): ${client.isBlocked}`);
-        console.log(`   ⚠️ קריטי (מקומי): ${client.isCritical}`);
+        // console.log(`\n👤 לקוח ${index + 1}:`);
+        // console.log(`   📛 שם: "${client.fullName}"`);
+        // console.log(`   🆔 מספר תיק: "${client.fileNumber}"`);
+        // console.log(`   🎯 סוג: "${client.type}"`);
+        // console.log(`   📦 סה"כ שעות: ${client.totalHours}`);
+        // console.log(`   ⏰ שעות נותרות (מקומי): ${client.hoursRemaining}`);
+        // console.log(`   🚨 חסום (מקומי): ${client.isBlocked}`);
+        // console.log(`   ⚠️ קריטי (מקומי): ${client.isCritical}`);
       });
     } else {
-      console.log("❌ אין נתוני לקוחות במערכת המקומית");
+      // console.log("❌ אין נתוני לקוחות במערכת המקומית");
     }
 
     // Check Firebase data
-    console.log("\n=== 🔥 נתוני Firebase ===");
+    // console.log("\n=== 🔥 נתוני Firebase ===");
 
     const clientsSnapshot = await db.collection("clients").get();
-    console.log(`📈 סה"כ לקוחות ב-Firebase: ${clientsSnapshot.size}`);
+    // console.log(`📈 סה"כ לקוחות ב-Firebase: ${clientsSnapshot.size}`);
 
     const firebaseClients = [];
     clientsSnapshot.forEach((doc, index) => {
       const data = doc.data();
       firebaseClients.push({ id: doc.id, ...data });
 
-      console.log(`\n👤 לקוח ${index + 1} ב-Firebase:`);
-      console.log(`   🆔 Document ID: ${doc.id}`);
-      console.log(`   📛 שם: "${data.fullName}"`);
-      console.log(`   🆔 מספר תיק: "${data.fileNumber}"`);
-      console.log(`   🎯 סוג: "${data.type}"`);
-      console.log(`   📦 סה"כ שעות: ${data.totalHours}`);
-      console.log(`   ⏰ שעות נותרות (Firebase): ${data.hoursRemaining}`);
-      console.log(`   🚨 חסום (Firebase): ${data.isBlocked}`);
-      console.log(`   ⚠️ קריטי (Firebase): ${data.isCritical}`);
+      // console.log(`\n👤 לקוח ${index + 1} ב-Firebase:`);
+      // console.log(`   🆔 Document ID: ${doc.id}`);
+      // console.log(`   📛 שם: "${data.fullName}"`);
+      // console.log(`   🆔 מספר תיק: "${data.fileNumber}"`);
+      // console.log(`   🎯 סוג: "${data.type}"`);
+      // console.log(`   📦 סה"כ שעות: ${data.totalHours}`);
+      // console.log(`   ⏰ שעות נותרות (Firebase): ${data.hoursRemaining}`);
+      // console.log(`   🚨 חסום (Firebase): ${data.isBlocked}`);
+      // console.log(`   ⚠️ קריטי (Firebase): ${data.isCritical}`);
     });
 
     // Recalculate from entries for each client
-    console.log("\n=== 🧮 חישוב מחדש מהרשומות ===");
+    // console.log("\n=== 🧮 חישוב מחדש מהרשומות ===");
 
     for (const client of firebaseClients) {
       if (client.type === "hours") {
-        console.log(`\n🔍 בודק לקוח: "${client.fullName}"`);
+        // console.log(`\n🔍 בודק לקוח: "${client.fullName}"`);
 
         const timesheetSnapshot = await db
           .collection("timesheet_entries")
           .where("clientName", "==", client.fullName)
           .get();
 
-        console.log(`   📊 מספר רשומות שעתון: ${timesheetSnapshot.size}`);
+        // console.log(`   📊 מספר רשומות שעתון: ${timesheetSnapshot.size}`);
 
         let totalMinutesUsed = 0;
         const entriesByEmployee = {};
@@ -5533,18 +5526,18 @@ async function debugClientHoursMismatch() {
         });
 
         // Show entry details
-        console.log(`   📋 פירוט רשומות:`);
+        // console.log(`   📋 פירוט רשומות:`);
         entriesDetails.forEach((entry, i) => {
-          console.log(
+          // console.log(
             `      ${i + 1}. ${entry.date} | ${entry.employee} | ${
               entry.minutes
             } דק' | ${entry.action}`
           );
         });
 
-        console.log(`   👥 פירוט לפי עובד:`);
+        // console.log(`   👥 פירוט לפי עובד:`);
         Object.entries(entriesByEmployee).forEach(([employee, minutes]) => {
-          console.log(
+          // console.log(
             `      ${employee}: ${minutes} דקות (${(minutes / 60).toFixed(
               1
             )} שעות)`
@@ -5556,34 +5549,34 @@ async function debugClientHoursMismatch() {
         const remainingMinutes = totalMinutesAllocated - totalMinutesUsed;
         const remainingHours = remainingMinutes / 60;
 
-        console.log(`   📊 חישוב מדויק:`);
-        console.log(
+        // console.log(`   📊 חישוב מדויק:`);
+        // console.log(
           `      📦 סה"כ דקות מוקצות: ${totalMinutesAllocated} (${client.totalHours} שעות)`
         );
-        console.log(
+        // console.log(
           `      ⏱️ סה"כ דקות בשימוש: ${totalMinutesUsed} (${(
             totalMinutesUsed / 60
           ).toFixed(1)} שעות)`
         );
-        console.log(
+        // console.log(
           `      ⏰ דקות נותרות: ${remainingMinutes} (${remainingHours.toFixed(
             1
           )} שעות)`
         );
-        console.log(
+        // console.log(
           `      🚨 צריך להיות חסום: ${remainingMinutes <= 0 ? "כן" : "לא"}`
         );
-        console.log(
+        // console.log(
           `      ⚠️ צריך להיות קריטי: ${
             remainingHours > 0 && remainingHours <= 5 ? "כן" : "לא"
           }`
         );
 
         // Compare to saved data
-        console.log(`   🔍 השוואה לנתונים שמורים:`);
-        console.log(`      Firebase רשום: ${client.hoursRemaining} שעות`);
-        console.log(`      חישוב אמיתי: ${remainingHours.toFixed(1)} שעות`);
-        console.log(
+        // console.log(`   🔍 השוואה לנתונים שמורים:`);
+        // console.log(`      Firebase רשום: ${client.hoursRemaining} שעות`);
+        // console.log(`      חישוב אמיתי: ${remainingHours.toFixed(1)} שעות`);
+        // console.log(
           `      הפרש: ${Math.abs(
             (client.hoursRemaining || 0) - remainingHours
           ).toFixed(1)} שעות`
@@ -5593,8 +5586,8 @@ async function debugClientHoursMismatch() {
           (c) => c.fullName === client.fullName
         );
         if (localClient) {
-          console.log(`      מקומי רשום: ${localClient.hoursRemaining} שעות`);
-          console.log(
+          // console.log(`      מקומי רשום: ${localClient.hoursRemaining} שעות`);
+          // console.log(
             `      הפרש ממקומי: ${Math.abs(
               localClient.hoursRemaining - remainingHours
             ).toFixed(1)} שעות`
@@ -5611,7 +5604,7 @@ async function debugClientHoursMismatch() {
  * Fix client hours mismatch
  */
 async function fixClientHoursMismatch() {
-  console.log("🔧 מתחיל תיקון הסתירה...");
+  // console.log("🔧 מתחיל תיקון הסתירה...");
 
   try {
     const db = window.firebaseDB;
@@ -5626,7 +5619,7 @@ async function fixClientHoursMismatch() {
       const clientData = clientDoc.data();
 
       if (clientData.type === "hours") {
-        console.log(`🔧 מתקן לקוח: ${clientData.fullName}`);
+        // console.log(`🔧 מתקן לקוח: ${clientData.fullName}`);
 
         const hoursData = await calculateClientHoursAccurate(
           clientData.fullName
@@ -5641,7 +5634,7 @@ async function fixClientHoursMismatch() {
           fixedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 
-        console.log(
+        // console.log(
           `✅ תוקן: ${clientData.fullName} - ${hoursData.remainingHours.toFixed(
             1
           )} שעות`
@@ -5670,7 +5663,7 @@ async function fixClientHoursMismatch() {
       window.manager.clientValidation.updateBlockedClients();
     }
 
-    console.log("✅ תיקון הושלם בהצלחה!");
+    // console.log("✅ תיקון הושלם בהצלחה!");
   } catch (error) {
     console.error("❌ שגיאה בתיקון:", error);
   }
@@ -5680,10 +5673,10 @@ async function fixClientHoursMismatch() {
  * Show client status summary
  */
 function showClientStatusSummary() {
-  console.log("\n=== 📊 סיכום סטטוס לקוחות ===");
+  // console.log("\n=== 📊 סיכום סטטוס לקוחות ===");
 
   if (!window.manager || !window.manager.clients) {
-    console.log("❌ אין נתוני לקוחות");
+    // console.log("❌ אין נתוני לקוחות");
     return;
   }
 
@@ -5695,7 +5688,7 @@ function showClientStatusSummary() {
     fixed: 0,
   };
 
-  console.log("📋 סטטוס כל הלקוחות:");
+  // console.log("📋 סטטוס כל הלקוחות:");
 
   window.manager.clients.forEach((client, i) => {
     let status = "🟢 תקין";
@@ -5713,14 +5706,14 @@ function showClientStatusSummary() {
       summary.normal++;
     }
 
-    console.log(
+    // console.log(
       `${i + 1}. ${client.fullName} - ${
         client.hoursRemaining?.toFixed(1) || 0
       } שעות - ${status}`
     );
   });
 
-  console.log(
+  // console.log(
     `\n📊 סיכום: ${summary.total} לקוחות | ${summary.blocked} חסומים | ${summary.critical} קריטיים | ${summary.normal} תקינים | ${summary.fixed} פיקס`
   );
 }
@@ -5733,12 +5726,8 @@ window.calculateClientHoursAccurate = calculateClientHoursAccurate;
 window.updateClientHoursImmediately = updateClientHoursImmediately;
 window.testFirebaseConnection = testFirebaseConnection;
 
-console.log("🔥 Firebase functions loaded - מערכת מהירה פעילה!");
-console.log("🔍 פונקציות Debug זמינות:");
-console.log("   debugClientHoursMismatch() - אבחון מלא");
-console.log("   fixClientHoursMismatch() - תיקון אוטומטי");
-console.log("   showClientStatusSummary() - סיכום מהיר");
-console.log("   testFirebaseConnection() - בדיקת חיבור Firebase");
+// Production mode - Firebase functions available silently
+// Debug functions: debugClientHoursMismatch, fixClientHoursMismatch, showClientStatusSummary, testFirebaseConnection
 
 /**
  * פונקציות Firebase חסרות להשלמת המערכת
@@ -5787,7 +5776,7 @@ async function addTimeToTaskFirebase(taskId, timeEntry) {
       });
     });
 
-    console.log(`✅ זמן נוסף למשימה ${taskId}: ${timeEntry.minutes} דקות`);
+    // console.log(`✅ זמן נוסף למשימה ${taskId}: ${timeEntry.minutes} דקות`);
     return { success: true, message: "זמן נוסף בהצלחה למשימה" };
   } catch (error) {
     console.error("❌ שגיאה בהוספת זמן למשימה:", error);
@@ -5824,7 +5813,7 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
       lastModifiedBy: currentUser,
     });
 
-    console.log(`✅ משימה הושלמה: ${taskId}`);
+    // console.log(`✅ משימה הושלמה: ${taskId}`);
     return { success: true, message: "המשימה הושלמה בהצלחה" };
   } catch (error) {
     console.error("❌ שגיאה בהשלמת משימה:", error);
@@ -5869,7 +5858,7 @@ async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
       lastModifiedBy: currentUser,
     });
 
-    console.log(`✅ תאריך יעד הוארך למשימה ${taskId}: ${newDeadline}`);
+    // console.log(`✅ תאריך יעד הוארך למשימה ${taskId}: ${newDeadline}`);
     return { success: true, message: "תאריך היעד הוארך בהצלחה" };
   } catch (error) {
     console.error("❌ שגיאה בהארכת תאריך יעד:", error);
@@ -5904,7 +5893,7 @@ async function logUserLoginFirebase(employee, userAgent = "", ipAddress = "") {
     db.collection("user_logs")
       .add(loginData)
       .then(() => {
-        console.log(`📝 כניסת משתמש נרשמה: ${employee}`);
+        // console.log(`📝 כניסת משתמש נרשמה: ${employee}`);
       })
       .catch((error) => {
         console.warn("שגיאה ברישום כניסה:", error.message);
@@ -6134,9 +6123,5 @@ window.completeTaskFirebase = completeTaskFirebase;
 window.extendTaskDeadlineFirebase = extendTaskDeadlineFirebase;
 window.logUserLoginFirebase = logUserLoginFirebase;
 
-console.log("🔥 Firebase Functions Integration Complete!");
-console.log("✅ addTimeToTaskFirebase - הוספת זמן למשימה");
-console.log("✅ completeTaskFirebase - סיום משימה");
-console.log("✅ extendTaskDeadlineFirebase - הארכת יעד");
-console.log("✅ logUserLoginFirebase - רישום כניסה");
-console.log("🎯 כל הפונקציות מוחלפות לFirebase!");
+// Production mode - Firebase Functions integrated silently
+// Available: addTimeToTaskFirebase, completeTaskFirebase, extendTaskDeadlineFirebase, logUserLoginFirebase
