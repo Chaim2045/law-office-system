@@ -2204,9 +2204,9 @@ class LawOfficeManager {
             </div>
           </div>
         </div>
-        <button class="linear-expand-btn" onclick="manager.expandTaskCard(${
+        <button class="linear-expand-btn" onclick="manager.expandTaskCard('${
           safeTask.id
-        }, event)" title="הרחב פרטים">
+        }', event)" title="הרחב פרטים">
           <i class="fas fa-plus"></i>
         </button>
       </div>
@@ -3642,7 +3642,7 @@ class LawOfficeManager {
           </form>
         </div>
         <div class="popup-buttons">
-          <button class="popup-btn popup-btn-confirm" onclick="manager.submitTimeEntry(${taskId})">
+          <button class="popup-btn popup-btn-confirm" onclick="manager.submitTimeEntry('${taskId}')">
             <i class="fas fa-save"></i> שמור
           </button>
           <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
@@ -3989,7 +3989,7 @@ class LawOfficeManager {
           <button
             class="popup-btn popup-btn-confirm"
             id="confirmCompleteBtn"
-            onclick="manager.submitTaskCompletion(${task.id})"
+            onclick="manager.submitTaskCompletion('${task.id}')"
             style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); flex: 1; padding: 15px; font-size: 16px; font-weight: 600; border-radius: 10px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;"
             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(16, 185, 129, 0.4)'"
             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)'">
@@ -5608,7 +5608,13 @@ async function addTimeToTaskFirebase(taskId, timeEntry) {
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
-    const taskRef = db.collection("budget_tasks").doc(taskId);
+    // Ensure taskId is a string
+    const taskIdString = String(taskId);
+    if (!taskIdString || taskIdString === 'undefined' || taskIdString === 'null') {
+      throw new Error("taskId לא תקין");
+    }
+
+    const taskRef = db.collection("budget_tasks").doc(taskIdString);
 
     await db.runTransaction(async (transaction) => {
       const taskDoc = await transaction.get(taskRef);
@@ -5777,11 +5783,18 @@ async function logUserLoginFirebase(employee, userAgent = "", ipAddress = "") {
 if (window.manager) {
   // החלפת addTimeToTask
   window.manager.addTimeToTask = async function (timeData) {
+    let originalTask = null;
+    let taskIndex = -1;
+
     try {
-      const taskIndex = this.budgetTasks.findIndex(
+      // Validate taskId is a string
+      if (!timeData.taskId || typeof timeData.taskId !== 'string') {
+        throw new Error("taskId חייב להיות מחרוזת תקינה");
+      }
+
+      taskIndex = this.budgetTasks.findIndex(
         (t) => t.id === timeData.taskId
       );
-      let originalTask = null;
 
       if (taskIndex !== -1) {
         originalTask = JSON.parse(JSON.stringify(this.budgetTasks[taskIndex]));
@@ -5872,7 +5885,7 @@ if (window.manager) {
           <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
             <i class="fas fa-times"></i> ביטול
           </button>
-          <button class="popup-btn popup-btn-confirm" onclick="manager.submitDeadlineExtension(${taskId}, this)">
+          <button class="popup-btn popup-btn-confirm" onclick="manager.submitDeadlineExtension('${taskId}', this)">
             <i class="fas fa-calendar-check"></i> אשר הארכה
           </button>
         </div>
