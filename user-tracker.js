@@ -97,10 +97,30 @@
       sessionId = generateSessionId();
       const deviceInfo = getDeviceInfo();
 
-      // אם לא נשלח שם מלא, נסה לקחת מהגלובל EMPLOYEES
-      const employeeData = window.EMPLOYEES && window.EMPLOYEES[username] ? window.EMPLOYEES[username] : null;
-      const displayName = fullName || (employeeData ? employeeData.name : username);
-      const email = employeeData ? employeeData.email : null;
+      // קריאה מ-Firebase employees collection
+      let employeeData = null;
+      let displayName = fullName || username;
+      let email = null;
+
+      try {
+        // ניסיון לטעון את העובד מ-Firebase
+        if (window.EmployeesManager) {
+          employeeData = await window.EmployeesManager.get(username);
+          if (employeeData) {
+            displayName = fullName || employeeData.name || employeeData.displayName || username;
+            email = employeeData.email || null;
+          }
+        }
+      } catch (err) {
+        logger.log('Could not load employee from Firebase, trying fallback...');
+
+        // Fallback: נסה מהגלובל EMPLOYEES הישן (backwards compatible)
+        if (window.EMPLOYEES && window.EMPLOYEES[username]) {
+          const oldData = window.EMPLOYEES[username];
+          displayName = fullName || oldData.name || username;
+          email = oldData.email || null;
+        }
+      }
 
       const sessionData = {
         userId: username,

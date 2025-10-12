@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ניהול עובדים - מערכת ניהול משרד עורכי דין</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      direction: rtl;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      color: #2d3748;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #2d3748;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e0;
+    }
+
+    .btn-danger {
+      background: #fc8181;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #f56565;
+    }
+
+    .btn-success {
+      background: #48bb78;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #38a169;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+
+    .stat-card h3 {
+      font-size: 12px;
+      color: #718096;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-card .number {
+      font-size: 32px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .main-content {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .content-header {
+      padding: 20px 30px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .search-box {
+      flex: 1;
+      max-width: 400px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 12px 40px 12px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .search-box::after {
+      content: '🔍';
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .employees-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .employees-table thead {
+      background: #f7fafc;
+    }
+
+    .employees-table th {
+      padding: 15px 20px;
+      text-align: right;
+      font-weight: 600;
+      color: #4a5568;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .employees-table td {
+      padding: 15px 20px;
+      border-top: 1px solid #e2e8f0;
+      color: #2d3748;
+    }
+
+    .employees-table tbody tr:hover {
+      background: #f7fafc;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-active {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .badge-inactive {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+
+    .badge-admin {
+      background: #feebc8;
+      color: #744210;
+    }
+
+    .badge-employee {
+      background: #bee3f8;
+      color: #2c5282;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-content h2 {
+      margin-bottom: 20px;
+      color: #2d3748;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #718096;
+    }
+
+    .spinner {
+      border: 4px solid #e2e8f0;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #718096;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <h1>👥 ניהול עובדים</h1>
+        <p style="color: #718096; margin-top: 5px;">ניהול מלא של משתמשים במערכת</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="window.location.href='admin.html'">
+          ↩️ חזור לדשבורד
+        </button>
+        <button class="btn btn-primary" onclick="openAddModal()">
+          ➕ הוסף עובד
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>סה"כ עובדים</h3>
+        <div class="number" id="totalEmployees">-</div>
+      </div>
+      <div class="stat-card">
+        <h3>עובדים פעילים</h3>
+        <div class="number" id="activeEmployees">-</div>
+      </div>
+      <div class="stat-card">
+        <h3>מנהלים</h3>
+        <div class="number" id="adminCount">-</div>
+      </div>
+      <div class="stat-card">
+        <h3>לא פעילים</h3>
+        <div class="number" id="inactiveEmployees">-</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="content-header">
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="חיפוש לפי שם, שם משתמש או מייל..." onkeyup="filterEmployees()">
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="refreshData()">
+          🔄 רענן
+        </button>
+      </div>
+
+      <div id="tableContainer">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>טוען עובדים...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal" id="employeeModal">
+    <div class="modal-content">
+      <h2 id="modalTitle">➕ הוספת עובד חדש</h2>
+
+      <form id="employeeForm" onsubmit="saveEmployee(event)">
+        <div class="form-group">
+          <label for="username">שם משתמש *</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">סיסמה *</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+
+        <div class="form-group">
+          <label for="name">שם מלא *</label>
+          <input type="text" id="name" name="name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">מייל</label>
+          <input type="email" id="email" name="email">
+        </div>
+
+        <div class="form-group">
+          <label for="role">תפקיד</label>
+          <select id="role" name="role">
+            <option value="employee">עובד</option>
+            <option value="admin">מנהל</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="isActive" name="isActive" checked>
+            חשבון פעיל
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-success">💾 שמור</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">ביטול</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <!-- Employees Manager -->
+  <script src="../employees-manager.js"></script>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8",
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    window.firebaseDB = firebase.firestore();
+
+    let allEmployees = {};
+    let isEditMode = false;
+    let currentEditUsername = null;
+
+    /* === Load Data === */
+
+    async function loadEmployees() {
+      try {
+        console.log('🔄 Loading employees...');
+
+        allEmployees = await EmployeesManager.loadAll(true);
+        const stats = await EmployeesManager.getStats();
+
+        updateStats(stats);
+        renderEmployeesTable(Object.values(allEmployees));
+
+        console.log('✅ Employees loaded');
+      } catch (error) {
+        console.error('❌ Failed to load employees:', error);
+        document.getElementById('tableContainer').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">❌</div>
+            <h3>שגיאה בטעינת נתונים</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function updateStats(stats) {
+      document.getElementById('totalEmployees').textContent = stats.total;
+      document.getElementById('activeEmployees').textContent = stats.active;
+      document.getElementById('adminCount').textContent = stats.admins;
+      document.getElementById('inactiveEmployees').textContent = stats.inactive;
+    }
+
+    function renderEmployeesTable(employees) {
+      const container = document.getElementById('tableContainer');
+
+      if (employees.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <h3>אין עובדים להצגה</h3>
+            <p>לחץ על "הוסף עובד" כדי להוסיף את העובד הראשון</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = `
+        <table class="employees-table">
+          <thead>
+            <tr>
+              <th>שם משתמש</th>
+              <th>שם מלא</th>
+              <th>מייל</th>
+              <th>תפקיד</th>
+              <th>סטטוס</th>
+              <th>כניסה אחרונה</th>
+              <th>פעולות</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${employees.map(emp => `
+              <tr>
+                <td><strong>${emp.username}</strong></td>
+                <td>${emp.name}</td>
+                <td>${emp.email || '-'}</td>
+                <td>
+                  <span class="badge badge-${emp.role}">
+                    ${emp.role === 'admin' ? '👑 מנהל' : '👤 עובד'}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge badge-${emp.isActive ? 'active' : 'inactive'}">
+                    ${emp.isActive ? '✅ פעיל' : '❌ לא פעיל'}
+                  </span>
+                </td>
+                <td>${formatDate(emp.lastLogin)}</td>
+                <td>
+                  <div class="actions-cell">
+                    <button class="btn btn-secondary btn-sm" onclick="editEmployee('${emp.username}')">
+                      ✏️ ערוך
+                    </button>
+                    ${emp.isActive ?
+                      `<button class="btn btn-danger btn-sm" onclick="deactivateEmployee('${emp.username}')">
+                        🚫 השבת
+                      </button>` :
+                      `<button class="btn btn-success btn-sm" onclick="restoreEmployee('${emp.username}')">
+                        ✅ שחזר
+                      </button>`
+                    }
+                    <button class="btn btn-danger btn-sm" onclick="deleteEmployee('${emp.username}')">
+                      🗑️ מחק
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return 'מעולם לא נכנס';
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString('he-IL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    /* === Search & Filter === */
+
+    function filterEmployees() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = Object.values(allEmployees).filter(emp =>
+        emp.username.toLowerCase().includes(query) ||
+        emp.name.toLowerCase().includes(query) ||
+        (emp.email && emp.email.toLowerCase().includes(query))
+      );
+      renderEmployeesTable(filtered);
+    }
+
+    /* === Modal === */
+
+    function openAddModal() {
+      isEditMode = false;
+      currentEditUsername = null;
+      document.getElementById('modalTitle').textContent = '➕ הוספת עובד חדש';
+      document.getElementById('employeeForm').reset();
+      document.getElementById('username').readOnly = false;
+      document.getElementById('employeeModal').classList.add('active');
+    }
+
+    function editEmployee(username) {
+      isEditMode = true;
+      currentEditUsername = username;
+      const employee = allEmployees[username];
+
+      document.getElementById('modalTitle').textContent = `✏️ עריכת ${employee.name}`;
+      document.getElementById('username').value = employee.username;
+      document.getElementById('username').readOnly = true;
+      document.getElementById('password').value = employee.password;
+      document.getElementById('name').value = employee.name;
+      document.getElementById('email').value = employee.email || '';
+      document.getElementById('role').value = employee.role;
+      document.getElementById('isActive').checked = employee.isActive;
+
+      document.getElementById('employeeModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('employeeModal').classList.remove('active');
+    }
+
+    /* === Save Employee === */
+
+    async function saveEmployee(event) {
+      event.preventDefault();
+
+      const formData = new FormData(event.target);
+      const employeeData = {
+        username: formData.get('username'),
+        password: formData.get('password'),
+        name: formData.get('name'),
+        email: formData.get('email'),
+        role: formData.get('role'),
+        isActive: document.getElementById('isActive').checked
+      };
+
+      try {
+        if (isEditMode) {
+          // עדכון
+          await EmployeesManager.update(currentEditUsername, employeeData);
+          alert(`✅ ${employeeData.name} עודכן בהצלחה!`);
+        } else {
+          // הוספה
+          await EmployeesManager.add(employeeData);
+          alert(`✅ ${employeeData.name} נוסף בהצלחה!`);
+        }
+
+        closeModal();
+        await loadEmployees();
+
+      } catch (error) {
+        console.error('Error saving employee:', error);
+        alert(`❌ שגיאה: ${error.message}`);
+      }
+    }
+
+    /* === Employee Actions === */
+
+    async function deactivateEmployee(username) {
+      if (!confirm(`האם להשבית את ${username}?`)) return;
+
+      try {
+        await EmployeesManager.update(username, { isActive: false });
+        alert(`✅ ${username} הושבת בהצלחה!`);
+        await loadEmployees();
+      } catch (error) {
+        alert(`❌ שגיאה: ${error.message}`);
+      }
+    }
+
+    async function restoreEmployee(username) {
+      try {
+        await EmployeesManager.restore(username);
+        alert(`✅ ${username} שוחזר בהצלחה!`);
+        await loadEmployees();
+      } catch (error) {
+        alert(`❌ שגיאה: ${error.message}`);
+      }
+    }
+
+    async function deleteEmployee(username) {
+      if (!confirm(`❌ האם למחוק לצמיתות את ${username}?\n\nפעולה זו אינה הפיכה!`)) return;
+
+      try {
+        await EmployeesManager.delete(username, true);
+        alert(`✅ ${username} נמחק בהצלחה!`);
+        await loadEmployees();
+      } catch (error) {
+        alert(`❌ שגיאה: ${error.message}`);
+      }
+    }
+
+    async function refreshData() {
+      await loadEmployees();
+    }
+
+    /* === Initialize === */
+
+    loadEmployees();
+
+    console.log('✅ Employee Management System loaded');
+  </script>
+</body>
+</html>
