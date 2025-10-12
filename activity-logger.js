@@ -177,10 +177,10 @@
      */
     async logCreateTask(taskId, taskData) {
       return this.log(ActionTypes.CREATE_TASK, EntityTypes.TASK, taskId, {
-        taskName: taskData.name,
-        client: taskData.client,
-        deadline: taskData.deadline,
-        estimatedMinutes: taskData.estimatedMinutes
+        taskName: taskData.taskDescription || taskData.name || 'לא צוין',
+        client: taskData.clientName || taskData.client || 'לא צוין',
+        deadline: taskData.deadline || 'לא צוין',
+        estimatedMinutes: taskData.estimatedMinutes || 0
       });
     }
 
