@@ -86,7 +86,7 @@
   /**
    * רישום כניסה למערכת
    */
-  async function trackLogin(username) {
+  async function trackLogin(username, fullName = null) {
     if (!window.firebaseDB) {
       logger.error('Firebase DB not available');
       return;
@@ -96,6 +96,11 @@
       currentUser = username;
       sessionId = generateSessionId();
       const deviceInfo = getDeviceInfo();
+
+      // אם לא נשלח שם מלא, נסה לקחת מהגלובל EMPLOYEES
+      const employeeData = window.EMPLOYEES && window.EMPLOYEES[username] ? window.EMPLOYEES[username] : null;
+      const displayName = fullName || (employeeData ? employeeData.name : username);
+      const email = employeeData ? employeeData.email : null;
 
       const sessionData = {
         userId: username,
@@ -110,14 +115,22 @@
       // שמירת Session ב-Firestore
       await window.firebaseDB.collection('sessions').doc(sessionId).set(sessionData);
 
-      // עדכון המשתמש עצמו
-      await window.firebaseDB.collection('users').doc(username).set({
+      // עדכון המשתמש עצמו (עם שם מלא ומייל!)
+      const userData = {
         username: username,
+        displayName: displayName,  // 🔥 שם מלא בעברית
         lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
         isOnline: true,
         currentSession: sessionId,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      };
+
+      // הוספת מייל אם קיים
+      if (email) {
+        userData.email = email;  // 🔥 מייל
+      }
+
+      await window.firebaseDB.collection('users').doc(username).set(userData, { merge: true });
 
       // רישום פעילות
       await logActivity('login', {

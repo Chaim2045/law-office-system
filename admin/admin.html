@@ -1003,11 +1003,22 @@
 
           for (const doc of usersSnapshot.docs) {
             const userData = doc.data();
+            // Use doc.id (which is the username) or userData.username
+            const employeeName = userData.username || doc.id;
+
+            // Skip if no valid employee name
+            if (!employeeName) {
+              console.warn(`⚠️ משתמש ללא שם: ${doc.id}`);
+              continue;
+            }
+
+            // שם לתצוגה - תעדוף לשם המלא בעברית
+            const displayName = userData.displayName || employeeName;
 
             // Get real timesheet data for this employee
             const timesheetSnapshot = await db
               .collection("timesheet_entries")
-              .where("employee", "==", userData.displayName || userData.name)
+              .where("employee", "==", employeeName)
               .get();
 
             let weeklyHours = 0;
@@ -1025,7 +1036,7 @@
             // Get real budget tasks for this employee
             const tasksSnapshot = await db
               .collection("budget_tasks")
-              .where("employee", "==", userData.displayName || userData.name)
+              .where("employee", "==", employeeName)
               .get();
 
             let activeTasks = 0;
@@ -1037,13 +1048,12 @@
             });
 
             // Check if user is currently online by checking active_sessions
-            const isOnline = await checkUserOnlineStatus(
-              userData.displayName || userData.name
-            );
+            const isOnline = await checkUserOnlineStatus(employeeName);
 
             employeesData.push({
               id: doc.id,
-              name: userData.displayName || userData.name || "עובד",
+              name: displayName,  // 🔥 שם מלא בעברית
+              username: employeeName,  // שם משתמש (לשאילתות)
               email: userData.email || "",
               role: userData.role || "עובד",
               status: isOnline ? "online" : "offline",
@@ -1067,8 +1077,8 @@
       async function checkUserOnlineStatus(employeeName) {
         try {
           const sessionsSnapshot = await db
-            .collection("active_sessions")
-            .where("employee", "==", employeeName)
+            .collection("sessions")
+            .where("userId", "==", employeeName)
             .where("isActive", "==", true)
             .get();
 
@@ -2134,7 +2144,7 @@
 
           // Update or create session document
           await db
-            .collection("active_sessions")
+            .collection("sessions")
             .doc(employeeName)
             .set(sessionData, { merge: true });
 
@@ -2168,7 +2178,7 @@
         try {
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
           const oldSessionsSnapshot = await db
-            .collection("active_sessions")
+            .collection("sessions")
             .where("lastActivity", "<", tenMinutesAgo)
             .get();
 

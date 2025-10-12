@@ -10,17 +10,17 @@ const startMemory = performance.memory?.usedJSHeapSize || 0;
 
 /* === Global Constants === */
 const EMPLOYEES = {
-  חיים: { password: "2025", name: "חיים" },
-  ישי: { password: "2025", name: "ישי" },
-  גיא: { password: "2025", name: "גיא" },
-  מרווה: { password: "2025", name: "מרווה" },
-  אלומה: { password: "2025", name: "אלומה" },
-  אורי: { password: "2025", name: "אורי" },
-  ראיד: { password: "2025", name: "ראיד" },
-  שחר: { password: "2025", name: "שחר" },
-  מירי: { password: "2025", name: "מירי" },
-  רועי: { password: "2025", name: "רועי" },
-  עוזי: { password: "2025", name: "עוזי" },
+  חיים: { password: "2025", name: "חיים", email: "haim@law-office.co.il" },
+  ישי: { password: "2025", name: "ישי", email: "yishai@law-office.co.il" },
+  גיא: { password: "2025", name: "גיא", email: "guy@law-office.co.il" },
+  מרווה: { password: "2025", name: "מרווה", email: "marva@law-office.co.il" },
+  אלומה: { password: "2025", name: "אלומה", email: "aluma@law-office.co.il" },
+  אורי: { password: "2025", name: "אורי", email: "uri@law-office.co.il" },
+  ראיד: { password: "2025", name: "ראיד", email: "raed@law-office.co.il" },
+  שחר: { password: "2025", name: "שחר", email: "shahar@law-office.co.il" },
+  מירי: { password: "2025", name: "מירי", email: "miri@law-office.co.il" },
+  רועי: { password: "2025", name: "רועי", email: "roi@law-office.co.il" },
+  עוזי: { password: "2025", name: "עוזי", email: "uzi@law-office.co.il" },
 };
 
 // Global state
