@@ -58,7 +58,12 @@
       "Bash(curl:*)",
       "Bash(cat:*)",
       "Bash(firebase functions:list:*)",
-      "Bash(start test-functions.html)"
+      "Bash(start test-functions.html)",
+      "Bash(git stash:*)",
+      "Bash(curl -s \"https://gh-law-office-system.netlify.app/index.html\")",
+      "Read(//c//**)",
+      "WebFetch(domain:firebase.google.com)",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []
