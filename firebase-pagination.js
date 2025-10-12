@@ -384,7 +384,6 @@
     }
   };
 
-  console.log('✅ FirebasePaginationModule loaded successfully');
-  console.log('📋 Backward Compatible: הפונקציות הישנות נשארות בדיוק כמו שהן!');
+  // Production mode - no console logs
 
 })();

@@ -259,4 +259,4 @@ window.loadClientsFromServer = loadClientsFromServer;
 window.saveClientToServer = saveClientToServer;
 window.saveTimesheetToServer = saveTimesheetToServer;
 
-console.log("📦 API module loaded successfully!");
+// Production mode - no console logs

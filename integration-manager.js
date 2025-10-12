@@ -184,6 +184,6 @@
     }
   };
 
-  console.log('✅ IntegrationManagerModule loaded successfully');
+  // Production mode - no console logs
 
 })();

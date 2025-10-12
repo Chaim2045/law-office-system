@@ -395,6 +395,6 @@
     }
   };
 
-  console.log('✅ SkeletonLoaderModule loaded successfully');
+  // Production mode - no console logs
 
 })();

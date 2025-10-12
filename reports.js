@@ -715,4 +715,4 @@ window.ReportsModule = {
   calculateMovingAverage
 };
 
-console.log('Reports module v1.0.0 loaded successfully!');
+// Production mode - no console logs

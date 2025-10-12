@@ -217,4 +217,4 @@ window.DatesModule = {
   getCreationDateTableCell,
 };
 
-console.log("📅 Dates Module loaded successfully!");
+// Production mode - no console logs

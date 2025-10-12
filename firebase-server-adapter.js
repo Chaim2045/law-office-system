@@ -32,7 +32,7 @@
     USE_FUNCTIONS_FOR_BUDGET: true,
 
     // Debug mode
-    DEBUG: true // זמני - לבדיקה
+    DEBUG: false // מצב פרודקשן - ללא הדפסות
   };
 
   /* === Logger === */

@@ -228,6 +228,6 @@
     }
   };
 
-  console.log('✅ TaskActionsModule loaded successfully');
+  // Production mode - no console logs
 
 })();

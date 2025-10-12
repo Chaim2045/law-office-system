@@ -353,4 +353,4 @@ window.StatisticsModule = {
   createTimesheetStatsBar
 };
 
-console.log('Statistics module v3.1.0 - Modern Badge Style loaded successfully!');
+// Production mode - no console logs
