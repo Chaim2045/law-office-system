@@ -35,7 +35,7 @@
     CACHE_TTL_MS: 60000, // 1 minute
 
     // Debug
-    DEBUG: true
+    DEBUG: false // כבוי למצב פרודקשן
   };
 
   /* === Helper: Logger === */
@@ -62,7 +62,6 @@
     set(key, value, ttl = API_CONFIG.CACHE_TTL_MS) {
       const expiresAt = Date.now() + ttl;
       this.cache.set(key, { value, expiresAt });
-      logger.log(`Cached: ${key} (TTL: ${ttl}ms)`);
     }
 
     get(key) {
@@ -71,17 +70,14 @@
 
       if (Date.now() > cached.expiresAt) {
         this.cache.delete(key);
-        logger.log(`Cache expired: ${key}`);
         return null;
       }
 
-      logger.log(`Cache hit: ${key}`);
       return cached.value;
     }
 
     clear() {
       this.cache.clear();
-      logger.log('Cache cleared');
     }
 
     invalidate(pattern) {
@@ -89,7 +85,6 @@
       keys.forEach(key => {
         if (key.includes(pattern)) {
           this.cache.delete(key);
-          logger.log(`Cache invalidated: ${key}`);
         }
       });
     }
@@ -105,8 +100,6 @@
       this.config = { ...API_CONFIG, ...config };
       this.cache = new CacheManager();
       this.activeRequests = 0;
-
-      logger.log('FirebaseFunctionsClient initialized', this.config);
     }
 
     /**
@@ -140,7 +133,6 @@
 
       try {
         this.activeRequests++;
-        logger.log(`Calling action: ${action}`, data);
 
         const result = await this._fetchWithRetry(action, data, retries);
 
@@ -150,7 +142,6 @@
           this.cache.set(cacheKey, result, cacheTTL);
         }
 
-        logger.log(`Action ${action} completed successfully`, result);
         return result;
 
       } catch (error) {
@@ -186,12 +177,10 @@
 
           // אם זה הניסיון האחרון - זרוק שגיאה
           if (attempt === maxRetries) {
-            logger.warn(`Max retries (${maxRetries}) reached for ${action}`);
             throw error;
           }
 
           // חכה לפני ניסיון נוסף (exponential backoff)
-          logger.warn(`Retry ${attempt + 1}/${maxRetries} for ${action} in ${delay}ms`);
           await this._sleep(delay);
           delay *= this.config.RETRY_BACKOFF_MULTIPLIER;
         }
@@ -566,6 +555,6 @@
     }
   };
 
-  logger.log('✅ FirebaseFunctionsClientV2 module loaded successfully');
+  // מצב פרודקשן - אין הדפסות מיותרות
 
 })();

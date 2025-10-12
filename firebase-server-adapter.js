@@ -23,16 +23,16 @@
   /* === Feature Flags - זה המפסק הראשי! === */
   const FEATURE_FLAGS = {
     // לקוחות
-    USE_FUNCTIONS_FOR_CLIENTS: false, // false = ישיר לFirebase (ישן), true = דרך Functions (חדש)
+    USE_FUNCTIONS_FOR_CLIENTS: true, // true = דרך Functions (חדש)
 
     // שעתון
-    USE_FUNCTIONS_FOR_TIMESHEET: false,
+    USE_FUNCTIONS_FOR_TIMESHEET: true,
 
     // משימות תקצוב
-    USE_FUNCTIONS_FOR_BUDGET: false,
+    USE_FUNCTIONS_FOR_BUDGET: true,
 
     // Debug mode
-    DEBUG: true
+    DEBUG: false // כבוי למצב פרודקשן
   };
 
   /* === Logger === */
@@ -64,7 +64,6 @@
 
     if (!apiClientV2) {
       apiClientV2 = window.FirebaseFunctionsClientV2.create();
-      logger.log('API Client V2 initialized successfully');
     }
 
     return true;
@@ -82,17 +81,14 @@
    */
   async function loadClientsFromFirebase_NEW() {
     if (!initializeClientV2()) {
-      logger.warn('Falling back to original loadClientsFromFirebase');
       return await loadClientsFromFirebase_ORIGINAL();
     }
 
     try {
-      logger.log('Loading clients from Firebase Functions...');
       const clients = await apiClientV2.getClients(true); // עם cache
-      logger.log(`Loaded ${clients.length} clients from Functions`);
       return clients;
     } catch (error) {
-      logger.error('Failed to load clients from Functions, falling back to original:', error);
+      logger.error('Failed to load clients from Functions, falling back:', error);
       return await loadClientsFromFirebase_ORIGINAL();
     }
   }
@@ -126,9 +122,7 @@
     }
 
     try {
-      logger.log(`Loading timesheet for ${employee} from Functions...`);
       const entries = await apiClientV2.getTimesheetEntries(employee);
-      logger.log(`Loaded ${entries.length} timesheet entries from Functions`);
       return entries;
     } catch (error) {
       logger.error('Failed to load timesheet from Functions, falling back:', error);
@@ -145,9 +139,7 @@
     }
 
     try {
-      logger.log('Saving timesheet entry to Functions...', entry);
       const result = await apiClientV2.saveTimesheetAndUpdateClient(entry);
-      logger.log('Timesheet entry saved successfully via Functions', result);
       return result;
     } catch (error) {
       logger.error('Failed to save timesheet via Functions, falling back:', error);
@@ -164,9 +156,7 @@
     }
 
     try {
-      logger.log(`Updating timesheet entry ${entryId} via Functions...`, updates);
       const result = await apiClientV2.updateTimesheetEntry(entryId, updates);
-      logger.log('Timesheet entry updated successfully via Functions');
       return result;
     } catch (error) {
       logger.error('Failed to update timesheet via Functions, falling back:', error);
@@ -218,9 +208,7 @@
     }
 
     try {
-      logger.log(`Loading budget tasks for ${employee} from Functions...`);
       const tasks = await apiClientV2.getBudgetTasks(employee);
-      logger.log(`Loaded ${tasks.length} budget tasks from Functions`);
       return tasks;
     } catch (error) {
       logger.error('Failed to load budget tasks from Functions, falling back:', error);
@@ -237,9 +225,7 @@
     }
 
     try {
-      logger.log('Saving budget task to Functions...', task);
       const result = await apiClientV2.saveBudgetTask(task);
-      logger.log('Budget task saved successfully via Functions', result);
       return result;
     } catch (error) {
       logger.error('Failed to save budget task via Functions, falling back:', error);
@@ -281,7 +267,6 @@
     enable(flag) {
       if (flag in FEATURE_FLAGS) {
         FEATURE_FLAGS[flag] = true;
-        logger.log(`✅ Feature flag enabled: ${flag}`);
       } else {
         logger.error(`Unknown flag: ${flag}`);
       }
@@ -293,7 +278,6 @@
     disable(flag) {
       if (flag in FEATURE_FLAGS) {
         FEATURE_FLAGS[flag] = false;
-        logger.log(`❌ Feature flag disabled: ${flag}`);
       } else {
         logger.error(`Unknown flag: ${flag}`);
       }
@@ -306,7 +290,6 @@
       FEATURE_FLAGS.USE_FUNCTIONS_FOR_CLIENTS = true;
       FEATURE_FLAGS.USE_FUNCTIONS_FOR_TIMESHEET = true;
       FEATURE_FLAGS.USE_FUNCTIONS_FOR_BUDGET = true;
-      logger.log('✅ All feature flags enabled!');
     },
 
     /**
@@ -316,7 +299,6 @@
       FEATURE_FLAGS.USE_FUNCTIONS_FOR_CLIENTS = false;
       FEATURE_FLAGS.USE_FUNCTIONS_FOR_TIMESHEET = false;
       FEATURE_FLAGS.USE_FUNCTIONS_FOR_BUDGET = false;
-      logger.log('❌ All feature flags disabled - using original Firebase Client');
     },
 
     /**
@@ -340,10 +322,9 @@
 
       try {
         const result = await apiClientV2.testConnection();
-        logger.log('✅ Server connection test successful:', result);
         return result;
       } catch (error) {
-        logger.error('❌ Server connection test failed:', error);
+        logger.error('Server connection test failed:', error);
         throw error;
       }
     },
@@ -354,7 +335,6 @@
     clearCache() {
       if (apiClientV2) {
         apiClientV2.clearCache();
-        logger.log('Cache cleared');
       }
     },
 
@@ -375,12 +355,9 @@
   };
 
   /* === Initialization === */
-  logger.log('✅ Firebase Server Adapter loaded successfully');
-  logger.log('Current feature flags:', FEATURE_FLAGS);
-  logger.log('To enable/disable features, use:');
-  logger.log('  FirebaseServerAdapter.enable("USE_FUNCTIONS_FOR_CLIENTS")');
-  logger.log('  FirebaseServerAdapter.enableAll()');
-  logger.log('  FirebaseServerAdapter.disableAll()');
-  logger.log('  FirebaseServerAdapter.getStatus()');
+  // מצב פרודקשן - אין הדפסות מיותרות
+  if (FEATURE_FLAGS.DEBUG) {
+    logger.log('✅ Firebase Server Adapter loaded');
+  }
 
 })();
