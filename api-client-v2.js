@@ -472,6 +472,53 @@
       return await this.call('calculateClientHours', { clientName });
     }
 
+    /**
+     * טעינת רשומות שעתון עם pagination (Server-side)
+     * @param {string} employee - שם העובד
+     * @param {number} limit - מספר רשומות לעמוד (1-100, default: 20)
+     * @param {string|null} startAfter - ID של המסמך האחרון מהעמוד הקודם
+     * @returns {Promise<{data: Array, count: number, hasMore: boolean, lastDocId: string|null}>}
+     */
+    async getTimesheetPaginated(employee, limit = 20, startAfter = null) {
+      const result = await this.call('getTimesheetPaginated', {
+        employee,
+        limit,
+        startAfter
+      });
+
+      return {
+        data: result.data || [],
+        count: result.count || 0,
+        hasMore: result.hasMore || false,
+        lastDocId: result.lastDocId || null
+      };
+    }
+
+    /**
+     * טעינת משימות תקצוב עם pagination (Server-side)
+     * @param {string} employee - שם העובד
+     * @param {number} limit - מספר משימות לעמוד (1-100, default: 20)
+     * @param {string|null} startAfter - ID של המסמך האחרון מהעמוד הקודם
+     * @param {string} filter - פילטר: 'active', 'completed', 'all' (default: 'active')
+     * @returns {Promise<{data: Array, count: number, hasMore: boolean, lastDocId: string|null, filter: string}>}
+     */
+    async getBudgetTasksPaginated(employee, limit = 20, startAfter = null, filter = 'active') {
+      const result = await this.call('getBudgetTasksPaginated', {
+        employee,
+        limit,
+        startAfter,
+        filter
+      });
+
+      return {
+        data: result.data || [],
+        count: result.count || 0,
+        hasMore: result.hasMore || false,
+        lastDocId: result.lastDocId || null,
+        filter: result.filter || 'active'
+      };
+    }
+
     /* === Utility Methods === */
 
     /**
