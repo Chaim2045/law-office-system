@@ -295,7 +295,6 @@ function formatShort(date) {
  */
 function initializeFirebase() {
   try {
-    // Production mode - Firebase initialized silently
 
     if (!window.firebaseDB) {
       console.error("❌ Firebase Database לא זמין");
@@ -315,7 +314,6 @@ function initializeFirebase() {
  */
 async function testFirebaseConnection() {
   try {
-    // Production mode - silent Firebase test
 
     const db = window.firebaseDB;
     if (!db) {
@@ -513,7 +511,6 @@ async function saveBudgetTaskToFirebase(taskData) {
 
     const docRef = await db.collection("budget_tasks").add(dataToSave);
 
-    // Production mode - task saved silently
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
@@ -548,7 +545,6 @@ async function saveTimesheetToFirebase(entryData) {
 
     const docRef = await db.collection("timesheet_entries").add(dataToSave);
 
-    // Production mode - timesheet saved silently
     return docRef.id;
   } catch (error) {
     console.error("Firebase error:", error);
@@ -641,7 +637,6 @@ async function calculateClientHoursAccurate(clientName) {
       lastCalculated: new Date(),
     };
 
-    // Production mode - calculation completed silently
 
     return result;
   } catch (error) {
@@ -692,7 +687,6 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
       isCritical: hoursData.isCritical,
     });
 
-    // Production mode - hours updated silently
 
     // Update local system data
     if (window.manager && window.manager.clients) {
@@ -1145,7 +1139,6 @@ class ClientValidation {
 /**
  * Table pagination helper
  */
-// Old TablePagination class removed - now using PaginationModule from pagination.js
 
 /* === Main Application Manager === */
 
@@ -1324,6 +1317,11 @@ class LawOfficeManager {
         if (this.activityLogger) {
           await this.activityLogger.logLogin();
         }
+
+        // 🔥 NEW: Track user login with Firebase
+        if (window.UserTracker) {
+          await window.UserTracker.trackLogin(this.currentUser);
+        }
       } catch (error) {
         this.showNotification("שגיאה בטעינת נתונים", "error");
         console.error("Error loading data:", error);
@@ -1349,7 +1347,7 @@ class LawOfficeManager {
   /**
    * מציג מסך ברוך הבא עם שם המשתמש ולוגו
    */
-  showWelcomeScreen() {
+  async showWelcomeScreen() {
     const loginSection = document.getElementById("loginSection");
     const welcomeScreen = document.getElementById("welcomeScreen");
     const welcomeTitle = document.getElementById("welcomeTitle");
@@ -1367,29 +1365,36 @@ class LawOfficeManager {
       welcomeTitle.textContent = `ברוך הבא, ${this.currentUser}`;
     }
 
-    // Get and display last login from localStorage
-    const lastLogin = localStorage.getItem(`lastLogin_${this.currentUser}`);
-    if (lastLoginTime) {
-      if (lastLogin) {
-        const loginDate = new Date(lastLogin);
-        const formatted = loginDate.toLocaleString("he-IL", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        lastLoginTime.textContent = formatted;
-      } else {
-        lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
+    // 🔥 NEW: Get last login from Firebase instead of localStorage
+    if (lastLoginTime && window.firebaseDB) {
+      try {
+        const userDoc = await window.firebaseDB.collection('users').doc(this.currentUser).get();
+
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          const lastLogin = userData.lastLogin;
+
+          if (lastLogin) {
+            const loginDate = lastLogin.toDate ? lastLogin.toDate() : new Date(lastLogin);
+            const formatted = loginDate.toLocaleString("he-IL", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            lastLoginTime.textContent = formatted;
+          } else {
+            lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
+          }
+        } else {
+          lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
+        }
+      } catch (error) {
+        console.error('Error loading last login from Firebase:', error);
+        lastLoginTime.textContent = "טוען...";
       }
     }
-
-    // Save current login time for next time
-    localStorage.setItem(
-      `lastLogin_${this.currentUser}`,
-      new Date().toISOString()
-    );
 
     // הצג את מסך ברוך הבא
     if (welcomeScreen) {
@@ -2722,7 +2727,6 @@ class LawOfficeManager {
       // כאן תוסיף בעתיד קריאה לשרת Firebase:
       await updateTimesheetEntryFirebase(entryId, newMinutes, reason);
 
-      // Production mode - advanced edit completed silently
     } catch (error) {
       console.error("Error in advanced timesheet edit:", error);
       this.showNotification(
@@ -3470,7 +3474,6 @@ class LawOfficeManager {
           );
 
           if (hoursResult.success && hoursResult.hoursData) {
-            // Production mode - client hours updated silently
 
             // Show alert if client became critical or blocked
             if (hoursResult.hoursData.isBlocked) {
@@ -3705,8 +3708,6 @@ class LawOfficeManager {
         this.renderBudgetTasks();
       }
 
-      // Here you would add Firebase function to add time to task
-      // For now, just simulate success
       setTimeout(() => this.loadDataFromFirebase(), 1000);
 
       hideProgress();
@@ -4684,12 +4685,17 @@ function logout() {
   document.body.appendChild(overlay);
 }
 
-function confirmLogout() {
+async function confirmLogout() {
   const interfaceElements = document.getElementById("interfaceElements");
   if (interfaceElements) interfaceElements.classList.add("hidden");
 
   if (window.manager) {
     window.manager.showNotification("מתנתק מהמערכת... להתראות! 👋", "info");
+  }
+
+  // 🔥 NEW: Track logout in Firebase
+  if (window.UserTracker) {
+    await window.UserTracker.trackLogout();
   }
 
   setTimeout(() => location.reload(), 1500);
@@ -5381,7 +5387,6 @@ document.addEventListener("DOMContentLoaded", () => {
     firstNavItem.classList.add("active");
   }
 
-  // Production mode - silent performance metrics
   const loadTime = performance.now() - startTime;
 
   if (performance.memory) {
@@ -5586,16 +5591,12 @@ function showClientStatusSummary() {
 
 }
 
-// Add debug functions to global scope
 window.debugClientHoursMismatch = debugClientHoursMismatch;
 window.fixClientHoursMismatch = fixClientHoursMismatch;
 window.showClientStatusSummary = showClientStatusSummary;
 window.calculateClientHoursAccurate = calculateClientHoursAccurate;
 window.updateClientHoursImmediately = updateClientHoursImmediately;
 window.testFirebaseConnection = testFirebaseConnection;
-
-// Production mode - Firebase functions available silently
-// Debug functions: debugClientHoursMismatch, fixClientHoursMismatch, showClientStatusSummary, testFirebaseConnection
 
 /**
  * פונקציות Firebase חסרות להשלמת המערכת
@@ -5981,11 +5982,7 @@ if (window.manager) {
   };
 }
 
-// הוסף פונקציות ל-window
 window.addTimeToTaskFirebase = addTimeToTaskFirebase;
 window.completeTaskFirebase = completeTaskFirebase;
 window.extendTaskDeadlineFirebase = extendTaskDeadlineFirebase;
 window.logUserLoginFirebase = logUserLoginFirebase;
-
-// Production mode - Firebase Functions integrated silently
-// Available: addTimeToTaskFirebase, completeTaskFirebase, extendTaskDeadlineFirebase, logUserLoginFirebase

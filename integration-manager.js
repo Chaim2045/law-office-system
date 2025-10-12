@@ -58,7 +58,6 @@
       // אתחול Firebase Pagination אם זמין
       if (window.FirebasePaginationModule) {
         this.firebasePagination = window.FirebasePaginationModule.create();
-        // Production mode - Firebase Pagination initialized silently
       } else {
         console.warn('⚠️ FirebasePaginationModule not available - using legacy pagination');
       }
@@ -69,14 +68,12 @@
      */
     async loadClients() {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        // Production mode - using Firebase Pagination silently
         const result = await this.firebasePagination.loadClientsPaginated(
           this.config.PAGINATION_PAGE_SIZE,
           false
         );
         return result.items;
       } else {
-        // Production mode - using legacy method silently
         return await window.loadClientsFromFirebase();
       }
     }
@@ -86,7 +83,6 @@
      */
     async loadBudgetTasks(employee) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        // Production mode - using Firebase Pagination silently
         const result = await this.firebasePagination.loadBudgetTasksPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
@@ -94,7 +90,6 @@
         );
         return result.items;
       } else {
-        // Production mode - using legacy method silently
         return await window.loadBudgetTasksFromFirebase(employee);
       }
     }
@@ -104,7 +99,6 @@
      */
     async loadTimesheet(employee) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        // Production mode - using Firebase Pagination silently
         const result = await this.firebasePagination.loadTimesheetPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
@@ -112,7 +106,6 @@
         );
         return result.items;
       } else {
-        // Production mode - using legacy method silently
         return await window.loadTimesheetFromFirebase(employee);
       }
     }
@@ -122,7 +115,6 @@
      */
     async loadMoreBudgetTasks(employee, currentTasks) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        // Production mode - loading more silently
         const result = await this.firebasePagination.loadBudgetTasksPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
@@ -139,7 +131,6 @@
      */
     async loadMoreTimesheet(employee, currentEntries) {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
-        // Production mode - loading more silently
         const result = await this.firebasePagination.loadTimesheetPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
@@ -179,6 +170,5 @@
     }
   };
 
-  // Production mode - no console logs
 
 })();

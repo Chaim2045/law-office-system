@@ -715,4 +715,3 @@ window.ReportsModule = {
   calculateMovingAverage
 };
 
-// Production mode - no console logs

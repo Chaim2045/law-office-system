@@ -353,4 +353,3 @@ window.StatisticsModule = {
   createTimesheetStatsBar
 };
 
-// Production mode - no console logs

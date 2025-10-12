@@ -217,4 +217,3 @@ window.DatesModule = {
   getCreationDateTableCell,
 };
 
-// Production mode - no console logs

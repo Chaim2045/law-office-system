@@ -384,6 +384,5 @@
     }
   };
 
-  // Production mode - no console logs
 
 })();

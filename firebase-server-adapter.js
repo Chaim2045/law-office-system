@@ -364,7 +364,6 @@
   };
 
   /* === Initialization === */
-  // מצב פרודקשן - אין הדפסות מיותרות
   if (FEATURE_FLAGS.DEBUG) {
     logger.log('✅ Firebase Server Adapter loaded');
   }
