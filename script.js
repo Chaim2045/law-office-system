@@ -1410,27 +1410,37 @@ class LawOfficeManager {
       welcomeTitle.textContent = `ברוך הבא, ${this.currentUser}`;
     }
 
-    // Show last login time (from localStorage for now)
-    // Note: lastLogin is updated in Firebase by trackUserActivity Function
+    // ✅ תיקון יסודי: קריאת lastLogin מ-Firebase (לא localStorage!)
     if (lastLoginTime) {
-      const storedLastLogin = localStorage.getItem(
-        `lastLogin_${this.currentUser}`
-      );
-      if (storedLastLogin) {
-        try {
-          const loginDate = new Date(storedLastLogin);
-          const formatted = loginDate.toLocaleString("he-IL", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          lastLoginTime.textContent = formatted;
-        } catch (error) {
+      try {
+        // קריאה מ-employees collection ב-Firebase
+        const employeeDoc = await window.firebaseDB
+          .collection('employees')
+          .doc(this.currentUser)
+          .get();
+
+        if (employeeDoc.exists) {
+          const data = employeeDoc.data();
+
+          // lastLogin הוא Firestore Timestamp
+          if (data.lastLogin && data.lastLogin.toDate) {
+            const loginDate = data.lastLogin.toDate();
+            const formatted = loginDate.toLocaleString("he-IL", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            lastLoginTime.textContent = formatted;
+          } else {
+            lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
+          }
+        } else {
           lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
         }
-      } else {
+      } catch (error) {
+        console.error('⚠️ Failed to load lastLogin from Firebase:', error);
         lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
       }
     }
