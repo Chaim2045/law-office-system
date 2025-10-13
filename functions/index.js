@@ -14,6 +14,16 @@ const db = admin.firestore();
 const auth = admin.auth();
 
 // ===============================
+// CORS Configuration
+// ===============================
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '3600'
+};
+
+// ===============================
 // Helper Functions - פונקציות עזר
 // ===============================
 
@@ -1056,6 +1066,122 @@ exports.linkAuthToEmployee = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה בקישור Auth: ${error.message}`
+    );
+  }
+});
+
+// ===============================
+// Activity Logging & User Tracking
+// ===============================
+
+/**
+ * רישום פעילות משתמש (Activity Log)
+ * נקרא מ-activity-logger.js
+ */
+exports.logActivity = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Validation
+    if (!data.type || typeof data.type !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר סוג פעילות'
+      );
+    }
+
+    if (!data.action || typeof data.action !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר תיאור פעולה'
+      );
+    }
+
+    // רישום הפעילות
+    const activityData = {
+      type: sanitizeString(data.type),
+      action: sanitizeString(data.action),
+      details: data.details ? sanitizeString(JSON.stringify(data.details)) : '',
+      userId: user.uid,
+      username: user.username,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      userAgent: data.userAgent || null,
+      sessionId: data.sessionId || null
+    };
+
+    const docRef = await db.collection('activity_log').add(activityData);
+
+    return {
+      success: true,
+      activityId: docRef.id
+    };
+
+  } catch (error) {
+    console.error('Error in logActivity:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה ברישום פעילות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * מעקב אחר כניסות ופעילות משתמשים (User Tracking)
+ * נקרא מ-user-tracker.js
+ */
+exports.trackUserActivity = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Validation
+    if (!data.activityType || typeof data.activityType !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר סוג פעילות'
+      );
+    }
+
+    // רישום הפעילות
+    const trackingData = {
+      userId: user.uid,
+      username: user.username,
+      activityType: data.activityType, // 'login', 'logout', 'pageview', etc.
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      metadata: data.metadata || {},
+      userAgent: data.userAgent || null,
+      ipAddress: data.ipAddress || null
+    };
+
+    const docRef = await db.collection('user_tracking').add(trackingData);
+
+    // אם זו כניסה, נעדכן גם את העובד
+    if (data.activityType === 'login') {
+      await db.collection('employees').doc(user.username).update({
+        lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+        loginCount: admin.firestore.FieldValue.increment(1)
+      });
+    }
+
+    return {
+      success: true,
+      trackingId: docRef.id
+    };
+
+  } catch (error) {
+    console.error('Error in trackUserActivity:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במעקב משתמש: ${error.message}`
     );
   }
 });

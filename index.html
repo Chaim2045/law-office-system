@@ -68,19 +68,7 @@
         };
 
         // Production mode - Firebase initialized silently
-
-        // בדיקת חיבור מהירה (ללא timeout)
-        setTimeout(() => {
-          db.collection("test")
-            .limit(1)
-            .get()
-            .then(() => {
-              // Connection successful - silent mode
-            })
-            .catch((error) => {
-              console.warn("⚠️ בעיה בחיבור:", error.message);
-            });
-        }, 100);
+        console.log("✅ Firebase initialized successfully");
       } catch (error) {
         console.error("❌ Firebase Error:", error);
         alert("שגיאה בחיבור לFirebase: " + error.message);
@@ -1250,7 +1238,7 @@
     <script src="employees-manager.js?v=1.0.0"></script>
     <!-- User Tracking System - רישום כניסות ופעילות -->
     <script src="user-tracker.js?v=1.0.0"></script>
-    <script src="script.js?v=4.27.0"></script>
+    <script src="script.js?v=4.28.0"></script>
 
     <!-- Additional CSS for animations -->
     <style>

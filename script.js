@@ -501,7 +501,7 @@ async function saveClientToFirebase(clientData) {
 async function saveBudgetTaskToFirebase(taskData) {
   try {
     // Call Firebase Function for secure validation and creation
-    const result = await callFunction('createTask', taskData);
+    const result = await callFunction('createBudgetTask', taskData);
 
     if (!result.success) {
       throw new Error(result.message || 'שגיאה בשמירת משימה');

@@ -107,13 +107,25 @@
       };
 
       try {
-        if (!this.db) {
+        // בדיקה אם Firebase מאותחל
+        if (!firebase || !firebase.functions) {
           console.warn('[ActivityLogger] Firebase not initialized, storing offline');
           this.offlineQueue.push(logEntry);
           return;
         }
 
-        await this.db.collection(this.collectionName).add(logEntry);
+        // קריאה ל-Function במקום כתיבה ישירה
+        const logActivity = firebase.functions().httpsCallable('logActivity');
+        await logActivity({
+          type: entityType,
+          action: action,
+          details: {
+            entityId,
+            ...details
+          },
+          userAgent: navigator.userAgent,
+          sessionId: this.sessionId || null
+        });
       } catch (error) {
         console.error('[ActivityLogger] Error logging activity:', error);
         // שמירה לתור offline
@@ -125,19 +137,25 @@
      * שטיפת תור offline כשחוזרים online
      */
     async flushOfflineQueue() {
-      if (this.offlineQueue.length === 0 || !this.db) return;
+      if (this.offlineQueue.length === 0 || !firebase || !firebase.functions) return;
 
+      // שליחת כל הפעולות המצטברות דרך Function
+      const logActivity = firebase.functions().httpsCallable('logActivity');
 
-      const batch = this.db.batch();
-      const collectionRef = this.db.collection(this.collectionName);
-
-      this.offlineQueue.forEach(logEntry => {
-        const docRef = collectionRef.doc();
-        batch.set(docRef, logEntry);
-      });
+      const promises = this.offlineQueue.map(logEntry =>
+        logActivity({
+          type: logEntry.entityType,
+          action: logEntry.action,
+          details: logEntry.details,
+          userAgent: logEntry.userAgent,
+          sessionId: this.sessionId || null
+        }).catch(error => {
+          console.error('[ActivityLogger] Error in offline queue item:', error);
+        })
+      );
 
       try {
-        await batch.commit();
+        await Promise.all(promises);
         this.offlineQueue = [];
       } catch (error) {
         console.error('[ActivityLogger] Error flushing offline queue:', error);

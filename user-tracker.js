@@ -122,40 +122,18 @@
         }
       }
 
-      const sessionData = {
-        userId: username,
-        sessionId: sessionId,
-        loginTime: firebase.firestore.FieldValue.serverTimestamp(),
-        lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-        isActive: true,
-        device: deviceInfo,
-        actions: []
-      };
-
-      // שמירת Session ב-Firestore
-      await window.firebaseDB.collection('sessions').doc(sessionId).set(sessionData);
-
-      // עדכון המשתמש עצמו (עם שם מלא ומייל!)
-      const userData = {
-        username: username,
-        displayName: displayName,  // 🔥 שם מלא בעברית
-        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-        isOnline: true,
-        currentSession: sessionId,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      // הוספת מייל אם קיים
-      if (email) {
-        userData.email = email;  // 🔥 מייל
-      }
-
-      await window.firebaseDB.collection('users').doc(username).set(userData, { merge: true });
-
-      // רישום פעילות
-      await logActivity('login', {
-        message: 'התחברות למערכת',
-        device: deviceInfo.browser + ' on ' + deviceInfo.os
+      // קריאה ל-Function לרישום כניסה
+      const trackUserActivity = firebase.functions().httpsCallable('trackUserActivity');
+      await trackUserActivity({
+        activityType: 'login',
+        metadata: {
+          sessionId: sessionId,
+          displayName: displayName,
+          email: email,
+          device: deviceInfo,
+          message: 'התחברות למערכת'
+        },
+        userAgent: deviceInfo.userAgent
       });
 
       logger.log(`✅ User ${username} logged in, session: ${sessionId}`);
@@ -175,31 +153,20 @@
    * רישום יציאה מהמערכת
    */
   async function trackLogout() {
-    if (!sessionId || !window.firebaseDB) return;
+    if (!sessionId || !firebase || !firebase.functions) return;
 
     try {
       // עצירת heartbeat
       stopHeartbeat();
 
-      // עדכון Session
-      await window.firebaseDB.collection('sessions').doc(sessionId).update({
-        logoutTime: firebase.firestore.FieldValue.serverTimestamp(),
-        isActive: false,
-        lastActivity: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      // עדכון User
-      if (currentUser) {
-        await window.firebaseDB.collection('users').doc(currentUser).update({
-          isOnline: false,
-          lastLogout: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-
-      // רישום פעילות
-      await logActivity('logout', {
-        message: 'התנתקות מהמערכת'
+      // קריאה ל-Function לרישום יציאה
+      const trackUserActivity = firebase.functions().httpsCallable('trackUserActivity');
+      await trackUserActivity({
+        activityType: 'logout',
+        metadata: {
+          sessionId: sessionId,
+          message: 'התנתקות מהמערכת'
+        }
       });
 
       logger.log(`✅ User ${currentUser} logged out`);
@@ -217,29 +184,18 @@
    * רישום פעילות
    */
   async function logActivity(action, details = {}) {
-    if (!sessionId || !currentUser || !window.firebaseDB) return;
+    if (!sessionId || !currentUser || !firebase || !firebase.functions) return;
 
     try {
-      const activityData = {
-        userId: currentUser,
-        sessionId: sessionId,
-        action: action,
-        details: details,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        url: window.location.pathname,
-        created: new Date().toISOString()
-      };
-
-      // שמירה ב-activity_log
-      await window.firebaseDB.collection('activity_log').add(activityData);
-
-      // עדכון מספר הפעולות ב-Session
-      await window.firebaseDB.collection('sessions').doc(sessionId).update({
-        actions: firebase.firestore.FieldValue.arrayUnion({
-          action,
-          timestamp: new Date().toISOString()
-        }),
-        lastActivity: firebase.firestore.FieldValue.serverTimestamp()
+      // קריאה ל-Function לרישום פעילות
+      const trackUserActivity = firebase.functions().httpsCallable('trackUserActivity');
+      await trackUserActivity({
+        activityType: action,
+        metadata: {
+          sessionId: sessionId,
+          url: window.location.pathname,
+          ...details
+        }
       });
 
       lastActivityTime = Date.now();
@@ -257,26 +213,23 @@
     if (heartbeatTimer) return;
 
     heartbeatTimer = setInterval(async () => {
-      if (!sessionId || !window.firebaseDB) return;
+      if (!sessionId || !firebase || !firebase.functions) return;
 
       try {
         // בדיקה אם יש פעילות
         const timeSinceActivity = Date.now() - lastActivityTime;
         const isStillActive = timeSinceActivity < TRACKER_CONFIG.SESSION_TIMEOUT;
 
-        // עדכון Session
-        await window.firebaseDB.collection('sessions').doc(sessionId).update({
-          lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-          isActive: isStillActive
+        // קריאה ל-Function לעדכון heartbeat
+        const trackUserActivity = firebase.functions().httpsCallable('trackUserActivity');
+        await trackUserActivity({
+          activityType: 'heartbeat',
+          metadata: {
+            sessionId: sessionId,
+            isActive: isStillActive,
+            timeSinceActivity: timeSinceActivity
+          }
         });
-
-        // עדכון User
-        if (currentUser) {
-          await window.firebaseDB.collection('users').doc(currentUser).update({
-            isOnline: isStillActive,
-            lastActivity: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
 
         logger.log(`💓 Heartbeat sent, active: ${isStillActive}`);
 
