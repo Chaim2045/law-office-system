@@ -1894,6 +1894,9 @@ class LawOfficeManager {
       // Reload from Firebase to get the saved task
       await this.loadDataFromFirebase();
 
+      // ✅ Render the updated tasks list
+      this.renderBudgetTasksPage();
+
       // Log activity (activity logger will use Function automatically)
       if (this.activityLogger) {
         await this.activityLogger.logCreateTask(description, taskData);
@@ -4358,7 +4361,7 @@ class LawOfficeManager {
         });
     } else {
       if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {
-        this.applyBudgetTaskFilters();
+        this.filterBudgetTasks();
       }
       this.renderBudgetTasks();
     }
