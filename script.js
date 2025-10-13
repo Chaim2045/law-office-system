@@ -345,9 +345,12 @@ async function loadClientsFromFirebase() {
     const clients = [];
 
     snapshot.forEach((doc) => {
+      const data = doc.data();
       clients.push({
-        id: doc.id,
-        ...doc.data(),
+        ...data,
+        id: doc.id, // ✅ Firestore document ID (overrides any id in data)
+        firestoreId: doc.id, // ✅ Keep explicit reference
+        legacyId: data.id // ✅ Keep old timestamp ID for reference
       });
     });
 
@@ -1864,11 +1867,12 @@ class LawOfficeManager {
     const estimatedTimeValue = document.getElementById("estimatedTime").value;
     const deadline = document.getElementById("budgetDeadline").value;
 
-    // Convert clientId to string (Firestore document IDs must be strings)
-    const clientId = String(selectedClient.id);
+    // Use Firestore document ID (not legacy timestamp ID)
+    const clientId = selectedClient.id; // Already a string from doc.id
 
     console.log('DEBUG: Selected client:', selectedClient);
-    console.log('DEBUG: Client ID:', clientId, 'Type:', typeof clientId);
+    console.log('DEBUG: Client ID (Firestore):', clientId);
+    console.log('DEBUG: Legacy ID (timestamp):', selectedClient.legacyId);
 
     // Create task data matching Firebase Function expectations
     const taskData = {
