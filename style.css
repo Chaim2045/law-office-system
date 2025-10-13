@@ -8451,6 +8451,16 @@ body.logged-in .main-footer {
   border-top: 1px solid #e1e5e9;
 }
 
+/* ✅ תיקון כפתורי פעולות בפופ-אפ */
+.linear-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 20px;
+  border-top: 1px solid #e1e5e9;
+  margin-top: 20px;
+}
+
 .linear-action-btn {
   padding: 10px 20px;
   border-radius: 8px;
