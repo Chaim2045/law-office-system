@@ -123,95 +123,8 @@ function hideSimpleLoading() {
 /**
  * Show subtle progress indicator
  */
-function showProgress(message = "") {
-  // Remove existing indicator
-  const existing = document.getElementById("progress-indicator");
-  if (existing) existing.remove();
-
-  // Create new indicator
-  const indicator = document.createElement("div");
-  indicator.id = "progress-indicator";
-  indicator.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 9998;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: slideInUp 0.3s ease-out;
-  `;
-
-  indicator.innerHTML = `
-    <div style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-    <span>${safeText(message || "מעבד...")}</span>
-    <style>
-      @keyframes slideInUp {
-        from { transform: translateY(100px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-    </style>
-  `;
-
-  document.body.appendChild(indicator);
-}
-
-/**
- * Hide progress indicator
- */
-function hideProgress() {
-  const indicator = document.getElementById("progress-indicator");
-  if (indicator) {
-    indicator.style.animation = "slideOutDown 0.3s ease-out";
-    setTimeout(() => indicator.remove(), 300);
-  }
-}
-
-/**
- * Show success feedback with animation
- */
-function showSuccessFeedback(message = "בוצע בהצלחה") {
-  const feedback = document.createElement("div");
-  feedback.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 9998;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: slideInUp 0.3s ease-out;
-  `;
-
-  feedback.innerHTML = `
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="flex-shrink: 0;">
-      <circle cx="10" cy="10" r="10" fill="rgba(255,255,255,0.2)"/>
-      <path d="M6 10l3 3 5-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <span>${safeText(message)}</span>
-  `;
-
-  document.body.appendChild(feedback);
-
-  setTimeout(() => {
-    feedback.style.animation = "slideOutDown 0.3s ease-out";
-    setTimeout(() => feedback.remove(), 300);
-  }, 2000);
-}
+// ✅ Legacy notification functions removed (v4.34.0)
+// All usages replaced with unified showNotification() system
 
 // Add CSS animations for feedback system
 const feedbackStyles = document.createElement("style");
@@ -1518,12 +1431,13 @@ class LawOfficeManager {
   async loadData() {
     try {
       await this.loadDataFromFirebase();
-      setTimeout(() => {
-        this.filterBudgetTasks(); // ✅ Use the correct filter function that respects the SELECT value and renders
-        this.applyTimesheetFilters();
-        this.renderTimesheetEntries();
-        this.clientValidation.updateBlockedClients();
-      }, 500);
+
+      // ✅ תיקון יסודי: קריאה מיידית - ללא setTimeout
+      // הסרת ה-500ms delay מונעת "הבהוב" של משימות מושלמות
+      this.filterBudgetTasks(); // Use the correct filter function that respects the SELECT value and renders
+      this.applyTimesheetFilters();
+      this.renderTimesheetEntries();
+      this.clientValidation.updateBlockedClients();
     } catch (error) {
       console.error("Failed to load data:", error);
       this.connectionStatus = "offline";
@@ -1896,7 +1810,8 @@ class LawOfficeManager {
     console.log('Creating task with data:', taskData);
 
     try {
-      showProgress("שומר משימה...");
+      // ✅ החלפה: showProgress → showNotification
+      this.showNotification("שומר משימה...", "info");
 
       // Save to Firebase ONLY - no local updates!
       await saveBudgetTaskToFirebase(taskData);
@@ -1913,11 +1828,12 @@ class LawOfficeManager {
       }
 
       this.clearBudgetForm();
-      hideProgress();
-      showSuccessFeedback("המשימה נוספה בהצלחה");
+
+      // ✅ החלפה: hideProgress + showSuccessFeedback → showNotification
+      this.showNotification("✅ המשימה נוספה בהצלחה", "success");
     } catch (error) {
       console.error("Error adding budget task:", error);
-      hideProgress();
+      // ✅ הסרת hideProgress - לא נדרש יותר
       this.showNotification("❌ שגיאה בהוספת משימה: " + error.message, "error");
     }
   }
@@ -2053,10 +1969,11 @@ class LawOfficeManager {
         await this.activityLogger.logCreateTimesheet(tempEntry.id, timesheetEntry);
       }
 
-      showSuccessFeedback("הפעולה נרשמה בשעתון בהצלחה");
+      // ✅ החלפה: showSuccessFeedback → showNotification
+      this.showNotification("✅ הפעולה נרשמה בשעתון בהצלחה", "success");
     } catch (error) {
       console.error("Error in addTimesheetEntry:", error);
-      this.showNotification("שגיאה ברישום השעתון", "error");
+      this.showNotification("❌ שגיאה ברישום השעתון", "error");
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
@@ -3511,15 +3428,18 @@ class LawOfficeManager {
   // Data operations - Firebase only
   async createClientComplete(client) {
     try {
-      showProgress("שומר לקוח...");
+      // ✅ החלפה: showProgress → showNotification
+      this.showNotification("שומר לקוח...", "info");
+
       await saveClientToFirebase(client);
       await this.loadDataFromFirebase();
-      hideProgress();
-      showSuccessFeedback("הלקוח נוסף בהצלחה");
+
+      // ✅ החלפה: hideProgress + showSuccessFeedback → showNotification
+      this.showNotification("✅ הלקוח נוסף בהצלחה", "success");
     } catch (error) {
       console.error("Error creating client:", error);
-      hideProgress();
-      this.showNotification("שגיאה ביצירת לקוח: " + error.message, "error");
+      // ✅ הסרת hideProgress - לא נדרש יותר
+      this.showNotification("❌ שגיאה ביצירת לקוח: " + error.message, "error");
     }
   }
 
