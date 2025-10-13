@@ -1648,12 +1648,16 @@ class LawOfficeManager {
     const delay = this.integrationManager ? this.integrationManager.getSkeletonDelay() : 300;
 
     setTimeout(async () => {
-      // Use IntegrationManager if available
+      // ✅ תיקון באג: loadMore פשוט מגדיל את currentPage
+      // אל תקרא ל-filterTimesheetEntries() כי היא מאפסת את העמוד ל-1!
       if (this.integrationManager) {
+        // IntegrationManager טוען עוד נתונים מהשרת
         this.timesheetEntries = await this.integrationManager.loadMoreTimesheet(this.currentUser, this.timesheetEntries);
-        this.filterTimesheetEntries();
+        // עדכן את filteredTimesheetEntries מבלי לקרוא ל-render
+        this.filteredTimesheetEntries = [...this.timesheetEntries];
       } else {
-        const result = this.timesheetPagination.loadMore();
+        // Pagination רגיל - פשוט מגדיל את currentPage
+        this.timesheetPagination.loadMore();
       }
 
       // Render with scroll preservation
