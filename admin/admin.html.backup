@@ -1003,11 +1003,22 @@
 
           for (const doc of usersSnapshot.docs) {
             const userData = doc.data();
+            // Use doc.id (which is the username) or userData.username
+            const employeeName = userData.username || doc.id;
+
+            // Skip if no valid employee name
+            if (!employeeName) {
+              console.warn(`⚠️ משתמש ללא שם: ${doc.id}`);
+              continue;
+            }
+
+            // שם לתצוגה - תעדוף לשם המלא בעברית
+            const displayName = userData.displayName || employeeName;
 
             // Get real timesheet data for this employee
             const timesheetSnapshot = await db
               .collection("timesheet_entries")
-              .where("employee", "==", userData.displayName || userData.name)
+              .where("employee", "==", employeeName)
               .get();
 
             let weeklyHours = 0;
@@ -1025,7 +1036,7 @@
             // Get real budget tasks for this employee
             const tasksSnapshot = await db
               .collection("budget_tasks")
-              .where("employee", "==", userData.displayName || userData.name)
+              .where("employee", "==", employeeName)
               .get();
 
             let activeTasks = 0;
@@ -1037,13 +1048,12 @@
             });
 
             // Check if user is currently online by checking active_sessions
-            const isOnline = await checkUserOnlineStatus(
-              userData.displayName || userData.name
-            );
+            const isOnline = await checkUserOnlineStatus(employeeName);
 
             employeesData.push({
               id: doc.id,
-              name: userData.displayName || userData.name || "עובד",
+              name: displayName,  // 🔥 שם מלא בעברית
+              username: employeeName,  // שם משתמש (לשאילתות)
               email: userData.email || "",
               role: userData.role || "עובד",
               status: isOnline ? "online" : "offline",
@@ -1067,8 +1077,8 @@
       async function checkUserOnlineStatus(employeeName) {
         try {
           const sessionsSnapshot = await db
-            .collection("active_sessions")
-            .where("employee", "==", employeeName)
+            .collection("sessions")
+            .where("userId", "==", employeeName)
             .where("isActive", "==", true)
             .get();
 
@@ -2134,7 +2144,7 @@
 
           // Update or create session document
           await db
-            .collection("active_sessions")
+            .collection("sessions")
             .doc(employeeName)
             .set(sessionData, { merge: true });
 
@@ -2168,7 +2178,7 @@
         try {
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
           const oldSessionsSnapshot = await db
-            .collection("active_sessions")
+            .collection("sessions")
             .where("lastActivity", "<", tenMinutesAgo)
             .get();
 
@@ -3103,6 +3113,7 @@ ${reason ? `סיבה: ${reason}` : ""}`;
               id="editClientName" 
               value="${client.name || client.fullName || ""}"
                 data-original-name="${client.name || client.fullName || ""}"
+                data-client-id="${client.id || ""}"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
@@ -3188,10 +3199,7 @@ ${reason ? `סיבה: ${reason}` : ""}`;
       }
 
       /**
-       * שמירת שינויים
-       */
-      /**
-       * עדכון פונקציית השמירה כדי להעביר את השם המקורי
+       * שמירת שינויים - גרסה מתוקנת יחידה
        */
       async function saveClientChanges(event) {
         event.preventDefault();
@@ -3202,10 +3210,12 @@ ${reason ? `סיבה: ${reason}` : ""}`;
           const originalName =
             clientNameField.getAttribute("data-original-name") ||
             clientNameField.defaultValue;
+          const clientId = clientNameField.getAttribute("data-client-id");
 
           // קריאת הנתונים מהטופס
           const updatedData = {
-            originalName: originalName, // השם המקורי לחיפוש
+            originalName: originalName,
+            clientId: clientId,
             name: document.getElementById("editClientName").value.trim(),
             type: document.getElementById("editClientType").value,
             total:
@@ -3235,7 +3245,11 @@ ${reason ? `סיבה: ${reason}` : ""}`;
           // סגירת המודל
           closeEditClientModal();
 
-          alert("הלקוח עודכן בהצלחה! כל המשתמשים יראו את העדכון.");
+          // רענון הנתונים
+          await loadClientsData();
+          displayClients(clientsData);
+
+          alert("הלקוח עודכן בהצלחה!");
         } catch (error) {
           console.error("❌ שגיאה בשמירת שינויים:", error);
           alert("שגיאה בשמירת השינויים: " + error.message);
@@ -3247,157 +3261,112 @@ ${reason ? `סיבה: ${reason}` : ""}`;
             submitBtn.disabled = false;
           }
         }
-
-        event.preventDefault();
-
-        try {
-          // קריאת הנתונים מהטופס
-          const updatedData = {
-            name: document.getElementById("editClientName").value.trim(),
-            type: document.getElementById("editClientType").value,
-            total:
-              parseFloat(document.getElementById("editClientTotal").value) || 0,
-            fileNumber: document
-              .getElementById("editClientFileNumber")
-              .value.trim(),
-          };
-
-          // בדיקת תקינות
-          if (!updatedData.name) {
-            alert("שם הלקוח הוא שדה חובה");
-            return;
-          }
-
-          console.log("שומר שינויים:", updatedData);
-
-          // כאן נוסיף את השמירה לFirestore
-          await updateClientInFirestore(updatedData);
-
-          // סגירת המודל
-          closeEditClientModal();
-
-          // רענון הרשימה
-          loadClientsData();
-
-          alert("הלקוח עודכן בהצלחה!");
-        } catch (error) {
-          console.error("שגיאה בשמירת שינויים:", error);
-          alert("שגיאה בשמירת השינויים: " + error.message);
-        }
       }
 
       /**
-       * עדכון לקוח ב-Firestore (זמנית - קריאה ישירה)
+       * עדכון לקוח ב-Firestore - גרסה מתוקנת יחידה
        */
-        async function updateClientInFirestore(updatedData) {
-          try {
-            console.log("🔄 מתחיל עדכון לקוח ב-Firestore:", updatedData);
+      async function updateClientInFirestore(updatedData) {
+        try {
+          console.log("🔄 מתחיל עדכון לקוח ב-Firestore:", updatedData);
 
-            // מציאת הלקוח הנוכחי ברשימה המקומית
-            const currentClient = clientsData.find(
-              (c) =>
-                c.name === updatedData.originalName ||
-                c.fullName === updatedData.originalName ||
-                c.id === updatedData.clientId
-            );
+          // מציאת הלקוח הנוכחי ברשימה המקומית
+          const currentClient = clientsData.find(
+            (c) =>
+              c.name === updatedData.originalName ||
+              c.fullName === updatedData.originalName ||
+              c.id === updatedData.clientId
+          );
 
-            if (!currentClient) {
-              throw new Error("לקוח לא נמצא ברשימה המקומית");
+          if (!currentClient) {
+            throw new Error("לקוח לא נמצא ברשימה המקומית");
+          }
+
+          // הכנת הנתונים לעדכון
+          const updateFields = {};
+
+          // עדכון שם אם השתנה
+          if (
+            updatedData.name !== (currentClient.name || currentClient.fullName)
+          ) {
+            updateFields.fullName = updatedData.name;
+            updateFields.name = updatedData.name;
+          }
+
+          // עדכון סוג תשלום
+          if (updatedData.type !== currentClient.type) {
+            updateFields.type = updatedData.type;
+          }
+
+          // עדכון סכום/שעות
+          if (updatedData.type === "hours") {
+            updateFields.totalHours = updatedData.total;
+            updateFields.hoursRemaining =
+              updatedData.total - (currentClient.hoursUsed || 0);
+          } else if (updatedData.type === "fixed") {
+            updateFields.totalPayment = updatedData.total;
+            updateFields.fixedPayment = updatedData.total;
+          }
+
+          // עדכון מספר תיק
+          if (updatedData.fileNumber !== currentClient.fileNumber) {
+            updateFields.fileNumber = updatedData.fileNumber;
+          }
+
+          // הוספת timestamp
+          updateFields.lastUpdated =
+            firebase.firestore.FieldValue.serverTimestamp();
+          updateFields.updatedBy = "admin";
+
+          console.log("📝 שדות לעדכון:", updateFields);
+
+          // חיפוש מסמך הלקוח ב-Firestore
+          const clientsRef = db.collection("clients");
+          let querySnapshot;
+
+          // ניסיון חיפוש לפי מזהה אם קיים
+          if (updatedData.clientId) {
+            const docRef = clientsRef.doc(updatedData.clientId);
+            const docSnapshot = await docRef.get();
+            if (docSnapshot.exists) {
+              await docRef.update(updateFields);
+              console.log(
+                "✅ לקוח עודכן בהצלחה (לפי ID):",
+                updatedData.clientId
+              );
+              return { success: true, message: "הלקוח עודכן בהצלחה" };
             }
+          }
 
-            // הכנת הנתונים לעדכון
-            const updateFields = {};
+          // חיפוש לפי שם מלא
+          querySnapshot = await clientsRef
+            .where(
+              "fullName",
+              "==",
+              currentClient.name || currentClient.fullName
+            )
+            .get();
 
-            // עדכון שם אם השתנה
-            if (
-              updatedData.name !==
-              (currentClient.name || currentClient.fullName)
-            ) {
-              updateFields.fullName = updatedData.name;
-              updateFields.name = updatedData.name; // גם למטה שמירות
-            }
-
-            // עדכון סוג תשלום
-            if (updatedData.type !== currentClient.type) {
-              updateFields.type = updatedData.type;
-            }
-
-            // עדכון סכום/שעות
-            if (updatedData.type === "hours") {
-              updateFields.totalHours = updatedData.total;
-              updateFields.hoursRemaining =
-                updatedData.total - (currentClient.hoursUsed || 0);
-            } else if (updatedData.type === "fixed") {
-              updateFields.totalPayment = updatedData.total;
-              updateFields.fixedPayment = updatedData.total;
-            }
-
-            // עדכון מספר תיק
-            if (updatedData.fileNumber !== currentClient.fileNumber) {
-              updateFields.fileNumber = updatedData.fileNumber;
-            }
-
-            // הוספת timestamp
-            updateFields.lastUpdated =
-              firebase.firestore.FieldValue.serverTimestamp();
-            updateFields.updatedBy = window.manager?.currentUser || "admin";
-
-            console.log("📝 שדות לעדכון:", updateFields);
-
-            // חיפוש מסמך הלקוח ב-Firestore
-            const clientsRef = db.collection("clients");
-            const querySnapshot = await clientsRef
-              .where(
-                "fullName",
-                "==",
-                currentClient.name || currentClient.fullName
-              )
+          if (querySnapshot.empty) {
+            // אם לא נמצא לפי שם מלא, נחפש לפי שם רגיל
+            querySnapshot = await clientsRef
+              .where("name", "==", currentClient.name || currentClient.fullName)
               .get();
 
             if (querySnapshot.empty) {
-              // אם לא נמצא לפי שם מלא, נחפש לפי שם רגיל
-              const altQuerySnapshot = await clientsRef
-                .where(
-                  "name",
-                  "==",
-                  currentClient.name || currentClient.fullName
-                )
-                .get();
-
-              if (altQuerySnapshot.empty) {
-                throw new Error("לקוח לא נמצא במסד הנתונים");
-              }
-
-              // עדכון המסמך
-              const clientDoc = altQuerySnapshot.docs[0];
-              await clientDoc.ref.update(updateFields);
-              console.log("✅ לקוח עודכן בהצלחה (לפי שם):", clientDoc.id);
-            } else {
-              // עדכון המסמך
-              const clientDoc = querySnapshot.docs[0];
-              await clientDoc.ref.update(updateFields);
-              console.log("✅ לקוח עודכן בהצלחה (לפי שם מלא):", clientDoc.id);
+              throw new Error("לקוח לא נמצא במסד הנתונים");
             }
-
-            // עדכון הנתונים המקומיים
-            const clientIndex = clientsData.findIndex(
-              (c) =>
-                c.name === (currentClient.name || currentClient.fullName) ||
-                c.fullName === (currentClient.name || currentClient.fullName)
-            );
-
-            if (clientIndex !== -1) {
-              Object.assign(clientsData[clientIndex], updateFields);
-              console.log("📊 נתונים מקומיים עודכנו");
-
-            // רענון התצוגה
-            displayClients(clientsData);
-
-            return { success: true, message: "הלקוח עודכן בהצלחה" };
-          } catch (error) {
-            console.error("❌ שגיאה בעדכון לקוח:", error);
-            throw new Error("שגיאה בעדכון הלקוח: " + error.message);
           }
+
+          // עדכון המסמך
+          const clientDoc = querySnapshot.docs[0];
+          await clientDoc.ref.update(updateFields);
+          console.log("✅ לקוח עודכן בהצלחה:", clientDoc.id);
+
+          return { success: true, message: "הלקוח עודכן בהצלחה" };
+        } catch (error) {
+          console.error("❌ שגיאה בעדכון לקוח:", error);
+          throw new Error("שגיאה בעדכון הלקוח: " + error.message);
         }
       }
     </script>

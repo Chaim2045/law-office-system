@@ -1,5 +1,5 @@
 /**
- * API Client v2 - Modern Firebase Functions Wrapper
+אז * API Client v2 - Modern Firebase Functions Wrapper
  * משרד עורכי דין - מערכת ניהול מתקדמת
  *
  * נוצר: 12/10/2025

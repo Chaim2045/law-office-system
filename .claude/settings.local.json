@@ -63,7 +63,15 @@
       "Bash(curl -s \"https://gh-law-office-system.netlify.app/index.html\")",
       "Read(//c//**)",
       "WebFetch(domain:firebase.google.com)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(git config:*)",
+      "Bash(start check-existing-employees.html)",
+      "Bash(start migrate-to-firebase-auth.html)",
+      "Bash(firebase --version)",
+      "Bash(start https://console.firebase.google.com/project/law-office-system/functions)",
+      "Bash(start https://console.firebase.google.com/project/law-office-system/firestore/databases/-default-/data)",
+      "Bash(firebase login:*)",
+      "Bash(start cleanup-employee-passwords.html)"
     ],
     "deny": [],
     "ask": []

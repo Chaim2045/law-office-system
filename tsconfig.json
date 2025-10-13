@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2020",                          /* קומפילציה ל-ES2020 */
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],   /* ספריות זמינות */
+
+    /* Modules */
+    "module": "ESNext",                          /* מערכת מודולים מודרנית */
+    "moduleResolution": "bundler",               /* איך למצוא מודולים */
+    "resolveJsonModule": true,                   /* תמיכה ב-JSON imports */
+
+    /* Emit */
+    "outDir": "./dist",                          /* תיקיית פלט */
+    "declaration": true,                         /* יצירת קבצי .d.ts */
+    "declarationMap": true,                      /* source maps לdeclarations */
+    "sourceMap": true,                           /* יצירת source maps */
+    "removeComments": false,                     /* שמירת הערות */
+
+    /* Interop Constraints */
+    "esModuleInterop": true,                     /* תאימות עם CommonJS */
+    "allowSyntheticDefaultImports": true,        /* import default גמיש */
+    "forceConsistentCasingInFileNames": true,    /* case-sensitive imports */
+    "isolatedModules": true,                     /* כל קובץ הוא מודול נפרד */
+
+    /* Type Checking */
+    "strict": true,                              /* מצב strict - כל הבדיקות */
+    "noImplicitAny": true,                       /* אסור any בלי הצהרה */
+    "strictNullChecks": true,                    /* בדיקת null/undefined */
+    "strictFunctionTypes": true,                 /* בדיקת טיפוסי פונקציות */
+    "strictPropertyInitialization": true,        /* בדיקת אתחול properties */
+    "noUnusedLocals": true,                      /* אזהרה על משתנים לא בשימוש */
+    "noUnusedParameters": true,                  /* אזהרה על פרמטרים לא בשימוש */
+    "noImplicitReturns": true,                   /* כל ה-paths חייבים return */
+    "noFallthroughCasesInSwitch": true,         /* מניעת fallthrough ב-switch */
+
+    /* Completeness */
+    "skipLibCheck": true                         /* דילוג על בדיקת .d.ts */
+  },
+
+  "include": [
+    "*.ts",
+    "src/**/*.ts",
+    "types/**/*.ts"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.js"
+  ]
+}

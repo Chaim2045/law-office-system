@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>בדיקת דשבורד מאוחד - Test Unified Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .test-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .test-pass {
+      border-right: 4px solid #10b981;
+      background-color: #f0fdf4;
+    }
+
+    .test-fail {
+      border-right: 4px solid #ef4444;
+      background-color: #fef2f2;
+    }
+
+    .test-pending {
+      border-right: 4px solid #f59e0b;
+      background-color: #fffbeb;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">🧪 בדיקת דשבורד מאוחד</h1>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">📋 סטטוס בדיקה</h2>
+      <p class="text-gray-600 mb-4">
+        קובץ: <code class="bg-gray-100 px-2 py-1 rounded">admin-unified-v2.html</code>
+      </p>
+
+      <div id="test-results">
+        <!-- תוצאות הבדיקה ייכנסו כאן -->
+      </div>
+
+      <div class="mt-6">
+        <button
+          onclick="runTests()"
+          class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+        >
+          ▶️ הפעל בדיקות
+        </button>
+
+        <button
+          onclick="openUnifiedDashboard()"
+          class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition mr-2"
+        >
+          🚀 פתח דשבורד מאוחד
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <h3 class="font-semibold text-blue-800 mb-2">💡 הוראות שימוש</h3>
+      <ol class="list-decimal list-inside text-blue-700 space-y-1">
+        <li>לחץ על "הפעל בדיקות" כדי לבדוק את המבנה הבסיסי</li>
+        <li>לחץ על "פתח דשבורד מאוחד" כדי לפתוח את הדשבורד בטאב חדש</li>
+        <li>בדוק את ה-Console (F12) לשגיאות</li>
+        <li>בדוק שכל הלשוניות עובדות</li>
+        <li>בדוק שכל הכפתורים עובדים</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    const tests = [
+      {
+        name: 'קובץ קיים',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          return response.ok;
+        }
+      },
+      {
+        name: 'גודל קובץ תקין (>150KB)',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          const text = await response.text();
+          return text.length > 150000;
+        }
+      },
+      {
+        name: 'מכיל Tailwind CSS',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          const text = await response.text();
+          return text.includes('tailwindcss.com') || text.includes('tailwind');
+        }
+      },
+      {
+        name: 'מכיל EmployeesManager',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          const text = await response.text();
+          return text.includes('EmployeesManager');
+        }
+      },
+      {
+        name: 'מכיל פונקציות גלובליות',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          const text = await response.text();
+          return text.includes('window.refreshEmployeesData') &&
+                 text.includes('window.openAddEmployeeModal') &&
+                 text.includes('window.editEmployeeData');
+        }
+      },
+      {
+        name: 'מכיל 3 לשוניות',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          const text = await response.text();
+          return text.includes('tab-dashboard') &&
+                 text.includes('tab-employees') &&
+                 text.includes('tab-live-users');
+        }
+      },
+      {
+        name: 'מכיל modal לעריכת עובד',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          const text = await response.text();
+          return text.includes('employeeModal') || text.includes('employee-modal');
+        }
+      },
+      {
+        name: 'אין שגיאות syntax ברורות',
+        test: async () => {
+          const response = await fetch('./admin-unified-v2.html');
+          const text = await response.text();
+          // בדיקה פשוטה - אין }} כפולים או סוגריים לא מאוזנים ברורים
+          return !text.includes('}}}') && !text.includes('{{{');
+        }
+      }
+    ];
+
+    async function runTests() {
+      const resultsContainer = document.getElementById('test-results');
+      resultsContainer.innerHTML = '<p class="text-gray-600 mb-4">מריץ בדיקות...</p>';
+
+      let html = '';
+      let passed = 0;
+      let failed = 0;
+
+      for (const test of tests) {
+        try {
+          const result = await test.test();
+
+          if (result) {
+            passed++;
+            html += `
+              <div class="test-item test-pass">
+                <div class="flex items-center">
+                  <span class="text-2xl mr-2">✅</span>
+                  <span class="font-semibold">${test.name}</span>
+                </div>
+              </div>
+            `;
+          } else {
+            failed++;
+            html += `
+              <div class="test-item test-fail">
+                <div class="flex items-center">
+                  <span class="text-2xl mr-2">❌</span>
+                  <span class="font-semibold">${test.name}</span>
+                </div>
+              </div>
+            `;
+          }
+        } catch (error) {
+          failed++;
+          html += `
+            <div class="test-item test-fail">
+              <div class="flex items-center">
+                <span class="text-2xl mr-2">❌</span>
+                <span class="font-semibold">${test.name}</span>
+              </div>
+              <p class="text-sm text-red-600 mt-2">שגיאה: ${error.message}</p>
+            </div>
+          `;
+        }
+      }
+
+      // סיכום
+      const total = passed + failed;
+      const percentage = Math.round((passed / total) * 100);
+
+      html = `
+        <div class="mb-4 p-4 bg-gray-100 rounded-lg">
+          <div class="text-2xl font-bold mb-2">
+            ${passed} / ${total} בדיקות עברו (${percentage}%)
+          </div>
+          <div class="text-sm text-gray-600">
+            ✅ עברו: ${passed} | ❌ נכשלו: ${failed}
+          </div>
+        </div>
+      ` + html;
+
+      resultsContainer.innerHTML = html;
+
+      // הודעת סיכום
+      if (failed === 0) {
+        alert('🎉 כל הבדיקות עברו בהצלחה! הדשבורד מוכן לשימוש.');
+      } else {
+        alert(`⚠️ ${failed} בדיקות נכשלו. בדוק את הפרטים למעלה.`);
+      }
+    }
+
+    function openUnifiedDashboard() {
+      window.open('./admin-unified-v2.html', '_blank');
+    }
+  </script>
+</body>
+</html>

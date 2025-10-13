@@ -12,6 +12,32 @@ const startMemory = performance.memory?.usedJSHeapSize || 0;
 // ✅ EMPLOYEES object הוסר - כעת משתמשים ב-Firebase Authentication
 // כל המשתמשים מנוהלים דרך Firebase Auth עם סיסמאות מוצפנות
 
+/* === Firebase Functions Wrapper === */
+// Helper to call Firebase Cloud Functions
+const callFunction = async (functionName, data = {}) => {
+  try {
+    const functions = firebase.functions();
+    const callable = functions.httpsCallable(functionName);
+    const result = await callable(data);
+    return result.data;
+  } catch (error) {
+    console.error(`Error calling function ${functionName}:`, error);
+
+    // Handle specific error codes
+    if (error.code === 'unauthenticated') {
+      throw new Error('נדרשת התחברות למערכת');
+    } else if (error.code === 'permission-denied') {
+      throw new Error('אין לך הרשאה לבצע פעולה זו');
+    } else if (error.code === 'invalid-argument') {
+      throw new Error(error.message || 'נתונים לא תקינים');
+    } else if (error.code === 'not-found') {
+      throw new Error('הפריט לא נמצא');
+    }
+
+    throw new Error(error.message || 'שגיאה בביצוע הפעולה');
+  }
+};
+
 // Global state
 let currentActiveTab = "budget";
 let isScrolled = false;
@@ -455,21 +481,17 @@ async function loadTimesheetFromFirebase(employee) {
  */
 async function saveClientToFirebase(clientData) {
   try {
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
+    // Call Firebase Function for secure validation and creation
+    const result = await callFunction('createClient', clientData);
+
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בשמירת לקוח');
     }
 
-    const docRef = await db.collection("clients").add({
-      ...clientData,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
-
-    return docRef.id;
+    return result.clientId;
   } catch (error) {
     console.error("Firebase error:", error);
-    throw new Error("שגיאה בשמירת לקוח: " + error.message);
+    throw error;
   }
 }
 
@@ -478,32 +500,17 @@ async function saveClientToFirebase(clientData) {
  */
 async function saveBudgetTaskToFirebase(taskData) {
   try {
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
+    // Call Firebase Function for secure validation and creation
+    const result = await callFunction('createTask', taskData);
+
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בשמירת משימה');
     }
 
-    const currentUser = window.manager?.currentUser;
-    if (!currentUser) {
-      throw new Error("משתמש לא מזוהה");
-    }
-
-    const dataToSave = {
-      ...taskData,
-      employee: currentUser,
-      lawyer: currentUser,
-      createdBy: currentUser,
-      lastModifiedBy: currentUser,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await db.collection("budget_tasks").add(dataToSave);
-
-    return docRef.id;
+    return result.taskId;
   } catch (error) {
     console.error("Firebase error:", error);
-    throw new Error("שגיאה בשמירת משימה: " + error.message);
+    throw error;
   }
 }
 
@@ -512,32 +519,40 @@ async function saveBudgetTaskToFirebase(taskData) {
  */
 async function saveTimesheetToFirebase(entryData) {
   try {
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
+    // Call Firebase Function for secure validation and creation
+    const result = await callFunction('createTimesheetEntry', entryData);
+
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בשמירת שעתון');
     }
 
-    const currentUser = window.manager?.currentUser;
-    if (!currentUser) {
-      throw new Error("משתמש לא מזוהה");
-    }
-
-    const dataToSave = {
-      ...entryData,
-      employee: currentUser,
-      lawyer: currentUser,
-      createdBy: currentUser,
-      lastModifiedBy: currentUser,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await db.collection("timesheet_entries").add(dataToSave);
-
-    return docRef.id;
+    return result.entryId;
   } catch (error) {
     console.error("Firebase error:", error);
-    throw new Error("שגיאה בשמירת שעתון: " + error.message);
+    throw error;
+  }
+}
+
+/**
+ * Update timesheet entry in Firebase
+ */
+async function updateTimesheetEntryFirebase(entryId, minutes, reason = "") {
+  try {
+    // Call Firebase Function for secure validation and update
+    const result = await callFunction('updateTimesheetEntry', {
+      entryId: String(entryId),
+      minutes,
+      reason
+    });
+
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בעדכון שעתון');
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Firebase error:", error);
+    throw error;
   }
 }
 
@@ -5686,136 +5701,61 @@ window.testFirebaseConnection = testFirebaseConnection;
 // הוספת זמן למשימה מתוקצבת (Firebase)
 async function addTimeToTaskFirebase(taskId, timeEntry) {
   try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    // Ensure taskId is a string
-    const taskIdString = String(taskId);
-    if (!taskIdString || taskIdString === 'undefined' || taskIdString === 'null') {
-      throw new Error("taskId לא תקין");
-    }
-
-    const taskRef = db.collection("budget_tasks").doc(taskIdString);
-
-    await db.runTransaction(async (transaction) => {
-      const taskDoc = await transaction.get(taskRef);
-
-      if (!taskDoc.exists) {
-        throw new Error("משימה לא נמצאה");
-      }
-
-      const taskData = taskDoc.data();
-      const currentUser = window.manager?.currentUser;
-
-      if (taskData.employee !== currentUser) {
-        throw new Error("אין הרשאה לעדכן משימה זו");
-      }
-
-      const historyEntry = {
-        id: Date.now(),
-        date: timeEntry.date,
-        minutes: timeEntry.minutes,
-        description: timeEntry.description,
-        timestamp: new Date().toLocaleString("he-IL"),
-        addedBy: currentUser,
-      };
-
-      const newActualMinutes =
-        (taskData.actualMinutes || 0) + timeEntry.minutes;
-      const newHistory = [...(taskData.history || []), historyEntry];
-
-      transaction.update(taskRef, {
-        actualMinutes: newActualMinutes,
-        history: newHistory,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: currentUser,
-      });
+    // Call Firebase Function for secure validation and update
+    const result = await callFunction('addTimeToTask', {
+      taskId: String(taskId),
+      timeEntry
     });
 
-    return { success: true, message: "זמן נוסף בהצלחה למשימה" };
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בהוספת זמן למשימה');
+    }
+
+    return result;
   } catch (error) {
     console.error("❌ שגיאה בהוספת זמן למשימה:", error);
-    throw new Error("שגיאה ברישום זמן: " + error.message);
+    throw error;
   }
 }
 
 // סיום משימה מתוקצבת (Firebase)
 async function completeTaskFirebase(taskId, completionNotes = "") {
   try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    const taskRef = db.collection("budget_tasks").doc(taskId);
-    const taskDoc = await taskRef.get();
-
-    if (!taskDoc.exists) {
-      throw new Error("משימה לא נמצאה");
-    }
-
-    const taskData = taskDoc.data();
-    const currentUser = window.manager?.currentUser;
-
-    if (taskData.employee !== currentUser) {
-      throw new Error("אין הרשאה להשלים משימה זו");
-    }
-
-    await taskRef.update({
-      status: "הושלם",
-      completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      completionNotes: completionNotes,
-      completedBy: currentUser,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: currentUser,
+    // Call Firebase Function for secure validation and update
+    const result = await callFunction('completeTask', {
+      taskId: String(taskId),
+      completionNotes
     });
 
-    return { success: true, message: "המשימה הושלמה בהצלחה" };
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בהשלמת משימה');
+    }
+
+    return result;
   } catch (error) {
     console.error("❌ שגיאה בהשלמת משימה:", error);
-    throw new Error("שגיאה בהשלמת משימה: " + error.message);
+    throw error;
   }
 }
 
 // הארכת תאריך יעד למשימה (Firebase)
 async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
   try {
-    const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
-
-    const taskRef = db.collection("budget_tasks").doc(taskId);
-    const taskDoc = await taskRef.get();
-
-    if (!taskDoc.exists) {
-      throw new Error("משימה לא נמצאה");
-    }
-
-    const taskData = taskDoc.data();
-    const currentUser = window.manager?.currentUser;
-
-    if (taskData.employee !== currentUser) {
-      throw new Error("אין הרשאה לעדכן משימה זו");
-    }
-
-    const extensionLog = {
-      originalDeadline: taskData.deadline,
-      newDeadline: newDeadline,
-      reason: reason,
-      extendedBy: currentUser,
-      extendedAt: new Date().toISOString(),
-    };
-
-    await taskRef.update({
-      deadline: newDeadline,
-      extended: true,
-      extensionHistory: firebase.firestore.FieldValue.arrayUnion(extensionLog),
-      extensionReason: reason,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: currentUser,
+    // Call Firebase Function for secure validation and update
+    const result = await callFunction('extendTaskDeadline', {
+      taskId: String(taskId),
+      newDeadline,
+      reason
     });
 
-    return { success: true, message: "תאריך היעד הוארך בהצלחה" };
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בהארכת תאריך יעד');
+    }
+
+    return result;
   } catch (error) {
     console.error("❌ שגיאה בהארכת תאריך יעד:", error);
-    throw new Error("שגיאה בהארכת יעד: " + error.message);
+    throw error;
   }
 }
 
