@@ -330,20 +330,15 @@ exports.createClient = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * קריאת לקוחות של המשתמש
+ * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  */
 exports.getClients = functions.https.onCall(async (data, context) => {
   try {
-    const user = await checkUserPermissions(context);
+    // ✅ בדיקה שהמשתמש מחובר ופעיל
+    await checkUserPermissions(context);
 
-    // רק מנהלים יכולים לראות את כל הלקוחות
-    let query = db.collection('clients');
-
-    if (user.role !== 'admin') {
-      query = query.where('createdBy', '==', user.username);
-    }
-
-    const snapshot = await query.get();
+    // ✅ כל עובד רואה את כל לקוחות המשרד
+    const snapshot = await db.collection('clients').get();
 
     const clients = [];
     snapshot.forEach(doc => {
@@ -572,7 +567,7 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // בדיקה שהלקוח קיים ושייך למשתמש
+    // בדיקה שהלקוח קיים
     const clientDoc = await db.collection('clients').doc(data.clientId).get();
 
     if (!clientDoc.exists) {
@@ -584,12 +579,8 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
 
     const clientData = clientDoc.data();
 
-    if (clientData.createdBy !== user.username && user.role !== 'admin') {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה ליצור משימה עבור לקוח זה'
-      );
-    }
+    // ✅ כל עובד יכול ליצור משימות עבור כל לקוח במשרד
+    // אין צורך בבדיקת הרשאות נוספת
 
     // יצירת המשימה
     const taskData = {
@@ -899,12 +890,8 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
 
     const clientData = clientDoc.data();
 
-    if (clientData.createdBy !== user.username && user.role !== 'admin') {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לרשום שעות עבור לקוח זה'
-      );
-    }
+    // ✅ כל עובד יכול לרשום שעות עבור כל לקוח במשרד
+    // אין צורך בבדיקת הרשאות נוספת
 
     // יצירת רישום
     const entryData = {
