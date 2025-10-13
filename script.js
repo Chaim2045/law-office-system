@@ -1850,6 +1850,13 @@ class LawOfficeManager {
       return;
     }
 
+    // Validate client has Firestore ID
+    if (!selectedClient.id) {
+      console.error('Selected client missing ID:', selectedClient);
+      this.showNotification("שגיאה: לקוח חסר מזהה במערכת", "error");
+      return;
+    }
+
     const description = document
       .getElementById("budgetDescription")
       .value.trim();
@@ -1865,6 +1872,8 @@ class LawOfficeManager {
       branch: branch,
       deadline: deadline
     };
+
+    console.log('Creating task with data:', taskData);
 
     try {
       showProgress("שומר משימה...");
@@ -5432,10 +5441,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Test Firebase connection
-  setTimeout(() => {
-    testFirebaseConnection();
-  }, 1000);
+  // Firebase connection tested via Functions
 
   // Initialize UI
   const firstNavItem = document.querySelector(".nav-item");
@@ -5652,7 +5658,7 @@ window.fixClientHoursMismatch = fixClientHoursMismatch;
 window.showClientStatusSummary = showClientStatusSummary;
 window.calculateClientHoursAccurate = calculateClientHoursAccurate;
 window.updateClientHoursImmediately = updateClientHoursImmediately;
-window.testFirebaseConnection = testFirebaseConnection;
+// window.testFirebaseConnection removed - using Functions
 
 /**
  * פונקציות Firebase חסרות להשלמת המערכת
