@@ -5694,12 +5694,14 @@ window.updateClientHoursImmediately = updateClientHoursImmediately;
  */
 
 // הוספת זמן למשימה מתוקצבת (Firebase)
-async function addTimeToTaskFirebase(taskId, timeEntry) {
+async function addTimeToTaskFirebase(taskId, timeData) {
   try {
-    // Call Firebase Function for secure validation and update
+    // ✅ תיקון: שליחת הנתונים ישירות (לא עטופים ב-timeEntry)
     const result = await callFunction('addTimeToTask', {
       taskId: String(taskId),
-      timeEntry
+      minutes: parseInt(timeData.minutes),  // ✅ ודא שזה מספר
+      date: timeData.date,
+      description: timeData.description
     });
 
     if (!result.success) {
