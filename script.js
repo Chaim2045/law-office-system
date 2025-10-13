@@ -3740,6 +3740,8 @@ class LawOfficeManager {
 
     try {
       const timeData = { taskId, date, minutes, description };
+
+      // ✅ addTimeToTask עכשיו מחזיר promise - נחכה לו
       await this.addTimeToTask(timeData);
 
       // Close popup only on success
@@ -3750,6 +3752,10 @@ class LawOfficeManager {
     } catch (error) {
       console.error("Error submitting time entry:", error);
       this.showNotification("❌ שגיאה ברישום הזמן", "error");
+
+      // ✅ תמיד סגור popup ו-reset כפתור
+      const popup = document.querySelector(".popup-overlay");
+      if (popup) popup.remove();
 
       // Re-enable button on error
       if (submitButton && submitButton.classList.contains('popup-btn-confirm')) {
@@ -5798,6 +5804,13 @@ if (window.manager) {
 
       if (taskIndex !== -1) {
         originalTask = JSON.parse(JSON.stringify(this.budgetTasks[taskIndex]));
+
+        // ✅ תיקון: אתחול history אם לא קיים
+        if (!this.budgetTasks[taskIndex].history) {
+          this.budgetTasks[taskIndex].history = [];
+          console.warn('⚠️ task.history was undefined, initialized as empty array');
+        }
+
         this.budgetTasks[taskIndex].actualMinutes += timeData.minutes;
         this.budgetTasks[taskIndex].history.push({
           id: Date.now(),
@@ -5848,7 +5861,14 @@ if (window.manager) {
     const overlay = document.createElement("div");
     overlay.className = "popup-overlay";
 
-    const currentDeadline = new Date(task.deadline);
+    // ✅ תיקון: בדיקה שתאריך היעד תקף
+    let currentDeadline = new Date(task.deadline);
+    if (isNaN(currentDeadline.getTime())) {
+      // אם התאריך לא תקין, השתמש בתאריך נוכחי
+      currentDeadline = new Date();
+      console.warn('⚠️ task.deadline is invalid, using current date');
+    }
+
     const defaultNewDate = new Date(currentDeadline);
     defaultNewDate.setDate(defaultNewDate.getDate() + 7);
     const defaultDateValue = defaultNewDate.toISOString().split("T")[0];
