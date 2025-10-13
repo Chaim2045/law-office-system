@@ -3721,7 +3721,7 @@ class LawOfficeManager {
     const workDate = document.getElementById("workDate");
     const workMinutes = document.getElementById("workMinutes");
     const workDescription = document.getElementById("workDescription");
-    const submitButton = document.activeElement;
+    const submitButton = document.querySelector('.popup-btn-confirm');
 
     if (!workDate || !workMinutes || !workDescription) {
       this.showNotification("שדות לא נמצאו", "error");
@@ -3742,8 +3742,11 @@ class LawOfficeManager {
       return;
     }
 
+    // ✅ תיקון: שמור את הכפתור לפני disable
+    const originalButtonHTML = submitButton ? submitButton.innerHTML : '';
+
     // Disable button and show loading
-    if (submitButton && submitButton.classList.contains('popup-btn-confirm')) {
+    if (submitButton) {
       submitButton.disabled = true;
       submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
     }
@@ -3751,27 +3754,25 @@ class LawOfficeManager {
     try {
       const timeData = { taskId, date, minutes, description };
 
-      // ✅ addTimeToTask עכשיו מחזיר promise - נחכה לו
+      // ✅ addTimeToTask זורק error אם נכשל
       await this.addTimeToTask(timeData);
 
-      // Close popup only on success
+      // ✅ הצלחה - סגור popup
       const popup = document.querySelector(".popup-overlay");
       if (popup) popup.remove();
 
       this.showNotification("✅ הזמן נרשם בהצלחה!", "success");
     } catch (error) {
       console.error("Error submitting time entry:", error);
-      this.showNotification("❌ שגיאה ברישום הזמן", "error");
 
-      // ✅ תמיד סגור popup ו-reset כפתור
-      const popup = document.querySelector(".popup-overlay");
-      if (popup) popup.remove();
-
-      // Re-enable button on error
-      if (submitButton && submitButton.classList.contains('popup-btn-confirm')) {
+      // ✅ תיקון: reset כפתור לפני סגירת popup
+      if (submitButton) {
         submitButton.disabled = false;
-        submitButton.innerHTML = '<i class="fas fa-save"></i> שמור';
+        submitButton.innerHTML = originalButtonHTML || '<i class="fas fa-save"></i> שמור';
       }
+
+      // ✅ אל תסגור popup בשגיאה - תן למשתמש לנסות שוב
+      this.showNotification(`❌ שגיאה: ${error.message || 'נסה שוב'}`, "error");
     }
   }
 
@@ -3812,7 +3813,8 @@ class LawOfficeManager {
         });
         this.filteredBudgetTasks = [...this.budgetTasks];
         this.renderBudgetTasks();
-        this.showNotification("⏳ רושם זמן...", "info");
+        // ❌ הסרתי: this.showNotification("⏳ רושם זמן...", "info");
+        // submitTimeEntry כבר מציג הודעה
       }
 
       await addTimeToTaskFirebase(timeData.taskId, timeData);
@@ -3835,7 +3837,8 @@ class LawOfficeManager {
         this.renderBudgetTasks();
       }
 
-      this.showNotification("❌ שגיאה ברישום זמן", "error");
+      // ❌ הסרתי: this.showNotification("❌ שגיאה ברישום זמן", "error");
+      // submitTimeEntry כבר מציג הודעה
       console.error("Error in addTimeToTask:", error);
       throw error; // ✅ חשוב! זורק את השגיאה כדי ש-submitTimeEntry יידע
     }
