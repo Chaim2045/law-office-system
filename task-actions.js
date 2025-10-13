@@ -43,7 +43,7 @@
       // אם המשימה הושלמה - רק כפתור היסטוריה
       if (isCompleted) {
         return `
-          <button class="action-btn history-btn" onclick="manager.showTaskHistory(${taskId})" title="היסטוריה">
+          <button class="action-btn history-btn" onclick="manager.showTaskHistory('${taskId}')" title="היסטוריה">
             <i class="fas fa-history"></i>
           </button>
         `;
@@ -51,16 +51,16 @@
 
       // משימה פעילה - כל הכפתורים
       return `
-        <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog(${taskId})" title="הוסף זמן">
+        <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog('${taskId}')" title="הוסף זמן">
           <i class="fas fa-clock"></i>
         </button>
-        <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog(${taskId})" title="האריך יעד">
+        <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog('${taskId}')" title="האריך יעד">
           <i class="fas fa-calendar-plus"></i>
         </button>
-        <button class="action-btn history-btn" onclick="manager.showTaskHistory(${taskId})" title="היסטוריה">
+        <button class="action-btn history-btn" onclick="manager.showTaskHistory('${taskId}')" title="היסטוריה">
           <i class="fas fa-history"></i>
         </button>
-        <button class="action-btn complete-btn" onclick="manager.completeTask(${taskId})" title="סיים משימה">
+        <button class="action-btn complete-btn" onclick="manager.completeTask('${taskId}')" title="סיים משימה">
           <i class="fas fa-check"></i>
         </button>
       `;
@@ -79,7 +79,7 @@
       if (isCompleted) {
         return `
           <div class="linear-actions" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-            <button class="linear-action-btn info" onclick="manager.showTaskHistory(${taskId})" style="margin: 0;">
+            <button class="linear-action-btn info" onclick="manager.showTaskHistory('${taskId}')" style="margin: 0;">
               <i class="fas fa-history"></i> היסטוריה
             </button>
             <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #10b981; color: white; border-radius: 6px; font-weight: 500; font-size: 13px; white-space: nowrap;">
@@ -92,16 +92,16 @@
       // משימה פעילה - כל הכפתורים
       return `
         <div class="linear-actions">
-          <button class="linear-action-btn primary" onclick="manager.showAdvancedTimeDialog(${taskId})">
+          <button class="linear-action-btn primary" onclick="manager.showAdvancedTimeDialog('${taskId}')">
             <i class="fas fa-clock"></i> הוסף זמן
           </button>
-          <button class="linear-action-btn info" onclick="manager.showTaskHistory(${taskId})">
+          <button class="linear-action-btn info" onclick="manager.showTaskHistory('${taskId}')">
             <i class="fas fa-history"></i> היסטוריה
           </button>
-          <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog(${taskId})">
+          <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog('${taskId}')">
             <i class="fas fa-calendar-plus"></i> האריך יעד
           </button>
-          <button class="linear-action-btn success" onclick="manager.completeTask(${taskId})">
+          <button class="linear-action-btn success" onclick="manager.completeTask('${taskId}')">
             <i class="fas fa-check"></i> סיים משימה
           </button>
         </div>
