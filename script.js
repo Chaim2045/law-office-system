@@ -9,19 +9,8 @@ const startTime = performance.now();
 const startMemory = performance.memory?.usedJSHeapSize || 0;
 
 /* === Global Constants === */
-const EMPLOYEES = {
-  חיים: { password: "2025", name: "חיים", email: "haim@law-office.co.il" },
-  ישי: { password: "2025", name: "ישי", email: "yishai@law-office.co.il" },
-  גיא: { password: "2025", name: "גיא", email: "guy@law-office.co.il" },
-  מרווה: { password: "2025", name: "מרווה", email: "marva@law-office.co.il" },
-  אלומה: { password: "2025", name: "אלומה", email: "aluma@law-office.co.il" },
-  אורי: { password: "2025", name: "אורי", email: "uri@law-office.co.il" },
-  ראיד: { password: "2025", name: "ראיד", email: "raed@law-office.co.il" },
-  שחר: { password: "2025", name: "שחר", email: "shahar@law-office.co.il" },
-  מירי: { password: "2025", name: "מירי", email: "miri@law-office.co.il" },
-  רועי: { password: "2025", name: "רועי", email: "roi@law-office.co.il" },
-  עוזי: { password: "2025", name: "עוזי", email: "uzi@law-office.co.il" },
-};
+// ✅ EMPLOYEES object הוסר - כעת משתמשים ב-Firebase Authentication
+// כל המשתמשים מנוהלים דרך Firebase Auth עם סיסמאות מוצפנות
 
 // Global state
 let currentActiveTab = "budget";
@@ -1184,16 +1173,38 @@ class LawOfficeManager {
   }
 
   init() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const employee = urlParams.get("emp");
+    // בדיקה אם משתמש כבר מחובר
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        // משתמש מחובר - טען את הפרופיל שלו
+        try {
+          const snapshot = await window.firebaseDB.collection('employees')
+            .where('authUID', '==', user.uid)
+            .limit(1)
+            .get();
 
-    if (employee && EMPLOYEES[employee]) {
-      this.targetEmployee = employee;
-      this.showLogin();
-    } else {
-      this.showError("גישה לא מורשית - אנא השתמש בקישור הנכון");
-      return;
-    }
+          if (!snapshot.empty) {
+            const employee = snapshot.docs[0].data();
+            this.currentUser = employee.username || employee.name;
+            updateUserDisplay(this.currentUser);
+
+            // טען נתונים והצג אפליקציה
+            await this.loadData();
+            this.showApp();
+          } else {
+            // משתמש לא נמצא ב-employees - התנתק
+            await firebase.auth().signOut();
+            this.showLogin();
+          }
+        } catch (error) {
+          console.error('Error loading user profile:', error);
+          this.showLogin();
+        }
+      } else {
+        // משתמש לא מחובר - הצג מסך התחברות
+        this.showLogin();
+      }
+    });
 
     this.setupEventListeners();
   }
@@ -1296,11 +1307,41 @@ class LawOfficeManager {
   }
 
   async handleLogin() {
+    const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-    const employee = EMPLOYEES[this.targetEmployee];
+    const errorMessage = document.getElementById("errorMessage");
 
-    if (password === employee.password) {
-      this.currentUser = employee.name;
+    if (!email || !password) {
+      if (errorMessage) {
+        errorMessage.textContent = "אנא מלא את כל השדות";
+        errorMessage.classList.remove("hidden");
+        setTimeout(() => errorMessage.classList.add("hidden"), 3000);
+      }
+      return;
+    }
+
+    try {
+      // התחברות עם Firebase Auth
+      const userCredential = await firebase.auth()
+        .signInWithEmailAndPassword(email, password);
+
+      const uid = userCredential.user.uid;
+
+      // מצא את ה-employee לפי authUID
+      const snapshot = await window.firebaseDB.collection('employees')
+        .where('authUID', '==', uid)
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        throw new Error('משתמש לא נמצא במערכת');
+      }
+
+      const employeeDoc = snapshot.docs[0];
+      const employee = employeeDoc.data();
+
+      // שמור את המשתמש הנוכחי
+      this.currentUser = employee.username || employee.name;
       updateUserDisplay(this.currentUser);
 
       // Set flag to suppress old loading spinners
@@ -1318,7 +1359,7 @@ class LawOfficeManager {
           await this.activityLogger.logLogin();
         }
 
-        // 🔥 NEW: Track user login with Firebase
+        // Track user login with Firebase
         if (window.UserTracker) {
           await window.UserTracker.trackLogin(this.currentUser);
         }
@@ -1335,9 +1376,24 @@ class LawOfficeManager {
 
       // Show app after everything loaded
       this.showApp();
-    } else {
-      const errorMessage = document.getElementById("errorMessage");
+
+    } catch (error) {
+      console.error("Login error:", error);
+
+      let errorText = "אימייל או סיסמה שגויים";
+
+      if (error.code === 'auth/user-not-found') {
+        errorText = "משתמש לא נמצא";
+      } else if (error.code === 'auth/wrong-password') {
+        errorText = "סיסמה שגויה";
+      } else if (error.code === 'auth/invalid-email') {
+        errorText = "כתובת אימייל לא תקינה";
+      } else if (error.code === 'auth/user-disabled') {
+        errorText = "חשבון זה הושבת. צור קשר עם המנהל";
+      }
+
       if (errorMessage) {
+        errorMessage.textContent = errorText;
         errorMessage.classList.remove("hidden");
         setTimeout(() => errorMessage.classList.add("hidden"), 3000);
       }
@@ -4714,11 +4770,15 @@ async function confirmLogout() {
     window.manager.showNotification("מתנתק מהמערכת... להתראות! 👋", "info");
   }
 
-  // 🔥 NEW: Track logout in Firebase
+  // Track logout in Firebase
   if (window.UserTracker) {
     await window.UserTracker.trackLogout();
   }
 
+  // התנתק מ-Firebase Auth
+  await firebase.auth().signOut();
+
+  // רענן דף - Auth State Listener יזהה שהמשתמש התנתק ויציג מסך התחברות
   setTimeout(() => location.reload(), 1500);
 }
 

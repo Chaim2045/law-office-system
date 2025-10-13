@@ -22,6 +22,7 @@
     <!-- FIREBASE & EXTERNAL LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script>
@@ -39,6 +40,7 @@
         // Initialize Firebase with performance settings
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
         // אופטימיזציות ביצועים
         db.settings({
@@ -48,6 +50,7 @@
 
         // הפוך זמין למערכת
         window.firebaseDB = db;
+        window.firebaseAuth = auth;
         window.firebaseApp = firebase.app();
 
         // פונקציות פשוטות ומהירות
@@ -259,6 +262,16 @@
             <h3>כניסה למערכת</h3>
             <form id="loginForm">
               <div class="form-group">
+                <label for="email">אימייל</label>
+                <input
+                  type="email"
+                  id="email"
+                  placeholder="your@email.com"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+              <div class="form-group">
                 <label for="password">סיסמה</label>
                 <input
                   type="password"
@@ -269,7 +282,7 @@
                 />
               </div>
               <div class="error-message hidden" id="errorMessage">
-                סיסמה שגויה
+                אימייל או סיסמה שגויים
               </div>
               <br />
               <button type="submit" class="btn">
@@ -1236,7 +1249,7 @@
     <script src="employees-manager.js?v=1.0.0"></script>
     <!-- User Tracking System - רישום כניסות ופעילות -->
     <script src="user-tracker.js?v=1.0.0"></script>
-    <script src="script.js?v=4.25.0"></script>
+    <script src="script.js?v=4.26.0"></script>
 
     <!-- Additional CSS for animations -->
     <style>
