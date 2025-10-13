@@ -327,36 +327,7 @@ function initializeFirebase() {
 /**
  * Test Firebase connection
  */
-async function testFirebaseConnection() {
-  try {
-
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error("Firebase לא מחובר");
-    }
-
-    // Test write - silent
-    const testDoc = await db.collection("test").add({
-      message: "בדיקה",
-      timestamp: new Date(),
-      user: "test",
-    });
-
-    // Test read - silent
-    const snapshot = await db.collection("test").limit(1).get();
-
-    // Cleanup
-    if (!snapshot.empty) {
-      await snapshot.docs[0].ref.delete();
-    }
-
-    // Firebase working - silent mode
-    return true;
-  } catch (error) {
-    console.error("❌ שגיאה בבדיקת Firebase:", error);
-    return false;
-  }
-}
+// testFirebaseConnection removed - using Functions for all operations
 
 /* === Firebase Data Operations === */
 
@@ -1436,34 +1407,28 @@ class LawOfficeManager {
       welcomeTitle.textContent = `ברוך הבא, ${this.currentUser}`;
     }
 
-    // 🔥 NEW: Get last login from Firebase instead of localStorage
-    if (lastLoginTime && window.firebaseDB) {
-      try {
-        const userDoc = await window.firebaseDB.collection('users').doc(this.currentUser).get();
-
-        if (userDoc.exists) {
-          const userData = userDoc.data();
-          const lastLogin = userData.lastLogin;
-
-          if (lastLogin) {
-            const loginDate = lastLogin.toDate ? lastLogin.toDate() : new Date(lastLogin);
-            const formatted = loginDate.toLocaleString("he-IL", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            lastLoginTime.textContent = formatted;
-          } else {
-            lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
-          }
-        } else {
+    // Show last login time (from localStorage for now)
+    // Note: lastLogin is updated in Firebase by trackUserActivity Function
+    if (lastLoginTime) {
+      const storedLastLogin = localStorage.getItem(
+        `lastLogin_${this.currentUser}`
+      );
+      if (storedLastLogin) {
+        try {
+          const loginDate = new Date(storedLastLogin);
+          const formatted = loginDate.toLocaleString("he-IL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          lastLoginTime.textContent = formatted;
+        } catch (error) {
           lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
         }
-      } catch (error) {
-        console.error('Error loading last login from Firebase:', error);
-        lastLoginTime.textContent = "טוען...";
+      } else {
+        lastLoginTime.textContent = "זו הכניסה הראשונה שלך";
       }
     }
 
@@ -1892,32 +1857,27 @@ class LawOfficeManager {
     const estimatedTimeValue = document.getElementById("estimatedTime").value;
     const deadline = document.getElementById("budgetDeadline").value;
 
-    const budgetTask = {
-      id: Date.now(),
-      clientName: selectedClient.fullName,
-      fileNumber: selectedClient.fileNumber,
-      branch,
-      taskDescription: description,
-      estimatedMinutes: parseInt(estimatedTimeValue),
-      actualMinutes: 0,
-      deadline,
-      status: "פעיל",
-      createdAt: new Date().toLocaleString("he-IL"),
-      history: [],
+    // Create task data matching Firebase Function expectations
+    const taskData = {
+      description: description, // Function expects "description", not "taskDescription"
+      clientId: selectedClient.id, // Use actual Firestore document ID
+      estimatedHours: parseInt(estimatedTimeValue) / 60, // Convert minutes to hours
+      branch: branch,
+      deadline: deadline
     };
 
     try {
       showProgress("שומר משימה...");
 
       // Save to Firebase ONLY - no local updates!
-      await saveBudgetTaskToFirebase(budgetTask);
+      await saveBudgetTaskToFirebase(taskData);
 
       // Reload from Firebase to get the saved task
       await this.loadDataFromFirebase();
 
-      // Log activity
+      // Log activity (activity logger will use Function automatically)
       if (this.activityLogger) {
-        await this.activityLogger.logCreateTask(budgetTask.id, budgetTask);
+        await this.activityLogger.logCreateTask(description, taskData);
       }
 
       this.clearBudgetForm();
