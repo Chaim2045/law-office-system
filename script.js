@@ -3775,17 +3775,32 @@ class LawOfficeManager {
     }
   }
 
+  /**
+   * הוספת זמן למשימה - קריאה ל-Firebase Function
+   */
   async addTimeToTask(timeData) {
-    try {
-      showProgress("רושם זמן למשימה...");
+    let taskIndex = -1;
+    let originalTask = null;
 
-      const taskIndex = this.budgetTasks.findIndex(
+    try {
+      // Validate taskId is a string
+      if (!timeData.taskId || typeof timeData.taskId !== 'string') {
+        throw new Error("taskId חייב להיות מחרוזת תקינה");
+      }
+
+      taskIndex = this.budgetTasks.findIndex(
         (t) => t.id === timeData.taskId
       );
-      let originalTask = null;
 
       if (taskIndex !== -1) {
         originalTask = JSON.parse(JSON.stringify(this.budgetTasks[taskIndex]));
+
+        // ✅ תיקון: אתחול history אם לא קיים
+        if (!this.budgetTasks[taskIndex].history) {
+          this.budgetTasks[taskIndex].history = [];
+          console.warn('⚠️ task.history was undefined, initialized as empty array');
+        }
+
         this.budgetTasks[taskIndex].actualMinutes += timeData.minutes;
         this.budgetTasks[taskIndex].history.push({
           id: Date.now(),
@@ -3793,26 +3808,36 @@ class LawOfficeManager {
           minutes: timeData.minutes,
           description: timeData.description,
           timestamp: new Date().toLocaleString("he-IL"),
+          isPending: true,
         });
         this.filteredBudgetTasks = [...this.budgetTasks];
         this.renderBudgetTasks();
+        this.showNotification("⏳ רושם זמן...", "info");
+      }
+
+      await addTimeToTaskFirebase(timeData.taskId, timeData);
+
+      if (taskIndex !== -1) {
+        const lastHistoryItem =
+          this.budgetTasks[taskIndex].history[
+            this.budgetTasks[taskIndex].history.length - 1
+          ];
+        if (lastHistoryItem?.isPending) {
+          delete lastHistoryItem.isPending;
+        }
       }
 
       setTimeout(() => this.loadDataFromFirebase(), 1000);
-
-      hideProgress();
-      showSuccessFeedback("זמן נוסף למשימה בהצלחה");
     } catch (error) {
-      console.error("Error adding time:", error);
-
       if (originalTask && taskIndex !== -1) {
         this.budgetTasks[taskIndex] = originalTask;
         this.filteredBudgetTasks = [...this.budgetTasks];
         this.renderBudgetTasks();
       }
 
-      hideProgress();
-      this.showNotification("❌ שגיאה ברישום זמן - נסה שוב", "error");
+      this.showNotification("❌ שגיאה ברישום זמן", "error");
+      console.error("Error in addTimeToTask:", error);
+      throw error; // ✅ חשוב! זורק את השגיאה כדי ש-submitTimeEntry יידע
     }
   }
 
@@ -4222,11 +4247,13 @@ class LawOfficeManager {
     const filterValue = filterSelect.value;
     this.currentTaskFilter = filterValue;
 
-    // Filter based on status
-    if (filterValue === 'active') {
+    // ✅ תיקון: ברירת מחדל היא 'active' (לא 'all')
+    // משימות מושלמות לא יופיעו אלא אם המשתמש בוחר במפורש "שהושלמו"
+    if (filterValue === 'active' || !filterValue) {
+      // ברירת מחדל: רק משימות פעילות
       this.filteredBudgetTasks = this.budgetTasks.filter(t => t.status !== 'הושלם');
     } else if (filterValue === 'completed') {
-      // Show completed tasks from last month
+      // הצג משימות שהושלמו (חודש אחרון)
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       this.filteredBudgetTasks = this.budgetTasks.filter(t => {
@@ -4235,9 +4262,12 @@ class LawOfficeManager {
         const completedDate = new Date(t.completedAt);
         return completedDate >= oneMonthAgo;
       });
-    } else {
-      // Show all
+    } else if (filterValue === 'all') {
+      // הצג הכל (רק אם המשתמש בוחר במפורש)
       this.filteredBudgetTasks = [...this.budgetTasks];
+    } else {
+      // ברירת מחדל fallback
+      this.filteredBudgetTasks = this.budgetTasks.filter(t => t.status !== 'הושלם');
     }
 
     // Re-render
@@ -5796,72 +5826,15 @@ async function logUserLoginFirebase(employee, userAgent = "", ipAddress = "") {
 }
 
 /**
- * עדכון פונקציות קיימות להשתמש ב-Firebase במקום Google Apps Script
+ * ❌ REMOVED: Duplicate override of addTimeToTask
+ * The function is already defined as a class method (line ~3780)
+ * This override was causing confusion and is not needed
+ */
+
+/**
+ * הוספת פונקציות נוספות ל-window.manager
  */
 if (window.manager) {
-  // החלפת addTimeToTask
-  window.manager.addTimeToTask = async function (timeData) {
-    let originalTask = null;
-    let taskIndex = -1;
-
-    try {
-      // Validate taskId is a string
-      if (!timeData.taskId || typeof timeData.taskId !== 'string') {
-        throw new Error("taskId חייב להיות מחרוזת תקינה");
-      }
-
-      taskIndex = this.budgetTasks.findIndex(
-        (t) => t.id === timeData.taskId
-      );
-
-      if (taskIndex !== -1) {
-        originalTask = JSON.parse(JSON.stringify(this.budgetTasks[taskIndex]));
-
-        // ✅ תיקון: אתחול history אם לא קיים
-        if (!this.budgetTasks[taskIndex].history) {
-          this.budgetTasks[taskIndex].history = [];
-          console.warn('⚠️ task.history was undefined, initialized as empty array');
-        }
-
-        this.budgetTasks[taskIndex].actualMinutes += timeData.minutes;
-        this.budgetTasks[taskIndex].history.push({
-          id: Date.now(),
-          date: timeData.date,
-          minutes: timeData.minutes,
-          description: timeData.description,
-          timestamp: new Date().toLocaleString("he-IL"),
-          isPending: true,
-        });
-        this.filteredBudgetTasks = [...this.budgetTasks];
-        this.renderBudgetTasks();
-        this.showNotification("⏳ רושם זמן...", "info");
-      }
-
-      await addTimeToTaskFirebase(timeData.taskId, timeData);
-
-      if (taskIndex !== -1) {
-        const lastHistoryItem =
-          this.budgetTasks[taskIndex].history[
-            this.budgetTasks[taskIndex].history.length - 1
-          ];
-        if (lastHistoryItem?.isPending) {
-          delete lastHistoryItem.isPending;
-        }
-      }
-
-      setTimeout(() => this.loadDataFromFirebase(), 1000);
-    } catch (error) {
-      if (originalTask && taskIndex !== -1) {
-        this.budgetTasks[taskIndex] = originalTask;
-        this.filteredBudgetTasks = [...this.budgetTasks];
-        this.renderBudgetTasks();
-      }
-
-      this.showNotification("❌ שגיאה ברישום זמן", "error");
-      console.error("Error in addTimeToTask:", error);
-    }
-  };
-
   // הוספת פונקציית הארכת יעד
   window.manager.showExtendDeadlineDialog = function (taskId) {
     const task = this.budgetTasks.find((t) => t.id === taskId);

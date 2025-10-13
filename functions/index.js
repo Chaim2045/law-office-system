@@ -729,13 +729,15 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
     }
 
     // הוספת הזמן
+    // ✅ תיקון: אי אפשר להשתמש ב-serverTimestamp() בתוך array
+    // נשתמש ב-Date object רגיל במקום
     const timeEntry = {
       date: data.date,
       minutes: data.minutes,
       hours: data.minutes / 60,
       description: data.description ? sanitizeString(data.description) : '',
       addedBy: user.username,
-      addedAt: admin.firestore.FieldValue.serverTimestamp()
+      addedAt: new Date().toISOString()  // ✅ ISO string במקום Timestamp
     };
 
     const newActualHours = (taskData.actualHours || 0) + (data.minutes / 60);
@@ -807,9 +809,10 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
     }
 
     await db.collection('budget_tasks').doc(data.taskId).update({
-      status: 'completed',
+      status: 'הושלם',  // ✅ תיקון: עברית במקום אנגלית
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
       completedBy: user.username,
+      completionNotes: data.notes ? sanitizeString(data.notes) : '',
       lastModifiedBy: user.username,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -834,6 +837,121 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה בסימון משימה: ${error.message}`
+    );
+  }
+});
+
+/**
+ * הארכת תאריך יעד למשימה
+ */
+exports.extendTaskDeadline = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Validation
+    if (!data.taskId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה משימה'
+      );
+    }
+
+    if (!data.newDeadline) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר תאריך יעד חדש'
+      );
+    }
+
+    if (!data.reason || typeof data.reason !== 'string' || data.reason.trim().length < 2) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חובה לספק סיבה להארכה (לפחות 2 תווים)'
+      );
+    }
+
+    // בדיקה שהמשימה קיימת
+    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+
+    if (!taskDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'משימה לא נמצאה'
+      );
+    }
+
+    const taskData = taskDoc.data();
+
+    // רק בעל המשימה או admin יכולים להאריך יעד
+    if (taskData.employee !== user.username && user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'אין הרשאה להאריך יעד למשימה זו'
+      );
+    }
+
+    // בדיקה שהמשימה לא הושלמה
+    if (taskData.status === 'הושלם' || taskData.status === 'completed') {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'לא ניתן להאריך יעד למשימה שכבר הושלמה'
+      );
+    }
+
+    // המרת התאריך החדש ל-Timestamp
+    const newDeadlineDate = new Date(data.newDeadline);
+    if (isNaN(newDeadlineDate.getTime())) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תאריך היעד החדש אינו תקין'
+      );
+    }
+
+    // שמירת היעד הישן (אם יש) או היעד הנוכחי כ-originalDeadline
+    const originalDeadline = taskData.originalDeadline || taskData.deadline || newDeadlineDate;
+
+    // יצירת רישום הארכה
+    const extension = {
+      oldDeadline: taskData.deadline,
+      newDeadline: admin.firestore.Timestamp.fromDate(newDeadlineDate),
+      reason: sanitizeString(data.reason.trim()),
+      extendedBy: user.username,
+      extendedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // עדכון המשימה
+    await db.collection('budget_tasks').doc(data.taskId).update({
+      deadline: admin.firestore.Timestamp.fromDate(newDeadlineDate),
+      originalDeadline: originalDeadline,
+      deadlineExtensions: admin.firestore.FieldValue.arrayUnion(extension),
+      lastModifiedBy: user.username,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Audit log
+    await logAction('EXTEND_TASK_DEADLINE', user.uid, user.username, {
+      taskId: data.taskId,
+      oldDeadline: taskData.deadline,
+      newDeadline: data.newDeadline,
+      reason: data.reason
+    });
+
+    return {
+      success: true,
+      taskId: data.taskId,
+      newDeadline: data.newDeadline
+    };
+
+  } catch (error) {
+    console.error('Error in extendTaskDeadline:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בהארכת תאריך יעד: ${error.message}`
     );
   }
 });
