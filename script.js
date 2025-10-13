@@ -1864,10 +1864,16 @@ class LawOfficeManager {
     const estimatedTimeValue = document.getElementById("estimatedTime").value;
     const deadline = document.getElementById("budgetDeadline").value;
 
+    // Convert clientId to string (Firestore document IDs must be strings)
+    const clientId = String(selectedClient.id);
+
+    console.log('DEBUG: Selected client:', selectedClient);
+    console.log('DEBUG: Client ID:', clientId, 'Type:', typeof clientId);
+
     // Create task data matching Firebase Function expectations
     const taskData = {
       description: description, // Function expects "description", not "taskDescription"
-      clientId: selectedClient.id, // Use actual Firestore document ID
+      clientId: clientId, // Use actual Firestore document ID as string
       estimatedHours: parseInt(estimatedTimeValue) / 60, // Convert minutes to hours
       branch: branch,
       deadline: deadline
