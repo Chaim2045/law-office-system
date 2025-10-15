@@ -1583,7 +1583,7 @@ class LawOfficeManager {
     this.renderTimesheetEntries();
   }
 
-  sortTimesheetEntries() {
+  sortTimesheetEntries(event) {
     // קבלת כל ה-selects (גם כרטיסים וגם טבלה)
     const allSelects = document.querySelectorAll('#timesheetSortSelect');
     if (allSelects.length === 0) return;
@@ -1806,7 +1806,7 @@ class LawOfficeManager {
     const taskData = {
       description: description, // Function expects "description", not "taskDescription"
       clientId: clientId, // Use actual Firestore document ID as string
-      estimatedHours: parseInt(estimatedTimeValue) / 60, // Convert minutes to hours
+      estimatedMinutes: parseInt(estimatedTimeValue), // ✅ שליחת דקות ישירות
       branch: branch,
       deadline: deadline
     };
@@ -1823,8 +1823,11 @@ class LawOfficeManager {
       // Reload from Firebase to get the saved task
       await this.loadDataFromFirebase();
 
+      // ✅ Re-apply current filter
+      this.filterBudgetTasks();
+
       // ✅ Render the updated tasks list
-      this.renderBudgetTasksPage();
+      this.renderBudgetTasks();
 
       // Log activity (activity logger will use Function automatically)
       if (this.activityLogger) {
@@ -2012,8 +2015,12 @@ class LawOfficeManager {
 
     const tasksToShow = this.filteredBudgetTasks || this.budgetTasks || [];
 
-    // Update items only if data changed (don't reset page)
-    if (JSON.stringify(this.budgetPagination.items) !== JSON.stringify(tasksToShow)) {
+    // Use updateItems to preserve current page when sorting/filtering
+    if (this.budgetPagination.items.length > 0) {
+      // יש כבר נתונים - זה מיון או פילטר, שמור על העמוד הנוכחי
+      this.budgetPagination.updateItems(tasksToShow);
+    } else {
+      // טעינה ראשונית - אפס לעמוד ראשון
       this.budgetPagination.setItems(tasksToShow);
     }
 
@@ -2070,7 +2077,7 @@ class LawOfficeManager {
               <i class="fas fa-sort-amount-down"></i>
               מיין לפי:
             </label>
-            <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks()">
+            <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks(event)">
               <option value="recent" ${this.currentBudgetSort === 'recent' ? 'selected' : ''}>עדכון אחרון</option>
               <option value="name" ${this.currentBudgetSort === 'name' ? 'selected' : ''}>שם (א-ת)</option>
               <option value="deadline" ${this.currentBudgetSort === 'deadline' ? 'selected' : ''}>תאריך יעד</option>
@@ -2241,7 +2248,7 @@ class LawOfficeManager {
               <i class="fas fa-sort-amount-down"></i>
               מיין לפי:
             </label>
-            <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks()">
+            <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks(event)">
               <option value="recent" ${this.currentBudgetSort === 'recent' ? 'selected' : ''}>עדכון אחרון</option>
               <option value="name" ${this.currentBudgetSort === 'name' ? 'selected' : ''}>שם (א-ת)</option>
               <option value="deadline" ${this.currentBudgetSort === 'deadline' ? 'selected' : ''}>תאריך יעד</option>
@@ -2935,8 +2942,12 @@ class LawOfficeManager {
     const entriesToShow =
       this.filteredTimesheetEntries || this.timesheetEntries || [];
 
-    // Update items only if data changed (don't reset page)
-    if (JSON.stringify(this.timesheetPagination.items) !== JSON.stringify(entriesToShow)) {
+    // Use updateItems to preserve current page when sorting/filtering
+    if (this.timesheetPagination.items.length > 0) {
+      // יש כבר נתונים - זה מיון או פילטר, שמור על העמוד הנוכחי
+      this.timesheetPagination.updateItems(entriesToShow);
+    } else {
+      // טעינה ראשונית - אפס לעמוד ראשון
       this.timesheetPagination.setItems(entriesToShow);
     }
 
@@ -3003,7 +3014,7 @@ class LawOfficeManager {
               <i class="fas fa-sort-amount-down"></i>
               מיין לפי:
             </label>
-            <select class="sort-select" id="timesheetSortSelect" onchange="manager.sortTimesheetEntries()">
+            <select class="sort-select" id="timesheetSortSelect" onchange="manager.sortTimesheetEntries(event)">
               <option value="recent" ${this.currentTimesheetSort === 'recent' ? 'selected' : ''}>תאריך אחרון</option>
               <option value="client" ${this.currentTimesheetSort === 'client' ? 'selected' : ''}>שם לקוח (א-ת)</option>
               <option value="hours" ${this.currentTimesheetSort === 'hours' ? 'selected' : ''}>שעות (גבוה-נמוך)</option>
@@ -3245,7 +3256,7 @@ class LawOfficeManager {
               <i class="fas fa-sort-amount-down"></i>
               מיין לפי:
             </label>
-            <select class="sort-select" id="timesheetSortSelect" onchange="manager.sortTimesheetEntries()">
+            <select class="sort-select" id="timesheetSortSelect" onchange="manager.sortTimesheetEntries(event)">
               <option value="recent" ${this.currentTimesheetSort === 'recent' ? 'selected' : ''}>תאריך אחרון</option>
               <option value="client" ${this.currentTimesheetSort === 'client' ? 'selected' : ''}>שם לקוח (א-ת)</option>
               <option value="hours" ${this.currentTimesheetSort === 'hours' ? 'selected' : ''}>שעות (גבוה-נמוך)</option>
@@ -3753,7 +3764,13 @@ class LawOfficeManager {
         }
       }
 
-      setTimeout(() => this.loadDataFromFirebase(), 1000);
+      // ✅ טעינה מחדש + הפעלת פילטר
+      setTimeout(() => {
+        this.loadDataFromFirebase().then(() => {
+          this.filterBudgetTasks();
+          this.renderBudgetTasks();
+        });
+      }, 1000);
     } catch (error) {
       if (originalTask && taskIndex !== -1) {
         this.budgetTasks[taskIndex] = originalTask;
@@ -3768,67 +3785,108 @@ class LawOfficeManager {
     }
   }
 
-  showTaskHistory(taskId) {
-    const task = this.budgetTasks.find((t) => t.id === taskId);
-    if (!task) {
-      this.showNotification("המשימה לא נמצאה", "error");
-      return;
+  async showTaskHistory(taskId) {
+    // ✅ טעינת המשימה מ-Firebase כדי לקבל את timeEntries המעודכנים
+    try {
+      const db = window.firebaseDB;
+      if (!db) {
+        this.showNotification("Firebase לא מחובר", "error");
+        return;
+      }
+
+      const taskDoc = await db.collection('budget_tasks').doc(taskId).get();
+
+      if (!taskDoc.exists) {
+        this.showNotification("המשימה לא נמצאה", "error");
+        return;
+      }
+
+      const task = {
+        id: taskDoc.id,
+        ...taskDoc.data()
+      };
+
+      const overlay = document.createElement("div");
+      overlay.className = "popup-overlay";
+
+      let historyHtml = "";
+      // ✅ תמיכה גם ב-timeEntries (חדש מ-Firebase Function) וגם ב-history (ישן)
+      const entries = task.timeEntries || task.history || [];
+
+      if (entries.length > 0) {
+        historyHtml = entries
+          .map(
+            (entry) => {
+              // ✅ תמיכה גם ב-addedAt (חדש) וגם ב-timestamp (ישן)
+              let timestamp = '';
+              const timeValue = entry.addedAt || entry.timestamp;
+              if (timeValue) {
+                try {
+                  const date = new Date(timeValue);
+                  timestamp = date.toLocaleString('he-IL', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                } catch (e) {
+                  timestamp = timeValue;
+                }
+              }
+
+              return `
+                <div class="history-entry">
+                  <div class="history-header">
+                    <span class="history-date">${formatDate(entry.date)}</span>
+                    <span class="history-minutes">${entry.minutes} דקות</span>
+                  </div>
+                  <div class="history-description">${safeText(
+                    entry.description || ""
+                  )}</div>
+                  <div class="history-timestamp">נוסף ב: ${safeText(timestamp)}</div>
+                  <div class="history-added-by" style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                    ${entry.addedBy ? `נוסף על ידי: ${safeText(entry.addedBy)}` : ''}
+                  </div>
+                </div>
+              `;
+            }
+          )
+          .join("");
+      } else {
+        historyHtml =
+          '<div style="text-align: center; color: #6b7280; padding: 40px;">אין היסטוריה עדיין</div>';
+      }
+
+      overlay.innerHTML = `
+        <div class="popup" style="max-width: 600px;">
+          <div class="popup-header">
+            <i class="fas fa-history"></i>
+            היסטוריית זמנים - ${safeText(task.clientName || "")}
+          </div>
+          <div class="popup-content">
+            <div class="task-summary">
+              <h4>${safeText(task.description || "")}</h4>
+              <p>סה"כ זמן: ${Math.round((task.actualHours || 0) * 60)} דקות${task.estimatedHours ? ` מתוך ${Math.round(task.estimatedHours * 60)} דקות` : ''}</p>
+            </div>
+            <div class="history-container">
+              ${historyHtml}
+            </div>
+          </div>
+          <div class="popup-buttons" style="justify-content: flex-start;">
+            <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+              <i class="fas fa-times"></i> סגור
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+    } catch (error) {
+      console.error('❌ שגיאה בטעינת היסטוריית משימה:', error);
+      this.showNotification('שגיאה בטעינת היסטוריית משימה', 'error');
     }
-
-    const overlay = document.createElement("div");
-    overlay.className = "popup-overlay";
-
-    let historyHtml = "";
-    if (task.history?.length > 0) {
-      historyHtml = task.history
-        .map(
-          (entry) => `
-        <div class="history-entry">
-          <div class="history-header">
-            <span class="history-date">${formatDate(entry.date)}</span>
-            <span class="history-minutes">${entry.minutes} דקות</span>
-          </div>
-          <div class="history-description">${safeText(
-            entry.description || ""
-          )}</div>
-          <div class="history-timestamp">נוסף ב: ${safeText(
-            entry.timestamp || ""
-          )}</div>
-        </div>
-      `
-        )
-        .join("");
-    } else {
-      historyHtml =
-        '<div style="text-align: center; color: #6b7280; padding: 40px;">אין היסטוריה עדיין</div>';
-    }
-
-    overlay.innerHTML = `
-      <div class="popup" style="max-width: 600px;">
-        <div class="popup-header">
-          <i class="fas fa-history"></i>
-          היסטוריית זמנים - ${safeText(task.clientName || "")}
-        </div>
-        <div class="popup-content">
-          <div class="task-summary">
-            <h4>${safeText(task.description || "")}</h4>
-            <p>סה"כ זמן: ${task.actualMinutes || 0} דקות מתוך ${
-      task.estimatedMinutes || 0
-    }</p>
-          </div>
-          <div class="history-container">
-            ${historyHtml}
-          </div>
-        </div>
-        <div class="popup-buttons" style="justify-content: flex-start;">
-          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-            <i class="fas fa-times"></i> סגור
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
   }
 
   async completeTask(taskId) {
@@ -4169,10 +4227,14 @@ class LawOfficeManager {
 
   filterBudgetTasks() {
     const filterSelect = document.getElementById('budgetTaskFilter');
-    if (!filterSelect) return;
 
-    const filterValue = filterSelect.value;
-    this.currentTaskFilter = filterValue;
+    // ✅ אם יש select ב-DOM, קח את הערך ממנו
+    // אם אין, השתמש בערך השמור או ברירת המחדל 'active'
+    let filterValue = this.currentTaskFilter || 'active';
+    if (filterSelect) {
+      filterValue = filterSelect.value;
+      this.currentTaskFilter = filterValue;
+    }
 
     // ✅ תיקון: ברירת מחדל היא 'active' (לא 'all')
     // משימות מושלמות לא יופיעו אלא אם המשתמש בוחר במפורש "שהושלמו"
@@ -4201,7 +4263,7 @@ class LawOfficeManager {
     this.renderBudgetTasks();
   }
 
-  sortBudgetTasks() {
+  sortBudgetTasks(event) {
     // קבלת כל ה-selects (גם כרטיסים וגם טבלה)
     const allSelects = document.querySelectorAll('#budgetSortSelect');
     if (allSelects.length === 0) return;
