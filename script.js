@@ -482,18 +482,54 @@ async function calculateClientHoursAccurate(clientName) {
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
+    // Get client data - חיפוש בשני collections
+    let client = null;
+    let clientDoc = null;
 
-    // Get client data
+    // תחילה נחפש ב-clients (ארכיטקטורה ישנה)
     const clientsSnapshot = await db
       .collection("clients")
       .where("fullName", "==", clientName)
       .get();
 
-    if (clientsSnapshot.empty) {
+    if (!clientsSnapshot.empty) {
+      client = clientsSnapshot.docs[0].data();
+      clientDoc = clientsSnapshot.docs[0];
+    } else {
+      // אם לא נמצא, נחפש ב-cases (ארכיטקטורה חדשה)
+      const casesSnapshot = await db
+        .collection("cases")
+        .where("caseTitle", "==", clientName)
+        .get();
+
+      if (!casesSnapshot.empty) {
+        client = casesSnapshot.docs[0].data();
+        clientDoc = casesSnapshot.docs[0];
+      }
+    }
+
+    if (!client) {
       throw new Error("לקוח לא נמצא");
     }
 
-    const client = clientsSnapshot.docs[0].data();
+    // אם זה תיק מסוג legal_procedure או fixed, לא צריך לחשב שעות
+    if (client.procedureType === 'legal_procedure' || client.pricingType === 'fixed') {
+      return {
+        clientName,
+        clientData: client,
+        totalHours: 0,
+        totalMinutesUsed: 0,
+        remainingHours: 0,
+        remainingMinutes: 0,
+        status: "תיק משפטי - ללא שעות",
+        isBlocked: false,
+        isCritical: false,
+        entriesCount: 0,
+        entriesByLawyer: {},
+        uniqueLawyers: [],
+        lastCalculated: new Date(),
+      };
+    }
 
     // Get all timesheet entries for this client (from ALL users)
     const timesheetSnapshot = await db
@@ -573,24 +609,40 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
     const db = window.firebaseDB;
     if (!db) throw new Error("Firebase לא מחובר");
 
+    // Find the client - חיפוש בשני collections
+    let clientDoc = null;
+    let clientData = null;
 
-    // Find the client
+    // תחילה נחפש ב-clients (ארכיטקטורה ישנה)
     const clientsSnapshot = await db
       .collection("clients")
       .where("fullName", "==", clientName)
       .get();
 
-    if (clientsSnapshot.empty) {
+    if (!clientsSnapshot.empty) {
+      clientDoc = clientsSnapshot.docs[0];
+      clientData = clientDoc.data();
+    } else {
+      // אם לא נמצא, נחפש ב-cases (ארכיטקטורה חדשה)
+      const casesSnapshot = await db
+        .collection("cases")
+        .where("caseTitle", "==", clientName)
+        .get();
+
+      if (!casesSnapshot.empty) {
+        clientDoc = casesSnapshot.docs[0];
+        clientData = clientDoc.data();
+      }
+    }
+
+    if (!clientDoc || !clientData) {
       console.warn(`⚠️ לקוח ${clientName} לא נמצא - לא ניתן לעדכן שעות`);
       return { success: false, message: "לקוח לא נמצא" };
     }
 
-    const clientDoc = clientsSnapshot.docs[0];
-    const clientData = clientDoc.data();
-
     // Only for hours-based clients
-    if (clientData.type !== "hours") {
-      return { success: true, message: "לקוח פיקס - לא נדרש עדכון" };
+    if (clientData.type !== "hours" && clientData.procedureType !== 'hours') {
+      return { success: true, message: "לקוח פיקס/משפטי - לא נדרש עדכון" };
     }
 
     // Recalculate using accurate function
@@ -1493,7 +1545,12 @@ class LawOfficeManager {
 
       // Calculate accurate hours for each client
       for (const client of this.clients) {
-        if (client.type === "hours") {
+        // בודק אם זה תיק שעות (ישן או חדש)
+        const isHoursClient = client.type === "hours" || client.procedureType === "hours";
+        // דילוג על תיקים משפטיים או פיקס
+        const isLegalOrFixed = client.procedureType === 'legal_procedure' || client.pricingType === 'fixed';
+
+        if (isHoursClient && !isLegalOrFixed) {
           try {
             const hoursData = await calculateClientHoursAccurate(
               client.fullName
