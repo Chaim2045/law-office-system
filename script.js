@@ -1711,19 +1711,6 @@ class LawOfficeManager {
       return;
     }
 
-    const fullName = description
-      ? `${clientName} - ${description}`
-      : clientName;
-
-    if (
-      this.clients.some(
-        (c) => c.fullName.toLowerCase() === fullName.toLowerCase()
-      )
-    ) {
-      this.showNotification(`❌ לקוח "${fullName}" כבר קיים במערכת!`, "error");
-      return;
-    }
-
     if (clientType === "hours") {
       if (!hoursAmount || hoursAmount < 1) {
         this.showNotification("אנא הזן כמות שעות תקינה", "error");
@@ -1731,39 +1718,33 @@ class LawOfficeManager {
       }
     }
 
-    const client = {
-      id: Date.now(),
-      clientName,
-      fileNumber,
-      description,
-      fullName,
-      type: clientType,
-      createdAt: new Date(),
-      createdBy: this.currentUser,
+    // ✅ NEW: שליחת שדות נפרדים ל-Firebase Function (ללא fullName)
+    const clientData = {
+      clientName: clientName,
+      fileNumber: fileNumber,
+      description: description,
+      procedureType: clientType,
+      phone: "",  // אם יש שדה טלפון בטופס, נוסיף אותו
+      email: ""   // אם יש שדה אימייל בטופס, נוסיף אותו
     };
 
     if (clientType === "hours") {
-      client.totalHours = parseInt(hoursAmount);
-      client.hoursRemaining = parseInt(hoursAmount);
-      client.minutesRemaining = parseInt(hoursAmount) * 60;
-    } else {
-      client.stages = [
-        { id: 1, name: "שלב 1", completed: false },
-        { id: 2, name: "שלב 2", completed: false },
-        { id: 3, name: "שלב 3", completed: false },
-      ];
+      clientData.totalHours = parseInt(hoursAmount);
     }
 
     hideClientForm();
 
+    const displayName = description
+      ? `${clientName} (${description})`
+      : clientName;
     const typeText =
       clientType === "hours" ? `${hoursAmount} שעות` : "פיקס (3 שלבים)";
     this.showNotification(
-      `תיק "${fullName}" (${fileNumber}) נוצר בהצלחה! (${typeText})`,
+      `תיק "${displayName}" מספר ${fileNumber} נוצר בהצלחה! (${typeText})`,
       "success"
     );
 
-    await this.createClientComplete(client);
+    await this.createClientComplete(clientData);
   }
 
   async addBudgetTask() {
@@ -1773,48 +1754,37 @@ class LawOfficeManager {
       return;
     }
 
-    const clientName = document.getElementById("budgetClientSelect").value;
-    const selectedClient = this.clients.find((c) => c.fullName === clientName);
+    // ✅ NEW: קבלת ה-caseId במקום clientId
+    const caseId = document.getElementById("budgetCaseSelect").value;
+    const clientName = document.getElementById("budgetClientName").value;
+    const caseNumber = document.getElementById("budgetCaseNumber").value;
 
-    if (!selectedClient) {
-      this.showNotification("אנא בחר לקוח תקין", "error");
-      return;
-    }
-
-    // Validate client has Firestore ID
-    if (!selectedClient.id) {
-      console.error('Selected client missing ID:', selectedClient);
-      this.showNotification("שגיאה: לקוח חסר מזהה במערכת", "error");
+    if (!caseId) {
+      this.showNotification("אנא בחר תיק תקין", "error");
       return;
     }
 
     const description = document
       .getElementById("budgetDescription")
       .value.trim();
-    const branch = document.getElementById("budgetBranch").value;
     const estimatedTimeValue = document.getElementById("estimatedTime").value;
     const deadline = document.getElementById("budgetDeadline").value;
 
-    // Use Firestore document ID (not legacy timestamp ID)
-    const clientId = selectedClient.id; // Already a string from doc.id
-
-    console.log('DEBUG: Selected client:', selectedClient);
-    console.log('DEBUG: Client ID (Firestore):', clientId);
-    console.log('DEBUG: Legacy ID (timestamp):', selectedClient.legacyId);
+    console.log('DEBUG: Selected case:', { caseId, clientName, caseNumber });
 
     // Create task data matching Firebase Function expectations
     const taskData = {
-      description: description, // Function expects "description", not "taskDescription"
-      clientId: clientId, // Use actual Firestore document ID as string
-      estimatedMinutes: parseInt(estimatedTimeValue), // ✅ שליחת דקות ישירות
-      branch: branch,
+      description: description,
+      caseId: caseId, // ✅ שליחת caseId במקום clientId
+      clientName: clientName, // ✅ שם הלקוח למידע בלבד
+      caseNumber: caseNumber, // ✅ מספר תיק למידע בלבד
+      estimatedMinutes: parseInt(estimatedTimeValue),
       deadline: deadline
     };
 
     console.log('Creating task with data:', taskData);
 
     try {
-      // ✅ החלפה: showProgress → showNotification
       this.showNotification("שומר משימה...", "info");
 
       // Save to Firebase ONLY - no local updates!
@@ -1836,11 +1806,9 @@ class LawOfficeManager {
 
       this.clearBudgetForm();
 
-      // ✅ החלפה: hideProgress + showSuccessFeedback → showNotification
       this.showNotification("✅ המשימה נוספה בהצלחה", "success");
     } catch (error) {
       console.error("Error adding budget task:", error);
-      // ✅ הסרת hideProgress - לא נדרש יותר
       this.showNotification("❌ שגיאה בהוספת משימה: " + error.message, "error");
     }
   }
@@ -1855,9 +1823,10 @@ class LawOfficeManager {
       errors.push("תיאור המשימה חייב להכיל לפחות 3 תווים");
     }
 
-    const clientSelect = document.getElementById("budgetClientSelect")?.value;
-    if (!clientSelect) {
-      errors.push("חובה לבחור לקוח");
+    // ✅ NEW: בדיקת caseId במקום clientSelect
+    const caseSelect = document.getElementById("budgetCaseSelect")?.value;
+    if (!caseSelect) {
+      errors.push("חובה לבחור תיק");
     }
 
     const estimatedTime = document.getElementById("estimatedTime")?.value;
@@ -4761,6 +4730,137 @@ function selectClient(formType, clientName, fileNumber, clientType) {
   } catch (error) {
     console.error("Error in selectClient:", error);
   }
+}
+
+// ==================== חיפוש תיקים למשימות ====================
+// Cases Search for Budget Tasks
+
+const debouncedSearchCases = debounce((query) => {
+  searchCasesForTaskInternal(query);
+}, 300);
+
+/**
+ * חיפוש תיקים עבור טופס משימות
+ */
+function searchCasesForTask(query) {
+  debouncedSearchCases(query);
+}
+
+/**
+ * חיפוש פנימי של תיקים
+ */
+async function searchCasesForTaskInternal(query) {
+  const resultsContainer = document.getElementById('budgetCaseSearchResults');
+  if (!resultsContainer) return;
+
+  if (query.length < 1) {
+    resultsContainer.classList.remove('show');
+    return;
+  }
+
+  // טעינת תיקים מ-CasesManager
+  if (!window.casesManager) {
+    resultsContainer.innerHTML = '<div class="no-results">מערכת תיקים לא זמינה</div>';
+    resultsContainer.classList.add('show');
+    return;
+  }
+
+  try {
+    // שליפת תיקים פעילים בלבד
+    const cases = await window.casesManager.getAllCases();
+    const activeCases = cases.filter(c => c.status === 'active');
+
+    const matches = activeCases
+      .filter((caseItem) => {
+        if (!caseItem) return false;
+        const searchText = `${caseItem.clientName || ''} ${caseItem.caseNumber || ''} ${caseItem.clientId || ''}`.toLowerCase();
+        return searchText.includes(query.toLowerCase());
+      })
+      .slice(0, 8);
+
+    if (matches.length === 0) {
+      resultsContainer.innerHTML = '<div class="no-results">לא נמצאו תיקים פעילים</div>';
+    } else {
+      const resultsHtml = matches.map((caseItem) => {
+        const procedureIcon = caseItem.procedureType === 'legal_procedure' ? '⚖️' : '⏱️';
+        const hoursInfo = caseItem.procedureType === 'legal_procedure'
+          ? `${caseItem.hoursRemaining || 0} שעות נותרות | ${caseItem.currentStage || 'שלב א'}`
+          : `${caseItem.hoursRemaining || 0} שעות נותרות`;
+
+        return `
+          <div class="search-result-item" onclick="selectCaseForTask('${caseItem.id}', '${escapeForAttribute(caseItem.clientName)}', '${escapeForAttribute(caseItem.caseNumber)}', '${caseItem.procedureType}')">
+            <div class="result-main">
+              <span class="result-icon">${procedureIcon}</span>
+              <span class="result-name">${caseItem.clientName}</span>
+            </div>
+            <div class="result-details">
+              ${caseItem.caseNumber} | ${hoursInfo}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      resultsContainer.innerHTML = resultsHtml;
+    }
+
+    resultsContainer.classList.add('show');
+  } catch (error) {
+    console.error('Error searching cases:', error);
+    resultsContainer.innerHTML = '<div class="no-results">שגיאה בחיפוש תיקים</div>';
+    resultsContainer.classList.add('show');
+  }
+}
+
+/**
+ * בחירת תיק עבור משימה
+ */
+function selectCaseForTask(caseId, clientName, caseNumber, procedureType) {
+  try {
+    const searchInput = document.getElementById('budgetCaseSearch');
+    if (searchInput) {
+      const icon = procedureType === 'legal_procedure' ? '⚖️' : '⏱️';
+      searchInput.value = `${icon} ${clientName} - ${caseNumber}`;
+    }
+
+    // שמירת פרטי התיק
+    const caseIdField = document.getElementById('budgetCaseSelect');
+    if (caseIdField) {
+      caseIdField.value = caseId;
+    }
+
+    const clientNameField = document.getElementById('budgetClientName');
+    if (clientNameField) {
+      clientNameField.value = clientName;
+    }
+
+    const caseNumberField = document.getElementById('budgetCaseNumber');
+    if (caseNumberField) {
+      caseNumberField.value = caseNumber;
+    }
+
+    // הצגת מידע על התיק שנבחר
+    const selectedInfo = document.getElementById('selectedCaseInfo');
+    if (selectedInfo) {
+      selectedInfo.innerHTML = `<i class="fas fa-check-circle"></i> נבחר תיק: <strong>${clientName}</strong> (${caseNumber})`;
+      selectedInfo.style.display = 'block';
+    }
+
+    // סגירת תוצאות החיפוש
+    const resultsElement = document.getElementById('budgetCaseSearchResults');
+    if (resultsElement) {
+      resultsElement.classList.remove('show');
+    }
+  } catch (error) {
+    console.error('Error in selectCaseForTask:', error);
+  }
+}
+
+/**
+ * פונקציית עזר להחלפת תווים מיוחדים ב-attributes
+ */
+function escapeForAttribute(str) {
+  if (!str) return '';
+  return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 function logout() {

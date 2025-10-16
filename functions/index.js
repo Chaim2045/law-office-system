@@ -248,21 +248,49 @@ exports.createClient = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
-    // Validation
-    if (!data.fullName || typeof data.fullName !== 'string') {
+    // Validation - שדות חובה
+    if (!data.clientName || typeof data.clientName !== 'string') {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'שם לקוח חייב להיות מחרוזת תקינה'
       );
     }
 
-    if (data.fullName.trim().length < 2) {
+    if (data.clientName.trim().length < 2) {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'שם לקוח חייב להכיל לפחות 2 תווים'
       );
     }
 
+    if (!data.fileNumber || typeof data.fileNumber !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מספר תיק חובה'
+      );
+    }
+
+    if (data.fileNumber.trim().length < 1) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מספר תיק לא תקין'
+      );
+    }
+
+    // בדיקה שמספר תיק לא קיים
+    const existingFile = await db.collection('clients')
+      .where('fileNumber', '==', data.fileNumber.trim())
+      .limit(1)
+      .get();
+
+    if (!existingFile.empty) {
+      throw new functions.https.HttpsError(
+        'already-exists',
+        `מספר תיק ${data.fileNumber} כבר קיים במערכת`
+      );
+    }
+
+    // Validation - שדות אופציונליים
     if (data.phone && !isValidIsraeliPhone(data.phone)) {
       throw new functions.https.HttpsError(
         'invalid-argument',
@@ -277,41 +305,271 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       );
     }
 
-    if (!data.type || !['budget', 'hours'].includes(data.type)) {
+    if (!data.procedureType || !['hours', 'fixed', 'legal_procedure'].includes(data.procedureType)) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'סוג לקוח חייב להיות "budget" או "hours"'
+        'סוג הליך חייב להיות "hours", "fixed" או "legal_procedure"'
       );
     }
 
-    // Sanitization
+    // Validation - שדות ספציפיים לסוג
+    if (data.procedureType === 'hours') {
+      if (!data.totalHours || typeof data.totalHours !== 'number' || data.totalHours < 1) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'כמות שעות חייבת להיות מספר חיובי'
+        );
+      }
+    }
+
+    // Validation - הליך משפטי עם שלבים
+    if (data.procedureType === 'legal_procedure') {
+      if (!data.stages || !Array.isArray(data.stages) || data.stages.length !== 3) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'הליך משפטי דורש בדיוק 3 שלבים'
+        );
+      }
+
+      // ✅ NEW: Validation - סוג תמחור (hourly או fixed)
+      if (!data.pricingType || !['hourly', 'fixed'].includes(data.pricingType)) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'סוג תמחור חייב להיות "hourly" (שעתי) או "fixed" (מחיר פיקס)'
+        );
+      }
+
+      // בדיקת כל שלב - תלוי בסוג התמחור
+      data.stages.forEach((stage, index) => {
+        if (!stage.description || stage.description.trim().length < 2) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            `שלב ${index + 1}: תיאור השלב חייב להכיל לפחות 2 תווים`
+          );
+        }
+
+        // ✅ Validation מותאם לסוג התמחור
+        if (data.pricingType === 'hourly') {
+          // תמחור שעתי - חובה שעות
+          if (!stage.hours || typeof stage.hours !== 'number' || stage.hours <= 0) {
+            throw new functions.https.HttpsError(
+              'invalid-argument',
+              `שלב ${index + 1}: תקרת שעות חייבת להיות מספר חיובי`
+            );
+          }
+        } else if (data.pricingType === 'fixed') {
+          // תמחור פיקס - חובה מחיר
+          if (!stage.fixedPrice || typeof stage.fixedPrice !== 'number' || stage.fixedPrice <= 0) {
+            throw new functions.https.HttpsError(
+              'invalid-argument',
+              `שלב ${index + 1}: מחיר פיקס חייב להיות מספר חיובי (בשקלים)`
+            );
+          }
+        }
+      });
+    }
+
+    // ✅ NEW ARCHITECTURE: יצירת לקוח + תיק אוטומטית
+    // שלב 1: יצירת הלקוח (רק מידע אישי)
     const clientData = {
-      fullName: sanitizeString(data.fullName.trim()),
+      clientName: sanitizeString(data.clientName.trim()),
       phone: data.phone ? sanitizeString(data.phone.trim()) : '',
       email: data.email ? sanitizeString(data.email.trim()) : '',
-      type: data.type,
+      createdBy: user.username,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastModifiedBy: user.username,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      totalCases: 1,     // ✅ NEW: מספר תיקים
+      activeCases: 1     // ✅ NEW: תיקים פעילים
+    };
+
+    const clientRef = await db.collection('clients').add(clientData);
+    const clientId = clientRef.id;
+
+    // שלב 2: יצירת התיק הראשון (מידע משפטי)
+    const caseData = {
+      caseNumber: sanitizeString(data.fileNumber.trim()),
+      caseTitle: data.description ? sanitizeString(data.description.trim()) : 'הליך ראשי',
+      clientId: clientId,
+      clientName: clientData.clientName,
+      procedureType: data.procedureType,
+      status: 'active',
+      priority: 'medium',
+      description: data.description ? sanitizeString(data.description.trim()) : '',
+      assignedTo: [user.username],
+      mainAttorney: user.username,
+      openedAt: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: user.username,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
-    // שמירה ב-Firestore
-    const docRef = await db.collection('clients').add(clientData);
+    // הוספת שדות ספציפיים לסוג הליך
+    if (data.procedureType === 'hours') {
+      caseData.totalHours = data.totalHours;
+      caseData.hoursRemaining = data.totalHours;
+      caseData.minutesRemaining = data.totalHours * 60;
+    } else if (data.procedureType === 'fixed') {
+      caseData.stages = [
+        { id: 1, name: 'שלב 1', completed: false },
+        { id: 2, name: 'שלב 2', completed: false },
+        { id: 3, name: 'שלב 3', completed: false }
+      ];
+    } else if (data.procedureType === 'legal_procedure') {
+      // הליך משפטי עם 3 שלבים מפורטים
+      const now = new Date().toISOString();
+      caseData.currentStage = 'stage_a';
+      caseData.pricingType = data.pricingType; // ✅ שמירת סוג התמחור
+
+      if (data.pricingType === 'hourly') {
+        // ✅ תמחור שעתי - שלבים עם שעות וחבילות
+        caseData.stages = [
+          {
+            id: 'stage_a',
+            name: 'שלב א',
+            description: sanitizeString(data.stages[0].description.trim()),
+            order: 1,
+            status: 'active',
+            pricingType: 'hourly',
+            initialHours: data.stages[0].hours,
+            totalHours: data.stages[0].hours,
+            hoursUsed: 0,
+            hoursRemaining: data.stages[0].hours,
+            packages: [
+              {
+                id: `pkg_initial_a_${Date.now()}`,
+                type: 'initial',
+                hours: data.stages[0].hours,
+                hoursUsed: 0,
+                hoursRemaining: data.stages[0].hours,
+                purchaseDate: now
+              }
+            ]
+          },
+          {
+            id: 'stage_b',
+            name: 'שלב ב',
+            description: sanitizeString(data.stages[1].description.trim()),
+            order: 2,
+            status: 'pending',
+            pricingType: 'hourly',
+            initialHours: data.stages[1].hours,
+            totalHours: data.stages[1].hours,
+            hoursUsed: 0,
+            hoursRemaining: data.stages[1].hours,
+            packages: [
+              {
+                id: `pkg_initial_b_${Date.now()}`,
+                type: 'initial',
+                hours: data.stages[1].hours,
+                hoursUsed: 0,
+                hoursRemaining: data.stages[1].hours,
+                purchaseDate: now
+              }
+            ]
+          },
+          {
+            id: 'stage_c',
+            name: 'שלב ג',
+            description: sanitizeString(data.stages[2].description.trim()),
+            order: 3,
+            status: 'pending',
+            pricingType: 'hourly',
+            initialHours: data.stages[2].hours,
+            totalHours: data.stages[2].hours,
+            hoursUsed: 0,
+            hoursRemaining: data.stages[2].hours,
+            packages: [
+              {
+                id: `pkg_initial_c_${Date.now()}`,
+                type: 'initial',
+                hours: data.stages[2].hours,
+                hoursUsed: 0,
+                hoursRemaining: data.stages[2].hours,
+                purchaseDate: now
+              }
+            ]
+          }
+        ];
+
+        // חישוב סה"כ שעות בהליך
+        const totalProcedureHours = data.stages.reduce((sum, s) => sum + s.hours, 0);
+        caseData.totalHours = totalProcedureHours;
+        caseData.hoursRemaining = totalProcedureHours;
+        caseData.minutesRemaining = totalProcedureHours * 60;
+
+      } else if (data.pricingType === 'fixed') {
+        // ✅ תמחור פיקס - שלבים עם מחירים קבועים
+        caseData.stages = [
+          {
+            id: 'stage_a',
+            name: 'שלב א',
+            description: sanitizeString(data.stages[0].description.trim()),
+            order: 1,
+            status: 'active',
+            pricingType: 'fixed',
+            fixedPrice: data.stages[0].fixedPrice,
+            paid: false,
+            paymentDate: null,
+            paymentMethod: null
+          },
+          {
+            id: 'stage_b',
+            name: 'שלב ב',
+            description: sanitizeString(data.stages[1].description.trim()),
+            order: 2,
+            status: 'pending',
+            pricingType: 'fixed',
+            fixedPrice: data.stages[1].fixedPrice,
+            paid: false,
+            paymentDate: null,
+            paymentMethod: null
+          },
+          {
+            id: 'stage_c',
+            name: 'שלב ג',
+            description: sanitizeString(data.stages[2].description.trim()),
+            order: 3,
+            status: 'pending',
+            pricingType: 'fixed',
+            fixedPrice: data.stages[2].fixedPrice,
+            paid: false,
+            paymentDate: null,
+            paymentMethod: null
+          }
+        ];
+
+        // חישוב סה"כ מחיר ויתרה
+        const totalFixedPrice = data.stages.reduce((sum, s) => sum + s.fixedPrice, 0);
+        caseData.totalFixedPrice = totalFixedPrice;
+        caseData.totalPaid = 0;
+        caseData.remainingBalance = totalFixedPrice;
+      }
+    }
+
+    const caseRef = await db.collection('cases').add(caseData);
 
     // Audit log
-    await logAction('CREATE_CLIENT', user.uid, user.username, {
-      clientId: docRef.id,
-      clientName: clientData.fullName,
-      clientType: data.type
+    await logAction('CREATE_CLIENT_WITH_CASE', user.uid, user.username, {
+      clientId: clientId,
+      caseId: caseRef.id,
+      clientName: clientData.clientName,
+      fileNumber: data.fileNumber,
+      procedureType: data.procedureType
     });
 
     return {
       success: true,
-      clientId: docRef.id,
+      clientId: clientId,
+      caseId: caseRef.id,
       client: {
-        id: docRef.id,
+        id: clientId,
         ...clientData
+      },
+      case: {
+        id: caseRef.id,
+        ...caseData
       }
     };
 
@@ -586,7 +844,9 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
     const taskData = {
       description: sanitizeString(data.description.trim()),
       clientId: data.clientId,
-      clientName: clientData.fullName,
+      clientName: clientData.clientName || clientData.fullName, // תמיכה בשני המבנים
+      caseId: data.caseId || null, // ✅ NEW: תמיכה בתיקים
+      caseTitle: data.caseTitle || null, // ✅ NEW: שם התיק (denormalized)
       estimatedHours: data.estimatedHours,
       actualHours: 0,
       status: 'active',
@@ -1014,7 +1274,9 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
     // יצירת רישום
     const entryData = {
       clientId: data.clientId,
-      clientName: clientData.fullName,
+      clientName: clientData.clientName || clientData.fullName, // תמיכה בשני המבנים
+      caseId: data.caseId || null, // ✅ NEW: תמיכה בתיקים
+      caseTitle: data.caseTitle || null, // ✅ NEW: שם התיק (denormalized)
       date: data.date,
       minutes: data.minutes,
       hours: data.minutes / 60,
@@ -1287,6 +1549,1230 @@ exports.trackUserActivity = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה במעקב משתמש: ${error.message}`
+    );
+  }
+});
+
+// ===============================
+// Data Migration Functions (Admin Only)
+// ===============================
+
+/**
+ * מיגרציית היסטוריה למבנה אחיד
+ * ממיר history → timeEntries, timestamp → addedAt
+ * רק למנהלים
+ */
+exports.migrateTaskHistory = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // ✅ כל משתמש מחובר יכול להריץ מיגרציה (פעולה חד-פעמית בטוחה)
+    // הסרנו את בדיקת ה-admin כי זו מיגרציית נתונים שלא מוחקת כלום
+    console.log(`🚀 Starting task history migration by ${user.username}...`);
+
+    const snapshot = await db.collection('budget_tasks').get();
+    let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
+    const errorDetails = [];
+
+    for (const doc of snapshot.docs) {
+      try {
+        const task = doc.data();
+        const updates = {};
+        let needsUpdate = false;
+
+        // 1. Migrate history → timeEntries
+        if (task.history && Array.isArray(task.history) && task.history.length > 0) {
+          // רק אם אין timeEntries או שהם ריקים
+          if (!task.timeEntries || task.timeEntries.length === 0) {
+            updates.timeEntries = task.history.map((entry, index) => ({
+              id: entry.id || `migrated-${Date.now()}-${index}`,
+              date: entry.date,
+              minutes: entry.minutes || (entry.hours ? Math.round(entry.hours * 60) : 0),
+              hours: entry.hours || (entry.minutes ? entry.minutes / 60 : 0),
+              description: entry.description || '',
+              addedAt: entry.addedAt || entry.timestamp || new Date().toISOString(),
+              addedBy: entry.addedBy || 'מיגרציה אוטומטית'
+            }));
+            needsUpdate = true;
+            console.log(`📝 ${doc.id}: Converting ${task.history.length} entries from history to timeEntries`);
+          }
+        }
+
+        // 2. Fix timeEntries that have timestamp instead of addedAt
+        if (task.timeEntries && Array.isArray(task.timeEntries) && task.timeEntries.length > 0) {
+          const fixedEntries = task.timeEntries.map(entry => {
+            if (!entry.addedAt && entry.timestamp) {
+              return {
+                ...entry,
+                addedAt: entry.timestamp,
+                timestamp: undefined // Remove old field
+              };
+            }
+            return entry;
+          });
+
+          // Check if anything changed
+          const hasChanges = fixedEntries.some((entry, idx) =>
+            entry.addedAt !== task.timeEntries[idx].addedAt
+          );
+
+          if (hasChanges) {
+            updates.timeEntries = fixedEntries;
+            needsUpdate = true;
+            console.log(`🔧 ${doc.id}: Fixed timestamp → addedAt in timeEntries`);
+          }
+        }
+
+        // 3. Calculate actualMinutes if missing or wrong
+        const entries = updates.timeEntries || task.timeEntries || [];
+        if (entries.length > 0) {
+          const totalMinutes = entries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+          const totalHours = totalMinutes / 60;
+
+          // Update if actualMinutes is missing, 0, or doesn't match calculated value
+          if (!task.actualMinutes ||
+              task.actualMinutes === 0 ||
+              Math.abs(task.actualMinutes - totalMinutes) > 1) {
+            updates.actualMinutes = totalMinutes;
+            updates.actualHours = totalHours;
+            needsUpdate = true;
+            console.log(`🔢 ${doc.id}: Calculated actualMinutes = ${totalMinutes} (${totalHours.toFixed(2)} hours)`);
+          }
+        }
+
+        // 4. Convert estimatedHours → estimatedMinutes
+        if (task.estimatedHours && typeof task.estimatedHours === 'number') {
+          if (!task.estimatedMinutes || task.estimatedMinutes === 0) {
+            updates.estimatedMinutes = Math.round(task.estimatedHours * 60);
+            needsUpdate = true;
+            console.log(`🔢 ${doc.id}: Converted estimatedHours (${task.estimatedHours}) → estimatedMinutes (${updates.estimatedMinutes})`);
+          }
+        }
+
+        // 5. Add migration metadata
+        if (needsUpdate) {
+          updates.migratedAt = admin.firestore.FieldValue.serverTimestamp();
+          updates.migratedBy = user.username;
+          updates.lastModifiedBy = user.username;
+          updates.lastModifiedAt = admin.firestore.FieldValue.serverTimestamp();
+
+          await doc.ref.update(updates);
+          migrated++;
+          console.log(`✅ ${doc.id}: Updated successfully`);
+        } else {
+          skipped++;
+          console.log(`⏭️  ${doc.id}: No changes needed`);
+        }
+
+      } catch (error) {
+        errors++;
+        const errorMsg = `${doc.id}: ${error.message}`;
+        errorDetails.push(errorMsg);
+        console.error(`❌ Error processing ${doc.id}:`, error);
+      }
+    }
+
+    // Audit log
+    await logAction('MIGRATE_TASK_HISTORY', user.uid, user.username, {
+      totalTasks: snapshot.size,
+      migrated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined
+    });
+
+    console.log(`🎉 Migration complete: ${migrated} migrated, ${skipped} skipped, ${errors} errors`);
+
+    return {
+      success: true,
+      totalTasks: snapshot.size,
+      migrated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined,
+      message: `המיגרציה הושלמה: ${migrated} משימות עודכנו, ${skipped} לא דרשו שינוי, ${errors} שגיאות`
+    };
+
+  } catch (error) {
+    console.error('Error in migrateTaskHistory:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במיגרציה: ${error.message}`
+    );
+  }
+});
+
+/**
+ * מיגרציית לקוחות - פיצול fullName למרכיבים נפרדים
+ * ממיר fullName משולב → clientName + description
+ */
+exports.migrateClients = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    console.log(`🚀 Starting clients migration by ${user.username}...`);
+
+    const snapshot = await db.collection('clients').get();
+    let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
+    const errorDetails = [];
+
+    for (const doc of snapshot.docs) {
+      try {
+        const client = doc.data();
+        const updates = {};
+        let needsUpdate = false;
+
+        // בדיקה אם צריך מיגרציה
+        if (client.fullName && !client.clientName) {
+          // יש fullName אבל אין clientName - צריך מיגרציה
+
+          let clientName = client.fullName;
+          let description = '';
+
+          // ניסיון לפצל לפי " - "
+          if (client.fullName.includes(' - ')) {
+            const parts = client.fullName.split(' - ');
+            clientName = parts[0].trim();
+            description = parts.slice(1).join(' - ').trim();
+          }
+
+          updates.clientName = clientName;
+          updates.description = description;
+
+          // אם אין fileNumber, ניצור מזהה זמני
+          if (!client.fileNumber) {
+            updates.fileNumber = `MIGRATED-${doc.id.substring(0, 8)}`;
+          }
+
+          // אם אין procedureType, נשתמש ב-type הישן או default
+          if (!client.procedureType) {
+            if (client.type === 'budget') {
+              updates.procedureType = 'fixed';
+            } else if (client.type === 'hours') {
+              updates.procedureType = 'hours';
+            } else {
+              updates.procedureType = 'hours'; // default
+            }
+          }
+
+          needsUpdate = true;
+          console.log(`📝 ${doc.id}: "${client.fullName}" → name: "${clientName}", desc: "${description}"`);
+        } else if (client.clientName && !client.fileNumber) {
+          // יש clientName אבל חסר fileNumber
+          updates.fileNumber = `MIGRATED-${doc.id.substring(0, 8)}`;
+          needsUpdate = true;
+          console.log(`🔢 ${doc.id}: Added missing fileNumber`);
+        }
+
+        // הוספת שדות חסרים
+        if (!client.procedureType && client.type) {
+          if (client.type === 'budget') {
+            updates.procedureType = 'fixed';
+          } else if (client.type === 'hours') {
+            updates.procedureType = 'hours';
+          }
+          needsUpdate = true;
+        }
+
+        // הוספת metadata
+        if (needsUpdate) {
+          updates.migratedAt = admin.firestore.FieldValue.serverTimestamp();
+          updates.migratedBy = user.username;
+          updates.lastModifiedBy = user.username;
+          updates.lastModifiedAt = admin.firestore.FieldValue.serverTimestamp();
+
+          await doc.ref.update(updates);
+          migrated++;
+          console.log(`✅ ${doc.id}: Updated successfully`);
+        } else {
+          skipped++;
+          console.log(`⏭️  ${doc.id}: No changes needed`);
+        }
+
+      } catch (error) {
+        errors++;
+        const errorMsg = `${doc.id}: ${error.message}`;
+        errorDetails.push(errorMsg);
+        console.error(`❌ Error processing ${doc.id}:`, error);
+      }
+    }
+
+    // Audit log
+    await logAction('MIGRATE_CLIENTS', user.uid, user.username, {
+      totalClients: snapshot.size,
+      migrated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined
+    });
+
+    console.log(`🎉 Clients migration complete: ${migrated} migrated, ${skipped} skipped, ${errors} errors`);
+
+    return {
+      success: true,
+      totalClients: snapshot.size,
+      migrated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined,
+      message: `המיגרציה הושלמה: ${migrated} לקוחות עודכנו, ${skipped} לא דרשו שינוי, ${errors} שגיאות`
+    };
+
+  } catch (error) {
+    console.error('Error in migrateClients:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במיגרציית לקוחות: ${error.message}`
+    );
+  }
+});
+
+// ===============================
+// Cases Management Functions (NEW)
+// ===============================
+
+/**
+ * יצירת תיק חדש (Case) - ארכיטקטורה חדשה
+ * תיק = הליך משפטי ספציפי ללקוח
+ * לקוח אחד יכול להיות בעל מספר תיקים
+ */
+exports.createCase = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Validation - שדות חובה
+    if (!data.caseNumber || typeof data.caseNumber !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מספר תיק חובה'
+      );
+    }
+
+    if (data.caseNumber.trim().length < 1) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מספר תיק לא תקין'
+      );
+    }
+
+    // בדיקה שמספר תיק לא קיים
+    const existingCase = await db.collection('cases')
+      .where('caseNumber', '==', data.caseNumber.trim())
+      .limit(1)
+      .get();
+
+    if (!existingCase.empty) {
+      throw new functions.https.HttpsError(
+        'already-exists',
+        `מספר תיק ${data.caseNumber} כבר קיים במערכת`
+      );
+    }
+
+    if (!data.caseTitle || typeof data.caseTitle !== 'string' || data.caseTitle.trim().length < 2) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'כותרת תיק חייבת להכיל לפחות 2 תווים'
+      );
+    }
+
+    if (!data.procedureType || !['hours', 'fixed', 'legal_procedure'].includes(data.procedureType)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'סוג הליך חייב להיות "hours", "fixed" או "legal_procedure"'
+      );
+    }
+
+    // Validation - הליך משפטי עם שלבים
+    if (data.procedureType === 'legal_procedure') {
+      if (!data.stages || !Array.isArray(data.stages) || data.stages.length !== 3) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'הליך משפטי דורש בדיוק 3 שלבים'
+        );
+      }
+
+      // ✅ NEW: Validation - סוג תמחור (hourly או fixed)
+      if (!data.pricingType || !['hourly', 'fixed'].includes(data.pricingType)) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'סוג תמחור חייב להיות "hourly" (שעתי) או "fixed" (מחיר פיקס)'
+        );
+      }
+
+      // בדיקת כל שלב - תלוי בסוג התמחור
+      data.stages.forEach((stage, index) => {
+        if (!stage.description || stage.description.trim().length < 2) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            `שלב ${index + 1}: תיאור השלב חייב להכיל לפחות 2 תווים`
+          );
+        }
+
+        // ✅ Validation מותאם לסוג התמחור
+        if (data.pricingType === 'hourly') {
+          // תמחור שעתי - חובה שעות
+          if (!stage.hours || typeof stage.hours !== 'number' || stage.hours <= 0) {
+            throw new functions.https.HttpsError(
+              'invalid-argument',
+              `שלב ${index + 1}: תקרת שעות חייבת להיות מספר חיובי`
+            );
+          }
+        } else if (data.pricingType === 'fixed') {
+          // תמחור פיקס - חובה מחיר
+          if (!stage.fixedPrice || typeof stage.fixedPrice !== 'number' || stage.fixedPrice <= 0) {
+            throw new functions.https.HttpsError(
+              'invalid-argument',
+              `שלב ${index + 1}: מחיר פיקס חייב להיות מספר חיובי (בשקלים)`
+            );
+          }
+        }
+      });
+    }
+
+    // טיפול בלקוח - קיים או חדש
+    let clientId;
+    let clientName;
+
+    if (data.clientId) {
+      // לקוח קיים - בדיקה שקיים
+      const clientDoc = await db.collection('clients').doc(data.clientId).get();
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'לקוח לא נמצא'
+        );
+      }
+      clientId = data.clientId;
+      clientName = clientDoc.data().clientName;
+    } else if (data.clientName) {
+      // לקוח חדש - יצירה
+      if (data.clientName.trim().length < 2) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'שם לקוח חייב להכיל לפחות 2 תווים'
+        );
+      }
+
+      const newClientData = {
+        clientName: sanitizeString(data.clientName.trim()),
+        phone: data.phone ? sanitizeString(data.phone.trim()) : '',
+        email: data.email ? sanitizeString(data.email.trim()) : '',
+        idNumber: data.idNumber ? sanitizeString(data.idNumber.trim()) : '',
+        address: data.address ? sanitizeString(data.address.trim()) : '',
+        createdBy: user.username,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        totalCases: 1,
+        activeCases: 1
+      };
+
+      const clientRef = await db.collection('clients').add(newClientData);
+      clientId = clientRef.id;
+      clientName = newClientData.clientName;
+    } else {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חובה לספק clientId או clientName'
+      );
+    }
+
+    // Validation - שדות ספציפיים לסוג
+    if (data.procedureType === 'hours') {
+      if (!data.totalHours || typeof data.totalHours !== 'number' || data.totalHours < 1) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'כמות שעות חייבת להיות מספר חיובי'
+        );
+      }
+    }
+
+    // יצירת התיק
+    const caseData = {
+      caseNumber: sanitizeString(data.caseNumber.trim()),
+      caseTitle: sanitizeString(data.caseTitle.trim()),
+      clientId: clientId,
+      clientName: clientName,  // Denormalized למהירות
+      procedureType: data.procedureType,
+      status: 'active',
+      priority: data.priority || 'medium',
+      description: data.description ? sanitizeString(data.description.trim()) : '',
+      assignedTo: data.assignedTo || [user.username],
+      mainAttorney: data.mainAttorney || user.username,
+      tags: data.tags || [],
+      category: data.category || '',
+      openedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: user.username,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastModifiedBy: user.username,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // הוספת שדות ספציפיים לסוג הליך
+    if (data.procedureType === 'hours') {
+      caseData.totalHours = data.totalHours;
+      caseData.hoursRemaining = data.totalHours;
+      caseData.minutesRemaining = data.totalHours * 60;
+      caseData.hourlyRate = data.hourlyRate || null;
+    } else if (data.procedureType === 'fixed') {
+      caseData.stages = data.stages || [
+        { id: 1, name: 'שלב 1', completed: false },
+        { id: 2, name: 'שלב 2', completed: false },
+        { id: 3, name: 'שלב 3', completed: false }
+      ];
+      caseData.fixedPrice = data.fixedPrice || null;
+    } else if (data.procedureType === 'legal_procedure') {
+      // הליך משפטי עם 3 שלבים מפורטים
+      const now = new Date().toISOString();
+      caseData.currentStage = 'stage_a';
+      caseData.pricingType = data.pricingType; // ✅ שמירת סוג התמחור
+
+      if (data.pricingType === 'hourly') {
+        // ✅ תמחור שעתי - שלבים עם שעות וחבילות
+        caseData.stages = [
+          {
+            id: 'stage_a',
+            name: 'שלב א',
+            description: sanitizeString(data.stages[0].description.trim()),
+            order: 1,
+            status: 'active',
+            pricingType: 'hourly',
+            initialHours: data.stages[0].hours,
+            totalHours: data.stages[0].hours,
+            hoursUsed: 0,
+            hoursRemaining: data.stages[0].hours,
+            packages: [
+              {
+                id: `pkg_initial_a_${Date.now()}`,
+                type: 'initial',
+                hours: data.stages[0].hours,
+                hoursUsed: 0,
+                hoursRemaining: data.stages[0].hours,
+                purchaseDate: now
+              }
+            ]
+          },
+          {
+            id: 'stage_b',
+            name: 'שלב ב',
+            description: sanitizeString(data.stages[1].description.trim()),
+            order: 2,
+            status: 'pending',
+            pricingType: 'hourly',
+            initialHours: data.stages[1].hours,
+            totalHours: data.stages[1].hours,
+            hoursUsed: 0,
+            hoursRemaining: data.stages[1].hours,
+            packages: [
+              {
+                id: `pkg_initial_b_${Date.now()}`,
+                type: 'initial',
+                hours: data.stages[1].hours,
+                hoursUsed: 0,
+                hoursRemaining: data.stages[1].hours,
+                purchaseDate: now
+              }
+            ]
+          },
+          {
+            id: 'stage_c',
+            name: 'שלב ג',
+            description: sanitizeString(data.stages[2].description.trim()),
+            order: 3,
+            status: 'pending',
+            pricingType: 'hourly',
+            initialHours: data.stages[2].hours,
+            totalHours: data.stages[2].hours,
+            hoursUsed: 0,
+            hoursRemaining: data.stages[2].hours,
+            packages: [
+              {
+                id: `pkg_initial_c_${Date.now()}`,
+                type: 'initial',
+                hours: data.stages[2].hours,
+                hoursUsed: 0,
+                hoursRemaining: data.stages[2].hours,
+                purchaseDate: now
+              }
+            ]
+          }
+        ];
+
+        // חישוב סה"כ שעות בהליך
+        const totalProcedureHours = data.stages.reduce((sum, s) => sum + s.hours, 0);
+        caseData.totalHours = totalProcedureHours;
+        caseData.hoursRemaining = totalProcedureHours;
+        caseData.minutesRemaining = totalProcedureHours * 60;
+
+      } else if (data.pricingType === 'fixed') {
+        // ✅ תמחור פיקס - שלבים עם מחירים קבועים
+        caseData.stages = [
+          {
+            id: 'stage_a',
+            name: 'שלב א',
+            description: sanitizeString(data.stages[0].description.trim()),
+            order: 1,
+            status: 'active',
+            pricingType: 'fixed',
+            fixedPrice: data.stages[0].fixedPrice,
+            paid: false,
+            paymentDate: null,
+            paymentMethod: null
+          },
+          {
+            id: 'stage_b',
+            name: 'שלב ב',
+            description: sanitizeString(data.stages[1].description.trim()),
+            order: 2,
+            status: 'pending',
+            pricingType: 'fixed',
+            fixedPrice: data.stages[1].fixedPrice,
+            paid: false,
+            paymentDate: null,
+            paymentMethod: null
+          },
+          {
+            id: 'stage_c',
+            name: 'שלב ג',
+            description: sanitizeString(data.stages[2].description.trim()),
+            order: 3,
+            status: 'pending',
+            pricingType: 'fixed',
+            fixedPrice: data.stages[2].fixedPrice,
+            paid: false,
+            paymentDate: null,
+            paymentMethod: null
+          }
+        ];
+
+        // חישוב סה"כ מחיר ויתרה
+        const totalFixedPrice = data.stages.reduce((sum, s) => sum + s.fixedPrice, 0);
+        caseData.totalFixedPrice = totalFixedPrice;
+        caseData.totalPaid = 0;
+        caseData.remainingBalance = totalFixedPrice;
+      }
+    }
+
+    if (data.deadline) {
+      const deadlineDate = new Date(data.deadline);
+      if (!isNaN(deadlineDate.getTime())) {
+        caseData.deadline = admin.firestore.Timestamp.fromDate(deadlineDate);
+      }
+    }
+
+    // שמירה ב-Firestore
+    const caseRef = await db.collection('cases').add(caseData);
+
+    // עדכון סטטיסטיקות לקוח
+    await db.collection('clients').doc(clientId).update({
+      totalCases: admin.firestore.FieldValue.increment(1),
+      activeCases: admin.firestore.FieldValue.increment(1),
+      lastModifiedBy: user.username,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Audit log
+    await logAction('CREATE_CASE', user.uid, user.username, {
+      caseId: caseRef.id,
+      caseNumber: caseData.caseNumber,
+      clientId: clientId,
+      procedureType: data.procedureType
+    });
+
+    return {
+      success: true,
+      caseId: caseRef.id,
+      clientId: clientId,
+      case: {
+        id: caseRef.id,
+        ...caseData
+      }
+    };
+
+  } catch (error) {
+    console.error('Error in createCase:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה ביצירת תיק: ${error.message}`
+    );
+  }
+});
+
+/**
+ * קריאת תיקים
+ * תומך בסינונים: clientId, status, assignedTo
+ */
+exports.getCases = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    let query = db.collection('cases');
+
+    // סינון לפי לקוח
+    if (data.clientId) {
+      query = query.where('clientId', '==', data.clientId);
+    }
+
+    // סינון לפי סטטוס
+    if (data.status) {
+      query = query.where('status', '==', data.status);
+    }
+
+    // סינון לפי עו"ד מוקצה
+    if (data.assignedTo) {
+      query = query.where('assignedTo', 'array-contains', data.assignedTo);
+    }
+
+    // מיון
+    query = query.orderBy('createdAt', 'desc');
+
+    const snapshot = await query.get();
+
+    const cases = [];
+    snapshot.forEach(doc => {
+      cases.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    return {
+      success: true,
+      cases,
+      total: cases.length
+    };
+
+  } catch (error) {
+    console.error('Error in getCases:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בטעינת תיקים: ${error.message}`
+    );
+  }
+});
+
+/**
+ * קריאת כל התיקים של לקוח ספציפי + סטטיסטיקות
+ */
+exports.getCasesByClient = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (!data.clientId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה לקוח'
+      );
+    }
+
+    // טעינת פרטי הלקוח
+    const clientDoc = await db.collection('clients').doc(data.clientId).get();
+
+    if (!clientDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'לקוח לא נמצא'
+      );
+    }
+
+    // טעינת כל התיקים של הלקוח
+    const casesSnapshot = await db.collection('cases')
+      .where('clientId', '==', data.clientId)
+      .orderBy('openedAt', 'desc')
+      .get();
+
+    const cases = [];
+    let totalHoursRemaining = 0;
+    let activeCases = 0;
+    let completedCases = 0;
+
+    casesSnapshot.forEach(doc => {
+      const caseData = { id: doc.id, ...doc.data() };
+      cases.push(caseData);
+
+      if (caseData.status === 'active') {
+        activeCases++;
+        if (caseData.procedureType === 'hours') {
+          totalHoursRemaining += caseData.hoursRemaining || 0;
+        }
+      } else if (caseData.status === 'completed') {
+        completedCases++;
+      }
+    });
+
+    return {
+      success: true,
+      client: {
+        id: data.clientId,
+        ...clientDoc.data()
+      },
+      cases,
+      statistics: {
+        totalCases: cases.length,
+        activeCases,
+        completedCases,
+        totalHoursRemaining: Math.round(totalHoursRemaining * 10) / 10
+      }
+    };
+
+  } catch (error) {
+    console.error('Error in getCasesByClient:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בטעינת תיקי לקוח: ${error.message}`
+    );
+  }
+});
+
+/**
+ * עדכון תיק
+ */
+exports.updateCase = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (!data.caseId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה תיק'
+      );
+    }
+
+    // בדיקה שהתיק קיים
+    const caseDoc = await db.collection('cases').doc(data.caseId).get();
+
+    if (!caseDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'תיק לא נמצא'
+      );
+    }
+
+    const caseData = caseDoc.data();
+
+    // רק עו"ד מוקצה או admin יכולים לעדכן
+    if (!caseData.assignedTo.includes(user.username) && user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'אין הרשאה לעדכן תיק זה'
+      );
+    }
+
+    const updates = {};
+
+    // עדכונים מותרים
+    if (data.status !== undefined) {
+      if (!['active', 'completed', 'archived', 'on_hold'].includes(data.status)) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'סטטוס לא תקין'
+        );
+      }
+      updates.status = data.status;
+
+      // אם נסגר תיק
+      if (data.status === 'completed' && caseData.status !== 'completed') {
+        updates.completedAt = admin.firestore.FieldValue.serverTimestamp();
+        updates.completedBy = user.username;
+
+        // עדכון סטטיסטיקות לקוח
+        await db.collection('clients').doc(caseData.clientId).update({
+          activeCases: admin.firestore.FieldValue.increment(-1)
+        });
+      }
+    }
+
+    if (data.priority !== undefined) {
+      updates.priority = data.priority;
+    }
+
+    if (data.description !== undefined) {
+      updates.description = sanitizeString(data.description);
+    }
+
+    if (data.notes !== undefined) {
+      updates.notes = sanitizeString(data.notes);
+    }
+
+    updates.lastModifiedBy = user.username;
+    updates.lastModifiedAt = admin.firestore.FieldValue.serverTimestamp();
+
+    // עדכון
+    await db.collection('cases').doc(data.caseId).update(updates);
+
+    // Audit log
+    await logAction('UPDATE_CASE', user.uid, user.username, {
+      caseId: data.caseId,
+      updates: Object.keys(updates)
+    });
+
+    return {
+      success: true,
+      caseId: data.caseId
+    };
+
+  } catch (error) {
+    console.error('Error in updateCase:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בעדכון תיק: ${error.message}`
+    );
+  }
+});
+
+/**
+ * קריאת תיק בודד - עם כל פרטי השלבים
+ */
+exports.getCaseById = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (!data.caseId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה תיק'
+      );
+    }
+
+    const caseDoc = await db.collection('cases').doc(data.caseId).get();
+
+    if (!caseDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'תיק לא נמצא'
+      );
+    }
+
+    return {
+      success: true,
+      case: {
+        id: caseDoc.id,
+        ...caseDoc.data()
+      }
+    };
+
+  } catch (error) {
+    console.error('Error in getCaseById:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בטעינת תיק: ${error.message}`
+    );
+  }
+});
+
+/**
+ * הוספת חבילת שעות נוספת לשלב קיים
+ * נקרא כשהשעות נגמרות בשלב ורוכשים שעות נוספות
+ */
+exports.addHoursPackageToStage = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Validation
+    if (!data.caseId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה תיק'
+      );
+    }
+
+    if (!data.stageId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה שלב'
+      );
+    }
+
+    if (!data.hours || typeof data.hours !== 'number' || data.hours <= 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'כמות שעות חייבת להיות מספר חיובי'
+      );
+    }
+
+    if (!data.reason || typeof data.reason !== 'string' || data.reason.trim().length < 2) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חובה לספק סיבה (לפחות 2 תווים)'
+      );
+    }
+
+    // טעינת התיק
+    const caseDoc = await db.collection('cases').doc(data.caseId).get();
+
+    if (!caseDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'תיק לא נמצא'
+      );
+    }
+
+    const caseData = caseDoc.data();
+
+    // וודא שזה הליך משפטי
+    if (caseData.procedureType !== 'legal_procedure') {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'הוספת חבילת שעות אפשרית רק להליכים משפטיים'
+      );
+    }
+
+    // וודא שהשלב קיים
+    const stageIndex = caseData.stages.findIndex(s => s.id === data.stageId);
+    if (stageIndex === -1) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'שלב לא נמצא'
+      );
+    }
+
+    // בדיקת הרשאות
+    if (!caseData.assignedTo.includes(user.username) && user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'אין הרשאה לעדכן תיק זה'
+      );
+    }
+
+    // יצירת חבילת השעות החדשה
+    const now = new Date().toISOString();
+    const newPackage = {
+      id: `pkg_additional_${Date.now()}`,
+      type: 'additional',
+      hours: data.hours,
+      hoursUsed: 0,
+      hoursRemaining: data.hours,
+      purchaseDate: data.purchaseDate || now,
+      reason: sanitizeString(data.reason.trim()),
+      addedBy: user.username,
+      addedAt: now
+    };
+
+    // עדכון השלב
+    const updatedStages = [...caseData.stages];
+    updatedStages[stageIndex] = {
+      ...updatedStages[stageIndex],
+      packages: [...updatedStages[stageIndex].packages, newPackage],
+      totalHours: updatedStages[stageIndex].totalHours + data.hours,
+      hoursRemaining: updatedStages[stageIndex].hoursRemaining + data.hours
+    };
+
+    // עדכון סה"כ שעות בתיק
+    const newTotalHours = caseData.totalHours + data.hours;
+    const newHoursRemaining = caseData.hoursRemaining + data.hours;
+
+    // שמירה ב-Firestore
+    await db.collection('cases').doc(data.caseId).update({
+      stages: updatedStages,
+      totalHours: newTotalHours,
+      hoursRemaining: newHoursRemaining,
+      minutesRemaining: newHoursRemaining * 60,
+      lastModifiedBy: user.username,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Audit log
+    await logAction('ADD_HOURS_PACKAGE_TO_STAGE', user.uid, user.username, {
+      caseId: data.caseId,
+      stageId: data.stageId,
+      hours: data.hours,
+      reason: data.reason
+    });
+
+    return {
+      success: true,
+      caseId: data.caseId,
+      stageId: data.stageId,
+      package: newPackage,
+      newTotalHours,
+      newHoursRemaining
+    };
+
+  } catch (error) {
+    console.error('Error in addHoursPackageToStage:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בהוספת חבילת שעות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * מעבר לשלב הבא בהליך משפטי
+ * סוגר את השלב הנוכחי ומפעיל את השלב הבא
+ */
+exports.moveToNextStage = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Validation
+    if (!data.caseId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה תיק'
+      );
+    }
+
+    if (!data.currentStageId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה שלב נוכחי'
+      );
+    }
+
+    // טעינת התיק
+    const caseDoc = await db.collection('cases').doc(data.caseId).get();
+
+    if (!caseDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'תיק לא נמצא'
+      );
+    }
+
+    const caseData = caseDoc.data();
+
+    // וודא שזה הליך משפטי
+    if (caseData.procedureType !== 'legal_procedure') {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'מעבר בין שלבים אפשרי רק להליכים משפטיים'
+      );
+    }
+
+    // בדיקת הרשאות
+    if (!caseData.assignedTo.includes(user.username) && user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'אין הרשאה לעדכן תיק זה'
+      );
+    }
+
+    // מצא את השלב הנוכחי
+    const currentStageIndex = caseData.stages.findIndex(s => s.id === data.currentStageId);
+    if (currentStageIndex === -1) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'שלב נוכחי לא נמצא'
+      );
+    }
+
+    // וודא שהשלב הנוכחי הוא אכן הפעיל
+    if (caseData.stages[currentStageIndex].status !== 'active') {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'השלב הנוכחי אינו פעיל'
+      );
+    }
+
+    // וודא שיש שלב הבא
+    if (currentStageIndex >= caseData.stages.length - 1) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'זהו השלב האחרון - אין שלב הבא'
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    // עדכון השלבים
+    const updatedStages = [...caseData.stages];
+
+    // סגירת השלב הנוכחי
+    updatedStages[currentStageIndex] = {
+      ...updatedStages[currentStageIndex],
+      status: 'completed',
+      completedAt: now,
+      completedBy: user.username
+    };
+
+    // הפעלת השלב הבא
+    const nextStageIndex = currentStageIndex + 1;
+    updatedStages[nextStageIndex] = {
+      ...updatedStages[nextStageIndex],
+      status: 'active',
+      startedAt: now
+    };
+
+    const nextStageId = updatedStages[nextStageIndex].id;
+
+    // שמירה ב-Firestore
+    await db.collection('cases').doc(data.caseId).update({
+      stages: updatedStages,
+      currentStage: nextStageId,
+      lastModifiedBy: user.username,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Audit log
+    await logAction('MOVE_TO_NEXT_STAGE', user.uid, user.username, {
+      caseId: data.caseId,
+      fromStage: data.currentStageId,
+      toStage: nextStageId
+    });
+
+    return {
+      success: true,
+      caseId: data.caseId,
+      currentStage: nextStageId,
+      completedStage: data.currentStageId,
+      message: `המעבר לשלב ${updatedStages[nextStageIndex].name} הושלם בהצלחה`
+    };
+
+  } catch (error) {
+    console.error('Error in moveToNextStage:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במעבר לשלב הבא: ${error.message}`
     );
   }
 });

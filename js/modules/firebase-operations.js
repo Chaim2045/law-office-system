@@ -81,7 +81,10 @@ async function loadClientsFromFirebase() {
         id: doc.id,
         firestoreId: doc.id,
         legacyId: data.id,
-        source: 'clients' // מסמן שזה מהישן
+        source: 'clients', // מסמן שזה מהישן
+        // תמיכה בשני פורמטים: fullName (ישן) או clientName (חדש מ-createClient)
+        fullName: data.fullName || data.clientName,
+        fileNumber: data.fileNumber || data.caseNumber
       });
     });
 
