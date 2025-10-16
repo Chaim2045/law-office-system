@@ -245,9 +245,17 @@
       }
 
       const currentStage = procedure.stages.find(s => s.status === 'active') || procedure.stages[0];
+      const isFixed = procedure.pricingType === 'fixed';
+
+      // חישובים עבור תמחור שעתי
       const totalHours = procedure.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
       const totalUsed = procedure.stages.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
       const totalRemaining = procedure.stages.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+
+      // חישובים עבור תמחור פיקס
+      const totalPrice = procedure.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
+      const totalPaid = procedure.stages.filter(s => s.status === 'completed').reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
+      const remainingPrice = totalPrice - totalPaid;
 
       const cardHTML = `
         <div class="legal-procedure-card" style="
@@ -284,19 +292,22 @@
           <!-- Current Stage -->
           <div style="
             background: #f0f9ff;
-            border: 2px solid #3b82f6;
+            border: 2px solid ${isFixed ? '#10b981' : '#3b82f6'};
             border-radius: 8px;
             padding: 12px 16px;
             margin-bottom: 16px;
           ">
-            <div style="font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 4px;">
-              שלב נוכחי
+            <div style="font-size: 12px; color: ${isFixed ? '#059669' : '#1e40af'}; font-weight: 600; margin-bottom: 4px;">
+              שלב נוכחי ${isFixed ? '(פיקס)' : '(שעתי)'}
             </div>
-            <div style="font-size: 16px; font-weight: 600; color: #1e40af;">
+            <div style="font-size: 16px; font-weight: 600; color: ${isFixed ? '#059669' : '#1e40af'};">
               ${this.escapeHtml(currentStage.name)} - ${this.escapeHtml(currentStage.description)}
             </div>
-            <div style="font-size: 13px; color: #3b82f6; margin-top: 4px;">
-              ${this.formatHours(currentStage.hoursRemaining || 0)} נותרות מתוך ${this.formatHours(currentStage.totalHours || 0)}
+            <div style="font-size: 13px; color: ${isFixed ? '#10b981' : '#3b82f6'}; margin-top: 4px;">
+              ${isFixed
+                ? `מחיר: ₪${(currentStage.fixedPrice || 0).toLocaleString()}`
+                : `${this.formatHours(currentStage.hoursRemaining || 0)} נותרות מתוך ${this.formatHours(currentStage.totalHours || 0)}`
+              }
             </div>
           </div>
 
@@ -339,24 +350,45 @@
             border-radius: 8px;
             margin-bottom: 16px;
           ">
-            <div style="text-align: center;">
-              <div style="font-size: 11px; color: #666;">סה"כ שעות</div>
-              <div style="font-size: 18px; font-weight: 600; color: #1a1a1a;">
-                ${this.formatHours(totalHours)}
+            ${isFixed ? `
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">סה"כ מחיר</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1a1a1a;">
+                  ₪${totalPrice.toLocaleString()}
+                </div>
               </div>
-            </div>
-            <div style="text-align: center;">
-              <div style="font-size: 11px; color: #666;">נוצלו</div>
-              <div style="font-size: 18px; font-weight: 600; color: #ef4444;">
-                ${this.formatHours(totalUsed)}
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">שולם</div>
+                <div style="font-size: 18px; font-weight: 600; color: #10b981;">
+                  ₪${totalPaid.toLocaleString()}
+                </div>
               </div>
-            </div>
-            <div style="text-align: center;">
-              <div style="font-size: 11px; color: #666;">נותרו</div>
-              <div style="font-size: 18px; font-weight: 600; color: #10b981;">
-                ${this.formatHours(totalRemaining)}
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">יתרה</div>
+                <div style="font-size: 18px; font-weight: 600; color: ${remainingPrice > 0 ? '#ef4444' : '#10b981'};">
+                  ₪${remainingPrice.toLocaleString()}
+                </div>
               </div>
-            </div>
+            ` : `
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">סה"כ שעות</div>
+                <div style="font-size: 18px; font-weight: 600; color: #1a1a1a;">
+                  ${this.formatHours(totalHours)}
+                </div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">נוצלו</div>
+                <div style="font-size: 18px; font-weight: 600; color: #ef4444;">
+                  ${this.formatHours(totalUsed)}
+                </div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">נותרו</div>
+                <div style="font-size: 18px; font-weight: 600; color: #10b981;">
+                  ${this.formatHours(totalRemaining)}
+                </div>
+              </div>
+            `}
           </div>
 
           <!-- Actions -->
@@ -375,7 +407,7 @@
             " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
               <i class="fas fa-eye"></i> צפה בפרטים
             </button>
-            ${currentStage.status === 'active' && currentStage.hoursRemaining < 5 ? `
+            ${!isFixed && currentStage.status === 'active' && currentStage.hoursRemaining < 5 ? `
               <button onclick="legalProceduresManager.showAddPackageDialog('${procedure.id}', '${currentStage.id}')" style="
                 padding: 10px 16px;
                 background: #f59e0b;
@@ -463,7 +495,7 @@
 
               <!-- Content -->
               <div style="padding: 32px; overflow-y: auto; max-height: calc(90vh - 100px);">
-                ${procedure.stages.map((stage, index) => this.renderStageDetails(stage, index, procedure.id)).join('')}
+                ${procedure.stages.map((stage, index) => this.renderStageDetails(stage, index, procedure.id, procedure.pricingType)).join('')}
               </div>
             </div>
           </div>
@@ -482,10 +514,12 @@
      * @param {Object} stage - נתוני השלב
      * @param {number} index - מספר השלב
      * @param {string} caseId - מזהה התיק
+     * @param {string} pricingType - סוג תמחור (hourly או fixed)
      * @returns {string} HTML
      */
-    renderStageDetails(stage, index, caseId) {
+    renderStageDetails(stage, index, caseId, pricingType = 'hourly') {
       const stageNum = index + 1;
+      const isFixed = pricingType === 'fixed';
       const statusColor = stage.status === 'completed' ? '#16a34a' : stage.status === 'active' ? '#3b82f6' : '#9ca3af';
       const statusText = stage.status === 'completed' ? 'הושלם' : stage.status === 'active' ? 'פעיל' : 'ממתין';
 
@@ -519,101 +553,139 @@
             </span>
           </div>
 
-          <!-- Packages -->
-          <div style="margin-bottom: 16px;">
-            <div style="font-size: 13px; color: #666; font-weight: 600; margin-bottom: 12px;">
-              חבילות שעות:
-            </div>
-            ${(stage.packages || []).map((pkg, pkgIndex) => `
+          <!-- Packages / Fixed Price -->
+          ${isFixed ? `
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 13px; color: #666; font-weight: 600; margin-bottom: 12px;">
+                פרטי מחיר:
+              </div>
               <div style="
-                background: white;
-                border: 1px solid #e5e7eb;
+                background: #f0fdf4;
+                border: 1px solid #86efac;
                 border-radius: 8px;
                 padding: 12px 16px;
                 margin-bottom: 8px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
               ">
-                <div style="flex: 1;">
-                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                    <span style="
-                      padding: 2px 8px;
-                      background: ${pkg.type === 'initial' ? '#dbeafe' : '#fef3c7'};
-                      color: ${pkg.type === 'initial' ? '#1e40af' : '#92400e'};
-                      border-radius: 4px;
-                      font-size: 11px;
-                      font-weight: 600;
-                    ">
-                      ${pkg.type === 'initial' ? 'ראשונית' : 'תוספת ' + (pkgIndex)}
-                    </span>
-                    <span style="font-size: 13px; color: #666;">
-                      ${this.formatDate(pkg.purchaseDate)}
-                    </span>
-                  </div>
-                  ${pkg.reason ? `
-                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                      ${this.escapeHtml(pkg.reason)}
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 600; color: #166534;">
+                      מחיר קבוע - ${this.escapeHtml(stage.name)}
                     </div>
-                  ` : ''}
-                </div>
-                <div style="text-align: left;">
-                  <div style="font-size: 16px; font-weight: 600; color: #1a1a1a;">
-                    ${this.formatHours(pkg.hours)}
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                      ${this.escapeHtml(stage.description)}
+                    </div>
                   </div>
-                  <div style="font-size: 12px; color: #666;">
-                    נותרו: ${this.formatHours(pkg.hoursRemaining)}
+                  <div style="text-align: left;">
+                    <div style="font-size: 20px; font-weight: 600; color: #16a34a;">
+                      ₪${(stage.fixedPrice || 0).toLocaleString()}
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                      ${stage.status === 'completed' ? 'שולם' : stage.status === 'active' ? 'לתשלום' : 'ממתין'}
+                    </div>
                   </div>
                 </div>
               </div>
-            `).join('')}
-          </div>
+            </div>
+          ` : `
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 13px; color: #666; font-weight: 600; margin-bottom: 12px;">
+                חבילות שעות:
+              </div>
+              ${(stage.packages || []).map((pkg, pkgIndex) => `
+                <div style="
+                  background: white;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 8px;
+                  padding: 12px 16px;
+                  margin-bottom: 8px;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                ">
+                  <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="
+                        padding: 2px 8px;
+                        background: ${pkg.type === 'initial' ? '#dbeafe' : '#fef3c7'};
+                        color: ${pkg.type === 'initial' ? '#1e40af' : '#92400e'};
+                        border-radius: 4px;
+                        font-size: 11px;
+                        font-weight: 600;
+                      ">
+                        ${pkg.type === 'initial' ? 'ראשונית' : 'תוספת ' + (pkgIndex)}
+                      </span>
+                      <span style="font-size: 13px; color: #666;">
+                        ${this.formatDate(pkg.purchaseDate)}
+                      </span>
+                    </div>
+                    ${pkg.reason ? `
+                      <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                        ${this.escapeHtml(pkg.reason)}
+                      </div>
+                    ` : ''}
+                  </div>
+                  <div style="text-align: left;">
+                    <div style="font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                      ${this.formatHours(pkg.hours)}
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                      נותרו: ${this.formatHours(pkg.hoursRemaining)}
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
 
           <!-- Summary -->
-          <div style="
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            padding: 12px;
-            background: #f9fafb;
-            border-radius: 8px;
-          ">
-            <div style="text-align: center;">
-              <div style="font-size: 11px; color: #666;">סה"כ זמין</div>
-              <div style="font-size: 16px; font-weight: 600; color: #1a1a1a;">
-                ${this.formatHours(stage.totalHours || 0)}
+          ${!isFixed ? `
+            <div style="
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 12px;
+              padding: 12px;
+              background: #f9fafb;
+              border-radius: 8px;
+            ">
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">סה"כ זמין</div>
+                <div style="font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                  ${this.formatHours(stage.totalHours || 0)}
+                </div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">נוצל</div>
+                <div style="font-size: 16px; font-weight: 600; color: #ef4444;">
+                  ${this.formatHours(stage.hoursUsed || 0)}
+                </div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 11px; color: #666;">נותר</div>
+                <div style="font-size: 16px; font-weight: 600; color: #10b981;">
+                  ${this.formatHours(stage.hoursRemaining || 0)}
+                </div>
               </div>
             </div>
-            <div style="text-align: center;">
-              <div style="font-size: 11px; color: #666;">נוצל</div>
-              <div style="font-size: 16px; font-weight: 600; color: #ef4444;">
-                ${this.formatHours(stage.hoursUsed || 0)}
-              </div>
-            </div>
-            <div style="text-align: center;">
-              <div style="font-size: 11px; color: #666;">נותר</div>
-              <div style="font-size: 16px; font-weight: 600; color: #10b981;">
-                ${this.formatHours(stage.hoursRemaining || 0)}
-              </div>
-            </div>
-          </div>
+          ` : ''}
 
           <!-- Actions -->
           ${stage.status === 'active' ? `
             <div style="display: flex; gap: 8px; margin-top: 16px;">
-              <button onclick="legalProceduresManager.showAddPackageDialog('${caseId}', '${stage.id}')" style="
-                flex: 1;
-                padding: 10px 16px;
-                background: #f59e0b;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-              ">
-                <i class="fas fa-plus"></i> הוסף חבילת שעות
-              </button>
+              ${!isFixed ? `
+                <button onclick="legalProceduresManager.showAddPackageDialog('${caseId}', '${stage.id}')" style="
+                  flex: 1;
+                  padding: 10px 16px;
+                  background: #f59e0b;
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-size: 14px;
+                  font-weight: 500;
+                ">
+                  <i class="fas fa-plus"></i> הוסף חבילת שעות
+                </button>
+              ` : ''}
               ${stageNum < 3 ? `
                 <button onclick="legalProceduresManager.confirmMoveToNextStage('${caseId}', '${stage.id}')" style="
                   flex: 1;
