@@ -254,18 +254,47 @@ async function loadClientsFromFirebase() {
       throw new Error("Firebase לא מחובר");
     }
 
-    const snapshot = await db.collection("clients").get();
+    // טוען מ-clients (ארכיטקטורה ישנה) ומ-cases (ארכיטקטורה חדשה)
+    const [clientsSnapshot, casesSnapshot] = await Promise.all([
+      db.collection("clients").get(),
+      db.collection("cases").get()
+    ]);
+
     const clients = [];
 
-    snapshot.forEach((doc) => {
+    // טוען לקוחות מהארכיטקטורה הישנה
+    clientsSnapshot.forEach((doc) => {
       const data = doc.data();
       clients.push({
         ...data,
-        id: doc.id, // ✅ Firestore document ID (overrides any id in data)
-        firestoreId: doc.id, // ✅ Keep explicit reference
-        legacyId: data.id // ✅ Keep old timestamp ID for reference
+        id: doc.id,
+        firestoreId: doc.id,
+        legacyId: data.id,
+        source: 'clients', // מסמן שזה מהישן
+        // תמיכה בשני פורמטים: fullName (ישן) או clientName (חדש מ-createClient)
+        fullName: data.fullName || data.clientName,
+        fileNumber: data.fileNumber || data.caseNumber
       });
     });
+
+    // טוען תיקים מהארכיטקטורה החדשה
+    casesSnapshot.forEach((doc) => {
+      const data = doc.data();
+      clients.push({
+        ...data,
+        id: doc.id,
+        firestoreId: doc.id,
+        source: 'cases', // מסמן שזה מהחדש
+        // ממיר שדות חדשים לפורמט הישן כדי שהתצוגה תעבוד
+        fullName: data.caseTitle || data.fullName,
+        fileNumber: data.caseNumber || data.fileNumber,
+        type: data.procedureType === 'legal_procedure' ? 'legal_procedure' :
+              data.procedureType === 'hours' ? 'hours' :
+              data.type || 'hours'
+      });
+    });
+
+    console.log(`✅ טעינת לקוחות: ${clientsSnapshot.size} מ-clients, ${casesSnapshot.size} מ-cases`);
 
     return clients;
   } catch (error) {
