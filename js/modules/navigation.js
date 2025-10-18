@@ -105,19 +105,35 @@ function openSmartForm() {
   if (!activeTab) return;
 
   let currentForm;
+  let formType; // Track which form we're opening
+
   if (activeTab.onclick && activeTab.onclick.toString().includes("budget")) {
     currentForm = document.getElementById("budgetFormContainer");
+    formType = 'budget';
   } else if (
     activeTab.onclick &&
     activeTab.onclick.toString().includes("timesheet")
   ) {
     currentForm = document.getElementById("timesheetFormContainer");
+    formType = 'timesheet';
   }
 
   if (!currentForm) return;
+
   if (currentForm.classList.contains("hidden")) {
     currentForm.classList.remove("hidden");
     if (plusButton) plusButton.classList.add("active");
+
+    // ✅ Initialize the appropriate ClientCaseSelector when form opens
+    if (window.ClientCaseSelectorsManager) {
+      if (formType === 'budget') {
+        console.log('🎯 Opening budget form - initializing selector...');
+        window.ClientCaseSelectorsManager.initializeBudget();
+      } else if (formType === 'timesheet') {
+        console.log('🎯 Opening timesheet form - initializing selector...');
+        window.ClientCaseSelectorsManager.initializeTimesheet();
+      }
+    }
   } else {
     currentForm.classList.add("hidden");
     if (plusButton) plusButton.classList.remove("active");

@@ -13,55 +13,91 @@
   window.clientCaseSelectors = window.clientCaseSelectors || {};
 
   /**
-   * Initialize all client-case selectors
+   * Initialize budget selector (lazy initialization)
    */
-  function initializeSelectors() {
-    console.log('🎯 Initializing ClientCaseSelectors...');
+  function initializeBudgetSelector() {
+    // Check if already initialized
+    if (window.clientCaseSelectors.budget) {
+      console.log('✅ Budget selector already initialized');
+      return;
+    }
+
+    console.log('🎯 Initializing Budget ClientCaseSelector...');
 
     try {
-      // Budget Task Selector
-      if (document.getElementById('budgetClientCaseSelector')) {
-        window.clientCaseSelectors.budget = new ClientCaseSelector('budgetClientCaseSelector', {
-          required: true,
-          showOnlyActive: true,
-          onClientSelected: (client) => {
-            console.log('✅ Budget: Client selected:', client.fullName);
-          },
-          onCaseSelected: (caseData) => {
-            console.log('✅ Budget: Case selected:', caseData.caseTitle);
-          }
-        });
-
-        console.log('✅ Budget ClientCaseSelector initialized');
+      const container = document.getElementById('budgetClientCaseSelector');
+      if (!container) {
+        console.error('❌ Budget container not found');
+        return;
       }
 
-      // Timesheet Selector
-      if (document.getElementById('timesheetClientCaseSelector')) {
-        window.clientCaseSelectors.timesheet = new ClientCaseSelector('timesheetClientCaseSelector', {
-          required: true,
-          showOnlyActive: true,
-          onClientSelected: (client) => {
-            console.log('✅ Timesheet: Client selected:', client.fullName);
+      window.clientCaseSelectors.budget = new ClientCaseSelector('budgetClientCaseSelector', {
+        required: true,
+        showOnlyActive: true,
+        onClientSelected: (client) => {
+          console.log('✅ Budget: Client selected:', client.fullName);
+        },
+        onCaseSelected: (caseData) => {
+          console.log('✅ Budget: Case selected:', caseData.caseTitle);
+        }
+      });
 
-            // Auto-fill file number (backward compatibility)
-            const fileNumberInput = document.getElementById('fileNumber');
-            if (fileNumberInput && client.fileNumber) {
-              fileNumberInput.value = client.fileNumber;
-            }
-          },
-          onCaseSelected: (caseData) => {
-            console.log('✅ Timesheet: Case selected:', caseData.caseTitle);
-          }
-        });
-
-        console.log('✅ Timesheet ClientCaseSelector initialized');
-      }
-
-      console.log('🎉 All ClientCaseSelectors initialized successfully');
-
+      console.log('✅ Budget ClientCaseSelector initialized');
     } catch (error) {
-      console.error('❌ Error initializing ClientCaseSelectors:', error);
+      console.error('❌ Error initializing Budget selector:', error);
     }
+  }
+
+  /**
+   * Initialize timesheet selector (lazy initialization)
+   */
+  function initializeTimesheetSelector() {
+    // Check if already initialized
+    if (window.clientCaseSelectors.timesheet) {
+      console.log('✅ Timesheet selector already initialized');
+      return;
+    }
+
+    console.log('🎯 Initializing Timesheet ClientCaseSelector...');
+
+    try {
+      const container = document.getElementById('timesheetClientCaseSelector');
+      if (!container) {
+        console.error('❌ Timesheet container not found');
+        return;
+      }
+
+      window.clientCaseSelectors.timesheet = new ClientCaseSelector('timesheetClientCaseSelector', {
+        required: true,
+        showOnlyActive: true,
+        onClientSelected: (client) => {
+          console.log('✅ Timesheet: Client selected:', client.fullName);
+
+          // Auto-fill file number (backward compatibility)
+          const fileNumberInput = document.getElementById('fileNumber');
+          if (fileNumberInput && client.fileNumber) {
+            fileNumberInput.value = client.fileNumber;
+          }
+        },
+        onCaseSelected: (caseData) => {
+          console.log('✅ Timesheet: Case selected:', caseData.caseTitle);
+        }
+      });
+
+      console.log('✅ Timesheet ClientCaseSelector initialized');
+    } catch (error) {
+      console.error('❌ Error initializing Timesheet selector:', error);
+    }
+  }
+
+  /**
+   * Initialize all client-case selectors (calls lazy initializers)
+   */
+  function initializeSelectors() {
+    console.log('🎯 Setting up ClientCaseSelectors (lazy initialization)...');
+    // Selectors will be initialized when forms are first opened
+    // This prevents issues with hidden forms
+    console.log('✅ ClientCaseSelectors ready for lazy initialization');
   }
 
   /**
@@ -69,6 +105,11 @@
    * @returns {Object} Form values including client and case info
    */
   function getBudgetTaskValues() {
+    // Lazy initialization - create selector if not exists
+    if (!window.clientCaseSelectors.budget) {
+      initializeBudgetSelector();
+    }
+
     const selector = window.clientCaseSelectors.budget;
     if (!selector) {
       console.error('❌ Budget selector not initialized');
@@ -89,6 +130,11 @@
    * @returns {Object} Form values including client and case info
    */
   function getTimesheetValues() {
+    // Lazy initialization - create selector if not exists
+    if (!window.clientCaseSelectors.timesheet) {
+      initializeTimesheetSelector();
+    }
+
     const selector = window.clientCaseSelectors.timesheet;
     if (!selector) {
       console.error('❌ Timesheet selector not initialized');
@@ -135,12 +181,14 @@
   // Export globally
   window.ClientCaseSelectorsManager = {
     initialize: initializeSelectors,
+    initializeBudget: initializeBudgetSelector,      // ✅ NEW: Manual budget init
+    initializeTimesheet: initializeTimesheetSelector, // ✅ NEW: Manual timesheet init
     getBudgetValues: getBudgetTaskValues,
     getTimesheetValues: getTimesheetValues,
     clearBudget: clearBudgetSelector,
     clearTimesheet: clearTimesheetSelector
   };
 
-  console.log('✅ ClientCaseSelectorsManager ready');
+  console.log('✅ ClientCaseSelectorsManager ready (lazy initialization enabled)');
 
 })();
