@@ -48,6 +48,7 @@ import * as Search from './modules/search.js';
 
 // UI Components
 import * as UIComponents from './modules/ui-components.js';
+import { ActionFlowManager } from './modules/ui-components.js';
 
 // Debug Tools (Development Only)
 import * as DebugTools from './modules/debug-tools.js';
@@ -201,21 +202,7 @@ class LawOfficeManager {
       });
     }
 
-    // Client form
-    const clientForm = document.getElementById("clientForm");
-    if (clientForm) {
-      clientForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        this.createClient();
-      });
-    }
-
-    // Client type radio buttons
-    document.querySelectorAll('input[name="clientType"]').forEach((radio) => {
-      radio.addEventListener("change", () => {
-        this.updateClientTypeDisplay();
-      });
-    });
+    // ✅ Client form removed - now handled by CasesManager
 
     // Set default action date
     const actionDate = document.getElementById("actionDate");
@@ -329,7 +316,7 @@ class LawOfficeManager {
    * Reload data from Firebase
    */
   async loadDataFromFirebase() {
-    CoreUtils.showSimpleLoading('טוען נתונים מחדש...');
+    window.showSimpleLoading('טוען נתונים מחדש...');
 
     try {
       await this.loadData();
@@ -337,7 +324,7 @@ class LawOfficeManager {
     } catch (error) {
       this.showNotification('שגיאה בטעינת נתונים', 'error');
     } finally {
-      CoreUtils.hideSimpleLoading();
+      window.hideSimpleLoading();
     }
   }
 
@@ -345,128 +332,85 @@ class LawOfficeManager {
      CLIENT MANAGEMENT
      ======================================== */
 
-  async createClient() {
-    const clientName = document.getElementById("clientName")?.value?.trim();
-    const fileNumber = document.getElementById("fileNumberInput")?.value?.trim();
-    const description = document.getElementById("clientDescription")?.value?.trim();
-    const clientType = document.querySelector('input[name="clientType"]:checked')?.value;
-    const hoursAmount = document.getElementById("hoursAmount")?.value;
-
-    // Validation
-    if (!clientName || !fileNumber) {
-      this.showNotification('נא למלא את כל השדות הנדרשים', 'error');
-      return;
-    }
-
-    // Check if client already exists
-    const existingClient = this.clients.find(
-      c => c.fileNumber === fileNumber || c.fullName === clientName
-    );
-
-    if (existingClient) {
-      this.showNotification('לקוח או מספר תיק כבר קיימים במערכת', 'error');
-      return;
-    }
-
-    try {
-      CoreUtils.showSimpleLoading('יוצר לקוח...');
-
-      const clientData = {
-        fullName: clientName,
-        clientName: clientName,
-        fileNumber: fileNumber,
-        description: description || '',
-        type: clientType || 'hours',
-        hoursRemaining: clientType === 'hours' ? parseInt(hoursAmount) : null,
-        totalHours: clientType === 'hours' ? parseInt(hoursAmount) : null,
-        stages: clientType === 'fixed' ? {
-          stage1: false,
-          stage2: false,
-          stage3: false
-        } : null,
-        createdAt: new Date(),
-        createdBy: this.currentUser
-      };
-
-      await FirebaseOps.saveClientToFirebase(clientData);
-
-      // Reload clients
-      this.clients = await FirebaseOps.loadClientsFromFirebase();
-
-      this.showNotification('לקוח נוסף בהצלחה', 'success');
-
-      // Clear form and hide
-      document.getElementById("clientForm")?.reset();
-      Clients.hideClientForm();
-
-    } catch (error) {
-      console.error('❌ Error creating client:', error);
-      this.showNotification('שגיאה ביצירת לקוח: ' + error.message, 'error');
-    } finally {
-      CoreUtils.hideSimpleLoading();
-    }
-  }
-
-  updateClientTypeDisplay() {
-    Clients.updateClientTypeDisplay();
-  }
+  // ✅ Client creation is now handled by CasesManager in cases.js
+  // Old createClient() function removed - use casesManager.showCreateCaseDialog() instead
 
   /* ========================================
      BUDGET TASKS MANAGEMENT
      ======================================== */
 
   async addBudgetTask() {
-    // Validate form
-    const validation = Forms.validateBudgetTaskForm(this);
-    if (!validation.isValid) {
-      Forms.showValidationErrors(this, validation.errors);
+    // ✅ NEW: Get values from ClientCaseSelector
+    const selectorValues = window.ClientCaseSelectorsManager?.getBudgetValues();
+
+    if (!selectorValues) {
+      this.showNotification('חובה לבחור לקוח ותיק', 'error');
       return;
     }
 
-    try {
-      CoreUtils.showSimpleLoading('שומר משימה...');
+    // Validate other form fields
+    const description = document.getElementById("budgetDescription")?.value?.trim();
+    const estimatedMinutes = parseInt(document.getElementById("estimatedTime")?.value);
+    const deadline = document.getElementById("budgetDeadline")?.value;
 
-      const taskData = {
-        description: document.getElementById("budgetDescription")?.value?.trim(),
-        clientName: document.getElementById("budgetClientSelect")?.value,
-        branch: document.getElementById("budgetBranch")?.value,
-        estimatedMinutes: parseInt(document.getElementById("estimatedTime")?.value),
-        deadline: document.getElementById("budgetDeadline")?.value,
-        employee: this.currentUser,
-        status: 'active',
-        timeSpent: 0,
-        timeEntries: [],
-        createdAt: new Date(),
-        // ✅ NEW: Include case data if available
-        caseId: document.getElementById("budgetCaseId")?.value || null,
-        caseTitle: document.getElementById("budgetCaseTitle")?.value || null
-      };
-
-      await FirebaseOps.saveBudgetTaskToFirebase(taskData);
-
-      // Reload tasks
-      this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
-      this.filterBudgetTasks();
-
-      this.showNotification('משימה נוספה בהצלחה', 'success');
-
-      // Clear form and hide
-      Forms.clearBudgetForm(this);
-      document.getElementById("budgetFormContainer")?.classList.add("hidden");
-
-      // ✅ NEW: Clear case container
-      const caseContainer = document.getElementById("budgetCaseContainer");
-      if (caseContainer) {
-        caseContainer.innerHTML = '';
-        caseContainer.style.display = 'none';
-      }
-
-    } catch (error) {
-      console.error('❌ Error adding budget task:', error);
-      this.showNotification('שגיאה בהוספת משימה: ' + error.message, 'error');
-    } finally {
-      CoreUtils.hideSimpleLoading();
+    if (!description || description.length < 3) {
+      this.showNotification('חובה להזין תיאור משימה (לפחות 3 תווים)', 'error');
+      return;
     }
+
+    if (!estimatedMinutes || estimatedMinutes < 1) {
+      this.showNotification('חובה להזין זמן משוער', 'error');
+      return;
+    }
+
+    if (!deadline) {
+      this.showNotification('חובה לבחור תאריך יעד', 'error');
+      return;
+    }
+
+    // ✅ NEW: Use ActionFlowManager for consistent UX
+    await ActionFlowManager.execute({
+      loadingMessage: 'שומר משימה...',
+      action: async () => {
+        const taskData = {
+          description: description,
+          clientName: selectorValues.clientName,
+          clientId: selectorValues.clientId,
+          caseId: selectorValues.caseId,
+          caseNumber: selectorValues.caseNumber,
+          caseTitle: selectorValues.caseTitle,
+          estimatedMinutes: estimatedMinutes,
+          deadline: deadline,
+          employee: this.currentUser,
+          status: 'active',
+          timeSpent: 0,
+          timeEntries: [],
+          createdAt: new Date()
+        };
+
+        console.log('📝 Creating budget task with data:', taskData);
+
+        await FirebaseOps.saveBudgetTaskToFirebase(taskData);
+
+        // Reload tasks
+        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
+        this.filterBudgetTasks();
+      },
+      successMessage: 'המשימה נוספה בהצלחה',
+      errorMessage: 'שגיאה בהוספת משימה',
+      onSuccess: () => {
+        // Clear form and hide
+        Forms.clearBudgetForm(this);
+        document.getElementById("budgetFormContainer")?.classList.add("hidden");
+
+        // Remove active class from plus button
+        const plusButton = document.getElementById("smartPlusBtn");
+        if (plusButton) plusButton.classList.remove("active");
+
+        // Clear selector
+        window.ClientCaseSelectorsManager?.clearBudget();
+      }
+    });
   }
 
   filterBudgetTasks() {
@@ -528,48 +472,76 @@ class LawOfficeManager {
      ======================================== */
 
   async addTimesheetEntry() {
-    try {
-      CoreUtils.showSimpleLoading('שומר רשומה...');
+    // ✅ NEW: Get values from ClientCaseSelector
+    const selectorValues = window.ClientCaseSelectorsManager?.getTimesheetValues();
 
-      const entryData = {
-        date: document.getElementById("actionDate")?.value,
-        minutes: parseInt(document.getElementById("actionMinutes")?.value),
-        clientName: document.getElementById("timesheetClientSelect")?.value,
-        fileNumber: document.getElementById("fileNumber")?.value,
-        action: document.getElementById("actionDescription")?.value?.trim(),
-        notes: document.getElementById("actionNotes")?.value?.trim(),
-        employee: this.currentUser,
-        createdAt: new Date(),
-        // ✅ NEW: Include case data if available
-        caseId: document.getElementById("timesheetCaseId")?.value || null,
-        caseTitle: document.getElementById("timesheetCaseTitle")?.value || null
-      };
-
-      await FirebaseOps.saveTimesheetToFirebase(entryData);
-
-      // Reload entries
-      this.timesheetEntries = await FirebaseOps.loadTimesheetFromFirebase(this.currentUser);
-      this.filterTimesheetEntries();
-
-      this.showNotification('רשומה נוספה בהצלחה', 'success');
-
-      // Clear form and hide
-      Forms.clearTimesheetForm(this);
-      document.getElementById("timesheetFormContainer")?.classList.add("hidden");
-
-      // ✅ NEW: Clear case container
-      const caseContainer = document.getElementById("timesheetCaseContainer");
-      if (caseContainer) {
-        caseContainer.innerHTML = '';
-        caseContainer.style.display = 'none';
-      }
-
-    } catch (error) {
-      console.error('❌ Error adding timesheet entry:', error);
-      this.showNotification('שגיאה בהוספת רשומה: ' + error.message, 'error');
-    } finally {
-      CoreUtils.hideSimpleLoading();
+    if (!selectorValues) {
+      this.showNotification('חובה לבחור לקוח ותיק', 'error');
+      return;
     }
+
+    // Validate other form fields
+    const date = document.getElementById("actionDate")?.value;
+    const minutes = parseInt(document.getElementById("actionMinutes")?.value);
+    const action = document.getElementById("actionDescription")?.value?.trim();
+    const notes = document.getElementById("actionNotes")?.value?.trim();
+
+    if (!date) {
+      this.showNotification('חובה לבחור תאריך', 'error');
+      return;
+    }
+
+    if (!minutes || minutes < 1) {
+      this.showNotification('חובה להזין זמן בדקות', 'error');
+      return;
+    }
+
+    if (!action || action.length < 3) {
+      this.showNotification('חובה להזין תיאור פעולה (לפחות 3 תווים)', 'error');
+      return;
+    }
+
+    // ✅ NEW: Use ActionFlowManager for consistent UX
+    await ActionFlowManager.execute({
+      loadingMessage: 'שומר רשומה...',
+      action: async () => {
+        const entryData = {
+          date: date,
+          minutes: minutes,
+          clientName: selectorValues.clientName,
+          clientId: selectorValues.clientId,
+          fileNumber: selectorValues.caseNumber, // caseNumber used as fileNumber
+          caseId: selectorValues.caseId,
+          caseTitle: selectorValues.caseTitle,
+          action: action,
+          notes: notes,
+          employee: this.currentUser,
+          createdAt: new Date()
+        };
+
+        console.log('📝 Creating timesheet entry with data:', entryData);
+
+        await FirebaseOps.saveTimesheetToFirebase(entryData);
+
+        // Reload entries
+        this.timesheetEntries = await FirebaseOps.loadTimesheetFromFirebase(this.currentUser);
+        this.filterTimesheetEntries();
+      },
+      successMessage: 'הרשומה נוספה בהצלחה',
+      errorMessage: 'שגיאה בהוספת רשומה',
+      onSuccess: () => {
+        // Clear form and hide
+        Forms.clearTimesheetForm(this);
+        document.getElementById("timesheetFormContainer")?.classList.add("hidden");
+
+        // Remove active class from plus button
+        const plusButton = document.getElementById("smartPlusBtn");
+        if (plusButton) plusButton.classList.remove("active");
+
+        // Clear selector
+        window.ClientCaseSelectorsManager?.clearTimesheet();
+      }
+    });
   }
 
   filterTimesheetEntries() {
@@ -862,26 +834,22 @@ class LawOfficeManager {
       return;
     }
 
-    try {
-      CoreUtils.showSimpleLoading('מאריך תאריך יעד...');
+    // ✅ NEW: Use ActionFlowManager with auto-close popup
+    await ActionFlowManager.execute({
+      loadingMessage: 'מאריך תאריך יעד...',
+      action: async () => {
+        // Call Firebase Function
+        await window.extendTaskDeadlineFirebase(taskId, newDate, reason);
 
-      // Call Firebase Function
-      await window.extendTaskDeadlineFirebase(taskId, newDate, reason);
-
-      // Reload tasks
-      await this.loadDataFromFirebase();
-
-      this.showNotification('תאריך היעד הוארך בהצלחה', 'success');
-
-      // Close popup
-      document.querySelector('.popup-overlay')?.remove();
-
-    } catch (error) {
-      console.error('Error extending deadline:', error);
-      this.showNotification('שגיאה בהארכת יעד: ' + error.message, 'error');
-    } finally {
-      CoreUtils.hideSimpleLoading();
-    }
+        // Reload tasks
+        await this.loadData();
+        this.filterBudgetTasks();
+      },
+      successMessage: 'תאריך היעד הוארך בהצלחה',
+      errorMessage: 'שגיאה בהארכת יעד',
+      closePopupOnSuccess: true,  // ✅ Auto-close popup
+      closeDelay: 500
+    });
   }
 
   async completeTask(taskId) {
@@ -912,56 +880,52 @@ class LawOfficeManager {
       return;
     }
 
-    try {
-      CoreUtils.showSimpleLoading('שומר זמן...');
+    // ✅ NEW: Use ActionFlowManager with auto-close popup
+    await ActionFlowManager.execute({
+      loadingMessage: 'שומר זמן...',
+      action: async () => {
+        console.log('📝 submitTimeEntry - Before update:', {
+          taskId: task.id,
+          oldActualMinutes: task.actualMinutes,
+          addingMinutes: workMinutes,
+          oldTimeEntries: task.timeEntries?.length || 0
+        });
 
-      console.log('📝 submitTimeEntry - Before update:', {
-        taskId: task.id,
-        oldActualMinutes: task.actualMinutes,
-        addingMinutes: workMinutes,
-        oldTimeEntries: task.timeEntries?.length || 0
-      });
+        // Update task with new time entry
+        task.timeEntries = task.timeEntries || [];
+        task.timeEntries.push({
+          date: workDate,
+          minutes: workMinutes,
+          description: workDescription,
+          addedAt: new Date()
+        });
 
-      // Update task with new time entry
-      task.timeEntries = task.timeEntries || [];
-      task.timeEntries.push({
-        date: workDate,
-        minutes: workMinutes,
-        description: workDescription,
-        addedAt: new Date()
-      });
+        task.actualMinutes = (task.actualMinutes || 0) + workMinutes;
 
-      task.actualMinutes = (task.actualMinutes || 0) + workMinutes;
+        console.log('📝 submitTimeEntry - After update:', {
+          taskId: task.id,
+          newActualMinutes: task.actualMinutes,
+          newTimeEntriesCount: task.timeEntries.length,
+          callingFunction: 'FirebaseOps.saveBudgetTaskToFirebase'
+        });
 
-      console.log('📝 submitTimeEntry - After update:', {
-        taskId: task.id,
-        newActualMinutes: task.actualMinutes,
-        newTimeEntriesCount: task.timeEntries.length,
-        callingFunction: 'FirebaseOps.saveBudgetTaskToFirebase'
-      });
+        await FirebaseOps.saveBudgetTaskToFirebase(task);
 
-      await FirebaseOps.saveBudgetTaskToFirebase(task);
+        console.log('✅ submitTimeEntry - Save completed successfully');
 
-      console.log('✅ submitTimeEntry - Save completed successfully');
-
-      // Reload tasks
-      this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
-      this.filterBudgetTasks();
-
-      this.showNotification('הזמן נוסף בהצלחה', 'success');
-
-      // Close dialog
-      document.querySelector('.popup-overlay')?.remove();
-
-      // Close expanded card to show updated data in cards view
-      this.closeExpandedCard();
-
-    } catch (error) {
-      console.error('❌ Error adding time:', error);
-      this.showNotification('שגיאה בהוספת זמן: ' + error.message, 'error');
-    } finally {
-      CoreUtils.hideSimpleLoading();
-    }
+        // Reload tasks
+        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
+        this.filterBudgetTasks();
+      },
+      successMessage: 'הזמן נוסף בהצלחה',
+      errorMessage: 'שגיאה בהוספת זמן',
+      closePopupOnSuccess: true,  // ✅ Auto-close popup
+      closeDelay: 500,
+      onSuccess: () => {
+        // Close expanded card to show updated data in cards view
+        this.closeExpandedCard();
+      }
+    });
   }
 
   async submitTaskCompletion(taskId) {
@@ -970,34 +934,30 @@ class LawOfficeManager {
 
     const completionNotes = document.getElementById('completionNotes')?.value?.trim();
 
-    try {
-      CoreUtils.showSimpleLoading('משלים משימה...');
+    // ✅ NEW: Use ActionFlowManager with auto-close popup
+    await ActionFlowManager.execute({
+      loadingMessage: 'משלים משימה...',
+      action: async () => {
+        // Update task status
+        task.status = 'הושלם';
+        task.completedAt = new Date();
+        task.completionNotes = completionNotes;
 
-      // Update task status
-      task.status = 'הושלם';
-      task.completedAt = new Date();
-      task.completionNotes = completionNotes;
+        await FirebaseOps.saveBudgetTaskToFirebase(task);
 
-      await FirebaseOps.saveBudgetTaskToFirebase(task);
-
-      // Reload tasks
-      this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
-      this.filterBudgetTasks();
-
-      this.showNotification('המשימה הושלמה בהצלחה', 'success');
-
-      // Close dialog
-      document.querySelector('.popup-overlay')?.remove();
-
-      // Close expanded card if open
-      this.closeExpandedCard();
-
-    } catch (error) {
-      console.error('❌ Error completing task:', error);
-      this.showNotification('שגיאה בסיום משימה: ' + error.message, 'error');
-    } finally {
-      CoreUtils.hideSimpleLoading();
-    }
+        // Reload tasks
+        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
+        this.filterBudgetTasks();
+      },
+      successMessage: 'המשימה הושלמה בהצלחה',
+      errorMessage: 'שגיאה בסיום משימה',
+      closePopupOnSuccess: true,  // ✅ Auto-close popup
+      closeDelay: 500,
+      onSuccess: () => {
+        // Close expanded card if open
+        this.closeExpandedCard();
+      }
+    });
   }
 
   /* ========================================
@@ -1005,7 +965,12 @@ class LawOfficeManager {
      ======================================== */
 
   showNotification(message, type = 'info') {
-    UIComponents.showNotification(message, type);
+    // Use NotificationSystem directly (not wrapper to avoid recursion)
+    if (window.NotificationSystem) {
+      window.NotificationSystem.show(message, type, 3000);
+    } else {
+      console.warn('⚠️ Notification system not loaded:', message);
+    }
   }
 
   /* ========================================
@@ -1046,15 +1011,12 @@ window.openSmartForm = Navigation.openSmartForm;
 window.logout = Auth.logout;
 window.confirmLogout = Auth.confirmLogout;
 
-// Expose client functions globally
-window.searchClients = Clients.searchClients;
-window.selectClient = Clients.selectClient;
-window.showClientForm = Clients.showClientForm;
-window.hideClientForm = Clients.hideClientForm;
+// ✅ OLD client search functions removed - now using ClientCaseSelector component
+// Old: window.searchClients, window.selectClient
+// New: ClientCaseSelector component with unified client→case selection
 
 // Expose utility functions globally
-window.showSimpleLoading = CoreUtils.showSimpleLoading;
-window.hideSimpleLoading = CoreUtils.hideSimpleLoading;
+// ✅ showSimpleLoading, hideSimpleLoading removed - handled by backward compatibility wrapper in index.html
 window.safeText = CoreUtils.safeText;
 window.formatDate = CoreUtils.formatDate;
 window.formatDateTime = CoreUtils.formatDateTime;
@@ -1065,7 +1027,7 @@ window.formatShort = CoreUtils.formatShort;
 window._firebase_loadClientsFromFirebase_ORIGINAL = FirebaseOps.loadClientsFromFirebase;
 window._firebase_loadTimesheetFromFirebase_ORIGINAL = FirebaseOps.loadTimesheetFromFirebase;
 window._firebase_loadBudgetTasksFromFirebase_ORIGINAL = FirebaseOps.loadBudgetTasksFromFirebase;
-window._firebase_saveClientToFirebase_ORIGINAL = FirebaseOps.saveClientToFirebase;
+// ✅ saveClientToFirebase removed
 window._firebase_saveTimesheetToFirebase_ORIGINAL = FirebaseOps.saveTimesheetToFirebase;
 window._firebase_saveBudgetTaskToFirebase_ORIGINAL = FirebaseOps.saveBudgetTaskToFirebase;
 window._firebase_updateTimesheetEntryFirebase_ORIGINAL = FirebaseOps.updateTimesheetEntryFirebase;
@@ -1078,7 +1040,7 @@ window._firebase_extendTaskDeadlineFirebase_ORIGINAL = FirebaseOps.extendTaskDea
 window.loadClientsFromFirebase = FirebaseOps.loadClientsFromFirebase;
 window.loadTimesheetFromFirebase = FirebaseOps.loadTimesheetFromFirebase;
 window.loadBudgetTasksFromFirebase = FirebaseOps.loadBudgetTasksFromFirebase;
-window.saveClientToFirebase = FirebaseOps.saveClientToFirebase;
+// ✅ saveClientToFirebase removed
 window.saveTimesheetToFirebase = FirebaseOps.saveTimesheetToFirebase;
 window.saveBudgetTaskToFirebase = FirebaseOps.saveBudgetTaskToFirebase;
 window.updateTimesheetEntryFirebase = FirebaseOps.updateTimesheetEntryFirebase;
@@ -1092,6 +1054,10 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
   window.debug = DebugTools;
   console.log('🐛 Debug tools enabled');
 }
+
+// ===== CRITICAL: Expose manager globally for HTML onclick handlers =====
+window.manager = manager;
+window.LawOfficeManager = LawOfficeManager;
 
 // Initialize application when DOM is ready
 if (document.readyState === 'loading') {

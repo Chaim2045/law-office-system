@@ -21,6 +21,8 @@
     <!-- ===== ספריות חיצוניות ו-Firebase ===== -->
     <!-- FIREBASE & EXTERNAL LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ✨ Lottie Animation Library - for modern loading animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -93,6 +95,8 @@
     <link rel="stylesheet" href="sort.css?v=2.3.0" />
     <link rel="stylesheet" href="reports.css" />
     <link rel="stylesheet" href="pagination.css?v=1.0.0" />
+    <!-- New Notification System CSS -->
+    <link rel="stylesheet" href="notifications.css?v=1.0.0" />
   </head>
 
   <body>
@@ -354,29 +358,8 @@
             <!-- Budget Form (Hidden by default) -->
             <div class="compact-form hidden" id="budgetFormContainer">
               <form id="budgetForm">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="budgetCaseSelect">תיק <span class="category-required">*</span></label>
-                    <div class="modern-client-search">
-                      <input
-                        type="text"
-                        class="search-input"
-                        id="budgetCaseSearch"
-                        placeholder="התחל להקליד שם לקוח או מספר תיק..."
-                        autocomplete="off"
-                        oninput="searchCasesForTask(this.value)"
-                      />
-                      <div
-                        class="search-results"
-                        id="budgetCaseSearchResults"
-                      ></div>
-                      <input type="hidden" id="budgetCaseSelect" required />
-                      <input type="hidden" id="budgetClientName" />
-                      <input type="hidden" id="budgetCaseNumber" />
-                    </div>
-                    <div id="selectedCaseInfo" style="margin-top: 8px; display: none; padding: 8px; background: #f0f9ff; border-radius: 6px; font-size: 13px; color: #0369a1;"></div>
-                  </div>
-                </div>
+                <!-- ✅ NEW: Unified Client-Case Selector -->
+                <div id="budgetClientCaseSelector"></div>
 
                 <div class="form-row">
                   <div class="form-group">
@@ -584,44 +567,8 @@
                   </div>
                 </div>
 
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="timesheetClientSelect">שם לקוח</label>
-                    <div class="modern-client-search">
-                      <input
-                        type="text"
-                        class="search-input"
-                        id="timesheetClientSearch"
-                        placeholder="התחל להקליד שם לקוח או מספר תיק..."
-                        autocomplete="off"
-                        oninput="searchClients('timesheet', this.value)"
-                      />
-                      <div
-                        class="search-results"
-                        id="timesheetSearchResults"
-                      ></div>
-                      <input
-                        type="hidden"
-                        id="timesheetClientSelect"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label for="fileNumber">מס' תיק</label>
-                    <input
-                      type="text"
-                      id="fileNumber"
-                      placeholder="מס' תיק"
-                      autocomplete="off"
-                      readonly
-                      style="background: #f1f5f9; color: #64748b"
-                    />
-                  </div>
-                </div>
-
-                <!-- ✅ NEW: Smart Case Selection Container -->
-                <div id="timesheetCaseContainer" style="display: none; margin-bottom: 16px;"></div>
+                <!-- ✅ NEW: Unified Client-Case Selector -->
+                <div id="timesheetClientCaseSelector"></div>
 
                 <div class="form-row">
                   <div class="form-group">
@@ -962,8 +909,8 @@
     <!-- הפופאפ הישן הוסר - עכשיו משתמשים בפופאפ החדש מ-cases.js -->
 
     <!-- ===== הודעת טוסט ===== -->
-    <!-- NOTIFICATION TOAST -->
-    <div id="notification" class="notification"></div>
+    <!-- NOTIFICATION TOAST - REMOVED: Now using NotificationSystem -->
+    <!-- Old element removed to prevent conflicts with new notification system -->
 
     <!-- ===== סקריפטים וסגנונות ===== -->
     <!-- SCRIPTS AND STYLES -->
@@ -988,7 +935,29 @@
     <script src="js/cases-integration.js?v=1.0.0"></script>
     <!-- Legal Procedures System - ניהול הליכים משפטיים -->
     <script src="js/legal-procedures.js?v=1.0.0"></script>
-    <script src="script.js?v=4.34.1"></script>
+
+    <!-- ===== NEW: Modern Notification System ===== -->
+    <!-- MUST BE LOADED FIRST - Before all other scripts -->
+    <script src="js/modules/notification-system.js?v=1.0.1"></script>
+
+    <!-- ===== NEW: Modals Manager System ===== -->
+    <!-- Centralized modal management -->
+    <script src="js/modules/modals-manager.js?v=1.0.0"></script>
+    <!-- Compatibility layer for smooth migration -->
+    <script src="js/modules/modals-compat.js?v=1.0.0"></script>
+
+    <!-- ===== NEW: Client-Case Selector Component ===== -->
+    <!-- Unified two-step client→case selection -->
+    <script src="js/modules/client-case-selector.js?v=1.0.0"></script>
+    <!-- Client-Case Selectors Initialization -->
+    <script src="js/modules/selectors-init.js?v=1.0.0"></script>
+
+    <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
+    <!-- Modern modular architecture with ActionFlowManager -->
+    <script type="module" src="js/main.js?v=5.0.0"></script>
+
+    <!-- ===== OLD: Legacy script.js (DEPRECATED - will be removed) ===== -->
+    <!-- <script src="script.js?v=4.34.1"></script> -->
 
     <!-- Additional CSS for animations -->
     <style>

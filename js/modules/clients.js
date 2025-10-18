@@ -2,6 +2,9 @@
  * Clients Module
  * Handles client search, selection and display operations
  *
+ * ⚠️ DEPRECATED - This module contains OLD client search functions
+ * ✅ NEW: Use ClientCaseSelector component (js/modules/client-case-selector.js)
+ *
  * Created: 2025
  * Part of Law Office Management System
  */
@@ -9,6 +12,7 @@
 import { safeText, debounce } from './core-utils.js';
 
 /* === Client Search Functions === */
+/* ⚠️ DEPRECATED - Use ClientCaseSelector component instead */
 
 /**
  * Debounced client search wrapper
