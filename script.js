@@ -78,47 +78,16 @@ function debounce(func, wait) {
 }
 
 /**
- * Show loading overlay
+ * Loading overlay functions - REMOVED
+ * ✅ showSimpleLoading & hideSimpleLoading removed (v4.35.0)
+ * Use NotificationSystem.showLoading() and NotificationSystem.hideLoading() instead
+ * Backward compatibility handled by wrapper in index.html
+ *
+ * Note: script.js is the legacy monolithic file, gradually being replaced by modular system in js/modules/
  */
-// Global flag to suppress loading during welcome screen
+
+// Global flag to suppress loading during welcome screen (still needed by new system)
 window.isInWelcomeScreen = false;
-
-function showSimpleLoading(message = "מעבד...") {
-  // Don't show loading overlay during welcome screen
-  if (window.isInWelcomeScreen) {
-    return;
-  }
-  const existing = document.getElementById("simple-loading");
-  if (existing) existing.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "simple-loading";
-  overlay.style.cssText = `
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7); z-index: 10000;
-    display: flex; align-items: center; justify-content: center;
-  `;
-  overlay.innerHTML = `
-    <div style="text-align: center; background: white; color: #333; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-      <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1.5s linear infinite; margin: 0 auto 20px;"></div>
-      <div style="font-size: 16px; font-weight: 500;">${safeText(message)}</div>
-    </div>
-    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-  `;
-  document.body.appendChild(overlay);
-  document.body.style.overflow = "hidden";
-}
-
-/**
- * Hide loading overlay
- */
-function hideSimpleLoading() {
-  const overlay = document.getElementById("simple-loading");
-  if (overlay) {
-    overlay.remove();
-    document.body.style.overflow = "";
-  }
-}
 
 /**
  * Show subtle progress indicator
@@ -1568,6 +1537,11 @@ class LawOfficeManager {
         }
       }
 
+      // 🔄 טעינת תיקים (cases) - חשוב לרענן אחרי סיום משימה!
+      if (window.casesManager) {
+        await window.casesManager.fetchAllCases();
+      }
+
       // Update loader text
       this.updateLoaderText("טוען משימות...");
 
@@ -1850,13 +1824,16 @@ class LawOfficeManager {
       return;
     }
 
+    // ✅ קבלת serviceId (אם קיים)
+    const serviceId = document.getElementById("budgetServiceSelect")?.value || null;
+
     const description = document
       .getElementById("budgetDescription")
       .value.trim();
     const estimatedTimeValue = document.getElementById("estimatedTime").value;
     const deadline = document.getElementById("budgetDeadline").value;
 
-    console.log('DEBUG: Selected case:', { caseId, clientName, caseNumber });
+    console.log('DEBUG: Selected case:', { caseId, clientName, caseNumber, serviceId });
 
     // Create task data matching Firebase Function expectations
     const taskData = {
@@ -1867,6 +1844,11 @@ class LawOfficeManager {
       estimatedMinutes: parseInt(estimatedTimeValue),
       deadline: deadline
     };
+
+    // ✅ הוספת serviceId רק אם קיים
+    if (serviceId) {
+      taskData.serviceId = serviceId;
+    }
 
     console.log('Creating task with data:', taskData);
 
@@ -3571,19 +3553,15 @@ class LawOfficeManager {
   }
 
   showNotification(message, type = "success") {
-    try {
-      const notification = document.getElementById("notification");
-      if (!notification) return;
-
-      notification.textContent = message;
-      notification.className = `notification ${type}`;
-      notification.classList.add("show");
-
-      setTimeout(() => {
-        notification.classList.remove("show");
-      }, 4000);
-    } catch (error) {
-      console.error("Error showing notification:", error);
+    // ✅ שימוש במערכת ההודעות החדשה (NotificationSystem)
+    if (window.NotificationSystem) {
+      window.NotificationSystem.show(message, type, 3000);
+    } else if (window.showNotification && window.showNotification !== this.showNotification) {
+      // Fallback לגלובלי אם קיים
+      window.showNotification(message, type);
+    } else {
+      // Fallback אחרון - console בלבד
+      console.warn('⚠️ Notification system not loaded:', message);
     }
   }
 
@@ -4852,7 +4830,8 @@ async function searchCasesForTaskInternal(query) {
   }
 
   try {
-    // שליפת תיקים פעילים בלבד
+    // 🔄 שליפת תיקים מהשרת (לא מ-cache) כדי לקבל נתונים עדכניים
+    await window.casesManager.fetchAllCases();
     const cases = await window.casesManager.getAllCases();
     const activeCases = cases.filter(c => c.status === 'active');
 
@@ -4900,7 +4879,7 @@ async function searchCasesForTaskInternal(query) {
 /**
  * בחירת תיק עבור משימה
  */
-function selectCaseForTask(caseId, clientName, caseNumber, procedureType) {
+async function selectCaseForTask(caseId, clientName, caseNumber, procedureType) {
   try {
     const searchInput = document.getElementById('budgetCaseSearch');
     if (searchInput) {
@@ -4924,10 +4903,90 @@ function selectCaseForTask(caseId, clientName, caseNumber, procedureType) {
       caseNumberField.value = caseNumber;
     }
 
-    // הצגת מידע על התיק שנבחר
+    // ✅ שליפת התיק המלא כדי לבדוק אם יש מספר שירותים
+    let servicesHTML = '';
+    if (window.casesManager) {
+      const cases = await window.casesManager.getAllCases();
+      const selectedCase = cases.find(c => c.id === caseId);
+
+      if (selectedCase && selectedCase.services && selectedCase.services.length > 1) {
+        // יש מספר שירותים - צריך dropdown
+        const activeServices = selectedCase.services.filter(s => s.status === 'active');
+
+        servicesHTML = `
+          <div class="form-row" style="margin-top: 12px; animation: slideDown 0.3s ease-out;">
+            <div class="form-group">
+              <label for="budgetServiceSelect" style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-briefcase" style="color: #3b82f6;"></i>
+                בחר שירות <span style="color: #ef4444;">*</span>
+              </label>
+              <select id="budgetServiceSelect" required style="
+                width: 100%;
+                padding: 10px 12px;
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                font-size: 14px;
+                transition: all 0.2s;
+                background: white;
+                cursor: pointer;
+              " onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
+                <option value="">בחר שירות מהרשימה...</option>
+                ${activeServices.map((service, index) => {
+                  const serviceType = service.type === 'hours' ? 'תוכנית שעות' :
+                                    service.type === 'legal_procedure' ? 'הליך משפטי' :
+                                    service.type === 'fixed' ? 'מחיר קבוע' : service.type;
+                  const hours = service.hoursRemaining || 0;
+                  const totalHours = service.totalHours || 0;
+                  const serviceName = service.name || `שירות ${index + 1}`;
+
+                  return `<option value="${service.id}">${serviceType} - ${serviceName} (${hours}/${totalHours} שעות)</option>`;
+                }).join('')}
+              </select>
+              <p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280;">
+                <i class="fas fa-info-circle" style="margin-left: 4px;"></i>
+                התיק מכיל ${activeServices.length} שירותים פעילים
+              </p>
+            </div>
+          </div>
+
+          <style>
+            @keyframes slideDown {
+              from {
+                opacity: 0;
+                transform: translateY(-10px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          </style>
+        `;
+      } else if (selectedCase && selectedCase.services && selectedCase.services.length === 1) {
+        // שירות אחד בלבד - שמירה אוטומטית
+        const serviceId = selectedCase.services[0].id;
+        servicesHTML = `<input type="hidden" id="budgetServiceSelect" value="${serviceId}" />`;
+      }
+    }
+
+    // הצגת מידע על התיק שנבחר + dropdown שירותים
     const selectedInfo = document.getElementById('selectedCaseInfo');
     if (selectedInfo) {
-      selectedInfo.innerHTML = `<i class="fas fa-check-circle"></i> נבחר תיק: <strong>${clientName}</strong> (${caseNumber})`;
+      selectedInfo.innerHTML = `
+        <div style="
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+          border: 2px solid #3b82f6;
+          border-radius: 8px;
+          padding: 12px;
+          margin-bottom: 12px;
+        ">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <i class="fas fa-check-circle" style="color: #3b82f6;"></i>
+            <span style="font-weight: 600; color: #1e40af;">נבחר תיק: ${clientName} (${caseNumber})</span>
+          </div>
+          ${servicesHTML}
+        </div>
+      `;
       selectedInfo.style.display = 'block';
     }
 
@@ -5019,6 +5078,14 @@ function openSmartForm() {
   if (currentForm.classList.contains("hidden")) {
     currentForm.classList.remove("hidden");
     if (plusButton) plusButton.classList.add("active");
+
+    // גלילה חלקה ונעימה לטופס - מציג את כל הטופס
+    setTimeout(() => {
+      currentForm.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 150);
   } else {
     currentForm.classList.add("hidden");
     if (plusButton) plusButton.classList.remove("active");
@@ -5607,9 +5674,10 @@ const manager = new LawOfficeManager();
 
 // Export to window for HTML access
 window.manager = manager;
-window.showSimpleLoading = showSimpleLoading;
-window.hideSimpleLoading = hideSimpleLoading;
 window.notificationBell = notificationBell;
+
+// ✅ showSimpleLoading & hideSimpleLoading מסופקים על ידי notification-system.js
+// לא צריך לייצא אותם כאן - המערכת החדשה כבר עושה את זה
 
 /* === Cleanup function === */
 function cleanupGlobalListeners() {
