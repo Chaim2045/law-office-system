@@ -199,8 +199,43 @@
       }
 
       try {
-        // טעינת לקוחות
-        const clients = window.manager?.clients || [];
+        // ✅ טעינת לקוחות מכל המקורות הזמינים
+        let clients = [];
+
+        // נסה לקבל מ-manager
+        if (window.manager?.clients && Array.isArray(window.manager.clients)) {
+          clients = window.manager.clients;
+          console.log(`✅ טוען ${clients.length} לקוחות מ-window.manager.clients`);
+        }
+        // אם אין, נסה מ-casesManager
+        else if (window.casesManager) {
+          const allCases = await window.casesManager.getAllCases();
+          // הפוך תיקים למפה של לקוחות (כל לקוח מופיע פעם אחת)
+          const clientsMap = new Map();
+          allCases.forEach(caseItem => {
+            if (caseItem.clientId && caseItem.clientName) {
+              if (!clientsMap.has(caseItem.clientId)) {
+                clientsMap.set(caseItem.clientId, {
+                  id: caseItem.clientId,
+                  fullName: caseItem.clientName
+                });
+              }
+            }
+          });
+          clients = Array.from(clientsMap.values());
+          console.log(`✅ טוען ${clients.length} לקוחות ייחודיים מתיקים`);
+        }
+
+        if (clients.length === 0) {
+          console.warn('⚠️ לא נמצאו לקוחות במערכת');
+          resultsContainer.innerHTML = `
+            <div style="padding: 16px; text-align: center; color: #ef4444;">
+              אין לקוחות במערכת
+            </div>
+          `;
+          resultsContainer.style.display = 'block';
+          return;
+        }
 
         // סינון לקוחות
         const matches = clients.filter(client => {
@@ -211,7 +246,7 @@
         if (matches.length === 0) {
           resultsContainer.innerHTML = `
             <div style="padding: 16px; text-align: center; color: #6b7280;">
-              לא נמצאו לקוחות
+              לא נמצאו לקוחות מתאימים
             </div>
           `;
           resultsContainer.style.display = 'block';
