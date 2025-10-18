@@ -335,10 +335,7 @@
           return;
         }
 
-        // רענון תיקים מהשרת
-        await window.casesManager.fetchAllCases();
-
-        // שליפת כל התיקים
+        // שליפת כל התיקים (getAllCases כבר טוען מהשרת אם צריך)
         const allCases = await window.casesManager.getAllCases();
 
         // סינון תיקים של הלקוח הזה
