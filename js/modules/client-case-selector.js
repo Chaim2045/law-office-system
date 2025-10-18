@@ -34,7 +34,8 @@
         casePlaceholder: options.casePlaceholder || 'בחר תיק...',
         showOnlyActive: options.showOnlyActive !== false, // ברירת מחדל: רק תיקים פעילים
         filterByType: options.filterByType || null, // null, 'hours', 'legal_procedure'
-        onSelect: options.onSelect || null, // callback when case is selected
+        onClientSelected: options.onClientSelected || null, // callback when client is selected
+        onCaseSelected: options.onCaseSelected || null, // callback when case is selected
         required: options.required !== false
       };
 
@@ -42,6 +43,10 @@
       this.selectedClient = null;
       this.selectedCase = null;
       this.clientCases = [];
+
+      // ✅ Register this instance globally for onclick handlers
+      window.clientCaseSelectorInstances = window.clientCaseSelectorInstances || {};
+      window.clientCaseSelectorInstances[containerId] = this;
 
       this.render();
       this.attachEventListeners();
@@ -276,6 +281,11 @@
         clientNameField.value = clientName;
       }
 
+      // ✅ קריאה ל-callback
+      if (this.options.onClientSelected) {
+        this.options.onClientSelected(this.selectedClient);
+      }
+
       // טעינת תיקים של הלקוח
       await this.loadClientCases(clientId);
     }
@@ -388,9 +398,9 @@
       // הצגת מידע על התיק
       this.showCaseInfo(caseItem);
 
-      // קריאה ל-callback אם קיים
-      if (this.options.onSelect) {
-        this.options.onSelect(caseItem);
+      // ✅ קריאה ל-callback
+      if (this.options.onCaseSelected) {
+        this.options.onCaseSelected(caseItem);
       }
     }
 
@@ -507,6 +517,13 @@
     }
 
     /**
+     * Alias for reset (for compatibility)
+     */
+    clear() {
+      this.reset();
+    }
+
+    /**
      * Escape HTML
      */
     escapeHtml(text) {
@@ -524,14 +541,8 @@
   // Global registry for instances
   window.clientCaseSelectorInstances = window.clientCaseSelectorInstances || {};
 
-  // Export
-  window.ClientCaseSelector = {
-    create: function(containerId, options) {
-      const instance = new ClientCaseSelector(containerId, options);
-      window.clientCaseSelectorInstances[containerId] = instance;
-      return instance;
-    }
-  };
+  // ✅ Export the class itself as a constructor
+  window.ClientCaseSelector = ClientCaseSelector;
 
   console.log('✅ Client-Case Selector Module loaded');
 
