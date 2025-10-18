@@ -19,6 +19,13 @@
     // Check if already initialized
     if (window.clientCaseSelectors.budget) {
       console.log('✅ Budget selector already initialized');
+      // ✅ Re-render if container is empty (form was hidden and reopened)
+      const container = document.getElementById('budgetClientCaseSelector');
+      if (container && container.innerHTML.length === 0) {
+        console.log('🔄 Container empty, re-rendering...');
+        window.clientCaseSelectors.budget.render();
+        window.clientCaseSelectors.budget.attachEventListeners();
+      }
       return;
     }
 
@@ -31,18 +38,22 @@
         return;
       }
 
-      window.clientCaseSelectors.budget = new ClientCaseSelector('budgetClientCaseSelector', {
-        required: true,
-        showOnlyActive: true,
-        onClientSelected: (client) => {
-          console.log('✅ Budget: Client selected:', client.fullName);
-        },
-        onCaseSelected: (caseData) => {
-          console.log('✅ Budget: Case selected:', caseData.caseTitle);
-        }
-      });
+      // ✅ Wait a tick to ensure form is visible
+      setTimeout(() => {
+        window.clientCaseSelectors.budget = new ClientCaseSelector('budgetClientCaseSelector', {
+          required: true,
+          showOnlyActive: true,
+          onClientSelected: (client) => {
+            console.log('✅ Budget: Client selected:', client.fullName);
+          },
+          onCaseSelected: (caseData) => {
+            console.log('✅ Budget: Case selected:', caseData.caseTitle);
+          }
+        });
 
-      console.log('✅ Budget ClientCaseSelector initialized');
+        console.log('✅ Budget ClientCaseSelector initialized');
+      }, 10);
+
     } catch (error) {
       console.error('❌ Error initializing Budget selector:', error);
     }
@@ -55,6 +66,13 @@
     // Check if already initialized
     if (window.clientCaseSelectors.timesheet) {
       console.log('✅ Timesheet selector already initialized');
+      // ✅ Re-render if container is empty (form was hidden and reopened)
+      const container = document.getElementById('timesheetClientCaseSelector');
+      if (container && container.innerHTML.length === 0) {
+        console.log('🔄 Container empty, re-rendering...');
+        window.clientCaseSelectors.timesheet.render();
+        window.clientCaseSelectors.timesheet.attachEventListeners();
+      }
       return;
     }
 
@@ -67,24 +85,28 @@
         return;
       }
 
-      window.clientCaseSelectors.timesheet = new ClientCaseSelector('timesheetClientCaseSelector', {
-        required: true,
-        showOnlyActive: true,
-        onClientSelected: (client) => {
-          console.log('✅ Timesheet: Client selected:', client.fullName);
+      // ✅ Wait a tick to ensure form is visible
+      setTimeout(() => {
+        window.clientCaseSelectors.timesheet = new ClientCaseSelector('timesheetClientCaseSelector', {
+          required: true,
+          showOnlyActive: true,
+          onClientSelected: (client) => {
+            console.log('✅ Timesheet: Client selected:', client.fullName);
 
-          // Auto-fill file number (backward compatibility)
-          const fileNumberInput = document.getElementById('fileNumber');
-          if (fileNumberInput && client.fileNumber) {
-            fileNumberInput.value = client.fileNumber;
+            // Auto-fill file number (backward compatibility)
+            const fileNumberInput = document.getElementById('fileNumber');
+            if (fileNumberInput && client.fileNumber) {
+              fileNumberInput.value = client.fileNumber;
+            }
+          },
+          onCaseSelected: (caseData) => {
+            console.log('✅ Timesheet: Case selected:', caseData.caseTitle);
           }
-        },
-        onCaseSelected: (caseData) => {
-          console.log('✅ Timesheet: Case selected:', caseData.caseTitle);
-        }
-      });
+        });
 
-      console.log('✅ Timesheet ClientCaseSelector initialized');
+        console.log('✅ Timesheet ClientCaseSelector initialized');
+      }, 10);
+
     } catch (error) {
       console.error('❌ Error initializing Timesheet selector:', error);
     }
