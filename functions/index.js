@@ -1459,52 +1459,62 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // 🔥 תיקון קריטי: קיזוז שעות מהלקוח
+    // 🔥 תיקון קריטי: קיזוז שעות מהתיק/לקוח
     const minutesUsed = taskData.actualMinutes || 0;
-    if (minutesUsed > 0 && taskData.clientName) {
+    if (minutesUsed > 0) {
       try {
-        // חיפוש הלקוח ב-clients או ב-cases
-        let clientDoc = null;
+        let targetDoc = null;
+        let targetData = null;
+        let targetType = null;
 
-        // חיפוש ב-clients (ארכיטקטורה ישנה)
-        const clientsSnapshot = await db.collection('clients')
-          .where('fullName', '==', taskData.clientName)
-          .limit(1)
-          .get();
-
-        if (!clientsSnapshot.empty) {
-          clientDoc = clientsSnapshot.docs[0];
-        } else {
-          // חיפוש ב-cases (ארכיטקטורה חדשה)
-          const casesSnapshot = await db.collection('cases')
-            .where('caseTitle', '==', taskData.clientName)
-            .limit(1)
-            .get();
-
-          if (!casesSnapshot.empty) {
-            clientDoc = casesSnapshot.docs[0];
+        // אם יש caseId במשימה - זה תיק (ארכיטקטורה חדשה)
+        if (taskData.caseId) {
+          const caseDoc = await db.collection('cases').doc(taskData.caseId).get();
+          if (caseDoc.exists) {
+            targetDoc = caseDoc;
+            targetData = caseDoc.data();
+            targetType = 'case';
+            console.log(`🎯 נמצא תיק: ${taskData.caseId}`);
           }
         }
 
-        // קיזוז השעות מהלקוח
-        if (clientDoc) {
-          const clientData = clientDoc.data();
+        // אם לא נמצא תיק, חפש לקוח (ארכיטקטורה ישנה)
+        if (!targetDoc && taskData.clientName) {
+          // חיפוש לפי fullName ב-clients
+          const clientsSnapshot = await db.collection('clients')
+            .where('fullName', '==', taskData.clientName)
+            .limit(1)
+            .get();
 
-          // רק עבור לקוחות מסוג שעות
-          if (clientData.type === 'hours' || clientData.procedureType === 'hours') {
-            await clientDoc.ref.update({
+          if (!clientsSnapshot.empty) {
+            targetDoc = clientsSnapshot.docs[0];
+            targetData = targetDoc.data();
+            targetType = 'client';
+            console.log(`🎯 נמצא לקוח: ${taskData.clientName}`);
+          }
+        }
+
+        // קיזוז השעות
+        if (targetDoc && targetData) {
+          // רק עבור תיקים/לקוחות מסוג שעות
+          const isHoursType = targetData.type === 'hours' || targetData.procedureType === 'hours';
+
+          if (isHoursType) {
+            await targetDoc.ref.update({
               minutesRemaining: admin.firestore.FieldValue.increment(-minutesUsed),
               hoursRemaining: admin.firestore.FieldValue.increment(-minutesUsed / 60),
               lastActivity: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            console.log(`✅ קוזזו ${minutesUsed} דקות מלקוח ${taskData.clientName}`);
+            console.log(`✅ קוזזו ${minutesUsed} דקות מ${targetType === 'case' ? 'תיק' : 'לקוח'}: ${taskData.clientName || taskData.caseId}`);
+          } else {
+            console.log(`ℹ️ ${targetType} מסוג ${targetData.type || targetData.procedureType} - אין צורך בקיזוז שעות`);
           }
         } else {
-          console.warn(`⚠️ לקוח ${taskData.clientName} לא נמצא - לא ניתן לקזז שעות`);
+          console.warn(`⚠️ לא נמצא תיק/לקוח עבור המשימה - לא ניתן לקזז שעות`);
         }
       } catch (clientError) {
-        console.error('שגיאה בקיזוז שעות מהלקוח:', clientError);
+        console.error('שגיאה בקיזוז שעות:', clientError);
         // לא נזרוק שגיאה - המשימה תושלם גם אם הקיזוז נכשל
       }
     }
