@@ -304,6 +304,23 @@ class LawOfficeManager {
       this.filterBudgetTasks();
       this.filterTimesheetEntries();
 
+      // Update notifications bell with urgent tasks and critical clients
+      if (this.notificationBell) {
+        const urgentTasks = budgetTasks.filter(task => {
+          if (task.status === 'הושלם') return false;
+          const deadline = new Date(task.deadline);
+          const now = new Date();
+          const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+          return daysUntilDeadline <= 3 && daysUntilDeadline >= 0;
+        });
+
+        // Get blocked/critical clients from validation
+        const blockedClients = this.clientValidation?.blockedClients || [];
+        const criticalClients = this.clientValidation?.criticalClients || [];
+
+        this.notificationBell.updateFromSystem(blockedClients, criticalClients, urgentTasks);
+      }
+
       console.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
     } catch (error) {
       console.error('❌ Error loading data:', error);
