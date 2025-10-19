@@ -561,29 +561,44 @@ class LawOfficeManager {
   renderTimesheetView() {
     const stats = {
       totalMinutes: Timesheet.getTotalMinutes(this.filteredTimesheetEntries),
+      totalHours: Math.round((Timesheet.getTotalMinutes(this.filteredTimesheetEntries) / 60) * 10) / 10,
       totalEntries: this.filteredTimesheetEntries.length
     };
 
     const paginationStatus = {
       currentPage: this.currentTimesheetPage,
-      totalPages: Math.ceil(this.filteredTimesheetEntries.length / 20)
+      totalPages: Math.ceil(this.filteredTimesheetEntries.length / 20),
+      hasMore: false,
+      displayedItems: this.filteredTimesheetEntries.length,
+      filteredItems: this.filteredTimesheetEntries.length
     };
 
+    // Get the container element
+    const container = document.getElementById('timesheetTab');
+    if (!container) {
+      console.error('❌ timesheetTab container not found');
+      return;
+    }
+
+    let html;
     if (this.currentTimesheetView === 'cards') {
-      Timesheet.renderTimesheetCards(
+      html = Timesheet.renderTimesheetCards(
         this.filteredTimesheetEntries,
         stats,
         paginationStatus,
         this.currentTimesheetSort
       );
     } else {
-      Timesheet.renderTimesheetTable(
+      html = Timesheet.renderTimesheetTable(
         this.filteredTimesheetEntries,
         stats,
         paginationStatus,
         this.currentTimesheetSort
       );
     }
+
+    // Insert the HTML into the container
+    container.innerHTML = html;
   }
 
   switchTimesheetView(view) {

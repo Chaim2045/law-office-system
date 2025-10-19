@@ -1,0 +1,1091 @@
+{
+  "summary": {
+    "totalFiles": 28,
+    "filesWithModals": 15,
+    "totalInstances": 86,
+    "byType": {
+      "simple": 23,
+      "domain": 24,
+      "loading": 15,
+      "custom": 24
+    },
+    "byPriority": {
+      "high": 38,
+      "medium": 16,
+      "low": 32
+    },
+    "estimatedEffort": {
+      "low": 38,
+      "medium": 8,
+      "high": 40
+    }
+  },
+  "files": [
+    {
+      "path": "js\\cases.js",
+      "instances": [
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1328,
+          "content": "alert('אנא בחר לקוח מהרשימה');",
+          "match": "alert('אנא בחר לקוח מהרשימה')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1338,
+          "content": "alert('אנא הזן שם לקוח');",
+          "match": "alert('אנא הזן שם לקוח')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1347,
+          "content": "alert('אנא הזן כמות שעות תקינה');",
+          "match": "alert('אנא הזן כמות שעות תקינה')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1362,
+          "content": "alert('שלב א: אנא הזן תיאור השלב (לפחות 2 תווים)');",
+          "match": "alert('שלב א: אנא הזן תיאור השלב (לפחות 2 תווים)')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1369,
+          "content": "alert('שלב א: אנא הזן תקרת שעות תקינה');",
+          "match": "alert('שלב א: אנא הזן תקרת שעות תקינה')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1376,
+          "content": "alert('שלב א: אנא הזן מחיר פיקס תקין');",
+          "match": "alert('שלב א: אנא הזן מחיר פיקס תקין')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1385,
+          "content": "alert('שלב ב: אנא הזן תיאור השלב (לפחות 2 תווים)');",
+          "match": "alert('שלב ב: אנא הזן תיאור השלב (לפחות 2 תווים)')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1392,
+          "content": "alert('שלב ב: אנא הזן תקרת שעות תקינה');",
+          "match": "alert('שלב ב: אנא הזן תקרת שעות תקינה')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1399,
+          "content": "alert('שלב ב: אנא הזן מחיר פיקס תקין');",
+          "match": "alert('שלב ב: אנא הזן מחיר פיקס תקין')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1408,
+          "content": "alert('שלב ג: אנא הזן תיאור השלב (לפחות 2 תווים)');",
+          "match": "alert('שלב ג: אנא הזן תיאור השלב (לפחות 2 תווים)')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1415,
+          "content": "alert('שלב ג: אנא הזן תקרת שעות תקינה');",
+          "match": "alert('שלב ג: אנא הזן תקרת שעות תקינה')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1422,
+          "content": "alert('שלב ג: אנא הזן מחיר פיקס תקין');",
+          "match": "alert('שלב ג: אנא הזן מחיר פיקס תקין')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1440,
+          "content": "alert(`התיק \"${caseData.caseTitle}\" נוצר בהצלחה!`);",
+          "match": "alert(`התיק \"${caseData.caseTitle}\" נוצר בהצלחה!`)",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1471,
+          "content": "alert(`פרטי תיק:\\n\\nמספר: ${caseItem.caseNumber}\\nכותרת: ${caseItem.caseTitle}\\nלקוח: ${caseItem.clientName}\\nסטטוס: ${this.getStatusText(caseItem.status)}`);",
+          "match": "alert(`פרטי תיק:\\n\\nמספר: ${caseItem.caseNumber}\\nכותרת: ${caseItem.caseTitle}\\nלקוח: ${caseItem.clientName}\\nסטטוס: ${this.getStatusText(caseItem.status)}`)",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1475,
+          "content": "alert('שגיאה בטעינת פרטי תיק');",
+          "match": "alert('שגיאה בטעינת פרטי תיק')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1486,
+          "content": "alert('תיק לא נמצא');",
+          "match": "alert('תיק לא נמצא')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 1584,
+          "content": "alert('התיק עודכן בהצלחה!');",
+          "match": "alert('התיק עודכן בהצלחה!')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 520,
+          "content": "async showCreateCaseDialog() {",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showUpdateCaseDialog",
+          "type": "domain",
+          "line": 386,
+          "content": "<button onclick=\"casesManager.showUpdateCaseDialog('${caseItem.id}')\" style=\"",
+          "match": "showUpdateCaseDialog(",
+          "replacement": "ModalsManager.showUpdateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showUpdateCaseDialog",
+          "type": "domain",
+          "line": 494,
+          "content": "<button onclick=\"casesManager.showUpdateCaseDialog('${caseItem.id}')\" style=\"",
+          "match": "showUpdateCaseDialog(",
+          "replacement": "ModalsManager.showUpdateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showUpdateCaseDialog",
+          "type": "domain",
+          "line": 1483,
+          "content": "async showUpdateCaseDialog(caseId) {",
+          "match": "showUpdateCaseDialog(",
+          "replacement": "ModalsManager.showUpdateCase",
+          "priority": "medium",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 21
+    },
+    {
+      "path": "js\\legal-procedures.js",
+      "instances": [
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 903,
+          "content": "alert(`נוספו ${hours} שעות בהצלחה!`);",
+          "match": "alert(`נוספו ${hours} שעות בהצלחה!`)",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "alert",
+          "type": "simple",
+          "line": 936,
+          "content": "alert('עברת לשלב הבא בהצלחה!');",
+          "match": "alert('עברת לשלב הבא בהצלחה!')",
+          "replacement": "ModalsManager.showAlert",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "confirm",
+          "type": "simple",
+          "line": 925,
+          "content": "const confirmed = confirm('האם אתה בטוח שברצונך לסיים שלב זה ולעבור לשלב הבא?');",
+          "match": "confirm('האם אתה בטוח שברצונך לסיים שלב זה ולעבור לשלב הבא?')",
+          "replacement": "ModalsManager.showConfirm",
+          "priority": "high",
+          "effort": "low"
+        }
+      ],
+      "totalInstances": 3
+    },
+    {
+      "path": "js\\main.js",
+      "instances": [
+        {
+          "pattern": "showSimpleLoading",
+          "type": "loading",
+          "line": 318,
+          "content": "window.showSimpleLoading('טוען נתונים מחדש...');",
+          "match": "showSimpleLoading('טוען נתונים מחדש...')",
+          "replacement": "ModalsManager.showLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showSimpleLoading",
+          "type": "loading",
+          "line": 350,
+          "content": "window.showSimpleLoading('שומר משימה...');",
+          "match": "showSimpleLoading('שומר משימה...')",
+          "replacement": "ModalsManager.showLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showSimpleLoading",
+          "type": "loading",
+          "line": 459,
+          "content": "window.showSimpleLoading('שומר רשומה...');",
+          "match": "showSimpleLoading('שומר רשומה...')",
+          "replacement": "ModalsManager.showLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showSimpleLoading",
+          "type": "loading",
+          "line": 797,
+          "content": "window.showSimpleLoading('מאריך תאריך יעד...');",
+          "match": "showSimpleLoading('מאריך תאריך יעד...')",
+          "replacement": "ModalsManager.showLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showSimpleLoading",
+          "type": "loading",
+          "line": 847,
+          "content": "window.showSimpleLoading('שומר זמן...');",
+          "match": "showSimpleLoading('שומר זמן...')",
+          "replacement": "ModalsManager.showLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showSimpleLoading",
+          "type": "loading",
+          "line": 905,
+          "content": "window.showSimpleLoading('משלים משימה...');",
+          "match": "showSimpleLoading('משלים משימה...')",
+          "replacement": "ModalsManager.showLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 326,
+          "content": "window.hideSimpleLoading();",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 395,
+          "content": "window.hideSimpleLoading();",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 502,
+          "content": "window.hideSimpleLoading();",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 814,
+          "content": "window.hideSimpleLoading();",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 894,
+          "content": "window.hideSimpleLoading();",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 930,
+          "content": "window.hideSimpleLoading();",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 335,
+          "content": "// Old createClient() function removed - use casesManager.showCreateCaseDialog() instead",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 983,
+          "content": "// ✅ showClientForm & hideClientForm removed - use casesManager.showCreateCaseDialog() instead",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showTaskCompletionModal",
+          "type": "domain",
+          "line": 830,
+          "content": "window.DialogsModule.showTaskCompletionModal(task, this);",
+          "match": "showTaskCompletionModal(",
+          "replacement": "ModalsManager.showTaskCompletion",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 667,
+          "content": "const overlay = document.createElement('div');",
+          "match": "const overlay = document.createElement('div');\r\n    overlay.className = 'popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 730,
+          "content": "const overlay = document.createElement('div');",
+          "match": "const overlay = document.createElement('div');\r\n    overlay.className = 'popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 17
+    },
+    {
+      "path": "js\\modules\\authentication.js",
+      "instances": [
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 256,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 1
+    },
+    {
+      "path": "js\\modules\\client-hours.js",
+      "instances": [
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 297,
+          "content": "this.showBlockedClientDialog(clientName, action);",
+          "match": "showBlockedClientDialog(",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 303,
+          "content": "showBlockedClientDialog(clientName, action) {",
+          "match": "showBlockedClientDialog(",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 304,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 307,
+          "content": "const clientNameDiv = document.createElement(\"div\");",
+          "match": "const clientNameDiv = document.createElement(\"div\");\r\n    clientNameDiv.className = \"client-name\";\r\n    clientNameDiv.textContent = clientName;\r\n\r\n    const actionBlockedDiv = document.createElement(\"div\");\r\n    actionBlockedDiv.className = \"action-blocked\";\r\n    actionBlockedDiv.textContent = `לא ניתן לבצע ${action} עבור לקוח זה`;\r\n\r\n    overlay.innerHTML = `\r\n      <div class=\"popup blocked-client-popup\">\r\n        <div class=\"popup-header\" style=\"color: #ef4444;\">\r\n          <i class=\"fas fa-ban\"></i>\r\n          לקוח חסום\r\n        </div>\r\n        <div class=\"blocked-client-message\">\r\n          ${clientNameDiv.outerHTML}\r\n          <div class=\"reason\">נגמרה יתרת השעות</div>\r\n          ${actionBlockedDiv.outerHTML}\r\n        </div>\r\n        <div class=\"solutions\">\r\n          <h4>פתרונות אפשריים:</h4>\r\n          <ul>\r\n            <li><i class=\"fas fa-phone\"></i> צור קשר עם הלקוח לרכישת שעות נוספות</li>\r\n            <li><i class=\"fas fa-dollar-sign\"></i> עדכן את מערכת הביליטס</li>\r\n            <li><i class=\"fas fa-user-tie\"></i> פנה למנהל המשרד</li>\r\n          </ul>\r\n        </div>\r\n        <div class=\"popup-buttons\">\r\n          <button class=\"popup-btn popup-btn-confirm\" onclick=\"this.closest('.popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 4
+    },
+    {
+      "path": "js\\modules\\client-validation.js",
+      "instances": [
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 123,
+          "content": "this.showBlockedClientDialog(clientName, action);",
+          "match": "showBlockedClientDialog(",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 129,
+          "content": "showBlockedClientDialog(clientName, action) {",
+          "match": "showBlockedClientDialog(",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 130,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 133,
+          "content": "const clientNameDiv = document.createElement(\"div\");",
+          "match": "const clientNameDiv = document.createElement(\"div\");\r\n    clientNameDiv.className = \"client-name\";\r\n    clientNameDiv.textContent = clientName;\r\n\r\n    const actionBlockedDiv = document.createElement(\"div\");\r\n    actionBlockedDiv.className = \"action-blocked\";\r\n    actionBlockedDiv.textContent = `לא ניתן לבצע ${action} עבור לקוח זה`;\r\n\r\n    overlay.innerHTML = `\r\n      <div class=\"popup blocked-client-popup\">\r\n        <div class=\"popup-header\" style=\"color: #ef4444;\">\r\n          <i class=\"fas fa-ban\"></i>\r\n          לקוח חסום\r\n        </div>\r\n        <div class=\"blocked-client-message\">\r\n          ${clientNameDiv.outerHTML}\r\n          <div class=\"reason\">נגמרה יתרת השעות</div>\r\n          ${actionBlockedDiv.outerHTML}\r\n        </div>\r\n        <div class=\"solutions\">\r\n          <h4>פתרונות אפשריים:</h4>\r\n          <ul>\r\n            <li><i class=\"fas fa-phone\"></i> צור קשר עם הלקוח לרכישת שעות נוספות</li>\r\n            <li><i class=\"fas fa-dollar-sign\"></i> עדכן את מערכת הביליטס</li>\r\n            <li><i class=\"fas fa-user-tie\"></i> פנה למנהל המשרד</li>\r\n          </ul>\r\n        </div>\r\n        <div class=\"popup-buttons\">\r\n          <button class=\"popup-btn popup-btn-confirm\" onclick=\"this.closest('.popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 4
+    },
+    {
+      "path": "js\\modules\\dialogs.js",
+      "instances": [
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 94,
+          "content": "// Use casesManager.showCreateCaseDialog() instead",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showTaskCompletionModal",
+          "type": "domain",
+          "line": 15,
+          "content": "* - showTaskCompletionModal (שורות 3493-3710)",
+          "match": "showTaskCompletionModal (",
+          "replacement": "ModalsManager.showTaskCompletion",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showTaskCompletionModal",
+          "type": "domain",
+          "line": 158,
+          "content": "function showTaskCompletionModal(task, manager) {",
+          "match": "showTaskCompletionModal(",
+          "replacement": "ModalsManager.showTaskCompletion",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 13,
+          "content": "* - showBlockedClientDialog (שורות 986-1032)",
+          "match": "showBlockedClientDialog (",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 44,
+          "content": "function showBlockedClientDialog(clientName, action) {",
+          "match": "showBlockedClientDialog(",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 45,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 48,
+          "content": "const clientNameDiv = document.createElement(\"div\");",
+          "match": "const clientNameDiv = document.createElement(\"div\");\r\n  clientNameDiv.className = \"client-name\";\r\n  clientNameDiv.textContent = clientName;\r\n\r\n  const actionBlockedDiv = document.createElement(\"div\");\r\n  actionBlockedDiv.className = \"action-blocked\";\r\n  actionBlockedDiv.textContent = `לא ניתן לבצע ${action} עבור לקוח זה`;\r\n\r\n  overlay.innerHTML = `\r\n    <div class=\"popup blocked-client-popup\">\r\n      <div class=\"popup-header\" style=\"color: #ef4444;\">\r\n        <i class=\"fas fa-ban\"></i>\r\n        לקוח חסום\r\n      </div>\r\n      <div class=\"blocked-client-message\">\r\n        ${clientNameDiv.outerHTML}\r\n        <div class=\"reason\">נגמרה יתרת השעות</div>\r\n        ${actionBlockedDiv.outerHTML}\r\n      </div>\r\n      <div class=\"solutions\">\r\n        <h4>פתרונות אפשריים:</h4>\r\n        <ul>\r\n          <li><i class=\"fas fa-phone\"></i> צור קשר עם הלקוח לרכישת שעות נוספות</li>\r\n          <li><i class=\"fas fa-dollar-sign\"></i> עדכן את מערכת הביליטס</li>\r\n          <li><i class=\"fas fa-user-tie\"></i> פנה למנהל המשרד</li>\r\n        </ul>\r\n      </div>\r\n      <div class=\"popup-buttons\">\r\n        <button class=\"popup-btn popup-btn-confirm\" onclick=\"this.closest('.popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 114,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 159,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 9
+    },
+    {
+      "path": "js\\modules\\event-handlers.js",
+      "instances": [
+        {
+          "pattern": "confirm",
+          "type": "simple",
+          "line": 118,
+          "content": "if (confirm(\"האם אתה בטוח שברצונך למחוק את כל ההתראות?\")) {",
+          "match": "confirm(\"האם אתה בטוח שברצונך למחוק את כל ההתראות?\")",
+          "replacement": "ModalsManager.showConfirm",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 126,
+          "content": "// Use casesManager.showCreateCaseDialog() instead",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 252,
+          "content": "// ✅ Client form functions removed - use casesManager.showCreateCaseDialog() instead",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 136,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 4
+    },
+    {
+      "path": "js\\modules\\firebase-operations.js",
+      "instances": [
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 252,
+          "content": "// Use casesManager.showCreateCaseDialog() instead",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 1
+    },
+    {
+      "path": "js\\modules\\forms.js",
+      "instances": [
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 118,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 1
+    },
+    {
+      "path": "js\\modules\\manager-core.js",
+      "instances": [
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 374,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 1
+    },
+    {
+      "path": "js\\modules\\navigation.js",
+      "instances": [
+        {
+          "pattern": "confirm",
+          "type": "simple",
+          "line": 95,
+          "content": "if (confirm(\"האם אתה בטוח שברצונך למחוק את כל ההתראות?\")) {",
+          "match": "confirm(\"האם אתה בטוח שברצונך למחוק את כל ההתראות?\")",
+          "replacement": "ModalsManager.showConfirm",
+          "priority": "high",
+          "effort": "low"
+        }
+      ],
+      "totalInstances": 1
+    },
+    {
+      "path": "js\\modules\\notification-bridge.js",
+      "instances": [
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 44,
+          "content": "function hideSimpleLoading() {",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 76,
+          "content": "hideSimpleLoading();",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        }
+      ],
+      "totalInstances": 2
+    },
+    {
+      "path": "js\\modules\\ui-components.js",
+      "instances": [
+        {
+          "pattern": "showCreateCaseDialog",
+          "type": "domain",
+          "line": 290,
+          "content": "// ✅ Client form functions removed - use casesManager.showCreateCaseDialog() instead",
+          "match": "showCreateCaseDialog(",
+          "replacement": "ModalsManager.showCreateCase",
+          "priority": "medium",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 1
+    },
+    {
+      "path": "script.js",
+      "instances": [
+        {
+          "pattern": "confirm",
+          "type": "simple",
+          "line": 4626,
+          "content": "if (confirm(\"האם אתה בטוח שברצונך למחוק את כל ההתראות?\")) {",
+          "match": "confirm(\"האם אתה בטוח שברצונך למחוק את כל ההתראות?\")",
+          "replacement": "ModalsManager.showConfirm",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "hideSimpleLoading",
+          "type": "loading",
+          "line": 115,
+          "content": "function hideSimpleLoading() {",
+          "match": "hideSimpleLoading()",
+          "replacement": "ModalsManager.hideLoading",
+          "priority": "high",
+          "effort": "low"
+        },
+        {
+          "pattern": "showTaskCompletionModal",
+          "type": "domain",
+          "line": 3955,
+          "content": "this.showTaskCompletionModal(task);",
+          "match": "showTaskCompletionModal(",
+          "replacement": "ModalsManager.showTaskCompletion",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showTaskCompletionModal",
+          "type": "domain",
+          "line": 3958,
+          "content": "showTaskCompletionModal(task) {",
+          "match": "showTaskCompletionModal(",
+          "replacement": "ModalsManager.showTaskCompletion",
+          "priority": "medium",
+          "effort": "high"
+        },
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 1056,
+          "content": "this.showBlockedClientDialog(clientName, action);",
+          "match": "showBlockedClientDialog(",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "showBlockedClientDialog",
+          "type": "domain",
+          "line": 1062,
+          "content": "showBlockedClientDialog(clientName, action) {",
+          "match": "showBlockedClientDialog(",
+          "replacement": "ModalsManager.showBlockedClient",
+          "priority": "low",
+          "effort": "medium"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 59,
+          "content": "const div = document.createElement(\"div\");",
+          "match": "const div = document.createElement(\"div\");\r\n  div.textContent = text;\r\n  return div.innerHTML;\r\n}\r\n\r\nfunction delay(ms) {\r\n  return new Promise((resolve) => setTimeout(resolve, ms));\r\n}\r\n\r\nfunction debounce(func, wait) {\r\n  let timeout;\r\n  return function executedFunction(...args) {\r\n    const later = () => {\r\n      clearTimeout(timeout);\r\n      func(...args);\r\n    };\r\n    clearTimeout(timeout);\r\n    timeout = setTimeout(later, wait);\r\n  };\r\n}\r\n\r\n/**\r\n * Show loading overlay\r\n */\r\n// Global flag to suppress loading during welcome screen\r\nwindow.isInWelcomeScreen = false;\r\n\r\nfunction showSimpleLoading(message = \"מעבד...\") {\r\n  // Don't show loading overlay during welcome screen\r\n  if (window.isInWelcomeScreen) {\r\n    return;\r\n  }\r\n  const existing = document.getElementById(\"simple-loading\");\r\n  if (existing) existing.remove();\r\n\r\n  const overlay = document.createElement(\"div\");\r\n  overlay.id = \"simple-loading\";\r\n  overlay.style.cssText = `\r\n    position: fixed; top: 0; left: 0; width: 100%; height: 100%;\r\n    background: rgba(0,0,0,0.7); z-index: 10000;\r\n    display: flex; align-items: center; justify-content: center;\r\n  `;\r\n  overlay.innerHTML = `\r\n    <div style=\"text-align: center; background: white; color: #333; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);\">\r\n      <div style=\"width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1.5s linear infinite; margin: 0 auto 20px;\"></div>\r\n      <div style=\"font-size: 16px; font-weight: 500;\">${safeText(message)}</div>\r\n    </div>\r\n    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>\r\n  `;\r\n  document.body.appendChild(overlay);\r\n  document.body.style.overflow = \"hidden\";\r\n}\r\n\r\n/**\r\n * Hide loading overlay\r\n */\r\nfunction hideSimpleLoading() {\r\n  const overlay = document.getElementById(\"simple-loading\");\r\n  if (overlay) {\r\n    overlay.remove();\r\n    document.body.style.overflow = \"\";\r\n  }\r\n}\r\n\r\n/**\r\n * Show subtle progress indicator\r\n */\r\n// ✅ Legacy notification functions removed (v4.34.0)\r\n// All usages replaced with unified showNotification() system\r\n\r\n// Add CSS animations for feedback system\r\nconst feedbackStyles = document.createElement(\"style\");\r\nfeedbackStyles.textContent = `\r\n  @keyframes slideInUp {\r\n    from {\r\n      transform: translateY(100px);\r\n      opacity: 0;\r\n    }\r\n    to {\r\n      transform: translateY(0);\r\n      opacity: 1;\r\n    }\r\n  }\r\n\r\n  @keyframes slideOutDown {\r\n    from {\r\n      transform: translateY(0);\r\n      opacity: 1;\r\n    }\r\n    to {\r\n      transform: translateY(100px);\r\n      opacity: 0;\r\n    }\r\n  }\r\n\r\n  @keyframes spin {\r\n    from {\r\n      transform: rotate(0deg);\r\n    }\r\n    to {\r\n      transform: rotate(360deg);\r\n    }\r\n  }\r\n`;\r\ndocument.head.appendChild(feedbackStyles);\r\n\r\n/**\r\n * Format date functions\r\n */\r\nfunction formatDateTime(date) {\r\n  try {\r\n    return new Date(date).toLocaleString(\"he-IL\", {\r\n      year: \"numeric\",\r\n      month: \"2-digit\",\r\n      day: \"2-digit\",\r\n      hour: \"2-digit\",\r\n      minute: \"2-digit\",\r\n    });\r\n  } catch (error) {\r\n    console.warn(\"formatDateTime failed\", { input: date, error });\r\n    return \"תאריך לא תקין\";\r\n  }\r\n}\r\n\r\nfunction formatDate(dateString) {\r\n  try {\r\n    if (!dateString) return '-';\r\n\r\n    // Handle Firebase Timestamp\r\n    let d;\r\n    if (dateString.toDate && typeof dateString.toDate === 'function') {\r\n      d = dateString.toDate();\r\n    } else {\r\n      d = new Date(dateString);\r\n    }\r\n\r\n    return d.toLocaleDateString(\"he-IL\");\r\n  } catch (error) {\r\n    console.warn(\"formatDate failed\", { input: dateString, error });\r\n    return \"תאריך לא תקין\";\r\n  }\r\n}\r\n\r\nfunction formatShort(date) {\r\n  if (!date) return '-';\r\n\r\n  // Handle Firebase Timestamp\r\n  let d;\r\n  if (date.toDate && typeof date.toDate === 'function') {\r\n    d = date.toDate();\r\n  } else {\r\n    d = new Date(date);\r\n  }\r\n\r\n  return d.toLocaleDateString(\"he-IL\", {\r\n    day: \"numeric\",\r\n    month: \"short\",\r\n  });\r\n}\r\n\r\n/* === Firebase Core Functions === */\r\n\r\n/**\r\n * Initialize Firebase connection\r\n */\r\nfunction initializeFirebase() {\r\n  try {\r\n\r\n    if (!window.firebaseDB) {\r\n      console.error(\"❌ Firebase Database לא זמין\");\r\n      throw new Error(\"Firebase Database לא מחובר\");\r\n    }\r\n\r\n    // Database ready - silent mode\r\n    return true;\r\n  } catch (error) {\r\n    console.error(\"❌ שגיאה באתחול Firebase:\", error);\r\n    return false;\r\n  }\r\n}\r\n\r\n/**\r\n * Test Firebase connection\r\n */\r\n// testFirebaseConnection removed - using Functions for all operations\r\n\r\n/* === Firebase Data Operations === */\r\n\r\n/**\r\n * Load clients from Firebase\r\n */\r\nasync function loadClientsFromFirebase() {\r\n  try {\r\n    const db = window.firebaseDB;\r\n    if (!db) {\r\n      throw new Error(\"Firebase לא מחובר\");\r\n    }\r\n\r\n    // טוען מ-clients (ארכיטקטורה ישנה) ומ-cases (ארכיטקטורה חדשה)\r\n    const [clientsSnapshot, casesSnapshot] = await Promise.all([\r\n      db.collection(\"clients\").get(),\r\n      db.collection(\"cases\").get()\r\n    ]);\r\n\r\n    const clients = [];\r\n\r\n    // טוען לקוחות מהארכיטקטורה הישנה\r\n    clientsSnapshot.forEach((doc) => {\r\n      const data = doc.data();\r\n      clients.push({\r\n        ...data,\r\n        id: doc.id,\r\n        firestoreId: doc.id,\r\n        legacyId: data.id,\r\n        source: 'clients', // מסמן שזה מהישן\r\n        // תמיכה בשני פורמטים: fullName (ישן) או clientName (חדש מ-createClient)\r\n        fullName: data.fullName || data.clientName,\r\n        fileNumber: data.fileNumber || data.caseNumber\r\n      });\r\n    });\r\n\r\n    // טוען תיקים מהארכיטקטורה החדשה\r\n    casesSnapshot.forEach((doc) => {\r\n      const data = doc.data();\r\n      clients.push({\r\n        ...data,\r\n        id: doc.id,\r\n        firestoreId: doc.id,\r\n        source: 'cases', // מסמן שזה מהחדש\r\n        // ממיר שדות חדשים לפורמט הישן כדי שהתצוגה תעבוד\r\n        fullName: data.caseTitle || data.fullName,\r\n        fileNumber: data.caseNumber || data.fileNumber,\r\n        type: data.procedureType === 'legal_procedure' ? 'legal_procedure' :\r\n              data.procedureType === 'hours' ? 'hours' :\r\n              data.type || 'hours'\r\n      });\r\n    });\r\n\r\n    console.log(`✅ טעינת לקוחות: ${clientsSnapshot.size} מ-clients, ${casesSnapshot.size} מ-cases`);\r\n\r\n    return clients;\r\n  } catch (error) {\r\n    console.error(\"Firebase error:\", error);\r\n    throw new Error(\"שגיאה בטעינת לקוחות: \" + error.message);\r\n  }\r\n}\r\n\r\n/**\r\n * Load budget tasks from Firebase\r\n */\r\nasync function loadBudgetTasksFromFirebase(employee) {\r\n  try {\r\n    const db = window.firebaseDB;\r\n    if (!db) {\r\n      throw new Error(\"Firebase לא מחובר\");\r\n    }\r\n\r\n    const snapshot = await db\r\n      .collection(\"budget_tasks\")\r\n      .where(\"employee\", \"==\", employee)\r\n      .get();\r\n\r\n    const tasks = [];\r\n\r\n    snapshot.forEach((doc) => {\r\n      const data = doc.data();\r\n\r\n      // ⚡ CRITICAL: Convert Firebase Timestamps to JavaScript Date objects\r\n      const taskWithFirebaseId = {\r\n        ...data,\r\n        firebaseDocId: doc.id, // ✅ Always save Firebase document ID\r\n        // Convert Timestamps to Date objects for proper formatting\r\n        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,\r\n        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,\r\n        completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : data.completedAt,\r\n        deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline,\r\n      };\r\n\r\n      // Only set 'id' if it doesn't exist in the data\r\n      if (!taskWithFirebaseId.id) {\r\n        taskWithFirebaseId.id = doc.id;\r\n      }\r\n\r\n      tasks.push(taskWithFirebaseId);\r\n    });\r\n\r\n    return tasks;\r\n  } catch (error) {\r\n    console.error(\"Firebase error:\", error);\r\n    throw new Error(\"שגיאה בטעינת משימות: \" + error.message);\r\n  }\r\n}\r\n\r\n/**\r\n * Load timesheet entries from Firebase\r\n */\r\nasync function loadTimesheetFromFirebase(employee) {\r\n  try {\r\n    const db = window.firebaseDB;\r\n    if (!db) {\r\n      throw new Error(\"Firebase לא מחובר\");\r\n    }\r\n\r\n    const snapshot = await db\r\n      .collection(\"timesheet_entries\")\r\n      .where(\"employee\", \"==\", employee)\r\n      .get();\r\n\r\n    const entries = [];\r\n\r\n    snapshot.forEach((doc) => {\r\n      const data = doc.data();\r\n\r\n      // Convert Firebase Timestamps to JavaScript Date objects\r\n      entries.push({\r\n        id: doc.id,\r\n        ...data,\r\n        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,\r\n        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,\r\n      });\r\n    });\r\n\r\n    // Sort by date (manual sorting instead of orderBy)\r\n    entries.sort((a, b) => {\r\n      if (!a.date) return 1;\r\n      if (!b.date) return -1;\r\n      return new Date(b.date) - new Date(a.date);\r\n    });\r\n\r\n    return entries;\r\n  } catch (error) {\r\n    console.error(\"Firebase error:\", error);\r\n    throw new Error(\"שגיאה בטעינת שעתון: \" + error.message);\r\n  }\r\n}\r\n\r\n/**\r\n * Save client to Firebase\r\n */\r\nasync function saveClientToFirebase(clientData) {\r\n  try {\r\n    // Call Firebase Function for secure validation and creation\r\n    const result = await callFunction('createClient', clientData);\r\n\r\n    if (!result.success) {\r\n      throw new Error(result.message || 'שגיאה בשמירת לקוח');\r\n    }\r\n\r\n    return result.clientId;\r\n  } catch (error) {\r\n    console.error(\"Firebase error:\", error);\r\n    throw error;\r\n  }\r\n}\r\n\r\n/**\r\n * Save budget task to Firebase\r\n */\r\nasync function saveBudgetTaskToFirebase(taskData) {\r\n  try {\r\n    // Call Firebase Function for secure validation and creation\r\n    const result = await callFunction('createBudgetTask', taskData);\r\n\r\n    if (!result.success) {\r\n      throw new Error(result.message || 'שגיאה בשמירת משימה');\r\n    }\r\n\r\n    return result.taskId;\r\n  } catch (error) {\r\n    console.error(\"Firebase error:\", error);\r\n    throw error;\r\n  }\r\n}\r\n\r\n/**\r\n * Save timesheet entry to Firebase\r\n */\r\nasync function saveTimesheetToFirebase(entryData) {\r\n  try {\r\n    // Call Firebase Function for secure validation and creation\r\n    const result = await callFunction('createTimesheetEntry', entryData);\r\n\r\n    if (!result.success) {\r\n      throw new Error(result.message || 'שגיאה בשמירת שעתון');\r\n    }\r\n\r\n    return result.entryId;\r\n  } catch (error) {\r\n    console.error(\"Firebase error:\", error);\r\n    throw error;\r\n  }\r\n}\r\n\r\n/**\r\n * Update timesheet entry in Firebase\r\n */\r\nasync function updateTimesheetEntryFirebase(entryId, minutes, reason = \"\") {\r\n  try {\r\n    // Call Firebase Function for secure validation and update\r\n    const result = await callFunction('updateTimesheetEntry', {\r\n      entryId: String(entryId),\r\n      minutes,\r\n      reason\r\n    });\r\n\r\n    if (!result.success) {\r\n      throw new Error(result.message || 'שגיאה בעדכון שעתון');\r\n    }\r\n\r\n    return result;\r\n  } catch (error) {\r\n    console.error(\"Firebase error:\", error);\r\n    throw error;\r\n  }\r\n}\r\n\r\n/* === Client Hours Calculation === */\r\n\r\n/**\r\n * Calculate accurate client hours from all timesheet entries\r\n */\r\nasync function calculateClientHoursAccurate(clientName) {\r\n  try {\r\n    const db = window.firebaseDB;\r\n    if (!db) throw new Error(\"Firebase לא מחובר\");\r\n\r\n    // Get client data - חיפוש בשני collections\r\n    let client = null;\r\n    let clientDoc = null;\r\n\r\n    // תחילה נחפש ב-clients (ארכיטקטורה ישנה)\r\n    const clientsSnapshot = await db\r\n      .collection(\"clients\")\r\n      .where(\"fullName\", \"==\", clientName)\r\n      .get();\r\n\r\n    if (!clientsSnapshot.empty) {\r\n      client = clientsSnapshot.docs[0].data();\r\n      clientDoc = clientsSnapshot.docs[0];\r\n    } else {\r\n      // אם לא נמצא, נחפש ב-cases (ארכיטקטורה חדשה)\r\n      const casesSnapshot = await db\r\n        .collection(\"cases\")\r\n        .where(\"caseTitle\", \"==\", clientName)\r\n        .get();\r\n\r\n      if (!casesSnapshot.empty) {\r\n        client = casesSnapshot.docs[0].data();\r\n        clientDoc = casesSnapshot.docs[0];\r\n      }\r\n    }\r\n\r\n    if (!client) {\r\n      throw new Error(\"לקוח לא נמצא\");\r\n    }\r\n\r\n    // אם זה תיק מסוג legal_procedure או fixed, לא צריך לחשב שעות\r\n    if (client.procedureType === 'legal_procedure' || client.pricingType === 'fixed') {\r\n      return {\r\n        clientName,\r\n        clientData: client,\r\n        totalHours: 0,\r\n        totalMinutesUsed: 0,\r\n        remainingHours: 0,\r\n        remainingMinutes: 0,\r\n        status: \"תיק משפטי - ללא שעות\",\r\n        isBlocked: false,\r\n        isCritical: false,\r\n        entriesCount: 0,\r\n        entriesByLawyer: {},\r\n        uniqueLawyers: [],\r\n        lastCalculated: new Date(),\r\n      };\r\n    }\r\n\r\n    // Get all timesheet entries for this client (from ALL users)\r\n    const timesheetSnapshot = await db\r\n      .collection(\"timesheet_entries\")\r\n      .where(\"clientName\", \"==\", clientName)\r\n      .get();\r\n\r\n    let totalMinutesUsed = 0;\r\n    const entriesByLawyer = {};\r\n\r\n    timesheetSnapshot.forEach((doc) => {\r\n      const entry = doc.data();\r\n      const minutes = entry.minutes || 0;\r\n      const lawyer = entry.employee || entry.lawyer || \"לא ידוע\";\r\n\r\n      totalMinutesUsed += minutes;\r\n\r\n      if (!entriesByLawyer[lawyer]) {\r\n        entriesByLawyer[lawyer] = 0;\r\n      }\r\n      entriesByLawyer[lawyer] += minutes;\r\n    });\r\n\r\n    // Calculate remaining hours\r\n    const totalHours = client.totalHours || 0;\r\n    const totalMinutesAllocated = totalHours * 60;\r\n    const remainingMinutes = Math.max(\r\n      0,\r\n      totalMinutesAllocated - totalMinutesUsed\r\n    );\r\n    const remainingHours = remainingMinutes / 60;\r\n\r\n    // Determine status\r\n    let status = \"פעיל\";\r\n    let isBlocked = false;\r\n    let isCritical = false;\r\n\r\n    if (client.type === \"hours\") {\r\n      if (remainingMinutes <= 0) {\r\n        status = \"חסום - נגמרו השעות\";\r\n        isBlocked = true;\r\n      } else if (remainingHours <= 5) {\r\n        status = \"קריטי - מעט שעות\";\r\n        isCritical = true;\r\n      }\r\n    }\r\n\r\n    const result = {\r\n      clientName,\r\n      clientData: client,\r\n      totalHours,\r\n      totalMinutesUsed,\r\n      remainingHours: Math.round(remainingHours * 100) / 100,\r\n      remainingMinutes,\r\n      status,\r\n      isBlocked,\r\n      isCritical,\r\n      entriesCount: timesheetSnapshot.size,\r\n      entriesByLawyer,\r\n      uniqueLawyers: Object.keys(entriesByLawyer),\r\n      lastCalculated: new Date(),\r\n    };\r\n\r\n\r\n    return result;\r\n  } catch (error) {\r\n    console.error(\"שגיאה בחישוב שעות:\", error);\r\n    throw error;\r\n  }\r\n}\r\n\r\n/**\r\n * Update client hours immediately in Firebase\r\n */\r\nasync function updateClientHoursImmediately(clientName, minutesUsed) {\r\n  try {\r\n    const db = window.firebaseDB;\r\n    if (!db) throw new Error(\"Firebase לא מחובר\");\r\n\r\n    // Find the client - חיפוש בשני collections\r\n    let clientDoc = null;\r\n    let clientData = null;\r\n\r\n    // תחילה נחפש ב-clients (ארכיטקטורה ישנה)\r\n    const clientsSnapshot = await db\r\n      .collection(\"clients\")\r\n      .where(\"fullName\", \"==\", clientName)\r\n      .get();\r\n\r\n    if (!clientsSnapshot.empty) {\r\n      clientDoc = clientsSnapshot.docs[0];\r\n      clientData = clientDoc.data();\r\n    } else {\r\n      // אם לא נמצא, נחפש ב-cases (ארכיטקטורה חדשה)\r\n      const casesSnapshot = await db\r\n        .collection(\"cases\")\r\n        .where(\"caseTitle\", \"==\", clientName)\r\n        .get();\r\n\r\n      if (!casesSnapshot.empty) {\r\n        clientDoc = casesSnapshot.docs[0];\r\n        clientData = clientDoc.data();\r\n      }\r\n    }\r\n\r\n    if (!clientDoc || !clientData) {\r\n      console.warn(`⚠️ לקוח ${clientName} לא נמצא - לא ניתן לעדכן שעות`);\r\n      return { success: false, message: \"לקוח לא נמצא\" };\r\n    }\r\n\r\n    // Only for hours-based clients\r\n    if (clientData.type !== \"hours\" && clientData.procedureType !== 'hours') {\r\n      return { success: true, message: \"לקוח פיקס/משפטי - לא נדרש עדכון\" };\r\n    }\r\n\r\n    // Recalculate using accurate function\r\n    const hoursData = await calculateClientHoursAccurate(clientName);\r\n\r\n    // Update Firebase document with accurate data\r\n    await clientDoc.ref.update({\r\n      minutesRemaining: Math.max(0, hoursData.remainingMinutes),\r\n      hoursRemaining: Math.max(0, hoursData.remainingHours),\r\n      lastActivity: firebase.firestore.FieldValue.serverTimestamp(),\r\n      lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),\r\n      totalMinutesUsed: hoursData.totalMinutesUsed,\r\n      isBlocked: hoursData.isBlocked,\r\n      isCritical: hoursData.isCritical,\r\n    });\r\n\r\n\r\n    // Update local system data\r\n    if (window.manager && window.manager.clients) {\r\n      const localClientIndex = window.manager.clients.findIndex(\r\n        (c) => c.fullName === clientName\r\n      );\r\n      if (localClientIndex !== -1) {\r\n        window.manager.clients[localClientIndex].hoursRemaining = Math.max(\r\n          0,\r\n          hoursData.remainingHours\r\n        );\r\n        window.manager.clients[localClientIndex].minutesRemaining = Math.max(\r\n          0,\r\n          hoursData.remainingMinutes\r\n        );\r\n        window.manager.clients[localClientIndex].isBlocked =\r\n          hoursData.isBlocked;\r\n        window.manager.clients[localClientIndex].isCritical =\r\n          hoursData.isCritical;\r\n        window.manager.clients[localClientIndex].totalMinutesUsed =\r\n          hoursData.totalMinutesUsed;\r\n\r\n        // Update client selectors\r\n        if (window.manager.clientValidation) {\r\n          window.manager.clientValidation.updateBlockedClients();\r\n        }\r\n      }\r\n    }\r\n\r\n    return {\r\n      success: true,\r\n      hoursData,\r\n      newHoursRemaining: hoursData.remainingHours,\r\n      newMinutesRemaining: hoursData.remainingMinutes,\r\n      isBlocked: hoursData.isBlocked,\r\n      isCritical: hoursData.isCritical,\r\n    };\r\n  } catch (error) {\r\n    console.error(\"❌ שגיאה בעדכון שעות לקוח:\", error);\r\n    throw new Error(\"שגיאה בעדכון שעות: \" + error.message);\r\n  }\r\n}\r\n\r\n/* === Utility Classes === */\r\n\r\n/**\r\n * DOM elements cache\r\n */\r\nclass DOMCache {\r\n  constructor() {\r\n    this.elements = new Map();\r\n  }\r\n\r\n  getElementById(id) {\r\n    if (this.elements.has(id)) {\r\n      return this.elements.get(id);\r\n    }\r\n    const element = document.getElementById(id);\r\n    if (element) {\r\n      this.elements.set(id, element);\r\n    }\r\n    return element;\r\n  }\r\n\r\n  querySelector(selector) {\r\n    if (this.elements.has(selector)) {\r\n      return this.elements.get(selector);\r\n    }\r\n    const element = document.querySelector(selector);\r\n    if (element) {\r\n      this.elements.set(selector, element);\r\n    }\r\n    return element;\r\n  }\r\n}\r\n\r\n/**\r\n * Notification bell system\r\n */\r\nclass NotificationBellSystem {\r\n  constructor() {\r\n    this.notifications = [];\r\n    this.isDropdownOpen = false;\r\n    this.clickHandler = null;\r\n    this.init();\r\n  }\r\n\r\n  init() {\r\n    this.clickHandler = (e) => {\r\n      const bell = document.getElementById(\"notificationBell\");\r\n      const dropdown = document.getElementById(\"notificationsDropdown\");\r\n      if (\r\n        bell &&\r\n        dropdown &&\r\n        !bell.contains(e.target) &&\r\n        !dropdown.contains(e.target)\r\n      ) {\r\n        this.hideDropdown();\r\n      }\r\n    };\r\n    globalListeners.notificationClick = this.clickHandler;\r\n    document.addEventListener(\"click\", this.clickHandler);\r\n  }\r\n\r\n  cleanup() {\r\n    if (this.clickHandler) {\r\n      document.removeEventListener(\"click\", this.clickHandler);\r\n    }\r\n  }\r\n\r\n  addNotification(type, title, description, urgent = false) {\r\n    const notification = {\r\n      id: Date.now() + Math.random(),\r\n      type,\r\n      title,\r\n      description,\r\n      time: new Date().toLocaleString(\"he-IL\"),\r\n      urgent,\r\n    };\r\n    this.notifications.unshift(notification);\r\n    this.updateBell();\r\n    this.renderNotifications();\r\n  }\r\n\r\n  removeNotification(id) {\r\n    this.notifications = this.notifications.filter((n) => n.id !== id);\r\n    this.updateBell();\r\n    this.renderNotifications();\r\n  }\r\n\r\n  clearAllNotifications() {\r\n    this.notifications = [];\r\n    this.updateBell();\r\n    this.renderNotifications();\r\n  }\r\n\r\n  updateBell() {\r\n    const bell = document.getElementById(\"notificationBell\");\r\n    const count = document.getElementById(\"notificationCount\");\r\n    if (bell && count) {\r\n      if (this.notifications.length > 0) {\r\n        bell.classList.add(\"has-notifications\");\r\n        count.classList.remove(\"hidden\");\r\n        count.textContent = this.notifications.length;\r\n      } else {\r\n        bell.classList.remove(\"has-notifications\");\r\n        count.classList.add(\"hidden\");\r\n      }\r\n    }\r\n  }\r\n\r\n  showDropdown() {\r\n    const dropdown = document.getElementById(\"notificationsDropdown\");\r\n    if (dropdown) {\r\n      dropdown.classList.add(\"show\");\r\n      this.isDropdownOpen = true;\r\n    }\r\n  }\r\n\r\n  hideDropdown() {\r\n    const dropdown = document.getElementById(\"notificationsDropdown\");\r\n    if (dropdown) {\r\n      dropdown.classList.remove(\"show\");\r\n      this.isDropdownOpen = false;\r\n    }\r\n  }\r\n\r\n  toggleDropdown() {\r\n    this.isDropdownOpen ? this.hideDropdown() : this.showDropdown();\r\n  }\r\n\r\n  renderNotifications() {\r\n    const container = document.getElementById(\"notificationsContent\");\r\n    if (!container) return;\r\n\r\n    if (this.notifications.length === 0) {\r\n      container.innerHTML = `\r\n        <div class=\"no-notifications\">\r\n          <div class=\"no-notifications-icon\"><i class=\"fas fa-bell-slash\"></i></div>\r\n          <h4>אין התראות</h4>\r\n          <p>כל ההתראות יופיעו כאן</p>\r\n        </div>\r\n      `;\r\n      return;\r\n    }\r\n\r\n    const iconMap = {\r\n      blocked: \"fas fa-ban\",\r\n      critical: \"fas fa-exclamation-triangle\",\r\n      urgent: \"fas fa-clock\",\r\n    };\r\n\r\n    const notificationsHtml = this.notifications\r\n      .map((notification) => {\r\n        const notificationDiv = document.createElement(\"div\");\r\n        notificationDiv.className = `notification-item ${notification.type} ${\r\n          notification.urgent ? \"urgent\" : \"\"\r\n        }`;\r\n        notificationDiv.id = `notification-${notification.id}`;\r\n\r\n        notificationDiv.innerHTML = `\r\n          <button class=\"notification-close\" onclick=\"notificationBell.removeNotification(${\r\n            notification.id\r\n          })\">\r\n            <i class=\"fas fa-times\"></i>\r\n          </button>\r\n          <div class=\"notification-content\">\r\n            <div class=\"notification-icon ${notification.type}\">\r\n              <i class=\"${\r\n                iconMap[notification.type] || \"fas fa-info-circle\"\r\n              }\"></i>\r\n            </div>\r\n            <div class=\"notification-text\">\r\n              <div class=\"notification-title\">${safeText(\r\n                notification.title\r\n              )}</div>\r\n              <div class=\"notification-description\">${safeText(\r\n                notification.description\r\n              )}</div>\r\n              <div class=\"notification-time\">${safeText(\r\n                notification.time\r\n              )}</div>\r\n            </div>\r\n          </div>\r\n        `;\r\n        return notificationDiv.outerHTML;\r\n      })\r\n      .join(\"\");\r\n\r\n    container.innerHTML = notificationsHtml;\r\n  }\r\n\r\n  updateFromSystem(blockedClients, criticalClients, urgentTasks) {\r\n    this.notifications = this.notifications.filter((n) => !n.isSystemGenerated);\r\n\r\n    if (blockedClients.size > 0) {\r\n      this.addSystemNotification(\r\n        \"blocked\",\r\n        `${blockedClients.size} לקוחות חסומים`,\r\n        `לקוחות ללא שעות: ${Array.from(blockedClients).join(\", \")}`,\r\n        true\r\n      );\r\n    }\r\n\r\n    if (criticalClients.size > 0) {\r\n      this.addSystemNotification(\r\n        \"critical\",\r\n        `${criticalClients.size} לקוחות קריטיים`,\r\n        `לקוחות עם מעט שעות: ${Array.from(criticalClients).join(\", \")}`,\r\n        false\r\n      );\r\n    }\r\n\r\n    if (urgentTasks.length > 0) {\r\n      const overdueCount = urgentTasks.filter(\r\n        (task) => new Date(task.deadline) <= new Date()\r\n      ).length;\r\n      if (overdueCount > 0) {\r\n        this.addSystemNotification(\r\n          \"urgent\",\r\n          `${overdueCount} משימות באיחור`,\r\n          \"משימות שעבר תאריך היעד שלהן\",\r\n          true\r\n        );\r\n      }\r\n    }\r\n  }\r\n\r\n  addSystemNotification(type, title, description, urgent) {\r\n    const notification = {\r\n      id: Date.now() + Math.random(),\r\n      type,\r\n      title,\r\n      description,\r\n      time: new Date().toLocaleString(\"he-IL\"),\r\n      urgent,\r\n      isSystemGenerated: true,\r\n    };\r\n    this.notifications.unshift(notification);\r\n    this.updateBell();\r\n    this.renderNotifications();\r\n  }\r\n}\r\n\r\n/**\r\n * Client validation helper\r\n */\r\nclass ClientValidation {\r\n  constructor(manager) {\r\n    this.manager = manager;\r\n    this.blockedClients = new Set();\r\n    this.criticalClients = new Set();\r\n  }\r\n\r\n  updateBlockedClients() {\r\n    this.blockedClients.clear();\r\n    this.criticalClients.clear();\r\n\r\n    if (!this.manager.clients || !Array.isArray(this.manager.clients)) {\r\n      return;\r\n    }\r\n\r\n    for (const client of this.manager.clients) {\r\n      if (!client) continue;\r\n\r\n      if (client.isBlocked) {\r\n        this.blockedClients.add(client.fullName);\r\n      } else if (\r\n        client.type === \"hours\" &&\r\n        typeof client.hoursRemaining === \"number\" &&\r\n        client.hoursRemaining <= 5 &&\r\n        client.hoursRemaining > 0\r\n      ) {\r\n        this.criticalClients.add(client.fullName);\r\n      }\r\n    }\r\n\r\n    this.updateClientSelects();\r\n    this.updateNotificationBell();\r\n  }\r\n\r\n  updateClientSelects() {\r\n    const selects = [\"budgetClientSelect\", \"timesheetClientSelect\"];\r\n\r\n    selects.forEach((selectId) => {\r\n      const select = document.getElementById(selectId);\r\n      if (!select) return;\r\n\r\n      const fragment = document.createDocumentFragment();\r\n\r\n      const defaultOption = document.createElement(\"option\");\r\n      defaultOption.value = \"\";\r\n      defaultOption.textContent = \"בחר לקוח...\";\r\n      fragment.appendChild(defaultOption);\r\n\r\n      if (!this.manager.clients) return;\r\n\r\n      this.manager.clients.forEach((client) => {\r\n        if (!client) return;\r\n\r\n        const option = document.createElement(\"option\");\r\n        option.value = client.fullName;\r\n\r\n        if (this.blockedClients.has(client.fullName)) {\r\n          option.textContent = `🚫 ${client.fullName} - נגמרו השעות`;\r\n          option.disabled = true;\r\n          option.className = \"blocked-client\";\r\n        } else {\r\n          let displayText = client.fullName;\r\n          if (\r\n            client.type === \"hours\" &&\r\n            typeof client.hoursRemaining === \"number\"\r\n          ) {\r\n            const hoursText =\r\n              client.hoursRemaining <= 5\r\n                ? `🚨 ${client.hoursRemaining.toFixed(1)} שע' נותרות`\r\n                : `${client.hoursRemaining.toFixed(1)} שע' נותרות`;\r\n            displayText += ` (${hoursText})`;\r\n          } else if (client.type === \"fixed\") {\r\n            displayText += \" (פיקס)\";\r\n          }\r\n          option.textContent = displayText;\r\n        }\r\n\r\n        fragment.appendChild(option);\r\n      });\r\n\r\n      select.innerHTML = \"\";\r\n      select.appendChild(fragment);\r\n    });\r\n  }\r\n\r\n  updateNotificationBell() {\r\n    const now = new Date();\r\n    const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);\r\n\r\n    const urgentTasks = (this.manager.budgetTasks || []).filter(\r\n      (task) =>\r\n        task &&\r\n        task.status !== \"הושלם\" &&\r\n        task.deadline &&\r\n        task.description &&\r\n        new Date(task.deadline) <= oneDayFromNow\r\n    );\r\n\r\n    notificationBell.updateFromSystem(\r\n      this.blockedClients,\r\n      this.criticalClients,\r\n      urgentTasks\r\n    );\r\n  }\r\n\r\n  validateClientSelection(clientName, action = \"רישום\") {\r\n    if (this.blockedClients.has(clientName)) {\r\n      this.showBlockedClientDialog(clientName, action);\r\n      return false;\r\n    }\r\n    return true;\r\n  }\r\n\r\n  showBlockedClientDialog(clientName, action) {\r\n    const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 1066,
+          "content": "const clientNameDiv = document.createElement(\"div\");",
+          "match": "const clientNameDiv = document.createElement(\"div\");\r\n    clientNameDiv.className = \"client-name\";\r\n    clientNameDiv.textContent = clientName;\r\n\r\n    const actionBlockedDiv = document.createElement(\"div\");\r\n    actionBlockedDiv.className = \"action-blocked\";\r\n    actionBlockedDiv.textContent = `לא ניתן לבצע ${action} עבור לקוח זה`;\r\n\r\n    overlay.innerHTML = `\r\n      <div class=\"popup blocked-client-popup\">\r\n        <div class=\"popup-header\" style=\"color: #ef4444;\">\r\n          <i class=\"fas fa-ban\"></i>\r\n          לקוח חסום\r\n        </div>\r\n        <div class=\"blocked-client-message\">\r\n          ${clientNameDiv.outerHTML}\r\n          <div class=\"reason\">נגמרה יתרת השעות</div>\r\n          ${actionBlockedDiv.outerHTML}\r\n        </div>\r\n        <div class=\"solutions\">\r\n          <h4>פתרונות אפשריים:</h4>\r\n          <ul>\r\n            <li><i class=\"fas fa-phone\"></i> צור קשר עם הלקוח לרכישת שעות נוספות</li>\r\n            <li><i class=\"fas fa-dollar-sign\"></i> עדכן את מערכת הביליטס</li>\r\n            <li><i class=\"fas fa-user-tie\"></i> פנה למנהל המשרד</li>\r\n          </ul>\r\n        </div>\r\n        <div class=\"popup-buttons\">\r\n          <button class=\"popup-btn popup-btn-confirm\" onclick=\"this.closest('.popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 2361,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 2885,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 3671,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 3864,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n      overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 3959,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 4261,
+          "content": "const errorDiv = document.createElement(\"div\");",
+          "match": "const errorDiv = document.createElement(\"div\");\r\n        errorDiv.style.cssText =\r\n          \"background: #fee; border: 2px solid #ef4444; padding: 15px; border-radius: 8px; margin: 20px; color: #991b1b;\";\r\n        errorDiv.innerHTML = `<strong>❌ שגיאה:</strong> ${safeText(\r\n          error.message || \"שגיאה בשמירת המשימה\"\r\n        )}`;\r\n        popup\r\n          .querySelector(\".popup-content\")\r\n          .insertBefore(\r\n            errorDiv,\r\n            popup.querySelector(\".popup-content\").firstChild\r\n          );\r\n      }\r\n\r\n      // Re-enable button\r\n      if (confirmBtn) {\r\n        confirmBtn.disabled = false;\r\n        confirmBtn.innerHTML = '<i class=\"fas fa-check\"></i> אשר סיום משימה';\r\n      }\r\n    }\r\n  }\r\n\r\n  filterBudgetTasks() {\r\n    const filterSelect = document.getElementById('budgetTaskFilter');\r\n\r\n    // ✅ אם יש select ב-DOM, קח את הערך ממנו\r\n    // אם אין, השתמש בערך השמור או ברירת המחדל 'active'\r\n    let filterValue = this.currentTaskFilter || 'active';\r\n    if (filterSelect) {\r\n      filterValue = filterSelect.value;\r\n      this.currentTaskFilter = filterValue;\r\n    }\r\n\r\n    // ✅ תיקון: ברירת מחדל היא 'active' (לא 'all')\r\n    // משימות מושלמות לא יופיעו אלא אם המשתמש בוחר במפורש \"שהושלמו\"\r\n    if (filterValue === 'active' || !filterValue) {\r\n      // ברירת מחדל: רק משימות פעילות\r\n      this.filteredBudgetTasks = this.budgetTasks.filter(t => t.status !== 'הושלם');\r\n    } else if (filterValue === 'completed') {\r\n      // הצג משימות שהושלמו (חודש אחרון)\r\n      const oneMonthAgo = new Date();\r\n      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);\r\n      this.filteredBudgetTasks = this.budgetTasks.filter(t => {\r\n        if (t.status !== 'הושלם') return false;\r\n        if (!t.completedAt) return true;\r\n        const completedDate = new Date(t.completedAt);\r\n        return completedDate >= oneMonthAgo;\r\n      });\r\n    } else if (filterValue === 'all') {\r\n      // הצג הכל (רק אם המשתמש בוחר במפורש)\r\n      this.filteredBudgetTasks = [...this.budgetTasks];\r\n    } else {\r\n      // ברירת מחדל fallback\r\n      this.filteredBudgetTasks = this.budgetTasks.filter(t => t.status !== 'הושלם');\r\n    }\r\n\r\n    // Re-render\r\n    this.renderBudgetTasks();\r\n  }\r\n\r\n  sortBudgetTasks(event) {\r\n    // קבלת כל ה-selects (גם כרטיסים וגם טבלה)\r\n    const allSelects = document.querySelectorAll('#budgetSortSelect');\r\n    if (allSelects.length === 0) return;\r\n\r\n    // קבלת הערך מה-select שהופעל (event.target) או מהראשון\r\n    const sortValue = event?.target?.value || allSelects[0].value;\r\n\r\n    // שמירת הבחירה הנוכחית\r\n    this.currentBudgetSort = sortValue;\r\n\r\n    // סינכרון כל ה-selects לאותו ערך\r\n    allSelects.forEach(select => {\r\n      if (select.value !== sortValue) {\r\n        select.value = sortValue;\r\n      }\r\n    });\r\n\r\n    // מיון מהיר ויעיל\r\n    this.filteredBudgetTasks.sort((a, b) => {\r\n      switch (sortValue) {\r\n        case 'recent':\r\n          // מיון לפי עדכון אחרון - הכי חדש ראשון\r\n          const dateA = new Date(a.lastUpdated || a.createdAt || 0).getTime();\r\n          const dateB = new Date(b.lastUpdated || b.createdAt || 0).getTime();\r\n          return dateB - dateA;\r\n\r\n        case 'name':\r\n          // מיון לפי שם לקוח - עברית א-ת\r\n          const nameA = (a.clientName || '').trim();\r\n          const nameB = (b.clientName || '').trim();\r\n          if (!nameA && !nameB) return 0;\r\n          if (!nameA) return 1;\r\n          if (!nameB) return -1;\r\n          return nameA.localeCompare(nameB, 'he');\r\n\r\n        case 'deadline':\r\n          // מיון לפי תאריך יעד - הכי קרוב ראשון\r\n          const deadlineA = new Date(a.deadline || '9999-12-31').getTime();\r\n          const deadlineB = new Date(b.deadline || '9999-12-31').getTime();\r\n          return deadlineA - deadlineB;\r\n\r\n        case 'progress':\r\n          // מיון לפי התקדמות - הכי גבוה ראשון\r\n          const progressA = a.estimatedMinutes > 0 ? (a.actualMinutes / a.estimatedMinutes) * 100 : 0;\r\n          const progressB = b.estimatedMinutes > 0 ? (b.actualMinutes / b.estimatedMinutes) * 100 : 0;\r\n          return progressB - progressA;\r\n\r\n        default:\r\n          return 0;\r\n      }\r\n    });\r\n\r\n    this.renderBudgetTasks();\r\n  }\r\n\r\n  async loadMoreBudgetTasks() {\r\n    // Show skeleton\r\n    if (window.SkeletonLoaderModule) {\r\n      const skeletonType = this.currentBudgetView === 'cards' ? 'card' : 'row';\r\n      const containerId = this.currentBudgetView === 'cards' ? 'budgetCardsContainer' : 'budgetTableContainer';\r\n      window.SkeletonLoaderModule.show(containerId, {\r\n        count: 3,\r\n        type: skeletonType,\r\n        columns: 8\r\n      });\r\n    }\r\n\r\n    const delay = this.integrationManager ? this.integrationManager.getSkeletonDelay() : 300;\r\n\r\n    setTimeout(async () => {\r\n      // Use IntegrationManager if available\r\n      if (this.integrationManager) {\r\n        this.budgetTasks = await this.integrationManager.loadMoreBudgetTasks(this.currentUser, this.budgetTasks);\r\n        this.filterBudgetTasks();\r\n      } else {\r\n        const result = this.budgetPagination.loadMore();\r\n      }\r\n\r\n      // Render with scroll preservation\r\n      if (this.integrationManager) {\r\n        this.integrationManager.executeWithScrollPreservation(() => {\r\n          this.renderBudgetTasks();\r\n        });\r\n      } else {\r\n        this.renderBudgetTasks();\r\n      }\r\n\r\n      // Hide skeleton after render\r\n      if (window.SkeletonLoaderModule) {\r\n        const containerId = this.currentBudgetView === 'cards' ? 'budgetCardsContainer' : 'budgetTableContainer';\r\n        window.SkeletonLoaderModule.hide(containerId);\r\n      }\r\n    }, delay);\r\n  }\r\n\r\n  switchBudgetView(view) {\r\n    this.currentBudgetView = view;\r\n\r\n    document.querySelectorAll(\"#budgetTab .view-tab\").forEach((tab) => {\r\n      tab.classList.remove(\"active\");\r\n    });\r\n\r\n    const activeTab = document.querySelector(\r\n      `#budgetTab .view-tab[data-view=\"${view}\"]`\r\n    );\r\n    if (activeTab) activeTab.classList.add(\"active\");\r\n\r\n    const budgetContainer = document.getElementById(\"budgetContainer\");\r\n    const budgetTableContainer = document.getElementById(\r\n      \"budgetTableContainer\"\r\n    );\r\n\r\n    if (view === \"cards\") {\r\n      if (budgetContainer) budgetContainer.classList.remove(\"hidden\");\r\n      if (budgetTableContainer) budgetTableContainer.classList.add(\"hidden\");\r\n    } else {\r\n      if (budgetContainer) budgetContainer.classList.add(\"hidden\");\r\n      if (budgetTableContainer) budgetTableContainer.classList.remove(\"hidden\");\r\n    }\r\n\r\n    if (!this.budgetTasks || this.budgetTasks.length === 0) {\r\n      this.loadDataFromFirebase()\r\n        .then(() => {\r\n          this.filterBudgetTasks();\r\n          this.renderBudgetTasks();\r\n        })\r\n        .catch((error) => {\r\n          console.error(\"Error loading data:\", error);\r\n          this.showNotification(\"שגיאה בטעינת נתונים\", \"error\");\r\n        });\r\n    } else {\r\n      if (!this.filteredBudgetTasks || this.filteredBudgetTasks.length === 0) {\r\n        this.filterBudgetTasks();\r\n      }\r\n      this.renderBudgetTasks();\r\n    }\r\n  }\r\n\r\n  switchTimesheetView(view) {\r\n    this.currentTimesheetView = view;\r\n\r\n    document.querySelectorAll(\"#timesheetTab .view-tab\").forEach((tab) => {\r\n      tab.classList.remove(\"active\");\r\n    });\r\n\r\n    const activeTab = document.querySelector(\r\n      `#timesheetTab .view-tab[data-view=\"${view}\"]`\r\n    );\r\n    if (activeTab) activeTab.classList.add(\"active\");\r\n\r\n    const timesheetContainer = document.getElementById(\"timesheetContainer\");\r\n    const timesheetTableContainer = document.getElementById(\r\n      \"timesheetTableContainer\"\r\n    );\r\n\r\n    if (view === \"cards\") {\r\n      if (timesheetContainer) timesheetContainer.classList.remove(\"hidden\");\r\n      if (timesheetTableContainer)\r\n        timesheetTableContainer.classList.add(\"hidden\");\r\n    } else {\r\n      if (timesheetContainer) timesheetContainer.classList.add(\"hidden\");\r\n      if (timesheetTableContainer)\r\n        timesheetTableContainer.classList.remove(\"hidden\");\r\n    }\r\n\r\n    if (!this.timesheetEntries || this.timesheetEntries.length === 0) {\r\n      this.loadDataFromFirebase()\r\n        .then(() => {\r\n          this.applyTimesheetFilters();\r\n          this.renderTimesheetEntries();\r\n        })\r\n        .catch((error) => {\r\n          console.error(\"Error loading timesheet data:\", error);\r\n          this.showNotification(\"שגיאה בטעינת נתונים\", \"error\");\r\n        });\r\n    } else {\r\n      if (\r\n        !this.filteredTimesheetEntries ||\r\n        this.filteredTimesheetEntries.length === 0\r\n      ) {\r\n        this.applyTimesheetFilters();\r\n      }\r\n      this.renderTimesheetEntries();\r\n    }\r\n  }\r\n}\r\n\r\n/* === Public API Functions === */\r\n\r\nfunction updateUserDisplay(userName) {\r\n  const userDisplay = document.getElementById(\"currentUserDisplay\");\r\n  if (userDisplay && userName) {\r\n    userDisplay.textContent = `${userName} - משרד עו\"ד גיא הרשקוביץ`;\r\n  }\r\n}\r\n\r\nfunction updateSidebarUser(userName) {\r\n  const userAvatar = document.querySelector(\".user-avatar\");\r\n  if (!userAvatar) return;\r\n\r\n  if (userName) {\r\n    userAvatar.setAttribute(\"title\", `מחובר: ${userName}`);\r\n    userAvatar.setAttribute(\"data-user\", userName);\r\n\r\n    const colors = [\r\n      \"linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)\",\r\n      \"linear-gradient(135deg, #10b981 0%, #059669 100%)\",\r\n      \"linear-gradient(135deg, #f59e0b 0%, #d97706 100%)\",\r\n      \"linear-gradient(135deg, #ef4444 0%, #dc2626 100%)\",\r\n      \"linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)\",\r\n      \"linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)\",\r\n      \"linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)\",\r\n      \"linear-gradient(135deg, #84cc16 0%, #65a30d 100%)\",\r\n    ];\r\n\r\n    const colorIndex = userName.charCodeAt(0) % colors.length;\r\n    userAvatar.style.background = colors[colorIndex];\r\n    userAvatar.style.transform = \"scale(1.05)\";\r\n    setTimeout(() => {\r\n      userAvatar.style.transform = \"\";\r\n    }, 300);\r\n  }\r\n}\r\n\r\nfunction switchTab(tabName) {\r\n  const budgetFormContainer = document.getElementById(\"budgetFormContainer\");\r\n  const timesheetFormContainer = document.getElementById(\r\n    \"timesheetFormContainer\"\r\n  );\r\n\r\n  if (budgetFormContainer) budgetFormContainer.classList.add(\"hidden\");\r\n  if (timesheetFormContainer) timesheetFormContainer.classList.add(\"hidden\");\r\n\r\n  const plusButton = document.getElementById(\"smartPlusBtn\");\r\n  if (plusButton) {\r\n    plusButton.classList.remove(\"active\");\r\n  }\r\n\r\n  // הסרת active מכל הכפתורים והתכנים\r\n  document.querySelectorAll(\".tab-button\").forEach((btn) => {\r\n    btn.classList.remove(\"active\");\r\n  });\r\n\r\n  document.querySelectorAll(\".tab-content\").forEach((content) => {\r\n    content.classList.remove(\"active\");\r\n  });\r\n\r\n  // הוספת active לכפתור ולתוכן הנכונים\r\n  if (tabName === \"budget\") {\r\n    const budgetTab = document.getElementById(\"budgetTab\");\r\n    if (budgetTab) budgetTab.classList.add(\"active\");\r\n\r\n    // הוספת active לכפתור התקצוב\r\n    document.querySelectorAll('.tab-button[onclick*=\"budget\"]').forEach(btn => {\r\n      btn.classList.add(\"active\");\r\n    });\r\n  } else if (tabName === \"timesheet\") {\r\n    const timesheetTab = document.getElementById(\"timesheetTab\");\r\n    if (timesheetTab) timesheetTab.classList.add(\"active\");\r\n\r\n    // הוספת active לכפתור השעתון\r\n    document.querySelectorAll('.tab-button[onclick*=\"timesheet\"]').forEach(btn => {\r\n      btn.classList.add(\"active\");\r\n    });\r\n\r\n    const dateField = document.getElementById(\"actionDate\");\r\n    if (dateField) {\r\n      dateField.value = new Date().toISOString().split(\"T\")[0];\r\n    }\r\n  } else if (tabName === \"reports\") {\r\n    const reportsTab = document.getElementById(\"reportsTab\");\r\n    if (reportsTab) reportsTab.classList.add(\"active\");\r\n\r\n    // הוספת active לכפתור הדוחות\r\n    document.querySelectorAll('.tab-button[onclick*=\"reports\"], .nav-item[onclick*=\"reports\"]').forEach(btn => {\r\n      btn.classList.add(\"active\");\r\n    });\r\n\r\n    // הסתרת כפתור הפלוס בטאב דוחות - לא רלוונטי\r\n    if (plusButton) {\r\n      plusButton.style.display = 'none';\r\n    }\r\n\r\n    // Initialize reports form on first load\r\n    if (typeof manager !== 'undefined' && manager.initReportsForm) {\r\n      manager.initReportsForm();\r\n    }\r\n  }\r\n\r\n  // הצגת כפתור הפלוס בטאבים אחרים\r\n  if (tabName !== 'reports' && plusButton) {\r\n    plusButton.style.display = '';\r\n    plusButton.style.visibility = 'visible';\r\n    plusButton.style.opacity = '1';\r\n  }\r\n\r\n  currentActiveTab = tabName;\r\n}\r\n\r\nfunction toggleNotifications() {\r\n  notificationBell.toggleDropdown();\r\n}\r\n\r\nfunction clearAllNotifications() {\r\n  if (confirm(\"האם אתה בטוח שברצונך למחוק את כל ההתראות?\")) {\r\n    notificationBell.clearAllNotifications();\r\n  }\r\n}\r\n\r\nfunction showClientForm() {\r\n  showPasswordDialog();\r\n}\r\n\r\nfunction showPasswordDialog() {\r\n  const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 4953,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n  overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        },
+        {
+          "pattern": "createModal",
+          "type": "custom",
+          "line": 6029,
+          "content": "const overlay = document.createElement(\"div\");",
+          "match": "const overlay = document.createElement(\"div\");\r\n    overlay.className = \"popup-overlay",
+          "replacement": "ModalsManager (manual migration)",
+          "priority": "low",
+          "effort": "high"
+        }
+      ],
+      "totalInstances": 16
+    }
+  ],
+  "patterns": {
+    "alert": {
+      "count": 19,
+      "files": [
+        "js\\cases.js",
+        "js\\legal-procedures.js"
+      ],
+      "type": "simple",
+      "replacement": "ModalsManager.showAlert",
+      "priority": "high",
+      "effort": "low"
+    },
+    "showCreateCaseDialog": {
+      "count": 8,
+      "files": [
+        "js\\cases.js",
+        "js\\main.js",
+        "js\\modules\\dialogs.js",
+        "js\\modules\\event-handlers.js",
+        "js\\modules\\firebase-operations.js",
+        "js\\modules\\ui-components.js"
+      ],
+      "type": "domain",
+      "replacement": "ModalsManager.showCreateCase",
+      "priority": "medium",
+      "effort": "high"
+    },
+    "showUpdateCaseDialog": {
+      "count": 3,
+      "files": [
+        "js\\cases.js"
+      ],
+      "type": "domain",
+      "replacement": "ModalsManager.showUpdateCase",
+      "priority": "medium",
+      "effort": "high"
+    },
+    "confirm": {
+      "count": 4,
+      "files": [
+        "js\\legal-procedures.js",
+        "js\\modules\\event-handlers.js",
+        "js\\modules\\navigation.js",
+        "script.js"
+      ],
+      "type": "simple",
+      "replacement": "ModalsManager.showConfirm",
+      "priority": "high",
+      "effort": "low"
+    },
+    "showSimpleLoading": {
+      "count": 6,
+      "files": [
+        "js\\main.js"
+      ],
+      "type": "loading",
+      "replacement": "ModalsManager.showLoading",
+      "priority": "high",
+      "effort": "low"
+    },
+    "hideSimpleLoading": {
+      "count": 9,
+      "files": [
+        "js\\main.js",
+        "js\\modules\\notification-bridge.js",
+        "script.js"
+      ],
+      "type": "loading",
+      "replacement": "ModalsManager.hideLoading",
+      "priority": "high",
+      "effort": "low"
+    },
+    "showTaskCompletionModal": {
+      "count": 5,
+      "files": [
+        "js\\main.js",
+        "js\\modules\\dialogs.js",
+        "script.js"
+      ],
+      "type": "domain",
+      "replacement": "ModalsManager.showTaskCompletion",
+      "priority": "medium",
+      "effort": "high"
+    },
+    "createModal": {
+      "count": 24,
+      "files": [
+        "js\\main.js",
+        "js\\modules\\authentication.js",
+        "js\\modules\\client-hours.js",
+        "js\\modules\\client-validation.js",
+        "js\\modules\\dialogs.js",
+        "js\\modules\\event-handlers.js",
+        "js\\modules\\forms.js",
+        "js\\modules\\manager-core.js",
+        "script.js"
+      ],
+      "type": "custom",
+      "replacement": "ModalsManager (manual migration)",
+      "priority": "low",
+      "effort": "high"
+    },
+    "showBlockedClientDialog": {
+      "count": 8,
+      "files": [
+        "js\\modules\\client-hours.js",
+        "js\\modules\\client-validation.js",
+        "js\\modules\\dialogs.js",
+        "script.js"
+      ],
+      "type": "domain",
+      "replacement": "ModalsManager.showBlockedClient",
+      "priority": "low",
+      "effort": "medium"
+    }
+  }
+}

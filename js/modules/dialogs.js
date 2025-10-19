@@ -13,11 +13,10 @@
  * - showBlockedClientDialog (שורות 986-1032)
  * - showAdvancedTimeDialog (שורות 3246-3290)
  * - showTaskCompletionModal (שורות 3493-3710)
- * - showPasswordDialog (שורות 4124-4166)
- * - showClientForm (שורה 4120)
- * - openClientForm (שורות 4196-4205)
- * - hideClientForm (שורות 4207-4217)
  * - openSmartForm (שורות 4272-4295)
+ *
+ * ✅ REMOVED - Client form functions (now handled by cases.js):
+ * - showPasswordDialog, showClientForm, openClientForm, hideClientForm
  * ========================================
  */
 
@@ -25,50 +24,11 @@
 
 /**
  * ========================================
- * Loading Overlays
+ * Loading Overlays - REMOVED
  * ========================================
+ * ✅ showSimpleLoading & hideSimpleLoading removed - use NotificationSystem instead
+ * Old calls automatically redirect to new system via backward compatibility wrapper in index.html
  */
-
-/**
- * הצגת overlay טעינה פשוט
- * @param {string} message - הודעת הטעינה
- */
-function showSimpleLoading(message = "מעבד...") {
-  // Don't show loading overlay during welcome screen
-  if (window.isInWelcomeScreen) {
-    return;
-  }
-  const existing = document.getElementById("simple-loading");
-  if (existing) existing.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "simple-loading";
-  overlay.style.cssText = `
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7); z-index: 10000;
-    display: flex; align-items: center; justify-content: center;
-  `;
-  overlay.innerHTML = `
-    <div style="text-align: center; background: white; color: #333; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-      <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1.5s linear infinite; margin: 0 auto 20px;"></div>
-      <div style="font-size: 16px; font-weight: 500;">${safeText(message)}</div>
-    </div>
-    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-  `;
-  document.body.appendChild(overlay);
-  document.body.style.overflow = "hidden";
-}
-
-/**
- * הסתרת overlay טעינה
- */
-function hideSimpleLoading() {
-  const overlay = document.getElementById("simple-loading");
-  if (overlay) {
-    overlay.remove();
-    document.body.style.overflow = "";
-  }
-}
 
 /**
  * ========================================
@@ -129,121 +89,9 @@ function showBlockedClientDialog(clientName, action) {
   }, 10000);
 }
 
-/**
- * הצגת דיאלוג סיסמה
- * משמש לאימות פעולות מוגנות
- */
-function showPasswordDialog() {
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
-  overlay.innerHTML = `
-    <div class="popup" style="max-width: 450px;">
-      <div class="popup-header">
-        <i class="fas fa-shield-alt"></i>
-        אזור מוגן
-      </div>
-      <div style="text-align: center; padding: 30px 20px;">
-        <div style="font-size: 48px; margin-bottom: 20px; color: #dc2626;">
-          <i class="fas fa-lock"></i>
-        </div>
-        <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
-          הוספת לקוח חדש מוגנת בסיסמה
-        </h3>
-        <form id="passwordCheckForm">
-          <input type="password" id="adminPassword" placeholder="הכנס סיסמת מנהל"
-                 style="width: 100%; padding: 15px; border: 2px solid #e5e7eb; border-radius: 12px; margin-bottom: 20px;" required>
-          <div id="passwordError" class="error-message hidden" style="margin-bottom: 15px; color: #dc2626;">
-            <i class="fas fa-exclamation-triangle"></i> סיסמה שגויה
-          </div>
-          <div class="popup-buttons">
-            <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-              <i class="fas fa-times"></i> ביטול
-            </button>
-            <button type="submit" class="popup-btn popup-btn-confirm">
-              <i class="fas fa-unlock"></i> אמת סיסמה
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const form = overlay.querySelector("#passwordCheckForm");
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    checkAdminPassword(overlay);
-  });
-}
-
-/**
- * בדיקת סיסמת מנהל
- * @param {HTMLElement} overlay - ה-overlay של הדיאלוג
- */
-function checkAdminPassword(overlay) {
-  const adminPassword = document.getElementById("adminPassword");
-  const errorDiv = document.getElementById("passwordError");
-
-  if (!adminPassword || !errorDiv) return;
-
-  const password = adminPassword.value;
-
-  if (password === "9668") {
-    overlay.remove();
-    if (window.manager) {
-      window.manager.showNotification(
-        "אומת בהצלחה! פותח טופס הוספת לקוח...",
-        "success"
-      );
-    }
-    setTimeout(openClientForm, 500);
-  } else {
-    errorDiv.classList.remove("hidden");
-    adminPassword.value = "";
-    adminPassword.focus();
-
-    setTimeout(() => {
-      errorDiv.classList.add("hidden");
-    }, 2000);
-  }
-}
-
-/**
- * הצגת טופס לקוח (entry point)
- */
-function showClientForm() {
-  showPasswordDialog();
-}
-
-/**
- * פתיחת טופס לקוח
- */
-function openClientForm() {
-  const clientFormOverlay = document.getElementById("clientFormOverlay");
-  if (clientFormOverlay) {
-    clientFormOverlay.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
-    if (window.manager) {
-      window.manager.updateClientTypeDisplay();
-    }
-  }
-}
-
-/**
- * הסתרת טופס לקוח
- */
-function hideClientForm() {
-  const clientFormOverlay = document.getElementById("clientFormOverlay");
-  const clientForm = document.getElementById("clientForm");
-
-  if (clientFormOverlay) clientFormOverlay.classList.add("hidden");
-  document.body.style.overflow = "auto";
-  if (clientForm) clientForm.reset();
-  if (window.manager) {
-    window.manager.updateClientTypeDisplay();
-  }
-}
+// ✅ Client form functions REMOVED
+// Removed: showPasswordDialog, checkAdminPassword, showClientForm, openClientForm, hideClientForm
+// Use casesManager.showCreateCaseDialog() instead
 
 /**
  * ========================================
@@ -570,24 +418,16 @@ function openSmartForm() {
 // Export to global scope for backward compatibility
 if (typeof window !== "undefined") {
   window.DialogsModule = {
-    showSimpleLoading,
-    hideSimpleLoading,
+    // ✅ Loading functions removed - use NotificationSystem.showLoading() instead
     showBlockedClientDialog,
     showAdvancedTimeDialog,
     showTaskCompletionModal,
-    showPasswordDialog,
-    checkAdminPassword,
-    showClientForm,
-    openClientForm,
-    hideClientForm,
+    // ✅ Client form functions removed
     openSmartForm,
   };
 }
 
 // Legacy global functions (for backward compatibility)
-window.showSimpleLoading = showSimpleLoading;
-window.hideSimpleLoading = hideSimpleLoading;
-window.showClientForm = showClientForm;
-window.openClientForm = openClientForm;
-window.hideClientForm = hideClientForm;
+// ✅ showSimpleLoading, hideSimpleLoading removed - handled by backward compatibility wrapper in index.html
+// ✅ showClientForm, openClientForm, hideClientForm removed
 window.openSmartForm = openSmartForm;

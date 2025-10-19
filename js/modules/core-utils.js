@@ -46,47 +46,14 @@ function debounce(func, wait) {
 }
 
 /**
- * Show loading overlay
+ * Loading overlay functions - REMOVED
+ * ✅ showSimpleLoading & hideSimpleLoading removed (v4.35.0)
+ * Use NotificationSystem.showLoading() and NotificationSystem.hideLoading() instead
+ * Backward compatibility handled by wrapper in index.html
  */
-// Global flag to suppress loading during welcome screen
+
+// Global flag to suppress loading during welcome screen (still needed by new system)
 window.isInWelcomeScreen = false;
-
-function showSimpleLoading(message = "מעבד...") {
-  // Don't show loading overlay during welcome screen
-  if (window.isInWelcomeScreen) {
-    return;
-  }
-  const existing = document.getElementById("simple-loading");
-  if (existing) existing.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "simple-loading";
-  overlay.style.cssText = `
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7); z-index: 10000;
-    display: flex; align-items: center; justify-content: center;
-  `;
-  overlay.innerHTML = `
-    <div style="text-align: center; background: white; color: #333; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-      <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1.5s linear infinite; margin: 0 auto 20px;"></div>
-      <div style="font-size: 16px; font-weight: 500;">${safeText(message)}</div>
-    </div>
-    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-  `;
-  document.body.appendChild(overlay);
-  document.body.style.overflow = "hidden";
-}
-
-/**
- * Hide loading overlay
- */
-function hideSimpleLoading() {
-  const overlay = document.getElementById("simple-loading");
-  if (overlay) {
-    overlay.remove();
-    document.body.style.overflow = "";
-  }
-}
 
 /**
  * Show subtle progress indicator
@@ -192,8 +159,7 @@ export {
   safeText,
   delay,
   debounce,
-  showSimpleLoading,
-  hideSimpleLoading,
+  // ✅ showSimpleLoading, hideSimpleLoading removed - use NotificationSystem instead
   formatDateTime,
   formatDate,
   formatShort

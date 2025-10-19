@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 מיגרציה מקצועית: Clients → Cases</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 16px;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .step-card {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 2px solid #e9ecef;
+      transition: all 0.3s;
+    }
+
+    .step-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+    }
+
+    .step-card.active {
+      border-color: #667eea;
+      background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: 18px;
+      margin-left: 15px;
+    }
+
+    .step-title {
+      flex: 1;
+      font-size: 20px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .step-status {
+      padding: 6px 15px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-pending {
+      background: #e9ecef;
+      color: #6c757d;
+    }
+
+    .status-running {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .step-description {
+      color: #6c757d;
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    #log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .log-info { color: #3b82f6; }
+    .log-success { color: #10b981; }
+    .log-warning { color: #f59e0b; }
+    .log-error { color: #ef4444; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .stat-box {
+      background: white;
+      border: 2px solid #e9ecef;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 32px;
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #6c757d;
+    }
+
+    .warning-box {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .warning-box h3 {
+      color: #856404;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .warning-box ul {
+      margin-right: 25px;
+      color: #856404;
+      line-height: 1.8;
+    }
+
+    .login-section {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 10px;
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+
+    .login-section input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+
+    .login-section input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-rocket"></i> מיגרציה מקצועית</h1>
+      <p>המרת לקוחות (clients) לתיקים (cases) - בטוחה, מבוקרת ומקצועית</p>
+    </div>
+
+    <div class="content">
+      <!-- Warning Box -->
+      <div class="warning-box">
+        <h3><i class="fas fa-exclamation-triangle"></i> הנחיות חשובות</h3>
+        <ul>
+          <li>המיגרציה תיצור תיק חדש לכל לקוח ב-collection בשם "cases"</li>
+          <li>הלקוחות המקוריים ב-collection "clients" <strong>לא יימחקו</strong></li>
+          <li>ניתן לבצע dry run לראות מה יקרה ללא שינויים אמיתיים</li>
+          <li>מומלץ להתחיל עם לקוח אחד לבדיקה לפני מיגרציה מלאה</li>
+          <li>כל פעולה מתועדת ב-audit log</li>
+        </ul>
+      </div>
+
+      <!-- Login Section -->
+      <div id="loginSection" class="login-section">
+        <h3 style="margin-bottom: 15px; color: #2c3e50;">
+          <i class="fas fa-lock"></i> התחברות
+        </h3>
+        <input type="email" id="emailInput" placeholder="דוא״ל (haim@ghlawoffice.co.il)">
+        <input type="password" id="passwordInput" placeholder="סיסמה">
+        <button class="btn btn-primary" onclick="login()">
+          <i class="fas fa-sign-in-alt"></i> התחבר
+        </button>
+      </div>
+
+      <!-- Steps -->
+      <div id="stepsContainer">
+        <!-- Step 1: Dry Run Test -->
+        <div class="step-card" id="step1">
+          <div class="step-header">
+            <div class="step-number">1</div>
+            <div class="step-title">בדיקה ראשונית (Dry Run)</div>
+            <span class="step-status status-pending" id="status1">ממתין</span>
+          </div>
+          <div class="step-description">
+            הרצה לדוגמה - בודק מה יקרה <strong>ללא שינויים אמיתיים</strong>. מומלץ מאוד לפני התחלה!
+          </div>
+          <button class="btn btn-secondary" onclick="runDryRun()" id="btn1" disabled>
+            <i class="fas fa-flask"></i> הרץ בדיקה (Dry Run)
+          </button>
+        </div>
+
+        <!-- Step 2: Single Client Test -->
+        <div class="step-card" id="step2">
+          <div class="step-header">
+            <div class="step-number">2</div>
+            <div class="step-title">בדיקה על לקוח אחד</div>
+            <span class="step-status status-pending" id="status2">ממתין</span>
+          </div>
+          <div class="step-description">
+            מיגרציה אמיתית של <strong>לקוח אחד בלבד</strong> לבדיקה. אחרי זה תוכל לבדוק ש הכל עבר נכון.
+          </div>
+          <input type="text" id="clientIdInput" placeholder="ID של לקוח לבדיקה (אופציונלי)" style="width: 100%; padding: 10px; border-radius: 8px; border: 2px solid #dee2e6; margin-bottom: 10px;">
+          <button class="btn btn-primary" onclick="runSingleClient()" id="btn2" disabled>
+            <i class="fas fa-user"></i> העבר לקוח אחד
+          </button>
+        </div>
+
+        <!-- Step 3: Full Migration -->
+        <div class="step-card" id="step3">
+          <div class="step-header">
+            <div class="step-number">3</div>
+            <div class="step-title">מיגרציה מלאה</div>
+            <span class="step-status status-pending" id="status3">ממתין</span>
+          </div>
+          <div class="step-description">
+            מיגרציה של <strong>כל הלקוחות</strong> למבנה התיקים החדש. רק אחרי שבדקת ששלב 2 עובד!
+          </div>
+          <button class="btn btn-success" onclick="runFullMigration()" id="btn3" disabled>
+            <i class="fas fa-rocket"></i> התחל מיגרציה מלאה
+          </button>
+          <button class="btn btn-danger" onclick="confirmFullMigration()" id="confirmBtn3" style="display: none;">
+            <i class="fas fa-check-double"></i> אני בטוח - המשך!
+          </button>
+        </div>
+
+        <!-- Step 4: Verification -->
+        <div class="step-card" id="step4">
+          <div class="step-header">
+            <div class="step-number">4</div>
+            <div class="step-title">אימות ותיקוף</div>
+            <span class="step-status status-pending" id="status4">ממתין</span>
+          </div>
+          <div class="step-description">
+            בדיקה שכל הנתונים עברו נכון ולא אבד מידע בדרך.
+          </div>
+          <button class="btn btn-primary" onclick="verifyMigration()" id="btn4" disabled>
+            <i class="fas fa-check-circle"></i> אמת מיגרציה
+          </button>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div class="stats-grid" id="statsGrid" style="display: none;">
+        <div class="stat-box">
+          <div class="stat-number" id="statClients">0</div>
+          <div class="stat-label">לקוחות</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="statCreated">0</div>
+          <div class="stat-label">נוצרו</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="statSkipped">0</div>
+          <div class="stat-label">דולגו</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="statErrors">0</div>
+          <div class="stat-label">שגיאות</div>
+        </div>
+      </div>
+
+      <!-- Log Console -->
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const functions = firebase.functions();
+
+    let currentUser = null;
+
+    // Logging
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString('he-IL');
+      const className = `log-${type}`;
+      logEl.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(`[${type.toUpperCase()}]`, message);
+    }
+
+    // Update step status
+    function updateStepStatus(stepNum, status, message = '') {
+      const statusEl = document.getElementById(`status${stepNum}`);
+      const stepCard = document.getElementById(`step${stepNum}`);
+
+      statusEl.className = `step-status status-${status}`;
+
+      const statusText = {
+        pending: 'ממתין',
+        running: 'בהרצה...',
+        success: 'הושלם ✓',
+        error: 'שגיאה ✗'
+      };
+
+      statusEl.textContent = statusText[status] || status;
+
+      if (status === 'running') {
+        stepCard.classList.add('active');
+        statusEl.innerHTML = '<span class="spinner"></span> ' + statusText[status];
+      } else {
+        stepCard.classList.remove('active');
+      }
+
+      if (message) {
+        log(message, status === 'error' ? 'error' : status === 'success' ? 'success' : 'info');
+      }
+    }
+
+    // Update stats
+    function updateStats(stats) {
+      if (!stats) return;
+
+      document.getElementById('statsGrid').style.display = 'grid';
+      document.getElementById('statClients').textContent = stats.totalClients || 0;
+      document.getElementById('statCreated').textContent = stats.created || 0;
+      document.getElementById('statSkipped').textContent = stats.skipped || 0;
+      document.getElementById('statErrors').textContent = stats.errors || 0;
+    }
+
+    // Login
+    async function login() {
+      const email = document.getElementById('emailInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+
+      if (!email || !password) {
+        log('נא למלא אימייל וסיסמה', 'error');
+        return;
+      }
+
+      try {
+        log('מתחבר...', 'info');
+        const userCred = await auth.signInWithEmailAndPassword(email, password);
+        currentUser = userCred.user;
+
+        log(`התחברות הצליחה! שלום ${email}`, 'success');
+        document.getElementById('loginSection').style.display = 'none';
+
+        // Enable buttons
+        document.getElementById('btn1').disabled = false;
+        document.getElementById('btn2').disabled = false;
+
+      } catch (error) {
+        log(`שגיאת התחברות: ${error.message}`, 'error');
+      }
+    }
+
+    // Step 1: Dry Run
+    async function runDryRun() {
+      updateStepStatus(1, 'running', 'מתחיל בדיקה ראשונית (Dry Run)...');
+      document.getElementById('btn1').disabled = true;
+
+      try {
+        const migrateFunc = functions.httpsCallable('migrateClientsIntoFullCases');
+        const result = await migrateFunc({
+          dryRun: true  // רק סימולציה
+        });
+
+        if (result.data.success) {
+          updateStepStatus(1, 'success', '✅ בדיקה הושלמה בהצלחה!');
+          log(`📊 תוצאות: ${result.data.created} תיקים ייווצרו, ${result.data.skipped} ידולגו, ${result.data.errors} שגיאות`, 'success');
+          updateStats(result.data);
+
+          // Enable next step
+          document.getElementById('btn2').disabled = false;
+        } else {
+          throw new Error(result.data.message || 'שגיאה לא ידועה');
+        }
+      } catch (error) {
+        updateStepStatus(1, 'error', `❌ שגיאה: ${error.message}`);
+        log(error.stack || error.toString(), 'error');
+      } finally {
+        document.getElementById('btn1').disabled = false;
+      }
+    }
+
+    // Step 2: Single Client
+    async function runSingleClient() {
+      const clientId = document.getElementById('clientIdInput').value.trim();
+
+      if (!clientId) {
+        log('⚠️ לא הוזן ID של לקוח - המערכת תבחר לקוח ראשון אוטומטית', 'warning');
+      }
+
+      updateStepStatus(2, 'running', `מעביר לקוח ${clientId || 'ראשון'}...`);
+      document.getElementById('btn2').disabled = true;
+
+      try {
+        const migrateFunc = functions.httpsCallable('migrateClientsIntoFullCases');
+        const result = await migrateFunc({
+          dryRun: false,
+          specificClientId: clientId || null
+        });
+
+        if (result.data.success) {
+          updateStepStatus(2, 'success', '✅ לקוח הועבר בהצלחה!');
+
+          if (result.data.createdCases && result.data.createdCases.length > 0) {
+            const caseInfo = result.data.createdCases[0];
+            log(`✨ נוצר תיק: ${caseInfo.caseNumber} - ${caseInfo.caseTitle}`, 'success');
+            log(`   לקוח: ${caseInfo.clientName} (${caseInfo.clientId})`, 'info');
+            log(`   תיק ID: ${caseInfo.caseId}`, 'info');
+          }
+
+          updateStats(result.data);
+
+          // Enable next step
+          document.getElementById('btn3').disabled = false;
+        } else {
+          throw new Error(result.data.message || 'שגיאה לא ידועה');
+        }
+      } catch (error) {
+        updateStepStatus(2, 'error', `❌ שגיאה: ${error.message}`);
+        log(error.stack || error.toString(), 'error');
+      } finally {
+        document.getElementById('btn2').disabled = false;
+      }
+    }
+
+    // Step 3: Full Migration (with confirmation)
+    function runFullMigration() {
+      log('⚠️ אזהרה: מיגרציה מלאה של כל הלקוחות!', 'warning');
+      log('לחץ על "אני בטוח - המשך!" להמשך', 'warning');
+      document.getElementById('btn3').style.display = 'none';
+      document.getElementById('confirmBtn3').style.display = 'inline-flex';
+    }
+
+    async function confirmFullMigration() {
+      updateStepStatus(3, 'running', 'מתחיל מיגרציה מלאה...');
+      document.getElementById('confirmBtn3').disabled = true;
+
+      try {
+        const migrateFunc = functions.httpsCallable('migrateClientsIntoFullCases');
+        const result = await migrateFunc({
+          dryRun: false,
+          skipExisting: true  // דלג על לקוחות שכבר יש להם case
+        });
+
+        if (result.data.success) {
+          updateStepStatus(3, 'success', '🎉 מיגרציה הושלמה בהצלחה!');
+          log(`📊 סיכום: ${result.data.created} תיקים נוצרו, ${result.data.skipped} דולגו, ${result.data.errors} שגיאות`, 'success');
+          updateStats(result.data);
+
+          // Enable verification
+          document.getElementById('btn4').disabled = false;
+        } else {
+          throw new Error(result.data.message || 'שגיאה לא ידועה');
+        }
+      } catch (error) {
+        updateStepStatus(3, 'error', `❌ שגיאה: ${error.message}`);
+        log(error.stack || error.toString(), 'error');
+      } finally {
+        document.getElementById('confirmBtn3').disabled = false;
+      }
+    }
+
+    // Step 4: Verification
+    async function verifyMigration() {
+      updateStepStatus(4, 'running', 'מאמת נתונים...');
+      document.getElementById('btn4').disabled = true;
+
+      try {
+        log('בודק clients...', 'info');
+        const clientsSnap = await db.collection('clients').get();
+        const clientsCount = clientsSnap.size;
+
+        log('בודק cases...', 'info');
+        const casesSnap = await db.collection('cases').get();
+        const casesCount = casesSnap.size;
+
+        log(`✅ נמצאו ${clientsCount} לקוחות`, 'success');
+        log(`✅ נמצאו ${casesCount} תיקים`, 'success');
+
+        // Count migrated clients
+        let migratedCount = 0;
+        clientsSnap.forEach(doc => {
+          if (doc.data().migratedToCases) migratedCount++;
+        });
+
+        log(`📊 ${migratedCount} לקוחות מסומנים כמועברים`, 'info');
+
+        if (migratedCount > 0) {
+          updateStepStatus(4, 'success', '✅ אימות הושלם!');
+          log('🎊 המיגרציה הושלמה בהצלחה!', 'success');
+        } else {
+          updateStepStatus(4, 'error', '⚠️ לא נמצאו לקוחות מועברים');
+        }
+
+      } catch (error) {
+        updateStepStatus(4, 'error', `❌ שגיאה: ${error.message}`);
+      } finally {
+        document.getElementById('btn4').disabled = false;
+      }
+    }
+
+    // Auto-login check
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        log(`מחובר אוטומטית כ-${user.email}`, 'success');
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('btn1').disabled = false;
+        document.getElementById('btn2').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

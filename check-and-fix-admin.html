@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>בדיקה ותיקון הרשאות Admin</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 700px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 15px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    }
+
+    .btn:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .info-box {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .info-box h3 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #6c757d;
+    }
+
+    .info-value {
+      color: #2c3e50;
+      font-family: monospace;
+    }
+
+    .status-good {
+      color: #10b981;
+      font-weight: bold;
+    }
+
+    .status-bad {
+      color: #ef4444;
+      font-weight: bold;
+    }
+
+    #log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .success {
+      color: #10b981;
+    }
+
+    .error {
+      color: #ef4444;
+    }
+
+    .warning {
+      color: #f59e0b;
+    }
+
+    .info {
+      color: #3b82f6;
+    }
+
+    .spinner {
+      border: 4px solid #f3f4f6;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-bottom: 15px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 בדיקה ותיקון הרשאות Admin</h1>
+    <p class="subtitle">בדיקת ועדכון תפקיד המשתמש ל-admin</p>
+
+    <div id="loginSection">
+      <input type="email" id="emailInput" placeholder="haim@ghlawoffice.co.il">
+      <input type="password" id="passwordInput" placeholder="סיסמה">
+      <button class="btn btn-primary" onclick="login()">
+        🔐 התחבר ובדוק
+      </button>
+    </div>
+
+    <div id="resultsSection" style="display: none;">
+      <div class="info-box">
+        <h3>📊 מידע על המשתמש</h3>
+        <div class="info-row">
+          <span class="info-label">אימייל:</span>
+          <span class="info-value" id="userEmail">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">UID:</span>
+          <span class="info-value" id="userUID">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">שם משתמש:</span>
+          <span class="info-value" id="username">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">תפקיד נוכחי:</span>
+          <span class="info-value" id="currentRole">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">פעיל:</span>
+          <span class="info-value" id="isActive">-</span>
+        </div>
+      </div>
+
+      <button class="btn btn-success" onclick="fixAdmin()" id="fixBtn" style="display: none;">
+        ✅ עדכן ל-Admin
+      </button>
+
+      <button class="btn btn-danger" onclick="location.reload()">
+        🔄 נסה שוב
+      </button>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let employeeDocId = null;
+    let employeeData = null;
+
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString('he-IL');
+      const className = type;
+      logEl.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(`[${type.toUpperCase()}]`, message);
+    }
+
+    async function login() {
+      const email = document.getElementById('emailInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+
+      if (!email || !password) {
+        log('נא למלא אימייל וסיסמה', 'error');
+        return;
+      }
+
+      try {
+        log('מתחבר...', 'info');
+        const userCred = await auth.signInWithEmailAndPassword(email, password);
+        currentUser = userCred.user;
+
+        log(`✅ התחברות הצליחה! UID: ${currentUser.uid}`, 'success');
+
+        // Find employee document
+        await checkEmployee();
+
+      } catch (error) {
+        log(`❌ שגיאת התחברות: ${error.message}`, 'error');
+      }
+    }
+
+    async function checkEmployee() {
+      try {
+        log('מחפש רשומת עובד...', 'info');
+
+        // Try to find by authUID
+        const byAuthUID = await db.collection('employees')
+          .where('authUID', '==', currentUser.uid)
+          .limit(1)
+          .get();
+
+        if (!byAuthUID.empty) {
+          employeeDocId = byAuthUID.docs[0].id;
+          employeeData = byAuthUID.docs[0].data();
+          log(`✅ נמצאה רשומת עובד: ${employeeDocId}`, 'success');
+        } else {
+          // Try by email
+          log('⚠️ לא נמצא לפי authUID, מחפש לפי אימייל...', 'warning');
+          const byEmail = await db.collection('employees')
+            .where('email', '==', currentUser.email)
+            .limit(1)
+            .get();
+
+          if (!byEmail.empty) {
+            employeeDocId = byEmail.docs[0].id;
+            employeeData = byEmail.docs[0].data();
+            log(`✅ נמצאה רשומת עובד לפי אימייל: ${employeeDocId}`, 'success');
+          } else {
+            // Try by username from email
+            const username = currentUser.email.split('@')[0];
+            log(`⚠️ לא נמצא לפי אימייל, מנסה username: ${username}`, 'warning');
+
+            const employeeDoc = await db.collection('employees').doc(username).get();
+            if (employeeDoc.exists) {
+              employeeDocId = employeeDoc.id;
+              employeeData = employeeDoc.data();
+              log(`✅ נמצאה רשומת עובד לפי username: ${employeeDocId}`, 'success');
+            } else {
+              log('❌ לא נמצאה רשומת עובד במערכת!', 'error');
+              log('💡 אולי צריך ליצור רשומה חדשה או לעדכן את ה-authUID', 'warning');
+              return;
+            }
+          }
+        }
+
+        // Display results
+        displayEmployeeInfo();
+
+      } catch (error) {
+        log(`❌ שגיאה בחיפוש עובד: ${error.message}`, 'error');
+      }
+    }
+
+    function displayEmployeeInfo() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('resultsSection').style.display = 'block';
+
+      document.getElementById('userEmail').textContent = currentUser.email;
+      document.getElementById('userUID').textContent = currentUser.uid;
+      document.getElementById('username').textContent = employeeDocId;
+
+      const role = employeeData.role || 'לא מוגדר';
+      const roleEl = document.getElementById('currentRole');
+      roleEl.textContent = role;
+
+      if (role === 'admin' || role === 'מנהל') {
+        roleEl.className = 'info-value status-good';
+        log('✅ התפקיד כבר מוגדר כ-admin!', 'success');
+        log('💡 אם עדיין יש בעיה, נסה להתנתק ולהתחבר מחדש במערכת', 'info');
+      } else {
+        roleEl.className = 'info-value status-bad';
+        log(`⚠️ התפקיד הנוכחי: "${role}" - צריך לעדכן ל-admin`, 'warning');
+        document.getElementById('fixBtn').style.display = 'block';
+      }
+
+      const isActive = employeeData.isActive;
+      const activeEl = document.getElementById('isActive');
+      activeEl.textContent = isActive ? 'כן ✓' : 'לא ✗';
+      activeEl.className = isActive ? 'info-value status-good' : 'info-value status-bad';
+
+      if (!isActive) {
+        log('⚠️ החשבון לא פעיל! צריך גם לעדכן את זה', 'warning');
+      }
+    }
+
+    async function fixAdmin() {
+      if (!employeeDocId) {
+        log('❌ אין מזהה עובד לעדכון', 'error');
+        return;
+      }
+
+      try {
+        log('מעדכן תפקיד ל-admin...', 'info');
+
+        const updates = {
+          role: 'admin',
+          isActive: true,
+          authUID: currentUser.uid,  // ודא שה-authUID נכון
+          email: currentUser.email,
+          lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastModifiedBy: 'system_admin_fix'
+        };
+
+        await db.collection('employees').doc(employeeDocId).update(updates);
+
+        log('✅ העדכון הצליח!', 'success');
+        log('📝 עודכן:', 'info');
+        log(`   - role: "admin"`, 'info');
+        log(`   - isActive: true`, 'info');
+        log(`   - authUID: ${currentUser.uid}`, 'info');
+        log('', 'info');
+        log('💡 עכשיו תוכל להריץ את המיגרציה!', 'success');
+        log('🔄 רענן את דף המיגרציה ונסה שוב', 'info');
+
+        // Refresh display
+        employeeData.role = 'admin';
+        employeeData.isActive = true;
+        displayEmployeeInfo();
+
+        document.getElementById('fixBtn').style.display = 'none';
+
+      } catch (error) {
+        log(`❌ שגיאה בעדכון: ${error.message}`, 'error');
+      }
+    }
+
+    // Auto-login if already authenticated
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        currentUser = user;
+        log(`מחובר אוטומטית כ-${user.email}`, 'success');
+        await checkEmployee();
+      }
+    });
+  </script>
+</body>
+</html>

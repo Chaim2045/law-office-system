@@ -250,6 +250,203 @@ class NotificationBellSystem {
   }
 }
 
+/**
+ * Action Flow Manager
+ * ניהול אחיד של זרימת פעולות עם משובים ויזואליים
+ *
+ * @example
+ * await ActionFlowManager.execute({
+ *   loadingMessage: 'שומר משימה...',
+ *   action: async () => await saveTask(data),
+ *   successMessage: 'המשימה נשמרה בהצלחה',
+ *   errorMessage: 'שגיאה בשמירת משימה',
+ *   onSuccess: () => closeForm(),
+ *   closePopupOnSuccess: true
+ * });
+ */
+class ActionFlowManager {
+  /**
+   * Execute an action with consistent UX flow
+   * @param {Object} options Configuration options
+   * @param {string} options.loadingMessage - Loading message to display
+   * @param {Function} options.action - Async function to execute
+   * @param {string} options.successMessage - Success message
+   * @param {string} options.errorMessage - Error message prefix
+   * @param {Function} options.onSuccess - Callback on success (optional)
+   * @param {Function} options.onError - Callback on error (optional)
+   * @param {Function} options.onFinally - Callback always runs (optional)
+   * @param {boolean} options.closePopupOnSuccess - Auto-close popup on success (default: false)
+   * @param {string} options.popupSelector - Popup selector to close (default: '.popup-overlay')
+   * @param {number} options.closeDelay - Delay before closing popup in ms (default: 500)
+   * @param {number} options.minLoadingDuration - Minimum loading duration in ms (default: 3000)
+   * @returns {Promise<{success: boolean, data?: any, error?: Error}>}
+   */
+  static async execute(options) {
+    const {
+      loadingMessage = 'מעבד...',
+      action,
+      successMessage,
+      errorMessage = 'שגיאה בביצוע הפעולה',
+      onSuccess = null,
+      onError = null,
+      onFinally = null,
+      closePopupOnSuccess = false,
+      popupSelector = '.popup-overlay',
+      closeDelay = 500,
+      minLoadingDuration = 4000 // ✅ NEW: מינימום 4 שניות
+    } = options;
+
+    // Validation
+    if (typeof action !== 'function') {
+      console.error('❌ ActionFlowManager: action must be a function');
+      return { success: false, error: new Error('Invalid action parameter') };
+    }
+
+    let result = null;
+    let actionError = null;
+    let startTime = null; // ✅ Define outside try block
+
+    try {
+      // 1. Show loading and track start time
+      startTime = Date.now();
+
+      if (window.NotificationSystem) {
+        window.NotificationSystem.showLoading(loadingMessage);
+      } else {
+        window.showSimpleLoading?.(loadingMessage);
+      }
+
+      // 2. Execute action
+      result = await action();
+
+      // 3. ✅ Calculate elapsed time and wait if needed
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = minLoadingDuration - elapsedTime;
+
+      if (remainingTime > 0) {
+        console.log(`⏱️ Waiting ${remainingTime}ms to reach minimum loading duration...`);
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
+
+      // 4. Hide loading
+      if (window.NotificationSystem) {
+        window.NotificationSystem.hideLoading();
+      } else {
+        window.hideSimpleLoading?.();
+      }
+
+      // Small delay to ensure loading is hidden before showing success
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 4. Show success message
+      if (successMessage) {
+        if (window.NotificationSystem) {
+          window.NotificationSystem.success(successMessage, 3000);
+        } else {
+          window.showNotification?.(successMessage, 'success');
+        }
+      }
+
+      // 5. Execute success callback
+      if (onSuccess && typeof onSuccess === 'function') {
+        await onSuccess(result);
+      }
+
+      // 6. Close popup if needed
+      if (closePopupOnSuccess) {
+        setTimeout(() => {
+          const popup = document.querySelector(popupSelector);
+          if (popup) {
+            popup.remove();
+          }
+        }, closeDelay);
+      }
+
+      return { success: true, data: result };
+
+    } catch (error) {
+      actionError = error;
+      console.error('❌ ActionFlowManager error:', error);
+
+      // ✅ Wait for minimum duration even on error (so user sees the animation)
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = minLoadingDuration - elapsedTime;
+
+      if (remainingTime > 0) {
+        console.log(`⏱️ Waiting ${remainingTime}ms even on error...`);
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
+
+      // Hide loading on error
+      if (window.NotificationSystem) {
+        window.NotificationSystem.hideLoading();
+      } else {
+        window.hideSimpleLoading?.();
+      }
+
+      // Small delay before showing error
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Show error message
+      const fullErrorMessage = `${errorMessage}: ${error.message || 'שגיאה לא ידועה'}`;
+      if (window.NotificationSystem) {
+        window.NotificationSystem.error(fullErrorMessage, 5000);
+      } else {
+        window.showNotification?.(fullErrorMessage, 'error');
+      }
+
+      // Execute error callback
+      if (onError && typeof onError === 'function') {
+        await onError(error);
+      }
+
+      return { success: false, error };
+
+    } finally {
+      // Execute finally callback
+      if (onFinally && typeof onFinally === 'function') {
+        await onFinally();
+      }
+    }
+  }
+
+  /**
+   * Execute action with form reset on success
+   * @param {Object} options - Same as execute() + formId
+   */
+  static async executeWithFormReset(options) {
+    const { formId, formContainerId, ...restOptions } = options;
+
+    const originalOnSuccess = restOptions.onSuccess;
+
+    return this.execute({
+      ...restOptions,
+      onSuccess: async (result) => {
+        // Reset form
+        if (formId) {
+          const form = document.getElementById(formId);
+          if (form) form.reset();
+        }
+
+        // Hide form container
+        if (formContainerId) {
+          const container = document.getElementById(formContainerId);
+          if (container) container.classList.add('hidden');
+
+          // Remove active state from plus button
+          const plusButton = document.getElementById('smartPlusBtn');
+          if (plusButton) plusButton.classList.remove('active');
+        }
+
+        // Call original callback
+        if (originalOnSuccess) {
+          await originalOnSuccess(result);
+        }
+      }
+    });
+  }
+}
+
 /* === Public API Functions === */
 
 function updateUserDisplay(userName) {
@@ -287,132 +484,19 @@ function updateSidebarUser(userName) {
   }
 }
 
-function showClientForm() {
-  showPasswordDialog();
-}
+// ✅ Client form functions removed - use casesManager.showCreateCaseDialog() instead
+// Removed: showClientForm, showPasswordDialog, checkAdminPassword, openClientForm, hideClientForm
 
-function showPasswordDialog() {
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
-  overlay.innerHTML = `
-    <div class="popup" style="max-width: 450px;">
-      <div class="popup-header">
-        <i class="fas fa-shield-alt"></i>
-        אזור מוגן
-      </div>
-      <div style="text-align: center; padding: 30px 20px;">
-        <div style="font-size: 48px; margin-bottom: 20px; color: #dc2626;">
-          <i class="fas fa-lock"></i>
-        </div>
-        <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
-          הוספת לקוח חדש מוגנת בסיסמה
-        </h3>
-        <form id="passwordCheckForm">
-          <input type="password" id="adminPassword" placeholder="הכנס סיסמת מנהל"
-                 style="width: 100%; padding: 15px; border: 2px solid #e5e7eb; border-radius: 12px; margin-bottom: 20px;" required>
-          <div id="passwordError" class="error-message hidden" style="margin-bottom: 15px; color: #dc2626;">
-            <i class="fas fa-exclamation-triangle"></i> סיסמה שגויה
-          </div>
-          <div class="popup-buttons">
-            <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-              <i class="fas fa-times"></i> ביטול
-            </button>
-            <button type="submit" class="popup-btn popup-btn-confirm">
-              <i class="fas fa-unlock"></i> אמת סיסמה
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const form = overlay.querySelector("#passwordCheckForm");
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    checkAdminPassword(overlay);
-  });
-}
-
-function checkAdminPassword(overlay) {
-  const adminPassword = document.getElementById("adminPassword");
-  const errorDiv = document.getElementById("passwordError");
-
-  if (!adminPassword || !errorDiv) return;
-
-  const password = adminPassword.value;
-
-  if (password === "9668") {
-    overlay.remove();
-    if (window.manager) {
-      window.manager.showNotification(
-        "אומת בהצלחה! פותח טופס הוספת לקוח...",
-        "success"
-      );
-    }
-    setTimeout(openClientForm, 500);
-  } else {
-    errorDiv.classList.remove("hidden");
-    adminPassword.value = "";
-    adminPassword.focus();
-
-    setTimeout(() => {
-      errorDiv.classList.add("hidden");
-    }, 2000);
-  }
-}
-
-function openClientForm() {
-  const clientFormOverlay = document.getElementById("clientFormOverlay");
-  if (clientFormOverlay) {
-    clientFormOverlay.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
-    if (window.manager) {
-      window.manager.updateClientTypeDisplay();
-    }
-  }
-}
-
-function hideClientForm() {
-  const clientFormOverlay = document.getElementById("clientFormOverlay");
-  const clientForm = document.getElementById("clientForm");
-
-  if (clientFormOverlay) clientFormOverlay.classList.add("hidden");
-  document.body.style.overflow = "auto";
-  if (clientForm) clientForm.reset();
-  if (window.manager) {
-    window.manager.updateClientTypeDisplay();
-  }
-}
-
-function showNotification(message, type = "success") {
-  try {
-    const notification = document.getElementById("notification");
-    if (!notification) return;
-
-    notification.textContent = message;
-    notification.className = `notification ${type}`;
-    notification.classList.add("show");
-
-    setTimeout(() => {
-      notification.classList.remove("show");
-    }, 3000);
-  } catch (error) {
-    console.error("Notification error:", error);
-  }
-}
+// ✅ showNotification removed (v4.35.0) - use NotificationSystem.show() instead
+// Backward compatibility handled by wrapper in index.html
 
 // Exports
 export {
   DOMCache,
   NotificationBellSystem,
+  ActionFlowManager,
   updateUserDisplay,
-  updateSidebarUser,
-  showClientForm,
-  showPasswordDialog,
-  checkAdminPassword,
-  openClientForm,
-  hideClientForm,
-  showNotification
+  updateSidebarUser
+  // ✅ Client form functions removed
+  // ✅ showNotification removed - use NotificationSystem instead
 };

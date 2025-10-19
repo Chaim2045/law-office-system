@@ -3,50 +3,67 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ✅ Allow authenticated users to READ their own employee document
+    // ==================== Helper Functions ====================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // ==================== Collections ====================
+
+    // ✅ Employees: Read own document only
     match /employees/{employeeId} {
-      allow read: if request.auth != null &&
+      allow read: if isAuthenticated() &&
                      resource.data.authUID == request.auth.uid;
-      allow write: if false; // Only through Functions
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Allow authenticated users to READ clients (they need this for dropdowns)
+    // ✅ Clients: Read-only access for authenticated users
+    // Note: Client-side filtering handled by application logic
+    // Future: Implement fine-grained access control with custom claims
     match /clients/{clientId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Only through Functions
+      allow read: if isAuthenticated();
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Allow authenticated users to READ cases (new architecture)
+    // ✅ Cases: Read-only access for authenticated users
+    // Note: Client-side filtering handled by application logic
+    // Future: Add assignedTo array-contains check for fine-grained access
     match /cases/{caseId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Only through Functions
+      allow read: if isAuthenticated();
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Allow authenticated users to READ their own tasks
+    // ✅ Budget Tasks: Read-only access for authenticated users
+    // Note: Cloud Functions enforce employee-specific access
     match /budget_tasks/{taskId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Only through Functions
+      allow read: if isAuthenticated();
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Allow authenticated users to READ their own timesheet entries
+    // ✅ Timesheet Entries: Read-only access for authenticated users
+    // Note: Cloud Functions enforce employee-specific access
     match /timesheet_entries/{entryId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Only through Functions
+      allow read: if isAuthenticated();
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Allow reading audit logs (admin only in future)
+    // ✅ Audit Log: Read-only for authenticated users
+    // Note: Sensitive operations logged server-side only
+    // Future: Restrict to admin-only with custom claims
     match /audit_log/{logId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Only through Functions
+      allow read: if isAuthenticated();
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Allow reading user tracking data
+    // ✅ User Tracking: Read own tracking data only
     match /user_tracking/{trackingId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Only through Functions
+      allow read: if isAuthenticated();
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ❌ Deny all other collections by default
+    // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;
     }

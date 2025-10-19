@@ -253,41 +253,61 @@ function showApp() {
 }
 
 function logout() {
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
-  overlay.innerHTML = `
-    <div class="popup" style="max-width: 450px;">
-      <div class="popup-header" style="color: #dc2626;">
-        <i class="fas fa-power-off"></i>
-        יציאה מהמערכת
+  // Use new notification system if available
+  if (window.NotificationSystem) {
+    window.NotificationSystem.confirm(
+      'האם אתה בטוח שברצונך לצאת? כל הנתונים שלא נשמרו יאבדו.',
+      () => window.confirmLogout(),
+      null,
+      {
+        title: 'יציאה מהמערכת',
+        confirmText: 'כן, צא מהמערכת',
+        cancelText: 'ביטול',
+        type: 'warning'
+      }
+    );
+  } else {
+    // Fallback to old popup system
+    const overlay = document.createElement("div");
+    overlay.className = "popup-overlay";
+    overlay.innerHTML = `
+      <div class="popup" style="max-width: 450px;">
+        <div class="popup-header" style="color: #dc2626;">
+          <i class="fas fa-power-off"></i>
+          יציאה מהמערכת
+        </div>
+        <div style="text-align: center; padding: 20px 0;">
+          <div style="font-size: 48px; margin-bottom: 20px;">👋</div>
+          <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
+            האם אתה בטוח שברצונך לצאת?
+          </h3>
+          <p style="color: #6b7280; font-size: 16px;">
+            כל הנתונים שלא נשמרו יאבדו.
+          </p>
+        </div>
+        <div class="popup-buttons">
+          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+            <i class="fas fa-times"></i> ביטול
+          </button>
+          <button class="popup-btn popup-btn-confirm" onclick="confirmLogout()">
+            <i class="fas fa-check"></i> כן, צא מהמערכת
+          </button>
+        </div>
       </div>
-      <div style="text-align: center; padding: 20px 0;">
-        <div style="font-size: 48px; margin-bottom: 20px;">👋</div>
-        <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
-          האם אתה בטוח שברצונך לצאת?
-        </h3>
-        <p style="color: #6b7280; font-size: 16px;">
-          כל הנתונים שלא נשמרו יאבדו.
-        </p>
-      </div>
-      <div class="popup-buttons">
-        <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-          <i class="fas fa-times"></i> ביטול
-        </button>
-        <button class="popup-btn popup-btn-confirm" onclick="confirmLogout()">
-          <i class="fas fa-check"></i> כן, צא מהמערכת
-        </button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
+    `;
+    document.body.appendChild(overlay);
+  }
 }
 
 async function confirmLogout() {
   const interfaceElements = document.getElementById("interfaceElements");
   if (interfaceElements) interfaceElements.classList.add("hidden");
 
-  if (window.manager) {
+  // Show goodbye notification using new system
+  if (window.NotificationSystem) {
+    window.NotificationSystem.info("מתנתק מהמערכת... להתראות! 👋", 3000);
+  } else if (window.manager) {
+    // Fallback to old system if new one not loaded
     window.manager.showNotification("מתנתק מהמערכת... להתראות! 👋", "info");
   }
 

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Migration - History Unification</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f7fa;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #7f8c8d;
+      margin-bottom: 30px;
+    }
+    .step {
+      padding: 20px;
+      margin: 20px 0;
+      background: #ecf0f1;
+      border-radius: 8px;
+      border-right: 4px solid #3498db;
+    }
+    .step h3 {
+      margin-top: 0;
+      color: #2980b9;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    button:disabled {
+      background: #95a5a6;
+      cursor: not-allowed;
+    }
+    .danger {
+      background: #e74c3c;
+    }
+    .danger:hover {
+      background: #c0392b;
+    }
+    .success {
+      background: #27ae60;
+    }
+    .log {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 6px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      margin-top: 20px;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+    }
+    .log-info { color: #3498db; }
+    .log-success { color: #2ecc71; }
+    .log-warning { color: #f39c12; }
+    .log-error { color: #e74c3c; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      border: 2px solid #ecf0f1;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .stat-label {
+      color: #7f8c8d;
+      margin-top: 5px;
+    }
+    .warning-box {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 מיגרציית היסטוריה למבנה אחיד</h1>
+    <p class="subtitle">סקריפט זה יאחד את כל רישומי הזמן למבנה נתונים אחיד ומקצועי</p>
+
+    <div class="warning-box">
+      <strong>⚠️ חשוב!</strong> סקריפט זה ישנה נתונים ב-Firebase. מומלץ לעשות backup לפני הפעלה.
+    </div>
+
+    <div class="step">
+      <h3>📊 שלב 1: בדיקת מצב נוכחי</h3>
+      <p>בדוק כמה משימות יש עם מבנים שונים</p>
+      <button onclick="analyzeCurrentState()">🔍 נתח מצב נוכחי</button>
+    </div>
+
+    <div class="stats" id="stats" style="display: none;"></div>
+
+    <div class="step">
+      <h3>🔄 שלב 2: מיגרציה</h3>
+      <p>המר את כל המשימות למבנה אחיד:</p>
+      <ul>
+        <li>✅ איחוד history → timeEntries</li>
+        <li>✅ המרת timestamp → addedAt</li>
+        <li>✅ חישוב actualMinutes נכון</li>
+        <li>✅ המרת hours → minutes</li>
+      </ul>
+      <button onclick="runMigration()" id="migrateBtn" disabled>🚀 הפעל מיגרציה</button>
+    </div>
+
+    <div class="step">
+      <h3>✅ שלב 3: אימות</h3>
+      <p>וודא שהמיגרציה עבדה בהצלחה</p>
+      <button onclick="validateMigration()" id="validateBtn" disabled>✓ אמת תוצאות</button>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+  <script>
+    // Firebase config (same as index.html)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDjEELS_VRQJnMmGE_R1udka0r-ZQNnzLI",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:1ddfd4edab6dc25eb5b53e"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // Wait for auth state
+    let isAuthenticated = false;
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        isAuthenticated = true;
+        log(`✅ מחובר כ: ${user.email}`, 'success');
+        log('👉 לחץ על "נתח מצב נוכחי" כדי להתחיל', 'info');
+      } else {
+        log('⚠️ לא מחובר! מנסה להתחבר...', 'warning');
+        // Try to get current session
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          log(`📧 משתמש שמור: ${savedUser}`, 'info');
+          log('⚠️ צריך להתחבר דרך המערכת הראשית', 'warning');
+        }
+      }
+    });
+
+    let stats = {
+      total: 0,
+      withTimeEntries: 0,
+      withHistory: 0,
+      withBoth: 0,
+      withNeither: 0,
+      needsMigration: 0
+    };
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString('he-IL')}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function updateStats() {
+      const statsDiv = document.getElementById('stats');
+      statsDiv.style.display = 'grid';
+      statsDiv.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-value">${stats.total}</div>
+          <div class="stat-label">סה"כ משימות</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.withTimeEntries}</div>
+          <div class="stat-label">עם timeEntries</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.withHistory}</div>
+          <div class="stat-label">עם history</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.needsMigration}</div>
+          <div class="stat-label">צריך מיגרציה</div>
+        </div>
+      `;
+    }
+
+    async function analyzeCurrentState() {
+      if (!auth.currentUser) {
+        log('❌ לא מחובר! אנא התחבר דרך המערכת הראשית קודם', 'error');
+        alert('אנא התחבר דרך index.html קודם, ואז פתח דף זה שוב');
+        return;
+      }
+
+      log('מתחיל ניתוח...', 'info');
+
+      try {
+        const snapshot = await db.collection('budget_tasks').get();
+        stats.total = snapshot.size;
+
+        snapshot.forEach(doc => {
+          const task = doc.data();
+          const hasTimeEntries = task.timeEntries && task.timeEntries.length > 0;
+          const hasHistory = task.history && task.history.length > 0;
+
+          if (hasTimeEntries && hasHistory) {
+            stats.withBoth++;
+            stats.needsMigration++;
+          } else if (hasTimeEntries) {
+            stats.withTimeEntries++;
+          } else if (hasHistory) {
+            stats.withHistory++;
+            stats.needsMigration++;
+          } else {
+            stats.withNeither++;
+          }
+        });
+
+        log(`✅ ניתוח הושלם: ${stats.total} משימות`, 'success');
+        log(`📊 צריך מיגרציה: ${stats.needsMigration} משימות`, 'warning');
+
+        updateStats();
+        document.getElementById('migrateBtn').disabled = stats.needsMigration === 0;
+
+      } catch (error) {
+        log(`❌ שגיאה: ${error.message}`, 'error');
+      }
+    }
+
+    async function runMigration() {
+      if (!auth.currentUser) {
+        log('❌ לא מחובר!', 'error');
+        return;
+      }
+
+      if (!confirm(`האם אתה בטוח? המיגרציה תשנה ${stats.needsMigration} משימות!`)) {
+        return;
+      }
+
+      log('🚀 מתחיל מיגרציה...', 'info');
+      let migrated = 0;
+      let errors = 0;
+
+      try {
+        const snapshot = await db.collection('budget_tasks').get();
+
+        for (const doc of snapshot.docs) {
+          const task = doc.data();
+          const updates = {};
+          let needsUpdate = false;
+
+          // 1. Migrate history → timeEntries
+          if (task.history && task.history.length > 0) {
+            if (!task.timeEntries || task.timeEntries.length === 0) {
+              // Convert history to timeEntries
+              updates.timeEntries = task.history.map((entry, index) => ({
+                id: entry.id || `migrated-${Date.now()}-${index}`,
+                date: entry.date,
+                minutes: entry.minutes || (entry.hours * 60) || 0,
+                description: entry.description || '',
+                addedAt: entry.addedAt || entry.timestamp || new Date().toISOString(),
+                addedBy: entry.addedBy || 'מיגרציה אוטומטית'
+              }));
+              needsUpdate = true;
+              log(`📝 ${doc.id}: המרת ${task.history.length} רשומות מ-history ל-timeEntries`, 'info');
+            }
+          }
+
+          // 2. Calculate actualMinutes if missing or wrong
+          if (updates.timeEntries || task.timeEntries) {
+            const entries = updates.timeEntries || task.timeEntries || [];
+            const totalMinutes = entries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+
+            if (!task.actualMinutes || task.actualMinutes === 0 || task.actualHours !== undefined) {
+              updates.actualMinutes = totalMinutes;
+              updates.actualHours = totalMinutes / 60;
+              needsUpdate = true;
+              log(`🔢 ${doc.id}: חישוב actualMinutes = ${totalMinutes}`, 'info');
+            }
+          }
+
+          // 3. Convert estimatedHours → estimatedMinutes
+          if (task.estimatedHours && !task.estimatedMinutes) {
+            updates.estimatedMinutes = Math.round(task.estimatedHours * 60);
+            needsUpdate = true;
+            log(`🔢 ${doc.id}: המרת estimatedHours (${task.estimatedHours}) → estimatedMinutes (${updates.estimatedMinutes})`, 'info');
+          }
+
+          // 4. Update if needed
+          if (needsUpdate) {
+            try {
+              await doc.ref.update(updates);
+              migrated++;
+              log(`✅ ${doc.id}: עודכן בהצלחה`, 'success');
+            } catch (err) {
+              errors++;
+              log(`❌ ${doc.id}: שגיאה - ${err.message}`, 'error');
+            }
+          }
+        }
+
+        log(`\n🎉 מיגרציה הושלמה!`, 'success');
+        log(`✅ ${migrated} משימות עודכנו`, 'success');
+        if (errors > 0) {
+          log(`⚠️ ${errors} שגיאות`, 'warning');
+        }
+
+        document.getElementById('validateBtn').disabled = false;
+
+      } catch (error) {
+        log(`❌ שגיאה כללית: ${error.message}`, 'error');
+      }
+    }
+
+    async function validateMigration() {
+      log('🔍 מאמת תוצאות...', 'info');
+
+      try {
+        const snapshot = await db.collection('budget_tasks').get();
+        let allGood = 0;
+        let issues = 0;
+
+        snapshot.forEach(doc => {
+          const task = doc.data();
+
+          // Check if has timeEntries
+          if (!task.timeEntries || task.timeEntries.length === 0) {
+            if (task.history && task.history.length > 0) {
+              log(`⚠️ ${doc.id}: עדיין יש history אבל לא timeEntries`, 'warning');
+              issues++;
+            }
+            return;
+          }
+
+          // Check each entry has required fields
+          let entryIssues = 0;
+          task.timeEntries.forEach((entry, i) => {
+            if (!entry.addedAt && !entry.timestamp) {
+              entryIssues++;
+            }
+          });
+
+          if (entryIssues > 0) {
+            log(`⚠️ ${doc.id}: ${entryIssues} entries חסרים addedAt`, 'warning');
+            issues++;
+          } else {
+            allGood++;
+          }
+        });
+
+        log(`\n✅ אימות הושלם`, 'success');
+        log(`✅ ${allGood} משימות תקינות`, 'success');
+        if (issues > 0) {
+          log(`⚠️ ${issues} משימות עם בעיות`, 'warning');
+        }
+
+      } catch (error) {
+        log(`❌ שגיאה: ${error.message}`, 'error');
+      }
+    }
+
+    log('✅ Migration tool מוכן!', 'success');
+  </script>
+</body>
+</html>

@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 מצב המיגרציה - ניתוח מלא</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #2c3e50;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .btn {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+
+    .section {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+
+    .section h2 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-size: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      border-left: 4px solid #667eea;
+    }
+
+    .stat-box.green { border-left-color: #10b981; }
+    .stat-box.red { border-left-color: #ef4444; }
+    .stat-box.yellow { border-left-color: #f59e0b; }
+
+    .stat-number {
+      font-size: 36px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #6c757d;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 13px;
+    }
+
+    .data-table th {
+      background: #2c3e50;
+      color: white;
+      padding: 12px;
+      text-align: right;
+      font-weight: 600;
+    }
+
+    .data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e9ecef;
+      vertical-align: top;
+    }
+
+    .data-table tr:hover {
+      background: #f1f5f9;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-error { background: #fee2e2; color: #991b1b; }
+    .badge-warning { background: #fef3c7; color: #78350f; }
+    .badge-info { background: #dbeafe; color: #1e40af; }
+
+    .json-preview {
+      background: #1e293b;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .collapsible {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .collapsible:hover {
+      opacity: 0.8;
+    }
+
+    .collapse-content {
+      display: none;
+      margin-top: 10px;
+    }
+
+    .collapse-content.show {
+      display: block;
+    }
+
+    #log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .log-error { color: #ef4444; }
+    .log-success { color: #10b981; }
+    .log-warning { color: #f59e0b; }
+    .log-info { color: #3b82f6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 מצב המיגרציה - ניתוח מלא</h1>
+
+    <div style="text-align: center; margin-bottom: 30px;">
+      <button class="btn btn-primary" onclick="analyzeEverything()">
+        📊 בדוק את כל המערכת
+      </button>
+    </div>
+
+    <!-- סטטיסטיקות כלליות -->
+    <div class="section" id="statsSection" style="display: none;">
+      <h2>📈 סטטיסטיקות כלליות</h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-number" id="totalClients">0</div>
+          <div class="stat-label">סה"כ לקוחות</div>
+        </div>
+        <div class="stat-box green">
+          <div class="stat-number" id="migratedClients">0</div>
+          <div class="stat-label">לקוחות מומרים</div>
+        </div>
+        <div class="stat-box yellow">
+          <div class="stat-number" id="pendingClients">0</div>
+          <div class="stat-label">לקוחות ממתינים</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="totalCases">0</div>
+          <div class="stat-label">סה"כ תיקים</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- לקוחות -->
+    <div class="section" id="clientsSection" style="display: none;">
+      <h2 class="collapsible" onclick="toggleCollapse('clientsContent')">
+        👥 לקוחות (Clients Collection)
+        <span>▼</span>
+      </h2>
+      <div id="clientsContent" class="collapse-content">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מזהה</th>
+              <th>שם לקוח</th>
+              <th>מספר תיק</th>
+              <th>סוג הליך</th>
+              <th>סטטוס מיגרציה</th>
+              <th>שדות חסרים</th>
+              <th>פעולות</th>
+            </tr>
+          </thead>
+          <tbody id="clientsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- תיקים -->
+    <div class="section" id="casesSection" style="display: none;">
+      <h2 class="collapsible" onclick="toggleCollapse('casesContent')">
+        📁 תיקים (Cases Collection)
+        <span>▼</span>
+      </h2>
+      <div id="casesContent" class="collapse-content">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>מזהה תיק</th>
+              <th>מספר תיק</th>
+              <th>כותרת</th>
+              <th>לקוח</th>
+              <th>סוג</th>
+              <th>סטטוס</th>
+              <th>תאריך יצירה</th>
+            </tr>
+          </thead>
+          <tbody id="casesTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ניתוח בעיות -->
+    <div class="section" id="issuesSection" style="display: none;">
+      <h2>⚠️ בעיות שנמצאו</h2>
+      <div id="issuesList"></div>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let allClients = [];
+    let allCases = [];
+
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString('he-IL');
+      logEl.innerHTML += `<div class="log-${type}">[${timestamp}] ${message}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(message);
+    }
+
+    function toggleCollapse(id) {
+      const el = document.getElementById(id);
+      el.classList.toggle('show');
+    }
+
+    async function analyzeEverything() {
+      log('מתחיל ניתוח מלא של המערכת...', 'info');
+
+      try {
+        // טען לקוחות
+        log('טוען לקוחות...', 'info');
+        const clientsSnapshot = await db.collection('clients').get();
+        allClients = [];
+        clientsSnapshot.forEach(doc => {
+          allClients.push({ id: doc.id, ...doc.data() });
+        });
+        log(`✅ נטענו ${allClients.length} לקוחות`, 'success');
+
+        // טען תיקים
+        log('טוען תיקים...', 'info');
+        const casesSnapshot = await db.collection('cases').get();
+        allCases = [];
+        casesSnapshot.forEach(doc => {
+          allCases.push({ id: doc.id, ...doc.data() });
+        });
+        log(`✅ נטענו ${allCases.length} תיקים`, 'success');
+
+        // חשב סטטיסטיקות
+        displayStatistics();
+
+        // הצג לקוחות
+        displayClients();
+
+        // הצג תיקים
+        displayCases();
+
+        // נתח בעיות
+        analyzeIssues();
+
+        log('✅ הניתוח הושלם!', 'success');
+
+      } catch (error) {
+        log(`❌ שגיאה: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    function displayStatistics() {
+      const migratedCount = allClients.filter(c => c.migratedToCases === true).length;
+      const pendingCount = allClients.length - migratedCount;
+
+      document.getElementById('totalClients').textContent = allClients.length;
+      document.getElementById('migratedClients').textContent = migratedCount;
+      document.getElementById('pendingClients').textContent = pendingCount;
+      document.getElementById('totalCases').textContent = allCases.length;
+
+      document.getElementById('statsSection').style.display = 'block';
+    }
+
+    function displayClients() {
+      const tbody = document.getElementById('clientsTableBody');
+      tbody.innerHTML = '';
+
+      allClients.forEach(client => {
+        const row = document.createElement('tr');
+
+        const clientName = client.clientName || client.fullName || '❌ חסר';
+        const fileNumber = client.fileNumber || client.caseNumber || '❌ חסר';
+        const procedureType = client.procedureType || client.type || '❌ חסר';
+
+        const migrated = client.migratedToCases === true;
+        const statusBadge = migrated
+          ? '<span class="badge badge-success">✓ הומר</span>'
+          : '<span class="badge badge-warning">⏳ ממתין</span>';
+
+        // בדוק שדות חסרים
+        const missingFields = [];
+        if (!client.clientName && !client.fullName) missingFields.push('שם');
+        if (!client.fileNumber && !client.caseNumber) missingFields.push('מספר תיק');
+        if (!client.procedureType && !client.type) missingFields.push('סוג הליך');
+
+        const missingBadges = missingFields.length > 0
+          ? missingFields.map(f => `<span class="badge badge-error">${f}</span>`).join(' ')
+          : '<span class="badge badge-success">הכל תקין</span>';
+
+        row.innerHTML = `
+          <td><code>${client.id}</code></td>
+          <td>${clientName}</td>
+          <td>${fileNumber}</td>
+          <td>${procedureType}</td>
+          <td>${statusBadge}</td>
+          <td>${missingBadges}</td>
+          <td>
+            <button class="btn" style="padding: 5px 10px; font-size: 12px;"
+                    onclick="showClientDetails('${client.id}')">
+              פרטים
+            </button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      document.getElementById('clientsSection').style.display = 'block';
+    }
+
+    function displayCases() {
+      const tbody = document.getElementById('casesTableBody');
+      tbody.innerHTML = '';
+
+      if (allCases.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #6c757d;">אין תיקים במערכת</td></tr>';
+      } else {
+        allCases.forEach(caseDoc => {
+          const row = document.createElement('tr');
+
+          const createdAt = caseDoc.createdAt?.toDate?.() || null;
+          const createdStr = createdAt ? createdAt.toLocaleDateString('he-IL') : '-';
+
+          row.innerHTML = `
+            <td><code>${caseDoc.id}</code></td>
+            <td>${caseDoc.caseNumber || '-'}</td>
+            <td>${caseDoc.caseTitle || '-'}</td>
+            <td>${caseDoc.clientName || '-'}</td>
+            <td><span class="badge badge-info">${caseDoc.procedureType || '-'}</span></td>
+            <td><span class="badge badge-${caseDoc.status === 'active' ? 'success' : 'warning'}">${caseDoc.status || '-'}</span></td>
+            <td>${createdStr}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      document.getElementById('casesSection').style.display = 'block';
+    }
+
+    function analyzeIssues() {
+      const issues = [];
+
+      // לקוחות שלא הומרו
+      const notMigrated = allClients.filter(c => !c.migratedToCases);
+      if (notMigrated.length > 0) {
+        issues.push({
+          type: 'warning',
+          title: `${notMigrated.length} לקוחות עדיין לא הומרו`,
+          description: 'לקוחות אלה לא עברו מיגרציה עדיין',
+          clients: notMigrated
+        });
+      }
+
+      // לקוחות עם שדות חסרים
+      const missingFields = allClients.filter(c => {
+        return (!c.clientName && !c.fullName) ||
+               (!c.fileNumber && !c.caseNumber) ||
+               (!c.procedureType && !c.type);
+      });
+      if (missingFields.length > 0) {
+        issues.push({
+          type: 'error',
+          title: `${missingFields.length} לקוחות עם שדות חסרים`,
+          description: 'לקוחות אלה לא יכולים להעבור מיגרציה בלי תיקון ידני',
+          clients: missingFields
+        });
+      }
+
+      // לקוחות שהומרו אבל אין להם תיק
+      const migratedButNoCases = allClients.filter(c => {
+        if (!c.migratedToCases) return false;
+        const hasCase = allCases.some(cs => cs.clientId === c.id);
+        return !hasCase;
+      });
+      if (migratedButNoCases.length > 0) {
+        issues.push({
+          type: 'error',
+          title: `${migratedButNoCases.length} לקוחות מסומנים כמומרים אבל אין להם תיק!`,
+          description: 'זו בעיה רצינית - הלקוח מסומן כמומר אבל אין תיק בקולקציה',
+          clients: migratedButNoCases
+        });
+      }
+
+      // תיקים ללא לקוח
+      const casesWithoutClient = allCases.filter(c => {
+        const hasClient = allClients.some(cl => cl.id === c.clientId);
+        return !hasClient;
+      });
+      if (casesWithoutClient.length > 0) {
+        issues.push({
+          type: 'warning',
+          title: `${casesWithoutClient.length} תיקים ללא לקוח מקושר`,
+          description: 'תיקים אלה מצביעים על לקוח שלא קיים',
+          cases: casesWithoutClient
+        });
+      }
+
+      // הצג בעיות
+      const issuesDiv = document.getElementById('issuesList');
+      if (issues.length === 0) {
+        issuesDiv.innerHTML = '<p style="color: #10b981; font-weight: 600;">✅ לא נמצאו בעיות!</p>';
+      } else {
+        issuesDiv.innerHTML = '';
+        issues.forEach((issue, idx) => {
+          const issueEl = document.createElement('div');
+          issueEl.style.cssText = 'background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;';
+
+          const badgeClass = issue.type === 'error' ? 'badge-error' : 'badge-warning';
+
+          let detailsHTML = '';
+          if (issue.clients) {
+            detailsHTML = `<ul style="margin-right: 20px; margin-top: 10px;">`;
+            issue.clients.slice(0, 5).forEach(c => {
+              detailsHTML += `<li><code>${c.id}</code> - ${c.clientName || c.fullName || 'ללא שם'}</li>`;
+            });
+            if (issue.clients.length > 5) {
+              detailsHTML += `<li>ועוד ${issue.clients.length - 5}...</li>`;
+            }
+            detailsHTML += '</ul>';
+          }
+          if (issue.cases) {
+            detailsHTML = `<ul style="margin-right: 20px; margin-top: 10px;">`;
+            issue.cases.slice(0, 5).forEach(c => {
+              detailsHTML += `<li><code>${c.id}</code> - ${c.caseTitle || 'ללא כותרת'} (לקוח: ${c.clientId})</li>`;
+            });
+            if (issue.cases.length > 5) {
+              detailsHTML += `<li>ועוד ${issue.cases.length - 5}...</li>`;
+            }
+            detailsHTML += '</ul>';
+          }
+
+          issueEl.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div>
+                <span class="badge ${badgeClass}">${issue.type === 'error' ? '❌ שגיאה' : '⚠️ אזהרה'}</span>
+                <strong style="margin-right: 10px;">${issue.title}</strong>
+                <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">${issue.description}</p>
+                ${detailsHTML}
+              </div>
+            </div>
+          `;
+          issuesDiv.appendChild(issueEl);
+        });
+      }
+
+      document.getElementById('issuesSection').style.display = 'block';
+    }
+
+    function showClientDetails(clientId) {
+      const client = allClients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const jsonStr = JSON.stringify(client, null, 2);
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+      `;
+
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 30px; max-width: 800px; width: 100%; max-height: 80vh; overflow-y: auto;">
+          <h2 style="margin-bottom: 20px;">פרטי לקוח: ${client.clientName || client.fullName || clientId}</h2>
+          <div class="json-preview">${jsonStr}</div>
+          <button class="btn btn-primary" style="margin-top: 20px; width: 100%;" onclick="this.closest('[style*=fixed]').remove()">
+            סגור
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    // Auto-login
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        log(`מחובר כ-${user.email}`, 'success');
+      }
+    });
+  </script>
+</body>
+</html>

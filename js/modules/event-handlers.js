@@ -121,128 +121,9 @@ function clearAllNotifications() {
 }
 
 // ==================== CLIENT FORM ====================
-// Lines: 4120-4217
-
-/**
- * Show client form (with password protection)
- * Called from: index.html onclick="showClientForm();"
- */
-function showClientForm() {
-  showPasswordDialog();
-}
-
-/**
- * Show password dialog for adding new client
- * Internal helper function
- */
-function showPasswordDialog() {
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
-  overlay.innerHTML = `
-    <div class="popup" style="max-width: 450px;">
-      <div class="popup-header">
-        <i class="fas fa-shield-alt"></i>
-        אזור מוגן
-      </div>
-      <div style="text-align: center; padding: 30px 20px;">
-        <div style="font-size: 48px; margin-bottom: 20px; color: #dc2626;">
-          <i class="fas fa-lock"></i>
-        </div>
-        <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
-          הוספת לקוח חדש מוגנת בסיסמה
-        </h3>
-        <form id="passwordCheckForm">
-          <input type="password" id="adminPassword" placeholder="הכנס סיסמת מנהל"
-                 style="width: 100%; padding: 15px; border: 2px solid #e5e7eb; border-radius: 12px; margin-bottom: 20px;" required>
-          <div id="passwordError" class="error-message hidden" style="margin-bottom: 15px; color: #dc2626;">
-            <i class="fas fa-exclamation-triangle"></i> סיסמה שגויה
-          </div>
-          <div class="popup-buttons">
-            <button type="button" class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-              <i class="fas fa-times"></i> ביטול
-            </button>
-            <button type="submit" class="popup-btn popup-btn-confirm">
-              <i class="fas fa-unlock"></i> אמת סיסמה
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const form = overlay.querySelector("#passwordCheckForm");
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    checkAdminPassword(overlay);
-  });
-}
-
-/**
- * Check admin password for client form access
- * Internal helper function
- *
- * @param {HTMLElement} overlay - The password dialog overlay element
- */
-function checkAdminPassword(overlay) {
-  const adminPassword = document.getElementById("adminPassword");
-  const errorDiv = document.getElementById("passwordError");
-
-  if (!adminPassword || !errorDiv) return;
-
-  const password = adminPassword.value;
-
-  if (password === "9668") {
-    overlay.remove();
-    if (window.manager) {
-      window.manager.showNotification(
-        "אומת בהצלחה! פותח טופס הוספת לקוח...",
-        "success"
-      );
-    }
-    setTimeout(openClientForm, 500);
-  } else {
-    errorDiv.classList.remove("hidden");
-    adminPassword.value = "";
-    adminPassword.focus();
-
-    setTimeout(() => {
-      errorDiv.classList.add("hidden");
-    }, 2000);
-  }
-}
-
-/**
- * Open client form after password validation
- * Internal helper function
- */
-function openClientForm() {
-  const clientFormOverlay = document.getElementById("clientFormOverlay");
-  if (clientFormOverlay) {
-    clientFormOverlay.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
-    if (window.manager) {
-      window.manager.updateClientTypeDisplay();
-    }
-  }
-}
-
-/**
- * Hide client form and reset
- * Called from: index.html onclick="hideClientForm()"
- */
-function hideClientForm() {
-  const clientFormOverlay = document.getElementById("clientFormOverlay");
-  const clientForm = document.getElementById("clientForm");
-
-  if (clientFormOverlay) clientFormOverlay.classList.add("hidden");
-  document.body.style.overflow = "auto";
-  if (clientForm) clientForm.reset();
-  if (window.manager) {
-    window.manager.updateClientTypeDisplay();
-  }
-}
+// ✅ REMOVED - Client creation is now handled by CasesManager in cases.js
+// Old functions removed: showClientForm, showPasswordDialog, checkAdminPassword, openClientForm, hideClientForm
+// Use casesManager.showCreateCaseDialog() instead
 
 // ==================== LOGOUT ====================
 // Lines: 4221-4270
@@ -332,6 +213,25 @@ function openSmartForm() {
   if (currentForm.classList.contains("hidden")) {
     currentForm.classList.remove("hidden");
     if (plusButton) plusButton.classList.add("active");
+
+    // גלילה חלקה למעלה לטופס
+    setTimeout(() => {
+      // First, try to scroll the form into view
+      currentForm.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'start'
+      });
+
+      // Then scroll up a bit more to show the form header
+      setTimeout(() => {
+        const formPosition = currentForm.getBoundingClientRect().top + window.pageYOffset;
+        window.scrollTo({
+          top: formPosition - 20,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }, 50);
   } else {
     currentForm.classList.add("hidden");
     if (plusButton) plusButton.classList.remove("active");
@@ -345,16 +245,11 @@ if (typeof window !== 'undefined') {
   window.switchTab = switchTab;
   window.toggleNotifications = toggleNotifications;
   window.clearAllNotifications = clearAllNotifications;
-  window.showClientForm = showClientForm;
-  window.hideClientForm = hideClientForm;
   window.logout = logout;
   window.confirmLogout = confirmLogout;
   window.openSmartForm = openSmartForm;
 
-  // Internal helper functions (not exposed but kept for compatibility)
-  window.showPasswordDialog = showPasswordDialog;
-  window.checkAdminPassword = checkAdminPassword;
-  window.openClientForm = openClientForm;
+  // ✅ Client form functions removed - use casesManager.showCreateCaseDialog() instead
 }
 
 console.log('[Event Handlers] Module loaded successfully - v4.34.0');

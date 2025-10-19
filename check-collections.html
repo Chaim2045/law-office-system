@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>בדיקת Collections</title>
+</head>
+<body>
+  <h1>בדיקת Collections</h1>
+  <div id="results"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function checkCollections() {
+      const results = document.getElementById('results');
+      
+      try {
+        // Check clients collection
+        const clientsSnapshot = await db.collection('clients').get();
+        results.innerHTML += `<p><strong>Collection: clients</strong> - ${clientsSnapshot.size} documents</p>`;
+        
+        // Check cases collection
+        const casesSnapshot = await db.collection('cases').get();
+        results.innerHTML += `<p><strong>Collection: cases</strong> - ${casesSnapshot.size} documents</p>`;
+        
+        console.log('Clients:', clientsSnapshot.size);
+        console.log('Cases:', casesSnapshot.size);
+      } catch (error) {
+        results.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+        console.error(error);
+      }
+    }
+
+    checkCollections();
+  </script>
+</body>
+</html>

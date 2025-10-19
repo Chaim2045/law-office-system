@@ -1,0 +1,72 @@
+/**
+ * ==========================================================================
+ * ACCESSIBILITY STYLES - נגישות
+ * ==========================================================================
+ *
+ * קובץ זה מכיל את כל הסגנונות הקשורים לנגישות:
+ * - @media (prefers-reduced-motion) - הפחתת תנועות עבור משתמשים עם רגישות לתנועה
+ * - @media (prefers-contrast: high) - ניגודיות גבוהה
+ * - Focus states - מצבי פוקוס לנגישות מקלדת
+ *
+ * @version 4.33.1
+ * @extracted 2025-10-15
+ */
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .task-card,
+  .budget-card,
+  .timesheet-card {
+    transform: none !important;
+  }
+
+  .progress-fill::after,
+  .modern-progress-fill::after {
+    display: none !important;
+  }
+
+  .plus-button-top {
+    transition: box-shadow 0.12s ease-out, background-color 0.12s ease-out;
+  }
+}
+
+/* Accessibility - High Contrast */
+@media (prefers-contrast: high) {
+  :root {
+    --gray-200: #000000;
+    --gray-300: #333333;
+    --primary-500: #0000ff;
+    --success-500: #008000;
+    --danger-500: #ff0000;
+    --warning-500: #ff8800;
+  }
+
+  .task-card,
+  .budget-card,
+  .timesheet-card {
+    border-width: 3px;
+  }
+}
+
+/* Focus states for accessibility */
+.action-btn:focus,
+.task-action-btn:focus,
+.budget-action-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+.action-btn:focus,
+.task-action-btn:focus,
+.budget-action-btn:focus {
+  outline: 1px solid #3b82f6;
+  outline-offset: 1px;
+}

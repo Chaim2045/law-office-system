@@ -1,0 +1,1435 @@
+/**
+ * Tables Styles
+ * Law Office Management System
+ *
+ * Description: Advanced tables, progress bars, pagination, and table actions
+ */
+
+/* ==========================================================================
+   8. TABLES - טבלאות
+   ========================================================================== */
+
+.advanced-table-container,
+.table-container {
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  overflow: hidden;
+  margin: var(--space-xl) 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.advanced-table-container:hover,
+.table-container:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #3b82f6;
+}
+
+.advanced-table,
+.timesheet-table,
+.table,
+#budgetTable,
+#timesheetTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: transparent;
+}
+
+.advanced-table th,
+.timesheet-table th,
+.table th,
+#budgetTable th,
+#timesheetTable th {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 20px 16px;
+  text-align: right;
+  font-weight: 700;
+  color: #1f2937;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 60;
+  z-index: 10;
+}
+
+.advanced-table td,
+.timesheet-table td,
+.table td,
+#budgetTable td,
+#timesheetTable td {
+  padding: 18px 16px;
+  text-align: right;
+  border-bottom: 1px solid #f1f5f9;
+  color: #374151;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+.advanced-table tbody tr,
+.timesheet-table tbody tr,
+.table tbody tr,
+#budgetTable tbody tr,
+#timesheetTable tbody tr {
+  transition: all 0.2s ease;
+  border-right: 4px solid transparent;
+}
+
+.advanced-table tbody tr:hover,
+.timesheet-table tbody tr:hover,
+.table tbody tr:hover,
+#budgetTable tbody tr:hover,
+#timesheetTable tbody tr:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-right-color: #3b82f6;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+  border-left: 3px solid #3b82f6;
+}
+
+/* Budget table specific */
+#budgetTable th {
+  background: linear-gradient(135deg, var(--primary-50) 0%, #eff6ff 100%);
+  color: var(--primary-800);
+  border-bottom: 3px solid var(--primary-200);
+}
+
+#budgetTable tbody tr:hover {
+  background: linear-gradient(135deg, var(--primary-25) 0%, #f8fafc 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+/* Timesheet table specific */
+#timesheetTable th {
+  background: linear-gradient(135deg, var(--success-50) 0%, #ecfdf5 100%);
+  color: var(--success-800);
+  border-bottom: 3px solid var(--success-200);
+}
+
+#timesheetTable tbody tr:hover {
+  background: linear-gradient(135deg, var(--success-25) 0%, #f8fafc 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+/* Table action buttons */
+.table-action-group {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.table-action-btn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.table-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.table-action-btn.primary {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.table-action-btn.primary:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+.table-action-btn.info {
+  border-color: #6b7280;
+  color: #6b7280;
+}
+
+.table-action-btn.info:hover {
+  background: #6b7280;
+  color: white;
+}
+
+.table-action-btn.warning {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.table-action-btn.warning:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+.table-action-btn.success {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.table-action-btn.success:hover {
+  background: #10b981;
+  color: white;
+}
+
+/* וודא שעמודת הפעולות תמיד נראית */
+.modern-budget-table th:last-child,
+.modern-budget-table td:last-child {
+  min-width: 80px;
+  width: 80px;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.modern-table-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2328;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: right;
+  direction: rtl;
+}
+
+.modern-table-title i {
+  font-size: 18px;
+  color: #3b82f6;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+}
+
+.modern-table-subtitle {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: right;
+  direction: rtl;
+}
+
+/* הבחנה בין שורות - זברה מודרנית */
+.modern-budget-table tbody tr:nth-child(even),
+.modern-timesheet-table tbody tr:nth-child(even) {
+  background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
+}
+
+.modern-budget-table tbody tr:nth-child(odd),
+.modern-timesheet-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* שורות זוגיות על hover */
+.modern-budget-table tbody tr:nth-child(even):hover,
+.modern-timesheet-table tbody tr:nth-child(even):hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-left: 4px solid #3b82f6;
+}
+
+/* שורות אי זוגיות על hover */
+.modern-budget-table tbody tr:nth-child(odd):hover,
+.modern-timesheet-table tbody tr:nth-child(odd):hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-left: 4px solid #3b82f6;
+}
+
+/* גבול עדין בין השורות */
+.modern-budget-table tbody tr,
+.modern-timesheet-table tbody tr {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+/* כפתורי פעולה גדולים יותר */
+.table-action-btn {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+.table-actions-group {
+  gap: 8px; /* רווח גדול יותר בין הכפתורים */
+}
+
+/* Headers כמו הכרטיסיות */
+.modern-budget-table thead th,
+.modern-timesheet-table thead th {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 16px 20px;
+  text-align: right;
+  font-weight: 700;
+  color: #1f2328;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+  border: 1px solid #e2e8f0;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.modern-budget-table thead th:first-child,
+.modern-timesheet-table thead th:first-child {
+  border-right: 1px solid #e2e8f0;
+  border-top-right-radius: 8px;
+}
+
+.modern-budget-table thead th:last-child,
+.modern-timesheet-table thead th:last-child {
+  border-left: 1px solid #e2e8f0;
+  border-top-left-radius: 8px;
+}
+
+/* Rows עם אפקטים יפים */
+.modern-budget-table tbody tr,
+.modern-timesheet-table tbody tr {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* מרווח בין שורות - דומה לכרטיסיות */
+.modern-budget-table tbody tr td,
+.modern-timesheet-table tbody tr td {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.modern-budget-table tbody tr:hover,
+.modern-timesheet-table tbody tr:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  /* ללא transform ו-box-shadow מוגזם */
+  border-left: 3px solid #3b82f6; /* גבול עדין בלבד */
+}
+
+.modern-budget-table tbody td,
+.modern-timesheet-table tbody td {
+  padding: 16px 20px;
+  color: #374151;
+  font-weight: 500;
+  vertical-align: middle;
+  border-right: 1px solid rgba(226, 232, 240, 0.3);
+  border-left: 1px solid rgba(226, 232, 240, 0.3);
+  text-align: right;
+  direction: rtl;
+}
+
+.modern-budget-table tbody td:first-child,
+.modern-timesheet-table tbody td:first-child {
+  border-right: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.modern-budget-table tbody td:last-child,
+.modern-timesheet-table tbody td:last-child {
+  border-left: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+/* Progress bars בטבלה זהים לכרטיסיות */
+.table-progress-container {
+  min-width: 160px;
+  direction: rtl;
+}
+
+.table-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  direction: rtl;
+}
+
+.table-progress-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.table-progress-percentage {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2328;
+}
+
+.table-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.table-progress-fill {
+  height: 100%;
+  border-radius: 12px;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+/* צבעים זהים לכרטיסיות */
+.progress-low {
+  background: linear-gradient(
+    90deg,
+    #10b981 0%,
+    #059669 100%
+  ); /* ירוק - התחלה טובה */
+}
+.progress-medium {
+  background: linear-gradient(
+    90deg,
+    #f59e0b 0%,
+    #d97706 100%
+  ); /* כתום - זהירות */
+}
+.progress-high {
+  background: linear-gradient(
+    90deg,
+    #ef4444 0%,
+    #dc2626 100%
+  ); /* אדום - אזהרה! */
+}
+.progress-complete {
+  background: linear-gradient(
+    90deg,
+    #ef4444 0%,
+    #b91c1c 100%
+  ); /* אדום כהה - חרגת! */
+}
+
+.table-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: progressShine 2s ease-in-out infinite;
+}
+
+/* כפתורי פעולה משופרים */
+.table-actions-group {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  direction: rtl;
+}
+
+.table-action-btn {
+  width: 32px;
+  height: 32px;
+  border: 2px solid;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  font-size: 12px;
+  position: relative;
+}
+
+.table-action-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.table-action-btn.primary {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.table-action-btn.primary:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+.table-action-btn.info {
+  border-color: #6b7280;
+  color: #6b7280;
+}
+
+.table-action-btn.info:hover {
+  background: #6b7280;
+  color: white;
+}
+
+.table-action-btn.warning {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.table-action-btn.warning:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+.table-action-btn.success {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.table-action-btn.success:hover {
+  background: #10b981;
+  color: white;
+}
+
+/* Pagination Controls */
+.table-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  margin: 0 20px 20px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
+  border-radius: 0 0 12px 12px;
+  direction: rtl;
+}
+
+.pagination-btn {
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  justify-content: center;
+}
+
+.pagination-btn:hover:not(.disabled) {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+.pagination-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pagination-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+.pagination-btn.page-number {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.pagination-btn.page-number.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: scale(1.1);
+}
+
+.pagination-btn i {
+  font-size: 12px;
+}
+
+/* Modern timesheet header */
+.modern-timesheet-header {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  padding: 24px 32px;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.modern-timesheet-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modern-timesheet-title i {
+  font-size: 20px;
+  color: #16a34a;
+}
+
+.modern-timesheet-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: #059669;
+  font-weight: 600;
+}
+
+/* Progress bars in tables */
+.modern-progress-container {
+  min-width: 140px;
+}
+
+.modern-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.modern-progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modern-progress-percentage {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.modern-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.modern-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-progress-fill.normal {
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+}
+
+.modern-progress-fill.warning {
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.modern-progress-fill.danger {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+}
+
+.modern-progress-fill.complete {
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+}
+
+.modern-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: progressShine 2s infinite;
+}
+
+.modern-progress-details {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* Status badges */
+.modern-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.modern-status-badge.active {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+.modern-status-badge.completed {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.modern-status-badge.overdue {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  animation: statusPulse 2s infinite;
+}
+
+/* Modern action buttons */
+.modern-actions-group {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.modern-action-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.modern-action-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+.modern-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modern-action-btn:active {
+  transform: translateY(-1px);
+}
+
+.modern-action-btn.primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.modern-action-btn.info {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: white;
+}
+
+.modern-action-btn.warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.modern-action-btn.success {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+}
+
+/* Table cells styling */
+.table-cell-client,
+.budget-table-client,
+.td-client {
+  font-weight: 700;
+  color: var(--primary-700);
+  font-size: 15px;
+}
+
+.table-cell-description,
+.budget-table-description,
+.td-description {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-700);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.table-cell-deadline,
+.budget-table-deadline,
+.td-deadline {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table-cell-deadline.normal {
+  color: #475569;
+}
+
+.table-cell-deadline.soon {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+.table-cell-deadline.overdue {
+  color: #ef4444;
+  font-weight: 700;
+  animation: deadlinePulse 2s infinite;
+}
+
+/* Timesheet specific cells */
+.timesheet-cell-date {
+  font-weight: 700;
+  color: #16a34a;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.timesheet-cell-action {
+  max-width: 300px;
+  line-height: 1.6;
+  color: #475569;
+  font-weight: 600;
+}
+
+.timesheet-cell-action.truncated {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timesheet-cell-time {
+  font-weight: 800;
+  color: #059669;
+  font-size: 16px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timesheet-cell-time .time-badge {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid #6ee7b7;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timesheet-cell-client {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 15px;
+}
+
+.timesheet-cell-file {
+  font-weight: 600;
+  color: #64748b;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.timesheet-cell-file .file-badge {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timesheet-cell-notes {
+  max-width: 200px;
+  line-height: 1.5;
+  color: #6b7280;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.timesheet-cell-notes.truncated {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timesheet-cell-notes.empty {
+  color: #9ca3af;
+  text-align: center;
+}
+
+.time-hours {
+  color: #059669;
+  font-weight: 800;
+}
+
+.time-minutes {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.timesheet-stats {
+  display: flex;
+  gap: 24px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.timesheet-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.timesheet-stat i {
+  color: #16a34a;
+  font-size: 14px;
+}
+
+/* Status utilities */
+.table-status-active {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.table-status-completed {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.table-status-overdue {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+
+.table-status-urgent {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.table-progress-normal {
+  color: #6b7280;
+}
+.table-progress-over {
+  color: #f59e0b;
+  font-weight: 700;
+}
+.table-progress-critical {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.td-status {
+  text-align: center;
+}
+
+.td-actions {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.sortable:hover {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  color: #3b82f6;
+}
+
+.sortable::after {
+  content: "⇅";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.5;
+  font-size: 12px;
+}
+
+.sortable.asc::after {
+  content: "↑";
+  opacity: 1;
+  color: #3b82f6;
+}
+
+.sortable.desc::after {
+  content: "↓";
+  opacity: 1;
+  color: #3b82f6;
+}
+
+/* Scrollbars for tables */
+.advanced-table-container::-webkit-scrollbar,
+.table-container::-webkit-scrollbar,
+.modern-table-container::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.advanced-table-container::-webkit-scrollbar-track,
+.table-container::-webkit-scrollbar-track,
+.modern-table-container::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.advanced-table-container::-webkit-scrollbar-thumb,
+.table-container::-webkit-scrollbar-thumb,
+.modern-table-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.advanced-table-container::-webkit-scrollbar-thumb:hover,
+.table-container::-webkit-scrollbar-thumb:hover,
+.modern-table-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+/* Container משותף לכרטיסיות וטבלה - עיצוב אחיד */
+.modern-cards-container,
+.modern-table-container {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  margin: 30px 0 20px; /* מרווח גדול יותר מלעלה */
+  width: 100%;
+  max-width: none;
+  overflow: visible;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+.modern-table-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modern-table-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2328;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: right;
+  direction: rtl;
+}
+
+.modern-table-title i {
+  color: #3b82f6;
+}
+
+.modern-table-subtitle {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  text-align: right;
+  direction: rtl;
+}
+
+.modern-budget-table {
+  width: calc(100% - 20px); /* הקטן קצת את הרוחב */
+  margin: 10px; /* מרווח פנימי מסביב לטבלה */
+  border-collapse: collapse;
+  font-size: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px; /* פינות מעוגלות לטבלה עצמה */
+}
+
+.modern-budget-table th,
+.modern-budget-table td {
+  padding: 16px 12px;
+  text-align: right;
+  border-bottom: 1px solid #e2e8f0; /* גבול תחתון */
+  border-right: 1px solid #e2e8f0; /* גבול ימני */
+  vertical-align: middle;
+}
+
+.modern-budget-table th:last-child,
+.modern-budget-table td:last-child {
+  border-right: none; /* בטל גבול ימני לעמודה האחרונה */
+}
+
+.modern-budget-table tbody tr:last-child td {
+  border-bottom: none; /* בטל גבול תחתון לשורה האחרונה */
+}
+
+/* פינות מעוגלות לטבלה */
+.modern-budget-table th:first-child {
+  border-top-right-radius: 12px; /* פינה ימנית עליונה */
+}
+
+.modern-budget-table th:last-child {
+  border-top-left-radius: 12px; /* פינה שמאלית עליונה */
+}
+
+.modern-budget-table tbody tr:last-child td:first-child {
+  border-bottom-right-radius: 12px; /* פינה ימנית תחתונה */
+}
+
+.modern-budget-table tbody tr:last-child td:last-child {
+  border-bottom-left-radius: 12px; /* פינה שמאלית תחתונה */
+}
+
+/* Removed duplicate - using single definition above */
+
+.modern-budget-table th {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  font-weight: 700;
+  color: #1f2328;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.modern-budget-table tbody tr:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  /* ללא transform - רק צבע רקע */
+}
+
+.modern-budget-table tbody tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.5);
+}
+
+/* תפריט פשוט ועובד */
+.actions-dropdown-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.actions-dropdown-btn {
+  padding: 6px 10px; /* הקטנה נוספת */
+  border: 2px solid #3b82f6;
+  border-radius: 4px; /* הקטנה */
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #3b82f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px; /* הקטנה */
+  direction: rtl;
+  width: 60px; /* הקטנה ל-60px */
+  white-space: nowrap;
+}
+
+.actions-dropdown-btn:hover {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.actions-dropdown-btn i {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.actions-dropdown-btn:hover i {
+  transform: rotate(180deg);
+}
+
+.dropdown-action-item {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: right;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dropdown-action-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-action-item:hover {
+  background: #f8fafc;
+}
+
+.dropdown-action-item.primary:hover {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #3b82f6;
+}
+
+.dropdown-action-item.info:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #6b7280;
+}
+
+.dropdown-action-item.warning:hover {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #f59e0b;
+}
+
+.dropdown-action-item.success:hover {
+  background: linear-gradient(135deg, #ecfdf5 0%, #dcfce7 100%);
+  color: #10b981;
+}
+
+.dropdown-action-item i {
+  font-size: 11px;
+  width: 12px;
+  text-align: center;
+}
+
+/* וודא שעמודת הפעולות תמיד נראית */
+.modern-budget-table th:last-child,
+.modern-budget-table td:last-child {
+  min-width: 100px; /* הרחבה ל-100px */
+  width: 100px;
+  padding: 16px 12px; /* יותר padding */
+  text-align: center;
+}
+
+/* Progress bars בטבלה */
+.table-progress-container {
+  width: 100%;
+  direction: rtl;
+}
+
+.table-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.table-progress-label {
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.table-progress-percentage {
+  font-weight: 700;
+  color: #1f2328;
+}
+
+.table-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table-progress-fill {
+  height: 100%;
+  border-radius: 12px;
+  transition: all 0.6s ease;
+}
+
+.table-progress-fill.progress-low {
+  background: linear-gradient(
+    90deg,
+    #10b981 0%,
+    #059669 100%
+  ); /* ירוק - התחלה טובה */
+}
+.table-progress-fill.progress-medium {
+  background: linear-gradient(
+    90deg,
+    #f59e0b 0%,
+    #d97706 100%
+  ); /* כתום - זהירות */
+}
+.table-progress-fill.progress-high {
+  background: linear-gradient(
+    90deg,
+    #ef4444 0%,
+    #dc2626 100%
+  ); /* אדום - אזהרה! */
+}
+.table-progress-fill.progress-complete {
+  background: linear-gradient(
+    90deg,
+    #ef4444 0%,
+    #b91c1c 100%
+  ); /* אדום כהה - חרגת! */
+}
+
+/* Pagination Controls */
+.table-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
+  border-top: 1px solid #e2e8f0;
+  direction: rtl;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  justify-content: center;
+}
+
+.pagination-btn:hover:not(.disabled) {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+}
+
+.pagination-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pagination-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+.pagination-btn.page-number {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.pagination-btn.page-number.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: scale(1.05);
+}
+
+.pagination-btn i {
+  font-size: 10px;
+}
+
+.page-info {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  padding: 0 20px;
+  white-space: nowrap;
+}
+
+.page-info strong {
+  color: #1f2328;
+  font-weight: 700;
+}

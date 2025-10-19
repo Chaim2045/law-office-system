@@ -1,0 +1,502 @@
+/**
+ * Core Styles
+ * Law Office Management System
+ *
+ * Description: CSS Variables, Reset & Base Styles, and Utility Classes
+ */
+
+/* ==========================================================================
+   1. CSS VARIABLES - משתנים גלובליים
+   ========================================================================== */
+
+:root {
+  /* משתנים דינמיים שמתעדכנים מ-JavaScript */
+  --screen-width: 100vw;
+  --screen-height: 100vh;
+  --scale-factor: 1;
+  --dynamic-space: 10px;
+  --screen-ratio: 1.77;
+
+  /* שימוש במשתנים הדינמיים */
+  --responsive-font-base: calc(14px * var(--scale-factor));
+  --responsive-padding: calc(8px * var(--scale-factor));
+  --responsive-margin: calc(var(--dynamic-space) * 1.5);
+
+  /* 📱 Base viewport sizes */
+  --viewport-sm: 1029px;
+  --viewport-md: 1366px;
+  --viewport-lg: 1920px;
+
+  /* 🎯 Adaptive sizing system */
+  --space-xs: clamp(4px, 0.5vw, 8px);
+  --space-sm: clamp(8px, 1vw, 12px);
+  --space-md: clamp(12px, 1.5vw, 20px);
+  --space-lg: clamp(16px, 2vw, 32px);
+  --space-xl: clamp(20px, 3vw, 48px);
+
+  /* 📝 Adaptive typography */
+  --font-xs: clamp(10px, 1.2vw, 12px);
+  --font-sm: clamp(12px, 1.4vw, 14px);
+  --font-md: clamp(14px, 1.6vw, 16px);
+  --font-lg: clamp(16px, 2vw, 20px);
+  --font-xl: clamp(20px, 2.5vw, 28px);
+  --font-2xl: clamp(24px, 3vw, 36px);
+
+  /* 🎨 Adaptive radius and shadows */
+  --radius-sm: clamp(6px, 0.8vw, 8px);
+  --radius-md: clamp(8px, 1vw, 12px);
+  --radius-lg: clamp(12px, 1.5vw, 16px);
+  --radius-xl: clamp(16px, 2vw, 24px);
+
+  /* 🔲 Buttons and controls sizes */
+  --touch-target: 36px;
+  --icon-sm: 14px;
+  --icon-md: clamp(18px, 2.2vw, 24px);
+  --icon-lg: clamp(24px, 3vw, 32px);
+
+  /* 🎚️ Heights and spacing */
+  --input-height: clamp(36px, 4.5vw, 44px);
+  --button-height: clamp(32px, 4vw, 40px);
+  --sidebar-width: 150px;
+
+  /* 🌈 Professional color palette */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  --success-50: #ecfdf5;
+  --success-100: #d1fae5;
+  --success-200: #a7f3d0;
+  --success-500: #10b981;
+  --success-600: #059669;
+  --success-700: #047857;
+
+  --warning-50: #fffbeb;
+  --warning-200: #fde68a;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --warning-700: #b45309;
+
+  --danger-50: #fef2f2;
+  --danger-200: #fecaca;
+  --danger-500: #ef4444;
+  --danger-600: #dc2626;
+  --danger-700: #b91c1c;
+
+  /* 🎭 Professional shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* ⚡ Transitions and animations */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ==========================================================================
+   2. RESET & BASE STYLES - איפוס ובסיס
+   ========================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: clamp(14px, 1.5vw, 16px);
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* Gradient Background - מופשט */
+  background:
+    radial-gradient(
+      ellipse at 20% 30%,
+      rgba(59, 130, 246, 0.06) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 70%,
+      rgba(139, 92, 246, 0.05) 0%,
+      transparent 50%
+    ),
+    linear-gradient(135deg, #f8fafc 0%, #e9ecf1 50%, #e2e8f0 100%);
+
+  background-attachment: fixed;
+  position: relative;
+  overflow: hidden;
+  height: 100vh;
+  direction: rtl;
+  color: var(--gray-700);
+  line-height: 1.6;
+  padding: 0;
+  margin: 0;
+  transition: var(--transition-normal);
+}
+
+/* Add small padding to body when logged in for better spacing on all screens */
+body.logged-in {
+  padding: clamp(4px, 0.5vw, 8px);
+  overflow-y: auto; /* לאפשר גלילה אנכית */
+  overflow-x: hidden; /* למנוע גלילה אופקית */
+  height: auto; /* גובה אוטומטי */
+  min-height: 100vh; /* לפחות מסך מלא */
+}
+
+/* ==========================================================================
+   3. UTILITIES - כלי עזר
+   ========================================================================== */
+
+/* Display utilities */
+.hidden {
+  display: none !important;
+}
+
+.d-none {
+  display: none;
+}
+.d-block {
+  display: block;
+}
+.d-inline {
+  display: inline;
+}
+.d-inline-block {
+  display: inline-block;
+}
+.d-flex {
+  display: flex;
+}
+.d-grid {
+  display: grid;
+}
+
+/* Text utilities */
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+.text-justify {
+  text-align: justify;
+}
+
+/* Margin utilities */
+.m-0 {
+  margin: 0;
+}
+.m-auto {
+  margin: auto;
+}
+.mt-auto {
+  margin-top: auto;
+}
+.mb-auto {
+  margin-bottom: auto;
+}
+.ml-auto {
+  margin-left: auto;
+}
+.mr-auto {
+  margin-right: auto;
+}
+
+/* Padding utilities */
+.p-0 {
+  padding: 0;
+}
+
+/* Flex utilities */
+.flex-row {
+  flex-direction: row;
+}
+.flex-column {
+  flex-direction: column;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-nowrap {
+  flex-wrap: nowrap;
+}
+.justify-start {
+  justify-content: flex-start;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-around {
+  justify-content: space-around;
+}
+.align-start {
+  align-items: flex-start;
+}
+.align-end {
+  align-items: flex-end;
+}
+.align-center {
+  align-items: center;
+}
+.align-stretch {
+  align-items: stretch;
+}
+
+/* Width and height utilities */
+.w-full {
+  width: 100%;
+}
+.w-auto {
+  width: auto;
+}
+.w-fit {
+  width: fit-content;
+}
+.h-full {
+  height: 100%;
+}
+.h-auto {
+  height: auto;
+}
+.h-fit {
+  height: fit-content;
+}
+
+/* Position utilities */
+.relative {
+  position: relative;
+}
+.absolute {
+  position: absolute;
+}
+.fixed {
+  position: fixed;
+}
+.sticky {
+  position: sticky;
+}
+
+/* Z-index utilities */
+.z-0 {
+  z-index: 0;
+}
+.z-10 {
+  z-index: 10;
+}
+.z-20 {
+  z-index: 20;
+}
+.z-30 {
+  z-index: 30;
+}
+.z-40 {
+  z-index: 40;
+}
+.z-50 {
+  z-index: 50;
+}
+
+/* Overflow utilities */
+.overflow-hidden {
+  overflow: hidden;
+}
+.overflow-auto {
+  overflow: auto;
+}
+.overflow-scroll {
+  overflow: scroll;
+}
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+.overflow-y-hidden {
+  overflow-y: hidden;
+}
+.overflow-x-auto {
+  overflow-x: auto;
+}
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+/* Cursor utilities */
+.cursor-pointer {
+  cursor: pointer;
+}
+.cursor-default {
+  cursor: default;
+}
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+/* User select utilities */
+.select-none {
+  user-select: none;
+}
+.select-all {
+  user-select: all;
+}
+.select-auto {
+  user-select: auto;
+}
+
+/* Pointer events utilities */
+.pointer-events-none {
+  pointer-events: none;
+}
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: slideIn 0.4s ease;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+.auto-footer {
+  margin-top: auto;
+}
+
+/* Error messages */
+.error-message {
+  color: var(--danger-600);
+  font-size: var(--font-sm);
+  margin-top: var(--space-xs);
+  display: block;
+  font-weight: 500;
+}
+
+.success-message {
+  color: var(--success-600);
+  font-size: var(--font-sm);
+  margin-top: var(--space-xs);
+  font-weight: 500;
+}
+
+/* Component state utilities */
+.task-action-btn,
+.budget-action-btn,
+.timesheet-action-btn {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+.popup-overlay,
+.modal-overlay,
+#taskModal,
+#timesheetModal,
+#budgetModal {
+  pointer-events: auto !important;
+  z-index: 2000 !important;
+}
+
+.popup-overlay.show,
+.modal-overlay.show,
+#taskModal.show,
+#timesheetModal.show,
+#budgetModal.show,
+.popup-overlay[style*="block"],
+.modal-overlay[style*="block"],
+#taskModal[style*="block"],
+#timesheetModal[style*="block"],
+#budgetModal[style*="block"] {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.popup-overlay[style*="none"],
+.modal-overlay[style*="none"],
+#taskModal[style*="none"],
+#timesheetModal[style*="none"],
+#budgetModal[style*="none"] {
+  display: none !important;
+}
+
+.popup,
+.modal,
+.popup-overlay .popup,
+.modal-overlay .modal,
+#taskModal .popup,
+#timesheetModal .popup,
+#budgetModal .popup {
+  z-index: 2001 !important;
+  position: relative;
+}
+
+/* Scrollbar utilities */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

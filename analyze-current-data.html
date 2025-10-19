@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ניתוח מבנה נתונים נוכחי</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-number {
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .stat-label {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .section {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-table th {
+      background: #3b82f6;
+      color: white;
+      padding: 12px;
+      text-align: right;
+      font-weight: 600;
+    }
+
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .data-table tr:hover {
+      background: #f3f4f6;
+    }
+
+    .code-block {
+      background: #1e293b;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      white-space: pre;
+      margin-top: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-yellow { background: #fef3c7; color: #92400e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+
+    #log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+      color: #6b7280;
+    }
+
+    .spinner {
+      border: 4px solid #f3f4f6;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 ניתוח מבנה נתונים נוכחי</h1>
+    <p class="subtitle">בדיקה מקיפה של כל הנתונים ב-Firestore לפני המיגרציה</p>
+
+    <div style="text-align: center; margin-bottom: 30px;">
+      <button class="btn btn-primary" onclick="login()">🔐 התחבר וטען נתונים</button>
+      <button class="btn btn-success" onclick="exportReport()" style="display: none;" id="exportBtn">💾 ייצא דוח מלא</button>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+      <div class="spinner"></div>
+      <div>טוען נתונים מ-Firestore...</div>
+    </div>
+
+    <div id="results" style="display: none;">
+      <!-- Statistics Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="totalClients">0</div>
+          <div class="stat-label">סה"כ לקוחות</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="totalTasks">0</div>
+          <div class="stat-label">סה"כ משימות</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="totalTimesheet">0</div>
+          <div class="stat-label">רשומות שעתון</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="totalCases">0</div>
+          <div class="stat-label">תיקים (cases)</div>
+        </div>
+      </div>
+
+      <!-- Client Structure Analysis -->
+      <div class="section">
+        <div class="section-title">👥 מבנה הלקוחות (clients collection)</div>
+        <div id="clientsAnalysis"></div>
+      </div>
+
+      <!-- Sample Client Data -->
+      <div class="section">
+        <div class="section-title">📄 דוגמת לקוח (מבנה JSON)</div>
+        <div id="sampleClient"></div>
+      </div>
+
+      <!-- Tasks Analysis -->
+      <div class="section">
+        <div class="section-title">📋 ניתוח משימות (budget_tasks)</div>
+        <div id="tasksAnalysis"></div>
+      </div>
+
+      <!-- Timesheet Analysis -->
+      <div class="section">
+        <div class="section-title">⏰ ניתוח שעתון (timesheet_entries)</div>
+        <div id="timesheetAnalysis"></div>
+      </div>
+
+      <!-- Migration Plan -->
+      <div class="section">
+        <div class="section-title">🎯 תוכנית המיגרציה המומלצת</div>
+        <div id="migrationPlan"></div>
+      </div>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let analysisData = {
+      clients: [],
+      tasks: [],
+      timesheet: [],
+      cases: []
+    };
+
+    function log(message) {
+      const logEl = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString('he-IL');
+      logEl.innerHTML += `[${timestamp}] ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(message);
+    }
+
+    async function login() {
+      const email = prompt('אימייל:', 'haim@ghlawoffice.co.il');
+      const password = prompt('סיסמה:');
+
+      if (!email || !password) {
+        alert('נא למלא אימייל וסיסמה');
+        return;
+      }
+
+      try {
+        log('🔐 מתחבר...');
+        await auth.signInWithEmailAndPassword(email, password);
+        log('✅ התחברות הצליחה!');
+        await loadAllData();
+      } catch (error) {
+        log(`❌ שגיאת התחברות: ${error.message}`);
+        alert('שגיאת התחברות: ' + error.message);
+      }
+    }
+
+    async function loadAllData() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+
+      try {
+        log('📥 טוען לקוחות...');
+        const clientsSnap = await db.collection('clients').get();
+        analysisData.clients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        log(`✅ נטענו ${analysisData.clients.length} לקוחות`);
+
+        log('📥 טוען משימות...');
+        const tasksSnap = await db.collection('budget_tasks').get();
+        analysisData.tasks = tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        log(`✅ נטענו ${analysisData.tasks.length} משימות`);
+
+        log('📥 טוען שעתון...');
+        const timesheetSnap = await db.collection('timesheet_entries').get();
+        analysisData.timesheet = timesheetSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        log(`✅ נטענו ${analysisData.timesheet.length} רשומות שעתון`);
+
+        log('📥 טוען תיקים (cases)...');
+        const casesSnap = await db.collection('cases').get();
+        analysisData.cases = casesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        log(`✅ נטענו ${analysisData.cases.length} תיקים`);
+
+        log('🎉 כל הנתונים נטענו בהצלחה!');
+        analyzeData();
+      } catch (error) {
+        log(`❌ שגיאה בטעינת נתונים: ${error.message}`);
+        alert('שגיאה בטעינת נתונים: ' + error.message);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    function analyzeData() {
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('exportBtn').style.display = 'inline-block';
+
+      // Update statistics
+      document.getElementById('totalClients').textContent = analysisData.clients.length;
+      document.getElementById('totalTasks').textContent = analysisData.tasks.length;
+      document.getElementById('totalTimesheet').textContent = analysisData.timesheet.length;
+      document.getElementById('totalCases').textContent = analysisData.cases.length;
+
+      // Analyze clients structure
+      analyzeClients();
+
+      // Show sample client
+      showSampleClient();
+
+      // Analyze tasks
+      analyzeTasks();
+
+      // Analyze timesheet
+      analyzeTimesheet();
+
+      // Generate migration plan
+      generateMigrationPlan();
+    }
+
+    function analyzeClients() {
+      const clients = analysisData.clients;
+
+      if (clients.length === 0) {
+        document.getElementById('clientsAnalysis').innerHTML = '<p>אין לקוחות במערכת</p>';
+        return;
+      }
+
+      // Analyze field usage
+      const fields = {};
+      clients.forEach(client => {
+        Object.keys(client).forEach(key => {
+          if (!fields[key]) fields[key] = 0;
+          fields[key]++;
+        });
+      });
+
+      let html = '<table class="data-table"><thead><tr><th>שדה</th><th>מופיע ב</th><th>%</th><th>דוגמה</th></tr></thead><tbody>';
+
+      Object.entries(fields)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([field, count]) => {
+          const percentage = ((count / clients.length) * 100).toFixed(1);
+          const sample = clients.find(c => c[field] !== undefined)?.[field];
+          const sampleStr = typeof sample === 'object' ? JSON.stringify(sample).substring(0, 50) : String(sample || '').substring(0, 50);
+
+          html += `<tr>
+            <td><strong>${field}</strong></td>
+            <td>${count} / ${clients.length}</td>
+            <td><span class="badge ${percentage === '100.0' ? 'badge-green' : percentage > '50' ? 'badge-yellow' : 'badge-red'}">${percentage}%</span></td>
+            <td style="font-family: monospace; font-size: 12px;">${sampleStr}</td>
+          </tr>`;
+        });
+
+      html += '</tbody></table>';
+      document.getElementById('clientsAnalysis').innerHTML = html;
+    }
+
+    function showSampleClient() {
+      const client = analysisData.clients[0];
+      if (!client) {
+        document.getElementById('sampleClient').innerHTML = '<p>אין לקוחות להצגה</p>';
+        return;
+      }
+
+      const json = JSON.stringify(client, null, 2);
+      document.getElementById('sampleClient').innerHTML = `<div class="code-block">${json}</div>`;
+    }
+
+    function analyzeTasks() {
+      const tasks = analysisData.tasks;
+
+      if (tasks.length === 0) {
+        document.getElementById('tasksAnalysis').innerHTML = '<p>אין משימות במערכת</p>';
+        return;
+      }
+
+      const withClientId = tasks.filter(t => t.clientId).length;
+      const withCaseId = tasks.filter(t => t.caseId).length;
+      const withEstimatedMinutes = tasks.filter(t => t.estimatedMinutes > 0).length;
+      const statuses = {};
+      tasks.forEach(t => {
+        statuses[t.status || 'לא מוגדר'] = (statuses[t.status || 'לא מוגדר'] || 0) + 1;
+      });
+
+      let html = `
+        <table class="data-table">
+          <tr><td><strong>סה"כ משימות</strong></td><td>${tasks.length}</td></tr>
+          <tr><td><strong>משימות עם clientId</strong></td><td>${withClientId} (${((withClientId/tasks.length)*100).toFixed(1)}%)</td></tr>
+          <tr><td><strong>משימות עם caseId</strong></td><td>${withCaseId} (${((withCaseId/tasks.length)*100).toFixed(1)}%)</td></tr>
+          <tr><td><strong>משימות עם תקציב > 0</strong></td><td>${withEstimatedMinutes} (${((withEstimatedMinutes/tasks.length)*100).toFixed(1)}%)</td></tr>
+        </table>
+        <h4 style="margin-top: 20px;">סטטוסים:</h4>
+        <table class="data-table">
+          <thead><tr><th>סטטוס</th><th>כמות</th><th>%</th></tr></thead>
+          <tbody>
+      `;
+
+      Object.entries(statuses).forEach(([status, count]) => {
+        html += `<tr><td>${status}</td><td>${count}</td><td>${((count/tasks.length)*100).toFixed(1)}%</td></tr>`;
+      });
+
+      html += '</tbody></table>';
+      document.getElementById('tasksAnalysis').innerHTML = html;
+    }
+
+    function analyzeTimesheet() {
+      const entries = analysisData.timesheet;
+
+      if (entries.length === 0) {
+        document.getElementById('timesheetAnalysis').innerHTML = '<p>אין רשומות שעתון</p>';
+        return;
+      }
+
+      const withClientId = entries.filter(e => e.clientId).length;
+      const withCaseId = entries.filter(e => e.caseId).length;
+      const totalMinutes = entries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+      const totalHours = (totalMinutes / 60).toFixed(1);
+
+      let html = `
+        <table class="data-table">
+          <tr><td><strong>סה"כ רשומות</strong></td><td>${entries.length}</td></tr>
+          <tr><td><strong>עם clientId</strong></td><td>${withClientId} (${((withClientId/entries.length)*100).toFixed(1)}%)</td></tr>
+          <tr><td><strong>עם caseId</strong></td><td>${withCaseId} (${((withCaseId/entries.length)*100).toFixed(1)}%)</td></tr>
+          <tr><td><strong>סה"כ דקות</strong></td><td>${totalMinutes.toLocaleString()}</td></tr>
+          <tr><td><strong>סה"כ שעות</strong></td><td>${totalHours} שעות</td></tr>
+        </table>
+      `;
+
+      document.getElementById('timesheetAnalysis').innerHTML = html;
+    }
+
+    function generateMigrationPlan() {
+      const clients = analysisData.clients;
+      const tasks = analysisData.tasks;
+      const timesheet = analysisData.timesheet;
+      const existingCases = analysisData.cases;
+
+      let html = `
+        <div style="background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+          <h3 style="color: #92400e; margin-bottom: 10px;">📋 תוכנית מומלצת:</h3>
+          <ol style="margin-right: 20px; color: #78350f; line-height: 1.8;">
+            <li><strong>שלב 1:</strong> גיבוי מלא של כל הנתונים (ייצוא ל-JSON)</li>
+            <li><strong>שלב 2:</strong> המרת ${clients.length} לקוחות ל-cases
+              ${existingCases.length > 0 ? `<br>&nbsp;&nbsp;&nbsp;&nbsp;<em>⚠️ כבר קיימים ${existingCases.length} תיקים - יש לבדוק כפילויות!</em>` : ''}
+            </li>
+            <li><strong>שלב 3:</strong> קישור ${tasks.filter(t => !t.caseId).length} משימות לתיקים החדשים</li>
+            <li><strong>שלב 4:</strong> קישור ${timesheet.filter(e => !e.caseId).length} רשומות שעתון לתיקים</li>
+            <li><strong>שלב 5:</strong> אימות - בדיקה שכל הנתונים עברו נכון</li>
+            <li><strong>שלב 6:</strong> עדכון הקוד לטעון מ-cases במקום clients</li>
+          </ol>
+        </div>
+
+        <div style="background: #dbeafe; border: 2px solid #3b82f6; border-radius: 8px; padding: 20px;">
+          <h3 style="color: #1e40af; margin-bottom: 10px;">💡 המלצות חשובות:</h3>
+          <ul style="margin-right: 20px; color: #1e3a8a; line-height: 1.8;">
+            <li>לא למחוק את collection clients עד שמאמתים שהכל עובד</li>
+            <li>לשמור את הנתונים המקוריים לפחות 30 יום</li>
+            <li>לבצע את המיגרציה בשעות לא עמוסות (לילה/סוף שבוע)</li>
+            <li>לבדוק לקוח אחד תחילה לפני המיגרציה המלאה</li>
+            <li>להכין תסריט rollback במקרה של בעיה</li>
+          </ul>
+        </div>
+      `;
+
+      document.getElementById('migrationPlan').innerHTML = html;
+    }
+
+    function exportReport() {
+      const report = {
+        timestamp: new Date().toISOString(),
+        statistics: {
+          clients: analysisData.clients.length,
+          tasks: analysisData.tasks.length,
+          timesheet: analysisData.timesheet.length,
+          cases: analysisData.cases.length
+        },
+        data: analysisData
+      };
+
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `firestore-analysis-${Date.now()}.json`;
+      a.click();
+
+      log('💾 הדוח יוצא בהצלחה!');
+      alert('הדוח נשמר בהצלחה!');
+    }
+  </script>
+</body>
+</html>

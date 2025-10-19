@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>בדיקת מנהלים - מערכת ניהול משרד</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; margin-bottom: 20px; }
+    .employee {
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+    }
+    .employee.admin {
+      background: #d4edda;
+      border-color: #28a745;
+    }
+    .employee.not-admin {
+      background: #fff3cd;
+      border-color: #ffc107;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .badge.admin { background: #28a745; color: white; }
+    .badge.employee { background: #6c757d; color: white; }
+    .info { color: #666; font-size: 14px; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 בדיקת מנהלים במערכת</h1>
+    <div id="loading">טוען רשימת עובדים...</div>
+    <div id="employees"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function checkAdmins() {
+      try {
+        const snapshot = await db.collection('employees').get();
+        const loading = document.getElementById('loading');
+        const container = document.getElementById('employees');
+
+        if (snapshot.empty) {
+          loading.textContent = '❌ לא נמצאו עובדים במערכת';
+          return;
+        }
+
+        loading.style.display = 'none';
+
+        let html = '<h3>📋 רשימת עובדים (' + snapshot.size + ' סה"כ):</h3>';
+        let adminCount = 0;
+
+        snapshot.forEach(doc => {
+          const emp = doc.data();
+          const isAdmin = emp.role === 'admin';
+          if (isAdmin) adminCount++;
+
+          html += `
+            <div class="employee ${isAdmin ? 'admin' : 'not-admin'}">
+              <div>
+                <span class="badge ${isAdmin ? 'admin' : 'employee'}">
+                  ${isAdmin ? '👑 מנהל' : '👤 עובד'}
+                </span>
+                <strong>${doc.id}</strong>
+              </div>
+              <div class="info">
+                תפקיד: ${emp.role || 'לא מוגדר'}<br>
+                פעיל: ${emp.isActive ? '✅ כן' : '❌ לא'}<br>
+                ${emp.authUID ? `🔑 מחובר ל-Auth: ${emp.authUID.substring(0, 10)}...` : '⚠️ לא מחובר ל-Firebase Auth'}
+              </div>
+            </div>
+          `;
+        });
+
+        html += `<div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+          <strong>סיכום:</strong> ${adminCount} מנהלים מתוך ${snapshot.size} עובדים
+        </div>`;
+
+        container.innerHTML = html;
+
+        console.log('📊 Admin check complete:', { total: snapshot.size, admins: adminCount });
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        document.getElementById('loading').innerHTML =
+          `<div style="color: red;">❌ שגיאה: ${error.message}</div>`;
+      }
+    }
+
+    checkAdmins();
+  </script>
+</body>
+</html>

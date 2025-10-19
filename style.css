@@ -464,6 +464,16 @@ body.logged-in .main-content::before {
   transform: translateX(-3px);
 }
 
+/* כפתור "תיק חדש" - מודגש תמיד כמו active */
+.nav-item:first-child {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-color: #3b82f6;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  transform: translateX(-3px);
+}
+
 /* כפתור דוחות - אפור נייטרלי (לא כחול) */
 .nav-item.nav-item-gray:hover {
   background: rgba(255, 255, 255, 0.15);
@@ -4871,62 +4881,11 @@ button[onclick*="addBudget"]:hover {
   z-index: 9999;
 }
 
-/* Enhanced Notifications System */
-.notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 16px 24px;
-  border-radius: 12px;
-  color: white;
-  font-weight: 600;
-  font-size: 15px;
-  z-index: 10000;
-  transform: translateX(400px);
-  opacity: 0;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 300px;
-  backdrop-filter: blur(10px);
-}
-
-.notification.show {
-  transform: translateX(0);
-  opacity: 1;
-}
-
-.notification.success {
-  background: linear-gradient(135deg, #10b981, #059669);
-  border-left: 4px solid #047857;
-}
-
-.notification.error {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  border-left: 4px solid #b91c1c;
-}
-
-.notification.info {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  border-left: 4px solid #1d4ed8;
-}
-
-.notification::before {
-  content: "";
-  width: 20px;
-  height: 20px;
-  border: 2px solid currentColor;
-  border-top: 2px solid transparent;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  opacity: 0;
-}
-
-.notification.loading::before {
-  opacity: 1;
-}
+/* ❌ OLD Notification System - REMOVED
+ * הקוד הישן של מערכת ההודעות הוסר
+ * המערכת החדשה נמצאת ב-notifications.css (בשורש הפרויקט)
+ * עיצוב מודרני יותר עם תמיכה מלאה ב-RTL, אנימציות ו-accessibility
+ */
 
 /* ==========================================================================
    12. CONTENT AREAS - אזורי תוכן

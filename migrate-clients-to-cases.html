@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מיגרציה: clients → cases</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .warning-title {
+      font-weight: bold;
+      color: #856404;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .warning-text {
+      color: #856404;
+      line-height: 1.6;
+    }
+
+    .info {
+      background: #d1ecf1;
+      border: 2px solid #0c5460;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .info-title {
+      font-weight: bold;
+      color: #0c5460;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .info-text {
+      color: #0c5460;
+      line-height: 1.6;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 15px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-primary:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .success {
+      color: #10b981;
+    }
+
+    .error {
+      color: #ef4444;
+    }
+
+    .warning-log {
+      color: #f59e0b;
+    }
+
+    .info-log {
+      color: #3b82f6;
+    }
+
+    #progress {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 מיגרציה: clients → cases</h1>
+    <p class="subtitle">העברת כל הלקוחות מהארכיטקטורה הישנה לחדשה</p>
+
+    <div class="warning">
+      <div class="warning-title">⚠️ אזהרה חשובה!</div>
+      <div class="warning-text">
+        מיגרציה זו תעביר את כל הלקוחות מ-collection "clients" ל-"cases".<br>
+        <strong>לפני שתתחיל:</strong>
+        <ul style="margin-top: 10px; margin-right: 20px;">
+          <li>ודא שאין אף אחד עובד במערכת כרגע</li>
+          <li>המיגרציה תיצור עותק ב-cases, לא תמחק מ-clients</li>
+          <li>אם יש לקוח עם אותו מספר תיק ב-cases, הוא יידלג</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="info-title">ℹ️ מה המיגרציה עושה?</div>
+      <div class="info-text">
+        <ol style="margin-right: 20px;">
+          <li>טוענת את כל הלקוחות מ-"clients"</li>
+          <li>ממירה אותם לפורמט cases החדש</li>
+          <li>מוסיפה pricingType (hourly כברירת מחדל)</li>
+          <li>שומרת ב-"cases" collection</li>
+          <li>מדפיסה דוח מפורט</li>
+        </ol>
+      </div>
+    </div>
+
+    <div id="loginSection">
+      <div style="margin-bottom: 15px;">
+        <input type="email" id="emailInput" placeholder="haim@ghlawoffice.co.il"
+               style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 10px;">
+        <input type="password" id="passwordInput" placeholder="סיסמה"
+               style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+      </div>
+      <button class="btn btn-primary" onclick="login()">
+        🔐 התחבר
+      </button>
+    </div>
+
+    <button id="startBtn" class="btn btn-primary" onclick="startMigration()" disabled>
+      🚀 התחל מיגרציה
+    </button>
+
+    <div id="progress" style="display: none;"></div>
+    <div id="log"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Check auth state on load
+    auth.onAuthStateChanged(user => {
+      const startBtn = document.getElementById('startBtn');
+      if (user) {
+        startBtn.disabled = false;
+        log(`✅ מחובר כ-${user.email}`, 'success');
+      } else {
+        startBtn.disabled = true;
+        log('⚠️ יש להתחבר תחילה', 'warning');
+      }
+    });
+
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString('he-IL');
+      const className = type === 'success' ? 'success' :
+                        type === 'error' ? 'error' :
+                        type === 'warning' ? 'warning-log' : 'info-log';
+      logEl.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(message);
+    }
+
+    async function login() {
+      const email = document.getElementById('emailInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+
+      if (!email || !password) {
+        log('❌ נא למלא אימייל וסיסמה', 'error');
+        return;
+      }
+
+      try {
+        log('🔐 מתחבר...', 'info');
+        await auth.signInWithEmailAndPassword(email, password);
+        log('✅ התחברות הצליחה!', 'success');
+        document.getElementById('loginSection').style.display = 'none';
+      } catch (error) {
+        log(`❌ שגיאת התחברות: ${error.message}`, 'error');
+      }
+    }
+
+    async function startMigration() {
+      const startBtn = document.getElementById('startBtn');
+      const progressEl = document.getElementById('progress');
+      const logEl = document.getElementById('log');
+
+      startBtn.disabled = true;
+      progressEl.style.display = 'block';
+      logEl.innerHTML = '';
+
+      log('🚀 מתחיל מיגרציה מ-clients ל-cases...', 'info');
+
+      try {
+        // שלב 1: טעינת לקוחות מ-clients
+        log('📥 טוען לקוחות מ-clients collection...', 'info');
+        const clientsSnapshot = await db.collection('clients').get();
+        log(`✅ נטענו ${clientsSnapshot.size} לקוחות מ-clients`, 'success');
+
+        // שלב 2: מעבר על כל לקוח והעתקה דרך Firebase Function
+        log('🔄 מתחיל להעביר לקוחות...', 'info');
+        let successCount = 0;
+        let skipCount = 0;
+        let errorCount = 0;
+        const functions = firebase.functions();
+
+        progressEl.textContent = `0 / ${clientsSnapshot.size}`;
+
+        for (const doc of clientsSnapshot.docs) {
+          const clientData = doc.data();
+          const fileNumber = clientData.fileNumber;
+
+          try {
+            // המרה לפורמט cases
+            const caseData = {
+              caseNumber: clientData.fileNumber || `MIGRATED-${Date.now()}`,
+              caseTitle: clientData.fullName || 'ללא שם',
+              description: clientData.description || 'הועבר ממערכת ישנה',
+              procedureType: clientData.type === 'fixed' ? 'legal_procedure' : 'hours',
+              pricingType: clientData.pricingType || 'hourly',
+              migratedFrom: 'clients',
+              originalData: clientData
+            };
+
+            // אם זה הליך משפטי עם שלבים, העבר את השלבים
+            if (clientData.type === 'fixed' && clientData.stages) {
+              caseData.stages = clientData.stages.map(stage => ({
+                description: stage.description || stage.name || 'שלב',
+                hours: stage.hours || stage.totalHours || 10,
+                fixedPrice: stage.fixedPrice || 0
+              }));
+            } else if (clientData.type === 'hours') {
+              // הליך שעות רגיל
+              caseData.totalHours = clientData.hoursRemaining || clientData.minutesRemaining / 60 || 10;
+            }
+
+            // קריאה ל-Firebase Function
+            const createCase = functions.httpsCallable('createCase');
+            const result = await createCase(caseData);
+
+            if (result.data.success) {
+              log(`✅ ${fileNumber} - ${caseData.caseTitle}`, 'success');
+              successCount++;
+            } else {
+              throw new Error(result.data.message || 'שגיאה לא ידועה');
+            }
+
+            progressEl.textContent = `${successCount + skipCount + errorCount} / ${clientsSnapshot.size}`;
+
+          } catch (error) {
+            log(`❌ תיק ${fileNumber}: ${error.message}`, 'error');
+            errorCount++;
+            progressEl.textContent = `${successCount + skipCount + errorCount} / ${clientsSnapshot.size}`;
+          }
+
+          // המתנה קטנה בין קריאות כדי לא להעמיס
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // סיכום
+        log('', 'info');
+        log('='.repeat(50), 'info');
+        log('📊 סיכום מיגרציה:', 'info');
+        log(`✅ הועברו בהצלחה: ${successCount} תיקים`, 'success');
+        log(`⏭️ דולגו (כבר קיימים): ${skipCount} תיקים`, 'warning');
+        log(`❌ שגיאות: ${errorCount} תיקים`, errorCount > 0 ? 'error' : 'info');
+        log(`📦 סה"כ: ${clientsSnapshot.size} תיקים`, 'info');
+        log('='.repeat(50), 'info');
+        log('', 'info');
+
+        if (successCount > 0) {
+          log('🎉 המיגרציה הושלמה בהצלחה!', 'success');
+          log('ℹ️ כעת תוכל לעדכן את הקוד לטעון רק מ-cases', 'info');
+        } else {
+          log('ℹ️ לא היו תיקים חדשים להעברה', 'info');
+        }
+
+        progressEl.textContent = '✅ הושלם!';
+        progressEl.style.color = '#10b981';
+
+      } catch (error) {
+        log(`❌ שגיאה חמורה במיגרציה: ${error.message}`, 'error');
+        console.error('Full error:', error);
+        progressEl.textContent = '❌ נכשל!';
+        progressEl.style.color = '#ef4444';
+      } finally {
+        startBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

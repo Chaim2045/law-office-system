@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>הדגמת מערכת ההודעות החדשה</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Notification System CSS -->
+  <link rel="stylesheet" href="notifications.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .demo-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .demo-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .demo-header h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    .demo-header p {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+
+    .demo-content {
+      padding: 40px;
+    }
+
+    .demo-section {
+      margin-bottom: 40px;
+    }
+
+    .demo-section h2 {
+      font-size: 24px;
+      color: #1f2937;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .demo-section p {
+      color: #6b7280;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .demo-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .demo-btn {
+      padding: 15px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .demo-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .demo-btn:active {
+      transform: translateY(0);
+    }
+
+    .demo-btn-success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+    }
+
+    .demo-btn-error {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+    }
+
+    .demo-btn-warning {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+    }
+
+    .demo-btn-info {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+    }
+
+    .demo-btn-loading {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+    }
+
+    .demo-btn-confirm {
+      background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+      color: white;
+    }
+
+    .code-block {
+      background: #1f2937;
+      color: #10b981;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      margin-top: 15px;
+    }
+
+    .code-block code {
+      display: block;
+      white-space: pre;
+    }
+
+    .feature-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .feature-list li {
+      padding: 10px 0;
+      color: #4b5563;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .feature-list li i {
+      color: #10b981;
+      font-size: 18px;
+    }
+
+    @media (max-width: 768px) {
+      .demo-header h1 {
+        font-size: 28px;
+      }
+
+      .demo-content {
+        padding: 20px;
+      }
+
+      .demo-buttons {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <div class="demo-header">
+      <h1>🎉 מערכת הודעות חדשה</h1>
+      <p>מערכת הודעות מודרנית, מודולרית ומעוצבת למשרד עורכי הדין</p>
+    </div>
+
+    <div class="demo-content">
+      <!-- Success Notifications -->
+      <div class="demo-section">
+        <h2>✅ הודעות הצלחה (Success)</h2>
+        <p>הודעות ירוקות למשתמש כשפעולה הושלמה בהצלחה</p>
+        <div class="demo-buttons">
+          <button class="demo-btn demo-btn-success" onclick="showSuccessDemo()">
+            <i class="fas fa-check-circle"></i>
+            הצלחה פשוטה
+          </button>
+          <button class="demo-btn demo-btn-success" onclick="showSuccessLongDemo()">
+            <i class="fas fa-check-double"></i>
+            הצלחה עם טקסט ארוך
+          </button>
+          <button class="demo-btn demo-btn-success" onclick="showSuccessMultipleDemo()">
+            <i class="fas fa-layer-group"></i>
+            3 הודעות ברצף
+          </button>
+        </div>
+        <div class="code-block">
+          <code>// דוגמה לשימוש
+NotificationSystem.success('הפעולה הושלמה בהצלחה');
+NotificationSystem.show('משימה נוספה', 'success', 3000);</code>
+        </div>
+      </div>
+
+      <!-- Error Notifications -->
+      <div class="demo-section">
+        <h2>❌ הודעות שגיאה (Error)</h2>
+        <p>הודעות אדומות למשתמש כשיש בעיה או שגיאה</p>
+        <div class="demo-buttons">
+          <button class="demo-btn demo-btn-error" onclick="showErrorDemo()">
+            <i class="fas fa-exclamation-circle"></i>
+            שגיאה פשוטה
+          </button>
+          <button class="demo-btn demo-btn-error" onclick="showErrorLongDemo()">
+            <i class="fas fa-times-circle"></i>
+            שגיאה עם פרטים
+          </button>
+          <button class="demo-btn demo-btn-error" onclick="showErrorNoAutoClose()">
+            <i class="fas fa-ban"></i>
+            שגיאה ללא סגירה אוטומטית
+          </button>
+        </div>
+        <div class="code-block">
+          <code>// דוגמה לשימוש
+NotificationSystem.error('שגיאה בשמירת הנתונים');
+NotificationSystem.show('המשימה לא נמצאה', 'error', 0); // 0 = ללא סגירה אוטומטית</code>
+        </div>
+      </div>
+
+      <!-- Warning Notifications -->
+      <div class="demo-section">
+        <h2>⚠️ הודעות אזהרה (Warning)</h2>
+        <p>הודעות כתומות לאזהרות ולמידע חשוב</p>
+        <div class="demo-buttons">
+          <button class="demo-btn demo-btn-warning" onclick="showWarningDemo()">
+            <i class="fas fa-exclamation-triangle"></i>
+            אזהרה פשוטה
+          </button>
+          <button class="demo-btn demo-btn-warning" onclick="showWarningLongDemo()">
+            <i class="fas fa-radiation"></i>
+            אזהרה עם הסבר
+          </button>
+        </div>
+        <div class="code-block">
+          <code>// דוגמה לשימוש
+NotificationSystem.warning('נגמרה יתרת השעות ללקוח');
+NotificationSystem.show('שים לב! יש 5 משימות דחופות', 'warning');</code>
+        </div>
+      </div>
+
+      <!-- Info Notifications -->
+      <div class="demo-section">
+        <h2>ℹ️ הודעות מידע (Info)</h2>
+        <p>הודעות כחולות למידע כללי ועדכונים</p>
+        <div class="demo-buttons">
+          <button class="demo-btn demo-btn-info" onclick="showInfoDemo()">
+            <i class="fas fa-info-circle"></i>
+            מידע פשוט
+          </button>
+          <button class="demo-btn demo-btn-info" onclick="showInfoLongDemo()">
+            <i class="fas fa-bullhorn"></i>
+            עדכון חשוב
+          </button>
+        </div>
+        <div class="code-block">
+          <code>// דוגמה לשימוש
+NotificationSystem.info('הנתונים עודכנו בהצלחה');
+NotificationSystem.show('יש 3 הודעות חדשות', 'info', 5000);</code>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div class="demo-section">
+        <h2>⏳ מסך טעינה (Loading)</h2>
+        <p>מסך טעינה מלא עם ספינר מעוצב</p>
+        <div class="demo-buttons">
+          <button class="demo-btn demo-btn-loading" onclick="showLoadingDemo()">
+            <i class="fas fa-spinner"></i>
+            טעינה 3 שניות
+          </button>
+          <button class="demo-btn demo-btn-loading" onclick="showLoadingCustomDemo()">
+            <i class="fas fa-hourglass-half"></i>
+            טעינה עם הודעה מותאמת
+          </button>
+        </div>
+        <div class="code-block">
+          <code>// דוגמה לשימוש
+NotificationSystem.showLoading('שומר נתונים...');
+// ... ביצוע פעולה ...
+NotificationSystem.hideLoading();</code>
+        </div>
+      </div>
+
+      <!-- Confirm Dialog -->
+      <div class="demo-section">
+        <h2>❓ דיאלוג אישור (Confirm)</h2>
+        <p>דיאלוג מעוצב לאישור פעולות קריטיות</p>
+        <div class="demo-buttons">
+          <button class="demo-btn demo-btn-confirm" onclick="showConfirmDemo()">
+            <i class="fas fa-question-circle"></i>
+            אישור פשוט
+          </button>
+          <button class="demo-btn demo-btn-confirm" onclick="showConfirmDeleteDemo()">
+            <i class="fas fa-trash-alt"></i>
+            אישור מחיקה
+          </button>
+          <button class="demo-btn demo-btn-confirm" onclick="showConfirmLogoutDemo()">
+            <i class="fas fa-sign-out-alt"></i>
+            אישור התנתקות
+          </button>
+        </div>
+        <div class="code-block">
+          <code>// דוגמה לשימוש
+NotificationSystem.confirm(
+  'האם אתה בטוח שברצונך למחוק את המשימה?',
+  () => {
+    console.log('אושר!');
+    NotificationSystem.success('המשימה נמחקה');
+  },
+  () => {
+    console.log('בוטל');
+  },
+  {
+    title: 'אישור מחיקה',
+    confirmText: 'מחק',
+    cancelText: 'ביטול',
+    type: 'error'
+  }
+);</code>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div class="demo-section">
+        <h2>🌟 תכונות המערכת</h2>
+        <ul class="feature-list">
+          <li><i class="fas fa-check-circle"></i> 4 סוגי הודעות: Success, Error, Warning, Info</li>
+          <li><i class="fas fa-paint-brush"></i> עיצוב מודרני עם אנימציות חלקות</li>
+          <li><i class="fas fa-layer-group"></i> תמיכה ב-Stack של עד 3 הודעות בו-זמנית</li>
+          <li><i class="fas fa-clock"></i> סגירה אוטומטית עם אפשרות להגדיר זמן</li>
+          <li><i class="fas fa-times-circle"></i> כפתור X לסגירה ידנית</li>
+          <li><i class="fas fa-spinner"></i> מסך טעינה מלא עם ספינר מעוצב</li>
+          <li><i class="fas fa-question-circle"></i> דיאלוג אישור מעוצב (מחליף את confirm)</li>
+          <li><i class="fas fa-language"></i> תמיכה מלאה ב-RTL (עברית)</li>
+          <li><i class="fas fa-mobile-alt"></i> Responsive לכל המסכים</li>
+          <li><i class="fas fa-universal-access"></i> תמיכה מלאה ב-Accessibility</li>
+          <li><i class="fas fa-shield-alt"></i> הגנה מפני XSS</li>
+          <li><i class="fas fa-puzzle-piece"></i> מודולרי - קל להוסיף ולשנות</li>
+        </ul>
+      </div>
+
+      <!-- Usage -->
+      <div class="demo-section">
+        <h2>📖 איך להשתמש?</h2>
+        <p><strong>שלב 1:</strong> הוסף את הקבצים ל-HTML שלך:</p>
+        <div class="code-block">
+          <code>&lt;!-- CSS --&gt;
+&lt;link rel="stylesheet" href="notifications.css"&gt;
+
+&lt;!-- JavaScript --&gt;
+&lt;script type="module"&gt;
+  import NotificationSystem from './js/modules/notification-system.js';
+  window.NotificationSystem = NotificationSystem;
+&lt;/script&gt;</code>
+        </div>
+
+        <p style="margin-top: 20px;"><strong>שלב 2:</strong> השתמש בקוד:</p>
+        <div class="code-block">
+          <code>// הודעות פשוטות
+NotificationSystem.success('הפעולה בוצעה בהצלחה');
+NotificationSystem.error('אירעה שגיאה');
+NotificationSystem.warning('שים לב!');
+NotificationSystem.info('מידע חשוב');
+
+// טעינה
+NotificationSystem.showLoading('טוען...');
+NotificationSystem.hideLoading();
+
+// אישור
+NotificationSystem.confirm(
+  'האם אתה בטוח?',
+  () => console.log('כן'),
+  () => console.log('לא')
+);</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Notification System -->
+  <script type="module">
+    import NotificationSystem from './js/modules/notification-system.js';
+    window.NotificationSystem = NotificationSystem;
+
+    // Demo Functions
+    window.showSuccessDemo = () => {
+      NotificationSystem.success('הפעולה הושלמה בהצלחה! 🎉');
+    };
+
+    window.showSuccessLongDemo = () => {
+      NotificationSystem.success('הלקוח נוסף בהצלחה למערכת. כעת תוכל לראות אותו ברשימת הלקוחות ולהוסיף לו משימות ורשומות שעתון.');
+    };
+
+    window.showSuccessMultipleDemo = () => {
+      NotificationSystem.success('משימה ראשונה הושלמה');
+      setTimeout(() => NotificationSystem.success('משימה שנייה הושלמה'), 500);
+      setTimeout(() => NotificationSystem.success('משימה שלישית הושלמה'), 1000);
+    };
+
+    window.showErrorDemo = () => {
+      NotificationSystem.error('אירעה שגיאה בשמירת הנתונים');
+    };
+
+    window.showErrorLongDemo = () => {
+      NotificationSystem.error('שגיאה: לא ניתן להוסיף משימה ללקוח זה מכיוון שנגמרה יתרת השעות שלו. נא לעדכן את מערכת הביליטס או ליצור קשר עם הלקוח.');
+    };
+
+    window.showErrorNoAutoClose = () => {
+      NotificationSystem.error('שגיאה קריטית! לחץ על X לסגירה', 0);
+    };
+
+    window.showWarningDemo = () => {
+      NotificationSystem.warning('שים לב! נגמרת יתרת השעות ללקוח');
+    };
+
+    window.showWarningLongDemo = () => {
+      NotificationSystem.warning('אזהרה: ישנן 5 משימות שתאריך היעד שלהן עבר. מומלץ לעדכן אותן או להאריך את תאריך היעד.');
+    };
+
+    window.showInfoDemo = () => {
+      NotificationSystem.info('הנתונים עודכנו בהצלחה');
+    };
+
+    window.showInfoLongDemo = () => {
+      NotificationSystem.info('עדכון חשוב: הגרסה החדשה של המערכת כוללת שיפורים רבים בביצועים ובחוויית המשתמש. קרא עוד במדריך המשתמש.', 5000);
+    };
+
+    window.showLoadingDemo = () => {
+      NotificationSystem.showLoading('מעבד נתונים...');
+      setTimeout(() => {
+        NotificationSystem.hideLoading();
+        NotificationSystem.success('הנתונים נשמרו בהצלחה');
+      }, 3000);
+    };
+
+    window.showLoadingCustomDemo = () => {
+      NotificationSystem.showLoading('שולח דוח למייל... אנא המתן');
+      setTimeout(() => {
+        NotificationSystem.hideLoading();
+        NotificationSystem.success('הדוח נשלח למייל בהצלחה');
+      }, 4000);
+    };
+
+    window.showConfirmDemo = () => {
+      NotificationSystem.confirm(
+        'האם אתה בטוח שברצונך לבצע פעולה זו?',
+        () => {
+          NotificationSystem.success('הפעולה אושרה');
+        },
+        () => {
+          NotificationSystem.info('הפעולה בוטלה');
+        }
+      );
+    };
+
+    window.showConfirmDeleteDemo = () => {
+      NotificationSystem.confirm(
+        'האם אתה בטוח שברצונך למחוק את המשימה? פעולה זו אינה ניתנת לביטול.',
+        () => {
+          NotificationSystem.success('המשימה נמחקה בהצלחה');
+        },
+        () => {
+          NotificationSystem.info('המחיקה בוטלה');
+        },
+        {
+          title: 'אישור מחיקה',
+          confirmText: 'מחק',
+          cancelText: 'ביטול',
+          type: 'error'
+        }
+      );
+    };
+
+    window.showConfirmLogoutDemo = () => {
+      NotificationSystem.confirm(
+        'האם אתה בטוח שברצונך להתנתק מהמערכת?',
+        () => {
+          NotificationSystem.showLoading('מתנתק...');
+          setTimeout(() => {
+            NotificationSystem.hideLoading();
+            NotificationSystem.success('התנתקת בהצלחה. להתראות! 👋');
+          }, 2000);
+        },
+        null,
+        {
+          title: 'התנתקות',
+          confirmText: 'התנתק',
+          cancelText: 'הישאר',
+          type: 'warning'
+        }
+      );
+    };
+  </script>
+</body>
+</html>

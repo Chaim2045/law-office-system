@@ -98,9 +98,19 @@ export function validateBudgetTaskForm() {
     errors.push("תיאור המשימה חייב להכיל לפחות 3 תווים");
   }
 
-  const clientSelect = document.getElementById("budgetClientSelect")?.value;
-  if (!clientSelect) {
-    errors.push("חובה לבחור לקוח");
+  const caseSelect = document.getElementById("budgetCaseSelect")?.value;
+  if (!caseSelect) {
+    errors.push("חובה לבחור תיק");
+  }
+
+  // ✅ בדיקה אם יש dropdown שירותים (במקרה של מספר שירותים)
+  const serviceSelectElement = document.getElementById("budgetServiceSelect");
+  if (serviceSelectElement && serviceSelectElement.type === 'select-one') {
+    // יש dropdown - בדיקה שנבחר שירות
+    const serviceValue = serviceSelectElement.value;
+    if (!serviceValue) {
+      errors.push("חובה לבחור שירות מהרשימה");
+    }
   }
 
   const estimatedTime = document.getElementById("estimatedTime")?.value;
@@ -212,8 +222,11 @@ export function sanitizeTaskData(task) {
       task.taskDescription || task.description || "משימה ללא תיאור",
     taskDescription:
       task.taskDescription || task.description || "משימה ללא תיאור",
-    estimatedMinutes: Number(task.estimatedMinutes) || 0,
-    actualMinutes: Number(task.actualMinutes) || 0,
+    // ✅ תמיכה הן ב-Hours והן ב-Minutes
+    estimatedHours: Number(task.estimatedHours) || 0,
+    actualHours: Number(task.actualHours) || 0,
+    estimatedMinutes: Number(task.estimatedMinutes) || (Number(task.estimatedHours) || 0) * 60,
+    actualMinutes: Number(task.actualMinutes) || (Number(task.actualHours) || 0) * 60,
     deadline: task.deadline || new Date().toISOString(),
     status: task.status || "פעיל",
     branch: task.branch || "",
@@ -221,6 +234,8 @@ export function sanitizeTaskData(task) {
     history: task.history || [],
     createdAt: task.createdAt || null,
     updatedAt: task.updatedAt || null,
+    caseId: task.caseId || null,
+    caseTitle: task.caseTitle || null,
   };
 }
 
