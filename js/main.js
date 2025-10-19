@@ -573,10 +573,10 @@ class LawOfficeManager {
       filteredItems: this.filteredTimesheetEntries.length
     };
 
-    // Get the container element
-    const container = document.getElementById('timesheetTab');
-    if (!container) {
-      console.error('❌ timesheetTab container not found');
+    // Find the parent div that contains timesheetContainer and timesheetTableContainer
+    const parentContainer = document.querySelector('#timesheetTab > div:last-child');
+    if (!parentContainer) {
+      console.error('❌ Timesheet parent container not found');
       return;
     }
 
@@ -597,8 +597,8 @@ class LawOfficeManager {
       );
     }
 
-    // Insert the HTML into the container
-    container.innerHTML = html;
+    // Replace only the content area (not the form or controls)
+    parentContainer.innerHTML = html;
   }
 
   switchTimesheetView(view) {
