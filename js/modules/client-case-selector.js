@@ -191,7 +191,10 @@
     async searchClients(query) {
       const resultsContainer = document.getElementById(`${this.containerId}_clientResults`);
 
-      if (!resultsContainer) return;
+      if (!resultsContainer) {
+        console.error('❌ resultsContainer לא נמצא! ID:', `${this.containerId}_clientResults`);
+        return;
+      }
 
       if (query.length < 1) {
         resultsContainer.style.display = 'none';
@@ -199,32 +202,51 @@
       }
 
       try {
-        // ✅ טעינת לקוחות מכל המקורות הזמינים
-        let clients = [];
+        // ✅ טעינה ישירה מ-Firebase - הכי אמין
 
-        // נסה לקבל מ-manager
-        if (window.manager?.clients && Array.isArray(window.manager.clients)) {
-          clients = window.manager.clients;
-          console.log(`✅ טוען ${clients.length} לקוחות מ-window.manager.clients`);
+        const db = window.firebaseDB;
+        if (!db) {
+          throw new Error('Firebase לא מחובר');
         }
-        // אם אין, נסה מ-casesManager
-        else if (window.casesManager) {
-          const allCases = await window.casesManager.getAllCases();
-          // הפוך תיקים למפה של לקוחות (כל לקוח מופיע פעם אחת)
-          const clientsMap = new Map();
-          allCases.forEach(caseItem => {
-            if (caseItem.clientId && caseItem.clientName) {
-              if (!clientsMap.has(caseItem.clientId)) {
-                clientsMap.set(caseItem.clientId, {
-                  id: caseItem.clientId,
-                  fullName: caseItem.clientName
-                });
-              }
+
+        // טעינה מקבילית של clients + cases
+        const [clientsSnapshot, casesSnapshot] = await Promise.all([
+          db.collection('clients').get(),
+          db.collection('cases').get()
+        ]);
+
+        const clientsMap = new Map();
+
+        // שלב 1: הוסף לקוחות מ-collection clients
+        clientsSnapshot.forEach(doc => {
+          const data = doc.data();
+          const fullName = data.fullName || data.clientName;
+          if (fullName) {
+            clientsMap.set(doc.id, {
+              id: doc.id,
+              fullName: fullName,
+              phone: data.phone || data.phoneNumber,
+              source: 'clients'
+            });
+          }
+        });
+
+        // שלב 2: הוסף לקוחות ייחודיים מ-cases (שאין להם רשומה ב-clients)
+        casesSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.clientId && data.clientName) {
+            if (!clientsMap.has(data.clientId)) {
+              clientsMap.set(data.clientId, {
+                id: data.clientId,
+                fullName: data.clientName,
+                phone: data.clientPhone || '',
+                source: 'cases'
+              });
             }
-          });
-          clients = Array.from(clientsMap.values());
-          console.log(`✅ טוען ${clients.length} לקוחות ייחודיים מתיקים`);
-        }
+          }
+        });
+
+        const clients = Array.from(clientsMap.values());
 
         if (clients.length === 0) {
           console.warn('⚠️ לא נמצאו לקוחות במערכת');
@@ -234,10 +256,12 @@
             </div>
           `;
           resultsContainer.style.display = 'block';
+          resultsContainer.style.visibility = 'visible';
+          resultsContainer.style.opacity = '1';
           return;
         }
 
-        // סינון לקוחות
+        // סינון לקוחות לפי שם
         const matches = clients.filter(client => {
           if (!client.fullName) return false;
           return client.fullName.includes(query);
@@ -246,18 +270,22 @@
         if (matches.length === 0) {
           resultsContainer.innerHTML = `
             <div style="padding: 16px; text-align: center; color: #6b7280;">
-              לא נמצאו לקוחות מתאימים
+              לא נמצאו לקוחות מתאימים לחיפוש "${this.escapeHtml(query)}"
             </div>
           `;
           resultsContainer.style.display = 'block';
+          resultsContainer.style.visibility = 'visible';
+          resultsContainer.style.opacity = '1';
           return;
         }
 
-        // בניית HTML של התוצאות
-        const resultsHtml = matches.map(client => `
+        // בניית HTML של התוצאות - משתמשים ב-data attributes
+        const resultsHtml = matches.map((client, index) => `
           <div
             class="search-result-item"
-            onclick="window.clientCaseSelectorInstances['${this.containerId}'].selectClient('${this.escapeHtml(client.id)}', '${this.escapeHtml(client.fullName)}')"
+            data-client-index="${index}"
+            data-client-id="${this.escapeHtml(client.id)}"
+            data-client-name="${this.escapeHtml(client.fullName)}"
             style="
               padding: 12px 16px;
               cursor: pointer;
@@ -278,15 +306,30 @@
 
         resultsContainer.innerHTML = resultsHtml;
         resultsContainer.style.display = 'block';
+        resultsContainer.style.visibility = 'visible';
+        resultsContainer.style.opacity = '1';
+
+        // הוספת event listeners לכל תוצאה
+        resultsContainer.querySelectorAll('.search-result-item').forEach((item) => {
+          item.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const clientId = item.dataset.clientId;
+            const clientName = item.dataset.clientName;
+            this.selectClient(clientId, clientName);
+          });
+        });
 
       } catch (error) {
-        console.error('Error searching clients:', error);
+        console.error('❌ שגיאה בחיפוש לקוחות:', error);
         resultsContainer.innerHTML = `
           <div style="padding: 16px; text-align: center; color: #ef4444;">
-            שגיאה בחיפוש לקוחות
+            שגיאה בחיפוש לקוחות: ${error.message}
           </div>
         `;
         resultsContainer.style.display = 'block';
+        resultsContainer.style.visibility = 'visible';
+        resultsContainer.style.opacity = '1';
       }
     }
 
@@ -330,16 +373,24 @@
      */
     async loadClientCases(clientId) {
       try {
-        if (!window.casesManager) {
-          console.error('❌ CasesManager not available');
-          return;
+        const db = window.firebaseDB;
+        if (!db) {
+          throw new Error('Firebase לא מחובר');
         }
 
-        // שליפת כל התיקים (getAllCases כבר טוען מהשרת אם צריך)
-        const allCases = await window.casesManager.getAllCases();
+        // שליפת כל התיקים של הלקוח מ-Firebase
+        const casesSnapshot = await db.collection('cases')
+          .where('clientId', '==', clientId)
+          .get();
 
-        // סינון תיקים של הלקוח הזה
-        let clientCases = allCases.filter(c => c.clientId === clientId);
+        let clientCases = [];
+        casesSnapshot.forEach(doc => {
+          const data = doc.data();
+          clientCases.push({
+            id: doc.id,
+            ...data
+          });
+        });
 
         // סינון לפי סטטוס (אם נדרש)
         if (this.options.showOnlyActive) {
@@ -357,8 +408,8 @@
         this.renderCaseDropdown();
 
       } catch (error) {
-        console.error('Error loading client cases:', error);
-        alert('שגיאה בטעינת תיקים של הלקוח');
+        console.error('❌ שגיאה בטעינת תיקים של הלקוח:', error);
+        alert('שגיאה בטעינת תיקים של הלקוח: ' + error.message);
       }
     }
 
