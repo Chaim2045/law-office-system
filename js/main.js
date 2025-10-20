@@ -72,7 +72,7 @@ class LawOfficeManager {
     this.connectionStatus = "unknown";
 
     // View State
-    this.currentTaskFilter = "active";
+    this.currentTaskFilter = "active"; // Show only active tasks by default (completed tasks hidden)
     this.currentTimesheetFilter = "month";
     this.currentBudgetView = "cards";
     this.currentTimesheetView = "table";
@@ -285,6 +285,14 @@ class LawOfficeManager {
       this.budgetTasks = budgetTasks;
       this.timesheetEntries = timesheetEntries;
 
+      // ✅ Expose to window for backward compatibility with old code
+      window.clients = clients;
+      window.cases = window.cases || []; // Use existing cases if already loaded by CasesModule
+      window.budgetTasks = budgetTasks;
+      window.timesheetEntries = timesheetEntries;
+      window.lawOfficeManager = this;
+      window.CoreUtils = CoreUtils; // Expose CoreUtils for date formatting, etc.
+
       this.updateLoaderText('מכין ממשק...');
 
       // Initialize TaskActionsManager if available
@@ -431,6 +439,12 @@ class LawOfficeManager {
   }
 
   filterBudgetTasks() {
+    // Get current filter value from the select element
+    const filterSelect = document.getElementById('taskFilter');
+    if (filterSelect) {
+      this.currentTaskFilter = filterSelect.value;
+    }
+
     const filterValue = this.currentTaskFilter;
     this.filteredBudgetTasks = Search.filterBudgetTasks(this.budgetTasks, filterValue);
     this.renderBudgetView();
@@ -445,9 +459,9 @@ class LawOfficeManager {
   }
 
   renderBudgetView() {
-    // Calculate statistics
+    // Calculate statistics on ALL tasks (not filtered) to show total counts
     const stats = window.StatisticsModule
-      ? window.StatisticsModule.calculateBudgetStatistics(this.filteredBudgetTasks)
+      ? window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks)
       : null;
 
     const options = {
@@ -562,6 +576,12 @@ class LawOfficeManager {
   }
 
   filterTimesheetEntries() {
+    // Get current filter value from the select element
+    const filterSelect = document.getElementById('timesheetFilter');
+    if (filterSelect) {
+      this.currentTimesheetFilter = filterSelect.value;
+    }
+
     const filterValue = this.currentTimesheetFilter;
     this.filteredTimesheetEntries = Search.filterTimesheetEntries(this.timesheetEntries, filterValue);
     this.renderTimesheetView();
@@ -576,11 +596,14 @@ class LawOfficeManager {
   }
 
   renderTimesheetView() {
-    const stats = {
-      totalMinutes: Timesheet.getTotalMinutes(this.filteredTimesheetEntries),
-      totalHours: Math.round((Timesheet.getTotalMinutes(this.filteredTimesheetEntries) / 60) * 10) / 10,
-      totalEntries: this.filteredTimesheetEntries.length
-    };
+    // Calculate statistics on ALL entries (not filtered) to show total counts
+    const stats = window.StatisticsModule
+      ? window.StatisticsModule.calculateTimesheetStatistics(this.timesheetEntries)
+      : {
+          totalMinutes: Timesheet.getTotalMinutes(this.filteredTimesheetEntries),
+          totalHours: Math.round((Timesheet.getTotalMinutes(this.filteredTimesheetEntries) / 60) * 10) / 10,
+          totalEntries: this.filteredTimesheetEntries.length
+        };
 
     const paginationStatus = {
       currentPage: this.currentTimesheetPage,

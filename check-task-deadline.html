@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Check Task Deadline</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+  <h1>Checking Task Deadline Field</h1>
+  <pre id="output"></pre>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxLxCTGwv6l5pMfvnpCzjN-bVGZk6PO7g",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "1059859530021",
+      appId: "1:1059859530021:web:6a932635cf3d6f5085df99"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function checkTasks() {
+      const output = document.getElementById('output');
+      output.textContent = 'Loading tasks...\n';
+
+      try {
+        const snapshot = await db.collection('budget_tasks').limit(5).get();
+
+        output.textContent += `Found ${snapshot.size} tasks:\n\n`;
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          output.textContent += `Task ID: ${doc.id}\n`;
+          output.textContent += `Description: ${data.description || data.taskDescription || 'N/A'}\n`;
+          output.textContent += `\nALL FIELDS:\n`;
+          output.textContent += JSON.stringify(Object.keys(data).sort(), null, 2) + '\n';
+          output.textContent += `\nDATE FIELDS:\n`;
+          output.textContent += `  - deadline: ${data.deadline} (type: ${typeof data.deadline})\n`;
+          output.textContent += `  - targetDate: ${data.targetDate} (type: ${typeof data.targetDate})\n`;
+          output.textContent += `  - createdAt: ${data.createdAt} (type: ${typeof data.createdAt})\n`;
+          output.textContent += `  - dueDate: ${data.dueDate} (type: ${typeof data.dueDate})\n`;
+          output.textContent += '\n' + '='.repeat(80) + '\n\n';
+        });
+      } catch (error) {
+        output.textContent += `Error: ${error.message}\n`;
+        console.error(error);
+      }
+    }
+
+    checkTasks();
+  </script>
+</body>
+</html>

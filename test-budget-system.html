@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>בדיקת מערכת תקצוב - Budget System Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f7fa;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .data-item {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 4px solid #3498db;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 בדיקת מערכת תקצוב משימות - Budget System Test</h1>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+  <div class="test-section">
+    <h2>1️⃣ אתחול Firebase</h2>
+    <div id="firebase-status" class="status info">מאתחל...</div>
+    <div id="firebase-details"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2️⃣ טעינת נתונים</h2>
+    <button onclick="testLoadClients()">טען לקוחות</button>
+    <button onclick="testLoadCases()">טען תיקים</button>
+    <button onclick="testLoadBudgetTasks()">טען משימות</button>
+    <div id="load-status"></div>
+    <div id="load-details"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>3️⃣ בדיקת ClientCaseSelector</h2>
+    <button onclick="testClientCaseSelector()">בדוק Selector</button>
+    <div id="selector-status"></div>
+    <div id="selector-container"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>4️⃣ בדיקת Dialogs Module</h2>
+    <button onclick="testDialogsModule()">בדוק Dialogs</button>
+    <div id="dialogs-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>5️⃣ ניתוח נתונים</h2>
+    <div id="analysis-results"></div>
+  </div>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    let db, auth;
+
+    // אתחול Firebase
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      auth = firebase.auth();
+      window.firebaseDB = db;
+      window.firebaseAuth = auth;
+
+      document.getElementById('firebase-status').className = 'status success';
+      document.getElementById('firebase-status').textContent = '✅ Firebase מחובר בהצלחה';
+      document.getElementById('firebase-details').innerHTML = `
+        <div class="data-item">
+          <strong>Project ID:</strong> ${firebaseConfig.projectId}
+        </div>
+      `;
+    } catch (error) {
+      document.getElementById('firebase-status').className = 'status error';
+      document.getElementById('firebase-status').textContent = '❌ שגיאה באתחול Firebase: ' + error.message;
+    }
+
+    // טעינת לקוחות
+    async function testLoadClients() {
+      const statusDiv = document.getElementById('load-status');
+      const detailsDiv = document.getElementById('load-details');
+
+      statusDiv.className = 'status info';
+      statusDiv.textContent = '⏳ טוען לקוחות...';
+
+      try {
+        const snapshot = await db.collection('clients').get();
+
+        statusDiv.className = 'status success';
+        statusDiv.textContent = `✅ נטענו ${snapshot.size} לקוחות`;
+
+        const clientsHtml = snapshot.docs.slice(0, 5).map(doc => {
+          const data = doc.data();
+          return `
+            <div class="data-item">
+              <strong>ID:</strong> ${doc.id}<br>
+              <strong>שם:</strong> ${data.fullName || data.clientName}<br>
+              <strong>טלפון:</strong> ${data.phone || 'לא זמין'}
+            </div>
+          `;
+        }).join('');
+
+        detailsDiv.innerHTML = `<h3>5 לקוחות ראשונים:</h3><div class="data-grid">${clientsHtml}</div>`;
+      } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ שגיאה: ' + error.message;
+      }
+    }
+
+    // טעינת תיקים
+    async function testLoadCases() {
+      const statusDiv = document.getElementById('load-status');
+      const detailsDiv = document.getElementById('load-details');
+
+      statusDiv.className = 'status info';
+      statusDiv.textContent = '⏳ טוען תיקים...';
+
+      try {
+        const snapshot = await db.collection('cases').get();
+
+        statusDiv.className = 'status success';
+        statusDiv.textContent = `✅ נטענו ${snapshot.size} תיקים`;
+
+        const casesHtml = snapshot.docs.slice(0, 5).map(doc => {
+          const data = doc.data();
+          return `
+            <div class="data-item">
+              <strong>מס' תיק:</strong> ${data.caseNumber}<br>
+              <strong>כותרת:</strong> ${data.caseTitle}<br>
+              <strong>לקוח:</strong> ${data.clientName || data.clientId}<br>
+              <strong>סטטוס:</strong> ${data.status}<br>
+              <strong>סוג:</strong> ${data.procedureType}
+            </div>
+          `;
+        }).join('');
+
+        detailsDiv.innerHTML = `<h3>5 תיקים ראשונים:</h3><div class="data-grid">${casesHtml}</div>`;
+      } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ שגיאה: ' + error.message;
+      }
+    }
+
+    // טעינת משימות
+    async function testLoadBudgetTasks() {
+      const statusDiv = document.getElementById('load-status');
+      const detailsDiv = document.getElementById('load-details');
+
+      statusDiv.className = 'status info';
+      statusDiv.textContent = '⏳ טוען משימות...';
+
+      try {
+        const snapshot = await db.collection('budget_tasks').limit(20).get();
+
+        statusDiv.className = 'status success';
+        statusDiv.textContent = `✅ נטענו ${snapshot.size} משימות`;
+
+        const tasksHtml = snapshot.docs.slice(0, 5).map(doc => {
+          const data = doc.data();
+          return `
+            <div class="data-item">
+              <strong>תיאור:</strong> ${data.description}<br>
+              <strong>לקוח:</strong> ${data.clientName}<br>
+              <strong>תיק:</strong> ${data.caseId ? '✅ יש' : '❌ אין'} (${data.caseId || 'N/A'})<br>
+              <strong>עובד:</strong> ${data.employee}<br>
+              <strong>סטטוס:</strong> ${data.status}
+            </div>
+          `;
+        }).join('');
+
+        detailsDiv.innerHTML = `<h3>5 משימות ראשונות:</h3><div class="data-grid">${tasksHtml}</div>`;
+
+        // ניתוח
+        analyzeData(snapshot.docs);
+      } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ שגיאה: ' + error.message;
+      }
+    }
+
+    // בדיקת ClientCaseSelector
+    function testClientCaseSelector() {
+      const statusDiv = document.getElementById('selector-status');
+
+      if (typeof window.ClientCaseSelector === 'undefined') {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ ClientCaseSelector לא נטען! הקובץ client-case-selector.js חסר.';
+        return;
+      }
+
+      statusDiv.className = 'status success';
+      statusDiv.textContent = '✅ ClientCaseSelector זמין!';
+    }
+
+    // בדיקת Dialogs Module
+    function testDialogsModule() {
+      const statusDiv = document.getElementById('dialogs-status');
+
+      if (typeof window.DialogsModule === 'undefined') {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ DialogsModule לא נטען! הקובץ dialogs.js חסר.';
+        return;
+      }
+
+      if (typeof window.DialogsModule.showTaskCompletionModal === 'undefined') {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ showTaskCompletionModal לא קיימת ב-DialogsModule!';
+        return;
+      }
+
+      statusDiv.className = 'status success';
+      statusDiv.textContent = '✅ DialogsModule זמין עם showTaskCompletionModal!';
+    }
+
+    // ניתוח נתונים
+    function analyzeData(tasks) {
+      const analysisDiv = document.getElementById('analysis-results');
+
+      const tasksWithCaseId = tasks.filter(doc => doc.data().caseId).length;
+      const tasksWithoutCaseId = tasks.filter(doc => !doc.data().caseId).length;
+      const activeTasksCount = tasks.filter(doc => doc.data().status === 'active').length;
+
+      analysisDiv.innerHTML = `
+        <h3>📊 ניתוח נתונים:</h3>
+        <div class="data-grid">
+          <div class="data-item">
+            <strong>סה"כ משימות:</strong> ${tasks.length}
+          </div>
+          <div class="data-item">
+            <strong>עם caseId (מערך חדש):</strong> ${tasksWithCaseId}
+          </div>
+          <div class="data-item">
+            <strong>בלי caseId (מערך ישן):</strong> ${tasksWithoutCaseId}
+          </div>
+          <div class="data-item">
+            <strong>משימות פעילות:</strong> ${activeTasksCount}
+          </div>
+        </div>
+        <div class="status ${tasksWithCaseId > 0 ? 'success' : 'error'}">
+          ${tasksWithCaseId > 0 ? '✅ המערך החדש עובד! יש משימות עם caseId' : '❌ אין משימות עם caseId - המערך החדש לא משמש'}
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

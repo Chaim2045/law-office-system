@@ -24,6 +24,29 @@
 
 /**
  * ========================================
+ * Utility Functions Fallbacks
+ * ========================================
+ */
+
+// Fallback for safeText if not available
+if (typeof window.safeText === 'undefined') {
+  window.safeText = function(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+}
+
+// ✅ REMOVED: Fallback for formatDate - now provided by CoreUtils in main.js
+// formatDate and safeText are exposed via window.CoreUtils after main.js loads
+// This file can safely use window.formatDate and window.safeText directly
+
+/**
+ * ========================================
  * Loading Overlays - REMOVED
  * ========================================
  * ✅ showSimpleLoading & hideSimpleLoading removed - use NotificationSystem instead
@@ -262,16 +285,16 @@ function showTaskCompletionModal(task, manager) {
         <!-- Task Info -->
         <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
           <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 18px; font-weight: 700;">
-            ${safeText(task.taskDescription || task.description || "")}
+            ${window.safeText(task.taskDescription || task.description || "")}
           </h3>
           <div style="color: #6b7280; font-size: 14px; display: flex; align-items: center; gap: 16px;">
             <div style="display: flex; align-items: center; gap: 6px;">
               <i class="fas fa-building" style="color: #3b82f6;"></i>
-              <span>${safeText(task.clientName || "")}</span>
+              <span>${window.safeText(task.clientName || "")}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
               <i class="fas fa-folder" style="color: #8b5cf6;"></i>
-              <span>${safeText(task.fileNumber || "")}</span>
+              <span>${window.safeText(task.fileNumber || "")}</span>
             </div>
           </div>
         </div>
@@ -306,10 +329,10 @@ function showTaskCompletionModal(task, manager) {
             </div>
             <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">תאריך יעד</div>
             <div style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 4px;">
-              ${deadline ? formatDate(deadline) : "לא הוגדר"}
+              ${deadline ? window.formatDate(deadline) : "לא הוגדר"}
             </div>
             <div style="font-size: 12px; color: #9ca3af; margin-bottom: 12px;">
-              ${deadline ? `יצירה: ${formatDate(createdAt)}` : ""}
+              ${deadline ? `יצירה: ${window.formatDate(createdAt)}` : ""}
             </div>
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
               <div style="font-size: 14px; font-weight: 600; color: ${deadlineColor};">

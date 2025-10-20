@@ -37,11 +37,11 @@ export async function loadBudgetTasksFromFirebase(employee) {
       const taskWithFirebaseId = {
         ...data,
         firebaseDocId: doc.id, // ✅ Always save Firebase document ID
-        // Convert Timestamps to Date objects for proper formatting
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
-        completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : data.completedAt,
-        deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline,
+        // Convert Timestamps and strings to Date objects for proper formatting
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : data.createdAt),
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : data.updatedAt),
+        completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : (data.completedAt ? new Date(data.completedAt) : data.completedAt),
+        deadline: data.deadline?.toDate ? data.deadline.toDate() : (data.deadline ? new Date(data.deadline) : data.deadline),
       };
 
       // Only set 'id' if it doesn't exist in the data
@@ -336,16 +336,16 @@ export function createTaskCard(task, options = {}) {
   );
 
   let deadlineClass = "";
-  let deadlineIcon = "📅";
+  let deadlineIcon = '<i class="fas fa-calendar-alt"></i>';
   if (daysUntilDeadline < 0) {
     deadlineClass = "overdue";
-    deadlineIcon = "⚠️";
+    deadlineIcon = '<i class="fas fa-exclamation-triangle"></i>';
   } else if (daysUntilDeadline <= 1) {
     deadlineClass = "urgent";
-    deadlineIcon = "🚨";
+    deadlineIcon = '<i class="fas fa-exclamation-circle"></i>';
   } else if (daysUntilDeadline <= 3) {
     deadlineClass = "soon";
-    deadlineIcon = "⏰";
+    deadlineIcon = '<i class="fas fa-clock"></i>';
   }
 
   const actualHours = Math.round((safeTask.actualMinutes / 60) * 10) / 10;
@@ -362,11 +362,9 @@ export function createTaskCard(task, options = {}) {
   // Check if task is completed
   const isCompleted = safeTask.status === 'הושלם';
   const completedIndicator = isCompleted ? `
-    <div style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #10b981; border-radius: 50%; margin-left: 8px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
-    </div>
+    <span class="completed-badge">
+      <i class="fas fa-check-circle"></i>
+    </span>
   ` : '';
 
   return `
@@ -443,11 +441,7 @@ export function createTableRow(task, options = {}) {
   const isCompleted = safeTask.status === 'הושלם';
   const statusDisplay = isCompleted ? `
     <div style="display: flex; align-items: center; gap: 6px;">
-      <div style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #10b981; border-radius: 50%;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-      </div>
+      <i class="fas fa-check-circle" style="color: #10b981; font-size: 16px;"></i>
       <span>${safeText ? safeText(safeTask.status) : safeTask.status}</span>
     </div>
   ` : (safeText ? safeText(safeTask.status) : safeTask.status);
