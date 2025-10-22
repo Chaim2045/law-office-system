@@ -3637,4 +3637,101 @@ function buildCaseFromClient(clientId, clientData, username) {
   return cleanUndefined(caseData);
 }
 
+// ===============================
+// Employee Hours Quota Management
+// ===============================
+
+/**
+ * הוספת תקן שעות שבועי לכל העובדים (מיגרציה חד-פעמית)
+ * מנהלים בלבד
+ */
+exports.addHoursQuotaToEmployees = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // רק מנהלים יכולים להריץ מיגרציה זו
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים להוסיף תקן שעות לעובדים'
+      );
+    }
+
+    const defaultQuota = data.defaultQuota || 40; // תקן ברירת מחדל: 40 שעות שבועיות
+
+    console.log(`🔄 מתחיל הוספת תקן שעות שבועי (${defaultQuota}) לכל העובדים...`);
+
+    const employeesSnapshot = await db.collection('employees').get();
+
+    let updated = 0;
+    let skipped = 0;
+    let errors = 0;
+    const errorDetails = [];
+
+    for (const doc of employeesSnapshot.docs) {
+      try {
+        const employeeData = doc.data();
+
+        // אם כבר יש תקן שעות - דלג
+        if (employeeData.weeklyHoursQuota !== undefined) {
+          console.log(`⏩ ${doc.id} כבר יש לו תקן שעות (${employeeData.weeklyHoursQuota})`);
+          skipped++;
+          continue;
+        }
+
+        // עדכון העובד עם תקן שעות
+        await doc.ref.update({
+          weeklyHoursQuota: defaultQuota,
+          quotaUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          quotaUpdatedBy: user.username
+        });
+
+        console.log(`✅ ${doc.id} עודכן עם תקן שעות: ${defaultQuota}`);
+        updated++;
+
+      } catch (error) {
+        errors++;
+        const errorMsg = `${doc.id}: ${error.message}`;
+        errorDetails.push(errorMsg);
+        console.error(`❌ Error processing ${doc.id}:`, error);
+      }
+    }
+
+    // Audit log
+    await logAction('ADD_HOURS_QUOTA_TO_EMPLOYEES', user.uid, user.username, {
+      defaultQuota,
+      totalEmployees: employeesSnapshot.size,
+      updated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined
+    });
+
+    console.log(`🎉 הוספת תקן שעות הושלמה: ${updated} עודכנו, ${skipped} דולגו, ${errors} שגיאות`);
+
+    return {
+      success: true,
+      defaultQuota,
+      totalEmployees: employeesSnapshot.size,
+      updated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined,
+      message: `תקן שעות (${defaultQuota} שעות שבועיות) נוסף ל-${updated} עובדים`
+    };
+
+  } catch (error) {
+    console.error('Error in addHoursQuotaToEmployees:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בהוספת תקן שעות: ${error.message}`
+    );
+  }
+});
+
 console.log('✅ Law Office Functions loaded successfully');
