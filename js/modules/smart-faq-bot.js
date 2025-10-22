@@ -914,6 +914,14 @@ class SmartFAQBot {
         setTimeout(() => {
             this.removeTypingIndicator();
 
+            // בדוק אם זו תשובה לשאלה קודמת (כן/לא/תראה לי)
+            const contextResponse = this.checkContextualResponse(query);
+            if (contextResponse) {
+                this.addBotMessage(contextResponse);
+                this.showContextualSuggestions();
+                return;
+            }
+
             // קודם - בדוק תשובה דינמית (מידע אמיתי)
             const dynamicResponse = this.generateDynamicResponse(query);
             if (dynamicResponse) {
@@ -1190,6 +1198,149 @@ class SmartFAQBot {
             console.warn('לא הצלחתי לקבל שם משתמש:', error);
             return null;
         }
+    }
+
+    /**
+     * בודק אם המשתמש ענה על שאלה קודמת (כן/לא/תראה לי)
+     */
+    checkContextualResponse(query) {
+        const normalized = this.normalizeText(query);
+
+        // זיהוי תשובות חיוביות: כן, תראה לי, פירוט, הצג, וכו'
+        const affirmativePatterns = ['כן', 'yes', 'תראה', 'הצג', 'פירוט', 'אוקי', 'ok', 'בטח', 'בוודאי'];
+        const isAffirmative = affirmativePatterns.some(pattern => normalized.includes(pattern));
+
+        if (isAffirmative) {
+            // אם המשתמש ענה בחיוב, הצג את סיכום השעות המלא
+            const stats = this.getSystemStats();
+            if (stats && stats.hoursStatus) {
+                return this.generateHoursDetailedResponse(stats);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * יוצר תשובה מפורטת על שעות העבודה
+     */
+    generateHoursDetailedResponse(stats) {
+        const h = stats.hoursStatus;
+        const progressBar = this.generateProgressBar(h.percentageOfQuota);
+        const userName = this.getUserName();
+        const greeting = userName ? userName : '';
+
+        // Debug log - נדפיס את כל הנתונים
+        console.log('📊 DEBUG - נתוני שעות:', {
+            hoursWorkedThisMonth: h.hoursWorkedThisMonth,
+            monthlyQuota: h.monthlyQuota,
+            workDaysPassed: h.workDaysPassed,
+            workDaysRemaining: h.workDaysRemaining,
+            hoursRemaining: h.hoursRemaining,
+            avgHoursPerRemainingDay: h.avgHoursPerRemainingDay,
+            percentageOfQuota: h.percentageOfQuota,
+            percentageOfExpected: h.percentageOfExpected,
+            timesheetEntriesCount: window.manager?.timesheetEntries?.length || 0
+        });
+
+        // בניית טקסט סטטוס
+        let statusText = '';
+        let statusIcon = '';
+
+        if (h.percentageOfExpected >= 100) {
+            statusIcon = '🎉';
+            statusText = `<strong style="color: #10b981;">${h.status}</strong>`;
+        } else if (h.percentageOfExpected >= 80) {
+            statusIcon = '💪';
+            statusText = `<strong style="color: #f59e0b;">${h.status}</strong>`;
+        } else if (h.percentageOfExpected < 70) {
+            statusIcon = '⚠️';
+            statusText = `<strong style="color: #ef4444;">${h.status}</strong>`;
+        } else {
+            statusIcon = '📊';
+            statusText = `<strong>${h.status}</strong>`;
+        }
+
+        // בדיקת יום עבודה
+        let todayNote = '';
+        if (!h.isTodayWorkDay && h.todayHolidayName) {
+            todayNote = `<p style="background: #fef3c7; padding: 8px; border-radius: 6px; font-size: 13px;">
+                           🎉 היום ${h.todayHolidayName} - אין צורך לדווח שעות
+                         </p>`;
+        } else if (!h.isTodayWorkDay) {
+            todayNote = `<p style="background: #e0e7ff; padding: 8px; border-radius: 6px; font-size: 13px;">
+                           🏖️ היום יום חופש (שישי/שבת)
+                         </p>`;
+        }
+
+        // הסבר החישוב
+        const calculationExplanation = `
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 12px 0; border-radius: 6px;">
+                <strong style="color: #1e40af;">💡 איך מחושב?</strong>
+                <div style="font-size: 13px; color: #374151; margin-top: 8px;">
+                    <strong>החישוב:</strong><br>
+                    • תקן חודשי: 186 שעות ממוצע<br>
+                    • ימי עבודה בחודש: ${h.workDaysTotal} ימים<br>
+                    • מכסה לחודש זה: ${h.monthlyQuota} שעות<br>
+                    • דיווחת עד כה: ${h.hoursWorkedThisMonth} שעות<br>
+                    • נותר לדווח: ${h.hoursRemaining} שעות<br>
+                    • ימי עבודה שנותרו: ${h.workDaysRemaining} ימים<br>
+                    <br>
+                    <strong style="color: #2563eb;">ממוצע נדרש ליום:</strong> ${h.hoursRemaining} ÷ ${h.workDaysRemaining} = <strong>${h.avgHoursPerRemainingDay} שעות/יום</strong>
+                </div>
+            </div>
+        `;
+
+        // התראות
+        let alertsHTML = '';
+        if (h.alerts && h.alerts.length > 0) {
+            alertsHTML = h.alerts.map(alert => {
+                const bgColor = alert.type === 'warning' ? '#fef3c7' : alert.type === 'urgent' ? '#fee2e2' : '#d1fae5';
+                return `<div style="background: ${bgColor}; padding: 8px; border-radius: 6px; margin: 8px 0; font-size: 13px;">
+                          ${alert.icon} ${alert.message}
+                        </div>`;
+            }).join('');
+        }
+
+        return `<strong>📊 פירוט מלא - שעות ${h.monthName} ${greeting}:</strong>
+                ${todayNote}
+                <div style="margin: 12px 0;">
+                    <div style="font-size: 28px; font-weight: bold; color: #2563eb;">${h.hoursWorkedThisMonth} שעות</div>
+                    <div style="font-size: 14px; color: #6b7280;">
+                        מתוך ${h.monthlyQuota} שעות (${h.percentageOfQuota}%)
+                    </div>
+                </div>
+                ${progressBar}
+
+                <div style="margin: 12px 0; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #6b7280;">ימי עבודה שעברו:</span>
+                        <strong>${h.workDaysPassed} ימים</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #6b7280;">ימי עבודה נותרים:</span>
+                        <strong>${h.workDaysRemaining} ימים</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #6b7280;">שעות נותרות:</span>
+                        <strong style="color: ${h.hoursRemaining > 0 ? '#ef4444' : '#10b981'}">
+                            ${h.hoursRemaining} שעות
+                        </strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #6b7280;">ממוצע נדרש ליום:</span>
+                        <strong style="color: ${h.avgHoursPerRemainingDay > 10 ? '#ef4444' : '#10b981'}">
+                            ${h.avgHoursPerRemainingDay} שעות/יום
+                        </strong>
+                    </div>
+                </div>
+
+                ${calculationExplanation}
+                ${alertsHTML}
+
+                <p style="text-align: center; margin-top: 12px;">
+                    ${statusIcon} ${statusText}
+                </p>`;
     }
 
     // ========== תשובות דינמיות - מידע אמיתי מהמערכת ==========
