@@ -1545,7 +1545,7 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
     }
 
     await db.collection('budget_tasks').doc(data.taskId).update({
-      status: 'הושלם',  // ✅ תיקון: עברית במקום אנגלית
+      status: 'הושלם',
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
       completedBy: user.username,
       completionNotes: data.completionNotes ? sanitizeString(data.completionNotes) : '',
@@ -1553,76 +1553,18 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // 🔥 תיקון קריטי: קיזוז שעות מהתיק/לקוח
-    const minutesUsed = taskData.actualMinutes || 0;
-    if (minutesUsed > 0) {
-      try {
-        let targetDoc = null;
-        let targetData = null;
-        let targetType = null;
-
-        // אם יש caseId במשימה - זה תיק (ארכיטקטורה חדשה)
-        if (taskData.caseId) {
-          const caseDoc = await db.collection('cases').doc(taskData.caseId).get();
-          if (caseDoc.exists) {
-            targetDoc = caseDoc;
-            targetData = caseDoc.data();
-            targetType = 'case';
-            console.log(`🎯 נמצא תיק: ${taskData.caseId}`);
-          }
-        }
-
-        // אם לא נמצא תיק, חפש לקוח (ארכיטקטורה ישנה)
-        if (!targetDoc && taskData.clientName) {
-          // חיפוש לפי fullName ב-clients
-          const clientsSnapshot = await db.collection('clients')
-            .where('fullName', '==', taskData.clientName)
-            .limit(1)
-            .get();
-
-          if (!clientsSnapshot.empty) {
-            targetDoc = clientsSnapshot.docs[0];
-            targetData = targetDoc.data();
-            targetType = 'client';
-            console.log(`🎯 נמצא לקוח: ${taskData.clientName}`);
-          }
-        }
-
-        // קיזוז השעות
-        if (targetDoc && targetData) {
-          // רק עבור תיקים/לקוחות מסוג שעות
-          const isHoursType = targetData.type === 'hours' || targetData.procedureType === 'hours';
-
-          if (isHoursType) {
-            await targetDoc.ref.update({
-              minutesRemaining: admin.firestore.FieldValue.increment(-minutesUsed),
-              hoursRemaining: admin.firestore.FieldValue.increment(-minutesUsed / 60),
-              lastActivity: admin.firestore.FieldValue.serverTimestamp()
-            });
-
-            console.log(`✅ קוזזו ${minutesUsed} דקות מ${targetType === 'case' ? 'תיק' : 'לקוח'}: ${taskData.clientName || taskData.caseId}`);
-          } else {
-            console.log(`ℹ️ ${targetType} מסוג ${targetData.type || targetData.procedureType} - אין צורך בקיזוז שעות`);
-          }
-        } else {
-          console.warn(`⚠️ לא נמצא תיק/לקוח עבור המשימה - לא ניתן לקזז שעות`);
-        }
-      } catch (clientError) {
-        console.error('שגיאה בקיזוז שעות:', clientError);
-        // לא נזרוק שגיאה - המשימה תושלם גם אם הקיזוז נכשל
-      }
-    }
+    console.log(`✅ משימה סומנה כהושלמה: ${data.taskId}`);
+    console.log(`ℹ️ קיזוז שעות כבר בוצע בעת רישום השעתון (createTimesheetEntry)`);
 
     // Audit log
     await logAction('COMPLETE_TASK', user.uid, user.username, {
       taskId: data.taskId,
-      minutesUsed: minutesUsed
+      actualMinutes: taskData.actualMinutes || 0
     });
 
     return {
       success: true,
-      taskId: data.taskId,
-      minutesDeducted: minutesUsed
+      taskId: data.taskId
     };
 
   } catch (error) {
