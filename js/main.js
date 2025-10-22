@@ -28,7 +28,6 @@ import * as Auth from './modules/authentication.js';
 import * as Navigation from './modules/navigation.js';
 
 // Client Management
-import * as Clients from './modules/clients.js';
 import { ClientValidation } from './modules/client-validation.js';
 
 // Client Hours Management
