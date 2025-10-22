@@ -68,6 +68,7 @@ async function checkUserPermissions(context) {
   return {
     uid,
     username: employeeDoc.id,
+    email: employee.email, // ✅ EMAIL for security rules
     employee: employee,
     role: employee.role || 'employee'
   };
@@ -1320,8 +1321,8 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       actualHours: 0,
       actualMinutes: 0,
       status: 'active',
-      employee: user.username,
-      lawyer: user.username,
+      employee: user.email, // ✅ EMAIL for security rules
+      lawyer: user.username, // Username for display
       createdBy: user.username,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username,
@@ -1782,8 +1783,8 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       minutes: data.minutes,
       hours: data.minutes / 60,
       action: sanitizeString(data.action.trim()),
-      employee: user.username,
-      lawyer: user.username,
+      employee: user.email, // ✅ EMAIL for security rules
+      lawyer: user.username, // Username for display
       isInternal: data.isInternal === true, // ✅ NEW: סימון רישום פנימי
       createdBy: user.username,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -2057,61 +2058,10 @@ exports.logActivity = functions.https.onCall(async (data, context) => {
   }
 });
 
-/**
- * מעקב אחר כניסות ופעילות משתמשים (User Tracking)
- * נקרא מ-user-tracker.js
- */
-exports.trackUserActivity = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    // Validation
-    if (!data.activityType || typeof data.activityType !== 'string') {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר סוג פעילות'
-      );
-    }
-
-    // רישום הפעילות
-    const trackingData = {
-      userId: user.uid,
-      username: user.username,
-      activityType: data.activityType, // 'login', 'logout', 'pageview', etc.
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      metadata: data.metadata || {},
-      userAgent: data.userAgent || null,
-      ipAddress: data.ipAddress || null
-    };
-
-    const docRef = await db.collection('user_tracking').add(trackingData);
-
-    // אם זו כניסה, נעדכן גם את העובד
-    if (data.activityType === 'login') {
-      await db.collection('employees').doc(user.username).update({
-        lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-        loginCount: admin.firestore.FieldValue.increment(1)
-      });
-    }
-
-    return {
-      success: true,
-      trackingId: docRef.id
-    };
-
-  } catch (error) {
-    console.error('Error in trackUserActivity:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה במעקב משתמש: ${error.message}`
-    );
-  }
-});
+// ✅ trackUserActivity REMOVED - replaced by Firebase Realtime Database Presence
+// Old heartbeat-based tracking consumed 2,880 writes/day
+// New presence system uses only ~60 writes/day (98% reduction!)
+// See: js/modules/presence-system.js
 
 // ===============================
 // Data Migration Functions (Admin Only)
@@ -3730,6 +3680,396 @@ exports.addHoursQuotaToEmployees = functions.https.onCall(async (data, context) 
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה בהוספת תקן שעות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * מיגרציה רטרואקטיבית: קיזוז שעות מרישומי שעתון היסטוריים
+ * פונקציה חד-פעמית - מנהלים בלבד
+ */
+exports.migrateHistoricalTimesheetEntries = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // רק מנהלים יכולים להריץ מיגרציה זו
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים להריץ מיגרציה היסטורית'
+      );
+    }
+
+    console.log(`🔄 מתחיל מיגרציה רטרואקטיבית של רישומי שעתון...`);
+
+    const entriesSnapshot = await db.collection('timesheet_entries').get();
+
+    let processed = 0;
+    let deducted = 0;
+    let skipped = 0;
+    let errors = 0;
+    const errorDetails = [];
+
+    for (const entryDoc of entriesSnapshot.docs) {
+      try {
+        const entry = entryDoc.data();
+        processed++;
+
+        // דלג אם כבר קוזז
+        if (entry.hoursDeducted === true) {
+          console.log(`⏩ ${entryDoc.id} כבר קוזז - דילוג`);
+          skipped++;
+          continue;
+        }
+
+        // דלג אם זה רישום פנימי
+        if (entry.isInternal === true) {
+          console.log(`⏩ ${entryDoc.id} רישום פנימי - דילוג`);
+          await entryDoc.ref.update({ hoursDeducted: true }); // סמן שעובד
+          skipped++;
+          continue;
+        }
+
+        // דלג אם אין תיק מקושר
+        if (!entry.caseId) {
+          console.log(`⏩ ${entryDoc.id} אין תיק מקושר - דילוג`);
+          await entryDoc.ref.update({ hoursDeducted: true }); // סמן שעובד
+          skipped++;
+          continue;
+        }
+
+        // קרא את התיק
+        const caseDoc = await db.collection('cases').doc(entry.caseId).get();
+        if (!caseDoc.exists) {
+          console.warn(`⚠️ ${entryDoc.id} - תיק ${entry.caseId} לא נמצא`);
+          await entryDoc.ref.update({ hoursDeducted: true }); // סמן שעובד (אפילו אם התיק לא קיים)
+          skipped++;
+          continue;
+        }
+
+        const caseData = caseDoc.data();
+
+        // קזז רק מתיקים שעתיים
+        if (caseData.procedureType !== 'hours') {
+          console.log(`⏩ ${entryDoc.id} - תיק ${entry.caseId} אינו מסוג שעות - דילוג`);
+          await entryDoc.ref.update({ hoursDeducted: true });
+          skipped++;
+          continue;
+        }
+
+        // קזז את השעות מהתיק
+        const minutesToDeduct = entry.minutes || 0;
+        await caseDoc.ref.update({
+          minutesRemaining: admin.firestore.FieldValue.increment(-minutesToDeduct),
+          hoursRemaining: admin.firestore.FieldValue.increment(-minutesToDeduct / 60),
+          lastActivity: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // סמן שהרישום קוזז
+        await entryDoc.ref.update({
+          hoursDeducted: true,
+          migratedAt: admin.firestore.FieldValue.serverTimestamp(),
+          migratedBy: user.username
+        });
+
+        console.log(`✅ ${entryDoc.id} - קוזזו ${minutesToDeduct} דקות מתיק ${entry.caseId}`);
+        deducted++;
+
+      } catch (error) {
+        errors++;
+        const errorMsg = `${entryDoc.id}: ${error.message}`;
+        errorDetails.push(errorMsg);
+        console.error(`❌ Error processing ${entryDoc.id}:`, error);
+      }
+    }
+
+    // Audit log
+    await logAction('MIGRATE_HISTORICAL_TIMESHEET', user.uid, user.username, {
+      totalEntries: entriesSnapshot.size,
+      processed,
+      deducted,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined
+    });
+
+    console.log(`🎉 מיגרציה הושלמה: ${deducted} קוזזו, ${skipped} דולגו, ${errors} שגיאות`);
+
+    return {
+      success: true,
+      totalEntries: entriesSnapshot.size,
+      processed,
+      deducted,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined,
+      message: `מיגרציה הושלמה: ${deducted} רישומים קוזזו רטרואקטיבית`
+    };
+
+  } catch (error) {
+    console.error('Error in migrateHistoricalTimesheetEntries:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במיגרציה היסטורית: ${error.message}`
+    );
+  }
+});
+
+// ===============================
+// Fix Client FullNames - תיקון שמות לקוחות
+// ===============================
+
+/**
+ * תיקון שדה fullName בלקוחות
+ * פונקציה חד-פעמית שמתקנת לקוחות שיש להם clientName אבל אין להם fullName
+ */
+exports.fixClientFullNames = functions.https.onCall(async (data, context) => {
+  try {
+    console.log('🔧 Starting fixClientFullNames...');
+
+    // בדיקת הרשאות - רק Admin
+    const employee = await checkUserPermissions(context);
+    if (!employee.isAdmin) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים להריץ פונקציה זו'
+      );
+    }
+
+    // שלב 1: מצא את כל הלקוחות
+    const allClientsSnapshot = await db.collection('clients').get();
+
+    const toFix = [];
+    const alreadyOk = [];
+
+    allClientsSnapshot.forEach(doc => {
+      const data = doc.data();
+
+      // בדוק אם חסר fullName אבל יש clientName
+      if (!data.fullName && data.clientName) {
+        toFix.push({
+          id: doc.id,
+          clientName: data.clientName
+        });
+      } else if (data.fullName) {
+        alreadyOk.push(doc.id);
+      }
+    });
+
+    console.log(`📊 נמצאו ${toFix.length} לקוחות לתיקון`);
+    console.log(`✅ ${alreadyOk.length} לקוחות תקינים`);
+
+    // שלב 2: תקן את הלקוחות הבעייתיים
+    const batch = db.batch();
+    let fixedCount = 0;
+
+    for (const client of toFix) {
+      const clientRef = db.collection('clients').doc(client.id);
+      batch.update(clientRef, {
+        fullName: client.clientName,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: employee.name
+      });
+      fixedCount++;
+      console.log(`  ✓ תוקן: ${client.clientName} (${client.id})`);
+    }
+
+    // בצע את כל העדכונים בבת אחת
+    if (fixedCount > 0) {
+      await batch.commit();
+      console.log(`✅ תוקנו ${fixedCount} לקוחות בהצלחה!`);
+    } else {
+      console.log('✅ אין לקוחות לתיקון - הכל תקין!');
+    }
+
+    // רישום פעילות
+    await logActivity({
+      actionType: 'SYSTEM_MAINTENANCE',
+      targetType: 'clients',
+      targetId: 'bulk',
+      performedBy: employee.name,
+      performedByUID: context.auth.uid,
+      details: {
+        action: 'fixClientFullNames',
+        fixedCount: fixedCount,
+        totalClients: allClientsSnapshot.size
+      },
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+      success: true,
+      message: `תיקון הושלם בהצלחה!`,
+      stats: {
+        totalClients: allClientsSnapshot.size,
+        alreadyOk: alreadyOk.length,
+        fixed: fixedCount,
+        fixedClients: toFix.map(c => c.clientName)
+      }
+    };
+
+  } catch (error) {
+    console.error('Error in fixClientFullNames:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בתיקון שמות לקוחות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * setAdminClaim - מגדיר Custom Claim של admin למשתמש
+ * מאפשר הרשאות מתקדמות ב-Security Rules
+ */
+exports.setAdminClaim = functions.https.onCall(async (data, context) => {
+  try {
+    console.log('🔐 Starting setAdminClaim...');
+
+    // בדיקת הרשאות - רק מי שכבר admin יכול להריץ
+    const employee = await checkUserPermissions(context);
+    if (!employee.isAdmin) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים להגדיר הרשאות admin'
+      );
+    }
+
+    const { email, isAdmin } = data;
+
+    if (!email) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חובה לספק email'
+      );
+    }
+
+    // מצא את המשתמש לפי email
+    const userRecord = await auth.getUserByEmail(email);
+
+    // הגדר את ה-custom claim
+    await auth.setCustomUserClaims(userRecord.uid, {
+      admin: isAdmin === true
+    });
+
+    console.log(`✅ Custom claim set for ${email}: admin=${isAdmin}`);
+
+    // רישום פעילות
+    await logActivity({
+      actionType: 'ADMIN_CLAIM_SET',
+      targetType: 'user',
+      targetId: userRecord.uid,
+      performedBy: employee.name,
+      performedByUID: context.auth.uid,
+      details: {
+        email: email,
+        isAdmin: isAdmin
+      },
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+      success: true,
+      message: `הרשאת admin עודכנה בהצלחה עבור ${email}`,
+      email: email,
+      isAdmin: isAdmin
+    };
+
+  } catch (error) {
+    console.error('Error in setAdminClaim:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בהגדרת הרשאות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * initializeAdminClaims - מאתחל custom claims לכל המנהלים
+ * פועל פעם אחת להגדרת ההרשאות הראשונית
+ * אין בדיקת הרשאות כי זו הפעם הראשונה
+ */
+exports.initializeAdminClaims = functions.https.onCall(async (data, context) => {
+  try {
+    console.log('🔐 Starting initializeAdminClaims...');
+
+    // בדיקה שהמשתמש מחובר (אבל לא בודקים אם הוא admin כי זו הפעם הראשונה)
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'נדרשת התחברות למערכת'
+      );
+    }
+
+    // מצא את כל העובדים שמסומנים כ-admin
+    const adminsSnapshot = await db.collection('employees')
+      .where('isAdmin', '==', true)
+      .get();
+
+    const results = [];
+
+    for (const doc of adminsSnapshot.docs) {
+      const employeeData = doc.data();
+      const email = employeeData.email;
+
+      try {
+        const userRecord = await auth.getUserByEmail(email);
+
+        await auth.setCustomUserClaims(userRecord.uid, {
+          admin: true
+        });
+
+        console.log(`✅ Set admin claim for: ${email}`);
+        results.push({
+          email: email,
+          success: true
+        });
+
+      } catch (error) {
+        console.error(`❌ Failed to set claim for ${email}:`, error);
+        results.push({
+          email: email,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    console.log(`✅ Initialized admin claims for ${results.filter(r => r.success).length}/${results.length} users`);
+
+    return {
+      success: true,
+      message: `אותחלו הרשאות admin`,
+      results: results,
+      totalProcessed: results.length,
+      successful: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length
+    };
+
+  } catch (error) {
+    console.error('Error in initializeAdminClaims:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה באתחול הרשאות: ${error.message}`
     );
   }
 });

@@ -24,6 +24,9 @@
         window.clientCaseSelectors.budget.render();
         window.clientCaseSelectors.budget.attachEventListeners();
       }
+      // ✅ ALWAYS clear/reset when reopening the form
+      console.log('🔄 Clearing budget selector...');
+      window.clientCaseSelectors.budget.clear();
       return;
     }
 
@@ -63,6 +66,9 @@
         window.clientCaseSelectors.timesheet.render();
         window.clientCaseSelectors.timesheet.attachEventListeners();
       }
+      // ✅ ALWAYS clear/reset when reopening the form
+      console.log('🔄 Clearing timesheet selector...');
+      window.clientCaseSelectors.timesheet.clear();
       return;
     }
 

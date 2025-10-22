@@ -445,6 +445,59 @@
   <body
     class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-inter"
   >
+    <!-- ✅ Admin Login Screen -->
+    <div id="adminLoginScreen" class="fixed inset-0 z-[9999] bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900">דשבורד ניהול</h1>
+          <p class="text-gray-600 mt-2">משרד עו"ד גיא הרשקוביץ</p>
+        </div>
+
+        <form id="adminLoginForm" class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">אימייל</label>
+            <input
+              type="email"
+              id="adminEmail"
+              required
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              placeholder="your@email.com"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">סיסמה</label>
+            <input
+              type="password"
+              id="adminPassword"
+              required
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div id="adminLoginError" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"></div>
+
+          <button
+            type="submit"
+            id="adminLoginBtn"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+          >
+            <span>התחבר</span>
+          </button>
+        </form>
+
+        <p class="text-center text-sm text-gray-500 mt-6">
+          רק מנהלים מורשים יכולים להיכנס
+        </p>
+      </div>
+    </div>
+
     <!-- Loading overlay -->
     <div id="loadingOverlay" class="loading-overlay hidden">
       <div
@@ -729,7 +782,9 @@
               </p>
 
               <button
-                class="w-full flex items-center space-x-3 space-x-reverse px-4 py-3 text-right rounded-lg transition-all duration-200 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                class="nav-tab w-full flex items-center space-x-3 space-x-reverse px-4 py-3 text-right rounded-lg transition-all duration-200 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                onclick="showMainTab('hours-report')"
+                data-tab="hours-report"
               >
                 <div
                   class="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"
@@ -744,7 +799,7 @@
                     ></path>
                   </svg>
                 </div>
-                <span class="font-medium">דוח שעות</span>
+                <span class="font-medium">ניתוח שעות</span>
               </button>
 
               <button
@@ -1317,6 +1372,210 @@
                       ✨ הנתונים מתעדכנים אוטומטית כל 10 שניות | עודכן לאחרונה: <span id="live-lastUpdate">-</span>
                     </div>
                   </div>
+
+                  <!-- Hours Report Tab -->
+                  <div id="hours-report" class="tab-content hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                      <div>
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                          ניתוח שעות עבודה
+                        </h2>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          ניתוח מפורט של שעות עבודה לעומת מכסות שבועיות
+                        </p>
+                      </div>
+                      <button
+                        onclick="refreshHoursData()"
+                        class="mt-4 sm:mt-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        🔄 רענן נתונים
+                      </button>
+                    </div>
+
+                    <!-- Week Selector -->
+                    <div class="mb-6 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div class="flex items-center gap-4">
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          בחר שבוע:
+                        </label>
+                        <select
+                          id="week-selector"
+                          onchange="refreshHoursData()"
+                          class="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="current">שבוע נוכחי</option>
+                          <option value="last">שבוע שעבר</option>
+                          <option value="custom">טווח מותאם אישית</option>
+                        </select>
+                        <div id="custom-date-range" class="hidden flex gap-2">
+                          <input
+                            type="date"
+                            id="start-date"
+                            class="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          />
+                          <span class="self-center text-gray-500">עד</span>
+                          <input
+                            type="date"
+                            id="end-date"
+                            class="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Summary Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6 border border-blue-200 dark:border-blue-700">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <p class="text-sm text-blue-600 dark:text-blue-400 font-medium mb-1">
+                              סה"כ שעות עבודה
+                            </p>
+                            <p id="total-hours-worked" class="text-3xl font-bold text-blue-900 dark:text-blue-100">
+                              -
+                            </p>
+                            <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                              בשבוע הנבחר
+                            </p>
+                          </div>
+                          <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                            <span class="text-2xl">⏰</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-6 border border-green-200 dark:border-green-700">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <p class="text-sm text-green-600 dark:text-green-400 font-medium mb-1">
+                              שעות ללקוחות
+                            </p>
+                            <p id="client-hours" class="text-3xl font-bold text-green-900 dark:text-green-100">
+                              -
+                            </p>
+                            <p class="text-xs text-green-600 dark:text-green-400 mt-1">
+                              בילינג ישיר
+                            </p>
+                          </div>
+                          <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                            <span class="text-2xl">💼</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-6 border border-purple-200 dark:border-purple-700">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <p class="text-sm text-purple-600 dark:text-purple-400 font-medium mb-1">
+                              שעות פנימיות
+                            </p>
+                            <p id="internal-hours" class="text-3xl font-bold text-purple-900 dark:text-purple-100">
+                              -
+                            </p>
+                            <p class="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                              ניהול ומשימות
+                            </p>
+                          </div>
+                          <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
+                            <span class="text-2xl">🏢</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-6 border border-orange-200 dark:border-orange-700">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <p class="text-sm text-orange-600 dark:text-orange-400 font-medium mb-1">
+                              ניצול מכסה ממוצע
+                            </p>
+                            <p id="avg-quota-usage" class="text-3xl font-bold text-orange-900 dark:text-orange-100">
+                              -
+                            </p>
+                            <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                              מכסת שבועית
+                            </p>
+                          </div>
+                          <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
+                            <span class="text-2xl">📊</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Employee Hours Table -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                          פירוט שעות לפי עובד
+                        </h3>
+                      </div>
+
+                      <div class="overflow-x-auto">
+                        <table class="w-full">
+                          <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                עובד
+                              </th>
+                              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                מכסה שבועית
+                              </th>
+                              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                שעות עבודה
+                              </th>
+                              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                שעות ללקוחות
+                              </th>
+                              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                שעות פנימיות
+                              </th>
+                              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                ניצול מכסה
+                              </th>
+                              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                סטטוס
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody id="hours-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                              <td colspan="7" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                                <div class="loading-spinner mx-auto mb-2"></div>
+                                <p>טוען נתוני שעות...</p>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                      <!-- Hours Distribution Chart -->
+                      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                          התפלגות שעות
+                        </h3>
+                        <div id="hours-distribution-chart" class="h-64">
+                          <!-- Chart will be rendered here -->
+                        </div>
+                      </div>
+
+                      <!-- Quota Usage Trend -->
+                      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                          מגמת ניצול מכסות
+                        </h3>
+                        <div id="quota-trend-chart" class="h-64">
+                          <!-- Chart will be rendered here -->
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                      📊 הנתונים מבוססים על רשומות שעתון ומשימות מתוקצבות | עודכן לאחרונה: <span id="hours-lastUpdate">-</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1443,6 +1702,72 @@
       let timesheetData = [];
       let activityData = [];
       let notifications = [];
+      let currentAdminUser = null;
+
+      // ✅ Admin Authentication System
+      const adminLoginScreen = document.getElementById('adminLoginScreen');
+      const adminLoginForm = document.getElementById('adminLoginForm');
+      const adminLoginError = document.getElementById('adminLoginError');
+      const adminLoginBtn = document.getElementById('adminLoginBtn');
+
+      // Check if user is already logged in
+      firebase.auth().onAuthStateChanged(async (user) => {
+        if (user) {
+          // User is signed in
+          console.log('✅ Admin logged in:', user.email);
+          currentAdminUser = user;
+
+          // Hide login screen
+          adminLoginScreen.classList.add('hidden');
+
+          // Initialize dashboard
+          initializeDashboard();
+        } else {
+          // No user signed in - show login screen
+          console.log('⚠️ No user logged in - showing login screen');
+          adminLoginScreen.classList.remove('hidden');
+        }
+      });
+
+      // Handle login form submission
+      adminLoginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const email = document.getElementById('adminEmail').value;
+        const password = document.getElementById('adminPassword').value;
+
+        // Show loading state
+        adminLoginBtn.disabled = true;
+        adminLoginBtn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+        adminLoginError.classList.add('hidden');
+
+        try {
+          // Sign in with Firebase Auth
+          await firebase.auth().signInWithEmailAndPassword(email, password);
+          // onAuthStateChanged will handle the rest
+        } catch (error) {
+          console.error('❌ Login error:', error);
+
+          // Show error message
+          let errorMessage = 'שגיאה בהתחברות';
+          if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+            errorMessage = 'אימייל או סיסמה שגויים';
+          } else if (error.code === 'auth/too-many-requests') {
+            errorMessage = 'יותר מדי ניסיונות. נסה שוב מאוחר יותר';
+          } else if (error.code === 'auth/invalid-email') {
+            errorMessage = 'כתובת אימייל לא תקינה';
+          } else if (error.code === 'auth/invalid-login-credentials') {
+            errorMessage = 'פרטי התחברות שגויים';
+          }
+
+          adminLoginError.textContent = errorMessage;
+          adminLoginError.classList.remove('hidden');
+
+          // Reset button
+          adminLoginBtn.disabled = false;
+          adminLoginBtn.innerHTML = '<span>התחבר</span>';
+        }
+      });
 
       // Loading functions
       function showLoading() {

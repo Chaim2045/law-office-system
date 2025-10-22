@@ -1,0 +1,35 @@
+{
+  "rules": {
+    "presence": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['online', 'username', 'email', 'lastSeen'])",
+        "online": {
+          ".validate": "newData.isBoolean()"
+        },
+        "username": {
+          ".validate": "newData.isString()"
+        },
+        "email": {
+          ".validate": "newData.isString()"
+        },
+        "sessionId": {
+          ".validate": "newData.isString()"
+        },
+        "lastSeen": {
+          ".validate": "newData.isNumber()"
+        },
+        "connectedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "disconnectedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "device": {
+          ".validate": "newData.hasChildren()"
+        }
+      }
+    }
+  }
+}

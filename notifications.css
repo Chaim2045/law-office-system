@@ -307,15 +307,16 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 10001;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .confirm-overlay.show {
@@ -323,20 +324,21 @@
 }
 
 .confirm-overlay.show .confirm-dialog {
-  transform: scale(1);
+  transform: scale(1) translateY(0);
   opacity: 1;
 }
 
 .confirm-dialog {
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 480px;
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-width: 440px;
   width: 100%;
   overflow: hidden;
-  transform: scale(0.9);
+  transform: scale(0.92) translateY(20px);
   opacity: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* ========================================
@@ -347,22 +349,24 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 24px;
+  padding: 28px 24px;
   border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
   direction: rtl;
 }
 
 .confirm-icon {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 26px;
   background: currentColor;
   color: white;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .confirm-icon i {
@@ -382,16 +386,18 @@
    ======================================== */
 
 .confirm-body {
-  padding: 24px;
+  padding: 28px 24px;
   direction: rtl;
+  background: white;
 }
 
 .confirm-message {
   margin: 0;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.7;
   color: #4b5563;
   text-align: right;
+  font-weight: 400;
 }
 
 /* ========================================
@@ -402,9 +408,10 @@
   display: flex;
   gap: 12px;
   padding: 20px 24px;
-  background: #f9fafb;
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
   border-top: 1px solid #e5e7eb;
   justify-content: flex-end;
+  direction: rtl;
 }
 
 .confirm-btn {
@@ -435,23 +442,34 @@
   background: white;
   color: #6b7280;
   border: 2px solid #e5e7eb;
+  order: 2; /* במובייל יופיע תחתון */
 }
 
 .confirm-btn-cancel:hover {
   background: #f9fafb;
   border-color: #d1d5db;
   color: #4b5563;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .confirm-btn-confirm {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  order: 1; /* במובייל יופיע עליון */
+  font-weight: 700;
 }
 
 .confirm-btn-confirm:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+}
+
+.confirm-btn-confirm:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
 }
 
 /* ========================================
@@ -461,24 +479,53 @@
 @media (max-width: 480px) {
   .confirm-dialog {
     margin: 10px;
+    max-width: calc(100vw - 20px);
+    border-radius: 16px;
   }
 
   .confirm-header {
     padding: 20px;
   }
 
+  .confirm-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+
+  .confirm-title {
+    font-size: 18px;
+  }
+
   .confirm-body {
     padding: 20px;
   }
 
+  .confirm-message {
+    font-size: 14px;
+  }
+
   .confirm-footer {
-    flex-direction: column-reverse;
+    flex-direction: column;
     padding: 16px 20px;
+    gap: 10px;
   }
 
   .confirm-btn {
     width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
   }
+
+  /* סדר הכפתורים במובייל: מחק הכל למעלה, ביטול למטה */
+  .confirm-btn-confirm {
+    order: 1;
+  }
+
+  .confirm-btn-cancel {
+    order: 2;
+  }
+}
 
   /* ✅ NO padding for loading - keep it transparent */
   .loading-content {

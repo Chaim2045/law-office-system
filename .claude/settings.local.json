@@ -110,7 +110,14 @@
       "Bash(start check-task-deadline.html)",
       "Bash(start test-professional-icons.html)",
       "Bash(npm run lint)",
-      "Bash(timeout 180 bash -c 'tail -f /dev/null')"
+      "Bash(timeout 180 bash -c 'tail -f /dev/null')",
+      "Bash(start diagnose-system.html)",
+      "Bash(start comprehensive-system-test.html)",
+      "Bash(start https://console.firebase.google.com/project/law-office-system-e4801/firestore/databases/-default-/data/~2Fclients~2FFTbOWkgmXMNjRYGHb5hN)",
+      "Bash(start check-employee-field.html)",
+      "Bash(start migrate-employee-to-email.html)",
+      "Bash(start run-migration-console.js)",
+      "Bash(start \"c:\\Users\\haim\\law-office-system\\admin\\admin-unified-v2.html\")"
     ],
     "deny": [],
     "ask": []

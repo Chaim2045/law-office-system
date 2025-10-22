@@ -17,6 +17,7 @@ import { DOMCache } from './modules/dom-cache.js';
 
 // Notification System
 import { NotificationBellSystem } from './modules/notification-bell.js';
+// NotificationSystem is available globally on window object
 
 // Firebase Operations
 import * as FirebaseOps from './modules/firebase-operations.js';
@@ -64,7 +65,8 @@ import * as DebugTools from './modules/debug-tools.js';
 class LawOfficeManager {
   constructor() {
     // Core State
-    this.currentUser = null;
+    this.currentUser = null; // Email for queries
+    this.currentUsername = null; // Username for display
     this.clients = [];
     this.budgetTasks = [];
     this.timesheetEntries = [];
@@ -152,9 +154,10 @@ class LawOfficeManager {
 
       if (!snapshot.empty) {
         const employee = snapshot.docs[0].data();
-        this.currentUser = employee.username || employee.name;
+        this.currentUser = employee.email; // ✅ EMAIL for queries
+        this.currentUsername = employee.username || employee.name; // Username for display
 
-        UIComponents.updateUserDisplay(this.currentUser);
+        UIComponents.updateUserDisplay(this.currentUsername);
 
         // Load data and show app
         await this.loadData();
@@ -502,11 +505,14 @@ class LawOfficeManager {
      ======================================== */
 
   async addTimesheetEntry() {
-    // ✅ NEW: Get values from ClientCaseSelector
+    // Get checkbox state first
+    const isInternal = document.getElementById("isInternalActivity")?.checked || false;
+
+    // ✅ NEW: Get values from ClientCaseSelector (only required if NOT internal activity)
     const selectorValues = window.ClientCaseSelectorsManager?.getTimesheetValues();
 
-    if (!selectorValues) {
-      this.showNotification('חובה לבחור לקוח ותיק', 'error');
+    if (!isInternal && !selectorValues) {
+      this.showNotification('חובה לבחור לקוח ותיק או לסמן פעילות פנימית', 'error');
       return;
     }
 
@@ -538,14 +544,15 @@ class LawOfficeManager {
         const entryData = {
           date: date,
           minutes: minutes,
-          clientName: selectorValues.clientName,
-          clientId: selectorValues.clientId,
-          fileNumber: selectorValues.caseNumber, // caseNumber used as fileNumber
-          caseId: selectorValues.caseId,
-          caseTitle: selectorValues.caseTitle,
+          clientName: isInternal ? null : selectorValues.clientName,
+          clientId: isInternal ? null : selectorValues.clientId,
+          fileNumber: isInternal ? null : selectorValues.caseNumber, // caseNumber used as fileNumber
+          caseId: isInternal ? null : selectorValues.caseId,
+          caseTitle: isInternal ? null : selectorValues.caseTitle,
           action: action,
           notes: notes,
           employee: this.currentUser,
+          isInternal: isInternal, // ✅ NEW: Internal activity flag
           createdAt: new Date()
         };
 
@@ -1054,8 +1061,9 @@ class LawOfficeManager {
 const manager = new LawOfficeManager();
 window.manager = manager;
 
-// Expose notification bell globally
+// Expose notification systems globally
 window.notificationBell = manager.notificationBell;
+// window.notificationSystem already exists from notification-system.js (global instance)
 
 // Expose navigation functions globally (for onclick handlers)
 window.switchTab = Navigation.switchTab;
@@ -1072,6 +1080,18 @@ window.confirmLogout = Auth.confirmLogout;
 // Expose utility functions globally
 // ✅ showSimpleLoading, hideSimpleLoading removed - handled by backward compatibility wrapper in index.html
 window.safeText = CoreUtils.safeText;
+
+// ✅ Toggle timesheet client selector visibility based on internal activity checkbox
+window.toggleTimesheetClientSelector = function(isInternal) {
+  const selector = document.getElementById('timesheetClientCaseSelector');
+  if (selector) {
+    if (isInternal) {
+      selector.style.display = 'none';
+    } else {
+      selector.style.display = '';
+    }
+  }
+};
 window.formatDate = CoreUtils.formatDate;
 window.formatDateTime = CoreUtils.formatDateTime;
 window.formatShort = CoreUtils.formatShort;

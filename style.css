@@ -4720,18 +4720,16 @@ button[onclick*="addBudget"]:hover {
    ========================================================================== */
 
 .notification-bell {
-  position: fixed;
-  bottom: 30px;
-  left: 20px;
+  position: absolute;
+  right: 140px;
   width: auto;
   height: auto;
   background: none;
   border: none;
   color: #10b981;
-  font-size: 28px;
+  font-size: 24px;
   cursor: pointer;
-  z-index: 1000;
-  transition: var(--transition-normal);
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4744,47 +4742,67 @@ button[onclick*="addBudget"]:hover {
   filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3));
 }
 
+/* אנימציית הבהוב אדום כאשר יש התראות */
 .notification-bell.has-notifications {
-  animation: bellPulse 2s infinite;
+  animation: bellGlowRed 2s ease-in-out infinite;
+}
+
+@keyframes bellGlowRed {
+  0%, 100% {
+    color: #ef4444;
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+  }
+  50% {
+    color: #dc2626;
+    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.9));
+  }
 }
 
 .notification-count {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: 0px;
+  right: -2px;
   background: #ef4444;
   color: white;
   border-radius: 50%;
-  min-width: 20px;
-  height: 20px;
+  min-width: 18px;
+  min-height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   border: 2px solid white;
   box-shadow: 0 2px 6px rgba(255, 68, 68, 0.5);
   animation: pulse 2s infinite;
 }
 
-.notification-bell.has-notifications {
-  animation: bellRing 2s infinite;
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 .notifications-dropdown {
   position: fixed;
-  bottom: calc(var(--touch-target) + var(--space-lg) + 10px);
-  left: var(--space-lg);
-  width: 350px;
+  top: 68px;
+  right: 16px;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  max-height: 540px;
   background: #ffffff;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-2xl);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--gray-200);
   opacity: 0;
-  transform: translateY(20px);
-  transition: var(--transition-normal);
+  transform: translateY(-10px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
-  z-index: 999;
+  z-index: 9999;
+  overflow: hidden;
 }
 
 .notifications-dropdown.show {
@@ -4793,39 +4811,351 @@ button[onclick*="addBudget"]:hover {
   pointer-events: all;
 }
 
+/* חץ משולש מהפופאפ לפעמון - כמו Facebook/Instagram */
+.notifications-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 130px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid white;
+  filter: drop-shadow(0 -2px 2px rgba(0, 0, 0, 0.05));
+}
+
 .notifications-header {
-  padding: var(--space-md);
+  padding: 16px 20px;
   border-bottom: 1px solid var(--gray-200);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, var(--gray-50) 0%, #f8fafc 100%);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 12px 12px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .notifications-title {
   font-weight: 700;
+  font-size: 16px;
   color: var(--gray-800);
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 8px;
 }
 
-.clear-all-btn {
-  background: none;
+/* אזור התוכן עם גלילה חלקה */
+.notifications-content {
+  max-height: 450px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Scrollbar מעוצב - כמו Instagram */
+.notifications-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notifications-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notifications-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.notifications-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* פריט התראה בודד - עיצוב כמו Facebook/Instagram */
+.notification-item {
+  position: relative;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f3f5;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background: white;
+  display: flex;
+  gap: 12px;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item:hover {
+  background: #f8f9fa;
+}
+
+/* סימון התראה לא נקראה */
+.notification-item.urgent {
+  background: #fef3f2;
+  border-left: 3px solid #ef4444;
+}
+
+.notification-item.urgent:hover {
+  background: #fee5e3;
+}
+
+/* כפתור X לסגירת התראה */
+.notification-item .notification-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: transparent;
   border: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.notification-item:hover .notification-close {
+  opacity: 1;
+}
+
+.notification-item .notification-close:hover {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+/* תוכן ההתראה */
+.notification-content {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* אייקון ההתראה */
+.notification-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.notification-icon.blocked {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.notification-icon.critical {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.notification-icon.urgent {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+/* טקסט ההתראה */
+.notification-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.notification-description {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.notification-time {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* מצב ריק - אין התראות */
+.no-notifications {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+}
+
+.no-notifications-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  font-size: 28px;
+  color: #94a3b8;
+}
+
+.no-notifications h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.no-notifications p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* כפתור נקה הכל - למעלה בצד שמאל (Desktop) */
+.clear-all-btn {
+  background: transparent;
+  border: 1px solid #e5e7eb;
   color: var(--danger-500);
   cursor: pointer;
-  font-size: var(--font-xs);
+  font-size: 13px;
   font-weight: 600;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-md);
-  transition: var(--transition-normal);
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .clear-all-btn:hover {
   background: var(--danger-50);
   color: var(--danger-600);
+  border-color: var(--danger-200);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1);
+}
+
+.clear-all-btn i {
+  font-size: 12px;
+}
+
+/* Footer עם כפתור למובייל */
+.notifications-footer {
+  display: none; /* מוסתר ב-desktop */
+  padding: 12px 16px;
+  border-top: 1px solid var(--gray-200);
+  background: #f8f9fa;
+  border-radius: 0 0 12px 12px;
+}
+
+.clear-all-btn-mobile {
+  width: 100%;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.clear-all-btn-mobile:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.clear-all-btn-mobile:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design for Mobile */
+@media (max-width: 768px) {
+  .notifications-dropdown {
+    width: calc(100vw - 16px);
+    right: 8px;
+    left: 8px;
+    top: 56px;
+    max-height: 75vh;
+  }
+
+  .notifications-dropdown::before {
+    right: auto;
+    left: 20px;
+  }
+
+  /* במובייל - הסתר כפתור עליון, הצג footer תחתון */
+  .clear-all-btn {
+    display: none !important;
+  }
+
+  .notifications-footer {
+    display: block;
+  }
+
+  .notifications-content {
+    max-height: calc(75vh - 120px); /* גובה בניכוי header + footer */
+  }
+
+  .notifications-header {
+    padding: 14px 16px;
+  }
+
+  .notifications-title {
+    font-size: 15px;
+  }
+
+  .notification-bell {
+    right: auto;
+    left: 12px;
+    font-size: 20px;
+  }
+
+  .notification-item {
+    padding: 12px 16px;
+  }
+
+  .notification-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+}
+
+/* Tablet - גודל בינוני */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .notifications-dropdown {
+    width: 380px;
+  }
+
+  .clear-all-text {
+    display: none; /* הסתר טקסט, השאר רק אייקון */
+  }
 }
 
 .toast-notification {
@@ -5841,10 +6171,8 @@ body.logged-in .main-footer {
   }
 
   .notification-bell {
-    bottom: var(--space-sm);
     left: var(--space-sm);
-    width: 45px;
-    height: 45px;
+    font-size: 20px;
   }
 
   /* Main tabs - moved to tabs.css */

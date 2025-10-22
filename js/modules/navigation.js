@@ -7,6 +7,7 @@
  */
 
 import { currentActiveTab } from './core-utils.js';
+// NotificationSystem is available globally on window object
 
 function switchTab(tabName) {
   const budgetFormContainer = document.getElementById("budgetFormContainer");
@@ -92,11 +93,28 @@ function toggleNotifications() {
 }
 
 function clearAllNotifications() {
-  if (confirm("האם אתה בטוח שברצונך למחוק את כל ההתראות?")) {
-    if (window.notificationBell) {
-      window.notificationBell.clearAllNotifications();
+  const notificationSystem = window.notificationSystem || new NotificationSystem();
+
+  notificationSystem.confirm(
+    "כל ההתראות יימחקו ולא ניתן יהיה לשחזר אותן.",
+    () => {
+      // אישור - מחק הכל
+      if (window.notificationBell) {
+        window.notificationBell.clearAllNotifications();
+        notificationSystem.show('כל ההתראות נמחקו בהצלחה', 'success');
+      }
+    },
+    () => {
+      // ביטול - לא עושים כלום
+      console.log('ביטול מחיקת התראות');
+    },
+    {
+      title: '⚠️ מחיקת כל ההתראות',
+      confirmText: 'מחק הכל',
+      cancelText: 'ביטול',
+      type: 'warning'
     }
-  }
+  );
 }
 
 function openSmartForm() {

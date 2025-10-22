@@ -66,9 +66,11 @@ async function handleLogin() {
     const employeeDoc = snapshot.docs[0];
     const employee = employeeDoc.data();
 
-    // שמור את המשתמש הנוכחי
-    this.currentUser = employee.username || employee.name;
-    updateUserDisplay(this.currentUser);
+    // ✅ שמור את המשתמש הנוכחי - email לשאילתות, username לתצוגה, uid לזיהוי
+    this.currentUid = uid; // ✅ Firebase Auth UID
+    this.currentUser = employee.email; // ✅ EMAIL for queries and security
+    this.currentUsername = employee.username || employee.name; // Username for display
+    updateUserDisplay(this.currentUsername);
 
     // Set flag to suppress old loading spinners
     window.isInWelcomeScreen = true;
@@ -85,9 +87,9 @@ async function handleLogin() {
         await this.activityLogger.logLogin();
       }
 
-      // Track user login with Firebase
-      if (window.UserTracker) {
-        await window.UserTracker.trackLogin(this.currentUser);
+      // ✅ Track user presence with Firebase Realtime Database (replaces old UserTracker)
+      if (window.PresenceSystem) {
+        await window.PresenceSystem.connect(this.currentUid, this.currentUsername, this.currentUser);
       }
     } catch (error) {
       this.showNotification("שגיאה בטעינת נתונים", "error");
@@ -144,7 +146,7 @@ async function showWelcomeScreen() {
 
   // עדכן שם משתמש
   if (welcomeTitle) {
-    welcomeTitle.textContent = `ברוך הבא, ${this.currentUser}`;
+    welcomeTitle.textContent = `ברוך הבא, ${this.currentUsername}`;
   }
 
   // ✅ תיקון יסודי: קריאת lastLogin מ-Firebase (לא localStorage!)
@@ -153,7 +155,7 @@ async function showWelcomeScreen() {
       // קריאה מ-employees collection ב-Firebase
       const employeeDoc = await window.firebaseDB
         .collection('employees')
-        .doc(this.currentUser)
+        .doc(this.currentUsername)
         .get();
 
       if (employeeDoc.exists) {
@@ -241,14 +243,14 @@ function showApp() {
   const userInfo = document.getElementById("userInfo");
   if (userInfo) {
     userInfo.innerHTML = `
-      <span>שלום ${this.currentUser}</span>
+      <span>שלום ${this.currentUsername}</span>
       <span id="connectionIndicator" style="margin-right: 15px; font-size: 14px;">🔄 מתחבר...</span>
     `;
     userInfo.classList.remove("hidden");
   }
 
   setTimeout(() => {
-    updateSidebarUser(this.currentUser);
+    updateSidebarUser(this.currentUsername);
   }, 500);
 }
 
@@ -311,9 +313,9 @@ async function confirmLogout() {
     window.manager.showNotification("מתנתק מהמערכת... להתראות! 👋", "info");
   }
 
-  // Track logout in Firebase
-  if (window.UserTracker) {
-    await window.UserTracker.trackLogout();
+  // ✅ Track logout with Presence System
+  if (window.PresenceSystem) {
+    await window.PresenceSystem.disconnect();
   }
 
   // התנתק מ-Firebase Auth
