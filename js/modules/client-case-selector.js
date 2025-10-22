@@ -276,6 +276,7 @@
           resultsContainer.style.display = 'block';
           resultsContainer.style.visibility = 'visible';
           resultsContainer.style.opacity = '1';
+          resultsContainer.classList.add('show');
           return;
         }
 
@@ -308,16 +309,28 @@
         resultsContainer.style.display = 'block';
         resultsContainer.style.visibility = 'visible';
         resultsContainer.style.opacity = '1';
+        // ✅ CRITICAL FIX: Add .show class to enable pointer-events
+        resultsContainer.classList.add('show');
 
         // הוספת event listeners לכל תוצאה
-        resultsContainer.querySelectorAll('.search-result-item').forEach((item) => {
+        // ✅ FIX: שימוש ב-querySelectorAll מיד אחרי innerHTML
+        const resultItems = resultsContainer.querySelectorAll('.search-result-item');
+        console.log(`🔧 [${this.containerId}] Adding click listeners to ${resultItems.length} results`);
+
+        resultItems.forEach((item, index) => {
+          // Remove inline event handlers and use proper event listeners
+          item.removeAttribute('onclick');
+
           item.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            console.log(`✅ [${this.containerId}] Click event fired on:`, item.dataset.clientName);
             const clientId = item.dataset.clientId;
             const clientName = item.dataset.clientName;
             this.selectClient(clientId, clientName);
-          });
+          }, { once: false }); // Don't use once: true, we want it to work multiple times
+
+          console.log(`  ✓ Listener ${index + 1} added for:`, item.dataset.clientName);
         });
 
       } catch (error) {
@@ -330,6 +343,7 @@
         resultsContainer.style.display = 'block';
         resultsContainer.style.visibility = 'visible';
         resultsContainer.style.opacity = '1';
+        resultsContainer.classList.add('show');
       }
     }
 
@@ -337,16 +351,20 @@
      * בחירת לקוח
      */
     async selectClient(clientId, clientName) {
+      console.log(`🎯 selectClient called:`, { clientId, clientName });
+
       this.selectedClient = { id: clientId, name: clientName };
 
       // עדכון שדה החיפוש
       const searchInput = document.getElementById(`${this.containerId}_clientSearch`);
       if (searchInput) {
         searchInput.value = `✓ ${clientName}`;
+        console.log(`  ✓ Updated search input to: ✓ ${clientName}`);
       }
 
       // הסתרת תוצאות החיפוש
       this.hideClientResults();
+      console.log(`  ✓ Hidden client results`);
 
       // שמירת clientId
       const clientIdField = document.getElementById(`${this.containerId}_clientId`);
@@ -365,13 +383,17 @@
       }
 
       // טעינת תיקים של הלקוח
+      console.log(`  🔍 Loading cases for client ${clientId}...`);
       await this.loadClientCases(clientId);
+      console.log(`  ✅ selectClient completed`);
     }
 
     /**
      * טעינת תיקים של לקוח
      */
     async loadClientCases(clientId) {
+      console.log(`📂 loadClientCases started for clientId: ${clientId}`);
+
       try {
         const db = window.firebaseDB;
         if (!db) {
@@ -379,9 +401,12 @@
         }
 
         // שליפת כל התיקים של הלקוח מ-Firebase
+        console.log(`  🔍 Querying Firebase for cases...`);
         const casesSnapshot = await db.collection('cases')
           .where('clientId', '==', clientId)
           .get();
+
+        console.log(`  📊 Found ${casesSnapshot.size} cases in Firebase`);
 
         let clientCases = [];
         casesSnapshot.forEach(doc => {
@@ -394,17 +419,23 @@
 
         // סינון לפי סטטוס (אם נדרש)
         if (this.options.showOnlyActive) {
+          const beforeFilter = clientCases.length;
           clientCases = clientCases.filter(c => c.status === 'active');
+          console.log(`  🔍 Filtered by status: ${beforeFilter} → ${clientCases.length} (active only)`);
         }
 
         // סינון לפי סוג (אם נדרש)
         if (this.options.filterByType) {
+          const beforeFilter = clientCases.length;
           clientCases = clientCases.filter(c => c.procedureType === this.options.filterByType);
+          console.log(`  🔍 Filtered by type: ${beforeFilter} → ${clientCases.length} (${this.options.filterByType} only)`);
         }
 
         this.clientCases = clientCases;
+        console.log(`  ✅ Final cases count: ${clientCases.length}`);
 
         // בניית dropdown של תיקים
+        console.log(`  🎨 Rendering case dropdown...`);
         this.renderCaseDropdown();
 
       } catch (error) {
@@ -417,12 +448,20 @@
      * בניית dropdown של תיקים
      */
     renderCaseDropdown() {
+      console.log(`🎨 renderCaseDropdown called with ${this.clientCases.length} cases`);
+
       const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
       const caseGroup = document.getElementById(`${this.containerId}_caseGroup`);
 
-      if (!caseSelect || !caseGroup) return;
+      console.log(`  📍 Elements found:`, { caseSelect: !!caseSelect, caseGroup: !!caseGroup });
+
+      if (!caseSelect || !caseGroup) {
+        console.error(`  ❌ Missing elements! caseSelect: ${!!caseSelect}, caseGroup: ${!!caseGroup}`);
+        return;
+      }
 
       if (this.clientCases.length === 0) {
+        console.warn(`  ⚠️ No cases found - hiding case group`);
         caseGroup.style.display = 'none';
         alert('❌ ללקוח זה אין תיקים פעילים');
         return;
@@ -449,14 +488,20 @@
         ${optionsHtml}
       `;
 
+      console.log(`  ✅ Updated dropdown with ${this.clientCases.length} options`);
+
       // הצגת הקבוצה
       caseGroup.style.display = 'block';
+      console.log(`  ✅ Case group displayed (display: ${caseGroup.style.display})`);
 
       // בחירה אוטומטית אם יש תיק אחד בלבד
       if (this.clientCases.length === 1) {
+        console.log(`  🎯 Auto-selecting single case: ${this.clientCases[0].caseNumber}`);
         caseSelect.value = this.clientCases[0].id;
         this.selectCase(this.clientCases[0].id);
       }
+
+      console.log(`  ✅ renderCaseDropdown completed`);
     }
 
     /**
@@ -540,6 +585,7 @@
       const resultsContainer = document.getElementById(`${this.containerId}_clientResults`);
       if (resultsContainer) {
         resultsContainer.style.display = 'none';
+        resultsContainer.classList.remove('show');
       }
     }
 
