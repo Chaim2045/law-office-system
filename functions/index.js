@@ -123,6 +123,100 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/**
+ * יצירה או קבלת תיק פנימי לעובד (Lazy Creation)
+ * נוצר אוטומטית בפעם הראשונה שהעובד רושם פעילות פנימית
+ *
+ * @param {string} employeeName - שם העובד (למשל: "חיים")
+ * @returns {Promise<Object>} - אובייקט התיק הפנימי
+ */
+async function getOrCreateInternalCase(employeeName) {
+  const caseId = `internal_${employeeName.toLowerCase().replace(/\s+/g, '_')}`;
+  const internalClientId = 'internal_office';
+
+  // 1. בדיקה אם התיק כבר קיים
+  const caseRef = db.collection('cases').doc(caseId);
+  const caseDoc = await caseRef.get();
+
+  if (caseDoc.exists) {
+    console.log(`✅ תיק פנימי קיים: ${caseId}`);
+    return {
+      id: caseDoc.id,
+      ...caseDoc.data()
+    };
+  }
+
+  console.log(`🆕 יוצר תיק פנימי חדש: ${caseId}`);
+
+  // 2. ודא שהלקוח המשרדי קיים
+  const clientRef = db.collection('clients').doc(internalClientId);
+  const clientDoc = await clientRef.get();
+
+  if (!clientDoc.exists) {
+    // יצירת לקוח משרדי (פעם אחת בלבד)
+    await clientRef.set({
+      id: internalClientId,
+      clientName: 'משרד - פעילות פנימית',
+      clientType: 'internal',
+      isSystemClient: true,
+      idNumber: 'SYSTEM-INTERNAL',
+      idType: 'system',
+      phone: '-',
+      email: 'office@internal.system',
+      address: 'פנימי',
+      totalCases: 0,
+      activeCases: 0,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: 'system',
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastModifiedBy: 'system'
+    });
+
+    console.log(`✅ לקוח משרדי נוצר: ${internalClientId}`);
+  }
+
+  // 3. יצירת התיק הפנימי
+  const newCase = {
+    id: caseId,
+    clientId: internalClientId,
+    clientName: 'משרד - פעילות פנימית',
+    caseNumber: `INTERNAL-${employeeName.toUpperCase()}`,
+    caseTitle: `${employeeName} - משימות משרדיות`,
+    procedureType: 'internal',
+    totalHours: null,
+    hoursRemaining: null,
+    minutesRemaining: null,
+    hourlyRate: null,
+    assignedTo: [employeeName],
+    mainAttorney: employeeName,
+    status: 'active',
+    priority: 'low',
+    isSystemCase: true,
+    isInternal: true,
+    isDeletable: false,
+    isEditable: false,
+    isHiddenFromReports: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdBy: 'system',
+    createdReason: 'auto_internal_case',
+    lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    lastModifiedBy: 'system'
+  };
+
+  await caseRef.set(newCase);
+
+  // 4. עדכון מונה התיקים בלקוח המשרדי
+  await clientRef.update({
+    totalCases: admin.firestore.FieldValue.increment(1),
+    activeCases: admin.firestore.FieldValue.increment(1),
+    lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  console.log(`✅ תיק פנימי נוצר בהצלחה: ${caseId}`);
+
+  return newCase;
+}
+
 // ===============================
 // Authentication Functions
 // ===============================
@@ -1671,8 +1765,24 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
+    // ✅ NEW: טיפול בפעילות פנימית
+    let finalClientId = data.clientId;
+    let finalCaseId = data.caseId;
+    let finalClientName = data.clientName;
+
+    if (data.isInternal === true) {
+      // יצירה/קבלת תיק פנימי אוטומטית
+      const internalCase = await getOrCreateInternalCase(user.username);
+
+      finalClientId = internalCase.clientId;
+      finalCaseId = internalCase.id;
+      finalClientName = internalCase.clientName;
+
+      console.log(`📝 רישום פנימי עבור ${user.username} → תיק ${finalCaseId}`);
+    }
+
     // Validation
-    if (!data.clientId) {
+    if (!finalClientId) {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'חסר מזהה לקוח'
@@ -1700,33 +1810,39 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // בדיקה שהלקוח קיים
-    const clientDoc = await db.collection('clients').doc(data.clientId).get();
+    // בדיקה שהלקוח קיים (רק אם לא פנימי)
+    if (data.isInternal !== true) {
+      const clientDoc = await db.collection('clients').doc(finalClientId).get();
 
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'לקוח לא נמצא'
-      );
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'לקוח לא נמצא'
+        );
+      }
+
+      const clientData = clientDoc.data();
+      if (!finalClientName) {
+        finalClientName = clientData.clientName || clientData.fullName;
+      }
     }
-
-    const clientData = clientDoc.data();
 
     // ✅ כל עובד יכול לרשום שעות עבור כל לקוח במשרד
     // אין צורך בבדיקת הרשאות נוספת
 
     // יצירת רישום
     const entryData = {
-      clientId: data.clientId,
-      clientName: clientData.clientName || clientData.fullName, // תמיכה בשני המבנים
-      caseId: data.caseId || null, // ✅ NEW: תמיכה בתיקים
-      caseTitle: data.caseTitle || null, // ✅ NEW: שם התיק (denormalized)
+      clientId: finalClientId,
+      clientName: finalClientName,
+      caseId: finalCaseId || null,
+      caseTitle: data.caseTitle || null,
       date: data.date,
       minutes: data.minutes,
       hours: data.minutes / 60,
       action: sanitizeString(data.action.trim()),
       employee: user.username,
       lawyer: user.username,
+      isInternal: data.isInternal === true, // ✅ NEW: סימון רישום פנימי
       createdBy: user.username,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username,
@@ -1748,6 +1864,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
 
           await taskRef.update({
             actualHours: newActualHours,
+            actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
             lastModifiedBy: user.username,
             lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
           });
@@ -1760,10 +1877,41 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       }
     }
 
+    // ✅ NEW: קיזוז שעות מהתיק (רק תיקים שעתיים, לא פנימיים)
+    if (finalCaseId && data.isInternal !== true) {
+      try {
+        const caseDoc = await db.collection('cases').doc(finalCaseId).get();
+
+        if (caseDoc.exists) {
+          const caseData = caseDoc.data();
+
+          // קיזוז רק מתיקים שעתיים
+          if (caseData.procedureType === 'hours') {
+            await caseDoc.ref.update({
+              minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+              hoursRemaining: admin.firestore.FieldValue.increment(-data.minutes / 60),
+              lastActivity: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            console.log(`✅ קוזזו ${data.minutes} דקות מתיק ${finalCaseId} (${caseData.caseNumber})`);
+          } else {
+            console.log(`ℹ️ תיק ${caseData.caseNumber} מסוג ${caseData.procedureType} - אין קיזוז`);
+          }
+        }
+      } catch (error) {
+        console.error(`⚠️ שגיאה בקיזוז שעות מתיק ${finalCaseId}:`, error);
+        // לא נכשיל את כל הפעולה בגלל זה
+      }
+    } else if (data.isInternal === true) {
+      console.log(`ℹ️ רישום פנימי - לא נדרש קיזוז שעות`);
+    }
+
     // Audit log
     await logAction('CREATE_TIMESHEET_ENTRY', user.uid, user.username, {
       entryId: docRef.id,
-      clientId: data.clientId,
+      clientId: finalClientId,
+      caseId: finalCaseId,
+      isInternal: data.isInternal === true,
       minutes: data.minutes,
       date: data.date,
       taskId: data.taskId || null

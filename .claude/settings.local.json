@@ -108,7 +108,9 @@
       "Bash(start https://console.firebase.google.com/project/law-office-system-e4801/firestore/indexes)",
       "Bash(touch \"c:\\Users\\haim\\law-office-system\\js\\system-diagnostics.js\")",
       "Bash(start check-task-deadline.html)",
-      "Bash(start test-professional-icons.html)"
+      "Bash(start test-professional-icons.html)",
+      "Bash(npm run lint)",
+      "Bash(timeout 180 bash -c 'tail -f /dev/null')"
     ],
     "deny": [],
     "ask": []
