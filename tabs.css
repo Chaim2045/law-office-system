@@ -37,17 +37,17 @@
 .tab-button {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 40px;
+  gap: 12px;
+  padding: 16px 36px;
   background: transparent;
   border: none;
   border-radius: 12px;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
   transition: all 0.25s ease;
-  min-width: 200px;
+  min-width: 180px;
   justify-content: center;
   position: relative;
 }
@@ -64,7 +64,7 @@
 }
 
 .tab-button i {
-  font-size: 20px;
+  font-size: 19px;
   transition: all 0.25s ease;
 }
 
