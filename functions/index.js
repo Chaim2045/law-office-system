@@ -1820,25 +1820,94 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // ✅ NEW: קיזוז שעות מהתיק (רק תיקים שעתיים, לא פנימיים)
+    // ✅ קיזוז שעות מהתיק (כל סוגי התיקים, לא פנימיים)
     if (finalCaseId && data.isInternal !== true) {
       try {
         const caseDoc = await db.collection('cases').doc(finalCaseId).get();
 
         if (caseDoc.exists) {
           const caseData = caseDoc.data();
+          const hoursWorked = data.minutes / 60;
 
-          // קיזוז רק מתיקים שעתיים
+          // ✅ תיק שעתי - קיזוז מהיתרה
           if (caseData.procedureType === 'hours') {
             await caseDoc.ref.update({
               minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-              hoursRemaining: admin.firestore.FieldValue.increment(-data.minutes / 60),
+              hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
               lastActivity: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            console.log(`✅ קוזזו ${data.minutes} דקות מתיק ${finalCaseId} (${caseData.caseNumber})`);
-          } else {
-            console.log(`ℹ️ תיק ${caseData.caseNumber} מסוג ${caseData.procedureType} - אין קיזוז`);
+            console.log(`✅ קוזזו ${data.minutes} דקות מתיק שעתי ${caseData.caseNumber}`);
+          }
+          // ✅ הליך משפטי - תמחור שעתי
+          else if (caseData.procedureType === 'legal_procedure' && caseData.pricingType === 'hourly') {
+            // מציאת השלב הנוכחי
+            const currentStageId = caseData.currentStage || 'stage_a';
+            const stages = caseData.stages || [];
+            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+
+            if (currentStageIndex !== -1) {
+              const currentStage = stages[currentStageIndex];
+
+              // בדיקה שיש שעות נותרות
+              if (currentStage.hoursRemaining > 0) {
+                // עדכון השלב הנוכחי
+                stages[currentStageIndex] = {
+                  ...currentStage,
+                  hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
+                  hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked
+                };
+
+                // עדכון התיק
+                await caseDoc.ref.update({
+                  stages: stages,
+                  hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                  minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                  lastActivity: admin.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} בתיק ${caseData.caseNumber}`);
+              } else {
+                console.warn(`⚠️ ${currentStage.name} אזלו השעות! (${currentStage.hoursRemaining} שעות נותרו)`);
+
+                // רושמים את השעות אבל לא מקזזים
+                await caseDoc.ref.update({
+                  lastActivity: admin.firestore.FieldValue.serverTimestamp()
+                });
+              }
+            } else {
+              console.warn(`⚠️ שלב נוכחי ${currentStageId} לא נמצא בתיק ${caseData.caseNumber}`);
+            }
+          }
+          // ✅ הליך משפטי - תמחור פיקס (מעקב אחר שעות בלבד, ללא קיזוז)
+          else if (caseData.procedureType === 'legal_procedure' && caseData.pricingType === 'fixed') {
+            // מציאת השלב הנוכחי
+            const currentStageId = caseData.currentStage || 'stage_a';
+            const stages = caseData.stages || [];
+            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+
+            if (currentStageIndex !== -1) {
+              const currentStage = stages[currentStageIndex];
+
+              // עדכון מעקב שעות בלבד (לא קיזוז - זה מחיר קבוע)
+              stages[currentStageIndex] = {
+                ...currentStage,
+                hoursWorked: (currentStage.hoursWorked || 0) + hoursWorked, // מעקב כמה שעות הושקעו
+                totalHoursWorked: (currentStage.totalHoursWorked || 0) + hoursWorked
+              };
+
+              await caseDoc.ref.update({
+                stages: stages,
+                totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked), // סה"כ שעות בכל התיק
+                lastActivity: admin.firestore.FieldValue.serverTimestamp()
+              });
+
+              console.log(`✅ נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע) בתיק ${caseData.caseNumber}`);
+            }
+          }
+          // ❓ סוג לא מוכר
+          else {
+            console.log(`ℹ️ תיק ${caseData.caseNumber} מסוג ${caseData.procedureType} - אין מעקב שעות`);
           }
         }
       } catch (error) {
