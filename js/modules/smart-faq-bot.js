@@ -754,9 +754,12 @@ class SmartFAQBot {
             .faq-bot-tabs {
                 display: flex;
                 justify-content: space-around;
+                align-items: center;
                 border-top: 1px solid #e5e7eb;
                 background: #f9fafb;
-                padding: 8px 0;
+                padding: 10px 8px;
+                min-height: 70px;
+                flex-shrink: 0;
             }
 
             .faq-tab {
@@ -764,6 +767,7 @@ class SmartFAQBot {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
+                justify-content: center;
                 gap: 4px;
                 padding: 8px 12px;
                 background: transparent;
@@ -771,10 +775,18 @@ class SmartFAQBot {
                 cursor: pointer;
                 transition: all 0.2s;
                 color: #6b7280;
-                font-size: 12px;
+                font-size: 11px;
                 font-weight: 500;
                 border-radius: 8px;
                 position: relative;
+                max-width: 100px;
+            }
+
+            .faq-tab span {
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                max-width: 100%;
             }
 
             .faq-tab svg {
@@ -3128,7 +3140,12 @@ let systemTour;
 document.addEventListener('DOMContentLoaded', () => {
     smartFAQBot = new SmartFAQBot();
     systemTour = new SystemTour();
-    console.log('⚖️ העוזר המשפטי החכם הופעל - v1.0');
+
+    // חשוף את smartFAQBot ל-window scope כדי שיהיה נגיש מ-onclick attributes
+    window.smartFAQBot = smartFAQBot;
+    window.systemTour = systemTour;
+
+    console.log('⚖️ העוזר המשפטי החכם הופעל - v3.0');
 });
 
 // ייצוא למודול
