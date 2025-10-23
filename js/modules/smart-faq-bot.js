@@ -2236,6 +2236,7 @@ class SystemTour {
         const overlay = document.createElement('div');
         overlay.id = 'system-tour-overlay';
         overlay.innerHTML = `
+            <div class="tour-backdrop-blur"></div>
             <div class="tour-spotlight"></div>
             <div class="tour-content-box">
                 <div class="tour-progress">
@@ -2324,7 +2325,7 @@ class SystemTour {
         const spotlight = document.querySelector('.tour-spotlight');
         const contentBox = document.querySelector('.tour-content-box');
 
-        // עדכון spotlight - האלמנט בולט והמסך מחשיך
+        // עדכון spotlight - האלמנט נראה עם blur מסביב
         spotlight.style.cssText = `
             position: fixed;
             top: ${rect.top - 8}px;
@@ -2333,10 +2334,11 @@ class SystemTour {
             height: ${rect.height + 16}px;
             border: 3px solid #3b82f6;
             border-radius: 8px;
-            background: white;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65),
-                        0 0 0 4px rgba(59, 130, 246, 0.4),
-                        inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 0 9999px rgba(255, 255, 255, 0.15),
+                        0 0 0 6px rgba(59, 130, 246, 0.5),
+                        0 0 30px rgba(59, 130, 246, 0.7);
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
             pointer-events: none;
             z-index: 10000;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2579,6 +2581,18 @@ class SystemTour {
                 bottom: 0;
                 z-index: 9999;
                 pointer-events: none;
+            }
+
+            .tour-backdrop-blur {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
+                background: rgba(255, 255, 255, 0.05);
+                z-index: 9999;
             }
 
             .tour-spotlight {
