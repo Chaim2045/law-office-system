@@ -369,8 +369,19 @@ export class SystemTour {
         // שלב 3: נסה להשתמש ב-position המבוקש
         let chosenPosition = position;
 
+        // Debug logging
+        console.log('🎯 Tour Positioning:', {
+            requestedPosition: position,
+            availableSpace,
+            canFit,
+            boxWidth,
+            boxHeight,
+            minGap
+        });
+
         // אם ה-position המבוקש לא אפשרי, בחר חלופה חכמה
         if (position && !canFit[position]) {
+            console.log('⚠️ Position not possible, trying alternative...');
             // נסה את הכיוון ההפוך קודם
             const opposites = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
             const opposite = opposites[position];
@@ -395,6 +406,8 @@ export class SystemTour {
                     );
             }
         }
+
+        console.log('✅ Chosen position:', chosenPosition);
 
         let top, left;
 
