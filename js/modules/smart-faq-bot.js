@@ -1356,13 +1356,13 @@ class SmartFAQBot {
                 flex-direction: column;
                 align-items: center;
                 justify-content: flex-start;
-                padding: 80px 30px 60px 30px;
+                padding: 50px 30px 60px 30px;
                 text-align: center;
                 min-height: 400px;
             }
 
             .faq-tour-icon {
-                margin-top: 20px;
+                margin-top: 10px;
                 margin-bottom: 24px;
                 opacity: 0.8;
             }
