@@ -27,6 +27,12 @@ export class SystemTour {
                 position: 'center'
             },
             {
+                title: '➕ כפתור הוספה מהיר',
+                text: 'הכפתור הירוק הזה פותח תפריט מהיר להוספת משימה חדשה, דיווח שעות, או יצירת תיק לקוח',
+                element: '#smartPlusBtn',
+                position: 'bottom'
+            },
+            {
                 title: '📊 טאב תקצוב משימות',
                 text: 'כאן תנהלו את כל המשימות המתוקצבות שלכם',
                 element: 'button[onclick*="switchTab(\'budget\')"]',
