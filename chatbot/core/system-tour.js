@@ -21,10 +21,10 @@ export class SystemTour {
     getSteps() {
         return [
             {
-                title: '🎉 ברוכים הבאים!',
-                text: 'בואו נתחיל סיור קצר במערכת',
-                element: '.header',
-                position: 'bottom'
+                title: '🎉 ברוכים הבאים למערכת!',
+                text: 'בואו נתחיל סיור קצר שיעזור לכם להכיר את המערכת',
+                element: null,
+                position: 'center'
             },
             {
                 title: '📊 טאב תקצוב משימות',
@@ -48,7 +48,7 @@ export class SystemTour {
                 title: '💬 העוזר החכם',
                 text: 'אם יש שאלות - פשוט לחצו כאן ושאלו אותי!',
                 element: '.faq-bot-button',
-                position: 'left'
+                position: 'top'
             }
         ];
     }
@@ -120,6 +120,12 @@ export class SystemTour {
      * רינדור שלב
      */
     renderStep(step) {
+        // אם אין אלמנט (center mode) - הצג באמצע המסך
+        if (!step.element) {
+            this.showCenterMode(step);
+            return;
+        }
+
         // מצא אלמנט
         const element = document.querySelector(step.element);
         if (!element) {
@@ -140,6 +146,42 @@ export class SystemTour {
     }
 
     /**
+     * מצב מרכז - ללא spotlight, רק tooltip באמצע
+     */
+    showCenterMode(step) {
+        const spotlight = document.querySelector('.tour-spotlight');
+        const tooltip = document.querySelector('.tour-tooltip');
+        const title = document.querySelector('.tour-tooltip-title');
+        const text = document.querySelector('.tour-tooltip-text');
+        const progress = document.querySelector('.tour-progress');
+
+        // הסתר spotlight
+        if (spotlight) {
+            spotlight.style.display = 'none';
+        }
+
+        // עדכן תוכן
+        if (title) title.textContent = step.title;
+        if (text) text.textContent = step.text;
+        if (progress) progress.textContent = `שלב ${this.currentStep + 1} מתוך ${this.steps.length}`;
+
+        // מרכז tooltip
+        if (tooltip) {
+            tooltip.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 99999;
+                transition: all 0.3s ease;
+            `;
+        }
+
+        // עדכן כפתורים
+        this.updateButtons();
+    }
+
+    /**
      * עדכון spotlight
      */
     updateSpotlight(rect) {
@@ -149,6 +191,7 @@ export class SystemTour {
         const padding = 8;
 
         spotlight.style.cssText = `
+            display: block;
             position: fixed;
             top: ${rect.top - padding}px;
             left: ${rect.left - padding}px;
