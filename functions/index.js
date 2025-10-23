@@ -218,6 +218,64 @@ async function getOrCreateInternalCase(employeeName) {
   return newCase;
 }
 
+/**
+ * מוצא את החבילה הפעילה בשלב
+ * חבילה פעילה = status: 'active' וגם hoursRemaining > 0
+ *
+ * @param {Object} stage - אובייקט השלב
+ * @returns {Object|null} - החבילה הפעילה או null
+ */
+function getActivePackage(stage) {
+  if (!stage.packages || stage.packages.length === 0) {
+    return null;
+  }
+
+  // מחפש את החבילה הראשונה שפעילה ויש לה שעות
+  const activePackage = stage.packages.find(pkg =>
+    pkg.status === 'active' && (pkg.hoursRemaining || 0) > 0
+  );
+
+  return activePackage || null;
+}
+
+/**
+ * סוגר חבילה אוטומטית אם היא התרוקנה
+ *
+ * @param {Object} package - אובייקט החבילה
+ * @returns {Object} - החבילה המעודכנת
+ */
+function closePackageIfDepleted(package) {
+  if (package.hoursRemaining <= 0 && package.status === 'active') {
+    package.status = 'depleted';
+    package.closedDate = new Date().toISOString();
+    console.log(`📦 חבילה ${package.id} נסגרה (אזלו השעות)`);
+  }
+  return package;
+}
+
+/**
+ * מקזז שעות מחבילה ספציפית
+ * מעדכן: hoursUsed, hoursRemaining
+ * סוגר את החבילה אם התרוקנה
+ *
+ * @param {Object} package - החבילה לקזז ממנה
+ * @param {number} hoursToDeduct - כמה שעות לקזז
+ * @returns {Object} - החבילה המעודכנת
+ */
+function deductHoursFromPackage(package, hoursToDeduct) {
+  package.hoursUsed = (package.hoursUsed || 0) + hoursToDeduct;
+  package.hoursRemaining = (package.hoursRemaining || 0) - hoursToDeduct;
+
+  // סגירה אוטומטית אם התרוקנה
+  if (package.hoursRemaining <= 0) {
+    package.status = 'depleted';
+    package.closedDate = new Date().toISOString();
+    console.log(`📦 חבילה ${package.id} נסגרה אוטומטית (${package.hoursUsed}/${package.hours} שעות נוצלו)`);
+  }
+
+  return package;
+}
+
 // ===============================
 // Authentication Functions
 // ===============================
@@ -1773,12 +1831,14 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
     // ✅ כל עובד יכול לרשום שעות עבור כל לקוח במשרד
     // אין צורך בבדיקת הרשאות נוספת
 
-    // יצירת רישום
+    // יצירת רישום (נוסיף stageId ו-packageId אחר כך)
     const entryData = {
       clientId: finalClientId,
       clientName: finalClientName,
       caseId: finalCaseId || null,
       caseTitle: data.caseTitle || null,
+      stageId: null,  // ✅ יעודכן אחר כך אם זה הליך משפטי
+      packageId: null, // ✅ יעודכן אחר כך אם זה חבילת שעות
       date: data.date,
       minutes: data.minutes,
       hours: data.minutes / 60,
@@ -1791,8 +1851,6 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       lastModifiedBy: user.username,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
     };
-
-    const docRef = await db.collection('timesheet_entries').add(entryData);
 
     // ✅ NEW: אם הרישום קשור למשימת תקציב, עדכן את הזמן בפועל
     if (data.taskId) {
@@ -1820,7 +1878,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // ✅ קיזוז שעות מהתיק (כל סוגי התיקים, לא פנימיים)
+    // ✅ קיזוז שעות מהתיק (עם מערכת חבילות חכמה!)
     if (finalCaseId && data.isInternal !== true) {
       try {
         const caseDoc = await db.collection('cases').doc(finalCaseId).get();
@@ -1828,18 +1886,33 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
         if (caseDoc.exists) {
           const caseData = caseDoc.data();
           const hoursWorked = data.minutes / 60;
+          let updatedStageId = null;
+          let updatedPackageId = null;
 
-          // ✅ תיק שעתי - קיזוז מהיתרה
-          if (caseData.procedureType === 'hours') {
-            await caseDoc.ref.update({
-              minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-              hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-              lastActivity: admin.firestore.FieldValue.serverTimestamp()
-            });
+          // ✅ תיק שעתי - מציאת החבילה הפעילה
+          if (caseData.procedureType === 'hours' && caseData.services && caseData.services.length > 0) {
+            const service = caseData.services[0]; // תוכנית שעות פשוטה = שירות אחד
+            const activePackage = getActivePackage(service);
 
-            console.log(`✅ קוזזו ${data.minutes} דקות מתיק שעתי ${caseData.caseNumber}`);
+            if (activePackage) {
+              // קיזוז מהחבילה הפעילה
+              deductHoursFromPackage(activePackage, hoursWorked);
+              updatedPackageId = activePackage.id;
+
+              // עדכון התיק
+              await caseDoc.ref.update({
+                services: caseData.services,
+                minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                lastActivity: admin.firestore.FieldValue.serverTimestamp()
+              });
+
+              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} (${activePackage.hoursUsed}/${activePackage.hours})`);
+            } else {
+              console.warn(`⚠️ תיק ${caseData.caseNumber} - אין חבילה פעילה!`);
+            }
           }
-          // ✅ הליך משפטי - תמחור שעתי
+          // ✅ הליך משפטי - תמחור שעתי (עם חבילות!)
           else if (caseData.procedureType === 'legal_procedure' && caseData.pricingType === 'hourly') {
             // מציאת השלב הנוכחי
             const currentStageId = caseData.currentStage || 'stage_a';
@@ -1848,15 +1921,19 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
 
             if (currentStageIndex !== -1) {
               const currentStage = stages[currentStageIndex];
+              updatedStageId = currentStage.id;
 
-              // בדיקה שיש שעות נותרות
-              if (currentStage.hoursRemaining > 0) {
-                // עדכון השלב הנוכחי
-                stages[currentStageIndex] = {
-                  ...currentStage,
-                  hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
-                  hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked
-                };
+              // מציאת החבילה הפעילה בשלב
+              const activePackage = getActivePackage(currentStage);
+
+              if (activePackage) {
+                // קיזוז מהחבילה הפעילה
+                deductHoursFromPackage(activePackage, hoursWorked);
+                updatedPackageId = activePackage.id;
+
+                // עדכון השלב
+                stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
+                stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
 
                 // עדכון התיק
                 await caseDoc.ref.update({
@@ -1866,20 +1943,15 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                   lastActivity: admin.firestore.FieldValue.serverTimestamp()
                 });
 
-                console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} בתיק ${caseData.caseNumber}`);
+                console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}, חבילה ${activePackage.id}`);
               } else {
-                console.warn(`⚠️ ${currentStage.name} אזלו השעות! (${currentStage.hoursRemaining} שעות נותרו)`);
-
-                // רושמים את השעות אבל לא מקזזים
-                await caseDoc.ref.update({
-                  lastActivity: admin.firestore.FieldValue.serverTimestamp()
-                });
+                console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
               }
             } else {
               console.warn(`⚠️ שלב נוכחי ${currentStageId} לא נמצא בתיק ${caseData.caseNumber}`);
             }
           }
-          // ✅ הליך משפטי - תמחור פיקס (מעקב אחר שעות בלבד, ללא קיזוז)
+          // ✅ הליך משפטי - תמחור פיקס (מעקב שעות בלבד)
           else if (caseData.procedureType === 'legal_procedure' && caseData.pricingType === 'fixed') {
             // מציאת השלב הנוכחי
             const currentStageId = caseData.currentStage || 'stage_a';
@@ -1888,27 +1960,29 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
 
             if (currentStageIndex !== -1) {
               const currentStage = stages[currentStageIndex];
+              updatedStageId = currentStage.id;
 
-              // עדכון מעקב שעות בלבד (לא קיזוז - זה מחיר קבוע)
-              stages[currentStageIndex] = {
-                ...currentStage,
-                hoursWorked: (currentStage.hoursWorked || 0) + hoursWorked, // מעקב כמה שעות הושקעו
-                totalHoursWorked: (currentStage.totalHoursWorked || 0) + hoursWorked
-              };
+              // עדכון מעקב שעות בלבד (לא קיזוז - זה מחיר קבוע!)
+              stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
+              stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
 
               await caseDoc.ref.update({
                 stages: stages,
-                totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked), // סה"כ שעות בכל התיק
+                totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
                 lastActivity: admin.firestore.FieldValue.serverTimestamp()
               });
 
-              console.log(`✅ נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע) בתיק ${caseData.caseNumber}`);
+              console.log(`✅ נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
             }
           }
           // ❓ סוג לא מוכר
           else {
             console.log(`ℹ️ תיק ${caseData.caseNumber} מסוג ${caseData.procedureType} - אין מעקב שעות`);
           }
+
+          // ✅ עדכון entryData עם הקישורים
+          entryData.stageId = updatedStageId;
+          entryData.packageId = updatedPackageId;
         }
       } catch (error) {
         console.error(`⚠️ שגיאה בקיזוז שעות מתיק ${finalCaseId}:`, error);
@@ -1917,6 +1991,9 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
     } else if (data.isInternal === true) {
       console.log(`ℹ️ רישום פנימי - לא נדרש קיזוז שעות`);
     }
+
+    // ✅ שמירת הרישום (עכשיו עם stageId ו-packageId!)
+    const docRef = await db.collection('timesheet_entries').add(entryData);
 
     // Audit log
     await logAction('CREATE_TIMESHEET_ENTRY', user.uid, user.username, {
@@ -3152,6 +3229,19 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
       );
     }
 
+    // ✅ סגירת החבילה הפעילה הנוכחית (אם יש)
+    const currentStage = caseData.stages[stageIndex];
+    const currentPackages = currentStage.packages || [];
+
+    // סגור כל חבילה שהתרוקנה
+    currentPackages.forEach(pkg => {
+      if (pkg.hoursRemaining <= 0 && pkg.status === 'active') {
+        pkg.status = 'depleted';
+        pkg.closedDate = new Date().toISOString();
+        console.log(`📦 חבילה ${pkg.id} נסגרה (${pkg.hoursUsed}/${pkg.hours} שעות)`);
+      }
+    });
+
     // יצירת חבילת השעות החדשה
     const now = new Date().toISOString();
     const newPackage = {
@@ -3163,14 +3253,15 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
       purchaseDate: data.purchaseDate || now,
       reason: sanitizeString(data.reason.trim()),
       addedBy: user.username,
-      addedAt: now
+      addedAt: now,
+      status: 'active'  // ✅ החבילה החדשה פעילה
     };
 
     // עדכון השלב
     const updatedStages = [...caseData.stages];
     updatedStages[stageIndex] = {
       ...updatedStages[stageIndex],
-      packages: [...updatedStages[stageIndex].packages, newPackage],
+      packages: [...currentPackages, newPackage],  // ✅ כולל חבילות סגורות + חדשה
       totalHours: updatedStages[stageIndex].totalHours + data.hours,
       hoursRemaining: updatedStages[stageIndex].hoursRemaining + data.hours
     };
