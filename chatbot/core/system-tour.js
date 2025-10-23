@@ -339,9 +339,9 @@ export class SystemTour {
 
     /**
      * מיקום תיבת התוכן ביחס לאלמנט - חכם ומותאם
-     * אלגוריתם חדש: בוחר את הצד עם הכי הרבה מקום קודם
+     * אלגוריתם חדש: משתמש ב-position המפורש, רק אם לא אפשרי - בוחר חלופה
      * @param {DOMRect} rect - מלבן האלמנט
-     * @param {string} position - מיקום מועדף (לא נעשה בו שימוש - האלגוריתם בוחר אוטומטית)
+     * @param {string} position - מיקום מפורש (top/bottom/left/right)
      */
     positionContentBox(rect, position) {
         const contentBox = document.querySelector('.tour-content-box');
@@ -366,27 +366,40 @@ export class SystemTour {
             right: availableSpace.right >= boxWidth + minGap
         };
 
-        // שלב 3: דרג את הכיוונים לפי מרווח זמין (רק כאלה שהכרטיסייה נכנסת)
-        const viablePositions = [
-            { pos: 'bottom', space: availableSpace.bottom, fits: canFit.bottom },
-            { pos: 'top', space: availableSpace.top, fits: canFit.top },
-            { pos: 'right', space: availableSpace.right, fits: canFit.right },
-            { pos: 'left', space: availableSpace.left, fits: canFit.left }
-        ]
-        .filter(p => p.fits) // רק כיוונים שהכרטיסייה נכנסת
-        .sort((a, b) => b.space - a.space); // מיין לפי מרווח (הכי גדול קודם)
+        // שלב 3: נסה להשתמש ב-position המבוקש
+        let chosenPosition = position;
 
-        // שלב 4: אם אין כיוון מתאים, השתמש בכיוון עם הכי הרבה מקום
-        const bestPosition = viablePositions.length > 0
-            ? viablePositions[0].pos
-            : ['bottom', 'top', 'right', 'left'].reduce((best, curr) =>
-                availableSpace[curr] > availableSpace[best] ? curr : best
-            );
+        // אם ה-position המבוקש לא אפשרי, בחר חלופה חכמה
+        if (position && !canFit[position]) {
+            // נסה את הכיוון ההפוך קודם
+            const opposites = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+            const opposite = opposites[position];
+
+            if (opposite && canFit[opposite]) {
+                chosenPosition = opposite;
+            } else {
+                // אם גם ההפוך לא אפשרי, בחר כיוון עם הכי הרבה מקום
+                const viablePositions = [
+                    { pos: 'bottom', space: availableSpace.bottom, fits: canFit.bottom },
+                    { pos: 'top', space: availableSpace.top, fits: canFit.top },
+                    { pos: 'right', space: availableSpace.right, fits: canFit.right },
+                    { pos: 'left', space: availableSpace.left, fits: canFit.left }
+                ]
+                .filter(p => p.fits)
+                .sort((a, b) => b.space - a.space);
+
+                chosenPosition = viablePositions.length > 0
+                    ? viablePositions[0].pos
+                    : ['bottom', 'top', 'right', 'left'].reduce((best, curr) =>
+                        availableSpace[curr] > availableSpace[best] ? curr : best
+                    );
+            }
+        }
 
         let top, left;
 
-        // שלב 5: מקם את הכרטיסייה לפי הכיוון הטוב ביותר
-        switch (bestPosition) {
+        // שלב 4: מקם את הכרטיסייה לפי הכיוון הנבחר
+        switch (chosenPosition) {
             case 'bottom':
                 top = rect.bottom + minGap;
                 left = rect.left + (rect.width / 2) - (boxWidth / 2);
@@ -405,7 +418,7 @@ export class SystemTour {
                 break;
         }
 
-        // שלב 6: וידוא שהכרטיסייה בתוך המסך (fallback למקרה קיצון)
+        // שלב 5: וידוא שהכרטיסייה בתוך המסך (fallback למקרה קיצון)
         top = Math.max(padding, Math.min(top, window.innerHeight - boxHeight - padding));
         left = Math.max(padding, Math.min(left, window.innerWidth - boxWidth - padding));
 
