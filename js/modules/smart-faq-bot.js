@@ -1598,16 +1598,13 @@ class SmartFAQBot {
         });
         suggestionsContainer.appendChild(tourButton);
 
-        suggestions.forEach(suggestion => {
-            const chip = document.createElement('button');
-            chip.className = 'faq-suggestion-chip';
-            chip.textContent = suggestion;
-            chip.addEventListener('click', () => {
-                document.getElementById('faq-bot-input').value = suggestion;
-                this.handleUserInput();
-            });
-            suggestionsContainer.appendChild(chip);
-        });
+        // Suggestions disabled - using hierarchical menu instead
+        // suggestions.forEach(suggestion => {
+        //     const chip = document.createElement('button');
+        //     chip.className = 'faq-suggestion-chip';
+        //     chip.textContent = suggestion;
+        //     suggestionsContainer.appendChild(chip);
+        // });
     }
 
     /**
