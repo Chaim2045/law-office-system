@@ -261,6 +261,38 @@
     }
   };
 
+  /**
+   * הוספת זמן למשימה דרך Cloud Function
+   * @param {string} taskId - מזהה משימה
+   * @param {number} minutes - דקות לזמן
+   * @param {string} description - תיאור הפעולה
+   * @param {string} date - תאריך העבודה
+   * @returns {Promise<Object>} תוצאה עם actualHours/actualMinutes מעודכנים
+   */
+  window.addTimeToTaskFirebase = async function(taskId, minutes, description, date) {
+    logger.log(`🔥 addTimeToTaskFirebase called for task ${taskId}, minutes: ${minutes}`);
+
+    if (!firebase || !firebase.functions) {
+      throw new Error('Firebase Functions not initialized');
+    }
+
+    try {
+      const addTimeToTask = firebase.functions().httpsCallable('addTimeToTask');
+      const result = await addTimeToTask({
+        taskId,
+        minutes,
+        description,
+        date
+      });
+
+      logger.log(`✅ addTimeToTask completed:`, result.data);
+      return result.data;
+    } catch (error) {
+      logger.error('Error calling addTimeToTask:', error);
+      throw error;
+    }
+  };
+
   /* === Admin & Control === */
 
   /**

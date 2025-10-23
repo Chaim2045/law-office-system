@@ -944,49 +944,22 @@ class LawOfficeManager {
       return;
     }
 
-    // ✅ NEW: Use ActionFlowManager with auto-close popup
+    // ✅ קריאה ישירה ל-Cloud Function - קוד נקי ופשוט
     await ActionFlowManager.execute({
       loadingMessage: 'שומר זמן...',
       action: async () => {
-        console.log('📝 submitTimeEntry - Before update:', {
-          taskId: task.id,
-          oldActualMinutes: task.actualMinutes,
-          addingMinutes: workMinutes,
-          oldTimeEntries: task.timeEntries?.length || 0
-        });
+        // קריאה ל-Cloud Function שמטפלת בהכל אטומית
+        await window.addTimeToTaskFirebase(taskId, workMinutes, workDescription, workDate);
 
-        // Update task with new time entry
-        task.timeEntries = task.timeEntries || [];
-        task.timeEntries.push({
-          date: workDate,
-          minutes: workMinutes,
-          description: workDescription,
-          addedAt: new Date()
-        });
-
-        task.actualMinutes = (task.actualMinutes || 0) + workMinutes;
-
-        console.log('📝 submitTimeEntry - After update:', {
-          taskId: task.id,
-          newActualMinutes: task.actualMinutes,
-          newTimeEntriesCount: task.timeEntries.length,
-          callingFunction: 'FirebaseOps.saveBudgetTaskToFirebase'
-        });
-
-        await FirebaseOps.saveBudgetTaskToFirebase(task);
-
-        console.log('✅ submitTimeEntry - Save completed successfully');
-
-        // Reload tasks
+        // טעינה מחדש של משימות
         this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
         this.filterBudgetTasks();
       },
       successMessage: 'הזמן נוסף בהצלחה',
       errorMessage: 'שגיאה בהוספת זמן',
-      closePopupOnSuccess: true,  // ✅ Auto-close popup
+      closePopupOnSuccess: true,
       closeDelay: 500,
       onSuccess: () => {
-        // Close expanded card to show updated data in cards view
         this.closeExpandedCard();
       }
     });

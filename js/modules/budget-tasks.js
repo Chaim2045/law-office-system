@@ -215,6 +215,15 @@ export function sortBudgetTasks(tasks, sortValue) {
 export function sanitizeTaskData(task) {
   if (!task) return {};
 
+  // ✅ המרת Firebase Timestamp לDate נכון
+  let deadlineConverted = task.deadline;
+  if (task.deadline && window.DatesModule) {
+    deadlineConverted = window.DatesModule.convertFirebaseTimestamp(task.deadline);
+  }
+  if (!deadlineConverted || (deadlineConverted instanceof Date && isNaN(deadlineConverted.getTime()))) {
+    deadlineConverted = new Date();
+  }
+
   return {
     id: task.id || Date.now(),
     clientName: task.clientName || "לקוח לא ידוע",
@@ -227,7 +236,7 @@ export function sanitizeTaskData(task) {
     actualHours: Number(task.actualHours) || 0,
     estimatedMinutes: Number(task.estimatedMinutes) || (Number(task.estimatedHours) || 0) * 60,
     actualMinutes: Number(task.actualMinutes) || (Number(task.actualHours) || 0) * 60,
-    deadline: task.deadline || new Date().toISOString(),
+    deadline: deadlineConverted,
     status: task.status || "פעיל",
     branch: task.branch || "",
     fileNumber: task.fileNumber || "",
@@ -246,25 +255,17 @@ export function sanitizeTaskData(task) {
  */
 export function calculateSimpleProgress(task) {
   if (!task.estimatedMinutes || task.estimatedMinutes <= 0) {
-    console.log('⚠️ calculateSimpleProgress: No estimatedMinutes', {
-      taskId: task.id,
-      estimatedMinutes: task.estimatedMinutes
-    });
+    // Keep warning for missing data (only logged once per task)
+    if (!task._warnedNoEstimate) {
+      console.warn('⚠️ Task missing estimatedMinutes:', task.id);
+      task._warnedNoEstimate = true;
+    }
     return 0;
   }
   const progress = Math.round(
     ((task.actualMinutes || 0) / task.estimatedMinutes) * 100
   );
-  const result = Math.min(progress, 100);
-
-  console.log('📊 calculateSimpleProgress:', {
-    taskId: task.id,
-    actualMinutes: task.actualMinutes,
-    estimatedMinutes: task.estimatedMinutes,
-    progress: result
-  });
-
-  return result;
+  return Math.min(progress, 100);
 }
 
 /**
