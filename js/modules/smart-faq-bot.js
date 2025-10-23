@@ -470,6 +470,10 @@ class SmartFAQBot {
                     <!-- הודעות יופיעו כאן -->
                 </div>
 
+                <div class="faq-bot-suggestions" id="faq-bot-suggestions">
+                    <!-- שאלות והצעות יופיעו כאן -->
+                </div>
+
                 <!-- טאבים תחתונים -->
                 <div class="faq-bot-tabs" id="faq-bot-tabs">
                     <button class="faq-tab active" data-tab="home">
@@ -495,10 +499,6 @@ class SmartFAQBot {
                         </svg>
                         <span>עזרה</span>
                     </button>
-                </div>
-
-                <div class="faq-bot-suggestions" id="faq-bot-suggestions">
-                    <!-- שאלות והצעות יופיעו כאן -->
                 </div>
             </div>
         `;
@@ -639,10 +639,14 @@ class SmartFAQBot {
                 flex: 1;
                 overflow-y: auto;
                 padding: 20px;
-                display: flex;
+                display: none; /* מוסתר כברירת מחדל - יופיע רק בשיחה */
                 flex-direction: column;
                 gap: 12px;
                 background: #f9fafb;
+            }
+
+            .faq-bot-messages:not(:empty) {
+                display: flex; /* מופיע כשיש תוכן */
             }
 
             .faq-message {
@@ -721,14 +725,12 @@ class SmartFAQBot {
             }
 
             .faq-bot-suggestions {
-                padding: 12px;
+                flex: 1;
+                padding: 0;
                 background: white;
-                border-top: 1px solid #e5e7eb;
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                max-height: 120px;
                 overflow-y: auto;
+                display: flex;
+                flex-direction: column;
             }
 
             .faq-suggestion-chip {
@@ -1047,6 +1049,149 @@ class SmartFAQBot {
                 color: #3b82f6;
             }
 
+            /* ========== התראות ========== */
+            .faq-no-notifications {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 60px 20px;
+                text-align: center;
+                color: #6b7280;
+            }
+
+            .faq-no-notifications-icon {
+                font-size: 64px;
+                margin-bottom: 16px;
+                opacity: 0.5;
+            }
+
+            .faq-no-notifications h3 {
+                margin: 0 0 8px 0;
+                font-size: 18px;
+                font-weight: 600;
+                color: #374151;
+            }
+
+            .faq-no-notifications p {
+                margin: 0;
+                font-size: 14px;
+            }
+
+            .faq-notifications-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 16px 20px;
+                border-bottom: 1px solid #e5e7eb;
+                background: #f9fafb;
+            }
+
+            .faq-notifications-header h3 {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 600;
+                color: #374151;
+            }
+
+            .faq-clear-all-btn {
+                padding: 6px 12px;
+                background: transparent;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 500;
+                color: #6b7280;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .faq-clear-all-btn:hover {
+                background: white;
+                border-color: #ef4444;
+                color: #ef4444;
+            }
+
+            .faq-notifications-list {
+                display: flex;
+                flex-direction: column;
+                gap: 1px;
+                background: #e5e7eb;
+            }
+
+            .faq-notification-item {
+                display: flex;
+                gap: 12px;
+                padding: 16px;
+                background: white;
+                position: relative;
+                transition: all 0.2s;
+            }
+
+            .faq-notification-item:hover {
+                background: #f9fafb;
+            }
+
+            .faq-notification-item.urgent {
+                border-right: 4px solid #ef4444;
+            }
+
+            .faq-notification-icon {
+                font-size: 24px;
+                flex-shrink: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .faq-notification-content {
+                flex: 1;
+            }
+
+            .faq-notification-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 4px;
+            }
+
+            .faq-notification-description {
+                font-size: 13px;
+                color: #6b7280;
+                line-height: 1.5;
+                margin-bottom: 6px;
+            }
+
+            .faq-notification-time {
+                font-size: 11px;
+                color: #9ca3af;
+            }
+
+            .faq-notification-remove {
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: transparent;
+                border: none;
+                border-radius: 50%;
+                font-size: 20px;
+                color: #9ca3af;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .faq-notification-remove:hover {
+                background: #fee2e2;
+                color: #ef4444;
+            }
+
             /* responsive */
             @media (max-width: 768px) {
                 .faq-bot-container {
@@ -1138,14 +1283,102 @@ class SmartFAQBot {
 
         // נקה
         messagesContainer.innerHTML = '';
-        suggestionsContainer.innerHTML = '';
 
-        // TODO: להוסיף התראות מהמערכת
-        this.addBotMessage(`
-            <strong>🔔 התראות</strong>
-            <p>כאן תופענה התראות מהמערכת.</p>
-            <p>בקרוב: משימות דחופות, תאריכי יעד ועוד...</p>
-        `);
+        // קבל התראות מהמערכת
+        const notifications = window.notificationBell ? window.notificationBell.notifications : [];
+
+        let html = '';
+
+        if (notifications.length === 0) {
+            html = `
+                <div class="faq-no-notifications">
+                    <div class="faq-no-notifications-icon">🔔</div>
+                    <h3>אין התראות</h3>
+                    <p>כל ההתראות יופיעו כאן</p>
+                </div>
+            `;
+        } else {
+            html = `
+                <div class="faq-notifications-header">
+                    <h3>התראות (${notifications.length})</h3>
+                    <button class="faq-clear-all-btn" onclick="smartFAQBot.clearAllNotifications()">
+                        נקה הכל
+                    </button>
+                </div>
+                <div class="faq-notifications-list">
+            `;
+
+            const iconMap = {
+                blocked: '🚫',
+                critical: '⚠️',
+                urgent: '⏰',
+                success: '✅',
+                info: 'ℹ️'
+            };
+
+            notifications.forEach(notification => {
+                const icon = iconMap[notification.type] || 'ℹ️';
+                const urgentClass = notification.urgent ? 'urgent' : '';
+
+                html += `
+                    <div class="faq-notification-item ${notification.type} ${urgentClass}">
+                        <div class="faq-notification-icon">${icon}</div>
+                        <div class="faq-notification-content">
+                            <div class="faq-notification-title">${notification.title}</div>
+                            <div class="faq-notification-description">${notification.description}</div>
+                            <div class="faq-notification-time">${notification.time}</div>
+                        </div>
+                        <button class="faq-notification-remove" onclick="smartFAQBot.removeNotification(${notification.id})">
+                            ×
+                        </button>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+        }
+
+        suggestionsContainer.innerHTML = html;
+
+        // עדכן את הבאדג'
+        this.updateNotificationBadge();
+    }
+
+    /**
+     * עדכון הבאדג' של ההתראות
+     */
+    updateNotificationBadge() {
+        const badge = document.getElementById('faq-notification-badge');
+        const count = window.notificationBell ? window.notificationBell.notifications.length : 0;
+
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    }
+
+    /**
+     * הסרת התראה בודדת
+     */
+    removeNotification(id) {
+        if (window.notificationBell) {
+            window.notificationBell.removeNotification(id);
+            this.showNotificationsTab(); // רענן תצוגה
+        }
+    }
+
+    /**
+     * ניקוי כל ההתראות
+     */
+    clearAllNotifications() {
+        if (window.notificationBell) {
+            window.notificationBell.clearAllNotifications();
+            this.showNotificationsTab(); // רענן תצוגה
+        }
     }
 
     /**
@@ -1190,6 +1423,9 @@ class SmartFAQBot {
             if (statusElement && userName) {
                 statusElement.textContent = `עוזר ל${userName}`;
             }
+
+            // עדכן באדג' התראות
+            this.updateNotificationBadge();
 
             // הצג טאב הבית אם זו הפעם הראשונה
             if (this.chatHistory.length === 0) {
