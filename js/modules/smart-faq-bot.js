@@ -503,7 +503,7 @@ class SmartFAQBot {
                             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                             <line x1="12" y1="17" x2="12.01" y2="17"/>
                         </svg>
-                        <span>עזרה</span>
+                        <span>שאלות</span>
                     </button>
                 </div>
             </div>
@@ -802,6 +802,9 @@ class SmartFAQBot {
                 height: 20px;
                 stroke-width: 2;
                 transition: all 0.2s;
+                flex-shrink: 0;
+                display: block;
+                margin: 0 auto;
             }
 
             .faq-tab:hover {
