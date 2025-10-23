@@ -146,7 +146,7 @@ export class SystemTour {
     }
 
     /**
-     * מצב מרכז - ללא spotlight, רק tooltip באמצע
+     * מצב מרכז - ללא spotlight, רק tooltip באמצע עם רקע כהה
      */
     showCenterMode(step) {
         const spotlight = document.querySelector('.tour-spotlight');
@@ -155,9 +155,23 @@ export class SystemTour {
         const text = document.querySelector('.tour-tooltip-text');
         const progress = document.querySelector('.tour-progress');
 
-        // הסתר spotlight
+        // הסתר spotlight אבל הפוך אותו לרקע כהה
         if (spotlight) {
-            spotlight.style.display = 'none';
+            spotlight.style.cssText = `
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                pointer-events: none;
+                z-index: 99998;
+                transition: all 0.3s ease;
+                border: none;
+                box-shadow: none;
+                border-radius: 0;
+            `;
         }
 
         // עדכן תוכן
