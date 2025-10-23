@@ -32,7 +32,7 @@ class SmartFAQBot {
                     `,
                     category: 'clients',
                     guideType: 'create_client',
-                    selector: '#smart-plus-btn'
+                    selector: '#smartPlusBtn'
                 },
                 {
                     keywords: ['חפש לקוח', 'מצא לקוח', 'איפה לקוח', 'חיפוש לקוח', 'מציאת תיק'],
@@ -104,7 +104,7 @@ class SmartFAQBot {
                     `,
                     category: 'tasks',
                     guideType: 'create_task',
-                    selector: '#smart-plus-btn'
+                    selector: '#smartPlusBtn'
                 },
                 {
                     keywords: ['השלם משימה', 'סיים משימה', 'סמן משימה', 'השלמת משימה', 'משימה הושלמה'],
@@ -191,7 +191,7 @@ class SmartFAQBot {
                     `,
                     category: 'timesheet',
                     guideType: 'report_hours',
-                    selector: '#smart-plus-btn'
+                    selector: '#smartPlusBtn'
                 },
                 {
                     keywords: ['סיכום שעות', 'כמה שעות', 'סך שעות', 'מכסת שעות', 'תקן שעות'],
@@ -1909,17 +1909,22 @@ class SmartFAQBot {
     showStepByStepGuide(guideType) {
         const guides = {
             'create_task': [
-                { selector: '#smart-plus-btn', message: '1️⃣ קודם לחץ על כפתור הפלוס', delay: 1000 },
-                { selector: '.action-item[data-action="task"]', message: '2️⃣ עכשיו בחר "הוסף משימת תקצוב"', delay: 3000 },
-                { message: '3️⃣ מעולה! עכשיו תמלא את הפרטים בטופס', delay: 5000 }
+                { selector: '.tab-button', message: '1️⃣ ראשית, ודא שאתה בטאב "תקצוב משימות"', delay: 1000 },
+                { selector: '#smartPlusBtn', message: '2️⃣ עכשיו לחץ על כפתור הפלוס הזה', delay: 3000 },
+                { message: '3️⃣ הטופס ייפתח! תמלא את הפרטים: לקוח, תיק, תיאור, דקות, תאריך יעד', delay: 5000 },
+                { message: '4️⃣ לחץ "הוסף לתקצוב" לסיום', delay: 7000 }
             ],
             'create_client': [
-                { selector: '#smart-plus-btn', message: '1️⃣ לחץ על כפתור הפלוס', delay: 1000 },
-                { selector: '.action-item[data-action="client"]', message: '2️⃣ בחר "צור תיק חדש"', delay: 3000 }
+                { selector: '.tab-button', message: '1️⃣ ודא שאתה בטאב "לקוחות ותיקים"', delay: 1000 },
+                { selector: '#smartPlusBtn', message: '2️⃣ לחץ על כפתור הפלוס', delay: 3000 },
+                { message: '3️⃣ תמלא: שם לקוח, סוג תיק, פרטים נוספים', delay: 5000 },
+                { message: '4️⃣ לחץ "צור" לשמירה', delay: 7000 }
             ],
             'report_hours': [
-                { selector: '#smart-plus-btn', message: '1️⃣ לחץ על כפתור הפלוס', delay: 1000 },
-                { selector: '.action-item[data-action="timesheet"]', message: '2️⃣ בחר "דווח שעות"', delay: 3000 }
+                { selector: '.tab-button', message: '1️⃣ ודא שאתה בטאב "שעתון"', delay: 1000 },
+                { selector: '#smartPlusBtn', message: '2️⃣ לחץ על כפתור הפלוס', delay: 3000 },
+                { message: '3️⃣ תמלא: תאריך, דקות, לקוח ותיק, תיאור הפעולה', delay: 5000 },
+                { message: '4️⃣ לחץ "הוסף לשעתון" לסיום', delay: 7000 }
             ]
         };
 
