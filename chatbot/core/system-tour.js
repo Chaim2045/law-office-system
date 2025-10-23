@@ -40,9 +40,9 @@ export class SystemTour {
             },
             {
                 title: '📝 הוספת משימה חדשה',
-                text: 'בואו נראה איך מוסיפים משימה: תיאור המשימה, בחירת לקוח ותיק, הגדרת תקצוב ותאריך יעד. לדוגמא: "ייצוג משפטי - ישראל ישראלי"',
-                element: '#smartFormModal',
-                position: 'right',
+                text: 'זה החלון להוספת משימה:\n\n1️⃣ תיאור המשימה - לדוגמא: "ייצוג משפטי - ישראל ישראלי"\n2️⃣ בחרו לקוח ותיק\n3️⃣ הזינו תקצוב שעות\n4️⃣ קבעו תאריך יעד\n\nהכל פשוט ומהיר!',
+                element: null,
+                position: 'center',
                 action: () => {
                     if (typeof openSmartForm === 'function') {
                         openSmartForm();
@@ -145,7 +145,9 @@ export class SystemTour {
         // הרץ action אם יש
         if (step.action) {
             step.action();
-            setTimeout(() => this.renderStep(step), 300);
+            // המתן יותר זמן לשלבים עם דיאלוגים
+            const delay = step.title === '📝 הוספת משימה חדשה' ? 600 : 300;
+            setTimeout(() => this.renderStep(step), delay);
         } else {
             this.renderStep(step);
         }
