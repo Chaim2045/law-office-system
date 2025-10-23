@@ -2324,7 +2324,74 @@ class SystemTour {
         const spotlight = document.querySelector('.tour-spotlight');
         const contentBox = document.querySelector('.tour-content-box');
 
-        // פתרון מקצועי: box-shadow ענקי (כמו Driver.js)
+        // הסרת SVG blur קודם אם קיים
+        const existingSvg = document.getElementById('tour-blur-svg');
+        if (existingSvg) existingSvg.remove();
+
+        // יצירת SVG עם blur filter ומסכה
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = 'tour-blur-svg';
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svg.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+        `;
+
+        // הגדרת filter blur
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        filter.id = 'tour-blur-filter';
+        const feGaussianBlur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+        feGaussianBlur.setAttribute('in', 'SourceGraphic');
+        feGaussianBlur.setAttribute('stdDeviation', '3');
+        filter.appendChild(feGaussianBlur);
+        defs.appendChild(filter);
+
+        // הגדרת mask עם "חור" במקום האלמנט
+        const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask');
+        mask.id = 'tour-mask';
+
+        // רקע לבן (המסך כולו)
+        const maskBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        maskBg.setAttribute('x', '0');
+        maskBg.setAttribute('y', '0');
+        maskBg.setAttribute('width', '100%');
+        maskBg.setAttribute('height', '100%');
+        maskBg.setAttribute('fill', 'white');
+
+        // "חור" שחור במקום האלמנט
+        const maskHole = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        maskHole.setAttribute('x', rect.left - 8);
+        maskHole.setAttribute('y', rect.top - 8);
+        maskHole.setAttribute('width', rect.width + 16);
+        maskHole.setAttribute('height', rect.height + 16);
+        maskHole.setAttribute('rx', '8');
+        maskHole.setAttribute('fill', 'black');
+
+        mask.appendChild(maskBg);
+        mask.appendChild(maskHole);
+        defs.appendChild(mask);
+        svg.appendChild(defs);
+
+        // רקטנגל מטושטש עם המסכה
+        const blurRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        blurRect.setAttribute('x', '0');
+        blurRect.setAttribute('y', '0');
+        blurRect.setAttribute('width', '100%');
+        blurRect.setAttribute('height', '100%');
+        blurRect.setAttribute('fill', 'rgba(0, 0, 0, 0.3)');
+        blurRect.setAttribute('filter', 'url(#tour-blur-filter)');
+        blurRect.setAttribute('mask', 'url(#tour-mask)');
+
+        svg.appendChild(blurRect);
+        document.body.appendChild(svg);
+
+        // עדכון spotlight - רק border ללא shadow
         spotlight.style.cssText = `
             position: fixed;
             top: ${rect.top - 8}px;
@@ -2332,8 +2399,9 @@ class SystemTour {
             width: ${rect.width + 16}px;
             height: ${rect.height + 16}px;
             border-radius: 8px;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.8),
-                        0 0 0 9999px rgba(0, 0, 0, 0.5);
+            border: 3px solid #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3),
+                        0 0 20px rgba(59, 130, 246, 0.6);
             pointer-events: none;
             z-index: 10000;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2350,124 +2418,73 @@ class SystemTour {
 
     /**
      * מיקום תיבת התוכן ביחס לאלמנט - חכם ומותאם
+     * אלגוריתם חדש: בוחר את הצד עם הכי הרבה מקום קודם
      */
     positionContentBox(rect, position) {
         const contentBox = document.querySelector('.tour-content-box');
         const boxWidth = contentBox.offsetWidth || 450;
         const boxHeight = contentBox.offsetHeight;
         const padding = 24;
-        const minGap = 16; // מרווח מינימלי מהאלמנט
+        const minGap = 30; // מרווח גדול מהאלמנט
+
+        // שלב 1: חשב את המרווח הזמין בכל כיוון
+        const availableSpace = {
+            top: rect.top - padding,
+            bottom: window.innerHeight - rect.bottom - padding,
+            left: rect.left - padding,
+            right: window.innerWidth - rect.right - padding
+        };
+
+        // שלב 2: בדוק איזה כיוונים מתאימים לגודל הכרטיסייה
+        const canFit = {
+            top: availableSpace.top >= boxHeight + minGap,
+            bottom: availableSpace.bottom >= boxHeight + minGap,
+            left: availableSpace.left >= boxWidth + minGap,
+            right: availableSpace.right >= boxWidth + minGap
+        };
+
+        // שלב 3: דרג את הכיוונים לפי מרווח זמין (רק כאלה שהכרטיסייה נכנסת)
+        const viablePositions = [
+            { pos: 'bottom', space: availableSpace.bottom, fits: canFit.bottom },
+            { pos: 'top', space: availableSpace.top, fits: canFit.top },
+            { pos: 'right', space: availableSpace.right, fits: canFit.right },
+            { pos: 'left', space: availableSpace.left, fits: canFit.left }
+        ]
+        .filter(p => p.fits) // רק כיוונים שהכרטיסייה נכנסת
+        .sort((a, b) => b.space - a.space); // מיין לפי מרווח (הכי גדול קודם)
+
+        // שלב 4: אם אין כיוון מתאים, השתמש בכיוון עם הכי הרבה מקום
+        const bestPosition = viablePositions.length > 0
+            ? viablePositions[0].pos
+            : ['bottom', 'top', 'right', 'left'].reduce((best, curr) =>
+                availableSpace[curr] > availableSpace[best] ? curr : best
+            );
 
         let top, left;
-        let finalPosition = position;
 
-        // נסה את המיקום המועדף
-        switch (position) {
+        // שלב 5: מקם את הכרטיסייה לפי הכיוון הטוב ביותר
+        switch (bestPosition) {
             case 'bottom':
                 top = rect.bottom + minGap;
                 left = rect.left + (rect.width / 2) - (boxWidth / 2);
-                // אם לא נכנס למטה, נסה למעלה
-                if (top + boxHeight + padding > window.innerHeight) {
-                    finalPosition = 'top';
-                    top = rect.top - boxHeight - minGap;
-                }
                 break;
             case 'top':
                 top = rect.top - boxHeight - minGap;
                 left = rect.left + (rect.width / 2) - (boxWidth / 2);
-                // אם לא נכנס למעלה, נסה למטה
-                if (top < padding) {
-                    finalPosition = 'bottom';
-                    top = rect.bottom + minGap;
-                }
                 break;
             case 'left':
                 top = rect.top + (rect.height / 2) - (boxHeight / 2);
                 left = rect.left - boxWidth - minGap;
-                // אם לא נכנס משמאל, נסה מימין
-                if (left < padding) {
-                    finalPosition = 'right';
-                    left = rect.right + minGap;
-                }
                 break;
             case 'right':
                 top = rect.top + (rect.height / 2) - (boxHeight / 2);
                 left = rect.right + minGap;
-                // אם לא נכנס מימין, נסה משמאל
-                if (left + boxWidth + padding > window.innerWidth) {
-                    finalPosition = 'left';
-                    left = rect.left - boxWidth - minGap;
-                }
                 break;
-            default:
-                top = window.innerHeight / 2 - boxHeight / 2;
-                left = window.innerWidth / 2 - boxWidth / 2;
         }
 
-        // וידוא סופי שהתיבה בתוך המסך
+        // שלב 6: וידוא שהכרטיסייה בתוך המסך (fallback למקרה קיצון)
         top = Math.max(padding, Math.min(top, window.innerHeight - boxHeight - padding));
         left = Math.max(padding, Math.min(left, window.innerWidth - boxWidth - padding));
-
-        // בדיקה אם התיבה מכסה את האלמנט - אם כן, מקם אותה בצד
-        const margin = 30; // מרווח בטיחות גדול יותר
-        const boxRect = {
-            top: top - margin,
-            bottom: top + boxHeight + margin,
-            left: left - margin,
-            right: left + boxWidth + margin
-        };
-
-        const elementRect = {
-            top: rect.top - 8,
-            bottom: rect.bottom + 8,
-            left: rect.left - 8,
-            right: rect.right + 8
-        };
-
-        // בדוק חפיפה עם מרווח בטיחות
-        const overlaps = !(boxRect.right < elementRect.left ||
-                          boxRect.left > elementRect.right ||
-                          boxRect.bottom < elementRect.top ||
-                          boxRect.top > elementRect.bottom);
-
-        if (overlaps) {
-            // יש חפיפה - מצא את המיקום הטוב ביותר
-            const spaceTop = rect.top;
-            const spaceBottom = window.innerHeight - rect.bottom;
-            const spaceLeft = rect.left;
-            const spaceRight = window.innerWidth - rect.right;
-
-            // מיין לפי גודל המרווח
-            const spaces = [
-                { position: 'bottom', space: spaceBottom },
-                { position: 'top', space: spaceTop },
-                { position: 'right', space: spaceRight },
-                { position: 'left', space: spaceLeft }
-            ].sort((a, b) => b.space - a.space);
-
-            // נסה כל מיקום לפי סדר עד שנמצא אחד שעובד
-            for (let i = 0; i < spaces.length; i++) {
-                const bestPos = spaces[i].position;
-
-                if (bestPos === 'bottom' && spaceBottom > boxHeight + padding * 2) {
-                    top = rect.bottom + minGap + 10;
-                    left = Math.max(padding, Math.min(rect.left + (rect.width / 2) - (boxWidth / 2), window.innerWidth - boxWidth - padding));
-                    break;
-                } else if (bestPos === 'top' && spaceTop > boxHeight + padding * 2) {
-                    top = rect.top - boxHeight - minGap - 10;
-                    left = Math.max(padding, Math.min(rect.left + (rect.width / 2) - (boxWidth / 2), window.innerWidth - boxWidth - padding));
-                    break;
-                } else if (bestPos === 'right' && spaceRight > boxWidth + padding * 2) {
-                    left = rect.right + minGap + 20;
-                    top = Math.max(padding, Math.min(rect.top + (rect.height / 2) - (boxHeight / 2), window.innerHeight - boxHeight - padding));
-                    break;
-                } else if (bestPos === 'left' && spaceLeft > boxWidth + padding * 2) {
-                    left = rect.left - boxWidth - minGap - 20;
-                    top = Math.max(padding, Math.min(rect.top + (rect.height / 2) - (boxHeight / 2), window.innerHeight - boxHeight - padding));
-                    break;
-                }
-            }
-        }
 
         contentBox.style.top = `${top}px`;
         contentBox.style.left = `${left}px`;
@@ -2556,6 +2573,11 @@ class SystemTour {
         const existingOverlay = document.getElementById('system-tour-overlay');
         if (existingOverlay) {
             existingOverlay.remove();
+        }
+        // הסרת SVG blur
+        const existingSvg = document.getElementById('tour-blur-svg');
+        if (existingSvg) {
+            existingSvg.remove();
         }
     }
 
