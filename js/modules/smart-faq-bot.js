@@ -2324,51 +2324,20 @@ class SystemTour {
         const spotlight = document.querySelector('.tour-spotlight');
         const contentBox = document.querySelector('.tour-content-box');
 
-        // עדכון spotlight - האלמנט ברור והמסך מטושטש
+        // פתרון מקצועי: box-shadow ענקי (כמו Driver.js)
         spotlight.style.cssText = `
             position: fixed;
             top: ${rect.top - 8}px;
             left: ${rect.left - 8}px;
             width: ${rect.width + 16}px;
             height: ${rect.height + 16}px;
-            border: 3px solid #3b82f6;
             border-radius: 8px;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5),
-                        0 0 20px 2px rgba(59, 130, 246, 0.6),
-                        0 0 0 9999px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.8),
+                        0 0 0 9999px rgba(0, 0, 0, 0.5);
             pointer-events: none;
             z-index: 10000;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         `;
-
-        // הסרת blur layers קודמים
-        document.querySelectorAll('.tour-blur-panel').forEach(el => el.remove());
-
-        // יצירת 4 panels מטושטשים סביב האלמנט
-        const panels = [
-            { name: 'top', top: 0, left: 0, width: '100%', height: `${rect.top}px` },
-            { name: 'bottom', top: `${rect.bottom}px`, left: 0, width: '100%', height: `calc(100% - ${rect.bottom}px)` },
-            { name: 'left', top: `${rect.top}px`, left: 0, width: `${rect.left}px`, height: `${rect.height}px` },
-            { name: 'right', top: `${rect.top}px`, left: `${rect.right}px`, width: `calc(100% - ${rect.right}px)`, height: `${rect.height}px` }
-        ];
-
-        panels.forEach(panel => {
-            const div = document.createElement('div');
-            div.className = 'tour-blur-panel';
-            div.style.cssText = `
-                position: fixed;
-                top: ${panel.top};
-                left: ${panel.left};
-                width: ${panel.width};
-                height: ${panel.height};
-                backdrop-filter: blur(4px);
-                -webkit-backdrop-filter: blur(4px);
-                background: rgba(0, 0, 0, 0.1);
-                z-index: 9999;
-                pointer-events: none;
-            `;
-            document.body.appendChild(div);
-        });
 
         // גלילה לאלמנט
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2588,8 +2557,6 @@ class SystemTour {
         if (existingOverlay) {
             existingOverlay.remove();
         }
-        // הסרת blur panels
-        document.querySelectorAll('.tour-blur-panel').forEach(el => el.remove());
     }
 
     /**
@@ -2602,16 +2569,6 @@ class SystemTour {
         style.id = 'system-tour-styles';
         style.textContent = `
             #system-tour-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 9999;
-                pointer-events: none;
-            }
-
-            .tour-backdrop-blur {
                 position: fixed;
                 top: 0;
                 left: 0;
