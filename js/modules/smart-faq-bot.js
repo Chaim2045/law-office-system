@@ -934,8 +934,20 @@ class SmartFAQBot {
             }
 
             .faq-accordion-icon {
-                font-size: 28px;
                 flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+            }
+
+            .faq-accordion-icon svg {
+                color: #6b7280;
+            }
+
+            .faq-accordion-item.special .faq-accordion-icon svg {
+                color: white;
             }
 
             .faq-accordion-title-group {
@@ -1030,9 +1042,59 @@ class SmartFAQBot {
 
             .faq-question-item.expanded .faq-question-answer {
                 max-height: 1500px;
-                padding: 16px 20px 20px 20px;
+                padding: 20px 24px 24px 24px;
                 background: #f9fafb;
                 border-top: 1px solid #e5e7eb;
+                line-height: 1.7;
+            }
+
+            .faq-question-answer strong {
+                display: block;
+                font-size: 15px;
+                font-weight: 600;
+                color: #1f2937;
+                margin-bottom: 12px;
+            }
+
+            .faq-question-answer p {
+                margin: 12px 0;
+                color: #374151;
+                font-size: 14px;
+            }
+
+            .faq-question-answer ul,
+            .faq-question-answer ol {
+                margin: 12px 0;
+                padding-right: 24px;
+                color: #374151;
+                font-size: 14px;
+            }
+
+            .faq-question-answer li {
+                margin: 8px 0;
+                line-height: 1.6;
+            }
+
+            .faq-question-answer em {
+                display: block;
+                margin-top: 12px;
+                padding: 12px;
+                background: white;
+                border-radius: 8px;
+                border: 1px solid #e5e7eb;
+                font-size: 13px;
+                color: #6b7280;
+                font-style: normal;
+            }
+
+            .faq-question-answer kbd {
+                background: white;
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                color: #374151;
             }
 
             /* כפתור חזור */
@@ -1152,9 +1214,14 @@ class SmartFAQBot {
             }
 
             .faq-no-notifications-icon {
-                font-size: 64px;
                 margin-bottom: 16px;
                 opacity: 0.5;
+                display: flex;
+                justify-content: center;
+            }
+
+            .faq-no-notifications-icon svg {
+                color: #9ca3af;
             }
 
             .faq-no-notifications h3 {
@@ -1228,13 +1295,32 @@ class SmartFAQBot {
             }
 
             .faq-notification-icon {
-                font-size: 24px;
                 flex-shrink: 0;
                 width: 32px;
                 height: 32px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+            }
+
+            .faq-notification-icon svg {
+                color: #6b7280;
+            }
+
+            .faq-notification-item.blocked .faq-notification-icon svg {
+                color: #ef4444;
+            }
+
+            .faq-notification-item.critical .faq-notification-icon svg {
+                color: #f59e0b;
+            }
+
+            .faq-notification-item.urgent .faq-notification-icon svg {
+                color: #3b82f6;
+            }
+
+            .faq-notification-item.success .faq-notification-icon svg {
+                color: #10b981;
             }
 
             .faq-notification-content {
@@ -1383,7 +1469,12 @@ class SmartFAQBot {
         if (notifications.length === 0) {
             html = `
                 <div class="faq-no-notifications">
-                    <div class="faq-no-notifications-icon">🔔</div>
+                    <div class="faq-no-notifications-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </div>
                     <h3>אין התראות</h3>
                     <p>כל ההתראות יופיעו כאן</p>
                 </div>
@@ -1400,15 +1491,32 @@ class SmartFAQBot {
             `;
 
             const iconMap = {
-                blocked: '🚫',
-                critical: '⚠️',
-                urgent: '⏰',
-                success: '✅',
-                info: 'ℹ️'
+                blocked: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </svg>`,
+                critical: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>`,
+                urgent: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>`,
+                success: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>`,
+                info: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>`
             };
 
             notifications.forEach(notification => {
-                const icon = iconMap[notification.type] || 'ℹ️';
+                const icon = iconMap[notification.type] || iconMap.info;
                 const urgentClass = notification.urgent ? 'urgent' : '';
 
                 html += `
@@ -1539,7 +1647,13 @@ class SmartFAQBot {
                 <!-- סיור במערכת -->
                 <div class="faq-accordion-item special">
                     <button class="faq-accordion-header" onclick="smartFAQBot.startSystemTourFromBot()">
-                        <div class="faq-accordion-icon">🎯</div>
+                        <div class="faq-accordion-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 16v-4"/>
+                                <path d="M12 8h.01"/>
+                            </svg>
+                        </div>
                         <div class="faq-accordion-title-group">
                             <div class="faq-accordion-title">סיור במערכת</div>
                             <div class="faq-accordion-subtitle">למידה מודרכת של כל התכונות</div>
@@ -1552,11 +1666,56 @@ class SmartFAQBot {
         `;
 
         const categories = [
-            { id: 'clients', icon: '👤', title: 'תיקים ולקוחות', count: 4 },
-            { id: 'tasks', icon: '📝', title: 'משימות ותקצוב', count: 6 },
-            { id: 'timesheet', icon: '⏱️', title: 'שעתון ודיווח', count: 5 },
-            { id: 'reports', icon: '📊', title: 'דוחות וניתוחים', count: 3 },
-            { id: 'system', icon: '⚙️', title: 'הגדרות ומערכת', count: 4 }
+            {
+                id: 'clients',
+                icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>`,
+                title: 'תיקים ולקוחות',
+                count: 4
+            },
+            {
+                id: 'tasks',
+                icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H2v7h7V5z"/>
+                    <path d="M9 14H2v7h7v-7z"/>
+                    <path d="M22 5h-7v7h7V5z"/>
+                    <path d="M22 14h-7v7h7v-7z"/>
+                </svg>`,
+                title: 'משימות ותקצוב',
+                count: 6
+            },
+            {
+                id: 'timesheet',
+                icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>`,
+                title: 'שעתון ודיווח',
+                count: 5
+            },
+            {
+                id: 'reports',
+                icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>`,
+                title: 'דוחות וניתוחים',
+                count: 3
+            },
+            {
+                id: 'system',
+                icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m5.2-14.8l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m14.8 5.2l-4.2-4.2m0-6l-4.2-4.2"/>
+                </svg>`,
+                title: 'הגדרות ומערכת',
+                count: 4
+            }
         ];
 
         categories.forEach(cat => {
