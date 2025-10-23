@@ -328,12 +328,42 @@ export class SystemTour {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         `;
 
-        // גלילה לאלמנט
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // גלילה לאלמנט - אבל רק אם הוא לא טאב או header
+        // (טאבים צריכים להישאר תמיד למעלה וגלויים)
+        const isTabOrHeader = element.classList.contains('tab-button') ||
+                             element.classList.contains('main-header') ||
+                             element.classList.contains('user-section');
 
-        // מיקום תיבת התוכן
+        if (!isTabOrHeader) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // מיקום תיבת התוכן - המתן לסיום אנימציה
         setTimeout(() => {
-            this.positionContentBox(rect, position);
+            // קבל rect מעודכן אחרי scroll
+            const updatedRect = element.getBoundingClientRect();
+            this.positionContentBox(updatedRect, position);
+
+            // עדכן גם את ה-SVG mask
+            const existingSvg = document.getElementById('tour-blur-svg');
+            if (existingSvg) {
+                const maskHole = existingSvg.querySelector('mask rect:nth-child(2)');
+                if (maskHole) {
+                    maskHole.setAttribute('x', updatedRect.left - 8);
+                    maskHole.setAttribute('y', updatedRect.top - 8);
+                    maskHole.setAttribute('width', updatedRect.width + 16);
+                    maskHole.setAttribute('height', updatedRect.height + 16);
+                }
+            }
+
+            // עדכן גם את ה-spotlight
+            const spotlightElement = document.querySelector('.tour-spotlight');
+            if (spotlightElement) {
+                spotlightElement.style.top = `${updatedRect.top - 8}px`;
+                spotlightElement.style.left = `${updatedRect.left - 8}px`;
+                spotlightElement.style.width = `${updatedRect.width + 16}px`;
+                spotlightElement.style.height = `${updatedRect.height + 16}px`;
+            }
         }, 100);
     }
 
