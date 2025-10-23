@@ -41,8 +41,8 @@ export class SystemTour {
             {
                 title: '📝 הוספת משימה חדשה',
                 text: 'זה החלון להוספת משימה:\n\n1️⃣ תיאור המשימה - לדוגמא: "ייצוג משפטי - ישראל ישראלי"\n2️⃣ בחרו לקוח ותיק\n3️⃣ הזינו תקצוב שעות\n4️⃣ קבעו תאריך יעד\n\nהכל פשוט ומהיר!',
-                element: null,
-                position: 'center',
+                element: '#smartFormModal .modal-content',
+                position: 'left',
                 action: () => {
                     if (typeof openSmartForm === 'function') {
                         openSmartForm();
