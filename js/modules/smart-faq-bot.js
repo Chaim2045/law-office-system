@@ -470,24 +470,35 @@ class SmartFAQBot {
                     <!-- הודעות יופיעו כאן -->
                 </div>
 
-                <div class="faq-bot-suggestions" id="faq-bot-suggestions">
-                    <!-- הצעות יופיעו כאן -->
+                <!-- טאבים תחתונים -->
+                <div class="faq-bot-tabs" id="faq-bot-tabs">
+                    <button class="faq-tab active" data-tab="home">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        <span>הביתה</span>
+                    </button>
+                    <button class="faq-tab" data-tab="notifications">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                        <span>התראות</span>
+                        <span class="notification-badge hidden" id="faq-notification-badge">0</span>
+                    </button>
+                    <button class="faq-tab" data-tab="help">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <span>עזרה</span>
+                    </button>
                 </div>
 
-                <div class="faq-bot-input-container">
-                    <input
-                        type="text"
-                        id="faq-bot-input"
-                        class="faq-bot-input"
-                        placeholder="שאל שאלה או חפש נושא..."
-                        autocomplete="off"
-                    />
-                    <button class="faq-bot-send" id="faq-bot-send">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
-                    </button>
+                <div class="faq-bot-suggestions" id="faq-bot-suggestions">
+                    <!-- שאלות והצעות יופיעו כאן -->
                 </div>
             </div>
         `;
@@ -739,56 +750,71 @@ class SmartFAQBot {
                 box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
             }
 
-            .faq-bot-input-container {
+            /* טאבים תחתונים - כמו Claude.ai */
+            .faq-bot-tabs {
                 display: flex;
-                gap: 8px;
-                padding: 16px;
-                background: white;
+                justify-content: space-around;
                 border-top: 1px solid #e5e7eb;
+                background: #f9fafb;
+                padding: 8px 0;
             }
 
-            .faq-bot-input {
+            .faq-tab {
                 flex: 1;
-                border: 2px solid #e5e7eb;
-                border-radius: 24px;
-                padding: 10px 16px;
-                font-size: 14px;
-                outline: none;
-                transition: border-color 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                padding: 8px 12px;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                transition: all 0.2s;
+                color: #6b7280;
+                font-size: 12px;
+                font-weight: 500;
+                border-radius: 8px;
+                position: relative;
+            }
+
+            .faq-tab svg {
+                width: 20px;
+                height: 20px;
+                stroke-width: 2;
+                transition: all 0.2s;
+            }
+
+            .faq-tab:hover {
+                background: #e5e7eb;
                 color: #374151;
             }
 
-            .faq-bot-input:focus {
-                border-color: #3b82f6;
+            .faq-tab.active {
+                color: #3b82f6;
+                background: white;
             }
 
-            .faq-bot-input::placeholder {
-                color: #9ca3af;
+            .faq-tab.active svg {
+                stroke: #3b82f6;
             }
 
-            .faq-bot-send {
-                width: 44px;
-                height: 44px;
-                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                border: none;
-                border-radius: 50%;
+            /* תג מספר ההתראות */
+            .notification-badge {
+                position: absolute;
+                top: 4px;
+                right: 8px;
+                background: #ef4444;
                 color: white;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: all 0.2s;
-                flex-shrink: 0;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: 10px;
+                min-width: 18px;
+                text-align: center;
             }
 
-            .faq-bot-send:hover {
-                transform: scale(1.1);
-                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-            }
-
-            .faq-bot-send:active {
-                transform: scale(0.95);
+            .notification-badge.hidden {
+                display: none;
             }
 
             .faq-typing {
@@ -851,6 +877,164 @@ class SmartFAQBot {
                 background: #9ca3af;
             }
 
+            /* קטגוריות - סגנון Claude.ai */
+            .faq-categories {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 16px;
+            }
+
+            .faq-category-btn {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 16px;
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-align: right;
+            }
+
+            .faq-category-btn:hover {
+                background: #f9fafb;
+                border-color: #3b82f6;
+                transform: translateX(-2px);
+            }
+
+            .faq-category-icon {
+                font-size: 28px;
+                flex-shrink: 0;
+            }
+
+            .faq-category-content {
+                flex: 1;
+            }
+
+            .faq-category-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: #1f2937;
+                margin-bottom: 4px;
+            }
+
+            .faq-category-count {
+                font-size: 13px;
+                color: #6b7280;
+            }
+
+            .faq-category-btn svg {
+                color: #9ca3af;
+                flex-shrink: 0;
+            }
+
+            /* כפתור חזור */
+            .faq-back-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 16px;
+                border-bottom: 1px solid #e5e7eb;
+                background: #f9fafb;
+            }
+
+            .faq-back-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 12px;
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 14px;
+                color: #374151;
+                transition: all 0.2s;
+            }
+
+            .faq-back-btn:hover {
+                background: #f3f4f6;
+                border-color: #3b82f6;
+                color: #3b82f6;
+            }
+
+            .faq-back-btn svg {
+                flex-shrink: 0;
+            }
+
+            .faq-back-header h3 {
+                margin: 0;
+                font-size: 18px;
+                font-weight: 600;
+                color: #1f2937;
+            }
+
+            /* רשימת שאלות */
+            .faq-question-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                padding: 16px;
+            }
+
+            .faq-question-btn {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 14px 16px;
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 10px;
+                cursor: pointer;
+                text-align: right;
+                font-size: 14px;
+                color: #374151;
+                transition: all 0.2s;
+            }
+
+            .faq-question-btn:hover {
+                background: #f9fafb;
+                border-color: #3b82f6;
+                color: #3b82f6;
+            }
+
+            .faq-question-btn svg {
+                color: #9ca3af;
+                flex-shrink: 0;
+            }
+
+            /* פעולות תשובה */
+            .faq-answer-actions {
+                padding: 16px;
+                border-top: 1px solid #e5e7eb;
+            }
+
+            .faq-back-btn-large {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                width: 100%;
+                padding: 12px 20px;
+                background: white;
+                border: 2px solid #e5e7eb;
+                border-radius: 10px;
+                cursor: pointer;
+                font-size: 15px;
+                font-weight: 500;
+                color: #374151;
+                transition: all 0.2s;
+            }
+
+            .faq-back-btn-large:hover {
+                background: #f9fafb;
+                border-color: #3b82f6;
+                color: #3b82f6;
+            }
+
             /* responsive */
             @media (max-width: 768px) {
                 .faq-bot-container {
@@ -873,19 +1057,97 @@ class SmartFAQBot {
         const button = document.getElementById('faq-bot-button');
         const closeBtn = document.getElementById('faq-bot-close');
         const newChatBtn = document.getElementById('faq-bot-new-chat');
-        const sendBtn = document.getElementById('faq-bot-send');
-        const input = document.getElementById('faq-bot-input');
+        const tabs = document.querySelectorAll('.faq-tab');
 
         button.addEventListener('click', () => this.toggleBot());
         closeBtn.addEventListener('click', () => this.toggleBot());
         newChatBtn.addEventListener('click', () => this.startNewChat());
-        sendBtn.addEventListener('click', () => this.handleUserInput());
 
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleUserInput();
+        // event listeners לטאבים
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.getAttribute('data-tab');
+                this.switchTab(tabName);
+            });
+        });
+    }
+
+    /**
+     * מעבר בין טאבים
+     */
+    switchTab(tabName) {
+        // עדכן את הטאבים הפעילים
+        const tabs = document.querySelectorAll('.faq-tab');
+        tabs.forEach(tab => {
+            if (tab.getAttribute('data-tab') === tabName) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
             }
         });
+
+        // הצג תוכן מתאים
+        const messagesContainer = document.getElementById('faq-bot-messages');
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        switch(tabName) {
+            case 'home':
+                this.showHomeTab();
+                break;
+            case 'notifications':
+                this.showNotificationsTab();
+                break;
+            case 'help':
+                this.showHelpTab();
+                break;
+        }
+    }
+
+    /**
+     * הצגת טאב הבית - שאלות נפוצות
+     */
+    showHomeTab() {
+        const messagesContainer = document.getElementById('faq-bot-messages');
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        // נקה הודעות קודמות
+        messagesContainer.innerHTML = '';
+
+        // הצג קטגוריות שאלות
+        this.showQuestionCategories();
+    }
+
+    /**
+     * הצגת טאב התראות
+     */
+    showNotificationsTab() {
+        const messagesContainer = document.getElementById('faq-bot-messages');
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        // נקה
+        messagesContainer.innerHTML = '';
+        suggestionsContainer.innerHTML = '';
+
+        // TODO: להוסיף התראות מהמערכת
+        this.addBotMessage(`
+            <strong>🔔 התראות</strong>
+            <p>כאן תופענה התראות מהמערכת.</p>
+            <p>בקרוב: משימות דחופות, תאריכי יעד ועוד...</p>
+        `);
+    }
+
+    /**
+     * הצגת טאב עזרה - מרכז העזרה
+     */
+    showHelpTab() {
+        const messagesContainer = document.getElementById('faq-bot-messages');
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        // נקה
+        messagesContainer.innerHTML = '';
+
+        // הצג קטגוריות עזרה
+        this.showQuestionCategories();
     }
 
     /**
@@ -899,25 +1161,8 @@ class SmartFAQBot {
         // נקה היסטוריה
         this.chatHistory = [];
 
-        // הצג הודעת פתיחה מחדש
-        const userName = this.getUserName();
-        const greeting = userName ? `<strong>שלום ${userName}! 👋</strong>` : `<strong>שלום! 👋</strong>`;
-
-        this.addBotMessage(`
-            ${greeting}
-            <p>אני כאן לעזור לך! 😊</p>
-            <p>מה תרצה לדעת?</p>
-        `);
-
-        // הצג הצעות
-        this.showContextualSuggestions();
-
-        // הצג הצעה פרואקטיבית (אם יש)
-        this.showProactiveSuggestion();
-
-        // נקה את שדה הקלט
-        document.getElementById('faq-bot-input').value = '';
-        document.getElementById('faq-bot-input').focus();
+        // חזור לטאב הבית
+        this.switchTab('home');
     }
 
     toggleBot() {
@@ -926,7 +1171,6 @@ class SmartFAQBot {
 
         if (this.isOpen) {
             container.classList.remove('hidden');
-            document.getElementById('faq-bot-input').focus();
 
             // עדכן סטטוס עם שם המשתמש
             const userName = this.getUserName();
@@ -935,30 +1179,152 @@ class SmartFAQBot {
                 statusElement.textContent = `עוזר ל${userName}`;
             }
 
-            // הודעת פתיחה
+            // הצג טאב הבית אם זו הפעם הראשונה
             if (this.chatHistory.length === 0) {
-                const greeting = userName
-                    ? `<strong>שלום ${userName}! 👋</strong>`
-                    : `<strong>שלום! 👋</strong>`;
-
-                this.addBotMessage(`
-                    ${greeting}
-                    <p>אני העוזר המשפטי החכם שלך.</p>
-                    <p>איך אוכל לעזור לך היום?</p>
-                `);
-                this.showContextualSuggestions();
-
-                // הצג הצעה פרואקטיבית (אם יש)
-                this.showProactiveSuggestion();
+                this.showHomeTab();
             }
         } else {
             container.classList.add('hidden');
         }
     }
 
-    handleUserInput() {
-        const input = document.getElementById('faq-bot-input');
-        const query = input.value.trim();
+    /**
+     * הצגת קטגוריות שאלות - דף הבית
+     */
+    showQuestionCategories() {
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        const categories = [
+            { id: 'clients', icon: '👤', title: 'תיקים ולקוחות', count: 4 },
+            { id: 'tasks', icon: '📝', title: 'משימות ותקצוב', count: 6 },
+            { id: 'timesheet', icon: '⏱️', title: 'שעתון ודיווח', count: 5 },
+            { id: 'reports', icon: '📊', title: 'דוחות וניתוחים', count: 3 },
+            { id: 'system', icon: '⚙️', title: 'הגדרות ומערכת', count: 4 }
+        ];
+
+        let html = '<div class="faq-categories">';
+
+        categories.forEach(cat => {
+            html += `
+                <button class="faq-category-btn" onclick="smartFAQBot.showCategoryQuestions('${cat.id}')">
+                    <div class="faq-category-icon">${cat.icon}</div>
+                    <div class="faq-category-content">
+                        <div class="faq-category-title">${cat.title}</div>
+                        <div class="faq-category-count">${cat.count} מאמרים</div>
+                    </div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            `;
+        });
+
+        html += '</div>';
+        suggestionsContainer.innerHTML = html;
+    }
+
+    /**
+     * הצגת שאלות בקטגוריה מסוימת
+     */
+    showCategoryQuestions(categoryId) {
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+        const messagesContainer = document.getElementById('faq-bot-messages');
+
+        // מצא את כל השאלות בקטגוריה
+        const categoryQuestions = [];
+
+        for (const cat in this.faqDatabase) {
+            this.faqDatabase[cat].forEach(item => {
+                if (item.category === categoryId || cat === categoryId) {
+                    categoryQuestions.push(item);
+                }
+            });
+        }
+
+        // נקה את ההודעות
+        messagesContainer.innerHTML = '';
+
+        // הצג כותרת
+        const categoryNames = {
+            'clients': '👤 תיקים ולקוחות',
+            'tasks': '📝 משימות ותקצוב',
+            'timesheet': '⏱️ שעתון ודיווח',
+            'reports': '📊 דוחות וניתוחים',
+            'system': '⚙️ הגדרות ומערכת'
+        };
+
+        // כפתור חזור + רשימת שאלות
+        let html = `
+            <div class="faq-back-header">
+                <button class="faq-back-btn" onclick="smartFAQBot.showQuestionCategories()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    חזור
+                </button>
+                <h3>${categoryNames[categoryId] || 'שאלות'}</h3>
+            </div>
+            <div class="faq-question-list">
+        `;
+
+        categoryQuestions.forEach((item, index) => {
+            html += `
+                <button class="faq-question-btn" onclick="smartFAQBot.showAnswer(${index}, '${categoryId}')">
+                    <span>${item.question}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            `;
+        });
+
+        html += '</div>';
+        suggestionsContainer.innerHTML = html;
+    }
+
+    /**
+     * הצגת תשובה לשאלה
+     */
+    showAnswer(questionIndex, categoryId) {
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+        const messagesContainer = document.getElementById('faq-bot-messages');
+
+        // מצא את השאלה
+        const categoryQuestions = [];
+        for (const cat in this.faqDatabase) {
+            this.faqDatabase[cat].forEach(item => {
+                if (item.category === categoryId || cat === categoryId) {
+                    categoryQuestions.push(item);
+                }
+            });
+        }
+
+        const question = categoryQuestions[questionIndex];
+        if (!question) return;
+
+        // נקה
+        messagesContainer.innerHTML = '';
+
+        // הצג את התשובה
+        this.addBotMessage(question.answer);
+
+        // כפתור חזור
+        suggestionsContainer.innerHTML = `
+            <div class="faq-answer-actions">
+                <button class="faq-back-btn-large" onclick="smartFAQBot.showCategoryQuestions('${categoryId}')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    חזור לרשימת השאלות
+                </button>
+            </div>
+        `;
+    }
+
+    handleUserInput_OLD() {
+        // פונקציה ישנה - לא בשימוש יותר
+        const input = null; // document.getElementById('faq-bot-input');
+        const query = ''; // input.value.trim();
 
         if (!query) return;
 
