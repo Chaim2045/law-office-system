@@ -491,6 +491,12 @@ class SmartFAQBot {
                         <span>התראות</span>
                         <span class="notification-badge hidden" id="faq-notification-badge">0</span>
                     </button>
+                    <button class="faq-tab" data-tab="tour">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <span>סיור</span>
+                    </button>
                     <button class="faq-tab" data-tab="help">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
@@ -904,18 +910,6 @@ class SmartFAQBot {
                 transition: all 0.3s ease;
             }
 
-            .faq-accordion-item.special {
-                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            }
-
-            .faq-accordion-item.special .faq-accordion-header {
-                color: white;
-            }
-
-            .faq-accordion-item.special .faq-accordion-subtitle {
-                color: rgba(255, 255, 255, 0.9);
-            }
-
             .faq-accordion-header {
                 width: 100%;
                 display: flex;
@@ -946,10 +940,6 @@ class SmartFAQBot {
                 color: #6b7280;
             }
 
-            .faq-accordion-item.special .faq-accordion-icon svg {
-                color: white;
-            }
-
             .faq-accordion-title-group {
                 flex: 1;
             }
@@ -959,10 +949,6 @@ class SmartFAQBot {
                 font-weight: 600;
                 color: #1f2937;
                 margin-bottom: 4px;
-            }
-
-            .faq-accordion-item.special .faq-accordion-title {
-                color: white;
             }
 
             .faq-accordion-subtitle {
@@ -1369,6 +1355,94 @@ class SmartFAQBot {
                 color: #ef4444;
             }
 
+            /* ========== טאב סיור ========== */
+            .faq-tour-screen {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 60px 30px;
+                text-align: center;
+                min-height: 400px;
+            }
+
+            .faq-tour-icon {
+                margin-bottom: 24px;
+                opacity: 0.8;
+            }
+
+            .faq-tour-icon svg {
+                color: #3b82f6;
+            }
+
+            .faq-tour-screen h2 {
+                margin: 0 0 12px 0;
+                font-size: 24px;
+                font-weight: 700;
+                color: #1f2937;
+            }
+
+            .faq-tour-screen p {
+                margin: 0 0 32px 0;
+                font-size: 15px;
+                color: #6b7280;
+                line-height: 1.6;
+                max-width: 320px;
+            }
+
+            .faq-tour-start-btn {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 14px 32px;
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            }
+
+            .faq-tour-start-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            }
+
+            .faq-tour-start-btn:active {
+                transform: translateY(0);
+            }
+
+            .faq-tour-start-btn svg {
+                flex-shrink: 0;
+            }
+
+            .faq-tour-features {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                margin-top: 32px;
+                padding-top: 32px;
+                border-top: 1px solid #e5e7eb;
+                width: 100%;
+                max-width: 280px;
+            }
+
+            .faq-tour-feature {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-size: 14px;
+                color: #6b7280;
+            }
+
+            .faq-tour-feature svg {
+                color: #9ca3af;
+                flex-shrink: 0;
+            }
+
             /* responsive */
             @media (max-width: 768px) {
                 .faq-bot-container {
@@ -1430,6 +1504,9 @@ class SmartFAQBot {
                 break;
             case 'notifications':
                 this.showNotificationsTab();
+                break;
+            case 'tour':
+                this.showTourTab();
                 break;
             case 'help':
                 this.showHelpTab();
@@ -1581,6 +1658,62 @@ class SmartFAQBot {
     }
 
     /**
+     * הצגת טאב סיור
+     */
+    showTourTab() {
+        const messagesContainer = document.getElementById('faq-bot-messages');
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        // נקה
+        messagesContainer.innerHTML = '';
+
+        // הצג מסך סיור
+        let html = `
+            <div class="faq-tour-screen">
+                <div class="faq-tour-icon">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <h2>סיור במערכת</h2>
+                <p>למידה מודרכת של כל התכונות והיכולות של מערכת ניהול משרד עורכי הדין</p>
+
+                <button class="faq-tour-start-btn" onclick="smartFAQBot.startSystemTourFromBot()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    התחל סיור
+                </button>
+
+                <div class="faq-tour-features">
+                    <div class="faq-tour-feature">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                        <span>9 שלבים מודרכים</span>
+                    </div>
+                    <div class="faq-tour-feature">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span>כ-5 דקות</span>
+                    </div>
+                    <div class="faq-tour-feature">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <span>למידה אינטראקטיבית</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        suggestionsContainer.innerHTML = html;
+    }
+
+    /**
      * הצגת טאב עזרה - מרכז העזרה
      */
     showHelpTab() {
@@ -1641,29 +1774,7 @@ class SmartFAQBot {
     showQuestionCategories() {
         const suggestionsContainer = document.getElementById('faq-bot-suggestions');
 
-        // כפתור סיור במערכת
-        let html = `
-            <div class="faq-accordion-container">
-                <!-- סיור במערכת -->
-                <div class="faq-accordion-item special">
-                    <button class="faq-accordion-header" onclick="smartFAQBot.startSystemTourFromBot()">
-                        <div class="faq-accordion-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 16v-4"/>
-                                <path d="M12 8h.01"/>
-                            </svg>
-                        </div>
-                        <div class="faq-accordion-title-group">
-                            <div class="faq-accordion-title">סיור במערכת</div>
-                            <div class="faq-accordion-subtitle">למידה מודרכת של כל התכונות</div>
-                        </div>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="9 18 15 12 9 6"/>
-                        </svg>
-                    </button>
-                </div>
-        `;
+        let html = '<div class="faq-accordion-container">';
 
         const categories = [
             {
