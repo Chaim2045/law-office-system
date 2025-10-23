@@ -891,57 +891,148 @@ class SmartFAQBot {
                 background: #9ca3af;
             }
 
-            /* קטגוריות - סגנון Claude.ai */
-            .faq-categories {
+            /* ========== אקורדיון מתרחב - כמו Claude.ai ========== */
+            .faq-accordion-container {
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
-                padding: 16px;
+                gap: 2px;
+                background: #e5e7eb;
             }
 
-            .faq-category-btn {
+            .faq-accordion-item {
+                background: white;
+                transition: all 0.3s ease;
+            }
+
+            .faq-accordion-item.special {
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            }
+
+            .faq-accordion-item.special .faq-accordion-header {
+                color: white;
+            }
+
+            .faq-accordion-item.special .faq-accordion-subtitle {
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .faq-accordion-header {
+                width: 100%;
                 display: flex;
                 align-items: center;
                 gap: 12px;
                 padding: 16px;
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 12px;
+                background: transparent;
+                border: none;
                 cursor: pointer;
-                transition: all 0.2s;
                 text-align: right;
+                transition: all 0.2s;
             }
 
-            .faq-category-btn:hover {
+            .faq-accordion-item:not(.special) .faq-accordion-header:hover {
                 background: #f9fafb;
-                border-color: #3b82f6;
-                transform: translateX(-2px);
             }
 
-            .faq-category-icon {
+            .faq-accordion-icon {
                 font-size: 28px;
                 flex-shrink: 0;
             }
 
-            .faq-category-content {
+            .faq-accordion-title-group {
                 flex: 1;
             }
 
-            .faq-category-title {
+            .faq-accordion-title {
                 font-size: 16px;
                 font-weight: 600;
                 color: #1f2937;
                 margin-bottom: 4px;
             }
 
-            .faq-category-count {
+            .faq-accordion-item.special .faq-accordion-title {
+                color: white;
+            }
+
+            .faq-accordion-subtitle {
                 font-size: 13px;
                 color: #6b7280;
             }
 
-            .faq-category-btn svg {
+            .faq-accordion-chevron {
                 color: #9ca3af;
                 flex-shrink: 0;
+                transition: transform 0.3s ease;
+            }
+
+            .faq-accordion-item.expanded .faq-accordion-chevron {
+                transform: rotate(180deg);
+            }
+
+            .faq-accordion-content {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+
+            .faq-accordion-item.expanded .faq-accordion-content {
+                max-height: 2000px;
+            }
+
+            .faq-accordion-questions {
+                padding: 8px 0;
+            }
+
+            /* שאלות בתוך קטגוריה */
+            .faq-question-item {
+                background: white;
+                transition: all 0.3s ease;
+            }
+
+            .faq-question-header {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 14px 20px;
+                background: transparent;
+                border: none;
+                border-top: 1px solid #f3f4f6;
+                cursor: pointer;
+                text-align: right;
+                font-size: 14px;
+                font-weight: 500;
+                color: #374151;
+                transition: all 0.2s;
+            }
+
+            .faq-question-header:hover {
+                background: #f9fafb;
+                color: #3b82f6;
+            }
+
+            .faq-question-chevron {
+                color: #9ca3af;
+                flex-shrink: 0;
+                transition: transform 0.3s ease;
+            }
+
+            .faq-question-item.expanded .faq-question-chevron {
+                transform: rotate(180deg);
+            }
+
+            .faq-question-answer {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+                padding: 0 20px;
+            }
+
+            .faq-question-item.expanded .faq-question-answer {
+                max-height: 1500px;
+                padding: 16px 20px 20px 20px;
+                background: #f9fafb;
+                border-top: 1px solid #e5e7eb;
             }
 
             /* כפתור חזור */
@@ -1437,10 +1528,28 @@ class SmartFAQBot {
     }
 
     /**
-     * הצגת קטגוריות שאלות - דף הבית
+     * הצגת קטגוריות שאלות - דף הבית עם אקורדיון מתרחב
      */
     showQuestionCategories() {
         const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        // כפתור סיור במערכת
+        let html = `
+            <div class="faq-accordion-container">
+                <!-- סיור במערכת -->
+                <div class="faq-accordion-item special">
+                    <button class="faq-accordion-header" onclick="smartFAQBot.startSystemTourFromBot()">
+                        <div class="faq-accordion-icon">🎯</div>
+                        <div class="faq-accordion-title-group">
+                            <div class="faq-accordion-title">סיור במערכת</div>
+                            <div class="faq-accordion-subtitle">למידה מודרכת של כל התכונות</div>
+                        </div>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                </div>
+        `;
 
         const categories = [
             { id: 'clients', icon: '👤', title: 'תיקים ולקוחות', count: 4 },
@@ -1450,25 +1559,140 @@ class SmartFAQBot {
             { id: 'system', icon: '⚙️', title: 'הגדרות ומערכת', count: 4 }
         ];
 
-        let html = '<div class="faq-categories">';
-
         categories.forEach(cat => {
+            // מצא את כל השאלות בקטגוריה
+            const categoryQuestions = [];
+            for (const faqCat in this.faqDatabase) {
+                this.faqDatabase[faqCat].forEach(item => {
+                    if (item.category === cat.id || faqCat === cat.id) {
+                        categoryQuestions.push(item);
+                    }
+                });
+            }
+
             html += `
-                <button class="faq-category-btn" onclick="smartFAQBot.showCategoryQuestions('${cat.id}')">
-                    <div class="faq-category-icon">${cat.icon}</div>
-                    <div class="faq-category-content">
-                        <div class="faq-category-title">${cat.title}</div>
-                        <div class="faq-category-count">${cat.count} מאמרים</div>
+                <div class="faq-accordion-item" data-category="${cat.id}">
+                    <button class="faq-accordion-header" onclick="smartFAQBot.toggleCategory('${cat.id}')">
+                        <div class="faq-accordion-icon">${cat.icon}</div>
+                        <div class="faq-accordion-title-group">
+                            <div class="faq-accordion-title">${cat.title}</div>
+                            <div class="faq-accordion-subtitle">${categoryQuestions.length} מאמרים</div>
+                        </div>
+                        <svg class="faq-accordion-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                    <div class="faq-accordion-content">
+                        <div class="faq-accordion-questions">
+            `;
+
+            // שאלות בתוך הקטגוריה
+            categoryQuestions.forEach((item, index) => {
+                const questionId = `q-${cat.id}-${index}`;
+                html += `
+                    <div class="faq-question-item" data-question="${questionId}">
+                        <button class="faq-question-header" onclick="smartFAQBot.toggleQuestion('${questionId}', '${cat.id}', ${index})">
+                            <span>${item.question}</span>
+                            <svg class="faq-question-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <div class="faq-question-answer">
+                            ${item.answer}
+                        </div>
                     </div>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                </button>
+                `;
+            });
+
+            html += `
+                        </div>
+                    </div>
+                </div>
             `;
         });
 
         html += '</div>';
         suggestionsContainer.innerHTML = html;
+    }
+
+    /**
+     * פתיחה/סגירה של קטגוריה (אקורדיון)
+     */
+    toggleCategory(categoryId) {
+        const item = document.querySelector(`.faq-accordion-item[data-category="${categoryId}"]`);
+        if (!item) return;
+
+        const isExpanded = item.classList.contains('expanded');
+
+        // סגור את כל הקטגוריות האחרות
+        document.querySelectorAll('.faq-accordion-item').forEach(i => {
+            if (i !== item) {
+                i.classList.remove('expanded');
+            }
+        });
+
+        // סגור את כל השאלות הפתוחות
+        document.querySelectorAll('.faq-question-item').forEach(q => {
+            q.classList.remove('expanded');
+        });
+
+        // פתח/סגור את הקטגוריה הנוכחית
+        if (isExpanded) {
+            item.classList.remove('expanded');
+        } else {
+            item.classList.add('expanded');
+
+            // גלילה חלקה לקטגוריה
+            setTimeout(() => {
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 300);
+        }
+    }
+
+    /**
+     * פתיחה/סגירה של שאלה (אקורדיון)
+     */
+    toggleQuestion(questionId, categoryId, questionIndex) {
+        const item = document.querySelector(`.faq-question-item[data-question="${questionId}"]`);
+        if (!item) return;
+
+        const isExpanded = item.classList.contains('expanded');
+
+        // סגור את כל השאלות האחרות
+        document.querySelectorAll('.faq-question-item').forEach(q => {
+            if (q !== item) {
+                q.classList.remove('expanded');
+            }
+        });
+
+        // פתח/סגור את השאלה הנוכחית
+        if (isExpanded) {
+            item.classList.remove('expanded');
+        } else {
+            item.classList.add('expanded');
+
+            // גלילה חלקה לשאלה
+            setTimeout(() => {
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 300);
+        }
+    }
+
+    /**
+     * הפעלת סיור מערכת מתוך הבוט
+     */
+    startSystemTourFromBot() {
+        // סגור את הבוט
+        if (this.isOpen) {
+            this.toggleBot();
+        }
+
+        // הפעל את הסיור
+        setTimeout(() => {
+            if (window.systemTour) {
+                window.systemTour.start();
+            }
+        }, 300);
     }
 
     /**
