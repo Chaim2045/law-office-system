@@ -15,7 +15,9 @@ class SmartFAQBot {
             // תיקים ולקוחות
             clients: [
                 {
-                    keywords: ['תיק חדש', 'הוסף תיק', 'לקוח חדש', 'יצירת תיק', 'תיק חדש'],
+                    keywords: ['תיק חדש', 'הוסף תיק', 'לקוח חדש', 'יצירת תיק', 'תיק חדש',
+                               'איך אני מוסיף לקוח', 'איך עושים תיק', 'לא יודע איך ליצור תיק',
+                               'תעזור לי להוסיף לקוח', 'איך אני יוצר', 'תראה לי איך'],
                     question: 'איך ליצור תיק חדש?',
                     answer: `
                         <strong>יצירת תיק חדש:</strong>
@@ -28,7 +30,9 @@ class SmartFAQBot {
                         </ol>
                         <em>💡 טיפ: אפשר גם ללחוץ Ctrl+N</em>
                     `,
-                    category: 'clients'
+                    category: 'clients',
+                    guideType: 'create_client',
+                    selector: '#smart-plus-btn'
                 },
                 {
                     keywords: ['חפש לקוח', 'מצא לקוח', 'איפה לקוח', 'חיפוש לקוח', 'מציאת תיק'],
@@ -81,7 +85,9 @@ class SmartFAQBot {
             // משימות תקצוב
             tasks: [
                 {
-                    keywords: ['משימה חדשה', 'הוסף משימה', 'יצירת משימה', 'תקצוב חדש', 'משימת תקצוב'],
+                    keywords: ['משימה חדשה', 'הוסף משימה', 'יצירת משימה', 'תקצוב חדש', 'משימת תקצוב',
+                               'איך אני מוסיף משימה', 'איך עושים משימה', 'לא יודע איך להוסיף משימה',
+                               'תעזור לי ליצור משימה', 'איך אני יוצר משימה', 'תראה לי איך עושים משימה'],
                     question: 'איך ליצור משימת תקצוב?',
                     answer: `
                         <strong>יצירת משימת תקצוב:</strong>
@@ -96,7 +102,9 @@ class SmartFAQBot {
                         </ol>
                         <em>💡 המשימה תופיע ברשימת "פעילות בלבד"</em>
                     `,
-                    category: 'tasks'
+                    category: 'tasks',
+                    guideType: 'create_task',
+                    selector: '#smart-plus-btn'
                 },
                 {
                     keywords: ['השלם משימה', 'סיים משימה', 'סמן משימה', 'השלמת משימה', 'משימה הושלמה'],
@@ -163,7 +171,9 @@ class SmartFAQBot {
             // שעתון
             timesheet: [
                 {
-                    keywords: ['דיווח שעות', 'רישום שעות', 'שעות עבודה', 'הוסף שעות', 'דיווח חדש'],
+                    keywords: ['דיווח שעות', 'רישום שעות', 'שעות עבודה', 'הוסף שעות', 'דיווח חדש',
+                               'איך אני מדווח', 'איך עושים דיווח', 'לא יודע איך לדווח שעות',
+                               'תעזור לי לדווח', 'איך אני מדווח שעות', 'תראה לי איך מדווחים'],
                     question: 'איך לדווח על שעות עבודה?',
                     answer: `
                         <strong>דיווח שעות עבודה:</strong>
@@ -179,7 +189,9 @@ class SmartFAQBot {
                         </ol>
                         <em>⚡ אפשר גם לדווח ישירות ממשימה שהושלמה</em>
                     `,
-                    category: 'timesheet'
+                    category: 'timesheet',
+                    guideType: 'report_hours',
+                    selector: '#smart-plus-btn'
                 },
                 {
                     keywords: ['סיכום שעות', 'כמה שעות', 'סך שעות', 'מכסת שעות', 'תקן שעות'],
@@ -422,6 +434,7 @@ class SmartFAQBot {
         this.createBotUI();
         this.attachEventListeners();
         this.detectContext();
+        this.addHighlightStyles(); // הוסף אנימציות להדגשה
 
         // F1 פותח את הבוט
         document.addEventListener('keydown', (e) => {
@@ -934,7 +947,35 @@ class SmartFAQBot {
             const answer = this.searchFAQ(query);
 
             if (answer) {
-                this.addBotMessage(answer.answer);
+                // הוסף את התשובה הבסיסית
+                let fullAnswer = answer.answer;
+
+                // אם יש guideType או selector, הוסף כפתורים אינטראקטיביים
+                if (answer.guideType || answer.selector) {
+                    const buttons = [];
+
+                    if (answer.selector) {
+                        buttons.push({
+                            text: '👉 הראה לי איפה זה',
+                            action: 'highlight',
+                            selector: answer.selector
+                        });
+                    }
+
+                    if (answer.guideType) {
+                        buttons.push({
+                            text: '🎬 תראה לי צעד אחר צעד',
+                            action: 'show_guide',
+                            selector: answer.guideType
+                        });
+                    }
+
+                    if (buttons.length > 0) {
+                        fullAnswer += this.addInteractiveButtons(buttons);
+                    }
+                }
+
+                this.addBotMessage(fullAnswer);
 
                 // הצע שאלות קשורות
                 this.showRelatedQuestions(answer.category);
@@ -1643,6 +1684,286 @@ class SmartFAQBot {
         }, 2000); // אחרי 2 שניות
 
         return true;
+    }
+
+    // ========== מערכת הדגשה ויזואלית - Visual Highlighting ==========
+
+    /**
+     * מדגיש אלמנט בעמוד עם אנימציה וחץ
+     * @param {string} selector - CSS selector של האלמנט להדגשה
+     * @param {string} message - הודעה להצגה ליד האלמנט
+     * @param {number} duration - משך זמן בms (ברירת מחדל: 5000)
+     */
+    highlightElement(selector, message = '', duration = 5000) {
+        try {
+            const element = document.querySelector(selector);
+            if (!element) {
+                console.warn(`לא נמצא אלמנט: ${selector}`);
+                return false;
+            }
+
+            // הסר הדגשות קודמות
+            this.removeAllHighlights();
+
+            // צור overlay של הדגשה
+            const highlightOverlay = document.createElement('div');
+            highlightOverlay.className = 'bot-highlight-overlay';
+            highlightOverlay.id = 'bot-active-highlight';
+
+            // מיקום האלמנט
+            const rect = element.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+            highlightOverlay.style.cssText = `
+                position: absolute;
+                top: ${rect.top + scrollTop - 10}px;
+                left: ${rect.left + scrollLeft - 10}px;
+                width: ${rect.width + 20}px;
+                height: ${rect.height + 20}px;
+                border: 3px solid #ef4444;
+                border-radius: 8px;
+                background: rgba(239, 68, 68, 0.1);
+                box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.5);
+                z-index: 9997;
+                pointer-events: none;
+                animation: botPulse 1.5s infinite;
+            `;
+
+            document.body.appendChild(highlightOverlay);
+
+            // צור חץ מצביע
+            const arrow = document.createElement('div');
+            arrow.className = 'bot-highlight-arrow';
+            arrow.innerHTML = '👉';
+            arrow.style.cssText = `
+                position: absolute;
+                top: ${rect.top + scrollTop + rect.height / 2 - 20}px;
+                left: ${rect.left + scrollLeft - 60}px;
+                font-size: 40px;
+                z-index: 9997;
+                pointer-events: none;
+                animation: botArrowBounce 1s infinite;
+            `;
+            document.body.appendChild(arrow);
+
+            // צור בועה עם הודעה
+            if (message) {
+                const bubble = document.createElement('div');
+                bubble.className = 'bot-highlight-bubble';
+                bubble.innerHTML = message;
+                bubble.style.cssText = `
+                    position: absolute;
+                    top: ${rect.top + scrollTop - 60}px;
+                    left: ${rect.left + scrollLeft}px;
+                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    z-index: 9998;
+                    font-size: 14px;
+                    font-weight: 500;
+                    max-width: 250px;
+                    pointer-events: none;
+                    animation: botBubbleAppear 0.3s ease;
+                `;
+                document.body.appendChild(bubble);
+            }
+
+            // גלול לאלמנט
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // הסר אחרי זמן
+            setTimeout(() => {
+                this.removeAllHighlights();
+            }, duration);
+
+            return true;
+        } catch (error) {
+            console.error('שגיאה בהדגשת אלמנט:', error);
+            return false;
+        }
+    }
+
+    /**
+     * מסיר את כל ההדגשות הויזואליות
+     */
+    removeAllHighlights() {
+        const highlights = document.querySelectorAll('.bot-highlight-overlay, .bot-highlight-arrow, .bot-highlight-bubble');
+        highlights.forEach(el => el.remove());
+    }
+
+    /**
+     * מציג כפתורי פעולה אינטראקטיביים בתשובות הבוט
+     * @param {Array} actions - מערך של פעולות {text, action, selector}
+     */
+    addInteractiveButtons(actions) {
+        let buttonsHTML = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">';
+
+        actions.forEach((action, index) => {
+            buttonsHTML += `
+                <button
+                    class="bot-action-button"
+                    data-action="${action.action}"
+                    data-selector="${action.selector || ''}"
+                    onclick="smartFAQBot.handleActionButton('${action.action}', '${action.selector || ''}')"
+                    style="
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        border: none;
+                        padding: 10px 16px;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+                    "
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(16, 185, 129, 0.3)'"
+                >
+                    ${action.text}
+                </button>
+            `;
+        });
+
+        buttonsHTML += '</div>';
+        return buttonsHTML;
+    }
+
+    /**
+     * מטפל בלחיצה על כפתור פעולה אינטראקטיבי
+     */
+    handleActionButton(action, selector) {
+        console.log('פעולה:', action, 'Selector:', selector);
+
+        switch(action) {
+            case 'highlight':
+                if (selector) {
+                    this.highlightElement(selector, 'לחץ כאן! 👆');
+                }
+                break;
+
+            case 'show_guide':
+                if (selector) {
+                    // selector כאן זה בעצם guideType
+                    this.showStepByStepGuide(selector);
+                }
+                break;
+
+            case 'open_form':
+                if (selector) {
+                    this.highlightElement(selector, 'לחץ על הכפתור הזה', 3000);
+                    setTimeout(() => {
+                        const element = document.querySelector(selector);
+                        if (element) element.click();
+                    }, 3000);
+                }
+                break;
+
+            case 'show_demo':
+                this.startDemoMode();
+                break;
+
+            default:
+                console.warn('פעולה לא מוכרת:', action);
+        }
+    }
+
+    /**
+     * מצב דמו - מראה איך לעשות משהו צעד אחר צעד
+     */
+    startDemoMode() {
+        this.addBotMessage(`
+            <strong>🎬 מצב הדרכה אינטראקטיבי</strong>
+            <p>אני אראה לך צעד אחר צעד איך לעשות את זה!</p>
+            <p><em>עקוב אחרי החצים והסימונים...</em></p>
+        `);
+
+        // דוגמה: הדרכה ליצירת משימה
+        this.showStepByStepGuide('create_task');
+    }
+
+    /**
+     * הדרכה צעד אחר צעד
+     */
+    showStepByStepGuide(guideType) {
+        const guides = {
+            'create_task': [
+                { selector: '#smart-plus-btn', message: '1️⃣ קודם לחץ על כפתור הפלוס', delay: 1000 },
+                { selector: '.action-item[data-action="task"]', message: '2️⃣ עכשיו בחר "הוסף משימת תקצוב"', delay: 3000 },
+                { message: '3️⃣ מעולה! עכשיו תמלא את הפרטים בטופס', delay: 5000 }
+            ],
+            'create_client': [
+                { selector: '#smart-plus-btn', message: '1️⃣ לחץ על כפתור הפלוס', delay: 1000 },
+                { selector: '.action-item[data-action="client"]', message: '2️⃣ בחר "צור תיק חדש"', delay: 3000 }
+            ],
+            'report_hours': [
+                { selector: '#smart-plus-btn', message: '1️⃣ לחץ על כפתור הפלוס', delay: 1000 },
+                { selector: '.action-item[data-action="timesheet"]', message: '2️⃣ בחר "דווח שעות"', delay: 3000 }
+            ]
+        };
+
+        const steps = guides[guideType];
+        if (!steps) {
+            console.warn('סוג הדרכה לא קיים:', guideType);
+            return;
+        }
+
+        // הרץ את השלבים ברצף
+        let totalDelay = 0;
+        steps.forEach((step, index) => {
+            setTimeout(() => {
+                if (step.selector) {
+                    this.highlightElement(step.selector, step.message, 2000);
+                } else {
+                    this.addBotMessage(`<strong>${step.message}</strong>`);
+                }
+            }, totalDelay);
+            totalDelay += step.delay;
+        });
+    }
+
+    /**
+     * הוסף אנימציות CSS לדף
+     */
+    addHighlightStyles() {
+        if (document.getElementById('bot-highlight-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'bot-highlight-styles';
+        style.textContent = `
+            @keyframes botPulse {
+                0%, 100% {
+                    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.5);
+                }
+                50% {
+                    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.2), 0 0 30px rgba(239, 68, 68, 0.7);
+                }
+            }
+
+            @keyframes botArrowBounce {
+                0%, 100% {
+                    transform: translateX(0);
+                }
+                50% {
+                    transform: translateX(10px);
+                }
+            }
+
+            @keyframes botBubbleAppear {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
     }
 }
 
