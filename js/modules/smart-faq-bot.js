@@ -757,8 +757,8 @@ class SmartFAQBot {
                 align-items: center;
                 border-top: 1px solid #e5e7eb;
                 background: #f9fafb;
-                padding: 10px 8px;
-                min-height: 70px;
+                padding: 12px 8px;
+                min-height: 80px;
                 flex-shrink: 0;
             }
 
@@ -768,8 +768,8 @@ class SmartFAQBot {
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: 4px;
-                padding: 12px 12px 8px 12px;
+                gap: 6px;
+                padding: 14px 12px 10px 12px;
                 background: transparent;
                 border: none;
                 cursor: pointer;
