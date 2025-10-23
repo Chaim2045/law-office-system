@@ -41,7 +41,7 @@ export class SystemTour {
             {
                 title: '📝 הוספת משימה חדשה',
                 text: 'זה החלון להוספת משימה:\n\n1️⃣ תיאור המשימה - לדוגמא: "ייצוג משפטי - ישראל ישראלי"\n2️⃣ בחרו לקוח ותיק\n3️⃣ הזינו תקצוב שעות\n4️⃣ קבעו תאריך יעד\n\nהכל פשוט ומהיר!',
-                element: '#smartFormModal .modal-content',
+                element: '#smartFormModal',
                 position: 'left',
                 action: () => {
                     if (typeof openSmartForm === 'function') {
@@ -146,7 +146,7 @@ export class SystemTour {
         if (step.action) {
             step.action();
             // המתן יותר זמן לשלבים עם דיאלוגים
-            const delay = step.title === '📝 הוספת משימה חדשה' ? 600 : 300;
+            const delay = step.title === '📝 הוספת משימה חדשה' ? 800 : 300;
             setTimeout(() => this.renderStep(step), delay);
         } else {
             this.renderStep(step);
@@ -167,6 +167,12 @@ export class SystemTour {
         const element = document.querySelector(step.element);
         if (!element) {
             console.warn('Tour: Element not found -', step.element);
+            // אם זה דיאלוג שלא נפתח - הצג center mode כ-fallback
+            if (step.element.includes('Modal')) {
+                console.log('Tour: Using center mode as fallback for modal');
+                this.showCenterMode(step);
+                return;
+            }
             return;
         }
 
