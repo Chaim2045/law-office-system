@@ -2236,7 +2236,6 @@ class SystemTour {
         const overlay = document.createElement('div');
         overlay.id = 'system-tour-overlay';
         overlay.innerHTML = `
-            <div class="tour-backdrop"></div>
             <div class="tour-spotlight"></div>
             <div class="tour-content-box">
                 <div class="tour-progress">
@@ -2325,19 +2324,19 @@ class SystemTour {
         const spotlight = document.querySelector('.tour-spotlight');
         const contentBox = document.querySelector('.tour-content-box');
 
-        // עדכון spotlight - יותר שקוף ומקצועי
+        // עדכון spotlight - האלמנט בולט והמסך מחשיך
         spotlight.style.cssText = `
             position: fixed;
             top: ${rect.top - 8}px;
             left: ${rect.left - 8}px;
             width: ${rect.width + 16}px;
             height: ${rect.height + 16}px;
-            border: 2px solid #3b82f6;
+            border: 3px solid #3b82f6;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.02);
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
-                        0 0 0 4px rgba(59, 130, 246, 0.3),
-                        0 0 20px rgba(59, 130, 246, 0.5);
+            background: white;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65),
+                        0 0 0 4px rgba(59, 130, 246, 0.4),
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.9);
             pointer-events: none;
             z-index: 10000;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2413,11 +2412,12 @@ class SystemTour {
         left = Math.max(padding, Math.min(left, window.innerWidth - boxWidth - padding));
 
         // בדיקה אם התיבה מכסה את האלמנט - אם כן, מקם אותה בצד
+        const margin = 30; // מרווח בטיחות גדול יותר
         const boxRect = {
-            top: top,
-            bottom: top + boxHeight,
-            left: left,
-            right: left + boxWidth
+            top: top - margin,
+            bottom: top + boxHeight + margin,
+            left: left - margin,
+            right: left + boxWidth + margin
         };
 
         const elementRect = {
@@ -2427,33 +2427,48 @@ class SystemTour {
             right: rect.right + 8
         };
 
-        // בדוק חפיפה
+        // בדוק חפיפה עם מרווח בטיחות
         const overlaps = !(boxRect.right < elementRect.left ||
                           boxRect.left > elementRect.right ||
                           boxRect.bottom < elementRect.top ||
                           boxRect.top > elementRect.bottom);
 
         if (overlaps) {
-            // יש חפיפה - נסה למקם בצד המרוחק ביותר
+            // יש חפיפה - מצא את המיקום הטוב ביותר
             const spaceTop = rect.top;
             const spaceBottom = window.innerHeight - rect.bottom;
             const spaceLeft = rect.left;
             const spaceRight = window.innerWidth - rect.right;
 
-            const maxSpace = Math.max(spaceTop, spaceBottom, spaceLeft, spaceRight);
+            // מיין לפי גודל המרווח
+            const spaces = [
+                { position: 'bottom', space: spaceBottom },
+                { position: 'top', space: spaceTop },
+                { position: 'right', space: spaceRight },
+                { position: 'left', space: spaceLeft }
+            ].sort((a, b) => b.space - a.space);
 
-            if (maxSpace === spaceBottom && spaceBottom > boxHeight + padding) {
-                top = rect.bottom + minGap;
-                left = Math.max(padding, Math.min(rect.left, window.innerWidth - boxWidth - padding));
-            } else if (maxSpace === spaceTop && spaceTop > boxHeight + padding) {
-                top = rect.top - boxHeight - minGap;
-                left = Math.max(padding, Math.min(rect.left, window.innerWidth - boxWidth - padding));
-            } else if (maxSpace === spaceRight) {
-                left = rect.right + minGap;
-                top = Math.max(padding, Math.min(rect.top, window.innerHeight - boxHeight - padding));
-            } else {
-                left = Math.max(padding, rect.left - boxWidth - minGap);
-                top = Math.max(padding, Math.min(rect.top, window.innerHeight - boxHeight - padding));
+            // נסה כל מיקום לפי סדר עד שנמצא אחד שעובד
+            for (let i = 0; i < spaces.length; i++) {
+                const bestPos = spaces[i].position;
+
+                if (bestPos === 'bottom' && spaceBottom > boxHeight + padding * 2) {
+                    top = rect.bottom + minGap + 10;
+                    left = Math.max(padding, Math.min(rect.left + (rect.width / 2) - (boxWidth / 2), window.innerWidth - boxWidth - padding));
+                    break;
+                } else if (bestPos === 'top' && spaceTop > boxHeight + padding * 2) {
+                    top = rect.top - boxHeight - minGap - 10;
+                    left = Math.max(padding, Math.min(rect.left + (rect.width / 2) - (boxWidth / 2), window.innerWidth - boxWidth - padding));
+                    break;
+                } else if (bestPos === 'right' && spaceRight > boxWidth + padding * 2) {
+                    left = rect.right + minGap + 20;
+                    top = Math.max(padding, Math.min(rect.top + (rect.height / 2) - (boxHeight / 2), window.innerHeight - boxHeight - padding));
+                    break;
+                } else if (bestPos === 'left' && spaceLeft > boxWidth + padding * 2) {
+                    left = rect.left - boxWidth - minGap - 20;
+                    top = Math.max(padding, Math.min(rect.top + (rect.height / 2) - (boxHeight / 2), window.innerHeight - boxHeight - padding));
+                    break;
+                }
             }
         }
 
@@ -2564,17 +2579,6 @@ class SystemTour {
                 bottom: 0;
                 z-index: 9999;
                 pointer-events: none;
-            }
-
-            .tour-backdrop {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 9999;
-                backdrop-filter: blur(2px);
             }
 
             .tour-spotlight {
