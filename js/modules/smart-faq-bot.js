@@ -497,14 +497,6 @@ class SmartFAQBot {
                         </svg>
                         <span>סיור</span>
                     </button>
-                    <button class="faq-tab" data-tab="help">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                            <line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
-                        <span>שאלות</span>
-                    </button>
                 </div>
             </div>
         `;
@@ -777,7 +769,7 @@ class SmartFAQBot {
                 align-items: center;
                 justify-content: center;
                 gap: 4px;
-                padding: 8px 12px;
+                padding: 12px 12px 8px 12px;
                 background: transparent;
                 border: none;
                 cursor: pointer;
@@ -1511,9 +1503,6 @@ class SmartFAQBot {
             case 'tour':
                 this.showTourTab();
                 break;
-            case 'help':
-                this.showHelpTab();
-                break;
         }
     }
 
@@ -1714,20 +1703,6 @@ class SmartFAQBot {
         `;
 
         suggestionsContainer.innerHTML = html;
-    }
-
-    /**
-     * הצגת טאב עזרה - מרכז העזרה
-     */
-    showHelpTab() {
-        const messagesContainer = document.getElementById('faq-bot-messages');
-        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
-
-        // נקה
-        messagesContainer.innerHTML = '';
-
-        // הצג קטגוריות עזרה
-        this.showQuestionCategories();
     }
 
     /**
