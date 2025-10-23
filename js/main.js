@@ -832,12 +832,15 @@ class LawOfficeManager {
     const overlay = document.createElement('div');
     overlay.className = 'popup-overlay';
 
-    // תיקון: בדיקה שתאריך היעד תקף
-    let currentDeadline = new Date(task.deadline);
-    if (isNaN(currentDeadline.getTime())) {
+    // תיקון: המרת Firebase Timestamp לDate נכון
+    let currentDeadline = window.DatesModule
+      ? window.DatesModule.convertFirebaseTimestamp(task.deadline)
+      : new Date(task.deadline);
+
+    if (!currentDeadline || isNaN(currentDeadline.getTime())) {
       // אם התאריך לא תקין, השתמש בתאריך נוכחי
       currentDeadline = new Date();
-      console.warn('⚠️ task.deadline is invalid, using current date');
+      console.warn('⚠️ task.deadline is invalid, using current date', task.deadline);
     }
 
     const defaultNewDate = new Date(currentDeadline);
