@@ -1937,6 +1937,23 @@ class SmartFAQBot {
     handleActionButton(action, selector) {
         console.log('פעולה:', action, 'Selector:', selector);
 
+        // סגור את הבוט לפני כל פעולה ויזואלית
+        if (action === 'highlight' || action === 'show_guide' || action === 'open_form') {
+            this.close();
+
+            // המתן רגע לסגירת האנימציה
+            setTimeout(() => {
+                this.executeAction(action, selector);
+            }, 300);
+        } else {
+            this.executeAction(action, selector);
+        }
+    }
+
+    /**
+     * מבצע את הפעולה בפועל
+     */
+    executeAction(action, selector) {
         switch(action) {
             case 'highlight':
                 if (selector) {
@@ -2308,20 +2325,22 @@ class SystemTour {
         const spotlight = document.querySelector('.tour-spotlight');
         const contentBox = document.querySelector('.tour-content-box');
 
-        // עדכון spotlight
+        // עדכון spotlight - יותר שקוף ומקצועי
         spotlight.style.cssText = `
             position: fixed;
-            top: ${rect.top - 10}px;
-            left: ${rect.left - 10}px;
-            width: ${rect.width + 20}px;
-            height: ${rect.height + 20}px;
-            border: 3px solid #3b82f6;
-            border-radius: 12px;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75),
-                        0 0 30px rgba(59, 130, 246, 0.8);
+            top: ${rect.top - 8}px;
+            left: ${rect.left - 8}px;
+            width: ${rect.width + 16}px;
+            height: ${rect.height + 16}px;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5),
+                        0 0 0 4px rgba(59, 130, 246, 0.3),
+                        0 0 20px rgba(59, 130, 246, 0.5);
             pointer-events: none;
             z-index: 10000;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         `;
 
         // גלילה לאלמנט
@@ -2334,44 +2353,113 @@ class SystemTour {
     }
 
     /**
-     * מיקום תיבת התוכן ביחס לאלמנט
+     * מיקום תיבת התוכן ביחס לאלמנט - חכם ומותאם
      */
     positionContentBox(rect, position) {
         const contentBox = document.querySelector('.tour-content-box');
-        const boxWidth = 400;
+        const boxWidth = contentBox.offsetWidth || 450;
         const boxHeight = contentBox.offsetHeight;
-        const padding = 20;
+        const padding = 24;
+        const minGap = 16; // מרווח מינימלי מהאלמנט
 
         let top, left;
+        let finalPosition = position;
 
+        // נסה את המיקום המועדף
         switch (position) {
             case 'bottom':
-                top = rect.bottom + padding;
+                top = rect.bottom + minGap;
                 left = rect.left + (rect.width / 2) - (boxWidth / 2);
+                // אם לא נכנס למטה, נסה למעלה
+                if (top + boxHeight + padding > window.innerHeight) {
+                    finalPosition = 'top';
+                    top = rect.top - boxHeight - minGap;
+                }
                 break;
             case 'top':
-                top = rect.top - boxHeight - padding;
+                top = rect.top - boxHeight - minGap;
                 left = rect.left + (rect.width / 2) - (boxWidth / 2);
+                // אם לא נכנס למעלה, נסה למטה
+                if (top < padding) {
+                    finalPosition = 'bottom';
+                    top = rect.bottom + minGap;
+                }
                 break;
             case 'left':
                 top = rect.top + (rect.height / 2) - (boxHeight / 2);
-                left = rect.left - boxWidth - padding;
+                left = rect.left - boxWidth - minGap;
+                // אם לא נכנס משמאל, נסה מימין
+                if (left < padding) {
+                    finalPosition = 'right';
+                    left = rect.right + minGap;
+                }
                 break;
             case 'right':
                 top = rect.top + (rect.height / 2) - (boxHeight / 2);
-                left = rect.right + padding;
+                left = rect.right + minGap;
+                // אם לא נכנס מימין, נסה משמאל
+                if (left + boxWidth + padding > window.innerWidth) {
+                    finalPosition = 'left';
+                    left = rect.left - boxWidth - minGap;
+                }
                 break;
             default:
                 top = window.innerHeight / 2 - boxHeight / 2;
                 left = window.innerWidth / 2 - boxWidth / 2;
         }
 
-        // וידוא שהתיבה בתוך המסך
+        // וידוא סופי שהתיבה בתוך המסך
         top = Math.max(padding, Math.min(top, window.innerHeight - boxHeight - padding));
         left = Math.max(padding, Math.min(left, window.innerWidth - boxWidth - padding));
 
+        // בדיקה אם התיבה מכסה את האלמנט - אם כן, מקם אותה בצד
+        const boxRect = {
+            top: top,
+            bottom: top + boxHeight,
+            left: left,
+            right: left + boxWidth
+        };
+
+        const elementRect = {
+            top: rect.top - 8,
+            bottom: rect.bottom + 8,
+            left: rect.left - 8,
+            right: rect.right + 8
+        };
+
+        // בדוק חפיפה
+        const overlaps = !(boxRect.right < elementRect.left ||
+                          boxRect.left > elementRect.right ||
+                          boxRect.bottom < elementRect.top ||
+                          boxRect.top > elementRect.bottom);
+
+        if (overlaps) {
+            // יש חפיפה - נסה למקם בצד המרוחק ביותר
+            const spaceTop = rect.top;
+            const spaceBottom = window.innerHeight - rect.bottom;
+            const spaceLeft = rect.left;
+            const spaceRight = window.innerWidth - rect.right;
+
+            const maxSpace = Math.max(spaceTop, spaceBottom, spaceLeft, spaceRight);
+
+            if (maxSpace === spaceBottom && spaceBottom > boxHeight + padding) {
+                top = rect.bottom + minGap;
+                left = Math.max(padding, Math.min(rect.left, window.innerWidth - boxWidth - padding));
+            } else if (maxSpace === spaceTop && spaceTop > boxHeight + padding) {
+                top = rect.top - boxHeight - minGap;
+                left = Math.max(padding, Math.min(rect.left, window.innerWidth - boxWidth - padding));
+            } else if (maxSpace === spaceRight) {
+                left = rect.right + minGap;
+                top = Math.max(padding, Math.min(rect.top, window.innerHeight - boxHeight - padding));
+            } else {
+                left = Math.max(padding, rect.left - boxWidth - minGap);
+                top = Math.max(padding, Math.min(rect.top, window.innerHeight - boxHeight - padding));
+            }
+        }
+
         contentBox.style.top = `${top}px`;
         contentBox.style.left = `${left}px`;
+        contentBox.style.transform = 'none';
     }
 
     /**
@@ -2484,28 +2572,31 @@ class SystemTour {
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(0, 0, 0, 0.75);
+                background: rgba(0, 0, 0, 0.5);
                 z-index: 9999;
+                backdrop-filter: blur(2px);
             }
 
             .tour-spotlight {
                 position: fixed;
                 pointer-events: none;
                 z-index: 10000;
-                transition: all 0.3s ease;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             }
 
             .tour-content-box {
                 position: fixed;
-                width: 420px;
+                width: 450px;
                 max-width: 90vw;
-                background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-                border-radius: 16px;
-                padding: 24px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+                background: white;
+                border-radius: 12px;
+                padding: 28px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15),
+                           0 2px 8px rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(0, 0, 0, 0.08);
                 z-index: 10001;
                 pointer-events: all;
-                transition: all 0.3s ease;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             }
 
             .tour-progress {
