@@ -304,22 +304,10 @@ class SmartFAQBot {
                     keywords: ['הרשאות', 'אין גישה', 'לא רואה', 'מנהל', 'עובד', 'גישה'],
                     question: 'למה אני לא רואה חלק מהאפשרויות?',
                     answer: `
-                        <strong>הרשאות משתמשים:</strong>
-                        <p>המערכת מחולקת ל-2 רמות הרשאה:</p>
-                        <p><strong>👤 עובד רגיל:</strong></p>
-                        <ul>
-                            <li>רואה רק את המשימות והשעות שלו</li>
-                            <li>גישה לטאבים: תקצוב משימות, שעתון</li>
-                            <li>יכול להוסיף ולערוך רק את המידע שלו</li>
-                        </ul>
-                        <p><strong>👑 מנהל:</strong></p>
-                        <ul>
-                            <li>גישה מלאה לכל המערכת</li>
-                            <li>רואה את כל המשימות והשעות של כולם</li>
-                            <li>גישה לדשבורד ניהולי</li>
-                            <li>יכול לערוך ולמחוק הכל</li>
-                        </ul>
-                        <p>💼 <strong>צריך הרשאות נוספות?</strong> פנה למנהל המערכת</p>
+                        <strong>הרשאות במערכת:</strong>
+                        <p><strong>👤 עובד רגיל:</strong> רואה רק את המשימות והשעות שלו</p>
+                        <p><strong>👑 מנהל:</strong> גישה מלאה לכל המערכת + דשבורד ניהולי</p>
+                        <p>💼 צריך הרשאות נוספות? פנה למנהל המערכת</p>
                     `,
                     category: 'general'
                 },
@@ -328,17 +316,9 @@ class SmartFAQBot {
                     question: 'איפה הדשבורד והסטטיסטיקות?',
                     answer: `
                         <strong>דשבורד ניהולי:</strong>
-                        <p>👑 <strong>זמין רק למנהלים!</strong></p>
-                        <p>הדשבורד מציג:</p>
-                        <ul>
-                            <li>📊 סטטיסטיקות כלליות של המערכת</li>
-                            <li>👥 מעקב אחר עובדים מחוברים (Presence System)</li>
-                            <li>⏰ סיכומי שעות של כל העובדים</li>
-                            <li>📈 ניתוח ביצועים ויעילות</li>
-                            <li>🎯 התקדמות לעומת יעדים ומכסות</li>
-                        </ul>
+                        <p>👑 זמין רק למנהלים</p>
+                        <p>מציג: סטטיסטיקות, מעקב עובדים, סיכומי שעות וניתוח ביצועים</p>
                         <p><strong>איך לגשת:</strong> תפריט ראשי → "דשבורד ניהולי"</p>
-                        <em>נמצא בקובץ נפרד: admin/admin-unified-v2.html</em>
                     `,
                     category: 'general'
                 },
@@ -346,20 +326,13 @@ class SmartFAQBot {
                     keywords: ['בעיה טכנית', 'תקלה', 'לא עובד', 'שגיאה', 'באג', 'error'],
                     question: 'נתקלתי בבעיה טכנית',
                     answer: `
-                        <strong>פתרון בעיות - צעדים ראשונים:</strong>
+                        <strong>צעדים ראשונים:</strong>
                         <ol>
-                            <li>🔄 רענן את הדף (F5 או Ctrl+R)</li>
-                            <li>🚪 צא והיכנס שוב למערכת</li>
-                            <li>🧹 נקה מטמון הדפדפן (Ctrl+Shift+Del)</li>
-                            <li>🌐 נסה דפדפן אחר (Chrome/Firefox/Edge)</li>
+                            <li>🔄 רענן את הדף (F5)</li>
+                            <li>🚪 צא והיכנס שוב</li>
+                            <li>🧹 נקה מטמון (Ctrl+Shift+Del)</li>
                         </ol>
-                        <p><strong>הבעיה נמשכת?</strong> פנה למנהל המערכת עם:</p>
-                        <ul>
-                            <li>📝 תיאור מפורט של הבעיה</li>
-                            <li>⏰ מתי זה קרה ומה עשית לפני</li>
-                            <li>📸 צילום מסך של השגיאה</li>
-                            <li>💻 איזה דפדפן ומערכת הפעלה</li>
-                        </ul>
+                        <p><strong>עדיין לא עובד?</strong> פנה למנהל עם תיאור הבעיה וצילום מסך</p>
                     `,
                     category: 'general'
                 },
@@ -483,7 +456,14 @@ class SmartFAQBot {
                             <span class="faq-bot-status">תמיד כאן לעזור</span>
                         </div>
                     </div>
-                    <button class="faq-bot-close" id="faq-bot-close">×</button>
+                    <div class="faq-bot-header-actions">
+                        <button class="faq-bot-new-chat" id="faq-bot-new-chat" title="התחל שיחה חדשה">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M3 12h18M3 18h18"/>
+                            </svg>
+                        </button>
+                        <button class="faq-bot-close" id="faq-bot-close">×</button>
+                    </div>
                 </div>
 
                 <div class="faq-bot-messages" id="faq-bot-messages">
@@ -612,6 +592,13 @@ class SmartFAQBot {
                 opacity: 0.9;
             }
 
+            .faq-bot-header-actions {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .faq-bot-new-chat,
             .faq-bot-close {
                 background: rgba(255, 255, 255, 0.2);
                 border: none;
@@ -619,17 +606,22 @@ class SmartFAQBot {
                 width: 32px;
                 height: 32px;
                 border-radius: 50%;
-                font-size: 24px;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: background 0.2s;
+                transition: all 0.2s;
                 line-height: 1;
             }
 
+            .faq-bot-close {
+                font-size: 24px;
+            }
+
+            .faq-bot-new-chat:hover,
             .faq-bot-close:hover {
                 background: rgba(255, 255, 255, 0.3);
+                transform: scale(1.1);
             }
 
             .faq-bot-messages {
@@ -880,11 +872,13 @@ class SmartFAQBot {
     attachEventListeners() {
         const button = document.getElementById('faq-bot-button');
         const closeBtn = document.getElementById('faq-bot-close');
+        const newChatBtn = document.getElementById('faq-bot-new-chat');
         const sendBtn = document.getElementById('faq-bot-send');
         const input = document.getElementById('faq-bot-input');
 
         button.addEventListener('click', () => this.toggleBot());
         closeBtn.addEventListener('click', () => this.toggleBot());
+        newChatBtn.addEventListener('click', () => this.startNewChat());
         sendBtn.addEventListener('click', () => this.handleUserInput());
 
         input.addEventListener('keypress', (e) => {
@@ -892,6 +886,38 @@ class SmartFAQBot {
                 this.handleUserInput();
             }
         });
+    }
+
+    /**
+     * מתחיל שיחה חדשה - מנקה את ההיסטוריה
+     */
+    startNewChat() {
+        // נקה את כל ההודעות
+        const messagesContainer = document.getElementById('faq-bot-messages');
+        messagesContainer.innerHTML = '';
+
+        // נקה היסטוריה
+        this.chatHistory = [];
+
+        // הצג הודעת פתיחה מחדש
+        const userName = this.getUserName();
+        const greeting = userName ? `<strong>שלום ${userName}! 👋</strong>` : `<strong>שלום! 👋</strong>`;
+
+        this.addBotMessage(`
+            ${greeting}
+            <p>אני כאן לעזור לך! 😊</p>
+            <p>מה תרצה לדעת?</p>
+        `);
+
+        // הצג הצעות
+        this.showContextualSuggestions();
+
+        // הצג הצעה פרואקטיבית (אם יש)
+        this.showProactiveSuggestion();
+
+        // נקה את שדה הקלט
+        document.getElementById('faq-bot-input').value = '';
+        document.getElementById('faq-bot-input').focus();
     }
 
     toggleBot() {
