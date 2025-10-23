@@ -346,9 +346,9 @@ export class SystemTour {
     positionContentBox(rect, position) {
         const contentBox = document.querySelector('.tour-content-box');
         const boxWidth = contentBox.offsetWidth || 450;
-        const boxHeight = contentBox.offsetHeight;
+        const boxHeight = contentBox.offsetHeight || 300; // ברירת מחדל אם עדיין לא נטען
         const padding = 24;
-        const minGap = 30; // מרווח גדול מהאלמנט כדי שהכרטיסייה לא תכסה אותו
+        const minGap = 16; // מרווח קטן יותר - מספיק כדי לא לכסות
 
         // שלב 1: חשב את המרווח הזמין בכל כיוון
         const availableSpace = {
@@ -366,72 +366,82 @@ export class SystemTour {
             right: availableSpace.right >= boxWidth + minGap
         };
 
-        // שלב 3: נסה להשתמש ב-position המבוקש
-        let chosenPosition = position;
+        // שלב 3: נסה את ה-position המבוקש, אם לא אפשרי - נסה את ההפוך
+        let chosenPosition = position || 'bottom';
+
+        // חשב את המיקום לפי ה-position המבוקש
+        let top, left;
+
+        const calculatePosition = (pos) => {
+            switch (pos) {
+                case 'bottom':
+                    return {
+                        top: rect.bottom + minGap,
+                        left: rect.left + (rect.width / 2) - (boxWidth / 2)
+                    };
+                case 'top':
+                    return {
+                        top: rect.top - boxHeight - minGap,
+                        left: rect.left + (rect.width / 2) - (boxWidth / 2)
+                    };
+                case 'left':
+                    return {
+                        top: rect.top + (rect.height / 2) - (boxHeight / 2),
+                        left: rect.left - boxWidth - minGap
+                    };
+                case 'right':
+                    return {
+                        top: rect.top + (rect.height / 2) - (boxHeight / 2),
+                        left: rect.right + minGap
+                    };
+                default:
+                    return { top: 0, left: 0 };
+            }
+        };
+
+        // נסה את ה-position המבוקש
+        let coords = calculatePosition(chosenPosition);
+        top = coords.top;
+        left = coords.left;
 
         // Debug logging
         console.log('🎯 Tour Positioning:', {
             requestedPosition: position,
+            chosenPosition,
+            calculatedTop: top,
+            calculatedLeft: left,
+            willFit: {
+                top: top >= padding && top + boxHeight + padding <= window.innerHeight,
+                left: left >= padding && left + boxWidth + padding <= window.innerWidth
+            },
             availableSpace,
-            canFit,
             boxWidth,
             boxHeight,
             minGap
         });
 
-        // אם ה-position המבוקש לא אפשרי, בחר חלופה חכמה
-        if (position && !canFit[position]) {
-            console.log('⚠️ Position not possible, trying alternative...');
-            // נסה את הכיוון ההפוך קודם
-            const opposites = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
-            const opposite = opposites[position];
-
-            if (opposite && canFit[opposite]) {
+        // אם יוצא מהמסך - נסה את הכיוון ההפוך
+        const opposites = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+        if (top < padding || top + boxHeight + padding > window.innerHeight) {
+            const opposite = opposites[chosenPosition];
+            if (opposite && ['top', 'bottom'].includes(opposite)) {
+                console.log('⚠️ Trying opposite vertical position:', opposite);
+                coords = calculatePosition(opposite);
+                top = coords.top;
                 chosenPosition = opposite;
-            } else {
-                // אם גם ההפוך לא אפשרי, בחר כיוון עם הכי הרבה מקום
-                const viablePositions = [
-                    { pos: 'bottom', space: availableSpace.bottom, fits: canFit.bottom },
-                    { pos: 'top', space: availableSpace.top, fits: canFit.top },
-                    { pos: 'right', space: availableSpace.right, fits: canFit.right },
-                    { pos: 'left', space: availableSpace.left, fits: canFit.left }
-                ]
-                .filter(p => p.fits)
-                .sort((a, b) => b.space - a.space);
-
-                chosenPosition = viablePositions.length > 0
-                    ? viablePositions[0].pos
-                    : ['bottom', 'top', 'right', 'left'].reduce((best, curr) =>
-                        availableSpace[curr] > availableSpace[best] ? curr : best
-                    );
+            }
+        }
+        if (left < padding || left + boxWidth + padding > window.innerWidth) {
+            const opposite = opposites[chosenPosition];
+            if (opposite && ['left', 'right'].includes(opposite)) {
+                console.log('⚠️ Trying opposite horizontal position:', opposite);
+                coords = calculatePosition(opposite);
+                left = coords.left;
+                chosenPosition = opposite;
             }
         }
 
-        console.log('✅ Chosen position:', chosenPosition);
-
-        let top, left;
-
-        // שלב 4: מקם את הכרטיסייה לפי הכיוון הנבחר
-        switch (chosenPosition) {
-            case 'bottom':
-                top = rect.bottom + minGap;
-                left = rect.left + (rect.width / 2) - (boxWidth / 2);
-                break;
-            case 'top':
-                top = rect.top - boxHeight - minGap;
-                left = rect.left + (rect.width / 2) - (boxWidth / 2);
-                break;
-            case 'left':
-                top = rect.top + (rect.height / 2) - (boxHeight / 2);
-                left = rect.left - boxWidth - minGap;
-                break;
-            case 'right':
-                top = rect.top + (rect.height / 2) - (boxHeight / 2);
-                left = rect.right + minGap;
-                break;
-        }
-
-        // שלב 5: וידוא שהכרטיסייה בתוך המסך (fallback למקרה קיצון)
+        // שלב 5: וידוא סופי שהכרטיסייה בתוך המסך
         top = Math.max(padding, Math.min(top, window.innerHeight - boxHeight - padding));
         left = Math.max(padding, Math.min(left, window.innerWidth - boxWidth - padding));
 
