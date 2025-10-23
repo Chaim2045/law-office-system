@@ -12,7 +12,10 @@ service cloud.firestore {
 
     // Check if user is admin
     function isAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
+      return request.auth != null && (
+        request.auth.token.role == 'admin' ||
+        request.auth.token.email == 'haim@ghlawoffice.co.il'
+      );
     }
 
     // ==================== Collections ====================
@@ -49,17 +52,21 @@ service cloud.firestore {
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Budget Tasks: User can read only their own tasks (by EMAIL)
+    // ✅ Budget Tasks: User can read only their own tasks (by EMAIL), admins can read all
     match /budget_tasks/{taskId} {
-      allow read: if isAuthenticated() &&
-                     resource.data.employee == request.auth.token.email;
+      allow read: if isAuthenticated() && (
+                     resource.data.employee == request.auth.token.email ||
+                     isAdmin()
+                  );
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Timesheet Entries: User can read only their own entries (by EMAIL)
+    // ✅ Timesheet Entries: User can read only their own entries (by EMAIL), admins can read all
     match /timesheet_entries/{entryId} {
-      allow read: if isAuthenticated() &&
-                     resource.data.employee == request.auth.token.email;
+      allow read: if isAuthenticated() && (
+                     resource.data.employee == request.auth.token.email ||
+                     isAdmin()
+                  );
       allow write: if false; // Only through Cloud Functions
     }
 

@@ -1821,27 +1821,28 @@
         try {
           console.log("📊 טוען נתוני עובדים...");
 
-          const usersSnapshot = await db.collection("users").get();
+          const employeesSnapshot = await db.collection("employees").get();
           employeesData = [];
 
-          for (const doc of usersSnapshot.docs) {
+          for (const doc of employeesSnapshot.docs) {
             const userData = doc.data();
             // Use doc.id (which is the username) or userData.username
-            const employeeName = userData.username || doc.id;
+            const employeeName = userData.username || userData.name || doc.id;
+            const employeeEmail = userData.email;
 
-            // Skip if no valid employee name
-            if (!employeeName) {
-              console.warn(`⚠️ משתמש ללא שם: ${doc.id}`);
+            // Skip if no valid employee email
+            if (!employeeEmail) {
+              console.warn(`⚠️ עובד ללא אימייל: ${doc.id}`);
               continue;
             }
 
             // שם לתצוגה - תעדוף לשם המלא בעברית
-            const displayName = userData.displayName || employeeName;
+            const displayName = userData.name || employeeName;
 
-            // Get real timesheet data for this employee
+            // Get real timesheet data for this employee (by EMAIL)
             const timesheetSnapshot = await db
               .collection("timesheet_entries")
-              .where("employee", "==", employeeName)
+              .where("employee", "==", employeeEmail)
               .get();
 
             let weeklyHours = 0;
@@ -1856,10 +1857,10 @@
               }
             });
 
-            // Get real budget tasks for this employee
+            // Get real budget tasks for this employee (by EMAIL)
             const tasksSnapshot = await db
               .collection("budget_tasks")
-              .where("employee", "==", employeeName)
+              .where("employee", "==", employeeEmail)
               .get();
 
             let activeTasks = 0;
