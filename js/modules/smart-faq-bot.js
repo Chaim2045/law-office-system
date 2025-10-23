@@ -1217,6 +1217,21 @@ class SmartFAQBot {
         const suggestionsContainer = document.getElementById('faq-bot-suggestions');
         suggestionsContainer.innerHTML = '';
 
+        // הוספת כפתור "התחל סיור" מיוחד בתחילה
+        const tourButton = document.createElement('button');
+        tourButton.className = 'faq-suggestion-chip tour-chip';
+        tourButton.innerHTML = '🎓 התחל סיור במערכת';
+        tourButton.style.cssText = `
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 600;
+            border: none;
+        `;
+        tourButton.addEventListener('click', () => {
+            this.startSystemTour();
+        });
+        suggestionsContainer.appendChild(tourButton);
+
         suggestions.forEach(suggestion => {
             const chip = document.createElement('button');
             chip.className = 'faq-suggestion-chip';
@@ -1227,6 +1242,21 @@ class SmartFAQBot {
             });
             suggestionsContainer.appendChild(chip);
         });
+    }
+
+    /**
+     * התחלת סיור במערכת - סוגר את הבוט ומתחיל את הסיור
+     */
+    startSystemTour() {
+        // סגור את הבוט
+        this.close();
+
+        // המתן רגע ואז התחל את הסיור
+        setTimeout(() => {
+            if (systemTour) {
+                systemTour.start();
+            }
+        }, 300);
     }
 
     detectContext() {
@@ -1792,25 +1822,38 @@ class SmartFAQBot {
             `;
             document.body.appendChild(arrow);
 
-            // צור בועה עם הודעה
+            // צור בועה עם הודעה וכפתור "הבנתי"
             if (message) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bot-highlight-bubble';
-                bubble.innerHTML = message;
+                bubble.innerHTML = `
+                    <div style="margin-bottom: 12px;">${message}</div>
+                    <button
+                        class="bot-highlight-btn"
+                        onclick="smartFAQBot.removeAllHighlights()"
+                        style="background: white; color: #3b82f6; border: none; padding: 8px 16px;
+                               border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;
+                               transition: all 0.2s ease;"
+                        onmouseover="this.style.transform='scale(1.05)'"
+                        onmouseout="this.style.transform='scale(1)'"
+                    >
+                        ✓ הבנתי
+                    </button>
+                `;
                 bubble.style.cssText = `
                     position: absolute;
-                    top: ${rect.top + scrollTop - 60}px;
+                    top: ${rect.top + scrollTop - 100}px;
                     left: ${rect.left + scrollLeft}px;
                     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
                     color: white;
-                    padding: 12px 16px;
+                    padding: 16px;
                     border-radius: 12px;
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                     z-index: 9998;
                     font-size: 14px;
                     font-weight: 500;
-                    max-width: 250px;
-                    pointer-events: none;
+                    max-width: 280px;
+                    pointer-events: auto;
                     animation: botBubbleAppear 0.3s ease;
                 `;
                 document.body.appendChild(bubble);
@@ -1818,11 +1861,6 @@ class SmartFAQBot {
 
             // גלול לאלמנט
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // הסר אחרי זמן
-            setTimeout(() => {
-                this.removeAllHighlights();
-            }, duration);
 
             return true;
         } catch (error) {
@@ -2016,11 +2054,584 @@ class SmartFAQBot {
     }
 }
 
+/**
+ * מערכת סיור אינטראקטיבית במערכת
+ * System Tour - guided walkthrough for new users
+ */
+class SystemTour {
+    constructor() {
+        this.currentStep = 0;
+        this.isActive = false;
+        this.tourSteps = this.getTourSteps();
+    }
+
+    /**
+     * שלבי הסיור המלאים במערכת
+     */
+    getTourSteps() {
+        return [
+            {
+                title: '🎉 ברוכים הבאים למערכת!',
+                description: 'בואו נתחיל סיור קצר שיעזור לכם להכיר את המערכת',
+                selector: '.main-header',
+                position: 'bottom',
+                actionBefore: null
+            },
+            {
+                title: '👤 פרופיל משתמש',
+                description: 'כאן תמצאו את שם המשתמש שלכם וכפתור יציאה מהמערכת',
+                selector: '.user-section',
+                position: 'bottom',
+                actionBefore: null
+            },
+            {
+                title: '➕ כפתור הוספה מהירה',
+                description: 'הכפתור הכחול הגדול הזה פותח תפריט מהיר: הוסף משימה, דווח שעות, או צור תיק חדש',
+                selector: '#smartPlusBtn',
+                position: 'bottom',
+                actionBefore: null
+            },
+            {
+                title: '📋 תפריט ניווט',
+                description: 'מכאן תוכלו לנווט בין החלקים השונים: תקצוב, שעתון, דוחות',
+                selector: '.navigation-menu',
+                position: 'left',
+                actionBefore: null
+            },
+            {
+                title: '📊 טאב תקצוב משימות',
+                description: 'זהו המסך הראשי - כאן תנהלו את כל המשימות המתוקצבות שלכם',
+                selector: '.tab-button.active',
+                position: 'bottom',
+                actionBefore: () => {
+                    if (typeof switchTab === 'function') switchTab('budget');
+                }
+            },
+            {
+                title: '🔍 חיפוש משימות',
+                description: 'השתמשו בשדה החיפוש כדי למצוא משימות לפי תיאור, לקוח, או תיק',
+                selector: '#budgetSearchBox',
+                position: 'bottom',
+                actionBefore: () => {
+                    if (typeof switchTab === 'function') switchTab('budget');
+                }
+            },
+            {
+                title: '👁️ תצוגות שונות',
+                description: 'בחרו בין תצוגת כרטיסים (cards) לתצוגת טבלה - כל אחד לפי הנוחות שלו',
+                selector: '[data-view="cards"]',
+                position: 'bottom',
+                actionBefore: () => {
+                    if (typeof switchTab === 'function') switchTab('budget');
+                }
+            },
+            {
+                title: '📝 רשימת המשימות',
+                description: 'כאן תראו את כל המשימות שלכם: תיאור, לקוח, תקצוב, ביצוע, ותאריך יעד',
+                selector: '#budgetContainer',
+                position: 'top',
+                actionBefore: () => {
+                    if (typeof switchTab === 'function') switchTab('budget');
+                }
+            },
+            {
+                title: '⏱️ טאב שעתון',
+                description: 'במסך הזה תדווחו על השעות שביצעתם ותעקבו אחרי הזמן שהשקעתם',
+                selector: '.tab-button:nth-child(2)',
+                position: 'bottom',
+                actionBefore: () => {
+                    if (typeof switchTab === 'function') switchTab('timesheet');
+                }
+            },
+            {
+                title: '🕐 דיווח שעות',
+                description: 'כאן תמצאו את כל הרשומות שלכם - מתי התחלתם, מתי סיימתם, וכמה זמן עבדתם',
+                selector: '#timesheetEntriesContainer',
+                position: 'top',
+                actionBefore: () => {
+                    if (typeof switchTab === 'function') switchTab('timesheet');
+                }
+            },
+            {
+                title: '📊 דוחות וניתוחים',
+                description: 'צפו בדוחות מפורטים - שעות לפי עובד, לקוח, תקופה, ועוד',
+                selector: '.nav-item-gray',
+                position: 'left',
+                actionBefore: () => {
+                    const reportsBtn = document.querySelector('.nav-item-gray');
+                    if (reportsBtn) reportsBtn.click();
+                }
+            },
+            {
+                title: '💬 העוזר החכם',
+                description: 'אם אתם תקועים או צריכים עזרה - פשוט לחצו על הכפתור הכחול הזה ושאלו אותי!',
+                selector: '.faq-bot-button',
+                position: 'top',
+                actionBefore: () => {
+                    if (typeof switchTab === 'function') switchTab('budget');
+                }
+            },
+            {
+                title: '🎓 סיימנו את הסיור!',
+                description: 'מעולה! עכשיו אתם מכירים את המערכת. אם יש שאלות - אני תמיד כאן לעזור! 😊',
+                selector: null,
+                position: 'center',
+                actionBefore: null
+            }
+        ];
+    }
+
+    /**
+     * התחלת הסיור
+     */
+    start() {
+        this.currentStep = 0;
+        this.isActive = true;
+        this.createTourOverlay();
+        this.showStep(0);
+    }
+
+    /**
+     * יצירת ה-overlay והפקדים
+     */
+    createTourOverlay() {
+        // הסרת overlay קיים
+        this.removeTourOverlay();
+
+        // יצירת overlay container
+        const overlay = document.createElement('div');
+        overlay.id = 'system-tour-overlay';
+        overlay.innerHTML = `
+            <div class="tour-backdrop"></div>
+            <div class="tour-spotlight"></div>
+            <div class="tour-content-box">
+                <div class="tour-progress">
+                    <span class="tour-progress-text"></span>
+                    <div class="tour-progress-bar">
+                        <div class="tour-progress-fill"></div>
+                    </div>
+                </div>
+                <h2 class="tour-title"></h2>
+                <p class="tour-description"></p>
+                <div class="tour-controls">
+                    <button class="tour-btn tour-btn-skip">דלג על הסיור</button>
+                    <div class="tour-nav-buttons">
+                        <button class="tour-btn tour-btn-prev">← הקודם</button>
+                        <button class="tour-btn tour-btn-next">הבא →</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        this.addTourStyles();
+        this.setupTourEventListeners();
+    }
+
+    /**
+     * הצגת שלב ספציפי
+     */
+    showStep(stepIndex) {
+        if (stepIndex < 0 || stepIndex >= this.tourSteps.length) return;
+
+        this.currentStep = stepIndex;
+        const step = this.tourSteps[stepIndex];
+
+        // ביצוע פעולה לפני (כמו מעבר לטאב)
+        if (step.actionBefore) {
+            step.actionBefore();
+        }
+
+        // המתנה קלה לאחר המעבר
+        setTimeout(() => {
+            // עדכון התוכן
+            document.querySelector('.tour-title').textContent = step.title;
+            document.querySelector('.tour-description').textContent = step.description;
+            document.querySelector('.tour-progress-text').textContent =
+                `שלב ${stepIndex + 1} מתוך ${this.tourSteps.length}`;
+
+            const progressPercent = ((stepIndex + 1) / this.tourSteps.length) * 100;
+            document.querySelector('.tour-progress-fill').style.width = `${progressPercent}%`;
+
+            // עדכון כפתורים
+            const prevBtn = document.querySelector('.tour-btn-prev');
+            const nextBtn = document.querySelector('.tour-btn-next');
+
+            prevBtn.style.display = stepIndex === 0 ? 'none' : 'inline-block';
+
+            if (stepIndex === this.tourSteps.length - 1) {
+                nextBtn.textContent = '✓ סיים סיור';
+                nextBtn.classList.add('tour-btn-finish');
+            } else {
+                nextBtn.textContent = 'הבא →';
+                nextBtn.classList.remove('tour-btn-finish');
+            }
+
+            // הצגת spotlight על האלמנט
+            if (step.selector) {
+                this.highlightElement(step.selector, step.position);
+            } else {
+                // שלב אחרון - מרכז המסך
+                this.centerTourBox();
+            }
+        }, 100);
+    }
+
+    /**
+     * הדגשת אלמנט עם spotlight
+     */
+    highlightElement(selector, position = 'bottom') {
+        const element = document.querySelector(selector);
+        if (!element) {
+            console.warn(`Tour: Element not found - ${selector}`);
+            return;
+        }
+
+        const rect = element.getBoundingClientRect();
+        const spotlight = document.querySelector('.tour-spotlight');
+        const contentBox = document.querySelector('.tour-content-box');
+
+        // עדכון spotlight
+        spotlight.style.cssText = `
+            position: fixed;
+            top: ${rect.top - 10}px;
+            left: ${rect.left - 10}px;
+            width: ${rect.width + 20}px;
+            height: ${rect.height + 20}px;
+            border: 3px solid #3b82f6;
+            border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75),
+                        0 0 30px rgba(59, 130, 246, 0.8);
+            pointer-events: none;
+            z-index: 10000;
+            transition: all 0.3s ease;
+        `;
+
+        // גלילה לאלמנט
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // מיקום תיבת התוכן
+        setTimeout(() => {
+            this.positionContentBox(rect, position);
+        }, 100);
+    }
+
+    /**
+     * מיקום תיבת התוכן ביחס לאלמנט
+     */
+    positionContentBox(rect, position) {
+        const contentBox = document.querySelector('.tour-content-box');
+        const boxWidth = 400;
+        const boxHeight = contentBox.offsetHeight;
+        const padding = 20;
+
+        let top, left;
+
+        switch (position) {
+            case 'bottom':
+                top = rect.bottom + padding;
+                left = rect.left + (rect.width / 2) - (boxWidth / 2);
+                break;
+            case 'top':
+                top = rect.top - boxHeight - padding;
+                left = rect.left + (rect.width / 2) - (boxWidth / 2);
+                break;
+            case 'left':
+                top = rect.top + (rect.height / 2) - (boxHeight / 2);
+                left = rect.left - boxWidth - padding;
+                break;
+            case 'right':
+                top = rect.top + (rect.height / 2) - (boxHeight / 2);
+                left = rect.right + padding;
+                break;
+            default:
+                top = window.innerHeight / 2 - boxHeight / 2;
+                left = window.innerWidth / 2 - boxWidth / 2;
+        }
+
+        // וידוא שהתיבה בתוך המסך
+        top = Math.max(padding, Math.min(top, window.innerHeight - boxHeight - padding));
+        left = Math.max(padding, Math.min(left, window.innerWidth - boxWidth - padding));
+
+        contentBox.style.top = `${top}px`;
+        contentBox.style.left = `${left}px`;
+    }
+
+    /**
+     * מיקום תיבה במרכז (לשלב אחרון)
+     */
+    centerTourBox() {
+        const spotlight = document.querySelector('.tour-spotlight');
+        const contentBox = document.querySelector('.tour-content-box');
+
+        spotlight.style.display = 'none';
+
+        contentBox.style.top = '50%';
+        contentBox.style.left = '50%';
+        contentBox.style.transform = 'translate(-50%, -50%)';
+    }
+
+    /**
+     * מעבר לשלב הבא
+     */
+    nextStep() {
+        if (this.currentStep < this.tourSteps.length - 1) {
+            this.showStep(this.currentStep + 1);
+        } else {
+            this.finish();
+        }
+    }
+
+    /**
+     * חזרה לשלב קודם
+     */
+    prevStep() {
+        if (this.currentStep > 0) {
+            this.showStep(this.currentStep - 1);
+        }
+    }
+
+    /**
+     * סיום הסיור
+     */
+    finish() {
+        this.isActive = false;
+        this.removeTourOverlay();
+
+        // הצגת הודעת סיום
+        if (window.showNotification) {
+            showNotification('הסיור הושלם בהצלחה! 🎉', 'success');
+        }
+
+        // פתיחת הבוט עם הודעת סיום
+        setTimeout(() => {
+            if (smartFAQBot) {
+                smartFAQBot.open();
+                smartFAQBot.addBotMessage(`
+                    <strong>כל הכבוד! סיימתם את הסיור! 🎓</strong>
+                    <p>עכשיו אתם מכירים את כל הפיצ'רים של המערכת.</p>
+                    <p>💬 יש שאלות? אני כאן בשבילכם!</p>
+                `);
+            }
+        }, 500);
+    }
+
+    /**
+     * הגדרת event listeners
+     */
+    setupTourEventListeners() {
+        document.querySelector('.tour-btn-next').addEventListener('click', () => this.nextStep());
+        document.querySelector('.tour-btn-prev').addEventListener('click', () => this.prevStep());
+        document.querySelector('.tour-btn-skip').addEventListener('click', () => this.finish());
+
+        // ESC לסגירה
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isActive) {
+                this.finish();
+            }
+        });
+    }
+
+    /**
+     * הסרת overlay
+     */
+    removeTourOverlay() {
+        const existingOverlay = document.getElementById('system-tour-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+    }
+
+    /**
+     * הוספת סטיילים
+     */
+    addTourStyles() {
+        if (document.getElementById('system-tour-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'system-tour-styles';
+        style.textContent = `
+            #system-tour-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 9999;
+                pointer-events: none;
+            }
+
+            .tour-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.75);
+                z-index: 9999;
+            }
+
+            .tour-spotlight {
+                position: fixed;
+                pointer-events: none;
+                z-index: 10000;
+                transition: all 0.3s ease;
+            }
+
+            .tour-content-box {
+                position: fixed;
+                width: 420px;
+                max-width: 90vw;
+                background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+                border-radius: 16px;
+                padding: 24px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+                z-index: 10001;
+                pointer-events: all;
+                transition: all 0.3s ease;
+            }
+
+            .tour-progress {
+                margin-bottom: 16px;
+            }
+
+            .tour-progress-text {
+                display: block;
+                font-size: 13px;
+                color: #64748b;
+                margin-bottom: 8px;
+                font-weight: 500;
+            }
+
+            .tour-progress-bar {
+                width: 100%;
+                height: 6px;
+                background: #e2e8f0;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+
+            .tour-progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+                border-radius: 10px;
+                transition: width 0.3s ease;
+            }
+
+            .tour-title {
+                font-size: 22px;
+                font-weight: 700;
+                color: #1e293b;
+                margin: 0 0 12px 0;
+            }
+
+            .tour-description {
+                font-size: 16px;
+                line-height: 1.6;
+                color: #475569;
+                margin: 0 0 24px 0;
+            }
+
+            .tour-controls {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .tour-nav-buttons {
+                display: flex;
+                gap: 8px;
+            }
+
+            .tour-btn {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                font-family: inherit;
+            }
+
+            .tour-btn-skip {
+                background: transparent;
+                color: #64748b;
+                border: 1px solid #cbd5e1;
+            }
+
+            .tour-btn-skip:hover {
+                background: #f1f5f9;
+                color: #475569;
+            }
+
+            .tour-btn-prev {
+                background: #f1f5f9;
+                color: #475569;
+            }
+
+            .tour-btn-prev:hover {
+                background: #e2e8f0;
+            }
+
+            .tour-btn-next {
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                color: white;
+            }
+
+            .tour-btn-next:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            }
+
+            .tour-btn-finish {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            }
+
+            .tour-btn-finish:hover {
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            }
+
+            @media (max-width: 600px) {
+                .tour-content-box {
+                    width: 90vw;
+                    padding: 20px;
+                }
+
+                .tour-title {
+                    font-size: 18px;
+                }
+
+                .tour-description {
+                    font-size: 14px;
+                }
+
+                .tour-controls {
+                    flex-direction: column;
+                }
+
+                .tour-nav-buttons {
+                    width: 100%;
+                    justify-content: space-between;
+                }
+
+                .tour-btn {
+                    flex: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
 // אתחול אוטומטי
 let smartFAQBot;
+let systemTour;
 
 document.addEventListener('DOMContentLoaded', () => {
     smartFAQBot = new SmartFAQBot();
+    systemTour = new SystemTour();
     console.log('⚖️ העוזר המשפטי החכם הופעל - v1.0');
 });
 
