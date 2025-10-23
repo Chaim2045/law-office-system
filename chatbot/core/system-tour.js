@@ -25,14 +25,14 @@ export class SystemTour {
             {
                 title: '🎉 ברוכים הבאים למערכת!',
                 description: 'בואו נתחיל סיור קצר שיעזור לכם להכיר את המערכת',
-                selector: '.main-header',
+                selector: '.header',
                 position: 'bottom',
                 actionBefore: null
             },
             {
                 title: '👤 פרופיל משתמש',
                 description: 'כאן תמצאו את שם המשתמש שלכם וכפתור יציאה מהמערכת',
-                selector: '.user-section',
+                selector: '.top-user-bar',
                 position: 'bottom',
                 actionBefore: null
             },
@@ -46,8 +46,8 @@ export class SystemTour {
             {
                 title: '📋 תפריט ניווט',
                 description: 'מכאן תוכלו לנווט בין החלקים השונים: תקצוב, שעתון, דוחות',
-                selector: '.navigation-menu',
-                position: 'left',
+                selector: '.sidebar-nav',
+                position: 'right',
                 actionBefore: null
             },
             {
@@ -328,13 +328,17 @@ export class SystemTour {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         `;
 
-        // גלילה לאלמנט - אבל רק אם הוא לא טאב או header
-        // (טאבים צריכים להישאר תמיד למעלה וגלויים)
-        const isTabOrHeader = element.classList.contains('tab-button') ||
-                             element.classList.contains('main-header') ||
-                             element.classList.contains('user-section');
+        // גלילה לאלמנט - אבל רק אם הוא לא טאב או header או sidebar
+        // (אלמנטים אלה צריכים להישאר תמיד גלויים)
+        const isFixedElement = element.classList.contains('tab-button') ||
+                               element.classList.contains('header') ||
+                               element.classList.contains('top-user-bar') ||
+                               element.classList.contains('sidebar-nav') ||
+                               element.closest('.header') ||
+                               element.closest('.top-user-bar') ||
+                               element.closest('.sidebar-nav');
 
-        if (!isTabOrHeader) {
+        if (!isFixedElement) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
