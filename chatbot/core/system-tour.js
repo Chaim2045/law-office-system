@@ -28,8 +28,14 @@ export class SystemTour {
             },
             {
                 title: '➕ כפתור הוספה מהיר',
-                text: 'הכפתור הירוק הזה פותח תפריט מהיר להוספת משימה חדשה, דיווח שעות, או יצירת תיק לקוח',
+                text: 'הכפתור הירוק הזה פותח תפריט מהיר להוספת משימה חדשה או רישום שעות עבודה',
                 element: '#smartPlusBtn',
+                position: 'bottom'
+            },
+            {
+                title: '📁 תיק חדש',
+                text: 'כפתור זה פותח חלון להוספת לקוח חדש או יצירת תיק חדש ללקוח קיים',
+                element: 'button[onclick*="casesManager.showCreateCaseDialog"]',
                 position: 'bottom'
             },
             {
