@@ -39,6 +39,17 @@ export class SystemTour {
                 position: 'bottom'
             },
             {
+                title: '📝 הוספת משימה חדשה',
+                text: 'בואו נראה איך מוסיפים משימה: תיאור המשימה, בחירת לקוח ותיק, הגדרת תקצוב ותאריך יעד. לדוגמא: "ייצוג משפטי - ישראל ישראלי"',
+                element: '#smartFormModal',
+                position: 'right',
+                action: () => {
+                    if (typeof openSmartForm === 'function') {
+                        openSmartForm();
+                    }
+                }
+            },
+            {
                 title: '📊 טאב תקצוב משימות',
                 text: 'כאן תנהלו את כל המשימות המתוקצבות שלכם',
                 element: 'button[onclick*="switchTab(\'budget\')"]',
@@ -118,6 +129,18 @@ export class SystemTour {
 
         this.currentStep = index;
         const step = this.steps[index];
+
+        // סגור דיאלוגים פתוחים אם לא זה השלב שלהם
+        if (step.title !== '📝 הוספת משימה חדשה') {
+            const smartFormModal = document.getElementById('smartFormModal');
+            if (smartFormModal && smartFormModal.style.display !== 'none') {
+                if (typeof closeSmartForm === 'function') {
+                    closeSmartForm();
+                } else {
+                    smartFormModal.style.display = 'none';
+                }
+            }
+        }
 
         // הרץ action אם יש
         if (step.action) {
@@ -365,6 +388,17 @@ export class SystemTour {
      */
     end() {
         this.isActive = false;
+
+        // סגור דיאלוגים פתוחים
+        const smartFormModal = document.getElementById('smartFormModal');
+        if (smartFormModal && smartFormModal.style.display !== 'none') {
+            if (typeof closeSmartForm === 'function') {
+                closeSmartForm();
+            } else {
+                smartFormModal.style.display = 'none';
+            }
+        }
+
         this.destroy();
 
         // הודעת סיום
