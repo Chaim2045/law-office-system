@@ -1821,12 +1821,47 @@
         try {
           console.log("📊 טוען נתוני עובדים...");
 
-          const employeesSnapshot = await db.collection("employees").get();
+          // ✅ Load ALL data once (more efficient + avoids permission issues)
+          const [employeesSnapshot, allTimesheets, allTasks] = await Promise.all([
+            db.collection("employees").get(),
+            db.collection("timesheet_entries").get(),
+            db.collection("budget_tasks").get()
+          ]);
+
+          // Build lookup maps for performance
+          const timesheetsByEmployee = {};
+          const tasksByEmployee = {};
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+          // Group timesheets by employee email
+          allTimesheets.forEach((doc) => {
+            const entry = doc.data();
+            const empEmail = entry.employee;
+            if (!empEmail) return;
+
+            if (!timesheetsByEmployee[empEmail]) {
+              timesheetsByEmployee[empEmail] = [];
+            }
+            timesheetsByEmployee[empEmail].push(entry);
+          });
+
+          // Group tasks by employee email
+          allTasks.forEach((doc) => {
+            const task = doc.data();
+            const empEmail = task.employee;
+            if (!empEmail) return;
+
+            if (!tasksByEmployee[empEmail]) {
+              tasksByEmployee[empEmail] = [];
+            }
+            tasksByEmployee[empEmail].push(task);
+          });
+
           employeesData = [];
 
           for (const doc of employeesSnapshot.docs) {
             const userData = doc.data();
-            // Use doc.id (which is the username) or userData.username
             const employeeName = userData.username || userData.name || doc.id;
             const employeeEmail = userData.email;
 
@@ -1836,48 +1871,35 @@
               continue;
             }
 
-            // שם לתצוגה - תעדוף לשם המלא בעברית
+            // שם לתצוגה
             const displayName = userData.name || employeeName;
 
-            // Get real timesheet data for this employee (by EMAIL)
-            const timesheetSnapshot = await db
-              .collection("timesheet_entries")
-              .where("employee", "==", employeeEmail)
-              .get();
-
+            // Calculate weekly hours from pre-loaded data
             let weeklyHours = 0;
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-            timesheetSnapshot.forEach((entryDoc) => {
-              const entry = entryDoc.data();
+            const employeeTimesheets = timesheetsByEmployee[employeeEmail] || [];
+            employeeTimesheets.forEach((entry) => {
               const entryDate = entry.date ? new Date(entry.date) : null;
               if (entryDate && entryDate >= oneWeekAgo) {
                 weeklyHours += (entry.minutes || 0) / 60;
               }
             });
 
-            // Get real budget tasks for this employee (by EMAIL)
-            const tasksSnapshot = await db
-              .collection("budget_tasks")
-              .where("employee", "==", employeeEmail)
-              .get();
-
+            // Count active tasks from pre-loaded data
             let activeTasks = 0;
-            tasksSnapshot.forEach((taskDoc) => {
-              const task = taskDoc.data();
+            const employeeTasks = tasksByEmployee[employeeEmail] || [];
+            employeeTasks.forEach((task) => {
               if (task.status !== "הושלם") {
                 activeTasks++;
               }
             });
 
-            // Check if user is currently online by checking active_sessions
+            // Check if user is currently online
             const isOnline = await checkUserOnlineStatus(employeeName);
 
             employeesData.push({
               id: doc.id,
-              name: displayName,  // 🔥 שם מלא בעברית
-              username: employeeName,  // שם משתמש (לשאילתות)
+              name: displayName,
+              username: employeeName,
               email: userData.email || "",
               role: userData.role || "עובד",
               status: isOnline ? "online" : "offline",
@@ -1889,7 +1911,7 @@
           }
 
           console.log(
-            `✅ נטענו ${employeesData.length} עובדים אמיתיים מFirebase`
+            `✅ נטענו ${employeesData.length} עובדים אמיתיים מFirebase (${allTimesheets.size} שעות, ${allTasks.size} משימות)`
           );
         } catch (error) {
           console.error("❌ שגיאה בטעינת עובדים:", error);
