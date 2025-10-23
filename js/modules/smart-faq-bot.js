@@ -435,12 +435,31 @@ class SmartFAQBot {
         this.attachEventListeners();
         this.detectContext();
         this.addHighlightStyles(); // הוסף אנימציות להדגשה
+        this.setupButtonDelegation(); // הוסף event delegation לכפתורים
 
         // F1 פותח את הבוט
         document.addEventListener('keydown', (e) => {
             if (e.key === 'F1') {
                 e.preventDefault();
                 this.toggleBot();
+            }
+        });
+    }
+
+    /**
+     * מגדיר event delegation לכפתורי פעולה
+     */
+    setupButtonDelegation() {
+        // האזן לכל הלחיצות על כפתורים בתוך הודעות הבוט
+        document.addEventListener('click', (e) => {
+            // בדוק אם הלחיצה היא על כפתור פעולה
+            if (e.target.classList.contains('bot-action-button')) {
+                const action = e.target.dataset.action;
+                const selector = e.target.dataset.selector;
+
+                if (action) {
+                    this.handleActionButton(action, selector || '');
+                }
             }
         });
     }
@@ -1807,7 +1826,6 @@ class SmartFAQBot {
                     class="bot-action-button"
                     data-action="${action.action}"
                     data-selector="${action.selector || ''}"
-                    onclick="smartFAQBot.handleActionButton('${action.action}', '${action.selector || ''}')"
                     style="
                         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                         color: white;
@@ -1820,8 +1838,8 @@ class SmartFAQBot {
                         transition: all 0.2s;
                         box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
                     "
-                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'"
-                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(16, 185, 129, 0.3)'"
+                    onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'"
+                    onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(16, 185, 129, 0.3)'"
                 >
                     ${action.text}
                 </button>
