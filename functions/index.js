@@ -634,7 +634,8 @@ exports.createClient = functions.https.onCall(async (data, context) => {
                 hours: data.stages[0].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[0].hours,
-                purchaseDate: now
+                purchaseDate: now,
+                status: 'active'  // ✅ חבילה פעילה
               }
             ]
           },
@@ -656,7 +657,8 @@ exports.createClient = functions.https.onCall(async (data, context) => {
                 hours: data.stages[1].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[1].hours,
-                purchaseDate: now
+                purchaseDate: now,
+                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
               }
             ]
           },
@@ -678,7 +680,8 @@ exports.createClient = functions.https.onCall(async (data, context) => {
                 hours: data.stages[2].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[2].hours,
-                purchaseDate: now
+                purchaseDate: now,
+                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
               }
             ]
           }
@@ -1603,6 +1606,22 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // ✅ NEW: בדיקה שיש רישומי זמן לפני סיום המשימה
+    const actualHours = taskData.actualHours || 0;
+    if (actualHours === 0) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        `❌ לא ניתן לסיים משימה ללא רישומי זמן!
+
+משימה: ${taskData.title}
+תקציב: ${taskData.budgetHours || 0} שעות
+בפועל: 0 שעות
+
+אנא רשום זמן לפני סיום המשימה.
+זה מבטיח מעקב מדויק ונתונים אמיתיים.`
+      );
+    }
+
     await db.collection('budget_tasks').doc(data.taskId).update({
       status: 'הושלם',
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -1825,6 +1844,18 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       const clientData = clientDoc.data();
       if (!finalClientName) {
         finalClientName = clientData.clientName || clientData.fullName;
+      }
+
+      // ✅ NEW: חובה לקשר למשימה לרישום זמן על לקוח
+      if (!data.taskId) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `❌ חובה לבחור משימה לרישום זמן על לקוח!
+
+אם אין משימה קיימת - צור משימה חדשה תחילה.
+
+זה מבטיח מעקב מלא ומדויק אחר כל העבודה.`
+        );
       }
     }
 
@@ -2718,7 +2749,8 @@ exports.createCase = functions.https.onCall(async (data, context) => {
                 hours: data.stages[0].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[0].hours,
-                purchaseDate: now
+                purchaseDate: now,
+                status: 'active'  // ✅ חבילה פעילה
               }
             ]
           },
@@ -2740,7 +2772,8 @@ exports.createCase = functions.https.onCall(async (data, context) => {
                 hours: data.stages[1].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[1].hours,
-                purchaseDate: now
+                purchaseDate: now,
+                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
               }
             ]
           },
@@ -2762,7 +2795,8 @@ exports.createCase = functions.https.onCall(async (data, context) => {
                 hours: data.stages[2].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[2].hours,
-                purchaseDate: now
+                purchaseDate: now,
+                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
               }
             ]
           }
