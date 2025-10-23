@@ -2118,6 +2118,20 @@ class SystemTour {
                 position: 'center'
             },
             {
+                title: '🎨 תפריט ניווט צדדי',
+                text: 'זה התפריט הראשי שלכם!\n\n📁 תיקים חדשים\n🔄 רענון נתונים\n💬 שליחת משוב\n📊 דוחות וניתוחים\n🚪 יציאה מהמערכת\n\nתוכלו לפתוח ולסגור אותו עם כפתור התפריט למעלה',
+                element: '#minimalSidebar',
+                position: 'right',
+                action: () => {
+                    const sidebar = document.getElementById('minimalSidebar');
+                    if (sidebar && sidebar.classList.contains('hidden')) {
+                        if (typeof toggleSidebar === 'function') {
+                            toggleSidebar();
+                        }
+                    }
+                }
+            },
+            {
                 title: '➕ כפתור הוספה מהיר',
                 text: 'הכפתור הירוק הזה פותח תפריט מהיר להוספת משימה חדשה או רישום שעות עבודה',
                 element: '#smartPlusBtn',
@@ -2144,6 +2158,15 @@ class SystemTour {
                 title: '📊 טאב תקצוב משימות',
                 text: 'כאן תנהלו את כל המשימות המתוקצבות שלכם',
                 element: 'button[onclick*="switchTab(\'budget\')"]',
+                position: 'bottom',
+                action: () => {
+                    if (typeof switchTab === 'function') switchTab('budget');
+                }
+            },
+            {
+                title: '👁️ תצוגות שונות',
+                text: 'בחרו את סוג התצוגה המועדף עליכם:\n\n🎴 כרטיסים - תצוגה ויזואלית ונוחה\n📋 טבלה - תצוגה מסודרת ומפורטת\n\nכל אחד לפי הנוחות שלו!',
+                element: '#budgetTab .view-tabs',
                 position: 'bottom',
                 action: () => {
                     if (typeof switchTab === 'function') switchTab('budget');
@@ -2229,6 +2252,16 @@ class SystemTour {
                     closeSmartForm();
                 } else {
                     smartFormModal.style.display = 'none';
+                }
+            }
+        }
+
+        // סגור סרגל צדדי אם לא זה השלב שלו
+        if (step.title !== '🎨 תפריט ניווט צדדי') {
+            const sidebar = document.getElementById('minimalSidebar');
+            if (sidebar && !sidebar.classList.contains('hidden')) {
+                if (typeof toggleSidebar === 'function') {
+                    toggleSidebar();
                 }
             }
         }
@@ -2495,6 +2528,14 @@ class SystemTour {
                 closeSmartForm();
             } else {
                 smartFormModal.style.display = 'none';
+            }
+        }
+
+        // סגור סרגל צדדי
+        const sidebar = document.getElementById('minimalSidebar');
+        if (sidebar && !sidebar.classList.contains('hidden')) {
+            if (typeof toggleSidebar === 'function') {
+                toggleSidebar();
             }
         }
 
