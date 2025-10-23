@@ -1,105 +1,125 @@
 /**
- * עיצוב הסיור במערכת - System Tour Styles
- * CSS עבור תכונת הסיור (onboarding tour)
+ * ========================================
+ * עיצוב הסיור במערכת (גרסה 2.0)
+ * ========================================
+ * CSS פשוט ונקי עבור הסיור החדש
  */
 
-/**
- * מוסיף את עיצוב הסיור לדף
- * נקרא פעם אחת בעת התחלת הסיור
- */
 export function addTourStyles() {
     // בדוק אם ה-CSS כבר נטען
-    if (document.getElementById('system-tour-styles')) return;
+    if (document.getElementById('tour-styles')) return;
 
     const style = document.createElement('style');
-    style.id = 'system-tour-styles';
+    style.id = 'tour-styles';
     style.textContent = `
-        #system-tour-overlay {
+        /* ========== Container ========== */
+        #tour-overlay {
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 9999;
+            width: 100%;
+            height: 100%;
+            z-index: 99997;
             pointer-events: none;
         }
 
+        /* ========== Backdrop (אופציונלי) ========== */
+        .tour-backdrop {
+            display: none; /* לא בשימוש - box-shadow עושה את העבודה */
+        }
+
+        /* ========== Spotlight ========== */
         .tour-spotlight {
-            position: fixed;
-            pointer-events: none;
-            z-index: 10000;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            /* הסגנון מוגדר ב-JS באמצעות inline styles */
         }
 
-        .tour-content-box {
+        /* ========== Tooltip - הכרטיסייה ========== */
+        .tour-tooltip {
             position: fixed;
-            width: 450px;
+            width: 400px;
             max-width: 90vw;
             background: white;
             border-radius: 12px;
-            padding: 28px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15),
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3),
                        0 2px 8px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            z-index: 10001;
             pointer-events: all;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            z-index: 99999;
+        }
+
+        /* ========== Header ========== */
+        .tour-tooltip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 20px 20px 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .tour-tooltip-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+            flex: 1;
+        }
+
+        .tour-close-btn {
+            background: transparent;
+            border: none;
+            font-size: 28px;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .tour-close-btn:hover {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        /* ========== Text ========== */
+        .tour-tooltip-text {
+            padding: 16px 20px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #4b5563;
+            margin: 0;
+        }
+
+        /* ========== Footer ========== */
+        .tour-tooltip-footer {
+            padding: 16px 20px 20px 20px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }
 
         .tour-progress {
-            margin-bottom: 16px;
-        }
-
-        .tour-progress-text {
-            display: block;
             font-size: 13px;
-            color: #64748b;
-            margin-bottom: 8px;
+            color: #6b7280;
             font-weight: 500;
+            text-align: center;
         }
 
-        .tour-progress-bar {
-            width: 100%;
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .tour-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-            border-radius: 10px;
-            transition: width 0.3s ease;
-        }
-
-        .tour-title {
-            font-size: 22px;
-            font-weight: 700;
-            color: #1e293b;
-            margin: 0 0 12px 0;
-        }
-
-        .tour-description {
-            font-size: 16px;
-            line-height: 1.6;
-            color: #475569;
-            margin: 0 0 24px 0;
-        }
-
-        .tour-controls {
+        /* ========== Buttons ========== */
+        .tour-buttons {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .tour-nav-buttons {
-            display: flex;
-            gap: 8px;
+            gap: 10px;
         }
 
         .tour-btn {
+            flex: 1;
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
@@ -110,24 +130,14 @@ export function addTourStyles() {
             font-family: inherit;
         }
 
-        .tour-btn-skip {
-            background: transparent;
-            color: #64748b;
-            border: 1px solid #cbd5e1;
-        }
-
-        .tour-btn-skip:hover {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
         .tour-btn-prev {
-            background: #f1f5f9;
-            color: #475569;
+            background: #f3f4f6;
+            color: #6b7280;
         }
 
         .tour-btn-prev:hover {
-            background: #e2e8f0;
+            background: #e5e7eb;
+            color: #4b5563;
         }
 
         .tour-btn-next {
@@ -137,7 +147,7 @@ export function addTourStyles() {
 
         .tour-btn-next:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
         }
 
         .tour-btn-finish {
@@ -145,35 +155,48 @@ export function addTourStyles() {
         }
 
         .tour-btn-finish:hover {
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
         }
 
+        /* ========== Responsive ========== */
         @media (max-width: 600px) {
-            .tour-content-box {
-                width: 90vw;
-                padding: 20px;
+            .tour-tooltip {
+                width: calc(100vw - 40px);
             }
 
-            .tour-title {
+            .tour-tooltip-header {
+                padding: 16px;
+            }
+
+            .tour-tooltip-title {
                 font-size: 18px;
             }
 
-            .tour-description {
+            .tour-tooltip-text {
+                padding: 12px 16px;
                 font-size: 14px;
             }
 
-            .tour-controls {
+            .tour-tooltip-footer {
+                padding: 12px 16px 16px 16px;
+            }
+
+            .tour-buttons {
                 flex-direction: column;
             }
 
-            .tour-nav-buttons {
-                width: 100%;
-                justify-content: space-between;
-            }
-
             .tour-btn {
-                flex: 1;
+                width: 100%;
             }
+        }
+
+        /* ========== RTL Support ========== */
+        [dir="rtl"] .tour-btn-prev {
+            order: 2;
+        }
+
+        [dir="rtl"] .tour-btn-next {
+            order: 1;
         }
     `;
 
