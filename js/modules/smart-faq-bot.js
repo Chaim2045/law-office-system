@@ -1273,20 +1273,37 @@ class SmartFAQBot {
                          </p>`;
         }
 
-        // הסבר החישוב
+        // הסבר החישוב - ברור ומפורט
         const calculationExplanation = `
             <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 12px 0; border-radius: 6px;">
-                <strong style="color: #1e40af;">💡 איך מחושב?</strong>
-                <div style="font-size: 13px; color: #374151; margin-top: 8px;">
-                    <strong>החישוב:</strong><br>
-                    • תקן חודשי: 186 שעות ממוצע<br>
-                    • ימי עבודה בחודש: ${h.workDaysTotal} ימים<br>
-                    • מכסה לחודש זה: ${h.monthlyQuota} שעות<br>
-                    • דיווחת עד כה: ${h.hoursWorkedThisMonth} שעות<br>
-                    • נותר לדווח: ${h.hoursRemaining} שעות<br>
-                    • ימי עבודה שנותרו: ${h.workDaysRemaining} ימים<br>
-                    <br>
-                    <strong style="color: #2563eb;">ממוצע נדרש ליום:</strong> ${h.hoursRemaining} ÷ ${h.workDaysRemaining} = <strong>${h.avgHoursPerRemainingDay} שעות/יום</strong>
+                <strong style="color: #1e40af;">💡 הסבר החישוב</strong>
+                <div style="font-size: 13px; color: #374151; margin-top: 8px; line-height: 1.8;">
+
+                    <div style="background: white; padding: 10px; border-radius: 6px; margin: 8px 0;">
+                        <strong style="color: #2563eb;">📅 נתוני חודש ${h.monthName}:</strong><br>
+                        • סה"כ ימי עבודה בחודש כולו: <strong>${h.workDaysTotal} ימים</strong><br>
+                        • ימי עבודה שכבר עברו: <strong>${h.workDaysPassed} ימים</strong><br>
+                        • ימי עבודה שנותרו: <strong style="color: #ef4444;">${h.workDaysRemaining} ימים</strong>
+                    </div>
+
+                    <div style="background: white; padding: 10px; border-radius: 6px; margin: 8px 0;">
+                        <strong style="color: #2563eb;">⏰ מכסת שעות:</strong><br>
+                        • תקן חודשי: <strong>186 שעות</strong> (ממוצע)<br>
+                        • מכסה לחודש זה: <strong>${h.monthlyQuota} שעות</strong><br>
+                        <span style="font-size: 12px; color: #6b7280;">(${h.workDaysTotal} ימי עבודה × 8.45 שעות)</span>
+                    </div>
+
+                    <div style="background: white; padding: 10px; border-radius: 6px; margin: 8px 0;">
+                        <strong style="color: #2563eb;">📊 מצב נוכחי:</strong><br>
+                        • דיווחת עד היום: <strong>${h.hoursWorkedThisMonth} שעות</strong><br>
+                        • עוד צריך לדווח: <strong style="color: #ef4444;">${h.hoursRemaining} שעות</strong>
+                    </div>
+
+                    <div style="background: #fef3c7; padding: 10px; border-radius: 6px; margin: 8px 0; border: 2px solid #f59e0b;">
+                        <strong style="color: #92400e;">🔢 החישוב:</strong><br>
+                        ${h.hoursRemaining} שעות נותרות ÷ ${h.workDaysRemaining} ימי עבודה נותרים<br>
+                        = <strong style="font-size: 15px; color: #dc2626;">${h.avgHoursPerRemainingDay} שעות ביום ממוצע!</strong>
+                    </div>
                 </div>
             </div>
         `;
