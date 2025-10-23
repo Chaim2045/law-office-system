@@ -27,15 +27,18 @@ export class SystemTour {
                 position: 'bottom'
             },
             {
-                title: '📊 טאב תקצוב',
+                title: '📊 טאב תקצוב משימות',
                 text: 'כאן תנהלו את כל המשימות המתוקצבות שלכם',
-                element: '.tab-button.active',
-                position: 'bottom'
+                element: 'button[onclick*="switchTab(\'budget\')"]',
+                position: 'bottom',
+                action: () => {
+                    if (typeof switchTab === 'function') switchTab('budget');
+                }
             },
             {
                 title: '⏱️ טאב שעתון',
-                text: 'כאן תדווחו על השעות שביצעתם',
-                element: '.tabs-container .tab-button:nth-child(2)',
+                text: 'כאן תדווחו על השעות שביצעתם ותעקבו אחרי הזמן',
+                element: 'button[onclick*="switchTab(\'timesheet\')"]',
                 position: 'bottom',
                 action: () => {
                     if (typeof switchTab === 'function') switchTab('timesheet');
