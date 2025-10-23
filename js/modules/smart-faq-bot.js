@@ -1248,8 +1248,10 @@ class SmartFAQBot {
      * התחלת סיור במערכת - סוגר את הבוט ומתחיל את הסיור
      */
     startSystemTour() {
-        // סגור את הבוט
-        this.close();
+        // סגור את הבוט אם הוא פתוח
+        if (this.isOpen) {
+            this.toggleBot();
+        }
 
         // המתן רגע ואז התחל את הסיור
         setTimeout(() => {
@@ -1257,6 +1259,21 @@ class SmartFAQBot {
                 systemTour.start();
             }
         }, 300);
+    }
+
+    /**
+     * פונקציות עזר לפתיחה/סגירה
+     */
+    open() {
+        if (!this.isOpen) {
+            this.toggleBot();
+        }
+    }
+
+    close() {
+        if (this.isOpen) {
+            this.toggleBot();
+        }
     }
 
     detectContext() {
