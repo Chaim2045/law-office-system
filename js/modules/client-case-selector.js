@@ -42,6 +42,7 @@
       // State
       this.selectedClient = null;
       this.selectedCase = null;
+      this.selectedService = null;
       this.clientCases = [];
 
       // ✅ Register this instance globally for onclick handlers
@@ -113,7 +114,7 @@
           <!-- שלב 2: בחירת תיק (מוצג רק אחרי בחירת לקוח) -->
           <div class="form-group" id="${this.containerId}_caseGroup" style="display: none;">
             <label for="${this.containerId}_caseSelect">
-              תיק/שירות
+              תיק
               ${this.options.required ? '<span style="color: #ef4444;">*</span>' : ''}
             </label>
             <select
@@ -143,12 +144,28 @@
             "></div>
           </div>
 
+          <!-- שלב 3: בחירת שירות (כרטיסיות) -->
+          <div class="form-group" id="${this.containerId}_servicesGroup" style="display: none;">
+            <label>
+              בחר שירות
+              ${this.options.required ? '<span style="color: #ef4444;">*</span>' : ''}
+            </label>
+            <div id="${this.containerId}_servicesCards" style="
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+              gap: 12px;
+              margin-top: 8px;
+            "></div>
+          </div>
+
           <!-- Hidden fields for form submission -->
           <input type="hidden" id="${this.containerId}_clientId" />
           <input type="hidden" id="${this.containerId}_clientName" />
           <input type="hidden" id="${this.containerId}_caseId" />
           <input type="hidden" id="${this.containerId}_caseNumber" />
           <input type="hidden" id="${this.containerId}_caseTitle" />
+          <input type="hidden" id="${this.containerId}_serviceId" />
+          <input type="hidden" id="${this.containerId}_serviceName" />
         </div>
       `;
     }
@@ -183,6 +200,63 @@
           this.selectCase(e.target.value);
         });
       }
+
+      // 🔔 האזנה לאירועי יצירת תיק חדש (אפס עלות - רק ב-browser!)
+      window.addEventListener('caseCreated', (e) => {
+        const { clientId, clientName, caseNumber, caseTitle } = e.detail;
+
+        // בדיקה: האם הלקוח הזה נבחר כרגע בטופס הזה?
+        if (this.selectedClient && this.selectedClient.id === clientId) {
+          console.log(`🔄 [${this.containerId}] Detected new case for selected client. Auto-refreshing...`);
+
+          // רענון אוטומטי של רשימת התיקים
+          this.loadClientCases(clientId, clientName).then(() => {
+            console.log(`✅ [${this.containerId}] Case list refreshed! New case: ${caseNumber}`);
+
+            // הצגת הודעה קטנה לעובד (אופציונלי)
+            if (window.NotificationSystem) {
+              window.NotificationSystem.info(`התיק "${caseTitle}" נוסף לרשימה`, 2000);
+            }
+          });
+        } else {
+          console.log(`ℹ️ [${this.containerId}] New case created for different client - no refresh needed`);
+        }
+      });
+
+      // 🔔 האזנה לאירועי הוספת שירות חדש (אפס עלות - רק ב-browser!)
+      window.addEventListener('serviceAdded', async (e) => {
+        const { caseId, serviceId, serviceName } = e.detail;
+
+        // בדיקה: האם התיק הזה נבחר כרגע בטופס הזה?
+        if (this.selectedCase && this.selectedCase.id === caseId) {
+          console.log(`🔄 [${this.containerId}] Detected new service for selected case. Auto-refreshing...`);
+
+          // רענון אוטומטי של התיק מ-Firebase
+          try {
+            const db = window.firebaseDB;
+            const caseDoc = await db.collection('clients').doc(caseId).get();
+
+            if (caseDoc.exists) {
+              const updatedCase = { id: caseDoc.id, ...caseDoc.data() };
+              this.selectedCase = updatedCase;
+
+              // רענון כרטיסיות השירותים
+              this.renderServiceCards(updatedCase);
+
+              console.log(`✅ [${this.containerId}] Service cards refreshed! New service: ${serviceName}`);
+
+              // הצגת הודעה קטנה לעובד (אופציונלי)
+              if (window.NotificationSystem) {
+                window.NotificationSystem.info(`השירות "${serviceName}" נוסף לרשימה`, 2000);
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error refreshing service cards:', error);
+          }
+        } else {
+          console.log(`ℹ️ [${this.containerId}] New service added for different case - no refresh needed`);
+        }
+      });
     }
 
     /**
@@ -209,44 +283,23 @@
           throw new Error('Firebase לא מחובר');
         }
 
-        // טעינה מקבילית של clients + cases
-        const [clientsSnapshot, casesSnapshot] = await Promise.all([
-          db.collection('clients').get(),
-          db.collection('cases').get()
-        ]);
+        // ✅ במבנה החדש Client=Case - רק clients collection
+        const clientsSnapshot = await db.collection('clients').get();
 
-        const clientsMap = new Map();
-
-        // שלב 1: הוסף לקוחות מ-collection clients
+        // ✅ במבנה החדש: כל client = case אחד
+        const clients = [];
         clientsSnapshot.forEach(doc => {
           const data = doc.data();
           const fullName = data.fullName || data.clientName;
           if (fullName) {
-            clientsMap.set(doc.id, {
-              id: doc.id,
+            clients.push({
+              id: doc.id, // זה ה-caseNumber (document ID)
               fullName: fullName,
               phone: data.phone || data.phoneNumber,
-              source: 'clients'
+              caseNumber: doc.id // במבנה החדש, document ID = caseNumber
             });
           }
         });
-
-        // שלב 2: הוסף לקוחות ייחודיים מ-cases (שאין להם רשומה ב-clients)
-        casesSnapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.clientId && data.clientName) {
-            if (!clientsMap.has(data.clientId)) {
-              clientsMap.set(data.clientId, {
-                id: data.clientId,
-                fullName: data.clientName,
-                phone: data.clientPhone || '',
-                source: 'cases'
-              });
-            }
-          }
-        });
-
-        const clients = Array.from(clientsMap.values());
 
         if (clients.length === 0) {
           console.warn('⚠️ לא נמצאו לקוחות במערכת');
@@ -382,17 +435,17 @@
         this.options.onClientSelected(this.selectedClient);
       }
 
-      // טעינת תיקים של הלקוח
-      console.log(`  🔍 Loading cases for client ${clientId}...`);
-      await this.loadClientCases(clientId);
+      // טעינת תיקים של הלקוח (חיפוש לפי שם במבנה החדש)
+      console.log(`  🔍 Loading cases for client ${clientName}...`);
+      await this.loadClientCases(clientId, clientName);
       console.log(`  ✅ selectClient completed`);
     }
 
     /**
-     * טעינת תיקים של לקוח
+     * טעינת תיקים של לקוח (במבנה החדש: חיפוש לפי שם)
      */
-    async loadClientCases(clientId) {
-      console.log(`📂 loadClientCases started for clientId: ${clientId}`);
+    async loadClientCases(clientId, clientName) {
+      console.log(`📂 loadClientCases started for clientName: ${clientName}`);
 
       try {
         const db = window.firebaseDB;
@@ -400,19 +453,19 @@
           throw new Error('Firebase לא מחובר');
         }
 
-        // שליפת כל התיקים של הלקוח מ-Firebase
-        console.log(`  🔍 Querying Firebase for cases...`);
-        const casesSnapshot = await db.collection('cases')
-          .where('clientId', '==', clientId)
+        // ✅ במבנה החדש: חיפוש clients לפי שם לקוח (כל client = case)
+        console.log(`  🔍 Querying clients by clientName...`);
+        const casesSnapshot = await db.collection('clients')
+          .where('clientName', '==', clientName)
           .get();
 
-        console.log(`  📊 Found ${casesSnapshot.size} cases in Firebase`);
+        console.log(`  📊 Found ${casesSnapshot.size} clients/cases in Firebase`);
 
         let clientCases = [];
         casesSnapshot.forEach(doc => {
           const data = doc.data();
           clientCases.push({
-            id: doc.id,
+            id: doc.id, // במבנה החדש: document ID = caseNumber
             ...data
           });
         });
@@ -517,14 +570,46 @@
       }
 
       this.selectedCase = caseItem;
+      this.selectedService = null; // איפוס שירות נבחר
 
       // עדכון שדות נסתרים
       document.getElementById(`${this.containerId}_caseId`).value = caseItem.id;
       document.getElementById(`${this.containerId}_caseNumber`).value = caseItem.caseNumber || '';
       document.getElementById(`${this.containerId}_caseTitle`).value = caseItem.caseTitle || '';
 
-      // הצגת מידע על התיק
-      this.showCaseInfo(caseItem);
+      // 🎯 בדיקה: האם יש שירותים/שלבים פעילים או תיק ישן?
+      const services = caseItem.services || [];
+      const stages = caseItem.stages || [];
+      const isLegacyCase = services.length === 0 && stages.length === 0 &&
+                          (caseItem.hoursTotal > 0 || caseItem.procedureType === 'legal_procedure');
+      const hasActiveServices = services.filter(s => s.status === 'active').length > 0 ||
+                                stages.filter(s => s.status === 'active').length > 0 ||
+                                isLegacyCase;
+
+      if (hasActiveServices) {
+        // ✅ יש שירותים - הסתר dropdown של תיקים, הצג רק כרטיסיות
+
+        // הסתרת ה-dropdown של תיקים
+        const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
+        if (caseSelect) {
+          caseSelect.style.display = 'none';
+        }
+
+        this.hideCaseInfo();
+        this.renderServiceCards(caseItem);
+      } else {
+        // ⚠️ אין שירותים - הצג dropdown ומידע על התיק
+        console.log('ℹ️ No active services - showing case dropdown and caseInfo');
+
+        // הצגת ה-dropdown של תיקים
+        const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
+        if (caseSelect) {
+          caseSelect.style.display = 'block';
+        }
+
+        this.showCaseInfo(caseItem);
+        this.renderServiceCards(caseItem); // זה יסתיר אוטומטית את קבוצת השירותים
+      }
 
       // ✅ קריאה ל-callback
       if (this.options.onCaseSelected) {
@@ -579,6 +664,342 @@
     }
 
     /**
+     * רינדור כרטיסיות שירותים
+     */
+    renderServiceCards(caseItem) {
+      const servicesGroup = document.getElementById(`${this.containerId}_servicesGroup`);
+      const servicesCards = document.getElementById(`${this.containerId}_servicesCards`);
+
+      if (!servicesGroup || !servicesCards) {
+        console.error('❌ Services containers not found');
+        return;
+      }
+
+      // בדיקה אם יש שירותים
+      const services = caseItem.services || [];
+      const stages = caseItem.stages || [];
+
+      // 🔄 Fallback: תיקים ישנים ללא services - נציג את התיק עצמו ככרטיס
+      const isLegacyCase = services.length === 0 && stages.length === 0;
+
+      if (services.length === 0 && stages.length === 0 && !isLegacyCase) {
+        // אין שירותים וגם לא תיק ישן - הסתרת הקבוצה
+        servicesGroup.style.display = 'none';
+        return;
+      }
+
+      // בניית כרטיסיות
+      let cardsHtml = '';
+
+      if (isLegacyCase) {
+        // 🏷️ תיק ישן - נציג את התיק עצמו ככרטיס שירות יחיד
+        console.log('🔄 Legacy case detected - showing case as single service card');
+        const legacyService = {
+          id: caseItem.id, // נשתמש ב-caseId כ-serviceId
+          name: caseItem.caseTitle || 'תיק ראשי',
+          hoursRemaining: caseItem.hoursRemaining || 0,
+          status: 'active'
+        };
+        cardsHtml = this.createServiceCard(legacyService, 'hours', caseItem.pricingType, caseItem);
+      } else {
+        // תוכנית שעות רגילה
+        if (caseItem.procedureType === 'hours' && services.length > 0) {
+          cardsHtml = services
+            .filter(s => s.status === 'active')
+            .map(service => this.createServiceCard(service, 'hours', 'hourly', caseItem))
+            .join('');
+        }
+
+        // הליך משפטי
+        if (caseItem.procedureType === 'legal_procedure' && stages.length > 0) {
+          cardsHtml = stages
+            .filter(s => s.status === 'active')
+            .map(stage => this.createServiceCard(stage, 'legal_procedure', caseItem.pricingType, caseItem))
+            .join('');
+        }
+      }
+
+      servicesCards.innerHTML = cardsHtml;
+      servicesGroup.style.display = 'block';
+
+      // בחירה אוטומטית אם יש שירות אחד בלבד
+      const activeServices = services.filter(s => s.status === 'active');
+      const activeStages = stages.filter(s => s.status === 'active');
+
+      if (isLegacyCase) {
+        // תיק ישן - בחירה אוטומטית
+        this.selectService(caseItem.id, 'hours');
+      } else if (activeServices.length === 1 && services.length > 0) {
+        this.selectService(activeServices[0].id, 'hours');
+      } else if (activeStages.length === 1 && stages.length > 0) {
+        this.selectService(activeStages[0].id, 'legal_procedure');
+      }
+    }
+
+    /**
+     * יצירת כרטיס שירות בודד
+     */
+    createServiceCard(service, type, pricingType = 'hourly', caseItem = null) {
+      const serviceId = service.id;
+      let icon, title, subtitle, badge;
+
+      if (type === 'hours') {
+        // תוכנית שעות
+        icon = '💼';
+        title = 'תוכנית שעות';
+        subtitle = service.name;
+        badge = `✅ ${service.hoursRemaining || 0} שעות נותרות`;
+      } else if (type === 'legal_procedure') {
+        // הליך משפטי
+        icon = '⚖️';
+        const stageName = service.id === 'stage_a' ? "שלב א'" :
+                         service.id === 'stage_b' ? "שלב ב'" :
+                         service.id === 'stage_c' ? "שלב ג'" : service.name;
+        title = `הליך משפטי - ${stageName}`;
+        subtitle = service.description || service.name;
+
+        if (pricingType === 'hourly') {
+          badge = `✅ ${service.hoursRemaining || 0} שעות נותרות`;
+        } else {
+          badge = '💰 מחיר פיקס';
+        }
+      }
+
+      // 🏷️ מספר תיק כbadge מעוגל
+      const caseNumberBadge = caseItem && caseItem.caseNumber ? `
+        <div style="
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          padding: 4px 10px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 600;
+          color: white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        ">
+          📋 ${this.escapeHtml(caseItem.caseNumber)}
+        </div>
+      ` : '';
+
+      return `
+        <div
+          class="service-card"
+          data-service-id="${this.escapeHtml(serviceId)}"
+          data-service-type="${type}"
+          onclick="window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(serviceId)}', '${type}')"
+          style="
+            padding: 16px;
+            padding-top: 40px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+          "
+          onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.15)'; this.style.transform='translateY(-2px)';"
+          onmouseout="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'; this.style.transform='translateY(0)';"
+        >
+          ${caseNumberBadge}
+          <div style="font-size: 24px; margin-bottom: 8px;">${icon}</div>
+          <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 14px;">
+            ${this.escapeHtml(title)}
+          </div>
+          <div style="color: #6b7280; font-size: 13px; margin-bottom: 12px; min-height: 32px;">
+            ${this.escapeHtml(subtitle)}
+          </div>
+          <div style="
+            padding: 6px 12px;
+            background: #f0f9ff;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #0369a1;
+            text-align: center;
+          ">
+            ${badge}
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * בחירת שירות
+     */
+    selectService(serviceId, type) {
+      // מציאת השירות/שלב
+      let serviceData;
+      if (type === 'hours') {
+        // בדיקה: האם זה תיק ישן (serviceId = caseId)?
+        if (serviceId === this.selectedCase.id) {
+          // תיק ישן - נשתמש בנתוני התיק עצמו
+          serviceData = {
+            id: this.selectedCase.id,
+            name: this.selectedCase.caseTitle || 'תיק ראשי',
+            hoursRemaining: this.selectedCase.hoursRemaining || 0,
+            status: 'active'
+          };
+        } else {
+          // תיק חדש עם services
+          serviceData = this.selectedCase.services?.find(s => s.id === serviceId);
+        }
+      } else if (type === 'legal_procedure') {
+        serviceData = this.selectedCase.stages?.find(s => s.id === serviceId);
+      }
+
+      this.selectedService = serviceData;
+
+      // עדכון שדות נסתרים
+      document.getElementById(`${this.containerId}_serviceId`).value = serviceId;
+      document.getElementById(`${this.containerId}_serviceName`).value = serviceData?.name || serviceData?.description || '';
+
+      // 🎨 הסתרת caseInfo
+      this.hideCaseInfo();
+
+      // 🎨 תצוגה נקייה - רק הכרטיס הנבחר + כפתור שינוי
+      this.showSelectedServiceOnly(serviceData, type);
+    }
+
+    /**
+     * הצגת השירות הנבחר בלבד
+     */
+    showSelectedServiceOnly(serviceData, type) {
+      const servicesCards = document.getElementById(`${this.containerId}_servicesCards`);
+      if (!servicesCards) return;
+
+      let icon, title, subtitle, badge;
+
+      if (type === 'hours') {
+        icon = '💼';
+        title = 'תוכנית שעות';
+        subtitle = serviceData.name;
+        badge = `✅ ${serviceData.hoursRemaining || 0} שעות נותרות`;
+      } else if (type === 'legal_procedure') {
+        icon = '⚖️';
+        const stageName = serviceData.id === 'stage_a' ? "שלב א'" :
+                         serviceData.id === 'stage_b' ? "שלב ב'" :
+                         serviceData.id === 'stage_c' ? "שלב ג'" : serviceData.name;
+        title = `הליך משפטי - ${stageName}`;
+        subtitle = serviceData.description || serviceData.name;
+
+        if (this.selectedCase.pricingType === 'hourly') {
+          badge = `✅ ${serviceData.hoursRemaining || 0} שעות נותרות`;
+        } else {
+          badge = '💰 מחיר פיקס';
+        }
+      }
+
+      // 🏷️ מספר תיק
+      const caseNumberBadge = this.selectedCase && this.selectedCase.caseNumber ? `
+        <div style="
+          display: inline-block;
+          padding: 6px 14px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          color: white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          margin-bottom: 12px;
+        ">
+          📋 ${this.escapeHtml(this.selectedCase.caseNumber)}
+        </div>
+      ` : '';
+
+      // תצוגה נקייה - רק הכרטיס הנבחר + כפתור
+      servicesCards.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        ">
+          <div style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #10b981;
+            font-weight: 600;
+            font-size: 14px;
+          ">
+            <i class="fas fa-check-circle"></i>
+            <span>שירות נבחר:</span>
+          </div>
+
+          <div style="
+            padding: 20px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 3px solid #3b82f6;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+          ">
+            ${caseNumberBadge}
+            <div style="font-size: 32px; margin-bottom: 12px;">${icon}</div>
+            <div style="font-weight: 700; color: #1e40af; margin-bottom: 6px; font-size: 16px;">
+              ${this.escapeHtml(title)}
+            </div>
+            <div style="color: #0369a1; font-size: 14px; margin-bottom: 16px;">
+              ${this.escapeHtml(subtitle)}
+            </div>
+            <div style="
+              padding: 8px 16px;
+              background: white;
+              border-radius: 8px;
+              font-size: 13px;
+              font-weight: 600;
+              color: #0369a1;
+              text-align: center;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            ">
+              ${badge}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onclick="window.clientCaseSelectorInstances['${this.containerId}'].changeService()"
+            style="
+              padding: 10px 16px;
+              background: white;
+              border: 2px solid #e5e7eb;
+              border-radius: 8px;
+              color: #6b7280;
+              font-size: 14px;
+              font-weight: 500;
+              cursor: pointer;
+              transition: all 0.2s;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+            "
+            onmouseover="this.style.borderColor='#3b82f6'; this.style.color='#3b82f6';"
+            onmouseout="this.style.borderColor='#e5e7eb'; this.style.color='#6b7280';"
+          >
+            <i class="fas fa-exchange-alt"></i>
+            <span>שנה שירות</span>
+          </button>
+        </div>
+      `;
+    }
+
+    /**
+     * שינוי שירות - חזרה לרשימה
+     */
+    changeService() {
+      console.log(`🔄 Change service requested`);
+
+      // איפוס בחירת שירות
+      this.selectedService = null;
+      document.getElementById(`${this.containerId}_serviceId`).value = '';
+      document.getElementById(`${this.containerId}_serviceName`).value = '';
+
+      // חזרה לתצוגת כל הכרטיסים (ללא caseInfo - רק כרטיסיות!)
+      this.renderServiceCards(this.selectedCase);
+    }
+
+    /**
      * הסתרת תוצאות חיפוש לקוחות
      */
     hideClientResults() {
@@ -599,7 +1020,10 @@
         caseId: document.getElementById(`${this.containerId}_caseId`)?.value || null,
         caseNumber: document.getElementById(`${this.containerId}_caseNumber`)?.value || null,
         caseTitle: document.getElementById(`${this.containerId}_caseTitle`)?.value || null,
-        caseData: this.selectedCase
+        serviceId: document.getElementById(`${this.containerId}_serviceId`)?.value || null,
+        serviceName: document.getElementById(`${this.containerId}_serviceName`)?.value || null,
+        caseData: this.selectedCase,
+        serviceData: this.selectedService
       };
     }
 
@@ -627,6 +1051,7 @@
     reset() {
       this.selectedClient = null;
       this.selectedCase = null;
+      this.selectedService = null;
       this.clientCases = [];
 
       const searchInput = document.getElementById(`${this.containerId}_clientSearch`);
@@ -635,11 +1060,14 @@
       const caseGroup = document.getElementById(`${this.containerId}_caseGroup`);
       if (caseGroup) caseGroup.style.display = 'none';
 
+      const servicesGroup = document.getElementById(`${this.containerId}_servicesGroup`);
+      if (servicesGroup) servicesGroup.style.display = 'none';
+
       this.hideClientResults();
       this.hideCaseInfo();
 
       // איפוס שדות נסתרים
-      ['clientId', 'clientName', 'caseId', 'caseNumber', 'caseTitle'].forEach(field => {
+      ['clientId', 'clientName', 'caseId', 'caseNumber', 'caseTitle', 'serviceId', 'serviceName'].forEach(field => {
         const input = document.getElementById(`${this.containerId}_${field}`);
         if (input) input.value = '';
       });

@@ -406,6 +406,8 @@ class LawOfficeManager {
           caseId: selectorValues.caseId,
           caseNumber: selectorValues.caseNumber,
           caseTitle: selectorValues.caseTitle,
+          serviceId: selectorValues.serviceId,  // ✅ שירות/שלב נבחר
+          serviceName: selectorValues.serviceName,  // ✅ שם השירות
           estimatedMinutes: estimatedMinutes,
           deadline: deadline,
           employee: this.currentUser,
@@ -505,18 +507,10 @@ class LawOfficeManager {
      ======================================== */
 
   async addTimesheetEntry() {
-    // Get checkbox state first
-    const isInternal = document.getElementById("isInternalActivity")?.checked || false;
+    // ✅ This form is now ONLY for internal activities
+    // Time tracking on clients is done automatically through tasks
 
-    // ✅ NEW: Get values from ClientCaseSelector (only required if NOT internal activity)
-    const selectorValues = window.ClientCaseSelectorsManager?.getTimesheetValues();
-
-    if (!isInternal && !selectorValues) {
-      this.showNotification('חובה לבחור לקוח ותיק או לסמן פעילות פנימית', 'error');
-      return;
-    }
-
-    // Validate other form fields
+    // Validate form fields
     const date = document.getElementById("actionDate")?.value;
     const minutes = parseInt(document.getElementById("actionMinutes")?.value);
     const action = document.getElementById("actionDescription")?.value?.trim();
@@ -537,26 +531,26 @@ class LawOfficeManager {
       return;
     }
 
-    // ✅ NEW: Use ActionFlowManager for consistent UX
+    // ✅ Use ActionFlowManager for consistent UX
     await ActionFlowManager.execute({
-      loadingMessage: 'שומר רשומה...',
+      loadingMessage: 'שומר פעילות פנימית...',
       action: async () => {
         const entryData = {
           date: date,
           minutes: minutes,
-          clientName: isInternal ? null : selectorValues.clientName,
-          clientId: isInternal ? null : selectorValues.clientId,
-          fileNumber: isInternal ? null : selectorValues.caseNumber, // caseNumber used as fileNumber
-          caseId: isInternal ? null : selectorValues.caseId,
-          caseTitle: isInternal ? null : selectorValues.caseTitle,
+          clientName: null,  // Internal activity - no client
+          clientId: null,
+          fileNumber: null,
+          caseId: null,
+          caseTitle: null,
           action: action,
           notes: notes,
           employee: this.currentUser,
-          isInternal: isInternal, // ✅ NEW: Internal activity flag
+          isInternal: true,  // ✅ Always internal activity
           createdAt: new Date()
         };
 
-        console.log('📝 Creating timesheet entry with data:', entryData);
+        console.log('📝 Creating internal timesheet entry:', entryData);
 
         await FirebaseOps.saveTimesheetToFirebase(entryData);
 
@@ -564,8 +558,8 @@ class LawOfficeManager {
         this.timesheetEntries = await FirebaseOps.loadTimesheetFromFirebase(this.currentUser);
         this.filterTimesheetEntries();
       },
-      successMessage: 'הרשומה נוספה בהצלחה',
-      errorMessage: 'שגיאה בהוספת רשומה',
+      successMessage: '✅ הפעילות הפנימית נרשמה בהצלחה',
+      errorMessage: 'שגיאה ברישום פעילות',
       onSuccess: () => {
         // Clear form and hide
         Forms.clearTimesheetForm(this);
@@ -574,9 +568,6 @@ class LawOfficeManager {
         // Remove active class from plus button
         const plusButton = document.getElementById("smartPlusBtn");
         if (plusButton) plusButton.classList.remove("active");
-
-        // Clear selector
-        window.ClientCaseSelectorsManager?.clearTimesheet();
       }
     });
   }
@@ -949,13 +940,17 @@ class LawOfficeManager {
       loadingMessage: 'שומר זמן...',
       action: async () => {
         // קריאה ל-Cloud Function שמטפלת בהכל אטומית
-        await window.addTimeToTaskFirebase(taskId, workMinutes, workDescription, workDate);
+        await window.addTimeToTaskFirebase(taskId, {
+          minutes: workMinutes,
+          description: workDescription,
+          date: workDate
+        });
 
         // טעינה מחדש של משימות
         this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
         this.filterBudgetTasks();
       },
-      successMessage: 'הזמן נוסף בהצלחה',
+      successMessage: '✅ הזמן נוסף למשימה ונרשם בשעתון',
       errorMessage: 'שגיאה בהוספת זמן',
       closePopupOnSuccess: true,
       closeDelay: 500,

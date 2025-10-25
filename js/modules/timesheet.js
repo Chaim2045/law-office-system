@@ -16,6 +16,12 @@
    IMPORTS
    ======================================== */
 
+import {
+  createCaseNumberBadge,
+  createServiceBadge,
+  createServiceInfoHeader
+} from './timesheet-constants.js';
+
 // Utility functions (assumed to be available globally)
 // - safeText(): Sanitizes text for HTML display
 // - formatDate(): Formats dates for display
@@ -302,16 +308,34 @@ export function renderTimesheetCards(entries, stats, paginationStatus, currentSo
 /**
  * Create a single timesheet card
  * @param {Object} entry - Timesheet entry
+ * @param {string} entry.id - Entry ID
+ * @param {string} entry.clientName - Client name
+ * @param {string} entry.action - Action description
+ * @param {number} entry.minutes - Time in minutes
+ * @param {string} entry.date - Entry date
+ * @param {string} [entry.fileNumber] - File number (optional)
+ * @param {string} [entry.caseNumber] - Case number (optional)
+ * @param {string} [entry.serviceName] - Service name (optional)
+ * @param {string} [entry.notes] - Notes (optional)
+ * @param {Date} [entry.createdAt] - Creation timestamp (optional)
  * @returns {string} HTML string for the card
  */
 export function createTimesheetCard(entry) {
+  // Validate and sanitize entry data
+  if (!entry || typeof entry !== 'object') {
+    console.error('Invalid entry provided to createTimesheetCard:', entry);
+    return '';
+  }
+
   const safeEntry = {
     id: entry.id || entry.entryId || Date.now(),
     clientName: entry.clientName || "",
     action: entry.action || "",
-    minutes: entry.minutes || 0,
+    minutes: Number(entry.minutes) || 0,
     date: entry.date || new Date().toISOString(),
     fileNumber: entry.fileNumber || "",
+    caseNumber: entry.caseNumber || "",
+    serviceName: entry.serviceName || "",
     notes: entry.notes || "",
     createdAt: entry.createdAt || null
   };
@@ -322,9 +346,27 @@ export function createTimesheetCard(entry) {
   const safeFileNumber = safeText(safeEntry.fileNumber);
   const safeNotes = safeText(safeEntry.notes);
 
+  // Use helper functions for badges - MUCH cleaner! 🎯
+  const caseNumberBadge = createCaseNumberBadge(safeEntry.caseNumber, 'small', {
+    marginRight: '6px',
+    marginBottom: '8px'
+  });
+
+  const serviceBadge = createServiceBadge(safeEntry.serviceName, 'small', {
+    marginBottom: '8px'
+  });
+
+  // 🎯 שני ה-badges בשורה אחת (inline)
+  const badgesRow = (caseNumberBadge || serviceBadge) ? `
+    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+      ${caseNumberBadge}${serviceBadge}
+    </div>
+  ` : '';
+
   return `
     <div class="linear-minimal-card timesheet-card" data-entry-id="${safeEntry.id}" onclick="manager.expandTimesheetCard('${safeEntry.id}', event)">
       <div class="linear-card-content">
+        ${badgesRow}
         <h3 class="linear-card-title">
           ${safeAction}
         </h3>
@@ -376,20 +418,32 @@ export function createTimesheetCard(entry) {
 /**
  * Create expanded timesheet card view
  * @param {Object} entry - Timesheet entry
+ * @param {string} [entry.caseNumber] - Case number (optional)
+ * @param {string} [entry.serviceName] - Service name (optional)
  * @returns {string} HTML string for expanded card
  */
 export function showExpandedTimesheetCard(entry) {
+  if (!entry || typeof entry !== 'object') {
+    console.error('Invalid entry provided to showExpandedTimesheetCard:', entry);
+    return '';
+  }
+
   const safeEntry = {
     id: entry.id || entry.entryId || Date.now(),
     clientName: safeText(entry.clientName || ""),
     action: safeText(entry.action || ""),
-    minutes: entry.minutes || 0,
+    minutes: Number(entry.minutes) || 0,
     date: entry.date || new Date().toISOString(),
     fileNumber: safeText(entry.fileNumber || ""),
+    caseNumber: entry.caseNumber || "",
+    serviceName: entry.serviceName || "",
     notes: safeText(entry.notes || "")
   };
 
   const hours = Math.round((safeEntry.minutes / 60) * 10) / 10;
+
+  // Use helper function for header - clean and reusable! 🎯
+  const serviceInfoHeader = createServiceInfoHeader(safeEntry.caseNumber, safeEntry.serviceName);
 
   return `
     <div class="linear-expanded-overlay" onclick="manager.closeExpandedCard(event)">
@@ -401,6 +455,7 @@ export function showExpandedTimesheetCard(entry) {
           </button>
         </div>
         <div class="linear-expanded-body">
+          ${serviceInfoHeader}
           <div class="linear-info-grid">
             <div class="linear-info-item">
               <label>לקוח:</label>
@@ -461,12 +516,33 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
 
   const rowsHtml = entries
     .map(
-      (entry) => `
-      <tr data-entry-id="${entry.id || entry.entryId || Date.now()}">
+      (entry) => {
+        if (!entry || typeof entry !== 'object') {
+          console.warn('Invalid entry in renderTimesheetTable:', entry);
+          return '';
+        }
+
+        // Use helper functions for badges - consistent styling! 🎯
+        const serviceBadge = createServiceBadge(entry.serviceName, 'small', {
+          marginRight: '6px'
+        });
+
+        const caseBadge = createCaseNumberBadge(entry.caseNumber, 'small');
+
+        const entryId = entry.id || entry.entryId || Date.now();
+        const hasBadges = serviceBadge || caseBadge;
+
+        return `
+      <tr data-entry-id="${entryId}">
         <td class="timesheet-cell-date">${formatDate(entry.date)}</td>
-        <td class="timesheet-cell-action">${safeText(entry.action || "")}</td>
+        <td class="timesheet-cell-action">
+          ${serviceBadge}${caseBadge}
+          <div style="margin-top: ${hasBadges ? '4px' : '0'};">
+            ${safeText(entry.action || "")}
+          </div>
+        </td>
         <td class="timesheet-cell-time">
-          <span class="time-badge">${entry.minutes || 0} דק'</span>
+          <span class="time-badge">${Number(entry.minutes) || 0} דק'</span>
         </td>
         <td class="timesheet-cell-client">${safeText(
           entry.clientName || ""
@@ -475,14 +551,13 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
         <td style="color: #6b7280; font-size: 13px;">${window.DatesModule.getCreationDateTableCell(entry)}</td>
         <td>${safeText(entry.notes || "—")}</td>
         <td class="actions-column">
-          <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${
-            entry.id || entry.entryId || Date.now()
-          }')" title="ערוך שעתון">
+          <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${entryId}')" title="ערוך שעתון">
             <i class="fas fa-edit"></i>
           </button>
         </td>
       </tr>
-    `
+    `;
+      }
     )
     .join("");
 

@@ -99,6 +99,9 @@
     <link rel="stylesheet" href="pagination.css?v=1.0.0" />
     <!-- New Notification System CSS -->
     <link rel="stylesheet" href="notifications.css?v=1.0.0" />
+
+    <!-- Virtual Assistant Styles -->
+    <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=3.9.0" />
   </head>
 
   <body>
@@ -539,12 +542,53 @@
 
               <div
                 id="budgetEmptyState"
-                class="empty-state"
+                class="empty-state smart-empty-state"
                 style="display: none"
               >
-                <div class="empty-icon"><i class="fas fa-chart-bar"></i></div>
-                <h4>אין משימות מתוקצבות</h4>
-                <p>הוסף משימה חדשה לתקצוב</p>
+                <div class="empty-icon">
+                  <i class="fas fa-inbox" style="font-size: 72px; opacity: 0.3;"></i>
+                </div>
+                <h3 style="font-size: 24px; font-weight: 600; margin: 20px 0 12px;">אין משימות עדיין</h3>
+                <p style="font-size: 16px; color: #6b7280; margin-bottom: 24px;">בואו ניצור את המשימה הראשונה שלך</p>
+
+                <!-- כפתור פעולה ראשי -->
+                <button
+                  onclick="openSmartForm()"
+                  style="
+                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                    color: white;
+                    border: none;
+                    padding: 16px 32px;
+                    font-size: 18px;
+                    font-weight: 600;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                    transition: all 0.2s;
+                    margin-bottom: 16px;
+                  "
+                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(59, 130, 246, 0.4)';"
+                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)';"
+                >
+                  🚀 צור משימה עכשיו
+                </button>
+
+                <!-- הסבר קצר -->
+                <div style="
+                  background: rgba(59, 130, 246, 0.05);
+                  border: 2px dashed rgba(59, 130, 246, 0.3);
+                  border-radius: 12px;
+                  padding: 16px 24px;
+                  margin-top: 24px;
+                  max-width: 400px;
+                  margin-left: auto;
+                  margin-right: auto;
+                ">
+                  <p style="font-size: 14px; color: #374151; margin: 0; line-height: 1.6;">
+                    💡 <strong>טיפ:</strong> לחץ על הכפתור למעלה ↑<br/>
+                    או על כפתור ה-<strong>+</strong> בחלק העליון של המסך
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -555,6 +599,22 @@
             <!-- Timesheet Form (Hidden by default) -->
             <div class="compact-form hidden" id="timesheetFormContainer">
               <form id="timesheetForm">
+                <!-- Info Box: Client Time Tracking -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.2);">
+                  <div style="display: flex; align-items: start; gap: 12px;">
+                    <i class="fas fa-info-circle" style="font-size: 24px; margin-top: 2px; opacity: 0.9;"></i>
+                    <div>
+                      <div style="font-weight: 600; font-size: 15px; margin-bottom: 6px;">
+                        רישום זמן על לקוחות
+                      </div>
+                      <div style="font-size: 13px; line-height: 1.6; opacity: 0.95;">
+                        זמן עבודה על לקוחות נרשם <strong>אוטומטית</strong> כשמוסיפים זמן למשימה.<br>
+                        כאן רושמים רק <strong>פעילות פנימית</strong> (ישיבות, הדרכות, ניהול).
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="form-row" style="grid-template-columns: 2fr 1fr">
                   <div class="form-group">
                     <label for="actionDate">תאריך</label>
@@ -579,38 +639,15 @@
                   </div>
                 </div>
 
-                <!-- ✅ NEW: Unified Client-Case Selector -->
-                <div id="timesheetClientCaseSelector"></div>
-
-                <!-- ✅ NEW: Internal Activity Checkbox -->
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="checkbox-container">
-                      <input
-                        type="checkbox"
-                        id="isInternalActivity"
-                        style="width: auto; margin-left: 8px;"
-                        onchange="toggleTimesheetClientSelector(this.checked)"
-                      />
-                      <span style="font-weight: 500;">
-                        פעילות משרדית פנימית
-                        <span style="font-weight: 400; color: #666; font-size: 0.9em;">
-                          (ישיבות, ניהול, משימות פנימיות שלא נגבות ללקוח)
-                        </span>
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
                 <div class="form-row">
                   <div class="form-group">
                     <label for="actionDescription"
-                      >תיאור הפעולה
+                      >תיאור הפעילות הפנימית
                       <span class="category-required">*</span></label
                     >
                     <textarea
                       id="actionDescription"
-                      placeholder="תאר את הפעולה שביצעת (לפחות 3 תווים)"
+                      placeholder="למשל: ישיבת צוות שבועית, הדרכת מערכת חדשה, ניהול משרד..."
                       rows="2"
                       autocomplete="off"
                       required
@@ -634,7 +671,7 @@
                 <div class="form-buttons">
                   <button type="submit" class="btn btn-success">
                     <i class="fas fa-plus"></i>
-                    הוסף לשעתון
+                    הוסף פעילות פנימית
                   </button>
                   <button
                     type="button"
@@ -723,12 +760,56 @@
 
               <div
                 id="timesheetEmptyState"
-                class="empty-state"
+                class="empty-state smart-empty-state"
                 style="display: none"
               >
-                <div class="empty-icon"><i class="fas fa-clock"></i></div>
-                <h4>אין פעולות רשומות</h4>
-                <p>רשום את הפעולה הראשונה שלך</p>
+                <div class="empty-icon">
+                  <i class="fas fa-clock" style="font-size: 72px; opacity: 0.3;"></i>
+                </div>
+                <h3 style="font-size: 24px; font-weight: 600; margin: 20px 0 12px;">אין דיווחי זמן עדיין</h3>
+                <p style="font-size: 16px; color: #6b7280; margin-bottom: 24px;">בואו נדווח על הפעילות הראשונה שלך</p>
+
+                <!-- כפתור פעולה ראשי -->
+                <button
+                  onclick="switchTab('timesheet'); setTimeout(() => openSmartForm(), 200);"
+                  style="
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: white;
+                    border: none;
+                    padding: 16px 32px;
+                    font-size: 18px;
+                    font-weight: 600;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+                    transition: all 0.2s;
+                    margin-bottom: 16px;
+                  "
+                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(16, 185, 129, 0.4)';"
+                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)';"
+                >
+                  ⏱️ דווח על זמן עכשיו
+                </button>
+
+                <!-- הסבר קצר -->
+                <div style="
+                  background: rgba(16, 185, 129, 0.05);
+                  border: 2px dashed rgba(16, 185, 129, 0.3);
+                  border-radius: 12px;
+                  padding: 16px 24px;
+                  margin-top: 24px;
+                  max-width: 450px;
+                  margin-left: auto;
+                  margin-right: auto;
+                ">
+                  <p style="font-size: 14px; color: #374151; margin: 0 0 12px 0; line-height: 1.6;">
+                    💡 <strong>טיפ חשוב:</strong>
+                  </p>
+                  <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.6; text-align: right;">
+                    📋 זמן עבודה על לקוחות? השתמש ב<strong>"הוסף זמן למשימה"</strong> בטאב משימות<br/>
+                    🏢 זמן משרדי כללי? השתמש בכפתור למעלה
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -999,12 +1080,28 @@
     <!-- Work Hours Calculator - Smart Calendar System -->
     <script src="js/modules/work-hours-calculator.js?v=1.0.0"></script>
 
-    <!-- Smart FAQ Bot - Help Assistant (Unified Version) -->
-    <script type="module" src="js/modules/smart-faq-bot.js?v=3.0.0"></script>
-    <!-- Modular version (backup): <script type="module" src="chatbot/index.js?v=2.0.0"></script> -->
+    <!-- ===== VIRTUAL ASSISTANT 3.9.0 - TWO-TIER HELP SYSTEM ===== -->
+    <!-- 🚀 NEW: Two-Tier Help System - Quick Actions + Detailed Guides -->
+    <!-- 🎯 Quick Action First: Simple "magic button" for 80% of users (age 40-60 friendly!) -->
+    <!-- 📖 Detailed Guide Optional: Step-by-step guide available on request -->
+    <!-- ✅ EXAMPLE: "create_task" now shows Quick Action by default -->
+    <!-- 💡 Professional UX: Progressive Disclosure + Action-First Design -->
+    <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=3.9.0"></script>
+
+    <!-- OLD: Legacy FAQ Bot (backup) -->
+    <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=3.0.0"></script> -->
 
     <!-- ===== OLD: Legacy script.js (DEPRECATED - will be removed) ===== -->
     <!-- <script src="script.js?v=4.34.1"></script> -->
+
+    <!-- 🔧 Admin Migration Tools (Console-based) -->
+    <script src="js/admin-migration-tools.js?v=1.0.0"></script>
+
+    <!-- 🔍 Validation Script (Post-Migration Testing) -->
+    <script src="js/validation-script.js?v=1.0.0"></script>
+
+    <!-- 🔧 Fix Old Clients Tool -->
+    <script src="js/fix-old-clients.js?v=1.0.0"></script>
 
     <!-- Additional CSS for animations -->
     <style>

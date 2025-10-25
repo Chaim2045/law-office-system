@@ -107,13 +107,13 @@
       try {
         const db = window.firebaseDB;
 
-        // Load clients
+        // Load clients (במבנה החדש: Client=Case)
         const clientsSnapshot = await db.collection('clients').get();
-        console.log(`  ✅ Loaded ${clientsSnapshot.size} clients`);
+        console.log(`  ✅ Loaded ${clientsSnapshot.size} clients/cases (NEW architecture)`);
 
-        // Load cases
+        // Count old cases collection (for reference only)
         const casesSnapshot = await db.collection('cases').get();
-        console.log(`  ✅ Loaded ${casesSnapshot.size} cases`);
+        console.log(`  ℹ️ Old cases collection: ${casesSnapshot.size} documents (legacy backup)`);
 
         // Load budget_tasks
         const tasksSnapshot = await db.collection('budget_tasks').limit(20).get();

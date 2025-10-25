@@ -70,6 +70,7 @@ async function handleLogin() {
     this.currentUid = uid; // ✅ Firebase Auth UID
     this.currentUser = employee.email; // ✅ EMAIL for queries and security
     this.currentUsername = employee.username || employee.name; // Username for display
+
     updateUserDisplay(this.currentUsername);
 
     // Set flag to suppress old loading spinners
@@ -87,9 +88,32 @@ async function handleLogin() {
         await this.activityLogger.logLogin();
       }
 
+      // ✅ Update lastLogin directly (independent of PresenceSystem)
+      try {
+        await window.firebaseDB.collection('employees').doc(this.currentUser).update({
+          lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+          loginCount: firebase.firestore.FieldValue.increment(1)
+        });
+        console.log('✅ lastLogin updated successfully');
+      } catch (loginUpdateError) {
+        console.warn('⚠️ Failed to update lastLogin:', loginUpdateError.message);
+      }
+
       // ✅ Track user presence with Firebase Realtime Database (replaces old UserTracker)
       if (window.PresenceSystem) {
-        await window.PresenceSystem.connect(this.currentUid, this.currentUsername, this.currentUser);
+        try {
+          // Add 5 second timeout to prevent infinite spinner
+          await Promise.race([
+            window.PresenceSystem.connect(this.currentUid, this.currentUsername, this.currentUser),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('PresenceSystem timeout')), 5000)
+            )
+          ]);
+          console.log('✅ PresenceSystem connected successfully');
+        } catch (presenceError) {
+          console.warn('⚠️ PresenceSystem failed (non-critical):', presenceError.message);
+          // Continue anyway - presence tracking is not critical for login
+        }
       }
     } catch (error) {
       this.showNotification("שגיאה בטעינת נתונים", "error");
@@ -152,10 +176,10 @@ async function showWelcomeScreen() {
   // ✅ תיקון יסודי: קריאת lastLogin מ-Firebase (לא localStorage!)
   if (lastLoginTime) {
     try {
-      // קריאה מ-employees collection ב-Firebase
+      // קריאה מ-employees collection ב-Firebase (לפי EMAIL - document ID)
       const employeeDoc = await window.firebaseDB
         .collection('employees')
-        .doc(this.currentUsername)
+        .doc(this.currentUser)
         .get();
 
       if (employeeDoc.exists) {

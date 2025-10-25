@@ -77,12 +77,13 @@
       const employees = {};
       snapshot.forEach(doc => {
         const data = doc.data();
+        // Note: doc.id is now EMAIL (not username) - store by email for consistency
         employees[doc.id] = {
-          username: doc.id,
+          email: doc.id,  // doc.id is EMAIL (industry standard)
+          username: data.username,  // username is for display only
           password: data.password,
           name: data.name || data.displayName,
           displayName: data.displayName || data.name,
-          email: data.email,
           isActive: data.isActive !== false,
           role: data.role || 'employee',
           createdAt: data.createdAt,
@@ -149,15 +150,15 @@
       throw new Error('Firebase DB not available');
     }
 
-    // Validation
-    if (!employeeData.username || !employeeData.password || !employeeData.name) {
-      throw new Error('Missing required fields: username, password, name');
+    // Validation - EMAIL is now required (used as document ID)
+    if (!employeeData.email || !employeeData.username || !employeeData.password || !employeeData.name) {
+      throw new Error('Missing required fields: email, username, password, name');
     }
 
-    // בדיקה אם כבר קיים
-    const existing = await window.firebaseDB.collection('employees').doc(employeeData.username).get();
+    // בדיקה אם כבר קיים (check by EMAIL - document ID)
+    const existing = await window.firebaseDB.collection('employees').doc(employeeData.email).get();
     if (existing.exists) {
-      throw new Error(`Employee ${employeeData.username} already exists`);
+      throw new Error(`Employee with email ${employeeData.email} already exists`);
     }
 
     try {
@@ -166,7 +167,7 @@
         password: employeeData.password,  // TODO: encrypt in future
         name: employeeData.name,
         displayName: employeeData.name,
-        email: employeeData.email || '',
+        email: employeeData.email,
         isActive: employeeData.isActive !== false,
         role: employeeData.role || 'employee',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -176,13 +177,14 @@
         loginCount: 0
       };
 
-      await window.firebaseDB.collection('employees').doc(employeeData.username).set(newEmployee);
+      // ✅ Use EMAIL as document ID (industry standard)
+      await window.firebaseDB.collection('employees').doc(employeeData.email).set(newEmployee);
 
       // ניקוי cache
       clearCache();
 
-      logger.log(`✅ Employee ${employeeData.username} added successfully`);
-      return { success: true, username: employeeData.username };
+      logger.log(`✅ Employee ${employeeData.username} (${employeeData.email}) added successfully`);
+      return { success: true, email: employeeData.email, username: employeeData.username };
 
     } catch (error) {
       logger.error('Failed to add employee:', error);
@@ -192,17 +194,36 @@
 
   /**
    * עדכון עובד קיים
+   * @param {string} identifier - EMAIL (preferred) or USERNAME for backward compatibility
+   * @param {object} updates - Fields to update
    */
-  async function updateEmployee(username, updates) {
+  async function updateEmployee(identifier, updates) {
     if (!window.firebaseDB) {
       throw new Error('Firebase DB not available');
     }
 
-    // בדיקה אם קיים
-    const doc = await window.firebaseDB.collection('employees').doc(username).get();
+    // Try to find employee by EMAIL first, then by USERNAME (backward compatibility)
+    let docRef = window.firebaseDB.collection('employees').doc(identifier);
+    let doc = await docRef.get();
+
+    // If not found by identifier, try to find by username field
     if (!doc.exists) {
-      throw new Error(`Employee ${username} not found`);
+      const snapshot = await window.firebaseDB.collection('employees')
+        .where('username', '==', identifier)
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        throw new Error(`Employee ${identifier} not found`);
+      }
+
+      // Found by username - use the EMAIL (doc.id) instead
+      docRef = snapshot.docs[0].ref;
+      doc = snapshot.docs[0];
     }
+
+    const employeeData = doc.data();
+    const employeeEmail = doc.id; // Document ID is EMAIL
 
     try {
       const updateData = {
@@ -219,13 +240,13 @@
       if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
       if (updates.role !== undefined) updateData.role = updates.role;
 
-      await window.firebaseDB.collection('employees').doc(username).update(updateData);
+      await docRef.update(updateData);
 
       // ניקוי cache
       clearCache();
 
-      logger.log(`✅ Employee ${username} updated successfully`);
-      return { success: true, username };
+      logger.log(`✅ Employee ${employeeEmail} updated successfully`);
+      return { success: true, email: employeeEmail, username: employeeData.username };
 
     } catch (error) {
       logger.error('Failed to update employee:', error);
@@ -235,31 +256,56 @@
 
   /**
    * מחיקת עובד (soft delete)
+   * @param {string} identifier - EMAIL (preferred) or USERNAME for backward compatibility
+   * @param {boolean} hardDelete - true for permanent delete, false for soft delete
    */
-  async function deleteEmployee(username, hardDelete = false) {
+  async function deleteEmployee(identifier, hardDelete = false) {
     if (!window.firebaseDB) {
       throw new Error('Firebase DB not available');
     }
 
+    // Try to find employee by EMAIL first, then by USERNAME (backward compatibility)
+    let docRef = window.firebaseDB.collection('employees').doc(identifier);
+    let doc = await docRef.get();
+
+    // If not found by identifier, try to find by username field
+    if (!doc.exists) {
+      const snapshot = await window.firebaseDB.collection('employees')
+        .where('username', '==', identifier)
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        throw new Error(`Employee ${identifier} not found`);
+      }
+
+      // Found by username - use the EMAIL (doc.id) instead
+      docRef = snapshot.docs[0].ref;
+      doc = snapshot.docs[0];
+    }
+
+    const employeeData = doc.data();
+    const employeeEmail = doc.id; // Document ID is EMAIL
+
     try {
       if (hardDelete) {
         // מחיקה קשה - מוחק לגמרי
-        await window.firebaseDB.collection('employees').doc(username).delete();
-        logger.log(`✅ Employee ${username} deleted permanently`);
+        await docRef.delete();
+        logger.log(`✅ Employee ${employeeEmail} deleted permanently`);
       } else {
         // מחיקה רכה - רק isActive = false
-        await window.firebaseDB.collection('employees').doc(username).update({
+        await docRef.update({
           isActive: false,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
           deletedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        logger.log(`✅ Employee ${username} deactivated`);
+        logger.log(`✅ Employee ${employeeEmail} deactivated`);
       }
 
       // ניקוי cache
       clearCache();
 
-      return { success: true, username };
+      return { success: true, email: employeeEmail, username: employeeData.username };
 
     } catch (error) {
       logger.error('Failed to delete employee:', error);
@@ -269,14 +315,38 @@
 
   /**
    * שחזור עובד (אם נמחק soft delete)
+   * @param {string} identifier - EMAIL (preferred) or USERNAME for backward compatibility
    */
-  async function restoreEmployee(username) {
+  async function restoreEmployee(identifier) {
     if (!window.firebaseDB) {
       throw new Error('Firebase DB not available');
     }
 
+    // Try to find employee by EMAIL first, then by USERNAME (backward compatibility)
+    let docRef = window.firebaseDB.collection('employees').doc(identifier);
+    let doc = await docRef.get();
+
+    // If not found by identifier, try to find by username field
+    if (!doc.exists) {
+      const snapshot = await window.firebaseDB.collection('employees')
+        .where('username', '==', identifier)
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        throw new Error(`Employee ${identifier} not found`);
+      }
+
+      // Found by username - use the EMAIL (doc.id) instead
+      docRef = snapshot.docs[0].ref;
+      doc = snapshot.docs[0];
+    }
+
+    const employeeData = doc.data();
+    const employeeEmail = doc.id; // Document ID is EMAIL
+
     try {
-      await window.firebaseDB.collection('employees').doc(username).update({
+      await docRef.update({
         isActive: true,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         deletedAt: firebase.firestore.FieldValue.delete()
@@ -285,8 +355,8 @@
       // ניקוי cache
       clearCache();
 
-      logger.log(`✅ Employee ${username} restored`);
-      return { success: true, username };
+      logger.log(`✅ Employee ${employeeEmail} restored`);
+      return { success: true, email: employeeEmail, username: employeeData.username };
 
     } catch (error) {
       logger.error('Failed to restore employee:', error);

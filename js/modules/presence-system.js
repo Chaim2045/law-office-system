@@ -50,6 +50,14 @@
       try {
         this.db = firebase.database();
         this.firestore = firebase.firestore();
+
+        // ✅ Validate that Realtime Database is properly configured
+        if (!this.db || !firebase.app().options.databaseURL) {
+          console.error('[PresenceSystem] Realtime Database URL not configured!');
+          console.error('[PresenceSystem] Add databaseURL to firebaseConfig in index.html');
+          return false;
+        }
+
         console.log('✅ PresenceSystem initialized');
         return true;
       } catch (error) {
@@ -138,9 +146,9 @@
           disconnectedAt: firebase.database.ServerValue.TIMESTAMP
         });
 
-        // ✅ עדכון lastLogin ב-Firestore (employees collection)
+        // ✅ עדכון lastLogin ב-Firestore (employees collection - לפי EMAIL)
         try {
-          await this.firestore.collection('employees').doc(username).update({
+          await this.firestore.collection('employees').doc(email).update({
             lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
             loginCount: firebase.firestore.FieldValue.increment(1)
           });

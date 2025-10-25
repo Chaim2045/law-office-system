@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מיגרציה: Cases → Clients</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #1f2937;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .warning-box {
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .warning-title {
+      font-weight: 600;
+      color: #92400e;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .warning-text {
+      color: #78350f;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .info-box {
+      background: #f0f9ff;
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .info-title {
+      font-weight: 600;
+      color: #1e40af;
+      margin-bottom: 10px;
+    }
+
+    .info-text {
+      color: #1e3a8a;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-dryrun {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-dryrun:hover {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-migrate {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-migrate:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-migrate:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .loading {
+      text-align: center;
+      color: #6b7280;
+      padding: 20px;
+      display: none;
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .results {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 30px;
+      display: none;
+    }
+
+    .results h3 {
+      color: #1f2937;
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+
+    .result-item {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-right: 4px solid #3b82f6;
+    }
+
+    .result-success {
+      border-right-color: #10b981;
+    }
+
+    .result-error {
+      border-right-color: #ef4444;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 מיגרציה: Cases → Clients</h1>
+    <div class="subtitle">העברת נתונים מהמבנה הישן (cases) למבנה החדש (clients)</div>
+
+    <div class="warning-box">
+      <div class="warning-title">
+        ⚠️ אזהרה חשובה
+      </div>
+      <div class="warning-text">
+        מיגרציה זו מעתיקה את כל הנתונים מ-cases collection ל-clients collection.<br>
+        מומלץ להריץ קודם "בדיקה ללא שינויים" כדי לוודא שהכל תקין.
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">📋 מה קורה במיגרציה?</div>
+      <div class="info-text">
+        • כל תיק (case) הופך ל-client document חדש<br>
+        • document ID = caseNumber (לדוגמה: 2025001)<br>
+        • מיזוג עם נתוני לקוח קיימים (אם יש)<br>
+        • שמירה של כל השדות: services, stages, שעות, תמחור<br>
+        • תיקים ללא caseNumber ידולגו
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn-dryrun" onclick="runMigration(true)">
+        🔍 בדיקה ללא שינויים (Dry Run)
+      </button>
+      <button class="btn-migrate" id="migrateBtn" onclick="confirmAndMigrate()">
+        🚀 הרץ מיגרציה אמיתית
+      </button>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div>מעבד... אנא המתן</div>
+    </div>
+
+    <div class="results" id="results">
+      <h3>תוצאות מיגרציה</h3>
+      <div id="resultsContent"></div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAmvRqQXk9MtbFKZS2L_OC7lT7Z3s5W0cY",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:c56e70488f65c68fb35f24"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const functions = firebase.functions();
+
+    // Check if user is logged in
+    firebase.auth().onAuthStateChanged((user) => {
+      if (!user) {
+        alert('אנא התחבר למערכת קודם');
+        window.location.href = '/';
+      }
+    });
+
+    async function runMigration(dryRun) {
+      const loadingEl = document.getElementById('loading');
+      const resultsEl = document.getElementById('results');
+      const resultsContent = document.getElementById('resultsContent');
+      const migrateBtn = document.getElementById('migrateBtn');
+
+      // Show loading
+      loadingEl.style.display = 'block';
+      resultsEl.style.display = 'none';
+      migrateBtn.disabled = true;
+
+      try {
+        const migrateFn = functions.httpsCallable('migrateCasesToClients');
+        const result = await migrateFn({
+          dryRun: dryRun,
+          skipExisting: true
+        });
+
+        const data = result.data;
+
+        console.log('Migration result:', data);
+
+        // Build results HTML
+        let html = '';
+
+        if (data.dryRun) {
+          html += '<div class="result-item" style="background: #fef3c7; border-right-color: #f59e0b;"><strong>🔍 זוהי הייתה בדיקה בלבד - לא בוצעו שינויים!</strong></div>';
+        }
+
+        // Stats
+        html += '<div class="stats">';
+        html += `<div class="stat-card"><div class="stat-number">${data.totalCases}</div><div class="stat-label">סה"כ תיקים</div></div>`;
+        html += `<div class="stat-card"><div class="stat-number" style="color: #10b981;">${data.created}</div><div class="stat-label">נוצרו</div></div>`;
+        html += `<div class="stat-card"><div class="stat-number" style="color: #3b82f6;">${data.updated}</div><div class="stat-label">עודכנו</div></div>`;
+        html += `<div class="stat-card"><div class="stat-number" style="color: #ef4444;">${data.errors}</div><div class="stat-label">שגיאות</div></div>`;
+        html += '</div>';
+
+        // Summary
+        html += `<div class="result-item result-success" style="margin-top: 20px;"><strong>סיכום:</strong><br>${data.summary.replace(/\n/g, '<br>')}</div>`;
+
+        // Show migrated clients
+        if (data.migratedClients && data.migratedClients.length > 0) {
+          html += '<h4 style="margin-top: 20px; margin-bottom: 10px;">תיקים שהועברו:</h4>';
+          data.migratedClients.forEach(client => {
+            const actionText = client.action === 'create' ? '✅ נוצר' : '🔄 עודכן';
+            html += `<div class="result-item">${actionText} - ${client.clientId}: ${client.clientName} (${client.caseNumber})</div>`;
+          });
+        }
+
+        // Show errors
+        if (data.errorDetails && data.errorDetails.length > 0) {
+          html += '<h4 style="margin-top: 20px; margin-bottom: 10px; color: #ef4444;">שגיאות:</h4>';
+          data.errorDetails.forEach(error => {
+            html += `<div class="result-item result-error">${error}</div>`;
+          });
+        }
+
+        resultsContent.innerHTML = html;
+        resultsEl.style.display = 'block';
+
+      } catch (error) {
+        console.error('Migration error:', error);
+        resultsContent.innerHTML = `
+          <div class="result-item result-error">
+            <strong>❌ שגיאה במיגרציה:</strong><br>
+            ${error.message}
+          </div>
+        `;
+        resultsEl.style.display = 'block';
+      } finally {
+        loadingEl.style.display = 'none';
+        migrateBtn.disabled = false;
+      }
+    }
+
+    function confirmAndMigrate() {
+      const confirmed = confirm(
+        '⚠️ האם אתה בטוח שאתה רוצה להריץ מיגרציה אמיתית?\n\n' +
+        'פעולה זו תעדכן את ה-clients collection בנתונים מה-cases collection.\n\n' +
+        'מומלץ להריץ קודם "בדיקה ללא שינויים".'
+      );
+
+      if (confirmed) {
+        runMigration(false);
+      }
+    }
+  </script>
+</body>
+</html>

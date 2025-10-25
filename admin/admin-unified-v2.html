@@ -4399,7 +4399,14 @@ ${reason ? `סיבה: ${reason}` : ""}`;
       window.editEmployeeData = function(username) {
         isEditMode = true;
         currentEditUsername = username;
-        const employee = allEmployees[username];
+
+        // Find employee by username (allEmployees is indexed by EMAIL now)
+        const employee = Object.values(allEmployees).find(emp => emp.username === username);
+
+        if (!employee) {
+          alert(`❌ לא נמצא עובד עם שם משתמש: ${username}`);
+          return;
+        }
 
         const modalTitle = document.getElementById('employeeModalTitle');
         const empUsername = document.getElementById('emp-username');

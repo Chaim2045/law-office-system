@@ -25,7 +25,12 @@ service cloud.firestore {
     // Admins can see everyone through admin dashboard
     match /employees/{employeeId} {
       allow read: if isAuthenticated();
-      allow write: if false; // Only through Cloud Functions
+      allow create, delete: if false; // Only through Cloud Functions
+      // Allow users to update ONLY their lastLogin and loginCount
+      allow update: if isAuthenticated() &&
+                       employeeId == request.auth.token.email &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['lastLogin', 'loginCount']);
     }
 
     // ✅ Clients: Read-only access for authenticated users

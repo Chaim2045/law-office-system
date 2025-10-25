@@ -466,6 +466,29 @@ class SmartFAQBot {
                     </div>
                 </div>
 
+                <!-- שדה חיפוש -->
+                <div class="faq-bot-search-container">
+                    <div class="faq-bot-search-wrapper">
+                        <svg class="faq-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        <input
+                            type="text"
+                            id="faq-bot-search"
+                            class="faq-bot-search-input"
+                            placeholder="חפש שאלות..."
+                            autocomplete="off"
+                        />
+                        <button class="faq-search-clear hidden" id="faq-search-clear">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="faq-bot-messages" id="faq-bot-messages">
                     <!-- הודעות יופיעו כאן -->
                 </div>
@@ -631,6 +654,132 @@ class SmartFAQBot {
             .faq-bot-close:hover {
                 background: rgba(255, 255, 255, 0.3);
                 transform: scale(1.1);
+            }
+
+            /* ========== שדה חיפוש ========== */
+            .faq-bot-search-container {
+                padding: 12px 16px;
+                background: white;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .faq-bot-search-wrapper {
+                position: relative;
+                display: flex;
+                align-items: center;
+            }
+
+            .faq-search-icon {
+                position: absolute;
+                right: 12px;
+                color: #9ca3af;
+                pointer-events: none;
+            }
+
+            .faq-bot-search-input {
+                width: 100%;
+                padding: 10px 40px 10px 40px;
+                border: 2px solid #e5e7eb;
+                border-radius: 10px;
+                font-size: 14px;
+                font-family: inherit;
+                background: #f9fafb;
+                transition: all 0.2s;
+                color: #374151;
+            }
+
+            .faq-bot-search-input:focus {
+                outline: none;
+                border-color: #3b82f6;
+                background: white;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+
+            .faq-bot-search-input::placeholder {
+                color: #9ca3af;
+            }
+
+            .faq-search-clear {
+                position: absolute;
+                left: 12px;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                padding: 4px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #9ca3af;
+                transition: all 0.2s;
+            }
+
+            .faq-search-clear:hover {
+                background: #f3f4f6;
+                color: #374151;
+            }
+
+            .faq-search-clear.hidden {
+                display: none;
+            }
+
+            /* ========== תוצאות חיפוש ========== */
+            .faq-search-results-header {
+                padding: 16px 20px;
+                background: #f0f9ff;
+                border-bottom: 1px solid #e0f2fe;
+            }
+
+            .faq-search-results-header h3 {
+                margin: 0;
+                font-size: 15px;
+                font-weight: 600;
+                color: #0369a1;
+            }
+
+            .faq-no-results {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 60px 30px;
+                text-align: center;
+            }
+
+            .faq-no-results-icon {
+                width: 80px;
+                height: 80px;
+                margin-bottom: 20px;
+                color: #9ca3af;
+                opacity: 0.6;
+            }
+
+            .faq-no-results-icon svg {
+                width: 100%;
+                height: 100%;
+            }
+
+            .faq-no-results h3 {
+                margin: 0 0 12px 0;
+                font-size: 20px;
+                font-weight: 700;
+                color: #374151;
+            }
+
+            .faq-no-results p {
+                margin: 0;
+                font-size: 14px;
+                color: #6b7280;
+                line-height: 1.6;
+            }
+
+            /* ========== הדגשת טקסט חיפוש ========== */
+            .faq-highlight {
+                background: #fef3c7;
+                color: #92400e;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-weight: 600;
             }
 
             .faq-bot-messages {
@@ -957,7 +1106,8 @@ class SmartFAQBot {
                 transition: transform 0.3s ease;
             }
 
-            .faq-accordion-item.expanded .faq-accordion-chevron {
+            .faq-accordion-item.expanded .faq-accordion-chevron,
+            .faq-accordion-item.active .faq-accordion-arrow {
                 transform: rotate(180deg);
             }
 
@@ -967,8 +1117,26 @@ class SmartFAQBot {
                 transition: max-height 0.3s ease;
             }
 
-            .faq-accordion-item.expanded .faq-accordion-content {
+            .faq-accordion-item.expanded .faq-accordion-content,
+            .faq-accordion-content.show {
                 max-height: 2000px;
+            }
+
+            /* תצוגה מיוחדת לתוצאות חיפוש */
+            .faq-accordion-count {
+                background: #e0f2fe;
+                color: #0369a1;
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            .faq-accordion-arrow {
+                color: #9ca3af;
+                flex-shrink: 0;
+                transition: transform 0.3s ease;
+                margin-right: auto;
             }
 
             .faq-accordion-questions {
@@ -1152,6 +1320,92 @@ class SmartFAQBot {
             .faq-question-btn svg {
                 color: #9ca3af;
                 flex-shrink: 0;
+                transition: transform 0.3s ease;
+            }
+
+            .faq-question-item .faq-question-btn svg {
+                transform: rotate(0deg);
+            }
+
+            .faq-answer.expanded + .faq-question-btn svg,
+            .faq-question-item .faq-question-btn:hover svg {
+                transform: rotate(180deg);
+            }
+
+            /* תשובות בתוצאות חיפוש */
+            .faq-answer {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+
+            .faq-answer.expanded {
+                max-height: 1000px;
+            }
+
+            .faq-answer-content {
+                padding: 20px 24px;
+                background: #f9fafb;
+                border-top: 1px solid #e5e7eb;
+                font-size: 14px;
+                line-height: 1.8;
+                color: #374151;
+            }
+
+            .faq-answer-content strong {
+                display: block;
+                color: #1f2937;
+                font-weight: 700;
+                font-size: 15px;
+                margin-bottom: 16px;
+            }
+
+            .faq-answer-content ol,
+            .faq-answer-content ul {
+                margin: 16px 0;
+                padding-right: 24px;
+            }
+
+            .faq-answer-content ol {
+                counter-reset: item;
+            }
+
+            .faq-answer-content li {
+                margin: 12px 0;
+                padding-right: 4px;
+                line-height: 1.7;
+            }
+
+            .faq-answer-content ol li {
+                position: relative;
+            }
+
+            .faq-answer-content p {
+                margin: 16px 0;
+                line-height: 1.7;
+            }
+
+            .faq-answer-content em {
+                display: block;
+                margin-top: 16px;
+                padding: 12px 16px;
+                background: #dbeafe;
+                border-right: 3px solid #3b82f6;
+                border-radius: 6px;
+                color: #1e40af;
+                font-style: normal;
+                font-size: 13px;
+            }
+
+            .faq-answer-content kbd {
+                display: inline-block;
+                padding: 3px 8px;
+                background: #1f2937;
+                color: white;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 12px;
+                font-weight: 600;
             }
 
             /* פעולות תשובה */
@@ -1463,6 +1717,8 @@ class SmartFAQBot {
         const closeBtn = document.getElementById('faq-bot-close');
         const newChatBtn = document.getElementById('faq-bot-new-chat');
         const tabs = document.querySelectorAll('.faq-tab');
+        const searchInput = document.getElementById('faq-bot-search');
+        const searchClear = document.getElementById('faq-search-clear');
 
         button.addEventListener('click', () => this.toggleBot());
         closeBtn.addEventListener('click', () => this.toggleBot());
@@ -1475,6 +1731,280 @@ class SmartFAQBot {
                 this.switchTab(tabName);
             });
         });
+
+        // חיפוש בזמן אמת
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+
+            // הצג/הסתר כפתור X
+            if (query) {
+                searchClear.classList.remove('hidden');
+            } else {
+                searchClear.classList.add('hidden');
+            }
+
+            // Debounce - המתן 300ms אחרי שהמשתמש מפסיק להקליד
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.performSearch(query);
+            }, 300);
+        });
+
+        // כפתור ניקוי החיפוש
+        searchClear.addEventListener('click', () => {
+            searchInput.value = '';
+            searchClear.classList.add('hidden');
+            this.performSearch(''); // הצג הכל
+            searchInput.focus();
+        });
+
+        // Enter לחיפוש מיידי
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                this.performSearch(e.target.value);
+            }
+        });
+    }
+
+    /**
+     * ביצוע חיפוש חכם בכל השאלות והתשובות
+     */
+    performSearch(query) {
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        // אם אין שאילתה - הצג את כל הקטגוריות
+        if (!query || query.trim() === '') {
+            this.showQuestionCategories();
+            return;
+        }
+
+        const searchTerm = query.trim().toLowerCase();
+        const resultsMap = {};
+
+        // חפש בכל הקטגוריות ב-faqDatabase
+        for (const [categoryKey, questionsArray] of Object.entries(this.faqDatabase)) {
+            // questionsArray הוא מערך של שאלות
+            questionsArray.forEach((questionData, index) => {
+                const questionText = questionData.question.toLowerCase();
+                const answerText = questionData.answer.toLowerCase();
+                const keywords = questionData.keywords ? questionData.keywords.map(k => k.toLowerCase()) : [];
+
+                // בדוק התאמה בשאלה, תשובה, או מילות מפתח
+                if (
+                    questionText.includes(searchTerm) ||
+                    answerText.includes(searchTerm) ||
+                    keywords.some(keyword => keyword.includes(searchTerm))
+                ) {
+                    // השתמש ב-category מהשאלה או ב-categoryKey
+                    const categoryId = questionData.category || categoryKey;
+
+                    // אתחל את הקטגוריה אם עדיין לא קיימת
+                    if (!resultsMap[categoryId]) {
+                        resultsMap[categoryId] = {
+                            categoryId,
+                            categoryName: this.getCategoryName(categoryId),
+                            categoryIcon: this.getCategoryIcon(categoryId),
+                            questions: []
+                        };
+                    }
+
+                    // הוסף את השאלה לקטגוריה
+                    resultsMap[categoryId].questions.push({
+                        questionId: `${categoryKey}-${index}`,
+                        questionData,
+                        categoryId
+                    });
+                }
+            });
+        }
+
+        // המר את ה-Map למערך
+        const results = Object.values(resultsMap);
+
+        // הצג תוצאות
+        this.displaySearchResults(results, searchTerm);
+    }
+
+    /**
+     * הצגת תוצאות חיפוש
+     */
+    displaySearchResults(results, searchTerm) {
+        const suggestionsContainer = document.getElementById('faq-bot-suggestions');
+
+        if (results.length === 0) {
+            suggestionsContainer.innerHTML = `
+                <div class="faq-no-results">
+                    <div class="faq-no-results-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                    </div>
+                    <h3>לא נמצאו תוצאות</h3>
+                    <p>נסה לחפש במילים אחרות או בדוק את הקטגוריות</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="faq-search-results-header">
+                <h3>נמצאו ${this.countTotalQuestions(results)} תוצאות עבור "${this.escapeHtml(searchTerm)}"</h3>
+            </div>
+            <div class="faq-accordion-container">
+        `;
+
+        // הצג כל קטגוריה עם השאלות שנמצאו
+        results.forEach((category, index) => {
+            html += `
+                <div class="faq-accordion-item ${index === 0 ? 'active' : ''}">
+                    <button class="faq-accordion-header" onclick="smartFAQBot.toggleAccordion('search-${category.categoryId}')">
+                        <div class="faq-accordion-title">
+                            ${category.categoryIcon}
+                            <span>${this.escapeHtml(category.categoryName)}</span>
+                        </div>
+                        <div class="faq-accordion-count">${category.questions.length}</div>
+                        <svg class="faq-accordion-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                    <div class="faq-accordion-content ${index === 0 ? 'show' : ''}" id="search-${category.categoryId}">
+            `;
+
+            // הצג כל שאלה בקטגוריה
+            category.questions.forEach(item => {
+                const questionHighlighted = this.highlightText(item.questionData.question, searchTerm);
+                const answerHighlighted = this.highlightTextInHtml(item.questionData.answer, searchTerm);
+                html += `
+                    <div class="faq-question-item">
+                        <button class="faq-question-btn" onclick="smartFAQBot.toggleQuestion('search-q-${category.categoryId}-${item.questionId}')">
+                            <span>${questionHighlighted}</span>
+                            <svg class="faq-question-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <div class="faq-answer" id="search-q-${category.categoryId}-${item.questionId}">
+                            <div class="faq-answer-content">
+                                ${answerHighlighted}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        suggestionsContainer.innerHTML = html;
+    }
+
+    /**
+     * הדגשת טקסט חיפוש (לשאלות - טקסט רגיל)
+     */
+    highlightText(text, searchTerm) {
+        if (!searchTerm) return this.escapeHtml(text);
+
+        const escapedText = this.escapeHtml(text);
+        const escapedTerm = this.escapeHtml(searchTerm);
+        const regex = new RegExp(`(${escapedTerm})`, 'gi');
+
+        return escapedText.replace(regex, '<mark class="faq-highlight">$1</mark>');
+    }
+
+    /**
+     * הדגשת טקסט חיפוש בתוך HTML (לתשובות)
+     */
+    highlightTextInHtml(html, searchTerm) {
+        if (!searchTerm || !html) return html;
+
+        // הדגש רק בתוך תוכן טקסט, לא בתוך תגים
+        const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
+
+        // נשתמש בפונקציה שמחליפה רק טקסט ולא תגים
+        return html.replace(regex, '<mark class="faq-highlight">$1</mark>');
+    }
+
+    /**
+     * Escape תווים מיוחדים ב-regex
+     */
+    escapeRegex(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * ספירת סך כל השאלות בתוצאות
+     */
+    countTotalQuestions(results) {
+        return results.reduce((total, category) => total + category.questions.length, 0);
+    }
+
+    /**
+     * קבלת שם קטגוריה
+     */
+    getCategoryName(categoryId) {
+        const names = {
+            'clients': 'תיקים ולקוחות',
+            'tasks': 'משימות ותקצוב',
+            'timesheet': 'שעתון ודיווח',
+            'general': 'כללי',
+            'system': 'הגדרות ומערכת',
+            'reports': 'דוחות וניתוחים'
+        };
+
+        return names[categoryId] || 'כללי';
+    }
+
+    /**
+     * קבלת אייקון קטגוריה
+     */
+    getCategoryIcon(categoryId) {
+        const icons = {
+            'clients': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>`,
+            'tasks': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>`,
+            'timesheet': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>`,
+            'general': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>`,
+            'system': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m5.2-14.2l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m14.2 5.2l-4.2-4.2m0-6l-4.2-4.2"/>
+            </svg>`,
+            'reports': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>`
+        };
+
+        return icons[categoryId] || icons['general'];
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     /**
@@ -1866,6 +2396,25 @@ class SmartFAQBot {
     }
 
     /**
+     * פתיחה/סגירה של אקורדיון בתוצאות חיפוש
+     */
+    toggleAccordion(contentId) {
+        const content = document.getElementById(contentId);
+        if (!content) return;
+
+        const accordionItem = content.parentElement;
+        const isActive = accordionItem.classList.contains('active');
+
+        if (isActive) {
+            accordionItem.classList.remove('active');
+            content.classList.remove('show');
+        } else {
+            accordionItem.classList.add('active');
+            content.classList.add('show');
+        }
+    }
+
+    /**
      * פתיחה/סגירה של קטגוריה (אקורדיון)
      */
     toggleCategory(categoryId) {
@@ -1903,6 +2452,33 @@ class SmartFAQBot {
      * פתיחה/סגירה של שאלה (אקורדיון)
      */
     toggleQuestion(questionId, categoryId, questionIndex) {
+        // בדוק אם זו שאלה מתוצאות חיפוש (ID מתחיל ב-search-q-)
+        if (questionId.startsWith('search-q-')) {
+            const answerDiv = document.getElementById(questionId);
+            if (!answerDiv) return;
+
+            const isExpanded = answerDiv.classList.contains('expanded');
+
+            // סגור את כל התשובות האחרות בתוצאות החיפוש
+            document.querySelectorAll('.faq-answer').forEach(a => {
+                if (a !== answerDiv) {
+                    a.classList.remove('expanded');
+                }
+            });
+
+            // פתח/סגור את התשובה הנוכחית
+            if (isExpanded) {
+                answerDiv.classList.remove('expanded');
+            } else {
+                answerDiv.classList.add('expanded');
+                setTimeout(() => {
+                    answerDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 300);
+            }
+            return;
+        }
+
+        // לוגיקה רגילה לשאלות בעמוד הבית
         const item = document.querySelector(`.faq-question-item[data-question="${questionId}"]`);
         if (!item) return;
 

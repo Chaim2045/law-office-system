@@ -1366,27 +1366,33 @@
 
     /**
      * בדיקה אם ללקוח יש תיק קיים
-     * @param {string} clientId - מזהה הלקוח
+     * (במבנה החדש Client=Case, clientId = caseNumber)
+     * @param {string} clientId - מזהה הלקוח (document ID = caseNumber)
      * @returns {Promise<Object|null>} תיק קיים או null
      */
     async checkExistingCaseForClient(clientId) {
       try {
-        // שליפת כל התיקים של הלקוח
-        const casesSnapshot = await firebase.firestore()
-          .collection('cases')
-          .where('clientId', '==', clientId)
-          .where('status', '==', 'active') // רק תיקים פעילים
-          .limit(1)
+        // ✅ במבנה החדש: כל client הוא case
+        // פשוט לבדוק אם ה-client/case הזה קיים
+        const clientDoc = await firebase.firestore()
+          .collection('clients')
+          .doc(clientId)
           .get();
 
-        if (casesSnapshot.empty) {
+        if (!clientDoc.exists) {
           return null; // אין תיק קיים
         }
 
-        const caseDoc = casesSnapshot.docs[0];
+        const data = clientDoc.data();
+
+        // בדיקת סטטוס פעיל
+        if (data.status !== 'active') {
+          return null; // רק תיקים פעילים
+        }
+
         return {
-          id: caseDoc.id,
-          ...caseDoc.data()
+          id: clientDoc.id,
+          ...data
         };
       } catch (error) {
         console.error('❌ Error checking existing case:', error);
@@ -1713,6 +1719,20 @@
           this.closeCreateCaseDialog();
         }, 500);
 
+        // 🔔 שידור אירוע global - מרענן טפסים פתוחים (אפס עלות!)
+        const caseCreatedEvent = new CustomEvent('caseCreated', {
+          detail: {
+            caseId: result.caseId,
+            clientId: result.clientId,
+            clientName: result.case.clientName,
+            caseNumber: result.case.caseNumber,
+            caseTitle: result.case.caseTitle,
+            procedureType: result.case.procedureType
+          }
+        });
+        window.dispatchEvent(caseCreatedEvent);
+        console.log('🔔 Event dispatched: caseCreated for client', result.clientId);
+
         // רענון הנתונים
         if (typeof this.onCaseCreated === 'function') {
           this.onCaseCreated(result);
@@ -1803,6 +1823,17 @@
         setTimeout(() => {
           this.closeCreateCaseDialog();
         }, 500);
+
+        // 🔔 שידור אירוע global - מרענן כרטיסיות שירותים (אפס עלות!)
+        const serviceAddedEvent = new CustomEvent('serviceAdded', {
+          detail: {
+            caseId: serviceData.caseId,
+            serviceId: result.data.serviceId,
+            serviceName: serviceData.serviceName
+          }
+        });
+        window.dispatchEvent(serviceAddedEvent);
+        console.log('🔔 Event dispatched: serviceAdded for case', serviceData.caseId);
 
         // ריסט המצב
         this.currentCase = null;

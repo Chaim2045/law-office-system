@@ -266,36 +266,24 @@
 
         console.log('📊 Loading clients...');
 
-        // Load clients and cases in parallel
-        const [clientsSnapshot, casesSnapshot] = await Promise.all([
-          db.collection('clients').get(),
-          db.collection('cases').get()
-        ]);
+        // ✅ במבנה החדש Client=Case - רק clients collection
+        const clientsSnapshot = await db.collection('clients').get();
 
-        // Build clients map
-        const clientsMap = new Map();
+        // Build clients array
+        const clients = [];
 
-        // Add clients from clients collection
         clientsSnapshot.forEach(doc => {
           const data = doc.data();
-          clientsMap.set(doc.id, {
-            id: doc.id,
+          clients.push({
+            id: doc.id, // document ID (caseNumber במבנה החדש)
             fullName: data.fullName || data.clientName || 'לקוח ללא שם',
             phone: data.phone || '',
-            source: 'clients',
-            casesCount: 0
+            caseNumber: doc.id, // במבנה החדש: document ID = caseNumber
+            source: 'clients'
           });
         });
 
-        // Count cases per client
-        casesSnapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.clientId && clientsMap.has(data.clientId)) {
-            clientsMap.get(data.clientId).casesCount++;
-          }
-        });
-
-        this.allClients = Array.from(clientsMap.values());
+        this.allClients = clients;
         console.log(`✅ Loaded ${this.allClients.length} clients`);
 
         return this.allClients;
@@ -330,8 +318,8 @@
           this.options.onClientSelected(this.selectedClient);
         }
 
-        // Load cases for this client
-        await this.loadClientCases(clientId);
+        // Load cases for this client (חיפוש לפי שם במבנה החדש)
+        await this.loadClientCases(clientId, clientName);
 
       } catch (error) {
         console.error('❌ Error selecting client:', error);
@@ -339,25 +327,26 @@
     }
 
     /**
-     * Load cases for a specific client
+     * Load cases for a specific client (במבנה החדש: חיפוש לפי שם)
      */
-    async loadClientCases(clientId) {
+    async loadClientCases(clientId, clientName) {
       try {
-        console.log(`📂 Loading cases for client: ${clientId}`);
+        console.log(`📂 Loading cases for client: ${clientName}`);
 
         const db = window.firebaseDB;
         if (!db) {
           throw new Error('Firebase not connected');
         }
 
-        const casesSnapshot = await db.collection('cases')
-          .where('clientId', '==', clientId)
+        // ✅ במבנה החדש: חיפוש clients לפי שם לקוח (כל client = case)
+        const casesSnapshot = await db.collection('clients')
+          .where('clientName', '==', clientName)
           .get();
 
         let cases = [];
         casesSnapshot.forEach(doc => {
           cases.push({
-            id: doc.id,
+            id: doc.id, // במבנה החדש: document ID = caseNumber
             ...doc.data()
           });
         });

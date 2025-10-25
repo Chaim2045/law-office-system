@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tree -L 3 chatbot/)"
+      "Bash(node:*)",
+      "Bash(firebase functions:delete:*)",
+      "Bash(for file in cases.js legal-procedures.js timesheet.js firebase-operations.js cases-integration.js)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(wc:*)",
+      "Bash(done)",
+      "Bash(for file in cases.js legal-procedures.js main.js cases-integration.js modules/modern-client-case-selector.js)",
+      "Bash(npm install)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

@@ -135,8 +135,10 @@ async function runMigration(migrationName, mode = 'dryRun') {
         });
         console.log(colorize('\n✅ Firebase Admin initialized with service account', colors.green));
       } else {
-        // Try application default credentials
-        admin.initializeApp();
+        // Try application default credentials with explicit project ID
+        admin.initializeApp({
+          projectId: 'law-office-system-e4801'
+        });
         console.log(colorize('\n✅ Firebase Admin initialized with default credentials', colors.green));
       }
     }

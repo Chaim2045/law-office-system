@@ -8,6 +8,15 @@
  */
 
 /* ===========================
+   IMPORTS
+   =========================== */
+
+import {
+  createCaseNumberBadge,
+  createServiceBadge
+} from './timesheet-constants.js';
+
+/* ===========================
    FIREBASE OPERATIONS
    =========================== */
 
@@ -368,10 +377,24 @@ export function createTaskCard(task, options = {}) {
     </span>
   ` : '';
 
+  // 🎯 Service & Case badges (small and inline)
+  const caseNumberBadge = createCaseNumberBadge(safeTask.caseNumber, 'small', {
+    marginRight: '6px'
+  });
+
+  const serviceBadge = createServiceBadge(safeTask.serviceName, 'small');
+
+  const badgesRow = (caseNumberBadge || serviceBadge) ? `
+    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+      ${caseNumberBadge}${serviceBadge}
+    </div>
+  ` : '';
+
   return `
     <div class="linear-minimal-card" data-task-id="${safeTask.id}">
       ${window.DatesModule ? window.DatesModule.getCreationDateCorner(safeTask) : ''}
       <div class="linear-card-content">
+        ${badgesRow}
         <h3 class="linear-card-title" title="${safeClientName}" style="display: flex; align-items: center;">
           <span style="flex: 1;">${safeDescription}</span>
           ${completedIndicator}
@@ -447,10 +470,26 @@ export function createTableRow(task, options = {}) {
     </div>
   ` : (safeText ? safeText(safeTask.status) : safeTask.status);
 
+  // 🎯 Service & Case badges for table view
+  const serviceBadge = createServiceBadge(safeTask.serviceName, 'small', {
+    marginRight: '6px'
+  });
+
+  const caseBadge = createCaseNumberBadge(safeTask.caseNumber, 'small');
+
+  const badgesHtml = (serviceBadge || caseBadge) ? `
+    <div style="display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap;">
+      ${serviceBadge}${caseBadge}
+    </div>
+  ` : '';
+
   return `
     <tr data-task-id="${safeTask.id}">
       <td>${safeText ? safeText(safeTask.clientName) : safeTask.clientName}</td>
-      <td>${safeText ? safeText(safeTask.description) : safeTask.description}</td>
+      <td>
+        ${badgesHtml}
+        <div>${safeText ? safeText(safeTask.description) : safeTask.description}</div>
+      </td>
       <td>${progress}%</td>
       <td>${formatDate ? formatDate(safeTask.deadline) : safeTask.deadline}</td>
       <td style="color: #6b7280; font-size: 13px;">${window.DatesModule ? window.DatesModule.getCreationDateTableCell(safeTask) : ''}</td>

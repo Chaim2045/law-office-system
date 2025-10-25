@@ -67,8 +67,8 @@ async function checkUserPermissions(context) {
 
   return {
     uid,
-    username: employeeDoc.id,
-    email: employee.email, // ✅ EMAIL for security rules
+    email: employeeDoc.id, // Document ID is EMAIL (industry standard)
+    username: employee.username, // Username for display only
     employee: employee,
     role: employee.role || 'employee'
   };
@@ -136,7 +136,8 @@ async function getOrCreateInternalCase(employeeName) {
   const internalClientId = 'internal_office';
 
   // 1. בדיקה אם התיק כבר קיים
-  const caseRef = db.collection('cases').doc(caseId);
+  // ✅ במבנה החדש Client=Case: clients collection
+  const caseRef = db.collection('clients').doc(caseId);
   const caseDoc = await caseRef.get();
 
   if (caseDoc.exists) {
@@ -276,6 +277,64 @@ function deductHoursFromPackage(package, hoursToDeduct) {
   return package;
 }
 
+/**
+ * 🎯 יצירת מספר תיק אוטומטי
+ * פורמט: שנה + מספר סידורי (2025001, 2025002...)
+ *
+ * @returns {Promise<string>} - מספר תיק חדש וייחודי
+ */
+async function generateCaseNumber() {
+  const currentYear = new Date().getFullYear();
+  const yearPrefix = currentYear.toString();
+
+  try {
+    // קריאת כל הלקוחות כדי למצוא את המספר הגבוה ביותר
+    const clientsSnapshot = await db.collection('clients')
+      .orderBy('caseNumber', 'desc')
+      .limit(1)
+      .get();
+
+    let nextNumber = 1; // ברירת מחדל
+
+    if (!clientsSnapshot.empty) {
+      const lastCaseNumber = clientsSnapshot.docs[0].data().caseNumber;
+
+      if (lastCaseNumber && typeof lastCaseNumber === 'string') {
+        // חילוץ המספר הסידורי (3 הספרות האחרונות)
+        const lastSequential = parseInt(lastCaseNumber.slice(-3));
+
+        // אם המספר מהשנה הנוכחית, נמשיך את הסדרה
+        if (lastCaseNumber.startsWith(yearPrefix)) {
+          nextNumber = lastSequential + 1;
+        }
+        // אחרת (שנה חדשה), נתחיל מ-1
+      }
+    }
+
+    // יצירת מספר תיק: שנה + 3 ספרות סידוריות
+    const caseNumber = `${yearPrefix}${nextNumber.toString().padStart(3, '0')}`;
+
+    // בדיקת ייחודיות (למקרה של race condition)
+    const existingDoc = await db.collection('clients').doc(caseNumber).get();
+    if (existingDoc.exists) {
+      console.warn(`⚠️ מספר תיק ${caseNumber} כבר קיים! מנסה שוב...`);
+      // רקורסיה - ננסה שוב (במקרה נדיר של התנגשות)
+      return await generateCaseNumber();
+    }
+
+    console.log(`✅ נוצר מספר תיק חדש: ${caseNumber}`);
+    return caseNumber;
+
+  } catch (error) {
+    console.error('❌ שגיאה ביצירת מספר תיק:', error);
+
+    // Fallback: שנה + timestamp (למקרה של שגיאה)
+    const fallbackNumber = `${yearPrefix}${Date.now().toString().slice(-3)}`;
+    console.warn(`⚠️ שימוש במספר fallback: ${fallbackNumber}`);
+    return fallbackNumber;
+  }
+}
+
 // ===============================
 // Authentication Functions
 // ===============================
@@ -346,10 +405,10 @@ exports.createAuthUser = functions.https.onCall(async (data, context) => {
       oldUsername: data.oldUsername || null
     });
 
-    // יצירת מסמך ב-Firestore
-    await db.collection('employees').doc(data.oldUsername || userRecord.uid).set({
+    // יצירת מסמך ב-Firestore (use EMAIL as document ID - industry standard)
+    await db.collection('employees').doc(data.email).set({
       authUID: userRecord.uid,
-      username: data.oldUsername || userRecord.uid,
+      username: data.oldUsername || data.email.split('@')[0],  // username for display
       displayName: sanitizeString(data.displayName),
       name: sanitizeString(data.displayName),
       email: data.email,
@@ -395,7 +454,8 @@ exports.createAuthUser = functions.https.onCall(async (data, context) => {
 // ===============================
 
 /**
- * יצירת לקוח חדש
+ * 🎯 יצירת לקוח חדש (CLIENT = CASE)
+ * ✅ NEW ARCHITECTURE: Client ו-Case מאוחדים - מספר תיק הוא ה-Document ID
  */
 exports.createClient = functions.https.onCall(async (data, context) => {
   try {
@@ -413,33 +473,6 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'שם לקוח חייב להכיל לפחות 2 תווים'
-      );
-    }
-
-    if (!data.fileNumber || typeof data.fileNumber !== 'string') {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'מספר תיק חובה'
-      );
-    }
-
-    if (data.fileNumber.trim().length < 1) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'מספר תיק לא תקין'
-      );
-    }
-
-    // בדיקה שמספר תיק לא קיים
-    const existingFile = await db.collection('clients')
-      .where('fileNumber', '==', data.fileNumber.trim())
-      .limit(1)
-      .get();
-
-    if (!existingFile.empty) {
-      throw new functions.https.HttpsError(
-        'already-exists',
-        `מספר תיק ${data.fileNumber} כבר קיים במערכת`
       );
     }
 
@@ -484,7 +517,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         );
       }
 
-      // ✅ NEW: Validation - סוג תמחור (hourly או fixed)
+      // ✅ Validation - סוג תמחור (hourly או fixed)
       if (!data.pricingType || !['hourly', 'fixed'].includes(data.pricingType)) {
         throw new functions.https.HttpsError(
           'invalid-argument',
@@ -522,50 +555,46 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       });
     }
 
-    // ✅ NEW ARCHITECTURE: יצירת לקוח + תיק אוטומטית
-    // שלב 1: יצירת הלקוח (רק מידע אישי)
+    // ✅ NEW ARCHITECTURE: יצירת מספר תיק אוטומטי
+    const caseNumber = await generateCaseNumber();
+    console.log(`🎯 Generated case number: ${caseNumber} for client: ${data.clientName}`);
+
+    // ✅ יצירת המסמך המאוחד (Client = Case)
+    const now = new Date().toISOString();
     const clientData = {
+      // ✅ זיהוי ומידע בסיסי
+      caseNumber: caseNumber,  // מספר תיק (גם Document ID)
       clientName: sanitizeString(data.clientName.trim()),
       phone: data.phone ? sanitizeString(data.phone.trim()) : '',
       email: data.email ? sanitizeString(data.email.trim()) : '',
-      createdBy: user.username,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      totalCases: 1,     // ✅ NEW: מספר תיקים
-      activeCases: 1     // ✅ NEW: תיקים פעילים
-    };
 
-    const clientRef = await db.collection('clients').add(clientData);
-    const clientId = clientRef.id;
-
-    // שלב 2: יצירת התיק הראשון (מידע משפטי)
-    const caseData = {
-      caseNumber: sanitizeString(data.fileNumber.trim()),
-      caseTitle: data.description ? sanitizeString(data.description.trim()) : 'הליך ראשי',
-      clientId: clientId,
-      clientName: clientData.clientName,
+      // ✅ מידע משפטי
       procedureType: data.procedureType,
       status: 'active',
       priority: 'medium',
       description: data.description ? sanitizeString(data.description.trim()) : '',
+
+      // ✅ ניהול
       assignedTo: [user.username],
       mainAttorney: user.username,
-      openedAt: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: user.username,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+      // ✅ שדות חדשים
+      services: [],  // ימולא בהמשך לפי סוג הליך
+      totalServices: 0,
+      activeServices: 0
     };
 
     // הוספת שדות ספציפיים לסוג הליך
     if (data.procedureType === 'hours') {
-      // ✅ NEW ARCHITECTURE: תוכנית שעות עם services[] + packages[]
-      const now = new Date().toISOString();
+      // ✅ תוכנית שעות עם services[] + packages[]
       const serviceId = `srv_${Date.now()}`;
       const packageId = `pkg_${Date.now()}`;
 
-      caseData.services = [
+      clientData.services = [
         {
           id: serviceId,
           type: 'hours',
@@ -595,27 +624,28 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       ];
 
       // ✅ שמירת שדות ישנים ל-backward compatibility
-      caseData.totalHours = data.totalHours;
-      caseData.hoursRemaining = data.totalHours;
-      caseData.minutesRemaining = data.totalHours * 60;
+      clientData.totalHours = data.totalHours;
+      clientData.hoursRemaining = data.totalHours;
+      clientData.minutesRemaining = data.totalHours * 60;
 
-      caseData.totalServices = 1;
-      caseData.activeServices = 1;
+      clientData.totalServices = 1;
+      clientData.activeServices = 1;
+
     } else if (data.procedureType === 'fixed') {
-      caseData.stages = [
+      clientData.stages = [
         { id: 1, name: 'שלב 1', completed: false },
         { id: 2, name: 'שלב 2', completed: false },
         { id: 3, name: 'שלב 3', completed: false }
       ];
+
     } else if (data.procedureType === 'legal_procedure') {
       // הליך משפטי עם 3 שלבים מפורטים
-      const now = new Date().toISOString();
-      caseData.currentStage = 'stage_a';
-      caseData.pricingType = data.pricingType; // ✅ שמירת סוג התמחור
+      clientData.currentStage = 'stage_a';
+      clientData.pricingType = data.pricingType;
 
       if (data.pricingType === 'hourly') {
         // ✅ תמחור שעתי - שלבים עם שעות וחבילות
-        caseData.stages = [
+        clientData.stages = [
           {
             id: 'stage_a',
             name: 'שלב א',
@@ -635,7 +665,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
                 hoursUsed: 0,
                 hoursRemaining: data.stages[0].hours,
                 purchaseDate: now,
-                status: 'active'  // ✅ חבילה פעילה
+                status: 'active'
               }
             ]
           },
@@ -658,7 +688,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
                 hoursUsed: 0,
                 hoursRemaining: data.stages[1].hours,
                 purchaseDate: now,
-                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
+                status: 'active'
               }
             ]
           },
@@ -681,7 +711,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
                 hoursUsed: 0,
                 hoursRemaining: data.stages[2].hours,
                 purchaseDate: now,
-                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
+                status: 'active'
               }
             ]
           }
@@ -689,13 +719,13 @@ exports.createClient = functions.https.onCall(async (data, context) => {
 
         // חישוב סה"כ שעות בהליך
         const totalProcedureHours = data.stages.reduce((sum, s) => sum + s.hours, 0);
-        caseData.totalHours = totalProcedureHours;
-        caseData.hoursRemaining = totalProcedureHours;
-        caseData.minutesRemaining = totalProcedureHours * 60;
+        clientData.totalHours = totalProcedureHours;
+        clientData.hoursRemaining = totalProcedureHours;
+        clientData.minutesRemaining = totalProcedureHours * 60;
 
       } else if (data.pricingType === 'fixed') {
         // ✅ תמחור פיקס - שלבים עם מחירים קבועים
-        caseData.stages = [
+        clientData.stages = [
           {
             id: 'stage_a',
             name: 'שלב א',
@@ -736,34 +766,32 @@ exports.createClient = functions.https.onCall(async (data, context) => {
 
         // חישוב סה"כ מחיר ויתרה
         const totalFixedPrice = data.stages.reduce((sum, s) => sum + s.fixedPrice, 0);
-        caseData.totalFixedPrice = totalFixedPrice;
-        caseData.totalPaid = 0;
-        caseData.remainingBalance = totalFixedPrice;
+        clientData.totalFixedPrice = totalFixedPrice;
+        clientData.totalPaid = 0;
+        clientData.remainingBalance = totalFixedPrice;
       }
     }
 
-    const caseRef = await db.collection('cases').add(caseData);
+    // ✅ יצירת המסמך עם מספר תיק כ-Document ID
+    await db.collection('clients').doc(caseNumber).set(clientData);
 
     // Audit log
-    await logAction('CREATE_CLIENT_WITH_CASE', user.uid, user.username, {
-      clientId: clientId,
-      caseId: caseRef.id,
+    await logAction('CREATE_CLIENT', user.uid, user.username, {
+      caseNumber: caseNumber,
       clientName: clientData.clientName,
-      fileNumber: data.fileNumber,
       procedureType: data.procedureType
     });
 
+    console.log(`✅ Created client/case: ${caseNumber} - ${clientData.clientName}`);
+
     return {
       success: true,
-      clientId: clientId,
-      caseId: caseRef.id,
+      caseNumber: caseNumber,  // ✅ מספר תיק = מזהה
+      clientId: caseNumber,    // ✅ לתאימות לאחור
       client: {
-        id: clientId,
+        id: caseNumber,
+        caseNumber: caseNumber,
         ...clientData
-      },
-      case: {
-        id: caseRef.id,
-        ...caseData
       }
     };
 
@@ -782,18 +810,19 @@ exports.createClient = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * ✅ NEW: הוספת שירות חדש לתיק קיים
+ * 🎯 הוספת שירות חדש ללקוח (CLIENT = CASE)
+ * ✅ NEW ARCHITECTURE: עובד עם clients collection ו-caseNumber
  * מאפשר ללקוח לקנות שירות נוסף (תוכנית שעות נוספת, הליך משפטי וכו')
  */
-exports.addServiceToCase = functions.https.onCall(async (data, context) => {
+exports.addServiceToClient = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
     // Validation
-    if (!data.caseId || typeof data.caseId !== 'string') {
+    if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'מזהה תיק חובה'
+        'מזהה לקוח חובה (מספר תיק)'
       );
     }
 
@@ -811,18 +840,18 @@ exports.addServiceToCase = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // שליפת התיק
-    const caseRef = db.collection('cases').doc(data.caseId);
-    const caseDoc = await caseRef.get();
+    // ✅ שליפת הלקוח (בארכיטקטורה החדשה: clientId = caseNumber = Document ID)
+    const clientRef = db.collection('clients').doc(data.clientId);
+    const clientDoc = await clientRef.get();
 
-    if (!caseDoc.exists) {
+    if (!clientDoc.exists) {
       throw new functions.https.HttpsError(
         'not-found',
-        'תיק לא נמצא'
+        `לקוח ${data.clientId} לא נמצא`
       );
     }
 
-    const caseData = caseDoc.data();
+    const clientData = clientDoc.data();
     const now = new Date().toISOString();
     const serviceId = `srv_${Date.now()}`;
 
@@ -888,10 +917,10 @@ exports.addServiceToCase = functions.https.onCall(async (data, context) => {
     }
 
     // הוספת השירות למערך services[]
-    const services = caseData.services || [];
+    const services = clientData.services || [];
     services.push(newService);
 
-    // עדכון התיק
+    // עדכון הלקוח
     const updates = {
       services: services,
       totalServices: services.length,
@@ -900,15 +929,18 @@ exports.addServiceToCase = functions.https.onCall(async (data, context) => {
       lastModifiedBy: user.username
     };
 
-    await caseRef.update(updates);
+    await clientRef.update(updates);
 
     // Audit log
-    await logAction('ADD_SERVICE_TO_CASE', user.uid, user.username, {
-      caseId: data.caseId,
+    await logAction('ADD_SERVICE_TO_CLIENT', user.uid, user.username, {
+      clientId: data.clientId,
+      caseNumber: data.clientId,  // ✅ clientId = caseNumber
       serviceId: serviceId,
       serviceType: data.serviceType,
       serviceName: newService.name
     });
+
+    console.log(`✅ Added service ${serviceId} to client ${data.clientId}`);
 
     return {
       success: true,
@@ -918,7 +950,7 @@ exports.addServiceToCase = functions.https.onCall(async (data, context) => {
     };
 
   } catch (error) {
-    console.error('Error in addServiceToCase:', error);
+    console.error('Error in addServiceToClient:', error);
 
     if (error instanceof functions.https.HttpsError) {
       throw error;
@@ -931,8 +963,18 @@ exports.addServiceToCase = functions.https.onCall(async (data, context) => {
   }
 });
 
+// ⚠️ DEPRECATED: שמור לתאימות לאחור - מפנה ל-addServiceToClient
+exports.addServiceToCase = functions.https.onCall(async (data, context) => {
+  console.warn('⚠️ addServiceToCase is DEPRECATED. Use addServiceToClient instead.');
+
+  // מפנה את הקריאה ל-addServiceToClient
+  const clientId = data.caseId || data.clientId;
+  return exports.addServiceToClient._handler({...data, clientId}, context);
+});
+
 /**
- * ✅ NEW: הוספת חבילת שעות לשירות קיים
+ * 🎯 הוספת חבילת שעות לשירות קיים (CLIENT = CASE)
+ * ✅ NEW ARCHITECTURE: עובד עם clients collection
  * מאפשר ללקוח לרכוש שעות נוספות לשירות ספציפי
  */
 exports.addPackageToService = functions.https.onCall(async (data, context) => {
@@ -940,10 +982,12 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     const user = await checkUserPermissions(context);
 
     // Validation
-    if (!data.caseId || typeof data.caseId !== 'string') {
+    const clientId = data.clientId || data.caseId;  // ✅ תמיכה בשני השמות
+
+    if (!clientId || typeof clientId !== 'string') {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'מזהה תיק חובה'
+        'מזהה לקוח חובה (מספר תיק)'
       );
     }
 
@@ -961,19 +1005,19 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // שליפת התיק
-    const caseRef = db.collection('cases').doc(data.caseId);
-    const caseDoc = await caseRef.get();
+    // ✅ שליפת הלקוח (בארכיטקטורה החדשה)
+    const clientRef = db.collection('clients').doc(clientId);
+    const clientDoc = await clientRef.get();
 
-    if (!caseDoc.exists) {
+    if (!clientDoc.exists) {
       throw new functions.https.HttpsError(
         'not-found',
-        'תיק לא נמצא'
+        `לקוח ${clientId} לא נמצא`
       );
     }
 
-    const caseData = caseDoc.data();
-    const services = caseData.services || [];
+    const clientData = clientDoc.data();
+    const services = clientData.services || [];
 
     // מציאת השירות
     const serviceIndex = services.findIndex(s => s.id === data.serviceId);
@@ -981,7 +1025,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     if (serviceIndex === -1) {
       throw new functions.https.HttpsError(
         'not-found',
-        'שירות לא נמצא בתיק זה'
+        'שירות לא נמצא עבור לקוח זה'
       );
     }
 
@@ -1022,7 +1066,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     services[serviceIndex] = service;
 
     // שמירה
-    await caseRef.update({
+    await clientRef.update({
       services: services,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username
@@ -1030,12 +1074,15 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
 
     // Audit log
     await logAction('ADD_PACKAGE_TO_SERVICE', user.uid, user.username, {
-      caseId: data.caseId,
+      clientId: clientId,
+      caseNumber: clientId,  // ✅ clientId = caseNumber
       serviceId: data.serviceId,
       packageId: packageId,
       hours: data.hours,
       serviceName: service.name
     });
+
+    console.log(`✅ Added package ${packageId} (${data.hours}h) to service ${data.serviceId} for client ${clientId}`);
 
     return {
       success: true,
@@ -1270,6 +1317,10 @@ exports.deleteClient = functions.https.onCall(async (data, context) => {
 /**
  * יצירת משימת תקציב
  */
+/**
+ * 🎯 יצירת משימה חדשה (CLIENT = CASE)
+ * ✅ NEW ARCHITECTURE: עובד עם clients collection, clientId = caseNumber
+ */
 exports.createBudgetTask = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
@@ -1289,11 +1340,13 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // ✅ צריך לקבל לפחות clientId או caseId
-    if (!data.clientId && !data.caseId) {
+    // ✅ NEW: clientId הוא מספר התיק (caseNumber)
+    const clientId = data.clientId || data.caseId;  // תמיכה לאחור
+
+    if (!clientId) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'חסר מזהה לקוח או תיק'
+        'חסר מזהה לקוח (מספר תיק)'
       );
     }
 
@@ -1308,82 +1361,38 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // בדיקה שהלקוח קיים (או שיש caseId)
-    let clientDoc, clientData, caseData = null;
+    // ✅ בדיקה שהלקוח קיים (במבנה החדש: clientId = caseNumber = Document ID)
+    const clientDoc = await db.collection('clients').doc(clientId).get();
 
-    if (data.caseId) {
-      // אם יש תיק, טען אותו במקום הלקוח
-      const caseDoc = await db.collection('cases').doc(data.caseId).get();
-      if (!caseDoc.exists) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'תיק לא נמצא'
-        );
-      }
-      caseData = caseDoc.data();
-
-      // טען את הלקוח מהתיק
-      clientDoc = await db.collection('clients').doc(caseData.clientId).get();
-      if (!clientDoc.exists) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'לקוח לא נמצא'
-        );
-      }
-      clientData = clientDoc.data();
-    } else if (data.clientId) {
-      // אם אין תיק, זה המבנה הישן - טען לקוח רגיל
-      clientDoc = await db.collection('clients').doc(data.clientId).get();
-      if (!clientDoc.exists) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'לקוח לא נמצא'
-        );
-      }
-      clientData = clientDoc.data();
-    } else {
+    if (!clientDoc.exists) {
       throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה לקוח או תיק'
+        'not-found',
+        `לקוח ${clientId} לא נמצא`
       );
     }
+
+    const clientData = clientDoc.data();
 
     // ✅ כל עובד יכול ליצור משימות עבור כל לקוח במשרד
     // אין צורך בבדיקת הרשאות נוספת
 
-    // יצירת המשימה
-    const finalClientId = caseData ? caseData.clientId : data.clientId;
-
-    // DEBUG: בדיקה מה יש ב-caseData
-    console.log('🔍 DEBUG createBudgetTask:', {
-      hasCaseData: !!caseData,
-      caseDataClientId: caseData?.clientId,
-      dataClientId: data.clientId,
-      finalClientId: finalClientId
-    });
-
-    if (!finalClientId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        `לא ניתן לזהות את הלקוח. caseData.clientId=${caseData?.clientId}, data.clientId=${data.clientId}`
-      );
-    }
+    console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
 
     const taskData = {
       description: sanitizeString(data.description.trim()),
-      clientId: finalClientId,
-      clientName: clientData.clientName || clientData.fullName || data.clientName, // תמיכה בשני המבנים
-      caseId: data.caseId || null, // ✅ תמיכה בתיקים
-      caseTitle: data.caseTitle || data.caseNumber || null, // ✅ שם התיק או מספר תיק
-      caseNumber: data.caseNumber || null, // ✅ מספר תיק
+      clientId: clientId,  // ✅ מספר תיק
+      clientName: clientData.clientName || data.clientName,
+      caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
       serviceId: data.serviceId || null, // ✅ תמיכה בבחירת שירות ספציפי
-      estimatedHours: estimatedHours, // ✅ ממוHours
-      estimatedMinutes: estimatedMinutes, // ✅ נשמור גם דקות
+      serviceName: data.serviceName || null, // ✅ שם השירות
+      estimatedHours: estimatedHours,
+      estimatedMinutes: estimatedMinutes,
       actualHours: 0,
       actualMinutes: 0,
       status: 'active',
-      employee: user.email, // ✅ EMAIL for security rules
-      lawyer: user.username, // Username for display
+      deadline: data.deadline ? admin.firestore.Timestamp.fromDate(new Date(data.deadline)) : null,
+      employee: user.email, // ✅ EMAIL for security rules and queries
+      lawyer: user.username, // ✅ Username for display
       createdBy: user.username,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username,
@@ -1396,9 +1405,12 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
     // Audit log
     await logAction('CREATE_TASK', user.uid, user.username, {
       taskId: docRef.id,
-      clientId: data.clientId,
-      estimatedHours: data.estimatedHours
+      clientId: clientId,
+      caseNumber: clientData.caseNumber,
+      estimatedHours: estimatedHours
     });
+
+    console.log(`✅ Created task ${docRef.id} for client ${clientId}`);
 
     return {
       success: true,
@@ -1434,7 +1446,7 @@ exports.getBudgetTasks = functions.https.onCall(async (data, context) => {
 
     // רק מנהלים יכולים לראות הכל
     if (user.role !== 'admin') {
-      query = query.where('employee', '==', user.username);
+      query = query.where('employee', '==', user.email); // ✅ Query by EMAIL
     }
 
     // סינון לפי סטטוס
@@ -1513,7 +1525,7 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
     const taskData = taskDoc.data();
 
     // רק בעל המשימה או admin יכולים להוסיף זמן
-    if (taskData.employee !== user.username && user.role !== 'admin') {
+    if (taskData.employee !== user.email && user.role !== 'admin') { // ✅ Check by EMAIL
       throw new functions.https.HttpsError(
         'permission-denied',
         'אין הרשאה להוסיף זמן למשימה זו'
@@ -1542,11 +1554,162 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
+    // ✨ יצירת שעתון אוטומטית (CLIENT = CASE)
+    // כשמוסיפים זמן למשימה, זה אוטומטית גם נרשם בשעתון
+    const timesheetEntry = {
+      clientId: taskData.clientId,  // ✅ מספר תיק (caseNumber)
+      clientName: taskData.clientName,
+      caseNumber: taskData.caseNumber || taskData.clientId,  // ✅ מספר תיק
+      serviceId: taskData.serviceId || null,  // ✅ שירות ספציפי
+      serviceName: taskData.serviceName || null,  // ✅ שם השירות
+      taskId: data.taskId,
+      taskDescription: taskData.description,
+      date: data.date,
+      minutes: data.minutes,
+      hours: data.minutes / 60,
+      action: data.description || taskData.description,
+      employee: user.email,
+      lawyer: user.username,
+      isInternal: false,
+      autoGenerated: true,  // ✅ מסומן כאוטומטי
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: user.username
+    };
+
+    await db.collection('timesheet_entries').add(timesheetEntry);
+    console.log(`✅ רישום זמן נוצר אוטומטית בשעתון עבור משימה ${data.taskId}`);
+
+    // ✅ קיזוז שעות מהלקוח (CLIENT = CASE)
+    // במבנה החדש: clientId = caseNumber = Document ID
+    if (taskData.clientId) {
+      try {
+        const clientDoc = await db.collection('clients').doc(taskData.clientId).get();
+
+        if (clientDoc.exists) {
+          const clientData = clientDoc.data();
+          const hoursWorked = data.minutes / 60;
+
+          // ✅ לקוח שעתי - מציאת החבילה הפעילה
+          if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+            // 🎯 מציאת השירות הספציפי לפי serviceId (לא תמיד הראשון!)
+            let service = null;
+
+            if (taskData.serviceId) {
+              // מציאת השירות שנבחר במשימה
+              service = clientData.services.find(s => s.id === taskData.serviceId);
+
+              if (!service) {
+                console.warn(`⚠️ שירות ${taskData.serviceId} לא נמצא עבור לקוח ${clientData.caseNumber}! משתמש בשירות הראשון`);
+                service = clientData.services[0];
+              }
+            } else {
+              // Fallback למשימות ישנות ללא serviceId
+              service = clientData.services[0];
+              console.log(`ℹ️ משימה ללא serviceId - משתמש בשירות הראשון`);
+            }
+
+            if (!service) {
+              console.error(`❌ לא נמצא שירות עבור לקוח ${clientData.caseNumber}`);
+              return;
+            }
+
+            const activePackage = getActivePackage(service);
+
+            if (activePackage) {
+              // קיזוז מהחבילה הפעילה
+              deductHoursFromPackage(activePackage, hoursWorked);
+
+              // עדכון הלקוח
+              await clientDoc.ref.update({
+                services: clientData.services,
+                minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                lastActivity: admin.firestore.FieldValue.serverTimestamp()
+              });
+
+              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id} (${activePackage.hoursUsed}/${activePackage.hours})`);
+            } else {
+              console.warn(`⚠️ שירות ${service.name || service.id} עבור לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
+            }
+          }
+          // ✅ הליך משפטי - תמחור שעתי (עם חבילות!)
+          else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
+            // מציאת השלב הנוכחי
+            const currentStageId = clientData.currentStage || 'stage_a';
+            const stages = clientData.stages || [];
+            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+
+            if (currentStageIndex !== -1) {
+              const currentStage = stages[currentStageIndex];
+
+              // מציאת החבילה הפעילה בשלב
+              const activePackage = getActivePackage(currentStage);
+
+              if (activePackage) {
+                // קיזוז מהחבילה הפעילה
+                deductHoursFromPackage(activePackage, hoursWorked);
+
+                // עדכון השלב
+                stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
+                stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
+
+                // עדכון הלקוח
+                await clientDoc.ref.update({
+                  stages: stages,
+                  hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                  minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                  lastActivity: admin.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}, חבילה ${activePackage.id}`);
+              } else {
+                console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
+              }
+            } else {
+              console.warn(`⚠️ שלב נוכחי ${currentStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
+            }
+          }
+          // ✅ הליך משפטי - תמחור פיקס (מעקב שעות בלבד)
+          else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
+            // מציאת השלב הנוכחי
+            const currentStageId = clientData.currentStage || 'stage_a';
+            const stages = clientData.stages || [];
+            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+
+            if (currentStageIndex !== -1) {
+              const currentStage = stages[currentStageIndex];
+
+              // עדכון מעקב שעות בלבד (לא קיזוז - זה מחיר קבוע!)
+              stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
+              stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
+
+              await clientDoc.ref.update({
+                stages: stages,
+                totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
+                lastActivity: admin.firestore.FieldValue.serverTimestamp()
+              });
+
+              console.log(`✅ נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
+            }
+          }
+          // ❓ סוג לא מוכר
+          else {
+            console.log(`ℹ️ לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
+          }
+        }
+      } catch (error) {
+        console.error(`⚠️ שגיאה בקיזוז שעות מלקוח ${taskData.clientId}:`, error);
+        // לא נכשיל את כל הפעולה בגלל זה
+      }
+    }
+
     // Audit log
     await logAction('ADD_TIME_TO_TASK', user.uid, user.username, {
       taskId: data.taskId,
       minutes: data.minutes,
-      date: data.date
+      date: data.date,
+      autoTimesheetCreated: true,
+      clientUpdated: true
     });
 
     // קריאת הערכים המעודכנים מהשרת
@@ -1557,7 +1720,8 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
       success: true,
       taskId: data.taskId,
       newActualHours: updatedTaskData.actualHours,
-      newActualMinutes: updatedTaskData.actualMinutes
+      newActualMinutes: updatedTaskData.actualMinutes,
+      timesheetAutoCreated: true  // ✅ מחזיר למשתמש שנוצר שעתון
     };
 
   } catch (error) {
@@ -1599,7 +1763,7 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
 
     const taskData = taskDoc.data();
 
-    if (taskData.employee !== user.username && user.role !== 'admin') {
+    if (taskData.employee !== user.email && user.role !== 'admin') { // ✅ Check by EMAIL
       throw new functions.https.HttpsError(
         'permission-denied',
         'אין הרשאה לסמן משימה זו כהושלמה'
@@ -1701,7 +1865,7 @@ exports.extendTaskDeadline = functions.https.onCall(async (data, context) => {
     const taskData = taskDoc.data();
 
     // רק בעל המשימה או admin יכולים להאריך יעד
-    if (taskData.employee !== user.username && user.role !== 'admin') {
+    if (taskData.employee !== user.email && user.role !== 'admin') { // ✅ Check by EMAIL
       throw new functions.https.HttpsError(
         'permission-denied',
         'אין הרשאה להאריך יעד למשימה זו'
@@ -1734,7 +1898,7 @@ exports.extendTaskDeadline = functions.https.onCall(async (data, context) => {
       newDeadline: admin.firestore.Timestamp.fromDate(newDeadlineDate),
       reason: sanitizeString(data.reason.trim()),
       extendedBy: user.username,
-      extendedAt: admin.firestore.FieldValue.serverTimestamp()
+      extendedAt: admin.firestore.Timestamp.now() // ✅ שימוש ב-Timestamp.now() במקום serverTimestamp()
     };
 
     // עדכון המשימה
@@ -1862,22 +2026,23 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
     // ✅ כל עובד יכול לרשום שעות עבור כל לקוח במשרד
     // אין צורך בבדיקת הרשאות נוספת
 
-    // יצירת רישום (נוסיף stageId ו-packageId אחר כך)
+    // יצירת רישום (CLIENT = CASE)
     const entryData = {
-      clientId: finalClientId,
+      clientId: finalClientId,  // ✅ מספר תיק (caseNumber)
       clientName: finalClientName,
-      caseId: finalCaseId || null,
-      caseTitle: data.caseTitle || null,
+      caseNumber: data.caseNumber || finalClientId,  // ✅ מספר תיק
+      serviceId: data.serviceId || null,  // ✅ שירות ספציפי
+      serviceName: data.serviceName || null,  // ✅ שם השירות
       stageId: null,  // ✅ יעודכן אחר כך אם זה הליך משפטי
       packageId: null, // ✅ יעודכן אחר כך אם זה חבילת שעות
       date: data.date,
       minutes: data.minutes,
       hours: data.minutes / 60,
       action: sanitizeString(data.action.trim()),
-      employee: user.email, // ✅ EMAIL for security rules
-      lawyer: user.username, // Username for display
+      employee: user.email, // ✅ EMAIL for security rules and queries
+      lawyer: user.username, // ✅ Username for display
       isInternal: data.isInternal === true, // ✅ NEW: סימון רישום פנימי
-      createdBy: user.username,
+      createdBy: user.username, // ✅ Username for display
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1909,20 +2074,41 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // ✅ קיזוז שעות מהתיק (עם מערכת חבילות חכמה!)
-    if (finalCaseId && data.isInternal !== true) {
+    // ✅ קיזוז שעות מהלקוח (CLIENT = CASE)
+    if (finalClientId && data.isInternal !== true) {
       try {
-        const caseDoc = await db.collection('cases').doc(finalCaseId).get();
+        const clientDoc = await db.collection('clients').doc(finalClientId).get();
 
-        if (caseDoc.exists) {
-          const caseData = caseDoc.data();
+        if (clientDoc.exists) {
+          const clientData = clientDoc.data();
           const hoursWorked = data.minutes / 60;
           let updatedStageId = null;
           let updatedPackageId = null;
 
-          // ✅ תיק שעתי - מציאת החבילה הפעילה
-          if (caseData.procedureType === 'hours' && caseData.services && caseData.services.length > 0) {
-            const service = caseData.services[0]; // תוכנית שעות פשוטה = שירות אחד
+          // ✅ לקוח שעתי - מציאת החבילה הפעילה
+          if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+            // 🎯 מציאת השירות הספציפי לפי serviceId (לא תמיד הראשון!)
+            let service = null;
+
+            if (data.serviceId) {
+              // מציאת השירות שנבחר ברישום הזמן
+              service = clientData.services.find(s => s.id === data.serviceId);
+
+              if (!service) {
+                console.warn(`⚠️ שירות ${data.serviceId} לא נמצא עבור לקוח ${clientData.caseNumber}! משתמש בשירות הראשון`);
+                service = clientData.services[0];
+              }
+            } else {
+              // Fallback לרישומים ישנים ללא serviceId
+              service = clientData.services[0];
+              console.log(`ℹ️ רישום ללא serviceId - משתמש בשירות הראשון`);
+            }
+
+            if (!service) {
+              console.error(`❌ לא נמצא שירות עבור לקוח ${clientData.caseNumber}`);
+              return;
+            }
+
             const activePackage = getActivePackage(service);
 
             if (activePackage) {
@@ -1930,24 +2116,24 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
               deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
 
-              // עדכון התיק
-              await caseDoc.ref.update({
-                services: caseData.services,
+              // עדכון הלקוח
+              await clientDoc.ref.update({
+                services: clientData.services,
                 minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
                 hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
                 lastActivity: admin.firestore.FieldValue.serverTimestamp()
               });
 
-              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} (${activePackage.hoursUsed}/${activePackage.hours})`);
+              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id} (${activePackage.hoursUsed}/${activePackage.hours})`);
             } else {
-              console.warn(`⚠️ תיק ${caseData.caseNumber} - אין חבילה פעילה!`);
+              console.warn(`⚠️ לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
             }
           }
           // ✅ הליך משפטי - תמחור שעתי (עם חבילות!)
-          else if (caseData.procedureType === 'legal_procedure' && caseData.pricingType === 'hourly') {
+          else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
             // מציאת השלב הנוכחי
-            const currentStageId = caseData.currentStage || 'stage_a';
-            const stages = caseData.stages || [];
+            const currentStageId = clientData.currentStage || 'stage_a';
+            const stages = clientData.stages || [];
             const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
 
             if (currentStageIndex !== -1) {
@@ -1966,8 +2152,8 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                 stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
                 stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
 
-                // עדכון התיק
-                await caseDoc.ref.update({
+                // עדכון הלקוח
+                await clientDoc.ref.update({
                   stages: stages,
                   hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
                   minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
@@ -1979,14 +2165,14 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                 console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
               }
             } else {
-              console.warn(`⚠️ שלב נוכחי ${currentStageId} לא נמצא בתיק ${caseData.caseNumber}`);
+              console.warn(`⚠️ שלב נוכחי ${currentStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
             }
           }
           // ✅ הליך משפטי - תמחור פיקס (מעקב שעות בלבד)
-          else if (caseData.procedureType === 'legal_procedure' && caseData.pricingType === 'fixed') {
+          else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
             // מציאת השלב הנוכחי
-            const currentStageId = caseData.currentStage || 'stage_a';
-            const stages = caseData.stages || [];
+            const currentStageId = clientData.currentStage || 'stage_a';
+            const stages = clientData.stages || [];
             const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
 
             if (currentStageIndex !== -1) {
@@ -1997,7 +2183,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
               stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
               stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
 
-              await caseDoc.ref.update({
+              await clientDoc.ref.update({
                 stages: stages,
                 totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
                 lastActivity: admin.firestore.FieldValue.serverTimestamp()
@@ -2008,7 +2194,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
           }
           // ❓ סוג לא מוכר
           else {
-            console.log(`ℹ️ תיק ${caseData.caseNumber} מסוג ${caseData.procedureType} - אין מעקב שעות`);
+            console.log(`ℹ️ לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
           }
 
           // ✅ עדכון entryData עם הקישורים
@@ -2016,7 +2202,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
           entryData.packageId = updatedPackageId;
         }
       } catch (error) {
-        console.error(`⚠️ שגיאה בקיזוז שעות מתיק ${finalCaseId}:`, error);
+        console.error(`⚠️ שגיאה בקיזוז שעות מלקוח ${finalClientId}:`, error);
         // לא נכשיל את כל הפעולה בגלל זה
       }
     } else if (data.isInternal === true) {
@@ -2030,7 +2216,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
     await logAction('CREATE_TIMESHEET_ENTRY', user.uid, user.username, {
       entryId: docRef.id,
       clientId: finalClientId,
-      caseId: finalCaseId,
+      caseNumber: entryData.caseNumber,  // ✅ במבנה החדש: clientId = caseNumber
       isInternal: data.isInternal === true,
       minutes: data.minutes,
       date: data.date,
@@ -2071,7 +2257,7 @@ exports.getTimesheetEntries = functions.https.onCall(async (data, context) => {
 
     // רק מנהלים יכולים לראות הכל
     if (user.role !== 'admin') {
-      query = query.where('employee', '==', user.username);
+      query = query.where('employee', '==', user.email); // ✅ Query by EMAIL
     }
 
     // סינון לפי לקוח
@@ -2135,15 +2321,16 @@ exports.linkAuthToEmployee = functions.https.onCall(async (data, context) => {
       );
     }
 
-    if (!data.username || !data.authUID) {
+    // Note: Now using EMAIL as document ID (industry standard)
+    if (!data.email || !data.authUID) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'חסרים שדות: username, authUID'
+        'חסרים שדות: email, authUID'
       );
     }
 
-    // עדכון העובד
-    await db.collection('employees').doc(data.username).update({
+    // עדכון העובד (use EMAIL as document ID)
+    await db.collection('employees').doc(data.email).update({
       authUID: data.authUID,
       migratedToAuth: true,
       migratedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -2152,7 +2339,7 @@ exports.linkAuthToEmployee = functions.https.onCall(async (data, context) => {
 
     // Audit log
     await logAction('LINK_AUTH_TO_EMPLOYEE', user.uid, user.username, {
-      employeeUsername: data.username,
+      employeeEmail: data.email,
       authUID: data.authUID
     });
 
@@ -2529,972 +2716,24 @@ exports.migrateClients = functions.https.onCall(async (data, context) => {
 });
 
 // ===============================
-// Cases Management Functions (NEW)
+// ⚠️ DEPRECATED: Cases Management Functions REMOVED
+// ===============================
+// במבנה החדש, Client = Case (מאוחדים)
+// השתמש ב-createClient, getClients, etc.
+
+// ===============================
+// ⚠️ DEPRECATED: Old Migration Function
 // ===============================
 
 /**
- * יצירת תיק חדש (Case) - ארכיטקטורה חדשה
- * תיק = הליך משפטי ספציפי ללקוח
- * לקוח אחד יכול להיות בעל מספר תיקים
- */
-exports.createCase = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    // Validation - שדות חובה
-    if (!data.caseNumber || typeof data.caseNumber !== 'string') {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'מספר תיק חובה'
-      );
-    }
-
-    if (data.caseNumber.trim().length < 1) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'מספר תיק לא תקין'
-      );
-    }
-
-    // בדיקה שמספר תיק לא קיים
-    const existingCase = await db.collection('cases')
-      .where('caseNumber', '==', data.caseNumber.trim())
-      .limit(1)
-      .get();
-
-    if (!existingCase.empty) {
-      throw new functions.https.HttpsError(
-        'already-exists',
-        `מספר תיק ${data.caseNumber} כבר קיים במערכת`
-      );
-    }
-
-    if (!data.caseTitle || typeof data.caseTitle !== 'string' || data.caseTitle.trim().length < 2) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'כותרת תיק חייבת להכיל לפחות 2 תווים'
-      );
-    }
-
-    if (!data.procedureType || !['hours', 'fixed', 'legal_procedure'].includes(data.procedureType)) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'סוג הליך חייב להיות "hours", "fixed" או "legal_procedure"'
-      );
-    }
-
-    // Validation - הליך משפטי עם שלבים
-    if (data.procedureType === 'legal_procedure') {
-      if (!data.stages || !Array.isArray(data.stages) || data.stages.length !== 3) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'הליך משפטי דורש בדיוק 3 שלבים'
-        );
-      }
-
-      // ✅ NEW: Validation - סוג תמחור (hourly או fixed)
-      if (!data.pricingType || !['hourly', 'fixed'].includes(data.pricingType)) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'סוג תמחור חייב להיות "hourly" (שעתי) או "fixed" (מחיר פיקס)'
-        );
-      }
-
-      // בדיקת כל שלב - תלוי בסוג התמחור
-      data.stages.forEach((stage, index) => {
-        if (!stage.description || stage.description.trim().length < 2) {
-          throw new functions.https.HttpsError(
-            'invalid-argument',
-            `שלב ${index + 1}: תיאור השלב חייב להכיל לפחות 2 תווים`
-          );
-        }
-
-        // ✅ Validation מותאם לסוג התמחור
-        if (data.pricingType === 'hourly') {
-          // תמחור שעתי - חובה שעות
-          if (!stage.hours || typeof stage.hours !== 'number' || stage.hours <= 0) {
-            throw new functions.https.HttpsError(
-              'invalid-argument',
-              `שלב ${index + 1}: תקרת שעות חייבת להיות מספר חיובי`
-            );
-          }
-        } else if (data.pricingType === 'fixed') {
-          // תמחור פיקס - חובה מחיר
-          if (!stage.fixedPrice || typeof stage.fixedPrice !== 'number' || stage.fixedPrice <= 0) {
-            throw new functions.https.HttpsError(
-              'invalid-argument',
-              `שלב ${index + 1}: מחיר פיקס חייב להיות מספר חיובי (בשקלים)`
-            );
-          }
-        }
-      });
-    }
-
-    // טיפול בלקוח - קיים או חדש
-    let clientId;
-    let clientName;
-
-    if (data.clientId) {
-      // לקוח קיים - בדיקה שקיים
-      const clientDoc = await db.collection('clients').doc(data.clientId).get();
-      if (!clientDoc.exists) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'לקוח לא נמצא'
-        );
-      }
-      clientId = data.clientId;
-      clientName = clientDoc.data().clientName;
-    } else if (data.clientName) {
-      // לקוח חדש - יצירה
-      if (data.clientName.trim().length < 2) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'שם לקוח חייב להכיל לפחות 2 תווים'
-        );
-      }
-
-      const newClientData = {
-        clientName: sanitizeString(data.clientName.trim()),
-        phone: data.phone ? sanitizeString(data.phone.trim()) : '',
-        email: data.email ? sanitizeString(data.email.trim()) : '',
-        idNumber: data.idNumber ? sanitizeString(data.idNumber.trim()) : '',
-        address: data.address ? sanitizeString(data.address.trim()) : '',
-        createdBy: user.username,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        totalCases: 1,
-        activeCases: 1
-      };
-
-      const clientRef = await db.collection('clients').add(newClientData);
-      clientId = clientRef.id;
-      clientName = newClientData.clientName;
-    } else {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חובה לספק clientId או clientName'
-      );
-    }
-
-    // Validation - שדות ספציפיים לסוג
-    if (data.procedureType === 'hours') {
-      if (!data.totalHours || typeof data.totalHours !== 'number' || data.totalHours < 1) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'כמות שעות חייבת להיות מספר חיובי'
-        );
-      }
-    }
-
-    // יצירת התיק
-    const caseData = {
-      caseNumber: sanitizeString(data.caseNumber.trim()),
-      caseTitle: sanitizeString(data.caseTitle.trim()),
-      clientId: clientId,
-      clientName: clientName,  // Denormalized למהירות
-      procedureType: data.procedureType,
-      status: 'active',
-      priority: data.priority || 'medium',
-      description: data.description ? sanitizeString(data.description.trim()) : '',
-      assignedTo: data.assignedTo || [user.username],
-      mainAttorney: data.mainAttorney || user.username,
-      tags: data.tags || [],
-      category: data.category || '',
-      openedAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: user.username,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    };
-
-    // הוספת שדות ספציפיים לסוג הליך
-    if (data.procedureType === 'hours') {
-      caseData.totalHours = data.totalHours;
-      caseData.hoursRemaining = data.totalHours;
-      caseData.minutesRemaining = data.totalHours * 60;
-      caseData.hourlyRate = data.hourlyRate || null;
-    } else if (data.procedureType === 'fixed') {
-      caseData.stages = data.stages || [
-        { id: 1, name: 'שלב 1', completed: false },
-        { id: 2, name: 'שלב 2', completed: false },
-        { id: 3, name: 'שלב 3', completed: false }
-      ];
-      caseData.fixedPrice = data.fixedPrice || null;
-    } else if (data.procedureType === 'legal_procedure') {
-      // הליך משפטי עם 3 שלבים מפורטים
-      const now = new Date().toISOString();
-      caseData.currentStage = 'stage_a';
-      caseData.pricingType = data.pricingType; // ✅ שמירת סוג התמחור
-
-      if (data.pricingType === 'hourly') {
-        // ✅ תמחור שעתי - שלבים עם שעות וחבילות
-        caseData.stages = [
-          {
-            id: 'stage_a',
-            name: 'שלב א',
-            description: sanitizeString(data.stages[0].description.trim()),
-            order: 1,
-            status: 'active',
-            pricingType: 'hourly',
-            initialHours: data.stages[0].hours,
-            totalHours: data.stages[0].hours,
-            hoursUsed: 0,
-            hoursRemaining: data.stages[0].hours,
-            packages: [
-              {
-                id: `pkg_initial_a_${Date.now()}`,
-                type: 'initial',
-                hours: data.stages[0].hours,
-                hoursUsed: 0,
-                hoursRemaining: data.stages[0].hours,
-                purchaseDate: now,
-                status: 'active'  // ✅ חבילה פעילה
-              }
-            ]
-          },
-          {
-            id: 'stage_b',
-            name: 'שלב ב',
-            description: sanitizeString(data.stages[1].description.trim()),
-            order: 2,
-            status: 'pending',
-            pricingType: 'hourly',
-            initialHours: data.stages[1].hours,
-            totalHours: data.stages[1].hours,
-            hoursUsed: 0,
-            hoursRemaining: data.stages[1].hours,
-            packages: [
-              {
-                id: `pkg_initial_b_${Date.now()}`,
-                type: 'initial',
-                hours: data.stages[1].hours,
-                hoursUsed: 0,
-                hoursRemaining: data.stages[1].hours,
-                purchaseDate: now,
-                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
-              }
-            ]
-          },
-          {
-            id: 'stage_c',
-            name: 'שלב ג',
-            description: sanitizeString(data.stages[2].description.trim()),
-            order: 3,
-            status: 'pending',
-            pricingType: 'hourly',
-            initialHours: data.stages[2].hours,
-            totalHours: data.stages[2].hours,
-            hoursUsed: 0,
-            hoursRemaining: data.stages[2].hours,
-            packages: [
-              {
-                id: `pkg_initial_c_${Date.now()}`,
-                type: 'initial',
-                hours: data.stages[2].hours,
-                hoursUsed: 0,
-                hoursRemaining: data.stages[2].hours,
-                purchaseDate: now,
-                status: 'active'  // ✅ חבילה פעילה (ממתינה להפעלה)
-              }
-            ]
-          }
-        ];
-
-        // חישוב סה"כ שעות בהליך
-        const totalProcedureHours = data.stages.reduce((sum, s) => sum + s.hours, 0);
-        caseData.totalHours = totalProcedureHours;
-        caseData.hoursRemaining = totalProcedureHours;
-        caseData.minutesRemaining = totalProcedureHours * 60;
-
-      } else if (data.pricingType === 'fixed') {
-        // ✅ תמחור פיקס - שלבים עם מחירים קבועים
-        caseData.stages = [
-          {
-            id: 'stage_a',
-            name: 'שלב א',
-            description: sanitizeString(data.stages[0].description.trim()),
-            order: 1,
-            status: 'active',
-            pricingType: 'fixed',
-            fixedPrice: data.stages[0].fixedPrice,
-            paid: false,
-            paymentDate: null,
-            paymentMethod: null
-          },
-          {
-            id: 'stage_b',
-            name: 'שלב ב',
-            description: sanitizeString(data.stages[1].description.trim()),
-            order: 2,
-            status: 'pending',
-            pricingType: 'fixed',
-            fixedPrice: data.stages[1].fixedPrice,
-            paid: false,
-            paymentDate: null,
-            paymentMethod: null
-          },
-          {
-            id: 'stage_c',
-            name: 'שלב ג',
-            description: sanitizeString(data.stages[2].description.trim()),
-            order: 3,
-            status: 'pending',
-            pricingType: 'fixed',
-            fixedPrice: data.stages[2].fixedPrice,
-            paid: false,
-            paymentDate: null,
-            paymentMethod: null
-          }
-        ];
-
-        // חישוב סה"כ מחיר ויתרה
-        const totalFixedPrice = data.stages.reduce((sum, s) => sum + s.fixedPrice, 0);
-        caseData.totalFixedPrice = totalFixedPrice;
-        caseData.totalPaid = 0;
-        caseData.remainingBalance = totalFixedPrice;
-      }
-    }
-
-    if (data.deadline) {
-      const deadlineDate = new Date(data.deadline);
-      if (!isNaN(deadlineDate.getTime())) {
-        caseData.deadline = admin.firestore.Timestamp.fromDate(deadlineDate);
-      }
-    }
-
-    // שמירה ב-Firestore
-    const caseRef = await db.collection('cases').add(caseData);
-
-    // עדכון סטטיסטיקות לקוח
-    await db.collection('clients').doc(clientId).update({
-      totalCases: admin.firestore.FieldValue.increment(1),
-      activeCases: admin.firestore.FieldValue.increment(1),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Audit log
-    await logAction('CREATE_CASE', user.uid, user.username, {
-      caseId: caseRef.id,
-      caseNumber: caseData.caseNumber,
-      clientId: clientId,
-      procedureType: data.procedureType
-    });
-
-    return {
-      success: true,
-      caseId: caseRef.id,
-      clientId: clientId,
-      case: {
-        id: caseRef.id,
-        ...caseData
-      }
-    };
-
-  } catch (error) {
-    console.error('Error in createCase:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה ביצירת תיק: ${error.message}`
-    );
-  }
-});
-
-/**
- * קריאת תיקים
- * תומך בסינונים: clientId, status, assignedTo
- */
-exports.getCases = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    let query = db.collection('cases');
-
-    // סינון לפי לקוח
-    if (data.clientId) {
-      query = query.where('clientId', '==', data.clientId);
-    }
-
-    // סינון לפי סטטוס
-    if (data.status) {
-      query = query.where('status', '==', data.status);
-    }
-
-    // סינון לפי עו"ד מוקצה
-    if (data.assignedTo) {
-      query = query.where('assignedTo', 'array-contains', data.assignedTo);
-    }
-
-    // מיון
-    query = query.orderBy('createdAt', 'desc');
-
-    const snapshot = await query.get();
-
-    const cases = [];
-    snapshot.forEach(doc => {
-      cases.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-
-    return {
-      success: true,
-      cases,
-      total: cases.length
-    };
-
-  } catch (error) {
-    console.error('Error in getCases:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה בטעינת תיקים: ${error.message}`
-    );
-  }
-});
-
-/**
- * קריאת כל התיקים של לקוח ספציפי + סטטיסטיקות
- */
-exports.getCasesByClient = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    if (!data.clientId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה לקוח'
-      );
-    }
-
-    // טעינת פרטי הלקוח
-    const clientDoc = await db.collection('clients').doc(data.clientId).get();
-
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'לקוח לא נמצא'
-      );
-    }
-
-    // טעינת כל התיקים של הלקוח
-    const casesSnapshot = await db.collection('cases')
-      .where('clientId', '==', data.clientId)
-      .orderBy('openedAt', 'desc')
-      .get();
-
-    const cases = [];
-    let totalHoursRemaining = 0;
-    let activeCases = 0;
-    let completedCases = 0;
-
-    casesSnapshot.forEach(doc => {
-      const caseData = { id: doc.id, ...doc.data() };
-      cases.push(caseData);
-
-      if (caseData.status === 'active') {
-        activeCases++;
-        if (caseData.procedureType === 'hours') {
-          totalHoursRemaining += caseData.hoursRemaining || 0;
-        }
-      } else if (caseData.status === 'completed') {
-        completedCases++;
-      }
-    });
-
-    return {
-      success: true,
-      client: {
-        id: data.clientId,
-        ...clientDoc.data()
-      },
-      cases,
-      statistics: {
-        totalCases: cases.length,
-        activeCases,
-        completedCases,
-        totalHoursRemaining: Math.round(totalHoursRemaining * 10) / 10
-      }
-    };
-
-  } catch (error) {
-    console.error('Error in getCasesByClient:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה בטעינת תיקי לקוח: ${error.message}`
-    );
-  }
-});
-
-/**
- * עדכון תיק
- */
-exports.updateCase = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    if (!data.caseId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה תיק'
-      );
-    }
-
-    // בדיקה שהתיק קיים
-    const caseDoc = await db.collection('cases').doc(data.caseId).get();
-
-    if (!caseDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'תיק לא נמצא'
-      );
-    }
-
-    const caseData = caseDoc.data();
-
-    // רק עו"ד מוקצה או admin יכולים לעדכן
-    if (!caseData.assignedTo.includes(user.username) && user.role !== 'admin') {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לעדכן תיק זה'
-      );
-    }
-
-    const updates = {};
-
-    // עדכונים מותרים
-    if (data.status !== undefined) {
-      if (!['active', 'completed', 'archived', 'on_hold'].includes(data.status)) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'סטטוס לא תקין'
-        );
-      }
-      updates.status = data.status;
-
-      // אם נסגר תיק
-      if (data.status === 'completed' && caseData.status !== 'completed') {
-        updates.completedAt = admin.firestore.FieldValue.serverTimestamp();
-        updates.completedBy = user.username;
-
-        // עדכון סטטיסטיקות לקוח
-        await db.collection('clients').doc(caseData.clientId).update({
-          activeCases: admin.firestore.FieldValue.increment(-1)
-        });
-      }
-    }
-
-    if (data.priority !== undefined) {
-      updates.priority = data.priority;
-    }
-
-    if (data.description !== undefined) {
-      updates.description = sanitizeString(data.description);
-    }
-
-    if (data.notes !== undefined) {
-      updates.notes = sanitizeString(data.notes);
-    }
-
-    updates.lastModifiedBy = user.username;
-    updates.lastModifiedAt = admin.firestore.FieldValue.serverTimestamp();
-
-    // עדכון
-    await db.collection('cases').doc(data.caseId).update(updates);
-
-    // Audit log
-    await logAction('UPDATE_CASE', user.uid, user.username, {
-      caseId: data.caseId,
-      updates: Object.keys(updates)
-    });
-
-    return {
-      success: true,
-      caseId: data.caseId
-    };
-
-  } catch (error) {
-    console.error('Error in updateCase:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה בעדכון תיק: ${error.message}`
-    );
-  }
-});
-
-/**
- * קריאת תיק בודד - עם כל פרטי השלבים
- */
-exports.getCaseById = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    if (!data.caseId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה תיק'
-      );
-    }
-
-    const caseDoc = await db.collection('cases').doc(data.caseId).get();
-
-    if (!caseDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'תיק לא נמצא'
-      );
-    }
-
-    return {
-      success: true,
-      case: {
-        id: caseDoc.id,
-        ...caseDoc.data()
-      }
-    };
-
-  } catch (error) {
-    console.error('Error in getCaseById:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה בטעינת תיק: ${error.message}`
-    );
-  }
-});
-
-/**
- * הוספת חבילת שעות נוספת לשלב קיים
- * נקרא כשהשעות נגמרות בשלב ורוכשים שעות נוספות
- */
-exports.addHoursPackageToStage = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    // Validation
-    if (!data.caseId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה תיק'
-      );
-    }
-
-    if (!data.stageId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה שלב'
-      );
-    }
-
-    if (!data.hours || typeof data.hours !== 'number' || data.hours <= 0) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'כמות שעות חייבת להיות מספר חיובי'
-      );
-    }
-
-    if (!data.reason || typeof data.reason !== 'string' || data.reason.trim().length < 2) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חובה לספק סיבה (לפחות 2 תווים)'
-      );
-    }
-
-    // טעינת התיק
-    const caseDoc = await db.collection('cases').doc(data.caseId).get();
-
-    if (!caseDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'תיק לא נמצא'
-      );
-    }
-
-    const caseData = caseDoc.data();
-
-    // וודא שזה הליך משפטי
-    if (caseData.procedureType !== 'legal_procedure') {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'הוספת חבילת שעות אפשרית רק להליכים משפטיים'
-      );
-    }
-
-    // וודא שהשלב קיים
-    const stageIndex = caseData.stages.findIndex(s => s.id === data.stageId);
-    if (stageIndex === -1) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'שלב לא נמצא'
-      );
-    }
-
-    // בדיקת הרשאות
-    if (!caseData.assignedTo.includes(user.username) && user.role !== 'admin') {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לעדכן תיק זה'
-      );
-    }
-
-    // ✅ סגירת החבילה הפעילה הנוכחית (אם יש)
-    const currentStage = caseData.stages[stageIndex];
-    const currentPackages = currentStage.packages || [];
-
-    // סגור כל חבילה שהתרוקנה
-    currentPackages.forEach(pkg => {
-      if (pkg.hoursRemaining <= 0 && pkg.status === 'active') {
-        pkg.status = 'depleted';
-        pkg.closedDate = new Date().toISOString();
-        console.log(`📦 חבילה ${pkg.id} נסגרה (${pkg.hoursUsed}/${pkg.hours} שעות)`);
-      }
-    });
-
-    // יצירת חבילת השעות החדשה
-    const now = new Date().toISOString();
-    const newPackage = {
-      id: `pkg_additional_${Date.now()}`,
-      type: 'additional',
-      hours: data.hours,
-      hoursUsed: 0,
-      hoursRemaining: data.hours,
-      purchaseDate: data.purchaseDate || now,
-      reason: sanitizeString(data.reason.trim()),
-      addedBy: user.username,
-      addedAt: now,
-      status: 'active'  // ✅ החבילה החדשה פעילה
-    };
-
-    // עדכון השלב
-    const updatedStages = [...caseData.stages];
-    updatedStages[stageIndex] = {
-      ...updatedStages[stageIndex],
-      packages: [...currentPackages, newPackage],  // ✅ כולל חבילות סגורות + חדשה
-      totalHours: updatedStages[stageIndex].totalHours + data.hours,
-      hoursRemaining: updatedStages[stageIndex].hoursRemaining + data.hours
-    };
-
-    // עדכון סה"כ שעות בתיק
-    const newTotalHours = caseData.totalHours + data.hours;
-    const newHoursRemaining = caseData.hoursRemaining + data.hours;
-
-    // שמירה ב-Firestore
-    await db.collection('cases').doc(data.caseId).update({
-      stages: updatedStages,
-      totalHours: newTotalHours,
-      hoursRemaining: newHoursRemaining,
-      minutesRemaining: newHoursRemaining * 60,
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Audit log
-    await logAction('ADD_HOURS_PACKAGE_TO_STAGE', user.uid, user.username, {
-      caseId: data.caseId,
-      stageId: data.stageId,
-      hours: data.hours,
-      reason: data.reason
-    });
-
-    return {
-      success: true,
-      caseId: data.caseId,
-      stageId: data.stageId,
-      package: newPackage,
-      newTotalHours,
-      newHoursRemaining
-    };
-
-  } catch (error) {
-    console.error('Error in addHoursPackageToStage:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה בהוספת חבילת שעות: ${error.message}`
-    );
-  }
-});
-
-/**
- * מעבר לשלב הבא בהליך משפטי
- * סוגר את השלב הנוכחי ומפעיל את השלב הבא
- */
-exports.moveToNextStage = functions.https.onCall(async (data, context) => {
-  try {
-    const user = await checkUserPermissions(context);
-
-    // Validation
-    if (!data.caseId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה תיק'
-      );
-    }
-
-    if (!data.currentStageId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'חסר מזהה שלב נוכחי'
-      );
-    }
-
-    // טעינת התיק
-    const caseDoc = await db.collection('cases').doc(data.caseId).get();
-
-    if (!caseDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'תיק לא נמצא'
-      );
-    }
-
-    const caseData = caseDoc.data();
-
-    // וודא שזה הליך משפטי
-    if (caseData.procedureType !== 'legal_procedure') {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'מעבר בין שלבים אפשרי רק להליכים משפטיים'
-      );
-    }
-
-    // בדיקת הרשאות
-    if (!caseData.assignedTo.includes(user.username) && user.role !== 'admin') {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לעדכן תיק זה'
-      );
-    }
-
-    // מצא את השלב הנוכחי
-    const currentStageIndex = caseData.stages.findIndex(s => s.id === data.currentStageId);
-    if (currentStageIndex === -1) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'שלב נוכחי לא נמצא'
-      );
-    }
-
-    // וודא שהשלב הנוכחי הוא אכן הפעיל
-    if (caseData.stages[currentStageIndex].status !== 'active') {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'השלב הנוכחי אינו פעיל'
-      );
-    }
-
-    // וודא שיש שלב הבא
-    if (currentStageIndex >= caseData.stages.length - 1) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'זהו השלב האחרון - אין שלב הבא'
-      );
-    }
-
-    const now = new Date().toISOString();
-
-    // עדכון השלבים
-    const updatedStages = [...caseData.stages];
-
-    // סגירת השלב הנוכחי
-    updatedStages[currentStageIndex] = {
-      ...updatedStages[currentStageIndex],
-      status: 'completed',
-      completedAt: now,
-      completedBy: user.username
-    };
-
-    // הפעלת השלב הבא
-    const nextStageIndex = currentStageIndex + 1;
-    updatedStages[nextStageIndex] = {
-      ...updatedStages[nextStageIndex],
-      status: 'active',
-      startedAt: now
-    };
-
-    const nextStageId = updatedStages[nextStageIndex].id;
-
-    // שמירה ב-Firestore
-    await db.collection('cases').doc(data.caseId).update({
-      stages: updatedStages,
-      currentStage: nextStageId,
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Audit log
-    await logAction('MOVE_TO_NEXT_STAGE', user.uid, user.username, {
-      caseId: data.caseId,
-      fromStage: data.currentStageId,
-      toStage: nextStageId
-    });
-
-    return {
-      success: true,
-      caseId: data.caseId,
-      currentStage: nextStageId,
-      completedStage: data.currentStageId,
-      message: `המעבר לשלב ${updatedStages[nextStageIndex].name} הושלם בהצלחה`
-    };
-
-  } catch (error) {
-    console.error('Error in moveToNextStage:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה במעבר לשלב הבא: ${error.message}`
-    );
-  }
-});
-
-// ===============================
-// Advanced Migration Function
-// ===============================
-
-/**
- * מיגרציה מקצועית: clients → cases
+ * ⚠️ DEPRECATED - DO NOT USE
  *
- * הפונקציה הזו:
- * 1. טוענת את כל הלקוחות מ-clients collection
- * 2. יוצרת תיק (case) חדש לכל לקוח
- * 3. מעתיקה את כל הנתונים הרלוונטיים
- * 4. עושה קישור אחורה (מהתיק ללקוח)
- * 5. עוקבת אחרי כפילויות ושגיאות
+ * מיגרציה מקצועית: clients → cases (OLD ARCHITECTURE)
  *
+ * פונקציה זו לא בשימוש - המערכת עברה למבנה Client=Case
+ * במקום זאת, השתמש ב-migrateCasesToClients
+ *
+ * @deprecated Since Client=Case migration - use migrateCasesToClients instead
  * @param {Object} options
  * @param {boolean} options.dryRun - אם true, רק מדמה ללא שינויים אמיתיים
  * @param {string} options.specificClientId - מיגרציה ללקוח אחד בלבד (לבדיקה)
@@ -3782,6 +3021,272 @@ function buildCaseFromClient(clientId, clientData, username) {
 }
 
 // ===============================
+// 🔄 NEW: Cases → Clients Migration
+// ===============================
+
+/**
+ * מיגרציה: cases → clients (Client=Case Architecture)
+ *
+ * הפונקציה הזו:
+ * 1. טוענת את כל התיקים מ-cases collection
+ * 2. יוצרת client document חדש לכל תיק (document ID = caseNumber)
+ * 3. מעתיקה את כל הנתונים הרלוונטיים
+ * 4. מיזוג עם נתוני לקוח קיימים (אם יש)
+ *
+ * @param {Object} data
+ * @param {boolean} data.dryRun - אם true, רק מדמה ללא שינויים אמיתיים
+ * @param {string} data.specificCaseId - מיגרציה לתיק אחד בלבד (לבדיקה)
+ * @param {boolean} data.skipExisting - לדלג על תיקים שכבר הועברו
+ */
+exports.migrateCasesToClients = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // בדיקת הרשאות - רק admin
+    if (user.role !== 'admin' && user.role !== 'מנהל') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל מערכת יכול להריץ מיגרציה'
+      );
+    }
+
+    const options = {
+      dryRun: data.dryRun === true,
+      specificCaseId: data.specificCaseId || null,
+      skipExisting: data.skipExisting !== false // default true
+    };
+
+    console.log(`🚀 Starting cases → clients migration by ${user.username}`, options);
+
+    // סטטיסטיקות
+    const stats = {
+      totalCases: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: 0,
+      errorDetails: [],
+      migratedClients: []
+    };
+
+    // שלב 1: טעינת תיקים
+    let casesSnapshot;
+    if (options.specificCaseId) {
+      // מיגרציה לתיק אחד בלבד
+      const caseDoc = await db.collection('cases').doc(options.specificCaseId).get();
+      if (!caseDoc.exists) {
+        throw new functions.https.HttpsError('not-found', `תיק ${options.specificCaseId} לא נמצא`);
+      }
+      casesSnapshot = { docs: [caseDoc], size: 1 };
+      stats.totalCases = 1;
+    } else {
+      // כל התיקים
+      casesSnapshot = await db.collection('cases').get();
+      stats.totalCases = casesSnapshot.size;
+    }
+
+    console.log(`📦 Found ${stats.totalCases} cases to migrate`);
+
+    // שלב 2: מעבר על כל תיק
+    for (const caseDoc of casesSnapshot.docs) {
+      const caseId = caseDoc.id;
+      const caseData = caseDoc.data();
+
+      try {
+        console.log(`\n📝 Processing case: ${caseId} (${caseData.caseNumber})`);
+
+        // בדיקה: האם יש caseNumber?
+        if (!caseData.caseNumber) {
+          console.warn(`⚠️ Case ${caseId} has no caseNumber - skipping`);
+          stats.skipped++;
+          stats.errorDetails.push(`${caseId}: אין מספר תיק`);
+          continue;
+        }
+
+        const targetDocId = caseData.caseNumber;
+
+        // בדיקה: האם כבר קיים client עם אותו caseNumber?
+        const existingClientDoc = await db.collection('clients').doc(targetDocId).get();
+
+        if (existingClientDoc.exists && options.skipExisting) {
+          console.log(`⏭️  Skipping ${targetDocId} - already exists in clients`);
+          stats.skipped++;
+          continue;
+        }
+
+        // שליפת נתוני לקוח מקוריים (אם יש)
+        let originalClientData = null;
+        if (caseData.clientId) {
+          const clientDoc = await db.collection('clients').doc(caseData.clientId).get();
+          if (clientDoc.exists) {
+            originalClientData = clientDoc.data();
+            console.log(`  ℹ️ Found original client data: ${caseData.clientId}`);
+          }
+        }
+
+        // בניית אובייקט Client מתוך Case
+        const clientData = buildClientFromCase(caseData, originalClientData, user.username);
+
+        // Dry run - רק הדפסה
+        if (options.dryRun) {
+          console.log(`🔍 [DRY RUN] Would ${existingClientDoc.exists ? 'update' : 'create'} client:`,
+                     JSON.stringify({ id: targetDocId, ...clientData }, null, 2));
+          if (existingClientDoc.exists) {
+            stats.updated++;
+          } else {
+            stats.created++;
+          }
+          stats.migratedClients.push({
+            caseId,
+            clientId: targetDocId,
+            caseNumber: caseData.caseNumber,
+            clientName: clientData.clientName,
+            action: existingClientDoc.exists ? 'update' : 'create'
+          });
+          continue;
+        }
+
+        // יצירה/עדכון ב-Firestore
+        await db.collection('clients').doc(targetDocId).set(clientData, { merge: true });
+
+        if (existingClientDoc.exists) {
+          console.log(`✅ Updated client ${targetDocId}`);
+          stats.updated++;
+        } else {
+          console.log(`✅ Created client ${targetDocId}`);
+          stats.created++;
+        }
+
+        stats.migratedClients.push({
+          caseId,
+          clientId: targetDocId,
+          caseNumber: caseData.caseNumber,
+          clientName: clientData.clientName,
+          action: existingClientDoc.exists ? 'update' : 'create'
+        });
+
+      } catch (error) {
+        stats.errors++;
+        const errorMsg = `${caseId}: ${error.message}`;
+        stats.errorDetails.push(errorMsg);
+        console.error(`❌ Error processing case ${caseId}:`, error);
+      }
+    }
+
+    // Audit log
+    await logAction('MIGRATE_CASES_TO_CLIENTS', user.uid, user.username, {
+      ...stats,
+      options
+    });
+
+    const summary = `
+📊 סיכום מיגרציה:
+- סה"כ תיקים: ${stats.totalCases}
+- clients נוצרו: ${stats.created}
+- clients עודכנו: ${stats.updated}
+- דולגו: ${stats.skipped}
+- שגיאות: ${stats.errors}
+${options.dryRun ? '\n⚠️ זו הייתה הרצה לדוגמה (dry run) - לא נעשו שינויים!' : ''}
+    `.trim();
+
+    console.log(summary);
+
+    return {
+      success: true,
+      dryRun: options.dryRun,
+      ...stats,
+      summary
+    };
+
+  } catch (error) {
+    console.error('Error in migrateCasesToClients:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במיגרציה: ${error.message}`
+    );
+  }
+});
+
+/**
+ * פונקציית עזר: בניית אובייקט Client מתוך Case
+ */
+function buildClientFromCase(caseData, originalClientData, username) {
+  // שם הלקוח
+  const clientName = caseData.clientName || originalClientData?.clientName || 'לקוח ללא שם';
+
+  // בניית Client document
+  const clientDoc = {
+    // ✅ במבנה החדש: document ID = caseNumber
+    // השדות הבאים יהיו בתוך ה-document
+
+    // זיהוי לקוח
+    clientName: clientName,
+    fullName: originalClientData?.fullName || clientName,
+
+    // פרטי קשר (מהלקוח המקורי אם יש)
+    phone: originalClientData?.phone || caseData.clientPhone || '',
+    phoneNumber: originalClientData?.phoneNumber || caseData.clientPhone || '',
+    email: originalClientData?.email || caseData.clientEmail || '',
+    idNumber: originalClientData?.idNumber || '',
+    address: originalClientData?.address || '',
+
+    // פרטי התיק (כולל במבנה החדש)
+    caseNumber: caseData.caseNumber,
+    caseTitle: caseData.caseTitle || clientName,
+    description: caseData.description || '',
+
+    // סוג הליך ותמחור
+    procedureType: caseData.procedureType || 'hours',
+    pricingType: caseData.pricingType || 'hourly',
+
+    // סטטוס
+    status: caseData.status || 'active',
+    priority: caseData.priority || 'medium',
+
+    // עו"ד מוקצה
+    assignedTo: caseData.assignedTo || [username],
+    mainAttorney: caseData.mainAttorney || username,
+
+    // תאריכים
+    openedAt: caseData.openedAt || caseData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+    deadline: caseData.deadline || null,
+
+    // שירותים (services array)
+    services: caseData.services || [],
+
+    // שלבים (stages array) - להליכים משפטיים
+    stages: caseData.stages || [],
+
+    // מידע היסטורי
+    totalHours: caseData.totalHours || 0,
+    hoursRemaining: caseData.hoursRemaining || 0,
+    minutesRemaining: caseData.minutesRemaining || (caseData.hoursRemaining || 0) * 60,
+    hourlyRate: caseData.hourlyRate || 0,
+    fixedPrice: caseData.fixedPrice || 0,
+
+    // Metadata
+    migratedFrom: 'cases',
+    originalCaseId: caseData.caseId || caseData.id,
+    originalClientId: caseData.clientId,
+    migratedAt: admin.firestore.FieldValue.serverTimestamp(),
+    migratedBy: username,
+
+    createdBy: caseData.createdBy || username,
+    createdAt: caseData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+    lastModifiedBy: username,
+    lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  // ניקוי undefined values
+  return cleanUndefined(clientDoc);
+}
+
+// ===============================
 // Employee Hours Quota Management
 // ===============================
 
@@ -3932,8 +3437,8 @@ exports.migrateHistoricalTimesheetEntries = functions.https.onCall(async (data, 
           continue;
         }
 
-        // קרא את התיק
-        const caseDoc = await db.collection('cases').doc(entry.caseId).get();
+        // קרא את התיק (במבנה החדש: clients collection)
+        const caseDoc = await db.collection('clients').doc(entry.caseId).get();
         if (!caseDoc.exists) {
           console.warn(`⚠️ ${entryDoc.id} - תיק ${entry.caseId} לא נמצא`);
           await entryDoc.ref.update({ hoursDeducted: true }); // סמן שעובד (אפילו אם התיק לא קיים)
@@ -4267,5 +3772,203 @@ exports.initializeAdminClaims = functions.https.onCall(async (data, context) => 
     );
   }
 });
+
+// ===============================
+// Scheduled Functions - פונקציות מתוזמנות
+// ===============================
+
+/**
+ * dailyTaskReminders - תזכורות משימות יומיות
+ * רץ כל יום בשעה 09:00 בבוקר
+ * בודק:
+ * 1. משימות שעומדות לפוג בתוך 3 ימים
+ * 2. משימות שכבר עבר תאריך היעד שלהן (overdue)
+ * שולח התראה אוטומטית לעובדים (לא למנהלים - הם רואים בדשבורד)
+ */
+exports.dailyTaskReminders = functions.pubsub
+  .schedule('0 9 * * *')  // כל יום בשעה 09:00
+  .timeZone('Asia/Jerusalem')
+  .onRun(async (context) => {
+    try {
+      console.log('🔔 Running dailyTaskReminders at', new Date().toISOString());
+
+      const now = admin.firestore.Timestamp.now();
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      const threeDaysTimestamp = admin.firestore.Timestamp.fromDate(threeDaysFromNow);
+
+      // מצא משימות פעילות עם deadline בתוך 3 ימים או שעבר
+      const tasksSnapshot = await db.collection('budget_tasks')
+        .where('status', '==', 'active')
+        .where('deadline', '!=', null)
+        .get();
+
+      let remindersCount = 0;
+      let overdueCount = 0;
+
+      for (const taskDoc of tasksSnapshot.docs) {
+        const task = taskDoc.data();
+        const taskId = taskDoc.id;
+        const deadline = task.deadline;
+
+        // דלג על משימות ללא deadline
+        if (!deadline) continue;
+
+        const isOverdue = deadline.toDate() < now.toDate();
+        const isUpcoming = !isOverdue && deadline.toDate() <= threeDaysTimestamp.toDate();
+
+        if (isOverdue) {
+          // משימה שעבר הזמן
+          await db.collection('notifications').add({
+            userId: task.lawyer || task.createdBy,
+            userEmail: task.employee,
+            title: `⚠️ משימה באיחור: ${task.clientName}`,
+            message: `המשימה "${task.description}" עברה את תאריך היעד (${formatDate(deadline.toDate())})`,
+            type: 'error',
+            taskId: taskId,
+            reminder: true,
+            automated: true,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            icon: 'fa-exclamation-triangle'
+          });
+          overdueCount++;
+
+        } else if (isUpcoming) {
+          // משימה שמתקרבת לתאריך יעד
+          const daysLeft = Math.ceil((deadline.toDate() - now.toDate()) / (1000 * 60 * 60 * 24));
+          await db.collection('notifications').add({
+            userId: task.lawyer || task.createdBy,
+            userEmail: task.employee,
+            title: `⏰ תזכורת: ${task.clientName}`,
+            message: `המשימה "${task.description}" מתקרבת לתאריך יעד (${daysLeft} ימים)`,
+            type: 'warning',
+            taskId: taskId,
+            reminder: true,
+            automated: true,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            icon: 'fa-clock'
+          });
+          remindersCount++;
+        }
+      }
+
+      console.log(`✅ Sent ${overdueCount} overdue alerts and ${remindersCount} upcoming reminders`);
+      return { overdueCount, remindersCount };
+
+    } catch (error) {
+      console.error('❌ Error in dailyTaskReminders:', error);
+      throw error;
+    }
+  });
+
+/**
+ * dailyBudgetWarnings - אזהרות תקציב יומיות
+ * רץ כל יום בשעה 17:00 אחה"צ
+ * בודק:
+ * 1. משימות שחרגו מ-80% מתקציב הזמן (warning)
+ * 2. משימות שחרגו 100% מתקציב הזמן (danger)
+ * שולח התראה אוטומטית לעובדים
+ */
+exports.dailyBudgetWarnings = functions.pubsub
+  .schedule('0 17 * * *')  // כל יום בשעה 17:00
+  .timeZone('Asia/Jerusalem')
+  .onRun(async (context) => {
+    try {
+      console.log('💰 Running dailyBudgetWarnings at', new Date().toISOString());
+
+      // מצא משימות פעילות
+      const tasksSnapshot = await db.collection('budget_tasks')
+        .where('status', '==', 'active')
+        .get();
+
+      let warningsCount = 0;
+      let criticalCount = 0;
+
+      for (const taskDoc of tasksSnapshot.docs) {
+        const task = taskDoc.data();
+        const taskId = taskDoc.id;
+
+        // חישוב תקציב ושעות בפועל
+        const estimatedMinutes = (task.estimatedHours || 0) * 60 + (task.estimatedMinutes || 0);
+        const actualMinutes = (task.actualHours || 0) * 60 + (task.actualMinutes || 0);
+
+        // דלג על משימות ללא תקציב
+        if (estimatedMinutes === 0) continue;
+
+        const percentageUsed = (actualMinutes / estimatedMinutes) * 100;
+
+        // בדוק אם כבר שלחנו התראה היום (למנוע spam)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const existingNotification = await db.collection('notifications')
+          .where('taskId', '==', taskId)
+          .where('automated', '==', true)
+          .where('type', 'in', ['warning', 'error'])
+          .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(today))
+          .limit(1)
+          .get();
+
+        if (!existingNotification.empty) {
+          console.log(`⏭️  Skipping task ${taskId} - already notified today`);
+          continue;
+        }
+
+        if (percentageUsed >= 100) {
+          // חריגה מלאה מהתקציב
+          await db.collection('notifications').add({
+            userId: task.lawyer || task.createdBy,
+            userEmail: task.employee,
+            title: `🚨 חריגה מתקציב: ${task.clientName}`,
+            message: `המשימה "${task.description}" חרגה מתקציב הזמן (${Math.round(percentageUsed)}%)`,
+            type: 'error',
+            taskId: taskId,
+            budgetWarning: true,
+            automated: true,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            icon: 'fa-exclamation-circle'
+          });
+          criticalCount++;
+
+        } else if (percentageUsed >= 80) {
+          // אזהרה - מתקרב לתקציב
+          await db.collection('notifications').add({
+            userId: task.lawyer || task.createdBy,
+            userEmail: task.employee,
+            title: `⚠️ התקרבות לתקציב: ${task.clientName}`,
+            message: `המשימה "${task.description}" מתקרבת לתקציב הזמן (${Math.round(percentageUsed)}%)`,
+            type: 'warning',
+            taskId: taskId,
+            budgetWarning: true,
+            automated: true,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            icon: 'fa-exclamation-triangle'
+          });
+          warningsCount++;
+        }
+      }
+
+      console.log(`✅ Sent ${criticalCount} critical budget alerts and ${warningsCount} budget warnings`);
+      return { criticalCount, warningsCount };
+
+    } catch (error) {
+      console.error('❌ Error in dailyBudgetWarnings:', error);
+      throw error;
+    }
+  });
+
+/**
+ * formatDate - פורמט תאריך לתצוגה בעברית
+ */
+function formatDate(date) {
+  return new Intl.DateTimeFormat('he-IL', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date);
+}
 
 console.log('✅ Law Office Functions loaded successfully');
