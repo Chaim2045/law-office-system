@@ -106,7 +106,7 @@ function clearAllNotifications() {
     },
     () => {
       // ביטול - לא עושים כלום
-      console.log('ביטול מחיקת התראות');
+      Logger.log('ביטול מחיקת התראות');
     },
     {
       title: '⚠️ מחיקת כל ההתראות',
@@ -145,10 +145,10 @@ function openSmartForm() {
     // ✅ Initialize the appropriate ClientCaseSelector when form opens
     if (window.ClientCaseSelectorsManager) {
       if (formType === 'budget') {
-        console.log('🎯 Opening budget form - initializing selector...');
+        Logger.log('🎯 Opening budget form - initializing selector...');
         window.ClientCaseSelectorsManager.initializeBudget();
       } else if (formType === 'timesheet') {
-        console.log('🎯 Opening timesheet form - initializing selector...');
+        Logger.log('🎯 Opening timesheet form - initializing selector...');
         window.ClientCaseSelectorsManager.initializeTimesheet();
       }
     }

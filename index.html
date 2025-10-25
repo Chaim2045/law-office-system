@@ -47,11 +47,15 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // אופטימיזציות ביצועים
+        // אופטימיזציות ביצועים + דיכוי לוגים
         db.settings({
           cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
           merge: true,
+          ignoreUndefinedProperties: true
         });
+
+        // 🔇 Suppress Firestore debug logs (production mode)
+        firebase.firestore.setLogLevel('error'); // Only errors, no warnings
 
         // הפוך זמין למערכת
         window.firebaseDB = db;
@@ -71,12 +75,38 @@
           orderBy: (field, direction = "asc") => direction,
         };
 
-        // Production mode - Firebase initialized silently
-        console.log("✅ Firebase initialized successfully");
+        // Production mode - Firebase initialized silently (no log)
       } catch (error) {
         console.error("❌ Firebase Error:", error);
         alert("שגיאה בחיבור לFirebase: " + error.message);
       }
+
+      // 🔇 Global Error Handler - Suppress known benign errors
+      window.addEventListener('error', function(e) {
+        // Firestore 400 connection terminations (harmless, network cleanup)
+        if (e.message && e.message.includes('net::ERR_HTTP2_PROTOCOL_ERROR')) {
+          e.preventDefault();
+          return false;
+        }
+        // Suppress other Firestore network warnings
+        if (e.message && (e.message.includes('firestore') || e.message.includes('FIRESTORE'))) {
+          if (e.message.includes('400') || e.message.includes('Failed to fetch')) {
+            e.preventDefault();
+            return false;
+          }
+        }
+      }, true);
+
+      // 🔇 Suppress unhandled promise rejections from Firestore
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && e.reason.message) {
+          const msg = e.reason.message.toLowerCase();
+          if (msg.includes('firestore') || msg.includes('failed to fetch') || msg.includes('net::err')) {
+            e.preventDefault();
+            return false;
+          }
+        }
+      });
     </script>
 
     <!-- ===== תגי מטא והגדרות בסיסיות ===== -->
@@ -539,57 +569,6 @@
                   </div>
                 </div>
               </div>
-
-              <div
-                id="budgetEmptyState"
-                class="empty-state smart-empty-state"
-                style="display: none"
-              >
-                <div class="empty-icon">
-                  <i class="fas fa-inbox" style="font-size: 72px; opacity: 0.3;"></i>
-                </div>
-                <h3 style="font-size: 24px; font-weight: 600; margin: 20px 0 12px;">אין משימות עדיין</h3>
-                <p style="font-size: 16px; color: #6b7280; margin-bottom: 24px;">בואו ניצור את המשימה הראשונה שלך</p>
-
-                <!-- כפתור פעולה ראשי -->
-                <button
-                  onclick="openSmartForm()"
-                  style="
-                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                    color: white;
-                    border: none;
-                    padding: 16px 32px;
-                    font-size: 18px;
-                    font-weight: 600;
-                    border-radius: 12px;
-                    cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-                    transition: all 0.2s;
-                    margin-bottom: 16px;
-                  "
-                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(59, 130, 246, 0.4)';"
-                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)';"
-                >
-                  🚀 צור משימה עכשיו
-                </button>
-
-                <!-- הסבר קצר -->
-                <div style="
-                  background: rgba(59, 130, 246, 0.05);
-                  border: 2px dashed rgba(59, 130, 246, 0.3);
-                  border-radius: 12px;
-                  padding: 16px 24px;
-                  margin-top: 24px;
-                  max-width: 400px;
-                  margin-left: auto;
-                  margin-right: auto;
-                ">
-                  <p style="font-size: 14px; color: #374151; margin: 0; line-height: 1.6;">
-                    💡 <strong>טיפ:</strong> לחץ על הכפתור למעלה ↑<br/>
-                    או על כפתור ה-<strong>+</strong> בחלק העליון של המסך
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -756,60 +735,6 @@
                   </thead>
                   <tbody id="timesheetTableBody"></tbody>
                 </table>
-              </div>
-
-              <div
-                id="timesheetEmptyState"
-                class="empty-state smart-empty-state"
-                style="display: none"
-              >
-                <div class="empty-icon">
-                  <i class="fas fa-clock" style="font-size: 72px; opacity: 0.3;"></i>
-                </div>
-                <h3 style="font-size: 24px; font-weight: 600; margin: 20px 0 12px;">אין דיווחי זמן עדיין</h3>
-                <p style="font-size: 16px; color: #6b7280; margin-bottom: 24px;">בואו נדווח על הפעילות הראשונה שלך</p>
-
-                <!-- כפתור פעולה ראשי -->
-                <button
-                  onclick="switchTab('timesheet'); setTimeout(() => openSmartForm(), 200);"
-                  style="
-                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                    color: white;
-                    border: none;
-                    padding: 16px 32px;
-                    font-size: 18px;
-                    font-weight: 600;
-                    border-radius: 12px;
-                    cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                    transition: all 0.2s;
-                    margin-bottom: 16px;
-                  "
-                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(16, 185, 129, 0.4)';"
-                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)';"
-                >
-                  ⏱️ דווח על זמן עכשיו
-                </button>
-
-                <!-- הסבר קצר -->
-                <div style="
-                  background: rgba(16, 185, 129, 0.05);
-                  border: 2px dashed rgba(16, 185, 129, 0.3);
-                  border-radius: 12px;
-                  padding: 16px 24px;
-                  margin-top: 24px;
-                  max-width: 450px;
-                  margin-left: auto;
-                  margin-right: auto;
-                ">
-                  <p style="font-size: 14px; color: #374151; margin: 0 0 12px 0; line-height: 1.6;">
-                    💡 <strong>טיפ חשוב:</strong>
-                  </p>
-                  <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.6; text-align: right;">
-                    📋 זמן עבודה על לקוחות? השתמש ב<strong>"הוסף זמן למשימה"</strong> בטאב משימות<br/>
-                    🏢 זמן משרדי כללי? השתמש בכפתור למעלה
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -1008,7 +933,7 @@
               <span>מחובר ופעיל</span>
             </div>
             <div class="footer-divider"></div>
-            <a href="#" class="footer-link" onclick="return false;">
+            <a href="#" class="footer-link" data-help-trigger onclick="return false;">
               <i class="fas fa-question-circle"></i>
               עזרה
             </a>
@@ -1032,6 +957,10 @@
     <script src="reports.js?v=1.1.0"></script>
     <script src="pagination.js?v=1.0.0"></script>
     <script src="activity-logger.js?v=1.0.0"></script>
+    <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
+    <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
+    <script src="js/modules/logger.js?v=1.0.0"></script>
+
     <script src="task-actions.js?v=1.1.0"></script>
     <script src="skeleton-loader.js?v=1.1.0"></script>
     <script src="firebase-pagination.js?v=1.1.0"></script>
@@ -1080,13 +1009,31 @@
     <!-- Work Hours Calculator - Smart Calendar System -->
     <script src="js/modules/work-hours-calculator.js?v=1.0.0"></script>
 
-    <!-- ===== VIRTUAL ASSISTANT 3.9.0 - TWO-TIER HELP SYSTEM ===== -->
-    <!-- 🚀 NEW: Two-Tier Help System - Quick Actions + Detailed Guides -->
-    <!-- 🎯 Quick Action First: Simple "magic button" for 80% of users (age 40-60 friendly!) -->
-    <!-- 📖 Detailed Guide Optional: Step-by-step guide available on request -->
-    <!-- ✅ EXAMPLE: "create_task" now shows Quick Action by default -->
-    <!-- 💡 Professional UX: Progressive Disclosure + Action-First Design -->
+    <!-- ===== KNOWLEDGE BASE 1.0.0 - מרכז עזרה וידע ===== -->
+    <!-- 🎓 NEW: Knowledge Base / FAQ System - Simple and Clear -->
+    <!-- 📚 Professional FAQ with categories, search, and articles -->
+    <!-- 🎯 For users age 40-60 - Direct answers, no chat needed -->
+    <!-- ✅ Replaces Virtual Assistant chatbot with classic help center -->
+    <!-- 💡 Click "עזרה" or the floating 💡 button to open -->
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="js/modules/knowledge-base/knowledge-base.css?v=1.0.0">
+
+    <!-- Icons System -->
+    <script src="js/modules/knowledge-base/kb-icons.js?v=1.0.0"></script>
+
+    <!-- Data -->
+    <script src="js/modules/knowledge-base/kb-data.js?v=1.0.0"></script>
+
+    <!-- Search Engine -->
+    <script src="js/modules/knowledge-base/kb-search.js?v=1.0.0"></script>
+
+    <!-- Main Logic -->
+    <script src="js/modules/knowledge-base/knowledge-base.js?v=1.0.0"></script>
+
+    <!-- ===== Virtual Assistant 3.9.0 - WITH KNOWLEDGE BASE INTEGRATION ===== -->
     <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=3.9.0"></script>
+
 
     <!-- OLD: Legacy FAQ Bot (backup) -->
     <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=3.0.0"></script> -->

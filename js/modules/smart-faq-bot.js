@@ -3025,7 +3025,7 @@ class SmartFAQBot {
         const greeting = userName ? userName : '';
 
         // Debug log - נדפיס את כל הנתונים
-        console.log('📊 DEBUG - נתוני שעות:', {
+        Logger.log('📊 DEBUG - נתוני שעות:', {
             hoursWorkedThisMonth: h.hoursWorkedThisMonth,
             monthlyQuota: h.monthlyQuota,
             workDaysPassed: h.workDaysPassed,
@@ -3596,7 +3596,7 @@ class SmartFAQBot {
      * מטפל בלחיצה על כפתור פעולה אינטראקטיבי
      */
     handleActionButton(action, selector) {
-        console.log('פעולה:', action, 'Selector:', selector);
+        Logger.log('פעולה:', action, 'Selector:', selector);
 
         // סגור את הבוט לפני כל פעולה ויזואלית
         if (action === 'highlight' || action === 'show_guide' || action === 'open_form') {
@@ -3954,7 +3954,7 @@ class SystemTour {
             console.warn('Tour: Element not found -', step.element);
             // אם זה דיאלוג שלא נפתח - הצג center mode כ-fallback
             if (step.element.includes('Modal')) {
-                console.log('Tour: Using center mode as fallback for modal');
+                Logger.log('Tour: Using center mode as fallback for modal');
                 this.showCenterMode(step);
                 return;
             }
@@ -4431,7 +4431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.smartFAQBot = smartFAQBot;
     window.systemTour = systemTour;
 
-    console.log('⚖️ העוזר המשפטי החכם הופעל - v3.0');
+    Logger.log('⚖️ העוזר המשפטי החכם הופעל - v3.0');
 });
 
 // ייצוא למודול

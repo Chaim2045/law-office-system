@@ -752,6 +752,6 @@
     global.ModalsManager = ModalsManager;
   }
 
-  console.log('✅ ModalsManager v1.0.0 loaded');
+  Logger.log('✅ ModalsManager v1.0.0 loaded');
 
 })(typeof window !== 'undefined' ? window : global);

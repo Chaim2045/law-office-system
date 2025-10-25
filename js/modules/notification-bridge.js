@@ -83,7 +83,7 @@ if (typeof window !== 'undefined') {
         };
       }
 
-      console.log('✅ Notification Bridge: Manager methods added');
+      Logger.log('✅ Notification Bridge: Manager methods added');
     }
   }, 100);
 

@@ -290,7 +290,7 @@ class NotificationSystem {
         path: animationPath
       });
 
-      console.log('✅ Lottie animation loaded successfully');
+      Logger.log('✅ Lottie animation loaded successfully');
 
       // Handle animation errors
       animation.addEventListener('data_failed', () => {
@@ -491,5 +491,5 @@ if (typeof window !== 'undefined') {
     notificationSystem.hideLoading();
   };
 
-  console.log('✅ Notification System loaded and ready');
+  Logger.log('✅ Notification System loaded and ready');
 }

@@ -26,7 +26,7 @@
     async init() {
       if (this.initialized) return;
 
-      console.log('📂 Initializing Cases Integration...');
+      Logger.log('📂 Initializing Cases Integration...');
 
       // וודא ש-casesManager זמין
       if (!window.casesManager) {
@@ -35,7 +35,7 @@
       }
 
       this.initialized = true;
-      console.log('✅ Cases Integration initialized');
+      Logger.log('✅ Cases Integration initialized');
     }
 
     /**
@@ -243,6 +243,6 @@
     window.casesIntegration.init();
   }
 
-  console.log('📂 Cases Integration Module loaded');
+  Logger.log('📂 Cases Integration Module loaded');
 
 })();

@@ -25,7 +25,7 @@
         window.clientCaseSelectors.budget.attachEventListeners();
       }
       // ✅ ALWAYS clear/reset when reopening the form
-      console.log('🔄 Clearing budget selector...');
+      Logger.log('🔄 Clearing budget selector...');
       window.clientCaseSelectors.budget.clear();
       return;
     }
@@ -67,7 +67,7 @@
         window.clientCaseSelectors.timesheet.attachEventListeners();
       }
       // ✅ ALWAYS clear/reset when reopening the form
-      console.log('🔄 Clearing timesheet selector...');
+      Logger.log('🔄 Clearing timesheet selector...');
       window.clientCaseSelectors.timesheet.clear();
       return;
     }
@@ -104,10 +104,10 @@
    * Initialize all client-case selectors (calls lazy initializers)
    */
   function initializeSelectors() {
-    console.log('🎯 Setting up ClientCaseSelectors (lazy initialization)...');
+    Logger.log('🎯 Setting up ClientCaseSelectors (lazy initialization)...');
     // Selectors will be initialized when forms are first opened
     // This prevents issues with hidden forms
-    console.log('✅ ClientCaseSelectors ready for lazy initialization');
+    Logger.log('✅ ClientCaseSelectors ready for lazy initialization');
   }
 
   /**
@@ -199,6 +199,6 @@
     clearTimesheet: clearTimesheetSelector
   };
 
-  console.log('✅ ClientCaseSelectorsManager ready (lazy initialization enabled)');
+  Logger.log('✅ ClientCaseSelectorsManager ready (lazy initialization enabled)');
 
 })();

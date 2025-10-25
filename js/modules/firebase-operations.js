@@ -149,7 +149,7 @@ async function loadClientsFromFirebase() {
       }
     });
 
-    console.log(`✅ טעינה הושלמה: ${clientsSnapshot.size} לקוחות | ${casesSnapshot.size} תיקים | ${clients.length} רשומות סה"כ`);
+    Logger.log(`✅ טעינה הושלמה: ${clientsSnapshot.size} לקוחות | ${casesSnapshot.size} תיקים | ${clients.length} רשומות סה"כ`);
 
     return clients;
   } catch (error) {

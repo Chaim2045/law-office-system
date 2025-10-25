@@ -30,7 +30,7 @@
      */
     init(user) {
       this.currentUser = user;
-      console.log('⚖️ LegalProceduresManager initialized for user:', user?.username);
+      Logger.log('⚖️ LegalProceduresManager initialized for user:', user?.username);
     }
 
     // ==================== Validation Functions ====================
@@ -121,7 +121,7 @@
      */
     async createLegalProcedure(procedureData) {
       try {
-        console.log('📝 Creating legal procedure:', procedureData);
+        Logger.log('📝 Creating legal procedure:', procedureData);
 
         // Validation
         const validation = this.validateStages(procedureData.stages, procedureData.pricingType);
@@ -136,7 +136,7 @@
           throw new Error(result.data.message || 'שגיאה ביצירת הליך משפטי');
         }
 
-        console.log('✅ Legal procedure created successfully:', result.data.caseId);
+        Logger.log('✅ Legal procedure created successfully:', result.data.caseId);
         return result.data;
 
       } catch (error) {
@@ -154,7 +154,7 @@
      */
     async addHoursPackageToStage(caseId, stageId, packageData) {
       try {
-        console.log('📦 Adding hours package:', { caseId, stageId, packageData });
+        Logger.log('📦 Adding hours package:', { caseId, stageId, packageData });
 
         // Validation
         const validation = this.validateHoursPackage(packageData.hours, packageData.reason);
@@ -203,7 +203,7 @@
           lastModifiedBy: firebase.auth().currentUser?.email || 'system'
         });
 
-        console.log('✅ Hours package added successfully');
+        Logger.log('✅ Hours package added successfully');
         return { success: true, message: 'חבילת השעות נוספה בהצלחה' };
 
       } catch (error) {
@@ -220,7 +220,7 @@
      */
     async moveToNextStage(caseId, currentStageId) {
       try {
-        console.log('➡️ Moving to next stage:', { caseId, currentStageId });
+        Logger.log('➡️ Moving to next stage:', { caseId, currentStageId });
 
         // במבנה החדש: Client = Case, עדכון ישיר ב-Firestore
         const db = firebase.firestore();
@@ -262,7 +262,7 @@
           lastModifiedBy: firebase.auth().currentUser?.email || 'system'
         });
 
-        console.log('✅ Moved to next stage successfully');
+        Logger.log('✅ Moved to next stage successfully');
         return {
           success: true,
           message: 'עבר לשלב הבא בהצלחה',
@@ -1101,6 +1101,6 @@
   // יצירת instance גלובלי
   window.legalProceduresManager = new LegalProceduresManager();
 
-  console.log('⚖️ Legal Procedures Module loaded successfully');
+  Logger.log('⚖️ Legal Procedures Module loaded successfully');
 
 })();

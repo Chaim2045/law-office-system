@@ -94,7 +94,7 @@ async function handleLogin() {
           lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
           loginCount: firebase.firestore.FieldValue.increment(1)
         });
-        console.log('✅ lastLogin updated successfully');
+        Logger.log('✅ lastLogin updated successfully');
       } catch (loginUpdateError) {
         console.warn('⚠️ Failed to update lastLogin:', loginUpdateError.message);
       }
@@ -109,7 +109,7 @@ async function handleLogin() {
               setTimeout(() => reject(new Error('PresenceSystem timeout')), 5000)
             )
           ]);
-          console.log('✅ PresenceSystem connected successfully');
+          Logger.log('✅ PresenceSystem connected successfully');
         } catch (presenceError) {
           console.warn('⚠️ PresenceSystem failed (non-critical):', presenceError.message);
           // Continue anyway - presence tracking is not critical for login

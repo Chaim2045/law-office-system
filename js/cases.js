@@ -33,7 +33,7 @@
      */
     init(user) {
       this.currentUser = user;
-      console.log('📂 CasesManager initialized for user:', user.username);
+      Logger.log('📂 CasesManager initialized for user:', user.username);
     }
 
     // ==================== Firebase Functions API ====================
@@ -45,7 +45,7 @@
      */
     async createCase(caseData) {
       try {
-        console.log('📝 Creating new case:', caseData);
+        Logger.log('📝 Creating new case:', caseData);
 
         // ✅ במבנה החדש: createClient (Client=Case)
         const result = await firebase.functions().httpsCallable('createClient')(caseData);
@@ -54,7 +54,7 @@
           throw new Error(result.data.message || 'שגיאה ביצירת תיק');
         }
 
-        console.log('✅ Case created successfully:', result.data.id);
+        Logger.log('✅ Case created successfully:', result.data.id);
         return result.data;
 
       } catch (error) {
@@ -70,7 +70,7 @@
      */
     async getCases(filters = {}) {
       try {
-        console.log('📋 Fetching cases with filters:', filters);
+        Logger.log('📋 Fetching cases with filters:', filters);
 
         // ✅ במבנה החדש: getClients (Client=Case)
         const result = await firebase.functions().httpsCallable('getClients')(filters);
@@ -80,7 +80,7 @@
         }
 
         this.cases = result.data.clients || [];
-        console.log(`✅ Fetched ${this.cases.length} cases`);
+        Logger.log(`✅ Fetched ${this.cases.length} cases`);
         return this.cases;
 
       } catch (error) {
@@ -96,7 +96,7 @@
      */
     async getCasesByClient(clientId) {
       try {
-        console.log('📋 Fetching cases for client:', clientId);
+        Logger.log('📋 Fetching cases for client:', clientId);
 
         // ✅ במבנה החדש Client=Case: לקוח אחד = תיק אחד
         // פשוט נחזיר את הlokent הזה
@@ -109,7 +109,7 @@
 
         const clientData = { id: clientDoc.id, ...clientDoc.data() };
 
-        console.log(`✅ Fetched client/case:`, clientId);
+        Logger.log(`✅ Fetched client/case:`, clientId);
         return {
           success: true,
           client: clientData,
@@ -135,7 +135,7 @@
         }
 
         // שליפת כל התיקים מ-Firebase
-        console.log('📋 Fetching all cases');
+        Logger.log('📋 Fetching all cases');
         // ✅ במבנה החדש: getClients (Client=Case)
         const result = await firebase.functions().httpsCallable('getClients')({});
 
@@ -144,7 +144,7 @@
         }
 
         this.cases = result.data.clients || [];
-        console.log(`✅ Fetched ${this.cases.length} cases`);
+        Logger.log(`✅ Fetched ${this.cases.length} cases`);
         return this.cases;
 
       } catch (error) {
@@ -161,7 +161,7 @@
      */
     async updateCase(caseId, updates) {
       try {
-        console.log('📝 Updating case:', caseId, updates);
+        Logger.log('📝 Updating case:', caseId, updates);
 
         // במבנה החדש: Client = Case
         const result = await firebase.functions().httpsCallable('updateClient')({
@@ -173,7 +173,7 @@
           throw new Error(result.data.message || 'שגיאה בעדכון תיק');
         }
 
-        console.log('✅ Case updated successfully');
+        Logger.log('✅ Case updated successfully');
         return result.data;
 
       } catch (error) {
@@ -539,7 +539,7 @@
       // טעינת לקוחות - קודם מ-manager אם קיים, אחרת מ-Firebase
       if (window.manager && window.manager.clients && window.manager.clients.length > 0) {
         this.clients = window.manager.clients;
-        console.log(`📂 Loaded ${this.clients.length} clients from manager`);
+        Logger.log(`📂 Loaded ${this.clients.length} clients from manager`);
 
         // ✅ הסתרת loading
         if (window.NotificationSystem) {
@@ -552,7 +552,7 @@
           snapshot.forEach(doc => {
             this.clients.push({ id: doc.id, ...doc.data() });
           });
-          console.log(`📂 Loaded ${this.clients.length} clients from Firebase`);
+          Logger.log(`📂 Loaded ${this.clients.length} clients from Firebase`);
 
           // ✅ הסתרת loading
           if (window.NotificationSystem) {
@@ -1654,7 +1654,7 @@
         hourlyRadio.dispatchEvent(new Event('change'));
       }
 
-      console.log('✅ ניקיתי שדות משותפים');
+      Logger.log('✅ ניקיתי שדות משותפים');
     }
 
     /**
@@ -1678,7 +1678,7 @@
           caseNumberInput.value = result.data.caseNumber;
           caseNumberInput.style.color = '#3b82f6';
           caseNumberInput.style.fontWeight = '600';
-          console.log(`✅ מספר תיק הבא: ${result.data.caseNumber}`);
+          Logger.log(`✅ מספר תיק הבא: ${result.data.caseNumber}`);
         } else {
           throw new Error('לא התקבל מספר תיק');
         }
@@ -1866,7 +1866,7 @@
           }
         });
         window.dispatchEvent(caseCreatedEvent);
-        console.log('🔔 Event dispatched: caseCreated for client', result.clientId);
+        Logger.log('🔔 Event dispatched: caseCreated for client', result.clientId);
 
         // רענון הנתונים
         if (typeof this.onCaseCreated === 'function') {
@@ -1923,7 +1923,7 @@
         }
         // TODO: תמיכה ב-legal_procedure בעתיד
 
-        console.log('📝 Adding service to case:', serviceData);
+        Logger.log('📝 Adding service to case:', serviceData);
 
         // ✅ הצגת loading
         if (window.NotificationSystem) {
@@ -1937,7 +1937,7 @@
           throw new Error(result.data.message || 'שגיאה בהוספת שירות');
         }
 
-        console.log('✅ Service added successfully:', result.data.serviceId);
+        Logger.log('✅ Service added successfully:', result.data.serviceId);
 
         // ✅ הסתרת loading
         if (window.NotificationSystem) {
@@ -1969,7 +1969,7 @@
           }
         });
         window.dispatchEvent(serviceAddedEvent);
-        console.log('🔔 Event dispatched: serviceAdded for client', serviceData.clientId);
+        Logger.log('🔔 Event dispatched: serviceAdded for client', serviceData.clientId);
 
         // ריסט המצב
         this.currentCase = null;
@@ -2272,6 +2272,6 @@
   // יצירת instance גלובלי
   window.casesManager = new CasesManager();
 
-  console.log('📂 Cases Module loaded successfully');
+  Logger.log('📂 Cases Module loaded successfully');
 
 })();

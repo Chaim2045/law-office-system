@@ -58,7 +58,7 @@
           return false;
         }
 
-        console.log('✅ PresenceSystem initialized');
+        Logger.log('✅ PresenceSystem initialized');
         return true;
       } catch (error) {
         console.error('[PresenceSystem] Failed to initialize:', error);
@@ -158,7 +158,7 @@
         }
 
         this.isConnected = true;
-        console.log(`✅ [PresenceSystem] User ${username} is now online (session: ${this.sessionId})`);
+        Logger.log(`✅ [PresenceSystem] User ${username} is now online (session: ${this.sessionId})`);
 
       } catch (error) {
         console.error('[PresenceSystem] Failed to connect:', error);
@@ -185,7 +185,7 @@
         // ביטול onDisconnect (כי עשינו disconnect ידנית)
         await this.presenceRef.onDisconnect().cancel();
 
-        console.log(`✅ [PresenceSystem] User ${this.currentUsername} disconnected`);
+        Logger.log(`✅ [PresenceSystem] User ${this.currentUsername} disconnected`);
 
         // ניקוי
         this.presenceRef = null;
@@ -331,7 +331,7 @@
           await this.db.ref(`presence/${userId}`).remove();
         }
 
-        console.log(`✅ [PresenceSystem] Cleaned up ${toDelete.length} old presence records`);
+        Logger.log(`✅ [PresenceSystem] Cleaned up ${toDelete.length} old presence records`);
       } catch (error) {
         console.error('[PresenceSystem] Failed to cleanup old data:', error);
       }
@@ -351,6 +351,6 @@
     cleanupOldPresenceData: () => presenceSystem.cleanupOldPresenceData()
   };
 
-  console.log('✅ PresenceSystem loaded successfully');
+  Logger.log('✅ PresenceSystem loaded successfully');
 
 })();

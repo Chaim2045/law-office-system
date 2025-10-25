@@ -113,7 +113,7 @@ class LawOfficeManager {
       ? window.IntegrationManagerModule.create()
       : null;
 
-    console.log('✅ LawOfficeManager initialized');
+    Logger.log('✅ LawOfficeManager initialized');
   }
 
   /* ========================================
@@ -124,7 +124,7 @@ class LawOfficeManager {
    * Initialize the application
    */
   init() {
-    console.log('🚀 Initializing Law Office System...');
+    Logger.log('🚀 Initializing Law Office System...');
 
     // Setup Firebase Auth listener
     firebase.auth().onAuthStateChanged(async (user) => {
@@ -138,7 +138,7 @@ class LawOfficeManager {
     // Setup event listeners
     this.setupEventListeners();
 
-    console.log('✅ System initialized');
+    Logger.log('✅ System initialized');
   }
 
   /**
@@ -212,7 +212,7 @@ class LawOfficeManager {
       actionDate.value = new Date().toISOString().split("T")[0];
     }
 
-    console.log('✅ Event listeners configured');
+    Logger.log('✅ Event listeners configured');
   }
 
   /**
@@ -227,7 +227,7 @@ class LawOfficeManager {
       this.notificationBell.cleanup();
     }
 
-    console.log('✅ Manager cleanup completed');
+    Logger.log('✅ Manager cleanup completed');
   }
 
   /* ========================================
@@ -301,13 +301,13 @@ class LawOfficeManager {
       if (window.TaskActionsModule && !this.taskActionsManager) {
         this.taskActionsManager = window.TaskActionsModule.create();
         this.taskActionsManager.setManager(this);
-        console.log('✅ TaskActionsManager initialized');
+        Logger.log('✅ TaskActionsManager initialized');
       }
 
       // Initialize ActivityLogger if available
       if (window.ActivityLoggerModule && !this.activityLogger) {
         this.activityLogger = window.ActivityLoggerModule.create();
-        console.log('✅ ActivityLogger initialized');
+        Logger.log('✅ ActivityLogger initialized');
       }
 
       // Apply filters and render
@@ -331,7 +331,7 @@ class LawOfficeManager {
         this.notificationBell.updateFromSystem(blockedClients, criticalClients, urgentTasks);
       }
 
-      console.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
+      Logger.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
     } catch (error) {
       console.error('❌ Error loading data:', error);
       this.showNotification('שגיאה בטעינת נתונים', 'error');
@@ -417,7 +417,7 @@ class LawOfficeManager {
           createdAt: new Date()
         };
 
-        console.log('📝 Creating budget task with data:', taskData);
+        Logger.log('📝 Creating budget task with data:', taskData);
 
         await FirebaseOps.saveBudgetTaskToFirebase(taskData);
 
@@ -550,7 +550,7 @@ class LawOfficeManager {
           createdAt: new Date()
         };
 
-        console.log('📝 Creating internal timesheet entry:', entryData);
+        Logger.log('📝 Creating internal timesheet entry:', entryData);
 
         await FirebaseOps.saveTimesheetToFirebase(entryData);
 
@@ -1097,7 +1097,7 @@ window.extendTaskDeadlineFirebase = FirebaseOps.extendTaskDeadlineFirebase;
 // Debug mode (only in development)
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
   window.debug = DebugTools;
-  console.log('🐛 Debug tools enabled');
+  Logger.log('🐛 Debug tools enabled');
 }
 
 // ===== CRITICAL: Expose manager globally for HTML onclick handlers =====
@@ -1117,4 +1117,4 @@ if (document.readyState === 'loading') {
 export default LawOfficeManager;
 export { manager };
 
-console.log('🎉 Law Office System v5.0.0 - Fully Modular - Ready');
+Logger.log('🎉 Law Office System v5.0.0 - Fully Modular - Ready');

@@ -41,7 +41,7 @@
 
     log(...args) {
       if (CONFIG.DEBUG) {
-        console.log('[SelectorsManager]', ...args);
+        Logger.log('[SelectorsManager]', ...args);
       }
     }
 
@@ -290,10 +290,10 @@
     toggleFeature: (enabled) => {
       CONFIG.USE_NEW_SELECTORS = enabled;
       selectorsManager.useModernSelector = enabled && !!window.ModernClientCaseSelector;
-      console.log(`🎚️ Modern selectors ${enabled ? 'enabled' : 'disabled'}`);
+      Logger.log(`🎚️ Modern selectors ${enabled ? 'enabled' : 'disabled'}`);
     }
   };
 
-  console.log('✅ SelectorsLoader loaded successfully');
+  Logger.log('✅ SelectorsLoader loaded successfully');
 
 })();

@@ -82,7 +82,7 @@
       this.clientCases = [];
       this.isLoading = false;
 
-      console.log(`✅ ModernClientCaseSelector initialized: ${this.containerId}`);
+      Logger.log(`✅ ModernClientCaseSelector initialized: ${this.containerId}`);
     }
 
     /**
@@ -149,7 +149,7 @@
         this.container.innerHTML = html;
         this.attachEventListeners();
 
-        console.log(`✅ ModernClientCaseSelector rendered: ${this.containerId}`);
+        Logger.log(`✅ ModernClientCaseSelector rendered: ${this.containerId}`);
         return true;
       } catch (error) {
         console.error('❌ Error rendering ModernClientCaseSelector:', error);
@@ -187,7 +187,7 @@
           }
         });
 
-        console.log(`✅ Event listeners attached: ${this.uniqueId}`);
+        Logger.log(`✅ Event listeners attached: ${this.uniqueId}`);
       } catch (error) {
         console.error('❌ Error attaching event listeners:', error);
       }
@@ -264,7 +264,7 @@
           throw new Error('Firebase not connected');
         }
 
-        console.log('📊 Loading clients...');
+        Logger.log('📊 Loading clients...');
 
         // ✅ במבנה החדש Client=Case - רק clients collection
         const clientsSnapshot = await db.collection('clients').get();
@@ -284,7 +284,7 @@
         });
 
         this.allClients = clients;
-        console.log(`✅ Loaded ${this.allClients.length} clients`);
+        Logger.log(`✅ Loaded ${this.allClients.length} clients`);
 
         return this.allClients;
       } catch (error) {
@@ -298,7 +298,7 @@
      */
     async selectClient(clientId, clientName) {
       try {
-        console.log(`🎯 Client selected: ${clientName} (${clientId})`);
+        Logger.log(`🎯 Client selected: ${clientName} (${clientId})`);
 
         this.selectedClient = { id: clientId, name: clientName };
 
@@ -331,7 +331,7 @@
      */
     async loadClientCases(clientId, clientName) {
       try {
-        console.log(`📂 Loading cases for client: ${clientName}`);
+        Logger.log(`📂 Loading cases for client: ${clientName}`);
 
         const db = window.firebaseDB;
         if (!db) {
@@ -362,7 +362,7 @@
         }
 
         this.clientCases = cases;
-        console.log(`✅ Loaded ${cases.length} cases`);
+        Logger.log(`✅ Loaded ${cases.length} cases`);
 
         // Show case selection step
         this.renderCaseSelection();
@@ -406,7 +406,7 @@
           ${optionsHtml}
         `;
 
-        console.log(`✅ Case selection rendered: ${this.clientCases.length} cases`);
+        Logger.log(`✅ Case selection rendered: ${this.clientCases.length} cases`);
       } catch (error) {
         console.error('❌ Error rendering case selection:', error);
       }
@@ -447,7 +447,7 @@
           this.options.onCaseSelected(caseData);
         }
 
-        console.log(`✅ Case selected:`, caseData);
+        Logger.log(`✅ Case selected:`, caseData);
       } catch (error) {
         console.error('❌ Error selecting case:', error);
       }
@@ -532,7 +532,7 @@
           if (input) input.value = '';
         });
 
-        console.log(`✅ Selector cleared: ${this.uniqueId}`);
+        Logger.log(`✅ Selector cleared: ${this.uniqueId}`);
       } catch (error) {
         console.error('❌ Error clearing selector:', error);
       }
@@ -546,7 +546,7 @@
         this.container.innerHTML = '';
       }
       delete window[`modernSelectorInstance_${this.uniqueId}`];
-      console.log(`✅ Selector destroyed: ${this.uniqueId}`);
+      Logger.log(`✅ Selector destroyed: ${this.uniqueId}`);
     }
   }
 
@@ -556,6 +556,6 @@
 
   window.ModernClientCaseSelector = ModernClientCaseSelector;
 
-  console.log('✅ ModernClientCaseSelector loaded successfully');
+  Logger.log('✅ ModernClientCaseSelector loaded successfully');
 
 })();

@@ -207,11 +207,11 @@
 
         // בדיקה: האם הלקוח הזה נבחר כרגע בטופס הזה?
         if (this.selectedClient && this.selectedClient.id === clientId) {
-          console.log(`🔄 [${this.containerId}] Detected new case for selected client. Auto-refreshing...`);
+          Logger.log(`🔄 [${this.containerId}] Detected new case for selected client. Auto-refreshing...`);
 
           // רענון אוטומטי של רשימת התיקים
           this.loadClientCases(clientId, clientName).then(() => {
-            console.log(`✅ [${this.containerId}] Case list refreshed! New case: ${caseNumber}`);
+            Logger.log(`✅ [${this.containerId}] Case list refreshed! New case: ${caseNumber}`);
 
             // הצגת הודעה קטנה לעובד (אופציונלי)
             if (window.NotificationSystem) {
@@ -219,7 +219,7 @@
             }
           });
         } else {
-          console.log(`ℹ️ [${this.containerId}] New case created for different client - no refresh needed`);
+          Logger.log(`ℹ️ [${this.containerId}] New case created for different client - no refresh needed`);
         }
       });
 
@@ -229,7 +229,7 @@
 
         // בדיקה: האם התיק הזה נבחר כרגע בטופס הזה?
         if (this.selectedCase && this.selectedCase.id === caseId) {
-          console.log(`🔄 [${this.containerId}] Detected new service for selected case. Auto-refreshing...`);
+          Logger.log(`🔄 [${this.containerId}] Detected new service for selected case. Auto-refreshing...`);
 
           // רענון אוטומטי של התיק מ-Firebase
           try {
@@ -243,7 +243,7 @@
               // רענון כרטיסיות השירותים
               this.renderServiceCards(updatedCase);
 
-              console.log(`✅ [${this.containerId}] Service cards refreshed! New service: ${serviceName}`);
+              Logger.log(`✅ [${this.containerId}] Service cards refreshed! New service: ${serviceName}`);
 
               // הצגת הודעה קטנה לעובד (אופציונלי)
               if (window.NotificationSystem) {
@@ -254,7 +254,7 @@
             console.error('❌ Error refreshing service cards:', error);
           }
         } else {
-          console.log(`ℹ️ [${this.containerId}] New service added for different case - no refresh needed`);
+          Logger.log(`ℹ️ [${this.containerId}] New service added for different case - no refresh needed`);
         }
       });
     }
@@ -368,7 +368,7 @@
         // הוספת event listeners לכל תוצאה
         // ✅ FIX: שימוש ב-querySelectorAll מיד אחרי innerHTML
         const resultItems = resultsContainer.querySelectorAll('.search-result-item');
-        console.log(`🔧 [${this.containerId}] Adding click listeners to ${resultItems.length} results`);
+        Logger.log(`🔧 [${this.containerId}] Adding click listeners to ${resultItems.length} results`);
 
         resultItems.forEach((item, index) => {
           // Remove inline event handlers and use proper event listeners
@@ -377,13 +377,13 @@
           item.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log(`✅ [${this.containerId}] Click event fired on:`, item.dataset.clientName);
+            Logger.log(`✅ [${this.containerId}] Click event fired on:`, item.dataset.clientName);
             const clientId = item.dataset.clientId;
             const clientName = item.dataset.clientName;
             this.selectClient(clientId, clientName);
           }, { once: false }); // Don't use once: true, we want it to work multiple times
 
-          console.log(`  ✓ Listener ${index + 1} added for:`, item.dataset.clientName);
+          Logger.log(`  ✓ Listener ${index + 1} added for:`, item.dataset.clientName);
         });
 
       } catch (error) {
@@ -404,7 +404,7 @@
      * בחירת לקוח
      */
     async selectClient(clientId, clientName) {
-      console.log(`🎯 selectClient called:`, { clientId, clientName });
+      Logger.log(`🎯 selectClient called:`, { clientId, clientName });
 
       this.selectedClient = { id: clientId, name: clientName };
 
@@ -412,12 +412,12 @@
       const searchInput = document.getElementById(`${this.containerId}_clientSearch`);
       if (searchInput) {
         searchInput.value = `✓ ${clientName}`;
-        console.log(`  ✓ Updated search input to: ✓ ${clientName}`);
+        Logger.log(`  ✓ Updated search input to: ✓ ${clientName}`);
       }
 
       // הסתרת תוצאות החיפוש
       this.hideClientResults();
-      console.log(`  ✓ Hidden client results`);
+      Logger.log(`  ✓ Hidden client results`);
 
       // שמירת clientId
       const clientIdField = document.getElementById(`${this.containerId}_clientId`);
@@ -436,16 +436,16 @@
       }
 
       // טעינת תיקים של הלקוח (חיפוש לפי שם במבנה החדש)
-      console.log(`  🔍 Loading cases for client ${clientName}...`);
+      Logger.log(`  🔍 Loading cases for client ${clientName}...`);
       await this.loadClientCases(clientId, clientName);
-      console.log(`  ✅ selectClient completed`);
+      Logger.log(`  ✅ selectClient completed`);
     }
 
     /**
      * טעינת תיקים של לקוח (במבנה החדש: חיפוש לפי שם)
      */
     async loadClientCases(clientId, clientName) {
-      console.log(`📂 loadClientCases started for clientId: ${clientId}, clientName: ${clientName}`);
+      Logger.log(`📂 loadClientCases started for clientId: ${clientId}, clientName: ${clientName}`);
 
       try {
         const db = window.firebaseDB;
@@ -455,7 +455,7 @@
 
         // ✅ במבנה החדש: Client = Case (one-to-one)
         // חיפוש לפי clientId (document ID) במקום לפי clientName
-        console.log(`  🔍 Querying client by ID: ${clientId}...`);
+        Logger.log(`  🔍 Querying client by ID: ${clientId}...`);
         const clientDoc = await db.collection('clients').doc(clientId).get();
 
         let clientCases = [];
@@ -467,27 +467,27 @@
           });
         }
 
-        console.log(`  📊 Found ${clientCases.length} client/case in Firebase`);
+        Logger.log(`  📊 Found ${clientCases.length} client/case in Firebase`);
 
         // סינון לפי סטטוס (אם נדרש)
         if (this.options.showOnlyActive) {
           const beforeFilter = clientCases.length;
           clientCases = clientCases.filter(c => c.status === 'active');
-          console.log(`  🔍 Filtered by status: ${beforeFilter} → ${clientCases.length} (active only)`);
+          Logger.log(`  🔍 Filtered by status: ${beforeFilter} → ${clientCases.length} (active only)`);
         }
 
         // סינון לפי סוג (אם נדרש)
         if (this.options.filterByType) {
           const beforeFilter = clientCases.length;
           clientCases = clientCases.filter(c => c.procedureType === this.options.filterByType);
-          console.log(`  🔍 Filtered by type: ${beforeFilter} → ${clientCases.length} (${this.options.filterByType} only)`);
+          Logger.log(`  🔍 Filtered by type: ${beforeFilter} → ${clientCases.length} (${this.options.filterByType} only)`);
         }
 
         this.clientCases = clientCases;
-        console.log(`  ✅ Final cases count: ${clientCases.length}`);
+        Logger.log(`  ✅ Final cases count: ${clientCases.length}`);
 
         // בניית dropdown של תיקים
-        console.log(`  🎨 Rendering case dropdown...`);
+        Logger.log(`  🎨 Rendering case dropdown...`);
         this.renderCaseDropdown();
 
       } catch (error) {
@@ -500,12 +500,12 @@
      * בניית dropdown של תיקים
      */
     renderCaseDropdown() {
-      console.log(`🎨 renderCaseDropdown called with ${this.clientCases.length} cases`);
+      Logger.log(`🎨 renderCaseDropdown called with ${this.clientCases.length} cases`);
 
       const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
       const caseGroup = document.getElementById(`${this.containerId}_caseGroup`);
 
-      console.log(`  📍 Elements found:`, { caseSelect: !!caseSelect, caseGroup: !!caseGroup });
+      Logger.log(`  📍 Elements found:`, { caseSelect: !!caseSelect, caseGroup: !!caseGroup });
 
       if (!caseSelect || !caseGroup) {
         console.error(`  ❌ Missing elements! caseSelect: ${!!caseSelect}, caseGroup: ${!!caseGroup}`);
@@ -540,20 +540,20 @@
         ${optionsHtml}
       `;
 
-      console.log(`  ✅ Updated dropdown with ${this.clientCases.length} options`);
+      Logger.log(`  ✅ Updated dropdown with ${this.clientCases.length} options`);
 
       // הצגת הקבוצה
       caseGroup.style.display = 'block';
-      console.log(`  ✅ Case group displayed (display: ${caseGroup.style.display})`);
+      Logger.log(`  ✅ Case group displayed (display: ${caseGroup.style.display})`);
 
       // בחירה אוטומטית אם יש תיק אחד בלבד
       if (this.clientCases.length === 1) {
-        console.log(`  🎯 Auto-selecting single case: ${this.clientCases[0].caseNumber}`);
+        Logger.log(`  🎯 Auto-selecting single case: ${this.clientCases[0].caseNumber}`);
         caseSelect.value = this.clientCases[0].id;
         this.selectCase(this.clientCases[0].id);
       }
 
-      console.log(`  ✅ renderCaseDropdown completed`);
+      Logger.log(`  ✅ renderCaseDropdown completed`);
     }
 
     /**
@@ -598,7 +598,7 @@
         this.renderServiceCards(caseItem);
       } else {
         // ⚠️ אין שירותים - הצג dropdown ומידע על התיק
-        console.log('ℹ️ No active services - showing case dropdown and caseInfo');
+        Logger.log('ℹ️ No active services - showing case dropdown and caseInfo');
 
         // הצגת ה-dropdown של תיקים
         const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
@@ -692,7 +692,7 @@
 
       if (isLegacyCase) {
         // 🏷️ תיק ישן - נציג את התיק עצמו ככרטיס שירות יחיד
-        console.log('🔄 Legacy case detected - showing case as single service card');
+        Logger.log('🔄 Legacy case detected - showing case as single service card');
         const legacyService = {
           id: caseItem.id, // נשתמש ב-caseId כ-serviceId
           name: caseItem.caseTitle || 'תיק ראשי',
@@ -987,7 +987,7 @@
      * שינוי שירות - חזרה לרשימה
      */
     changeService() {
-      console.log(`🔄 Change service requested`);
+      Logger.log(`🔄 Change service requested`);
 
       // איפוס בחירת שירות
       this.selectedService = null;
@@ -1100,6 +1100,6 @@
   // ✅ Export the class itself as a constructor
   window.ClientCaseSelector = ClientCaseSelector;
 
-  console.log('✅ Client-Case Selector Module loaded');
+  Logger.log('✅ Client-Case Selector Module loaded');
 
 })();

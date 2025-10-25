@@ -668,4 +668,4 @@ window.StatisticsCalculator = {
   calculateSmartGoals,
 };
 
-console.log("Statistics Calculator Module loaded successfully");
+Logger.log("Statistics Calculator Module loaded successfully");

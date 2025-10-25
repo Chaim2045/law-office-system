@@ -23,7 +23,7 @@
     return;
   }
 
-  console.log('🔄 Initializing Modals Compatibility Layer...');
+  Logger.log('🔄 Initializing Modals Compatibility Layer...');
 
   // ═══════════════════════════════════════════════════════════════════════
   // CONFIGURATION
@@ -68,7 +68,7 @@
    */
   function debug(message, ...args) {
     if (CONFIG.debug) {
-      console.log('[Compat]', message, ...args);
+      Logger.log('[Compat]', message, ...args);
     }
   }
 
@@ -213,7 +213,7 @@
     global.confirm = ORIGINALS.confirm;
     global.prompt = ORIGINALS.prompt;
 
-    console.log('✅ Original modals restored');
+    Logger.log('✅ Original modals restored');
   };
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -226,16 +226,16 @@
   global.checkModalUsage = function () {
     const report = getUsageReport();
 
-    console.log('📊 Modal Usage Report:');
-    console.log('═══════════════════════════════════════');
-    console.log(`Total calls: ${report.total}`);
-    console.log('Breakdown:');
-    console.log(`  - alert():             ${report.alert}`);
-    console.log(`  - confirm():           ${report.confirm}`);
-    console.log(`  - prompt():            ${report.prompt}`);
-    console.log(`  - showSimpleLoading(): ${report.showSimpleLoading}`);
-    console.log(`  - hideSimpleLoading(): ${report.hideSimpleLoading}`);
-    console.log('═══════════════════════════════════════');
+    Logger.log('📊 Modal Usage Report:');
+    Logger.log('═══════════════════════════════════════');
+    Logger.log(`Total calls: ${report.total}`);
+    Logger.log('Breakdown:');
+    Logger.log(`  - alert():             ${report.alert}`);
+    Logger.log(`  - confirm():           ${report.confirm}`);
+    Logger.log(`  - prompt():            ${report.prompt}`);
+    Logger.log(`  - showSimpleLoading(): ${report.showSimpleLoading}`);
+    Logger.log(`  - hideSimpleLoading(): ${report.hideSimpleLoading}`);
+    Logger.log('═══════════════════════════════════════');
 
     return report;
   };
@@ -297,15 +297,15 @@
       });
     }
 
-    console.log('💡 Migration Recommendations:');
-    console.log('═══════════════════════════════════════');
+    Logger.log('💡 Migration Recommendations:');
+    Logger.log('═══════════════════════════════════════');
     recommendations.forEach((rec, i) => {
-      console.log(`\n${i + 1}. ${rec.type} (${rec.count} usages)`);
-      console.log(`   Priority: ${rec.priority}`);
-      console.log(`   ${rec.recommendation}`);
-      console.log(`   Example:${rec.example}`);
+      Logger.log(`\n${i + 1}. ${rec.type} (${rec.count} usages)`);
+      Logger.log(`   Priority: ${rec.priority}`);
+      Logger.log(`   ${rec.recommendation}`);
+      Logger.log(`   Example:${rec.example}`);
     });
-    console.log('═══════════════════════════════════════');
+    Logger.log('═══════════════════════════════════════');
 
     return recommendations;
   };
@@ -352,6 +352,6 @@ Commands:
     originals: CONFIG.preserveOriginals ? ORIGINALS : null,
   };
 
-  console.log('✅ Modals Compatibility Layer initialized');
+  Logger.log('✅ Modals Compatibility Layer initialized');
 
 })(typeof window !== 'undefined' ? window : global);

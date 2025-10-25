@@ -31,11 +31,11 @@
     for (const moduleName of modules) {
         try {
             await import(`./${moduleName}?v=2.0.0`);
-            console.log(`[VA] Loaded: ${moduleName}`);
+            Logger.log(`[VA] Loaded: ${moduleName}`);
         } catch (error) {
             console.error(`[VA] Failed to load ${moduleName}:`, error);
         }
     }
 
-    console.log('[VA] All modules loaded');
+    Logger.log('[VA] All modules loaded');
 })();

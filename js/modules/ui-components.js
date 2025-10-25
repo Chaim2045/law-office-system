@@ -324,7 +324,7 @@ class ActionFlowManager {
       const remainingTime = minLoadingDuration - elapsedTime;
 
       if (remainingTime > 0) {
-        console.log(`⏱️ Waiting ${remainingTime}ms to reach minimum loading duration...`);
+        Logger.log(`⏱️ Waiting ${remainingTime}ms to reach minimum loading duration...`);
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
 
@@ -373,7 +373,7 @@ class ActionFlowManager {
       const remainingTime = minLoadingDuration - elapsedTime;
 
       if (remainingTime > 0) {
-        console.log(`⏱️ Waiting ${remainingTime}ms even on error...`);
+        Logger.log(`⏱️ Waiting ${remainingTime}ms even on error...`);
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
 
