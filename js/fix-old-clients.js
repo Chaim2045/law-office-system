@@ -230,8 +230,9 @@
     }
   };
 
-  // הוראות שימוש
-  console.log(`
+  // הוראות שימוש (dev mode only)
+  if (!window.PRODUCTION_MODE) {
+    console.log(`
 🔧 Fix Old Clients Tool Loaded!
 
 Usage:
@@ -246,6 +247,7 @@ Example workflow:
   1. await FixOldClients.checkStatus();
   2. await FixOldClients.fixAll({ dryRun: true });  // Test first
   3. await FixOldClients.fixAll();                  // Do it for real
-`);
+    `);
+  }
 
 })();

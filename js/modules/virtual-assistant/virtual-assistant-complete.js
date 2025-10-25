@@ -123,6 +123,9 @@ class Logger {
             this.logs.shift();
         }
 
+        // 🔇 Production mode - no console output
+        if (window.PRODUCTION_MODE !== false) return;
+
         const consoleMethod = level === Logger.LEVELS.ERROR ? 'error' :
                              level === Logger.LEVELS.WARN ? 'warn' : 'log';
         console[consoleMethod](`[VA] ${logEntry.level}: ${message}`, data);

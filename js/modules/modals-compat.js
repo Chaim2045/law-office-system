@@ -314,8 +314,9 @@
   // AUTO-FIX WARNINGS
   // ═══════════════════════════════════════════════════════════════════════
 
-  // Warn about blocking behavior changes
-  console.warn(`
+  // Warn about blocking behavior changes (dev mode only)
+  if (!window.PRODUCTION_MODE) {
+    console.warn(`
 ⚠️  IMPORTANT: Compatibility Layer Loaded
 ════════════════════════════════════════
 
@@ -337,7 +338,8 @@ Commands:
 - restoreOriginalModals()       → Emergency rollback
 
 ════════════════════════════════════════
-  `);
+    `);
+  }
 
   // ═══════════════════════════════════════════════════════════════════════
   // EXPOSE UTILITIES

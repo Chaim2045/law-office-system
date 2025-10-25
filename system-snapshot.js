@@ -349,16 +349,30 @@ window.SystemSnapshot = {
 window._consoleErrors = [];
 const originalError = console.error;
 console.error = function(...args) {
+  const message = args.join(' ');
+
   window._consoleErrors.push({
     timestamp: new Date().toISOString(),
-    message: args.join(' ')
+    message: message
   });
+
+  // 🔇 Production mode - suppress known non-critical errors
+  if (window.PRODUCTION_MODE) {
+    // Suppress Virtual Assistant Analytics errors (permissions)
+    if (message.includes('VirtualAssistant Error') || message.includes('AnalyticsEngine')) {
+      return; // Don't print
+    }
+    // Suppress other known benign errors if needed
+  }
+
   originalError.apply(console, args);
 };
 
-console.log('✅ SystemSnapshot loaded! Available commands:');
-console.log('  • SystemSnapshot.print()         - הצגת snapshot של המצב הנוכחי');
-console.log('  • SystemSnapshot.save("name")    - שמירת snapshot');
-console.log('  • SystemSnapshot.load("name")    - טעינת snapshot');
-console.log('  • SystemSnapshot.compare(s1,s2)  - השוואת snapshots');
-console.log('  • SystemSnapshot.list()          - רשימת snapshots שמורים');
+if (!window.PRODUCTION_MODE) {
+  console.log('✅ SystemSnapshot loaded! Available commands:');
+  console.log('  • SystemSnapshot.print()         - הצגת snapshot של המצב הנוכחי');
+  console.log('  • SystemSnapshot.save("name")    - שמירת snapshot');
+  console.log('  • SystemSnapshot.load("name")    - טעינת snapshot');
+  console.log('  • SystemSnapshot.compare(s1,s2)  - השוואת snapshots');
+  console.log('  • SystemSnapshot.list()          - רשימת snapshots שמורים');
+}

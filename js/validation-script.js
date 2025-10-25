@@ -264,8 +264,9 @@
     }
   };
 
-  // הוראות שימוש
-  console.log(`
+  // הוראות שימוש (dev mode only)
+  if (!window.PRODUCTION_MODE) {
+    console.log(`
 🔧 Validation Script Loaded!
 
 Usage:
@@ -276,6 +277,7 @@ Usage:
 
 Example:
   await ValidationScript.runAll();
-`);
+    `);
+  }
 
 })();

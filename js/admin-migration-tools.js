@@ -142,8 +142,9 @@ window.MigrationTools = {
   }
 };
 
-// הדפסת הוראות שימוש
-console.log(`
+// הדפסת הוראות שימוש (dev mode only)
+if (!window.PRODUCTION_MODE) {
+  console.log(`
 🔧 כלי מיגרציה זמינים:
 
 1️⃣ בדיקת מצב:
@@ -156,4 +157,5 @@ console.log(`
    MigrationTools.runMigration()
 
 💡 מומלץ להריץ בסדר הזה!
-`);
+  `);
+}
