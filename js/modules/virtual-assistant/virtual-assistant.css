@@ -2199,3 +2199,62 @@
     color: var(--va-primary);
     background: rgba(59, 130, 246, 0.05);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KNOWLEDGE BASE EXPAND BUTTON - כפתור מרכז עזרה מלא
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.va-kb-expand-button-container {
+    margin: 16px 20px 24px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+    border: 2px dashed rgba(59, 130, 246, 0.3);
+    border-radius: var(--va-radius);
+    text-align: center;
+}
+
+.va-kb-expand-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, var(--va-primary) 0%, #8b5cf6 100%);
+    color: white;
+    border: none;
+    border-radius: var(--va-radius-sm);
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--va-transition);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    font-family: inherit;
+}
+
+.va-kb-expand-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.va-kb-expand-button svg {
+    flex-shrink: 0;
+}
+
+.va-kb-expand-arrow {
+    margin-right: auto;
+    opacity: 0.8;
+    transition: var(--va-transition);
+}
+
+.va-kb-expand-button:hover .va-kb-expand-arrow {
+    transform: translateX(-4px);
+    opacity: 1;
+}
+
+.va-kb-expand-hint {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--va-text-secondary);
+    line-height: 1.5;
+}

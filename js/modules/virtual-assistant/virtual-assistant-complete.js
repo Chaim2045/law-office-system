@@ -101,7 +101,7 @@ class Logger {
         ERROR: 3
     };
 
-    constructor(minLevel = Logger.LEVELS.INFO) {
+    constructor(minLevel = Logger.LEVELS.WARN) {
         this.minLevel = minLevel;
         this.logs = [];
         this.maxLogs = 500;
@@ -2282,6 +2282,36 @@ class ViewManager {
         `;
 
         container.appendChild(header);
+
+        // 🎓 כפתור "מרכז עזרה מלא" - פתיחת Knowledge Base
+        const kbButton = DOMController.createElement('div', {
+            className: 'va-kb-expand-button-container'
+        });
+        kbButton.innerHTML = `
+            <button class="va-kb-expand-button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>מרכז עזרה מלא</span>
+                <svg class="va-kb-expand-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+            <p class="va-kb-expand-hint">גישה למאמרי עזרה, חיפוש, וקטגוריות נוספות</p>
+        `;
+
+        const expandBtn = kbButton.querySelector('.va-kb-expand-button');
+        expandBtn.addEventListener('click', () => {
+            if (window.knowledgeBase) {
+                window.knowledgeBase.open();
+            } else {
+                console.error('Knowledge Base not available');
+            }
+        });
+
+        container.appendChild(kbButton);
 
         const categories = {};
 

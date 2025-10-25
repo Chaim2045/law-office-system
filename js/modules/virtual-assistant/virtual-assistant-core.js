@@ -105,7 +105,7 @@ class Logger {
         ERROR: 3
     };
 
-    constructor(minLevel = Logger.LEVELS.INFO) {
+    constructor(minLevel = Logger.LEVELS.WARN) {
         this.minLevel = minLevel;
         this.logs = [];
         this.maxLogs = 500;
