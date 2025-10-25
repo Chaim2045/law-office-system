@@ -445,7 +445,7 @@
      * טעינת תיקים של לקוח (במבנה החדש: חיפוש לפי שם)
      */
     async loadClientCases(clientId, clientName) {
-      console.log(`📂 loadClientCases started for clientName: ${clientName}`);
+      console.log(`📂 loadClientCases started for clientId: ${clientId}, clientName: ${clientName}`);
 
       try {
         const db = window.firebaseDB;
@@ -453,22 +453,21 @@
           throw new Error('Firebase לא מחובר');
         }
 
-        // ✅ במבנה החדש: חיפוש clients לפי שם לקוח (כל client = case)
-        console.log(`  🔍 Querying clients by clientName...`);
-        const casesSnapshot = await db.collection('clients')
-          .where('clientName', '==', clientName)
-          .get();
-
-        console.log(`  📊 Found ${casesSnapshot.size} clients/cases in Firebase`);
+        // ✅ במבנה החדש: Client = Case (one-to-one)
+        // חיפוש לפי clientId (document ID) במקום לפי clientName
+        console.log(`  🔍 Querying client by ID: ${clientId}...`);
+        const clientDoc = await db.collection('clients').doc(clientId).get();
 
         let clientCases = [];
-        casesSnapshot.forEach(doc => {
-          const data = doc.data();
+        if (clientDoc.exists) {
+          const data = clientDoc.data();
           clientCases.push({
-            id: doc.id, // במבנה החדש: document ID = caseNumber
+            id: clientDoc.id, // במבנה החדש: document ID = caseNumber
             ...data
           });
-        });
+        }
+
+        console.log(`  📊 Found ${clientCases.length} client/case in Firebase`);
 
         // סינון לפי סטטוס (אם נדרש)
         if (this.options.showOnlyActive) {
