@@ -50,11 +50,19 @@
           return this.clientsCasesCache.get(clientId);
         }
 
-        // טען מה-Firebase
-        const result = await firebase.functions().httpsCallable('getCasesByClient')({ clientId });
+        // במבנה החדש: Client = Case (יחס אחד לאחד)
+        // טען ישירות מ-Firestore
+        const db = firebase.firestore();
+        const clientDoc = await db.collection('clients').doc(clientId).get();
 
-        if (result.data && result.data.success) {
-          const cases = result.data.cases || [];
+        if (clientDoc.exists) {
+          const clientData = clientDoc.data();
+          // במבנה החדש: לקוח = תיק, מחזירים אותו כמערך עם פריט אחד
+          const cases = [{
+            id: clientDoc.id,
+            caseNumber: clientData.caseNumber || clientDoc.id,
+            ...clientData
+          }];
           this.clientsCasesCache.set(clientId, cases);
           return cases;
         }

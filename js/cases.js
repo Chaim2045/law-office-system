@@ -47,14 +47,14 @@
       try {
         console.log('📝 Creating new case:', caseData);
 
-        // קריאה ל-Firebase Function
-        const result = await firebase.functions().httpsCallable('createCase')(caseData);
+        // ✅ במבנה החדש: createClient (Client=Case)
+        const result = await firebase.functions().httpsCallable('createClient')(caseData);
 
         if (!result.data.success) {
           throw new Error(result.data.message || 'שגיאה ביצירת תיק');
         }
 
-        console.log('✅ Case created successfully:', result.data.caseId);
+        console.log('✅ Case created successfully:', result.data.id);
         return result.data;
 
       } catch (error) {
@@ -72,13 +72,14 @@
       try {
         console.log('📋 Fetching cases with filters:', filters);
 
-        const result = await firebase.functions().httpsCallable('getCases')(filters);
+        // ✅ במבנה החדש: getClients (Client=Case)
+        const result = await firebase.functions().httpsCallable('getClients')(filters);
 
         if (!result.data.success) {
           throw new Error(result.data.message || 'שגיאה בשליפת תיקים');
         }
 
-        this.cases = result.data.cases || [];
+        this.cases = result.data.clients || [];
         console.log(`✅ Fetched ${this.cases.length} cases`);
         return this.cases;
 
@@ -97,14 +98,24 @@
       try {
         console.log('📋 Fetching cases for client:', clientId);
 
-        const result = await firebase.functions().httpsCallable('getCasesByClient')({ clientId });
+        // ✅ במבנה החדש Client=Case: לקוח אחד = תיק אחד
+        // פשוט נחזיר את הlokent הזה
+        const db = firebase.firestore();
+        const clientDoc = await db.collection('clients').doc(clientId).get();
 
-        if (!result.data.success) {
-          throw new Error(result.data.message || 'שגיאה בשליפת תיקי לקוח');
+        if (!clientDoc.exists) {
+          throw new Error('לקוח לא נמצא');
         }
 
-        console.log(`✅ Fetched ${result.data.cases.length} cases for client`);
-        return result.data;
+        const clientData = { id: clientDoc.id, ...clientDoc.data() };
+
+        console.log(`✅ Fetched client/case:`, clientId);
+        return {
+          success: true,
+          client: clientData,
+          cases: [clientData], // במבנה החדש: לקוח = תיק
+          totalCases: 1
+        };
 
       } catch (error) {
         console.error('❌ Error fetching client cases:', error);
@@ -125,13 +136,14 @@
 
         // שליפת כל התיקים מ-Firebase
         console.log('📋 Fetching all cases');
-        const result = await firebase.functions().httpsCallable('getCases')({});
+        // ✅ במבנה החדש: getClients (Client=Case)
+        const result = await firebase.functions().httpsCallable('getClients')({});
 
         if (!result.data.success) {
           throw new Error(result.data.message || 'שגיאה בשליפת תיקים');
         }
 
-        this.cases = result.data.cases || [];
+        this.cases = result.data.clients || [];
         console.log(`✅ Fetched ${this.cases.length} cases`);
         return this.cases;
 
@@ -151,8 +163,9 @@
       try {
         console.log('📝 Updating case:', caseId, updates);
 
-        const result = await firebase.functions().httpsCallable('updateCase')({
-          caseId,
+        // במבנה החדש: Client = Case
+        const result = await firebase.functions().httpsCallable('updateClient')({
+          clientId: caseId, // במבנה החדש clientId = caseId
           ...updates
         });
 
@@ -1795,8 +1808,8 @@
           window.NotificationSystem.showLoading('מוסיף שירות...');
         }
 
-        // קריאה ל-Cloud Function addServiceToCase
-        const result = await firebase.functions().httpsCallable('addServiceToCase')(serviceData);
+        // קריאה ל-Cloud Function addServiceToClient (במבנה החדש: Client = Case)
+        const result = await firebase.functions().httpsCallable('addServiceToClient')(serviceData);
 
         if (!result.data.success) {
           throw new Error(result.data.message || 'שגיאה בהוספת שירות');

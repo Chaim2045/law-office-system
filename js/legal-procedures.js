@@ -129,8 +129,8 @@
           throw new Error(validation.errors.join('\n'));
         }
 
-        // קריאה ל-Firebase Function
-        const result = await firebase.functions().httpsCallable('createCase')(procedureData);
+        // קריאה ל-Firebase Function (במבנה החדש: Client = Case)
+        const result = await firebase.functions().httpsCallable('createClient')(procedureData);
 
         if (!result.data.success) {
           throw new Error(result.data.message || 'שגיאה ביצירת הליך משפטי');
@@ -162,19 +162,49 @@
           throw new Error(validation.errors.join('\n'));
         }
 
-        // קריאה ל-Firebase Function
-        const result = await firebase.functions().httpsCallable('addHoursPackageToStage')({
-          caseId,
-          stageId,
-          ...packageData
-        });
+        // במבנה החדש: Client = Case, עדכון ישיר ב-Firestore
+        const db = firebase.firestore();
+        const clientRef = db.collection('clients').doc(caseId);
+        const clientDoc = await clientRef.get();
 
-        if (!result.data.success) {
-          throw new Error(result.data.message || 'שגיאה בהוספת חבילת שעות');
+        if (!clientDoc.exists) {
+          throw new Error('תיק לא נמצא');
         }
 
+        const clientData = clientDoc.data();
+        if (!clientData.stages || !Array.isArray(clientData.stages)) {
+          throw new Error('אין שלבים בתיק זה');
+        }
+
+        // מצא את השלב ועדכן את חבילת השעות
+        const stages = [...clientData.stages];
+        const stageIndex = stages.findIndex(s => s.id === stageId);
+
+        if (stageIndex === -1) {
+          throw new Error('שלב לא נמצא');
+        }
+
+        if (!stages[stageIndex].hoursPackages) {
+          stages[stageIndex].hoursPackages = [];
+        }
+
+        stages[stageIndex].hoursPackages.push({
+          id: Date.now().toString(),
+          hours: packageData.hours,
+          reason: packageData.reason || '',
+          addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          addedBy: firebase.auth().currentUser?.email || 'system'
+        });
+
+        // עדכן את המסמך
+        await clientRef.update({
+          stages: stages,
+          lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastModifiedBy: firebase.auth().currentUser?.email || 'system'
+        });
+
         console.log('✅ Hours package added successfully');
-        return result.data;
+        return { success: true, message: 'חבילת השעות נוספה בהצלחה' };
 
       } catch (error) {
         console.error('❌ Error adding hours package:', error);
@@ -192,17 +222,52 @@
       try {
         console.log('➡️ Moving to next stage:', { caseId, currentStageId });
 
-        const result = await firebase.functions().httpsCallable('moveToNextStage')({
-          caseId,
-          currentStageId
-        });
+        // במבנה החדש: Client = Case, עדכון ישיר ב-Firestore
+        const db = firebase.firestore();
+        const clientRef = db.collection('clients').doc(caseId);
+        const clientDoc = await clientRef.get();
 
-        if (!result.data.success) {
-          throw new Error(result.data.message || 'שגיאה במעבר לשלב הבא');
+        if (!clientDoc.exists) {
+          throw new Error('תיק לא נמצא');
         }
 
+        const clientData = clientDoc.data();
+        if (!clientData.stages || !Array.isArray(clientData.stages)) {
+          throw new Error('אין שלבים בתיק זה');
+        }
+
+        // מצא את השלב הנוכחי והשלב הבא
+        const stages = [...clientData.stages];
+        const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+
+        if (currentStageIndex === -1) {
+          throw new Error('שלב נוכחי לא נמצא');
+        }
+
+        if (currentStageIndex === stages.length - 1) {
+          throw new Error('זהו השלב האחרון');
+        }
+
+        // עדכן סטטוסים
+        stages[currentStageIndex].status = 'completed';
+        stages[currentStageIndex].completedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+        stages[currentStageIndex + 1].status = 'active';
+        stages[currentStageIndex + 1].startedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+        // עדכן את המסמך
+        await clientRef.update({
+          stages: stages,
+          lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastModifiedBy: firebase.auth().currentUser?.email || 'system'
+        });
+
         console.log('✅ Moved to next stage successfully');
-        return result.data;
+        return {
+          success: true,
+          message: 'עבר לשלב הבא בהצלחה',
+          nextStage: stages[currentStageIndex + 1]
+        };
 
       } catch (error) {
         console.error('❌ Error moving to next stage:', error);
@@ -217,13 +282,19 @@
      */
     async getLegalProcedure(caseId) {
       try {
-        const result = await firebase.functions().httpsCallable('getCaseById')({ caseId });
+        // במבנה החדש: Client = Case, שלוף ישירות מ-Firestore
+        const db = firebase.firestore();
+        const clientDoc = await db.collection('clients').doc(caseId).get();
 
-        if (!result.data.success) {
-          throw new Error(result.data.message || 'שגיאה בשליפת הליך משפטי');
+        if (!clientDoc.exists) {
+          throw new Error('הליך משפטי לא נמצא');
         }
 
-        return result.data.case;
+        return {
+          id: clientDoc.id,
+          caseNumber: clientDoc.data().caseNumber || clientDoc.id,
+          ...clientDoc.data()
+        };
 
       } catch (error) {
         console.error('❌ Error fetching legal procedure:', error);
