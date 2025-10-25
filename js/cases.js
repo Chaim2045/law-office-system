@@ -1270,6 +1270,11 @@
           // Show/hide sections
           existingSection.style.display = 'block';
           newSection.style.display = 'none';
+
+          // ✅ ניקוי שדות "לקוח חדש"
+          document.getElementById('newClientName').value = '';
+          document.getElementById('newClientPhone').value = '';
+          document.getElementById('newClientEmail').value = '';
         } else {
           // Style active tab
           newTab.style.background = 'white';
@@ -1285,7 +1290,16 @@
           // Show/hide sections
           existingSection.style.display = 'none';
           newSection.style.display = 'block';
+
+          // ✅ ניקוי שדה "לקוח קיים"
+          const existingClientSelect = document.getElementById('existingClientSelect');
+          if (existingClientSelect) {
+            existingClientSelect.value = '';
+          }
         }
+
+        // ✅ ניקוי שדות משותפים בכל מעבר טאב
+        this.clearCommonFields();
       };
 
       existingTab.addEventListener('click', () => switchToTab('existing'));
@@ -1589,6 +1603,58 @@
       if (dialog) {
         dialog.remove();
       }
+    }
+
+    /**
+     * ניקוי שדות משותפים בטופס (כשעוברים בין טאבים)
+     */
+    clearCommonFields() {
+      // שדות בסיסיים
+      const caseNumberInput = document.getElementById('caseNumber');
+      if (caseNumberInput) {
+        caseNumberInput.value = '';
+        caseNumberInput.style.color = '#6b7280';
+        caseNumberInput.style.fontWeight = 'normal';
+      }
+
+      const caseTitleInput = document.getElementById('caseTitle');
+      if (caseTitleInput) caseTitleInput.value = '';
+
+      const caseDescInput = document.getElementById('caseDescription');
+      if (caseDescInput) caseDescInput.value = '';
+
+      // איפוס סוג הליך לברירת מחדל
+      const procedureTypeSelect = document.getElementById('procedureType');
+      if (procedureTypeSelect) {
+        procedureTypeSelect.value = 'hours';
+        // הפעלת האירוע change כדי להסתיר/להציג sections
+        procedureTypeSelect.dispatchEvent(new Event('change'));
+      }
+
+      // ניקוי שדות שעות
+      const totalHoursInput = document.getElementById('totalHours');
+      if (totalHoursInput) totalHoursInput.value = '';
+
+      // ניקוי שדות הליך משפטי
+      const stageFields = [
+        'stageA_description', 'stageA_hours', 'stageA_fixedPrice',
+        'stageB_description', 'stageB_hours', 'stageB_fixedPrice',
+        'stageC_description', 'stageC_hours', 'stageC_fixedPrice'
+      ];
+
+      stageFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.value = '';
+      });
+
+      // איפוס סוג תמחור
+      const hourlyRadio = document.querySelector('input[name="pricingType"][value="hourly"]');
+      if (hourlyRadio) {
+        hourlyRadio.checked = true;
+        hourlyRadio.dispatchEvent(new Event('change'));
+      }
+
+      console.log('✅ ניקיתי שדות משותפים');
     }
 
     /**
