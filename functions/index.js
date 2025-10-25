@@ -454,6 +454,31 @@ exports.createAuthUser = functions.https.onCall(async (data, context) => {
 // ===============================
 
 /**
+ * 📋 קבלת מספר תיק הבא (לתצוגה מקדימה בממשק)
+ * מחזיר את מספר התיק שיתווסף עבור הלקוח הבא
+ * ⚠️ שים לב: זהו מספר משוער - המספר הסופי נקבע רק בעת יצירת התיק
+ */
+exports.getNextCaseNumber = functions.https.onCall(async (data, context) => {
+  try {
+    // בדיקת הרשאות
+    await checkUserPermissions(context);
+
+    // קבלת מספר התיק הבא
+    const nextCaseNumber = await generateCaseNumber();
+
+    return {
+      success: true,
+      caseNumber: nextCaseNumber,
+      note: 'מספר משוער - עשוי להשתנות אם ייווצרו תיקים נוספים'
+    };
+
+  } catch (error) {
+    console.error('❌ Error getting next case number:', error);
+    throw new functions.https.HttpsError('internal', error.message || 'שגיאה בקבלת מספר תיק');
+  }
+});
+
+/**
  * 🎯 יצירת לקוח חדש (CLIENT = CASE)
  * ✅ NEW ARCHITECTURE: Client ו-Case מאוחדים - מספר תיק הוא ה-Document ID
  */

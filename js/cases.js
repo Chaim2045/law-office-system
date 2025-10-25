@@ -786,14 +786,17 @@
                       <i class="fas fa-hashtag" style="color: #f59e0b; margin-left: 6px;"></i>
                       מספר תיק <span style="color: #ef4444;">*</span>
                     </label>
-                    <input type="text" id="caseNumber" required placeholder="2025/001" style="
+                    <input type="text" id="caseNumber" required readonly placeholder="יתווסף אוטומטית..." style="
                       width: 100%;
                       padding: 12px 16px;
                       border: 2px solid #e5e7eb;
                       border-radius: 8px;
                       font-size: 15px;
+                      background: #f9fafb;
+                      color: #6b7280;
+                      cursor: not-allowed;
                       transition: all 0.2s;
-                    " onfocus="this.style.borderColor='#f59e0b'; this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
+                    ">
                   </div>
 
                   <!-- סוג הליך -->
@@ -1286,7 +1289,22 @@
       };
 
       existingTab.addEventListener('click', () => switchToTab('existing'));
-      newTab.addEventListener('click', () => switchToTab('new'));
+      newTab.addEventListener('click', () => {
+        switchToTab('new');
+        // כשעוברים לטאב "לקוח חדש", טען מספר תיק אוטומטית
+        this.loadNextCaseNumber();
+      });
+
+      // ✅ מילוי מספר תיק אוטומטי כשממלאים שם לקוח
+      const newClientNameInput = document.getElementById('newClientName');
+      if (newClientNameInput) {
+        newClientNameInput.addEventListener('input', (e) => {
+          // אם יש שם לקוח (לפחות 2 תווים), טען מספר תיק
+          if (e.target.value.trim().length >= 2) {
+            this.loadNextCaseNumber();
+          }
+        });
+      }
 
       // Procedure type change
       document.getElementById('procedureType').addEventListener('change', (e) => {
@@ -1574,6 +1592,44 @@
     }
 
     /**
+     * טעינת מספר תיק הבא אוטומטית
+     */
+    async loadNextCaseNumber() {
+      const caseNumberInput = document.getElementById('caseNumber');
+      if (!caseNumberInput) return;
+
+      try {
+        // הצגת loading
+        caseNumberInput.value = 'טוען...';
+        caseNumberInput.style.color = '#9ca3af';
+
+        // קריאה ל-Cloud Function
+        const getNextCaseNumber = firebase.functions().httpsCallable('getNextCaseNumber');
+        const result = await getNextCaseNumber();
+
+        if (result.data && result.data.success) {
+          // מילוי מספר התיק
+          caseNumberInput.value = result.data.caseNumber;
+          caseNumberInput.style.color = '#3b82f6';
+          caseNumberInput.style.fontWeight = '600';
+          console.log(`✅ מספר תיק הבא: ${result.data.caseNumber}`);
+        } else {
+          throw new Error('לא התקבל מספר תיק');
+        }
+
+      } catch (error) {
+        console.error('❌ Error loading next case number:', error);
+        caseNumberInput.value = 'שגיאה';
+        caseNumberInput.style.color = '#ef4444';
+
+        // הצגת הודעת שגיאה
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('שגיאה בטעינת מספר תיק', 2000);
+        }
+      }
+    }
+
+    /**
      * טיפול בשליחת טופס יצירת תיק
      */
     async handleCreateCaseSubmit() {
@@ -1591,7 +1647,7 @@
 
         // מצב רגיל - תיק חדש
         const caseData = {
-          caseNumber: document.getElementById('caseNumber').value.trim(),
+          // ✅ מספר תיק ייווצר אוטומטית בשרת - לא שולחים אותו!
           caseTitle: document.getElementById('caseTitle').value.trim(),
           procedureType: document.getElementById('procedureType').value,
           description: document.getElementById('caseDescription').value.trim()
