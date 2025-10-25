@@ -1835,7 +1835,7 @@
 
         // בניית נתוני השירות
         const serviceData = {
-          caseId: this.currentCase.id,
+          clientId: this.currentCase.id, // במבנה החדש: Client = Case
           serviceType: procedureType,
           serviceName: document.getElementById('caseTitle').value.trim(),
           description: document.getElementById('caseDescription').value.trim()
@@ -1896,13 +1896,14 @@
         // 🔔 שידור אירוע global - מרענן כרטיסיות שירותים (אפס עלות!)
         const serviceAddedEvent = new CustomEvent('serviceAdded', {
           detail: {
-            caseId: serviceData.caseId,
+            caseId: serviceData.clientId, // במבנה החדש: Client = Case
+            clientId: serviceData.clientId,
             serviceId: result.data.serviceId,
             serviceName: serviceData.serviceName
           }
         });
         window.dispatchEvent(serviceAddedEvent);
-        console.log('🔔 Event dispatched: serviceAdded for case', serviceData.caseId);
+        console.log('🔔 Event dispatched: serviceAdded for client', serviceData.clientId);
 
         // ריסט המצב
         this.currentCase = null;
