@@ -112,6 +112,12 @@ export function validateBudgetTaskForm() {
     errors.push("חובה לבחור תיק");
   }
 
+  // ✅ בדיקת סניף מטפל
+  const branch = document.getElementById("budgetBranch")?.value;
+  if (!branch) {
+    errors.push("חובה לבחור סניף מטפל");
+  }
+
   // ✅ בדיקה אם יש dropdown שירותים (במקרה של מספר שירותים)
   const serviceSelectElement = document.getElementById("budgetServiceSelect");
   if (serviceSelectElement && serviceSelectElement.type === 'select-one') {

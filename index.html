@@ -49,13 +49,13 @@
 
         // אופטימיזציות ביצועים + דיכוי לוגים
         db.settings({
-          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+          cacheSizeBytes: 1048576, // 1MB במקום unlimited - פחות חיבורים
           merge: true,
           ignoreUndefinedProperties: true
         });
 
-        // 🔇 Suppress Firestore debug logs (production mode)
-        firebase.firestore.setLogLevel('error'); // Only errors, no warnings
+        // 🔍 Firestore logs - error level (מאפשר לוגים חשובים)
+        firebase.firestore.setLogLevel('error');
 
         // הפוך זמין למערכת
         window.firebaseDB = db;
@@ -81,32 +81,7 @@
         alert("שגיאה בחיבור לFirebase: " + error.message);
       }
 
-      // 🔇 Global Error Handler - Suppress known benign errors
-      window.addEventListener('error', function(e) {
-        // Firestore 400 connection terminations (harmless, network cleanup)
-        if (e.message && e.message.includes('net::ERR_HTTP2_PROTOCOL_ERROR')) {
-          e.preventDefault();
-          return false;
-        }
-        // Suppress other Firestore network warnings
-        if (e.message && (e.message.includes('firestore') || e.message.includes('FIRESTORE'))) {
-          if (e.message.includes('400') || e.message.includes('Failed to fetch')) {
-            e.preventDefault();
-            return false;
-          }
-        }
-      }, true);
-
-      // 🔇 Suppress unhandled promise rejections from Firestore
-      window.addEventListener('unhandledrejection', function(e) {
-        if (e.reason && e.reason.message) {
-          const msg = e.reason.message.toLowerCase();
-          if (msg.includes('firestore') || msg.includes('failed to fetch') || msg.includes('net::err')) {
-            e.preventDefault();
-            return false;
-          }
-        }
-      });
+      // 🔍 מצב פיתוח - כל השגיאות מוצגות (ללא חסימה)
     </script>
 
     <!-- ===== תגי מטא והגדרות בסיסיות ===== -->
@@ -130,8 +105,11 @@
     <!-- New Notification System CSS -->
     <link rel="stylesheet" href="notifications.css?v=1.0.0" />
 
-    <!-- Virtual Assistant Styles -->
-    <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=3.9.0" />
+    <!-- Virtual Assistant Styles - TEMPORARILY DISABLED -->
+    <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=3.9.0" /> -->
+
+    <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
+    <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=2.0.0">
   </head>
 
   <body>
@@ -405,6 +383,21 @@
               <form id="budgetForm">
                 <!-- ✅ NEW: Unified Client-Case Selector -->
                 <div id="budgetClientCaseSelector"></div>
+
+                <!-- שדה סניף מטפל -->
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="budgetBranch"
+                      >סניף מטפל
+                      <span class="category-required">*</span></label
+                    >
+                    <select id="budgetBranch" required>
+                      <option value="">בחר סניף</option>
+                      <option value="רחובות">רחובות</option>
+                      <option value="תל אביב">תל אביב</option>
+                    </select>
+                  </div>
+                </div>
 
                 <div class="form-row">
                   <div class="form-group">
@@ -1022,6 +1015,9 @@
     <!-- Icons System -->
     <script src="js/modules/knowledge-base/kb-icons.js?v=1.0.0"></script>
 
+    <!-- Analytics System -->
+    <script src="js/modules/knowledge-base/kb-analytics.js?v=1.0.0"></script>
+
     <!-- Data -->
     <script src="js/modules/knowledge-base/kb-data.js?v=1.0.0"></script>
 
@@ -1031,8 +1027,14 @@
     <!-- Main Logic -->
     <script src="js/modules/knowledge-base/knowledge-base.js?v=1.0.0"></script>
 
-    <!-- ===== Virtual Assistant 3.9.0 - WITH KNOWLEDGE BASE INTEGRATION ===== -->
-    <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=3.9.0"></script>
+    <!-- ===== Virtual Assistant 3.9.0 - TEMPORARILY DISABLED ===== -->
+    <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=3.9.0"></script> -->
+
+    <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
+    <script src="js/modules/ai-system/ai-config.js?v=2.0.0"></script>
+    <script src="js/modules/ai-system/ai-engine.js?v=2.0.0"></script>
+    <script src="js/modules/ai-system/ai-context-builder.js?v=2.0.0"></script>
+    <script src="js/modules/ai-system/ai-chat-ui.js?v=2.0.0"></script>
 
 
     <!-- OLD: Legacy FAQ Bot (backup) -->

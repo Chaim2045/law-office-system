@@ -102,7 +102,7 @@ class LawOfficeManager {
     // Module Instances
     this.domCache = new DOMCache();
     this.notificationBell = new NotificationBellSystem();
-    this.clientValidation = new ClientValidation();
+    this.clientValidation = new ClientValidation(this); // Pass 'this' as manager
 
     // Activity Logger & Task Actions (initialized after Firebase)
     this.activityLogger = null;
@@ -314,6 +314,19 @@ class LawOfficeManager {
       this.filterBudgetTasks();
       this.filterTimesheetEntries();
 
+      // 🔄 Update client validation and selectors (for old system)
+      if (this.clientValidation) {
+        this.clientValidation.updateBlockedClients();
+      }
+
+      // 🔄 Refresh all active client-case selectors with fresh data
+      await this.refreshAllClientCaseSelectors();
+
+      // 🔄 Refresh CasesModule if it has a current case open
+      if (window.CasesModule && typeof window.CasesModule.refreshCurrentCase === 'function') {
+        await window.CasesModule.refreshCurrentCase();
+      }
+
       // Update notifications bell with urgent tasks and critical clients
       if (this.notificationBell) {
         const urgentTasks = budgetTasks.filter(task => {
@@ -340,13 +353,44 @@ class LawOfficeManager {
   }
 
   /**
+   * Refresh all client-case selector instances with fresh data
+   */
+  async refreshAllClientCaseSelectors() {
+    const instances = window.clientCaseSelectorInstances || {};
+    const instanceKeys = Object.keys(instances);
+
+    if (instanceKeys.length === 0) {
+      return; // אין selectors פעילים
+    }
+
+    Logger.log(`🔄 Refreshing ${instanceKeys.length} client-case selector(s)...`);
+
+    const refreshPromises = instanceKeys.map(key => {
+      const instance = instances[key];
+      if (instance && typeof instance.refreshSelectedCase === 'function') {
+        return instance.refreshSelectedCase();
+      }
+      return Promise.resolve();
+    });
+
+    try {
+      await Promise.all(refreshPromises);
+      Logger.log(`✅ All client-case selectors refreshed`);
+    } catch (error) {
+      console.error('❌ Error refreshing client-case selectors:', error);
+    }
+  }
+
+  /**
    * Reload data from Firebase
    */
   async loadDataFromFirebase() {
     window.showSimpleLoading('טוען נתונים מחדש...');
 
     try {
+      // loadData() already refreshes all selectors
       await this.loadData();
+
       this.showNotification('הנתונים עודכנו בהצלחה', 'success');
     } catch (error) {
       this.showNotification('שגיאה בטעינת נתונים', 'error');
@@ -395,6 +439,13 @@ class LawOfficeManager {
       return;
     }
 
+    // ✅ Get branch value
+    const branch = document.getElementById('budgetBranch')?.value;
+    if (!branch) {
+      this.showNotification('חובה לבחור סניף מטפל', 'error');
+      return;
+    }
+
     // ✅ NEW: Use ActionFlowManager for consistent UX
     await ActionFlowManager.execute({
       loadingMessage: 'שומר משימה...',
@@ -408,6 +459,7 @@ class LawOfficeManager {
           caseTitle: selectorValues.caseTitle,
           serviceId: selectorValues.serviceId,  // ✅ שירות/שלב נבחר
           serviceName: selectorValues.serviceName,  // ✅ שם השירות
+          branch: branch,  // ✅ סניף מטפל
           estimatedMinutes: estimatedMinutes,
           deadline: deadline,
           employee: this.currentUser,
@@ -896,7 +948,7 @@ class LawOfficeManager {
         // Call Firebase Function
         await window.extendTaskDeadlineFirebase(taskId, newDate, reason);
 
-        // Reload tasks
+        // Reload tasks (loadData() already refreshes all selectors)
         await this.loadData();
         this.filterBudgetTasks();
       },
@@ -946,8 +998,8 @@ class LawOfficeManager {
           date: workDate
         });
 
-        // טעינה מחדש של משימות
-        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
+        // 🔧 תיקון: טעינה מחדש של כל הנתונים (loadData() refreshes selectors automatically)
+        await this.loadData();  // טוען clients + budgetTasks + timesheet + מרענן selectors
         this.filterBudgetTasks();
       },
       successMessage: '✅ הזמן נוסף למשימה ונרשם בשעתון',
