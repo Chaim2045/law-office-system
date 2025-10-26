@@ -944,14 +944,14 @@
           position: absolute;
           top: 14px;
           left: 14px;
-          padding: 6px 12px;
+          padding: 5px 10px;
           background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          font-size: 11px;
+          border: 1px solid #93c5fd;
+          border-radius: 5px;
+          font-size: 10px;
           font-weight: 600;
-          color: #475569;
-          letter-spacing: 0.5px;
+          color: #3b82f6;
+          letter-spacing: 0.3px;
         ">
           #${this.escapeHtml(caseItem.caseNumber)}
         </div>
@@ -1186,12 +1186,13 @@
           position: absolute;
           top: 16px;
           right: 16px;
-          padding: 6px 12px;
-          background: #f1f5f9;
-          border-radius: 6px;
-          font-size: 11px;
+          padding: 5px 10px;
+          background: #f8fafc;
+          border: 1px solid #93c5fd;
+          border-radius: 5px;
+          font-size: 10px;
           font-weight: 600;
-          color: #64748b;
+          color: #3b82f6;
           letter-spacing: 0.3px;
         ">
           תיק ${this.escapeHtml(this.selectedCase.caseNumber)}
