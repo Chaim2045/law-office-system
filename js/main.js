@@ -14,6 +14,7 @@
 // Core Utilities & State Management
 import * as CoreUtils from './modules/core-utils.js';
 import { DOMCache } from './modules/dom-cache.js';
+import DataCache from './modules/data-cache.js';
 
 // Notification System
 import { NotificationBellSystem } from './modules/notification-bell.js';
@@ -72,23 +73,23 @@ class LawOfficeManager {
     this.timesheetEntries = [];
     this.connectionStatus = "unknown";
 
-    // View State
-    this.currentTaskFilter = "active"; // Show only active tasks by default (completed tasks hidden)
-    this.currentTimesheetFilter = "month";
-    this.currentBudgetView = "cards";
-    this.currentTimesheetView = "table";
+    // View State - ✅ Load from localStorage if available
+    this.currentTaskFilter = localStorage.getItem('taskFilter') || "active"; // Show only active tasks by default
+    this.currentTimesheetFilter = localStorage.getItem('timesheetFilter') || "month";
+    this.currentBudgetView = localStorage.getItem('budgetView') || "cards";
+    this.currentTimesheetView = localStorage.getItem('timesheetView') || "table";
 
     // Filtered Data
     this.filteredBudgetTasks = [];
     this.filteredTimesheetEntries = [];
 
-    // Sorting State
+    // Sorting State - ✅ Load from localStorage if available
     this.budgetSortField = null;
     this.budgetSortDirection = "asc";
     this.timesheetSortField = null;
     this.timesheetSortDirection = "asc";
-    this.currentBudgetSort = "recent";
-    this.currentTimesheetSort = "recent";
+    this.currentBudgetSort = localStorage.getItem('budgetSort') || "recent";
+    this.currentTimesheetSort = localStorage.getItem('timesheetSort') || "recent";
 
     // Pagination State
     this.currentBudgetPage = 1;
@@ -98,6 +99,22 @@ class LawOfficeManager {
 
     // Welcome Screen Timing
     this.welcomeScreenStartTime = null;
+
+    // ✅ Operation Locks - prevent race conditions
+    this.isTaskOperationInProgress = false;
+    this.isTimesheetOperationInProgress = false;
+
+    // ✅ Data Cache - Smart caching with Stale-While-Revalidate
+    this.dataCache = new DataCache({
+      maxAge: 5 * 60 * 1000,           // 5 minutes fresh
+      staleAge: 10 * 60 * 1000,        // 10 minutes stale (15 min total)
+      staleWhileRevalidate: true,      // Return stale + refresh in background
+      storage: 'memory',               // Use memory (faster than localStorage)
+      debug: false,                    // Set to true for debugging
+      onError: (error) => {
+        Logger.log('❌ [DataCache] Error:', error);
+      }
+    });
 
     // Module Instances
     this.domCache = new DOMCache();
@@ -212,6 +229,19 @@ class LawOfficeManager {
       actionDate.value = new Date().toISOString().split("T")[0];
     }
 
+    // ✅ Budget search box - live text search with debouncing
+    const budgetSearchBox = document.getElementById("budgetSearchBox");
+    if (budgetSearchBox) {
+      // Debounce search to avoid excessive filtering (300ms delay)
+      const debouncedSearch = CoreUtils.debounce((searchTerm) => {
+        this.searchBudgetTasks(searchTerm);
+      }, 300);
+
+      budgetSearchBox.addEventListener("input", (e) => {
+        debouncedSearch(e.target.value);
+      });
+    }
+
     Logger.log('✅ Event listeners configured');
   }
 
@@ -276,11 +306,18 @@ class LawOfficeManager {
       // Initialize Firebase
       FirebaseOps.initializeFirebase();
 
-      // Load all data in parallel
+      // ✅ Load all data in parallel with smart caching
+      // First load: Fetch from Firebase and cache
+      // Second load (< 5 min): Return from cache immediately (fast!)
+      // Third load (5-15 min): Return stale cache + refresh in background
       const [clients, budgetTasks, timesheetEntries] = await Promise.all([
-        FirebaseOps.loadClientsFromFirebase(),
-        FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser),
-        FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
+        this.dataCache.get('clients', () => FirebaseOps.loadClientsFromFirebase()),
+        this.dataCache.get(`budgetTasks:${this.currentUser}`, () =>
+          FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+        ),
+        this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
+          FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
+        )
       ]);
 
       this.clients = clients;
@@ -388,8 +425,16 @@ class LawOfficeManager {
     window.showSimpleLoading('טוען נתונים מחדש...');
 
     try {
+      // ✅ Clear cache to force fresh data (manual refresh = bypass cache)
+      this.dataCache.clear();
+      Logger.log('🔄 Cache cleared - forcing fresh data from Firebase');
+
       // loadData() already refreshes all selectors
       await this.loadData();
+
+      // ✅ Log cache statistics
+      const stats = this.dataCache.getStats();
+      Logger.log('📊 Cache stats:', stats);
 
       this.showNotification('הנתונים עודכנו בהצלחה', 'success');
     } catch (error) {
@@ -411,13 +456,22 @@ class LawOfficeManager {
      ======================================== */
 
   async addBudgetTask() {
-    // ✅ NEW: Get values from ClientCaseSelector
-    const selectorValues = window.ClientCaseSelectorsManager?.getBudgetValues();
-
-    if (!selectorValues) {
-      this.showNotification('חובה לבחור לקוח ותיק', 'error');
+    // ✅ Prevent race conditions - block if operation already in progress
+    if (this.isTaskOperationInProgress) {
+      this.showNotification('אנא המתן לסיום הפעולה הקודמת', 'warning');
       return;
     }
+
+    this.isTaskOperationInProgress = true;
+
+    try {
+      // ✅ NEW: Get values from ClientCaseSelector
+      const selectorValues = window.ClientCaseSelectorsManager?.getBudgetValues();
+
+      if (!selectorValues) {
+        this.showNotification('חובה לבחור לקוח ותיק', 'error');
+        return;
+      }
 
     // Validate other form fields
     const description = document.getElementById("budgetDescription")?.value?.trim();
@@ -446,52 +500,99 @@ class LawOfficeManager {
       return;
     }
 
-    // ✅ NEW: Use ActionFlowManager for consistent UX
-    await ActionFlowManager.execute({
-      loadingMessage: 'שומר משימה...',
-      action: async () => {
-        const taskData = {
-          description: description,
-          clientName: selectorValues.clientName,
-          clientId: selectorValues.clientId,
-          caseId: selectorValues.caseId,
-          caseNumber: selectorValues.caseNumber,
-          caseTitle: selectorValues.caseTitle,
-          serviceId: selectorValues.serviceId,  // ✅ שירות/שלב נבחר
-          serviceName: selectorValues.serviceName,  // ✅ שם השירות
-          branch: branch,  // ✅ סניף מטפל
-          estimatedMinutes: estimatedMinutes,
-          deadline: deadline,
-          employee: this.currentUser,
-          status: 'active',
-          timeSpent: 0,
-          timeEntries: [],
-          createdAt: new Date()
-        };
+      // ✅ NEW: Use ActionFlowManager for consistent UX
+      await ActionFlowManager.execute({
+        loadingMessage: 'שומר משימה...',
+        action: async () => {
+          const taskData = {
+            description: description,
+            clientName: selectorValues.clientName,
+            clientId: selectorValues.clientId,
+            caseId: selectorValues.caseId,
+            caseNumber: selectorValues.caseNumber,
+            caseTitle: selectorValues.caseTitle,
+            serviceId: selectorValues.serviceId,  // ✅ שירות/שלב נבחר
+            serviceName: selectorValues.serviceName,  // ✅ שם השירות
+            branch: branch,  // ✅ סניף מטפל
+            estimatedMinutes: estimatedMinutes,
+            deadline: deadline,
+            employee: this.currentUser,
+            status: 'active',
+            timeSpent: 0,
+            timeEntries: [],
+            createdAt: new Date()
+          };
 
-        Logger.log('📝 Creating budget task with data:', taskData);
+          Logger.log('📝 Creating budget task with data:', taskData);
 
-        await FirebaseOps.saveBudgetTaskToFirebase(taskData);
+          await FirebaseOps.saveBudgetTaskToFirebase(taskData);
 
-        // Reload tasks
-        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
-        this.filterBudgetTasks();
-      },
-      successMessage: 'המשימה נוספה בהצלחה',
-      errorMessage: 'שגיאה בהוספת משימה',
-      onSuccess: () => {
-        // Clear form and hide
-        Forms.clearBudgetForm(this);
-        document.getElementById("budgetFormContainer")?.classList.add("hidden");
+          // ✅ Invalidate cache to force fresh data on next load
+          this.dataCache.invalidate(`budgetTasks:${this.currentUser}`);
 
-        // Remove active class from plus button
-        const plusButton = document.getElementById("smartPlusBtn");
-        if (plusButton) plusButton.classList.remove("active");
+          // Reload tasks with cache (will fetch fresh because invalidated)
+          this.budgetTasks = await this.dataCache.get(`budgetTasks:${this.currentUser}`, () =>
+            FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+          );
+          this.filterBudgetTasks();
+        },
+        successMessage: 'המשימה נוספה בהצלחה',
+        errorMessage: 'שגיאה בהוספת משימה',
+        onSuccess: () => {
+          // Clear form and hide
+          Forms.clearBudgetForm(this);
+          document.getElementById("budgetFormContainer")?.classList.add("hidden");
 
-        // Clear selector
-        window.ClientCaseSelectorsManager?.clearBudget();
-      }
+          // Remove active class from plus button
+          const plusButton = document.getElementById("smartPlusBtn");
+          if (plusButton) plusButton.classList.remove("active");
+
+          // Clear selector
+          window.ClientCaseSelectorsManager?.clearBudget();
+        }
+      });
+    } finally {
+      // ✅ Always release the lock
+      this.isTaskOperationInProgress = false;
+    }
+  }
+
+  /**
+   * Search budget tasks by text
+   * חיפוש משימות לפי טקסט חופשי
+   * @param {string} searchTerm - מונח החיפוש
+   */
+  searchBudgetTasks(searchTerm) {
+    const trimmed = searchTerm.toLowerCase().trim();
+
+    // אם ריק - הצג הכל לפי הפילטר הנוכחי
+    if (!trimmed) {
+      this.filterBudgetTasks();
+      return;
+    }
+
+    // תחילה - סנן לפי הפילטר הרגיל (active/completed/all)
+    const baseFiltered = Search.filterBudgetTasks(this.budgetTasks, this.currentTaskFilter);
+
+    // אחר כך - חיפוש טקסט בתוך התוצאות
+    this.filteredBudgetTasks = baseFiltered.filter(task => {
+      return (
+        // חיפוש בתיאור המשימה
+        task.description?.toLowerCase().includes(trimmed) ||
+        task.taskDescription?.toLowerCase().includes(trimmed) ||
+        // חיפוש בשם הלקוח
+        task.clientName?.toLowerCase().includes(trimmed) ||
+        // חיפוש במספר תיק
+        task.caseNumber?.toLowerCase().includes(trimmed) ||
+        task.fileNumber?.toLowerCase().includes(trimmed) ||
+        // חיפוש בשם השירות
+        task.serviceName?.toLowerCase().includes(trimmed) ||
+        // חיפוש בכותרת התיק
+        task.caseTitle?.toLowerCase().includes(trimmed)
+      );
     });
+
+    this.renderBudgetView();
   }
 
   filterBudgetTasks() {
@@ -499,6 +600,8 @@ class LawOfficeManager {
     const filterSelect = document.getElementById('taskFilter');
     if (filterSelect) {
       this.currentTaskFilter = filterSelect.value;
+      // ✅ Save to localStorage
+      localStorage.setItem('taskFilter', this.currentTaskFilter);
     }
 
     const filterValue = this.currentTaskFilter;
@@ -510,6 +613,10 @@ class LawOfficeManager {
     // Get value from event or direct value (backward compatibility)
     const sortValue = event?.target?.value || event;
     this.currentBudgetSort = sortValue;
+
+    // ✅ Save to localStorage
+    localStorage.setItem('budgetSort', sortValue);
+
     this.filteredBudgetTasks = Search.sortBudgetTasks(this.filteredBudgetTasks, sortValue);
     this.renderBudgetView();
   }
@@ -540,6 +647,8 @@ class LawOfficeManager {
   }
 
   switchBudgetView(view) {
+    // ✅ Save to localStorage
+    localStorage.setItem('budgetView', view);
     this.currentBudgetView = view;
 
     // Update view tabs
@@ -606,8 +715,13 @@ class LawOfficeManager {
 
         await FirebaseOps.saveTimesheetToFirebase(entryData);
 
-        // Reload entries
-        this.timesheetEntries = await FirebaseOps.loadTimesheetFromFirebase(this.currentUser);
+        // ✅ Invalidate cache to force fresh data on next load
+        this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
+
+        // Reload entries with cache (will fetch fresh because invalidated)
+        this.timesheetEntries = await this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
+          FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
+        );
         this.filterTimesheetEntries();
       },
       successMessage: '✅ הפעילות הפנימית נרשמה בהצלחה',
@@ -1155,6 +1269,33 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
 // ===== CRITICAL: Expose manager globally for HTML onclick handlers =====
 window.manager = manager;
 window.LawOfficeManager = LawOfficeManager;
+
+// ✅ Global cache utilities for debugging
+window.getCacheStats = () => {
+  const stats = manager.dataCache.getStats();
+  console.log('📊 Data Cache Statistics:');
+  console.log('━'.repeat(50));
+  console.log(`✅ Cache Hits: ${stats.hits}`);
+  console.log(`❌ Cache Misses: ${stats.misses}`);
+  console.log(`🔄 Background Revalidations: ${stats.revalidations}`);
+  console.log(`⚠️  Errors: ${stats.errors}`);
+  console.log(`📦 Cache Size: ${stats.size} entries`);
+  console.log(`📈 Hit Rate: ${stats.hitRate}%`);
+  console.log('━'.repeat(50));
+  return stats;
+};
+
+window.clearCache = () => {
+  const count = manager.dataCache.clear();
+  console.log(`🗑️  Cache cleared: ${count} entries removed`);
+  return count;
+};
+
+window.invalidateCache = (key) => {
+  const found = manager.dataCache.invalidate(key);
+  console.log(found ? `✅ Cache invalidated: ${key}` : `⚠️  Key not found: ${key}`);
+  return found;
+};
 
 // Initialize application when DOM is ready
 if (document.readyState === 'loading') {

@@ -256,6 +256,11 @@ async function loadTimesheetFromFirebase(employee) {
  */
 async function saveBudgetTaskToFirebase(taskData) {
   try {
+    // ✅ Check internet connection first
+    if (!navigator.onLine) {
+      throw new Error('אין חיבור לאינטרנט. אנא בדוק את החיבור ונסה שוב.');
+    }
+
     // Call Firebase Function for secure validation and creation
     const result = await callFunction('createBudgetTask', taskData);
 
@@ -266,6 +271,20 @@ async function saveBudgetTaskToFirebase(taskData) {
     return result.taskId;
   } catch (error) {
     console.error("Firebase error:", error);
+
+    // ✅ Provide better error messages
+    if (error.message?.includes('אין חיבור לאינטרנט')) {
+      throw error; // Pass through our custom message
+    }
+
+    if (error.code === 'unavailable' || error.message?.includes('network')) {
+      throw new Error('בעיית תקשורת עם השרת. אנא בדוק את החיבור ונסה שוב.');
+    }
+
+    if (error.code === 'permission-denied') {
+      throw new Error('אין לך הרשאה לבצע פעולה זו.');
+    }
+
     throw error;
   }
 }
@@ -275,6 +294,11 @@ async function saveBudgetTaskToFirebase(taskData) {
  */
 async function saveTimesheetToFirebase(entryData) {
   try {
+    // ✅ Check internet connection first
+    if (!navigator.onLine) {
+      throw new Error('אין חיבור לאינטרנט. אנא בדוק את החיבור ונסה שוב.');
+    }
+
     // Call Firebase Function for secure validation and creation
     const result = await callFunction('createTimesheetEntry', entryData);
 
@@ -285,6 +309,20 @@ async function saveTimesheetToFirebase(entryData) {
     return result.entryId;
   } catch (error) {
     console.error("Firebase error:", error);
+
+    // ✅ Provide better error messages
+    if (error.message?.includes('אין חיבור לאינטרנט')) {
+      throw error;
+    }
+
+    if (error.code === 'unavailable' || error.message?.includes('network')) {
+      throw new Error('בעיית תקשורת עם השרת. אנא בדוק את החיבור ונסה שוב.');
+    }
+
+    if (error.code === 'permission-denied') {
+      throw new Error('אין לך הרשאה לבצע פעולה זו.');
+    }
+
     throw error;
   }
 }
