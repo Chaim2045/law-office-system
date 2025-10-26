@@ -943,7 +943,7 @@
         <div style="
           position: absolute;
           top: 12px;
-          right: 12px;
+          left: 12px;
           padding: 5px 10px;
           background: #f8fafc;
           border: 1px solid #93c5fd;
@@ -1185,7 +1185,7 @@
         <div style="
           position: absolute;
           top: 12px;
-          right: 12px;
+          left: 12px;
           padding: 5px 10px;
           background: #f8fafc;
           border: 1px solid #93c5fd;
