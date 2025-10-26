@@ -1467,10 +1467,10 @@
           let serviceType = '';
 
           if (service.type === 'hours') {
-            const hours = service.hoursRemaining || 0;
+            const hours = window.calculateRemainingHours(service);
             const totalHours = service.totalHours || 0;
             serviceType = 'תוכנית שעות';
-            serviceInfo = `${hours}/${totalHours} שעות`;
+            serviceInfo = `${hours.toFixed(1)}/${totalHours} שעות`;
           } else if (service.type === 'legal_procedure') {
             serviceType = 'הליך משפטי';
             serviceInfo = 'הליך משפטי';
@@ -1592,6 +1592,51 @@
         if (gridParent) {
           gridParent.insertAdjacentHTML('afterend', infoHTML);
         }
+      }
+    }
+
+    /**
+     * רענון התיק הנוכחי מ-Firebase (עבור טאב "לקוח קיים")
+     * נקרא אחרי loadData() כדי לעדכן שעות נותרות
+     */
+    async refreshCurrentCase() {
+      // אם אין תיק נוכחי - אין מה לרענן
+      if (!this.currentCase || !this.currentCase.id) {
+        return;
+      }
+
+      try {
+        Logger.log(`🔄 [CasesModule] Refreshing current case: ${this.currentCase.id}`);
+
+        // שליפת נתונים עדכניים מ-Firebase
+        const caseDoc = await firebase.firestore()
+          .collection('clients')
+          .doc(this.currentCase.id)
+          .get();
+
+        if (caseDoc.exists) {
+          const freshData = { id: caseDoc.id, ...caseDoc.data() };
+
+          // עדכון התיק בזיכרון
+          this.currentCase = freshData;
+
+          // עדכון התצוגה
+          const existingInfo = document.getElementById('existingCaseInfo');
+          if (existingInfo) {
+            // מצא את clientId מה-dropdown
+            const clientSelect = document.getElementById('existingClientSelect');
+            const clientId = clientSelect?.value;
+
+            if (clientId) {
+              // הצגה מחדש עם הנתונים העדכניים
+              this.showExistingCaseInfo(freshData, clientId);
+            }
+          }
+
+          Logger.log(`✅ [CasesModule] Case refreshed with updated data`);
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing current case:', error);
       }
     }
 
@@ -1920,8 +1965,85 @@
             return;
           }
           serviceData.hours = totalHours;
+        } else if (procedureType === 'legal_procedure') {
+          // קריאת סוג תמחור
+          const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
+          serviceData.pricingType = pricingType;
+
+          // וולידציה והכנת שלבים
+          const stages = [];
+
+          // שלב א
+          const stageA_desc = document.getElementById('stageA_description').value.trim();
+          if (!stageA_desc || stageA_desc.length < 2) {
+            alert('שלב א: אנא הזן תיאור השלב (לפחות 2 תווים)');
+            return;
+          }
+
+          if (pricingType === 'hourly') {
+            const stageA_hours = parseInt(document.getElementById('stageA_hours').value);
+            if (!stageA_hours || stageA_hours < 1) {
+              alert('שלב א: אנא הזן תקרת שעות תקינה');
+              return;
+            }
+            stages.push({ description: stageA_desc, hours: stageA_hours });
+          } else {
+            const stageA_fixedPrice = parseInt(document.getElementById('stageA_fixedPrice').value);
+            if (!stageA_fixedPrice || stageA_fixedPrice < 1) {
+              alert('שלב א: אנא הזן מחיר פיקס תקין');
+              return;
+            }
+            stages.push({ description: stageA_desc, fixedPrice: stageA_fixedPrice });
+          }
+
+          // שלב ב
+          const stageB_desc = document.getElementById('stageB_description').value.trim();
+          if (!stageB_desc || stageB_desc.length < 2) {
+            alert('שלב ב: אנא הזן תיאור השלב (לפחות 2 תווים)');
+            return;
+          }
+
+          if (pricingType === 'hourly') {
+            const stageB_hours = parseInt(document.getElementById('stageB_hours').value);
+            if (!stageB_hours || stageB_hours < 1) {
+              alert('שלב ב: אנא הזן תקרת שעות תקינה');
+              return;
+            }
+            stages.push({ description: stageB_desc, hours: stageB_hours });
+          } else {
+            const stageB_fixedPrice = parseInt(document.getElementById('stageB_fixedPrice').value);
+            if (!stageB_fixedPrice || stageB_fixedPrice < 1) {
+              alert('שלב ב: אנא הזן מחיר פיקס תקין');
+              return;
+            }
+            stages.push({ description: stageB_desc, fixedPrice: stageB_fixedPrice });
+          }
+
+          // שלב ג
+          const stageC_desc = document.getElementById('stageC_description').value.trim();
+          if (!stageC_desc || stageC_desc.length < 2) {
+            alert('שלב ג: אנא הזן תיאור השלב (לפחות 2 תווים)');
+            return;
+          }
+
+          if (pricingType === 'hourly') {
+            const stageC_hours = parseInt(document.getElementById('stageC_hours').value);
+            if (!stageC_hours || stageC_hours < 1) {
+              alert('שלב ג: אנא הזן תקרת שעות תקינה');
+              return;
+            }
+            stages.push({ description: stageC_desc, hours: stageC_hours });
+          } else {
+            const stageC_fixedPrice = parseInt(document.getElementById('stageC_fixedPrice').value);
+            if (!stageC_fixedPrice || stageC_fixedPrice < 1) {
+              alert('שלב ג: אנא הזן מחיר פיקס תקין');
+              return;
+            }
+            stages.push({ description: stageC_desc, fixedPrice: stageC_fixedPrice });
+          }
+
+          serviceData.stages = stages;
         }
-        // TODO: תמיכה ב-legal_procedure בעתיד
 
         Logger.log('📝 Adding service to case:', serviceData);
 
