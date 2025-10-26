@@ -1401,6 +1401,14 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
     // ✅ כל עובד יכול ליצור משימות עבור כל לקוח במשרד
     // אין צורך בבדיקת הרשאות נוספת
 
+    // ✅ בדיקת סניף מטפל
+    if (!data.branch || typeof data.branch !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חובה לבחור סניף מטפל'
+      );
+    }
+
     console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
 
     const taskData = {
@@ -1410,6 +1418,7 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
       serviceId: data.serviceId || null, // ✅ תמיכה בבחירת שירות ספציפי
       serviceName: data.serviceName || null, // ✅ שם השירות
+      branch: sanitizeString(data.branch.trim()), // ✅ סניף מטפל
       estimatedHours: estimatedHours,
       estimatedMinutes: estimatedMinutes,
       actualHours: 0,
