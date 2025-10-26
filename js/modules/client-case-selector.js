@@ -14,6 +14,97 @@
   'use strict';
 
   class ClientCaseSelector {
+    // 🎯 Global Cache + Real-time Sync
+    static clientsCache = null;
+    static cacheInitialized = false;
+    static cacheListener = null;
+
+    /**
+     * אתחול cache עם real-time listener
+     * נקרא פעם אחת בלבד עבור כל ה-instances
+     */
+    static async initializeCache() {
+      if (ClientCaseSelector.cacheInitialized) {
+        return; // כבר מאותחל
+      }
+
+      const db = window.firebaseDB;
+      if (!db) {
+        console.error('❌ Firebase לא מחובר - לא ניתן לאתחל cache');
+        return;
+      }
+
+      Logger.log('🔄 Initializing clients cache with real-time sync...');
+
+      // טעינה ראשונית
+      ClientCaseSelector.clientsCache = [];
+
+      // 🎯 Snapshot listener - מעדכן את ה-cache בזמן אמת
+      ClientCaseSelector.cacheListener = db.collection('clients').onSnapshot(
+        (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            const doc = change.doc;
+            const data = doc.data();
+            const fullName = data.fullName || data.clientName;
+
+            if (change.type === 'added') {
+              // לקוח חדש נוסף
+              if (fullName) {
+                ClientCaseSelector.clientsCache.push({
+                  id: doc.id,
+                  fullName: fullName,
+                  phone: data.phone || data.phoneNumber,
+                  caseNumber: doc.id
+                });
+              }
+            }
+
+            if (change.type === 'modified') {
+              // לקוח עודכן
+              const index = ClientCaseSelector.clientsCache.findIndex(c => c.id === doc.id);
+              if (index !== -1 && fullName) {
+                ClientCaseSelector.clientsCache[index] = {
+                  id: doc.id,
+                  fullName: fullName,
+                  phone: data.phone || data.phoneNumber,
+                  caseNumber: doc.id
+                };
+              }
+            }
+
+            if (change.type === 'removed') {
+              // לקוח נמחק
+              const index = ClientCaseSelector.clientsCache.findIndex(c => c.id === doc.id);
+              if (index !== -1) {
+                ClientCaseSelector.clientsCache.splice(index, 1);
+              }
+            }
+          });
+
+          Logger.log(`✅ Clients cache updated: ${ClientCaseSelector.clientsCache.length} clients`);
+        },
+        (error) => {
+          console.error('❌ Error in clients cache listener:', error);
+        }
+      );
+
+      ClientCaseSelector.cacheInitialized = true;
+      Logger.log('✅ Clients cache initialized with real-time sync');
+    }
+
+    /**
+     * ניקוי cache (לשימוש במקרה של logout או refresh)
+     */
+    static cleanupCache() {
+      if (ClientCaseSelector.cacheListener) {
+        ClientCaseSelector.cacheListener(); // unsubscribe
+        ClientCaseSelector.cacheListener = null;
+      }
+      ClientCaseSelector.clientsCache = null;
+      ClientCaseSelector.cacheInitialized = false;
+      Logger.log('🗑️ Clients cache cleaned up');
+    }
+
     /**
      * יצירת selector חדש
      * @param {string} containerId - ID של הקונטיינר להכנסת ה-selector
@@ -48,6 +139,9 @@
       // ✅ Register this instance globally for onclick handlers
       window.clientCaseSelectorInstances = window.clientCaseSelectorInstances || {};
       window.clientCaseSelectorInstances[containerId] = this;
+
+      // 🎯 Initialize cache (פעם אחת עבור כל ה-instances)
+      ClientCaseSelector.initializeCache();
 
       this.render();
       this.attachEventListeners();
@@ -260,7 +354,7 @@
     }
 
     /**
-     * חיפוש לקוחות
+     * חיפוש לקוחות (עם cache + real-time sync)
      */
     async searchClients(query) {
       const resultsContainer = document.getElementById(`${this.containerId}_clientResults`);
@@ -276,32 +370,22 @@
       }
 
       try {
-        // ✅ טעינה ישירה מ-Firebase - הכי אמין
+        // 🚀 חיפוש מהיר ב-cache (אפס Firebase reads!)
+        if (!ClientCaseSelector.clientsCache) {
+          // Cache עדיין לא מוכן - נחכה
+          resultsContainer.innerHTML = `
+            <div style="padding: 16px; text-align: center; color: #6b7280;">
+              <i class="fas fa-spinner fa-spin"></i> טוען נתונים...
+            </div>
+          `;
+          resultsContainer.style.display = 'block';
 
-        const db = window.firebaseDB;
-        if (!db) {
-          throw new Error('Firebase לא מחובר');
+          // נסה שוב אחרי שנייה
+          setTimeout(() => this.searchClients(query), 500);
+          return;
         }
 
-        // ✅ במבנה החדש Client=Case - רק clients collection
-        const clientsSnapshot = await db.collection('clients').get();
-
-        // ✅ במבנה החדש: כל client = case אחד
-        const clients = [];
-        clientsSnapshot.forEach(doc => {
-          const data = doc.data();
-          const fullName = data.fullName || data.clientName;
-          if (fullName) {
-            clients.push({
-              id: doc.id, // זה ה-caseNumber (document ID)
-              fullName: fullName,
-              phone: data.phone || data.phoneNumber,
-              caseNumber: doc.id // במבנה החדש, document ID = caseNumber
-            });
-          }
-        });
-
-        if (clients.length === 0) {
+        if (ClientCaseSelector.clientsCache.length === 0) {
           console.warn('⚠️ לא נמצאו לקוחות במערכת');
           resultsContainer.innerHTML = `
             <div style="padding: 16px; text-align: center; color: #ef4444;">
@@ -314,8 +398,8 @@
           return;
         }
 
-        // סינון לקוחות לפי שם
-        const matches = clients.filter(client => {
+        // 🎯 חיפוש מהיר בזיכרון - ללא Firebase reads!
+        const matches = ClientCaseSelector.clientsCache.filter(client => {
           if (!client.fullName) return false;
           return client.fullName.includes(query);
         });
@@ -740,17 +824,57 @@
      */
     createServiceCard(service, type, pricingType = 'hourly', caseItem = null) {
       const serviceId = service.id;
-      let icon, title, subtitle, badge;
+      let iconClass, title, subtitle, statsHtml;
 
       if (type === 'hours') {
-        // תוכנית שעות
-        icon = '💼';
+        // תוכנית שעות - חישוב מחבילות (Single Source of Truth)
+        iconClass = 'fa-briefcase';
         title = 'תוכנית שעות';
         subtitle = service.name;
-        badge = `✅ ${service.hoursRemaining || 0} שעות נותרות`;
+
+        const hoursRemaining = window.calculateRemainingHours(service);
+        const totalHours = service.totalHours || 90; // fallback
+        const hoursUsed = totalHours - hoursRemaining;
+        const progressPercent = Math.round((hoursUsed / totalHours) * 100);
+
+        statsHtml = `
+          <div style="margin-top: 16px;">
+            <!-- Progress Bar -->
+            <div style="
+              background: #f1f5f9;
+              height: 6px;
+              border-radius: 3px;
+              overflow: hidden;
+              margin-bottom: 12px;
+            ">
+              <div style="
+                width: ${progressPercent}%;
+                height: 100%;
+                background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+                transition: width 0.3s ease;
+              "></div>
+            </div>
+
+            <!-- Stats Row -->
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 13px;
+            ">
+              <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
+                <i class="fas fa-clock" style="font-size: 12px;"></i>
+                <span>${hoursRemaining.toFixed(1)} שעות</span>
+              </div>
+              <div style="color: #64748b; font-size: 12px;">
+                ${progressPercent}% בשימוש
+              </div>
+            </div>
+          </div>
+        `;
       } else if (type === 'legal_procedure') {
         // הליך משפטי
-        icon = '⚖️';
+        iconClass = 'fa-balance-scale';
         const stageName = service.id === 'stage_a' ? "שלב א'" :
                          service.id === 'stage_b' ? "שלב ב'" :
                          service.id === 'stage_c' ? "שלב ג'" : service.name;
@@ -758,27 +882,78 @@
         subtitle = service.description || service.name;
 
         if (pricingType === 'hourly') {
-          badge = `✅ ${service.hoursRemaining || 0} שעות נותרות`;
+          const hoursRemaining = window.calculateRemainingHours(service);
+          const totalHours = service.totalHours || 0;
+          const hoursUsed = totalHours - hoursRemaining;
+          const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
+
+          statsHtml = `
+            <div style="margin-top: 16px;">
+              <div style="
+                background: #f1f5f9;
+                height: 6px;
+                border-radius: 3px;
+                overflow: hidden;
+                margin-bottom: 12px;
+              ">
+                <div style="
+                  width: ${progressPercent}%;
+                  height: 100%;
+                  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+                "></div>
+              </div>
+              <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+              ">
+                <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
+                  <i class="fas fa-clock" style="font-size: 12px;"></i>
+                  <span>${hoursRemaining.toFixed(1)} שעות</span>
+                </div>
+                <div style="color: #64748b; font-size: 12px;">
+                  ${progressPercent}% בשימוש
+                </div>
+              </div>
+            </div>
+          `;
         } else {
-          badge = '💰 מחיר פיקס';
+          statsHtml = `
+            <div style="margin-top: 16px;">
+              <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 12px;
+                background: #f0fdf4;
+                border-radius: 8px;
+                border: 1px solid #86efac;
+              ">
+                <i class="fas fa-check-circle" style="color: #22c55e; font-size: 14px;"></i>
+                <span style="color: #166534; font-weight: 500; font-size: 13px;">מחיר פיקס</span>
+              </div>
+            </div>
+          `;
         }
       }
 
-      // 🏷️ מספר תיק כbadge מעוגל
+      // מספר תיק - עיצוב מודרני
       const caseNumberBadge = caseItem && caseItem.caseNumber ? `
         <div style="
           position: absolute;
-          top: 12px;
-          left: 12px;
-          padding: 4px 10px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 20px;
+          top: 14px;
+          left: 14px;
+          padding: 6px 12px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
           font-size: 11px;
           font-weight: 600;
-          color: white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          color: #475569;
+          letter-spacing: 0.5px;
         ">
-          📋 ${this.escapeHtml(caseItem.caseNumber)}
+          #${this.escapeHtml(caseItem.caseNumber)}
         </div>
       ` : '';
 
@@ -789,37 +964,59 @@
           data-service-type="${type}"
           onclick="window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(serviceId)}', '${type}')"
           style="
-            padding: 16px;
-            padding-top: 40px;
+            padding: 20px;
+            padding-top: 48px;
             background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
           "
-          onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.15)'; this.style.transform='translateY(-2px)';"
-          onmouseout="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'; this.style.transform='translateY(0)';"
+          onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 8px 24px rgba(59, 130, 246, 0.12)'; this.style.transform='translateY(-4px)';"
+          onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 3px rgba(0, 0, 0, 0.05)'; this.style.transform='translateY(0)';"
         >
           ${caseNumberBadge}
-          <div style="font-size: 24px; margin-bottom: 8px;">${icon}</div>
-          <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 14px;">
-            ${this.escapeHtml(title)}
+
+          <!-- Icon & Title -->
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <div style="
+              width: 40px;
+              height: 40px;
+              background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              flex-shrink: 0;
+            ">
+              <i class="fas ${iconClass}" style="color: white; font-size: 18px;"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; color: #0f172a; font-size: 15px; line-height: 1.3;">
+                ${this.escapeHtml(title)}
+              </div>
+            </div>
           </div>
-          <div style="color: #6b7280; font-size: 13px; margin-bottom: 12px; min-height: 32px;">
+
+          <!-- Subtitle -->
+          <div style="
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 4px;
+            min-height: 40px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          ">
             ${this.escapeHtml(subtitle)}
           </div>
-          <div style="
-            padding: 6px 12px;
-            background: #f0f9ff;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #0369a1;
-            text-align: center;
-          ">
-            ${badge}
-          </div>
+
+          <!-- Stats/Progress -->
+          ${statsHtml}
         </div>
       `;
     }
@@ -868,15 +1065,55 @@
       const servicesCards = document.getElementById(`${this.containerId}_servicesCards`);
       if (!servicesCards) return;
 
-      let icon, title, subtitle, badge;
+      let iconClass, title, subtitle, statsHtml;
 
       if (type === 'hours') {
-        icon = '💼';
+        iconClass = 'fa-briefcase';
         title = 'תוכנית שעות';
         subtitle = serviceData.name;
-        badge = `✅ ${serviceData.hoursRemaining || 0} שעות נותרות`;
+
+        const hoursRemaining = window.calculateRemainingHours(serviceData);
+        const totalHours = serviceData.totalHours || 90;
+        const hoursUsed = totalHours - hoursRemaining;
+        const progressPercent = Math.round((hoursUsed / totalHours) * 100);
+
+        statsHtml = `
+          <div style="margin-top: 16px;">
+            <!-- Progress Bar -->
+            <div style="
+              background: #f1f5f9;
+              height: 6px;
+              border-radius: 3px;
+              overflow: hidden;
+              margin-bottom: 12px;
+            ">
+              <div style="
+                width: ${progressPercent}%;
+                height: 100%;
+                background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+                transition: width 0.3s ease;
+              "></div>
+            </div>
+
+            <!-- Stats Row -->
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 13px;
+            ">
+              <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
+                <i class="fas fa-clock" style="font-size: 12px;"></i>
+                <span>${hoursRemaining.toFixed(1)} שעות נותרות</span>
+              </div>
+              <div style="color: #64748b; font-size: 12px;">
+                ${progressPercent}% בשימוש
+              </div>
+            </div>
+          </div>
+        `;
       } else if (type === 'legal_procedure') {
-        icon = '⚖️';
+        iconClass = 'fa-balance-scale';
         const stageName = serviceData.id === 'stage_a' ? "שלב א'" :
                          serviceData.id === 'stage_b' ? "שלב ב'" :
                          serviceData.id === 'stage_c' ? "שלב ג'" : serviceData.name;
@@ -884,30 +1121,84 @@
         subtitle = serviceData.description || serviceData.name;
 
         if (this.selectedCase.pricingType === 'hourly') {
-          badge = `✅ ${serviceData.hoursRemaining || 0} שעות נותרות`;
+          const hoursRemaining = window.calculateRemainingHours(serviceData);
+          const totalHours = serviceData.totalHours || 90;
+          const hoursUsed = totalHours - hoursRemaining;
+          const progressPercent = Math.round((hoursUsed / totalHours) * 100);
+
+          statsHtml = `
+            <div style="margin-top: 16px;">
+              <!-- Progress Bar -->
+              <div style="
+                background: #f1f5f9;
+                height: 6px;
+                border-radius: 3px;
+                overflow: hidden;
+                margin-bottom: 12px;
+              ">
+                <div style="
+                  width: ${progressPercent}%;
+                  height: 100%;
+                  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+                  transition: width 0.3s ease;
+                "></div>
+              </div>
+
+              <!-- Stats Row -->
+              <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+              ">
+                <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
+                  <i class="fas fa-clock" style="font-size: 12px;"></i>
+                  <span>${hoursRemaining.toFixed(1)} שעות</span>
+                </div>
+                <div style="color: #64748b; font-size: 12px;">
+                  ${progressPercent}% בשימוש
+                </div>
+              </div>
+            </div>
+          `;
         } else {
-          badge = '💰 מחיר פיקס';
+          statsHtml = `
+            <div style="margin-top: 16px;">
+              <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 12px;
+                background: #f8fafc;
+                border-radius: 8px;
+              ">
+                <i class="fas fa-dollar-sign" style="color: #10b981; font-size: 14px;"></i>
+                <span style="color: #0f172a; font-weight: 600; font-size: 14px;">מחיר פיקס</span>
+              </div>
+            </div>
+          `;
         }
       }
 
-      // 🏷️ מספר תיק
+      // 🏷️ מספר תיק - Tech Minimalist style
       const caseNumberBadge = this.selectedCase && this.selectedCase.caseNumber ? `
         <div style="
-          display: inline-block;
-          padding: 6px 14px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 20px;
-          font-size: 12px;
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          padding: 6px 12px;
+          background: #f1f5f9;
+          border-radius: 6px;
+          font-size: 11px;
           font-weight: 600;
-          color: white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-          margin-bottom: 12px;
+          color: #64748b;
+          letter-spacing: 0.3px;
         ">
-          📋 ${this.escapeHtml(this.selectedCase.caseNumber)}
+          תיק ${this.escapeHtml(this.selectedCase.caseNumber)}
         </div>
       ` : '';
 
-      // תצוגה נקייה - רק הכרטיס הנבחר + כפתור
+      // תצוגה נקייה - Tech Minimalist selected state
       servicesCards.innerHTML = `
         <div style="
           display: flex;
@@ -928,31 +1219,47 @@
 
           <div style="
             padding: 20px;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border: 3px solid #3b82f6;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(59,130,246,0.2);
+            padding-top: 48px;
+            background: white;
+            border: 2px solid #3b82f6;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            position: relative;
           ">
             ${caseNumberBadge}
-            <div style="font-size: 32px; margin-bottom: 12px;">${icon}</div>
-            <div style="font-weight: 700; color: #1e40af; margin-bottom: 6px; font-size: 16px;">
-              ${this.escapeHtml(title)}
+
+            <!-- Icon & Title -->
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+              <div style="
+                width: 40px;
+                height: 40px;
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+              ">
+                <i class="fas ${iconClass}" style="color: white; font-size: 18px;"></i>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 600; color: #0f172a; font-size: 15px; line-height: 1.3;">
+                  ${this.escapeHtml(title)}
+                </div>
+              </div>
             </div>
-            <div style="color: #0369a1; font-size: 14px; margin-bottom: 16px;">
+
+            <!-- Subtitle -->
+            <div style="
+              color: #64748b;
+              font-size: 13px;
+              line-height: 1.5;
+              margin-bottom: 4px;
+            ">
               ${this.escapeHtml(subtitle)}
             </div>
-            <div style="
-              padding: 8px 16px;
-              background: white;
-              border-radius: 8px;
-              font-size: 13px;
-              font-weight: 600;
-              color: #0369a1;
-              text-align: center;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            ">
-              ${badge}
-            </div>
+
+            ${statsHtml}
           </div>
 
           <button
@@ -1045,6 +1352,50 @@
     }
 
     /**
+     * רענון נתוני התיק הנבחר מ-Firebase
+     * נקרא אחרי loadData() כדי לעדכן שעות נותרות
+     */
+    async refreshSelectedCase() {
+      // אם אין תיק נבחר - אין מה לרענן
+      if (!this.selectedCase || !this.selectedCase.id) {
+        return;
+      }
+
+      try {
+        const db = window.firebaseDB;
+        if (!db) {
+          console.warn('⚠️ Firebase לא זמין לרענון');
+          return;
+        }
+
+        Logger.log(`🔄 [${this.containerId}] Refreshing selected case: ${this.selectedCase.id}`);
+
+        // שליפת נתונים עדכניים מ-Firebase
+        const caseDoc = await db.collection('clients').doc(this.selectedCase.id).get();
+
+        if (caseDoc.exists) {
+          const freshData = { id: caseDoc.id, ...caseDoc.data() };
+
+          // עדכון התיק בזיכרון
+          this.selectedCase = freshData;
+
+          // עדכון גם ב-clientCases (אם קיים שם)
+          const caseIndex = this.clientCases.findIndex(c => c.id === this.selectedCase.id);
+          if (caseIndex !== -1) {
+            this.clientCases[caseIndex] = freshData;
+          }
+
+          // רענון התצוגה
+          this.renderServiceCards(freshData);
+
+          Logger.log(`✅ [${this.containerId}] Case refreshed with updated data`);
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing selected case:', error);
+      }
+    }
+
+    /**
      * איפוס הקומפוננטה
      */
     reset() {
@@ -1100,6 +1451,9 @@
   // ✅ Export the class itself as a constructor
   window.ClientCaseSelector = ClientCaseSelector;
 
-  Logger.log('✅ Client-Case Selector Module loaded');
+  // ✅ Export cleanup function for logout/refresh scenarios
+  window.cleanupClientCaseCache = ClientCaseSelector.cleanupCache;
+
+  Logger.log('✅ Client-Case Selector Module loaded (with real-time cache)');
 
 })();
