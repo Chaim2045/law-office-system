@@ -838,14 +838,14 @@
         const progressPercent = Math.round((hoursUsed / totalHours) * 100);
 
         statsHtml = `
-          <div style="margin-top: 16px;">
+          <div style="margin-top: 12px;">
             <!-- Progress Bar -->
             <div style="
               background: #f1f5f9;
-              height: 6px;
-              border-radius: 3px;
+              height: 5px;
+              border-radius: 2.5px;
               overflow: hidden;
-              margin-bottom: 12px;
+              margin-bottom: 10px;
             ">
               <div style="
                 width: ${progressPercent}%;
@@ -860,13 +860,13 @@
               display: flex;
               justify-content: space-between;
               align-items: center;
-              font-size: 13px;
+              font-size: 12px;
             ">
-              <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
-                <i class="fas fa-clock" style="font-size: 12px;"></i>
+              <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
+                <i class="fas fa-clock" style="font-size: 11px;"></i>
                 <span>${hoursRemaining.toFixed(1)} שעות</span>
               </div>
-              <div style="color: #64748b; font-size: 12px;">
+              <div style="color: #64748b; font-size: 11px;">
                 ${progressPercent}% בשימוש
               </div>
             </div>
@@ -888,13 +888,13 @@
           const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
 
           statsHtml = `
-            <div style="margin-top: 16px;">
+            <div style="margin-top: 12px;">
               <div style="
                 background: #f1f5f9;
-                height: 6px;
-                border-radius: 3px;
+                height: 5px;
+                border-radius: 2.5px;
                 overflow: hidden;
-                margin-bottom: 12px;
+                margin-bottom: 10px;
               ">
                 <div style="
                   width: ${progressPercent}%;
@@ -906,13 +906,13 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                font-size: 13px;
+                font-size: 12px;
               ">
-                <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
-                  <i class="fas fa-clock" style="font-size: 12px;"></i>
+                <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
+                  <i class="fas fa-clock" style="font-size: 11px;"></i>
                   <span>${hoursRemaining.toFixed(1)} שעות</span>
                 </div>
-                <div style="color: #64748b; font-size: 12px;">
+                <div style="color: #64748b; font-size: 11px;">
                   ${progressPercent}% בשימוש
                 </div>
               </div>
@@ -920,18 +920,18 @@
           `;
         } else {
           statsHtml = `
-            <div style="margin-top: 16px;">
+            <div style="margin-top: 12px;">
               <div style="
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                padding: 10px 12px;
+                gap: 6px;
+                padding: 8px 10px;
                 background: #f0fdf4;
-                border-radius: 8px;
+                border-radius: 6px;
                 border: 1px solid #86efac;
               ">
-                <i class="fas fa-check-circle" style="color: #22c55e; font-size: 14px;"></i>
-                <span style="color: #166534; font-weight: 500; font-size: 13px;">מחיר פיקס</span>
+                <i class="fas fa-check-circle" style="color: #22c55e; font-size: 12px;"></i>
+                <span style="color: #166534; font-weight: 500; font-size: 12px;">מחיר פיקס</span>
               </div>
             </div>
           `;
@@ -942,8 +942,8 @@
       const caseNumberBadge = caseItem && caseItem.caseNumber ? `
         <div style="
           position: absolute;
-          top: 14px;
-          left: 14px;
+          top: 12px;
+          left: 12px;
           padding: 5px 10px;
           background: #f8fafc;
           border: 1px solid #93c5fd;
@@ -964,8 +964,8 @@
           data-service-type="${type}"
           onclick="window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(serviceId)}', '${type}')"
           style="
-            padding: 20px;
-            padding-top: 48px;
+            padding: 15px;
+            padding-top: 40px;
             background: white;
             border: 1.5px solid #e2e8f0;
             border-radius: 10px;
@@ -980,10 +980,10 @@
           ${caseNumberBadge}
 
           <!-- Icon & Title -->
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
             <div style="
-              width: 40px;
-              height: 40px;
+              width: 36px;
+              height: 36px;
               background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
               border-radius: 8px;
               display: flex;
@@ -991,10 +991,10 @@
               justify-content: center;
               flex-shrink: 0;
             ">
-              <i class="fas ${iconClass}" style="color: white; font-size: 18px;"></i>
+              <i class="fas ${iconClass}" style="color: white; font-size: 16px;"></i>
             </div>
             <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 600; color: #0f172a; font-size: 15px; line-height: 1.3;">
+              <div style="font-weight: 600; color: #0f172a; font-size: 14px; line-height: 1.3;">
                 ${this.escapeHtml(title)}
               </div>
             </div>
@@ -1003,10 +1003,10 @@
           <!-- Subtitle -->
           <div style="
             color: #64748b;
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1.5;
-            margin-bottom: 4px;
-            min-height: 40px;
+            margin-bottom: 3px;
+            min-height: 32px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
@@ -1078,14 +1078,14 @@
         const progressPercent = Math.round((hoursUsed / totalHours) * 100);
 
         statsHtml = `
-          <div style="margin-top: 16px;">
+          <div style="margin-top: 12px;">
             <!-- Progress Bar -->
             <div style="
               background: #f1f5f9;
-              height: 6px;
-              border-radius: 3px;
+              height: 5px;
+              border-radius: 2.5px;
               overflow: hidden;
-              margin-bottom: 12px;
+              margin-bottom: 10px;
             ">
               <div style="
                 width: ${progressPercent}%;
@@ -1100,13 +1100,13 @@
               display: flex;
               justify-content: space-between;
               align-items: center;
-              font-size: 13px;
+              font-size: 12px;
             ">
-              <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
-                <i class="fas fa-clock" style="font-size: 12px;"></i>
+              <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
+                <i class="fas fa-clock" style="font-size: 11px;"></i>
                 <span>${hoursRemaining.toFixed(1)} שעות נותרות</span>
               </div>
-              <div style="color: #64748b; font-size: 12px;">
+              <div style="color: #64748b; font-size: 11px;">
                 ${progressPercent}% בשימוש
               </div>
             </div>
@@ -1127,14 +1127,14 @@
           const progressPercent = Math.round((hoursUsed / totalHours) * 100);
 
           statsHtml = `
-            <div style="margin-top: 16px;">
+            <div style="margin-top: 12px;">
               <!-- Progress Bar -->
               <div style="
                 background: #f1f5f9;
-                height: 6px;
-                border-radius: 3px;
+                height: 5px;
+                border-radius: 2.5px;
                 overflow: hidden;
-                margin-bottom: 12px;
+                margin-bottom: 10px;
               ">
                 <div style="
                   width: ${progressPercent}%;
@@ -1149,13 +1149,13 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                font-size: 13px;
+                font-size: 12px;
               ">
-                <div style="display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
-                  <i class="fas fa-clock" style="font-size: 12px;"></i>
+                <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
+                  <i class="fas fa-clock" style="font-size: 11px;"></i>
                   <span>${hoursRemaining.toFixed(1)} שעות</span>
                 </div>
-                <div style="color: #64748b; font-size: 12px;">
+                <div style="color: #64748b; font-size: 11px;">
                   ${progressPercent}% בשימוש
                 </div>
               </div>
@@ -1163,17 +1163,17 @@
           `;
         } else {
           statsHtml = `
-            <div style="margin-top: 16px;">
+            <div style="margin-top: 12px;">
               <div style="
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                padding: 12px;
+                gap: 6px;
+                padding: 10px;
                 background: #f8fafc;
-                border-radius: 8px;
+                border-radius: 6px;
               ">
-                <i class="fas fa-dollar-sign" style="color: #10b981; font-size: 14px;"></i>
-                <span style="color: #0f172a; font-weight: 600; font-size: 14px;">מחיר פיקס</span>
+                <i class="fas fa-dollar-sign" style="color: #10b981; font-size: 12px;"></i>
+                <span style="color: #0f172a; font-weight: 600; font-size: 12px;">מחיר פיקס</span>
               </div>
             </div>
           `;
@@ -1184,8 +1184,8 @@
       const caseNumberBadge = this.selectedCase && this.selectedCase.caseNumber ? `
         <div style="
           position: absolute;
-          top: 16px;
-          right: 16px;
+          top: 12px;
+          right: 12px;
           padding: 5px 10px;
           background: #f8fafc;
           border: 1px solid #93c5fd;
@@ -1219,8 +1219,8 @@
           </div>
 
           <div style="
-            padding: 20px;
-            padding-top: 48px;
+            padding: 15px;
+            padding-top: 40px;
             background: white;
             border: 2px solid #3b82f6;
             border-radius: 10px;
@@ -1230,10 +1230,10 @@
             ${caseNumberBadge}
 
             <!-- Icon & Title -->
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
               <div style="
-                width: 40px;
-                height: 40px;
+                width: 36px;
+                height: 36px;
                 background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
                 border-radius: 8px;
                 display: flex;
@@ -1241,10 +1241,10 @@
                 justify-content: center;
                 flex-shrink: 0;
               ">
-                <i class="fas ${iconClass}" style="color: white; font-size: 18px;"></i>
+                <i class="fas ${iconClass}" style="color: white; font-size: 16px;"></i>
               </div>
               <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 600; color: #0f172a; font-size: 15px; line-height: 1.3;">
+                <div style="font-weight: 600; color: #0f172a; font-size: 14px; line-height: 1.3;">
                   ${this.escapeHtml(title)}
                 </div>
               </div>
@@ -1253,9 +1253,9 @@
             <!-- Subtitle -->
             <div style="
               color: #64748b;
-              font-size: 13px;
+              font-size: 12px;
               line-height: 1.5;
-              margin-bottom: 4px;
+              margin-bottom: 3px;
             ">
               ${this.escapeHtml(subtitle)}
             </div>
