@@ -1741,6 +1741,87 @@
     }
 
     /**
+     * בניית ו-validation של שלבי הליך משפטי
+     * 🎯 Single Source of Truth - פונקציה משותפת לכל המקרים
+     * @param {string} pricingType - סוג תמחור: 'hourly' או 'fixed'
+     * @returns {Array|null} מערך שלבים או null במקרה של שגיאה
+     */
+    validateAndBuildLegalProcedureStages(pricingType) {
+      const stages = [];
+
+      // שלב א'
+      const stageA_desc = document.getElementById('stageA_description').value.trim();
+      if (!stageA_desc || stageA_desc.length < 2) {
+        alert('שלב א: אנא הזן תיאור השלב (לפחות 2 תווים)');
+        return null;
+      }
+
+      if (pricingType === 'hourly') {
+        const stageA_hours = parseInt(document.getElementById('stageA_hours').value);
+        if (!stageA_hours || stageA_hours < 1) {
+          alert('שלב א: אנא הזן תקרת שעות תקינה');
+          return null;
+        }
+        stages.push({ description: stageA_desc, hours: stageA_hours });
+      } else {
+        const stageA_fixedPrice = parseInt(document.getElementById('stageA_fixedPrice').value);
+        if (!stageA_fixedPrice || stageA_fixedPrice < 1) {
+          alert('שלב א: אנא הזן מחיר פיקס תקין');
+          return null;
+        }
+        stages.push({ description: stageA_desc, fixedPrice: stageA_fixedPrice });
+      }
+
+      // שלב ב'
+      const stageB_desc = document.getElementById('stageB_description').value.trim();
+      if (!stageB_desc || stageB_desc.length < 2) {
+        alert('שלב ב: אנא הזן תיאור השלב (לפחות 2 תווים)');
+        return null;
+      }
+
+      if (pricingType === 'hourly') {
+        const stageB_hours = parseInt(document.getElementById('stageB_hours').value);
+        if (!stageB_hours || stageB_hours < 1) {
+          alert('שלב ב: אנא הזן תקרת שעות תקינה');
+          return null;
+        }
+        stages.push({ description: stageB_desc, hours: stageB_hours });
+      } else {
+        const stageB_fixedPrice = parseInt(document.getElementById('stageB_fixedPrice').value);
+        if (!stageB_fixedPrice || stageB_fixedPrice < 1) {
+          alert('שלב ב: אנא הזן מחיר פיקס תקין');
+          return null;
+        }
+        stages.push({ description: stageB_desc, fixedPrice: stageB_fixedPrice });
+      }
+
+      // שלב ג'
+      const stageC_desc = document.getElementById('stageC_description').value.trim();
+      if (!stageC_desc || stageC_desc.length < 2) {
+        alert('שלב ג: אנא הזן תיאור השלב (לפחות 2 תווים)');
+        return null;
+      }
+
+      if (pricingType === 'hourly') {
+        const stageC_hours = parseInt(document.getElementById('stageC_hours').value);
+        if (!stageC_hours || stageC_hours < 1) {
+          alert('שלב ג: אנא הזן תקרת שעות תקינה');
+          return null;
+        }
+        stages.push({ description: stageC_desc, hours: stageC_hours });
+      } else {
+        const stageC_fixedPrice = parseInt(document.getElementById('stageC_fixedPrice').value);
+        if (!stageC_fixedPrice || stageC_fixedPrice < 1) {
+          alert('שלב ג: אנא הזן מחיר פיקס תקין');
+          return null;
+        }
+        stages.push({ description: stageC_desc, fixedPrice: stageC_fixedPrice });
+      }
+
+      return stages;
+    }
+
+    /**
      * טיפול בשליחת טופס יצירת תיק
      */
     async handleCreateCaseSubmit() {
@@ -1792,80 +1873,14 @@
           }
           caseData.totalHours = totalHours;
         } else if (caseData.procedureType === 'legal_procedure') {
-          // קריאת סוג תמחור
+          // ✅ קריאת סוג תמחור
           const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
           caseData.pricingType = pricingType;
 
-          // וולידציה והכנת שלבים
-          const stages = [];
-
-          // שלב א
-          const stageA_desc = document.getElementById('stageA_description').value.trim();
-          if (!stageA_desc || stageA_desc.length < 2) {
-            alert('שלב א: אנא הזן תיאור השלב (לפחות 2 תווים)');
-            return;
-          }
-
-          if (pricingType === 'hourly') {
-            const stageA_hours = parseInt(document.getElementById('stageA_hours').value);
-            if (!stageA_hours || stageA_hours < 1) {
-              alert('שלב א: אנא הזן תקרת שעות תקינה');
-              return;
-            }
-            stages.push({ description: stageA_desc, hours: stageA_hours });
-          } else {
-            const stageA_fixedPrice = parseInt(document.getElementById('stageA_fixedPrice').value);
-            if (!stageA_fixedPrice || stageA_fixedPrice < 1) {
-              alert('שלב א: אנא הזן מחיר פיקס תקין');
-              return;
-            }
-            stages.push({ description: stageA_desc, fixedPrice: stageA_fixedPrice });
-          }
-
-          // שלב ב
-          const stageB_desc = document.getElementById('stageB_description').value.trim();
-          if (!stageB_desc || stageB_desc.length < 2) {
-            alert('שלב ב: אנא הזן תיאור השלב (לפחות 2 תווים)');
-            return;
-          }
-
-          if (pricingType === 'hourly') {
-            const stageB_hours = parseInt(document.getElementById('stageB_hours').value);
-            if (!stageB_hours || stageB_hours < 1) {
-              alert('שלב ב: אנא הזן תקרת שעות תקינה');
-              return;
-            }
-            stages.push({ description: stageB_desc, hours: stageB_hours });
-          } else {
-            const stageB_fixedPrice = parseInt(document.getElementById('stageB_fixedPrice').value);
-            if (!stageB_fixedPrice || stageB_fixedPrice < 1) {
-              alert('שלב ב: אנא הזן מחיר פיקס תקין');
-              return;
-            }
-            stages.push({ description: stageB_desc, fixedPrice: stageB_fixedPrice });
-          }
-
-          // שלב ג
-          const stageC_desc = document.getElementById('stageC_description').value.trim();
-          if (!stageC_desc || stageC_desc.length < 2) {
-            alert('שלב ג: אנא הזן תיאור השלב (לפחות 2 תווים)');
-            return;
-          }
-
-          if (pricingType === 'hourly') {
-            const stageC_hours = parseInt(document.getElementById('stageC_hours').value);
-            if (!stageC_hours || stageC_hours < 1) {
-              alert('שלב ג: אנא הזן תקרת שעות תקינה');
-              return;
-            }
-            stages.push({ description: stageC_desc, hours: stageC_hours });
-          } else {
-            const stageC_fixedPrice = parseInt(document.getElementById('stageC_fixedPrice').value);
-            if (!stageC_fixedPrice || stageC_fixedPrice < 1) {
-              alert('שלב ג: אנא הזן מחיר פיקס תקין');
-              return;
-            }
-            stages.push({ description: stageC_desc, fixedPrice: stageC_fixedPrice });
+          // ✅ שימוש בפונקציה משותפת (Single Source of Truth)
+          const stages = this.validateAndBuildLegalProcedureStages(pricingType);
+          if (!stages) {
+            return; // validציה נכשלה, הפונקציה כבר הציגה alert
           }
 
           caseData.stages = stages;
@@ -1966,80 +1981,14 @@
           }
           serviceData.hours = totalHours;
         } else if (procedureType === 'legal_procedure') {
-          // קריאת סוג תמחור
+          // ✅ קריאת סוג תמחור
           const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
           serviceData.pricingType = pricingType;
 
-          // וולידציה והכנת שלבים
-          const stages = [];
-
-          // שלב א
-          const stageA_desc = document.getElementById('stageA_description').value.trim();
-          if (!stageA_desc || stageA_desc.length < 2) {
-            alert('שלב א: אנא הזן תיאור השלב (לפחות 2 תווים)');
-            return;
-          }
-
-          if (pricingType === 'hourly') {
-            const stageA_hours = parseInt(document.getElementById('stageA_hours').value);
-            if (!stageA_hours || stageA_hours < 1) {
-              alert('שלב א: אנא הזן תקרת שעות תקינה');
-              return;
-            }
-            stages.push({ description: stageA_desc, hours: stageA_hours });
-          } else {
-            const stageA_fixedPrice = parseInt(document.getElementById('stageA_fixedPrice').value);
-            if (!stageA_fixedPrice || stageA_fixedPrice < 1) {
-              alert('שלב א: אנא הזן מחיר פיקס תקין');
-              return;
-            }
-            stages.push({ description: stageA_desc, fixedPrice: stageA_fixedPrice });
-          }
-
-          // שלב ב
-          const stageB_desc = document.getElementById('stageB_description').value.trim();
-          if (!stageB_desc || stageB_desc.length < 2) {
-            alert('שלב ב: אנא הזן תיאור השלב (לפחות 2 תווים)');
-            return;
-          }
-
-          if (pricingType === 'hourly') {
-            const stageB_hours = parseInt(document.getElementById('stageB_hours').value);
-            if (!stageB_hours || stageB_hours < 1) {
-              alert('שלב ב: אנא הזן תקרת שעות תקינה');
-              return;
-            }
-            stages.push({ description: stageB_desc, hours: stageB_hours });
-          } else {
-            const stageB_fixedPrice = parseInt(document.getElementById('stageB_fixedPrice').value);
-            if (!stageB_fixedPrice || stageB_fixedPrice < 1) {
-              alert('שלב ב: אנא הזן מחיר פיקס תקין');
-              return;
-            }
-            stages.push({ description: stageB_desc, fixedPrice: stageB_fixedPrice });
-          }
-
-          // שלב ג
-          const stageC_desc = document.getElementById('stageC_description').value.trim();
-          if (!stageC_desc || stageC_desc.length < 2) {
-            alert('שלב ג: אנא הזן תיאור השלב (לפחות 2 תווים)');
-            return;
-          }
-
-          if (pricingType === 'hourly') {
-            const stageC_hours = parseInt(document.getElementById('stageC_hours').value);
-            if (!stageC_hours || stageC_hours < 1) {
-              alert('שלב ג: אנא הזן תקרת שעות תקינה');
-              return;
-            }
-            stages.push({ description: stageC_desc, hours: stageC_hours });
-          } else {
-            const stageC_fixedPrice = parseInt(document.getElementById('stageC_fixedPrice').value);
-            if (!stageC_fixedPrice || stageC_fixedPrice < 1) {
-              alert('שלב ג: אנא הזן מחיר פיקס תקין');
-              return;
-            }
-            stages.push({ description: stageC_desc, fixedPrice: stageC_fixedPrice });
+          // ✅ שימוש בפונקציה משותפת (Single Source of Truth)
+          const stages = this.validateAndBuildLegalProcedureStages(pricingType);
+          if (!stages) {
+            return; // validציה נכשלה, הפונקציה כבר הציגה alert
           }
 
           serviceData.stages = stages;
