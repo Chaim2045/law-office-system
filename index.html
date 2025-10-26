@@ -384,8 +384,8 @@
                 <!-- ✅ NEW: Unified Client-Case Selector -->
                 <div id="budgetClientCaseSelector"></div>
 
-                <!-- שדה סניף מטפל -->
-                <div class="form-row">
+                <!-- Compact Row: סניף + דקות -->
+                <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 15px;">
                   <div class="form-group">
                     <label for="budgetBranch"
                       >סניף מטפל
@@ -397,8 +397,40 @@
                       <option value="תל אביב">תל אביב</option>
                     </select>
                   </div>
+                  <div class="form-group">
+                    <label for="estimatedTime"
+                      >דקות משוערות
+                      <span class="category-required">*</span></label
+                    >
+                    <input
+                      type="number"
+                      id="estimatedTime"
+                      placeholder="120"
+                      min="1"
+                      max="999"
+                      autocomplete="off"
+                      required
+                    />
+                  </div>
                 </div>
 
+                <!-- תאריך יעד - שורה מלאה -->
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="budgetDeadline"
+                      >תאריך יעד
+                      <span class="category-required">*</span></label
+                    >
+                    <input
+                      type="datetime-local"
+                      id="budgetDeadline"
+                      autocomplete="off"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <!-- תיאור המשימה -->
                 <div class="form-row">
                   <div class="form-group">
                     <label for="budgetDescription"
@@ -413,30 +445,6 @@
                       required
                       style="resize: vertical; min-height: 60px;"
                     ></textarea>
-                  </div>
-                </div>
-
-                <div class="form-row" style="grid-template-columns: 1fr 2fr">
-                  <div class="form-group">
-                    <label for="estimatedTime">דקות משוערות</label>
-                    <input
-                      type="number"
-                      id="estimatedTime"
-                      placeholder="120"
-                      min="1"
-                      max="999"
-                      autocomplete="off"
-                      required
-                    />
-                  </div>
-                  <div class="form-group">
-                    <label for="budgetDeadline">תאריך יעד</label>
-                    <input
-                      type="datetime-local"
-                      id="budgetDeadline"
-                      autocomplete="off"
-                      required
-                    />
                   </div>
                 </div>
 
