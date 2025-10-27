@@ -1158,6 +1158,54 @@ class LawOfficeManager {
     });
   }
 
+  /**
+   * 🆕 Phase 1: Submit budget adjustment
+   */
+  async submitBudgetAdjustment(taskId) {
+    const newBudgetMinutes = parseInt(document.getElementById('newBudgetMinutes')?.value);
+    const reason = document.getElementById('adjustReason')?.value?.trim();
+
+    if (!newBudgetMinutes || newBudgetMinutes <= 0) {
+      this.showNotification('אנא הזן תקציב תקין', 'error');
+      return;
+    }
+
+    await ActionFlowManager.execute({
+      loadingMessage: 'מעדכן תקציב...',
+      action: async () => {
+        // Call Firebase Function
+        const result = await window.callFunction('adjustTaskBudget', {
+          taskId,
+          newEstimate: newBudgetMinutes,
+          reason
+        });
+
+        if (!result.success) {
+          throw new Error(result.message || 'שגיאה בעדכון תקציב');
+        }
+
+        // Reload tasks
+        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
+        this.filterBudgetTasks();
+      },
+      successMessage: `תקציב עודכן בהצלחה ל-${Math.round(newBudgetMinutes / 60 * 10) / 10} שעות`,
+      errorMessage: 'שגיאה בעדכון תקציב',
+      closePopupOnSuccess: true,
+      closeDelay: 500
+    });
+  }
+
+  /**
+   * 🆕 Phase 1: Show adjust budget dialog (wrapper)
+   */
+  showAdjustBudgetDialog(taskId) {
+    if (window.DialogsModule && window.DialogsModule.showAdjustBudgetDialog) {
+      window.DialogsModule.showAdjustBudgetDialog(taskId, this);
+    } else {
+      console.error('DialogsModule not loaded');
+    }
+  }
+
   /* ========================================
      NOTIFICATIONS & UI FEEDBACK
      ======================================== */

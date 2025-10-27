@@ -40,12 +40,15 @@
   "include": [
     "*.ts",
     "src/**/*.ts",
-    "types/**/*.ts"
+    "types/**/*.ts",
+    "js/**/*.ts",
+    "functions/**/*.ts"
   ],
 
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.js"
+    "**/*.spec.ts",
+    "**/*.test.ts"
   ]
 }

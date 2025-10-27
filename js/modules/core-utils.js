@@ -151,6 +151,52 @@ function formatShort(date) {
   });
 }
 
+/**
+ * 🎯 SINGLE SOURCE OF TRUTH - חישוב שעות נותרות מחבילות
+ *
+ * פונקציה מרכזית שמחשבת שעות נותרות מחבילות במקום מהשירות/שלב עצמו.
+ * זה מבטיח שכל המערכת תמיד מציגה נתונים מעודכנים מ-Firebase.
+ *
+ * @param {Object} entity - השירות/שלב/תיק שרוצים לחשב לו שעות
+ *                          יכול להכיל packages או להיות תיק ישן ללא packages
+ * @returns {number} סך השעות הנותרות מכל החבילות הפעילות
+ *
+ * @example
+ * // שימוש רגיל:
+ * const hours = calculateRemainingHours(service);
+ * badge = `✅ ${hours.toFixed(1)} שעות נותרות`;
+ *
+ * // תיק ישן ללא packages - fallback:
+ * const hours = calculateRemainingHours(oldCase); // יחזיר oldCase.hoursRemaining
+ *
+ * ⚠️ CRITICAL: כל הקבצים במערכת צריכים להשתמש בפונקציה הזו!
+ * אל תקרא ישירות מ- entity.hoursRemaining - זה נתון מיושן!
+ */
+function calculateRemainingHours(entity) {
+  // ✅ Validation: null/undefined guard
+  if (!entity) {
+    return 0;
+  }
+
+  // ✅ אין חבילות? Fallback לתיקים ישנים
+  if (!entity.packages || !Array.isArray(entity.packages) || entity.packages.length === 0) {
+    // תיקים ישנים: קרא מהשדה hoursRemaining ישירות
+    return entity.hoursRemaining || 0;
+  }
+
+  // ✅ יש חבילות: חישוב סכום מכל החבילות הפעילות (Single Source of Truth)
+  const totalHours = entity.packages
+    .filter(pkg => pkg.status === 'active' || !pkg.status) // רק חבילות פעילות
+    .reduce((sum, pkg) => sum + (pkg.hoursRemaining || 0), 0);
+
+  return totalHours;
+}
+
+// Make it globally available (for non-ES6 modules)
+if (typeof window !== 'undefined') {
+  window.calculateRemainingHours = calculateRemainingHours;
+}
+
 // Exports
 export {
   currentActiveTab,
@@ -162,5 +208,6 @@ export {
   // ✅ showSimpleLoading, hideSimpleLoading removed - use NotificationSystem instead
   formatDateTime,
   formatDate,
-  formatShort
+  formatShort,
+  calculateRemainingHours // ✅ NEW: Global hours calculation function
 };

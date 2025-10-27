@@ -1,0 +1,35 @@
+/* Main Layout Styles */
+/* =================== */
+
+.main-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-light);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-right 0.3s ease;
+}
+
+.main-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Desktop - Leave space for sidebar */
+@media (min-width: 769px) {
+  .main-content {
+    margin-right: 260px;
+  }
+}
+
+/* Mobile - No margin */
+@media (max-width: 768px) {
+  .main-content {
+    margin-right: 0;
+  }
+}

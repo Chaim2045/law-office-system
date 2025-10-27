@@ -111,6 +111,22 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // ✅ Function Monitor Logs: System monitoring data
+    // Read: All authenticated users (for analytics dashboard)
+    // Write: Authenticated users (client-side monitor auto-saves)
+    match /function_monitor_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ✅ Function Monitor Errors: Critical error tracking
+    // Read: All authenticated users
+    // Write: Authenticated users (automatic error reporting)
+    match /function_monitor_errors/{errorId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
     // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;

@@ -164,39 +164,78 @@ export class NotificationBellSystem {
     container.innerHTML = notificationsHtml;
   }
 
-  updateFromSystem(blockedClients, criticalClients, urgentTasks) {
+  updateFromSystem(blockedClientsData, criticalClientsData, urgentTasks) {
+    // מחיקת התראות ישנות שנוצרו על ידי המערכת
     this.notifications = this.notifications.filter((n) => !n.isSystemGenerated);
 
-    if (blockedClients.size > 0) {
-      this.addSystemNotification(
-        "blocked",
-        `${blockedClients.size} לקוחות חסומים`,
-        `לקוחות ללא שעות: ${Array.from(blockedClients).join(", ")}`,
-        true
-      );
-    }
+    // התראות נפרדות לכל לקוח חסום (עם פירוט שעות)
+    if (blockedClientsData && blockedClientsData.length > 0) {
+      blockedClientsData.forEach(client => {
+        const hoursText = client.hoursRemaining !== undefined
+          ? ` (${client.hoursRemaining.toFixed(1)} שעות נותרו)`
+          : '';
 
-    if (criticalClients.size > 0) {
-      this.addSystemNotification(
-        "critical",
-        `${criticalClients.size} לקוחות קריטיים`,
-        `לקוחות עם מעט שעות: ${Array.from(criticalClients).join(", ")}`,
-        false
-      );
-    }
-
-    if (urgentTasks.length > 0) {
-      const overdueCount = urgentTasks.filter(
-        (task) => new Date(task.deadline) <= new Date()
-      ).length;
-      if (overdueCount > 0) {
         this.addSystemNotification(
-          "urgent",
-          `${overdueCount} משימות באיחור`,
-          "משימות שעבר תאריך היעד שלהן",
+          "blocked",
+          `🚫 לקוח חסום: ${client.name}`,
+          `נגמרה יתרת השעות${hoursText} - לא ניתן לרשום שעות נוספות`,
           true
         );
-      }
+      });
+    }
+
+    // התראות נפרדות לכל לקוח קריטי (עם מספר שעות מדויק)
+    if (criticalClientsData && criticalClientsData.length > 0) {
+      criticalClientsData.forEach(client => {
+        const hoursRemaining = client.hoursRemaining.toFixed(1);
+
+        this.addSystemNotification(
+          "critical",
+          `⚠️ שעות אוזלות: ${client.name}`,
+          `נותרו ${hoursRemaining} שעות בלבד - יש ליידע את הלקוח ולהוסיף שעות`,
+          false
+        );
+      });
+    }
+
+    // התראות נפרדות לכל משימה דחופה (עם פירוט ימי איחור/יעד)
+    if (urgentTasks && urgentTasks.length > 0) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // איפוס לתחילת היום לחישוב ימים מדויק
+
+      urgentTasks.forEach(task => {
+        const deadline = new Date(task.deadline);
+        deadline.setHours(0, 0, 0, 0);
+
+        const diffTime = now - deadline;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        let title, description, isUrgent;
+
+        if (diffDays > 0) {
+          // עבר תאריך היעד
+          title = `🔴 משימה באיחור: ${task.description || 'ללא תיאור'}`;
+          description = `עבר ${diffDays} ${diffDays === 1 ? 'יום' : 'ימים'} מתאריך היעד${task.clientName ? ` | לקוח: ${task.clientName}` : ''}`;
+          isUrgent = true;
+        } else if (diffDays === 0) {
+          // היום הוא תאריך היעד
+          title = `⏰ משימה דחופה: ${task.description || 'ללא תיאור'}`;
+          description = `תאריך היעד היום!${task.clientName ? ` | לקוח: ${task.clientName}` : ''}`;
+          isUrgent = true;
+        } else {
+          // תאריך יעד מחר (תוך 24 שעות)
+          title = `📅 משימה מתקרבת: ${task.description || 'ללא תיאור'}`;
+          description = `תאריך יעד מחר${task.clientName ? ` | לקוח: ${task.clientName}` : ''}`;
+          isUrgent = false;
+        }
+
+        this.addSystemNotification(
+          "urgent",
+          title,
+          description,
+          isUrgent
+        );
+      });
     }
   }
 

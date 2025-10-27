@@ -15,11 +15,15 @@ export class ClientValidation {
     this.manager = manager;
     this.blockedClients = new Set();
     this.criticalClients = new Set();
+    this.blockedClientsData = []; // נתונים מלאים של לקוחות חסומים
+    this.criticalClientsData = []; // נתונים מלאים של לקוחות קריטיים
   }
 
   updateBlockedClients() {
     this.blockedClients.clear();
     this.criticalClients.clear();
+    this.blockedClientsData = [];
+    this.criticalClientsData = [];
 
     if (!this.manager.clients || !Array.isArray(this.manager.clients)) {
       return;
@@ -30,6 +34,10 @@ export class ClientValidation {
 
       if (client.isBlocked) {
         this.blockedClients.add(client.fullName);
+        this.blockedClientsData.push({
+          name: client.fullName,
+          hoursRemaining: client.hoursRemaining || 0
+        });
       } else if (
         client.type === "hours" &&
         typeof client.hoursRemaining === "number" &&
@@ -37,6 +45,10 @@ export class ClientValidation {
         client.hoursRemaining > 0
       ) {
         this.criticalClients.add(client.fullName);
+        this.criticalClientsData.push({
+          name: client.fullName,
+          hoursRemaining: client.hoursRemaining
+        });
       }
     }
 
@@ -111,8 +123,8 @@ export class ClientValidation {
     // Assumes global notificationBell exists
     if (window.notificationBell) {
       window.notificationBell.updateFromSystem(
-        this.blockedClients,
-        this.criticalClients,
+        this.blockedClientsData,  // שולח נתונים מלאים במקום Set
+        this.criticalClientsData, // שולח נתונים מלאים במקום Set
         urgentTasks
       );
     }

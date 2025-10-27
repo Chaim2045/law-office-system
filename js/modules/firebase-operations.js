@@ -65,43 +65,15 @@ async function loadClientsFromFirebase() {
       throw new Error("Firebase לא מחובר");
     }
 
-    // ⚡ טעינה מקבילית של clients + cases (אופטימיזציה)
-    const [clientsSnapshot, casesSnapshot] = await Promise.all([
-      db.collection("clients").get(),
-      db.collection("cases").get()
-    ]);
-
-    // 📊 מבנה נתונים: Map לקישור מהיר בין clientId לבין ה-cases שלו
-    const clientCasesMap = new Map();
-
-    // שלב 1: מיפוי cases לפי clientId
-    casesSnapshot.forEach((doc) => {
-      const caseData = doc.data();
-      const clientId = caseData.clientId;
-
-      if (clientId) {
-        if (!clientCasesMap.has(clientId)) {
-          clientCasesMap.set(clientId, []);
-        }
-        clientCasesMap.get(clientId).push({
-          id: doc.id,
-          ...caseData
-        });
-      }
-    });
+    // ✅ CLIENT = CASE: טעינה ישירה מ-clients collection
+    const clientsSnapshot = await db.collection("clients").get();
 
     const clients = [];
 
-    // שלב 2: טעינת לקוחות מהארכיטקטורה הישנה + קישור ל-cases שלהם
+    // טעינת כל הלקוחות/תיקים
     clientsSnapshot.forEach((doc) => {
       const data = doc.data();
       const clientId = doc.id;
-
-      // קבלת התיקים של הלקוח (אם קיימים)
-      const clientCases = clientCasesMap.get(clientId) || [];
-
-      // אם ללקוח אין תיקים - יצירת virtual case (backward compatibility)
-      const hasRealCases = clientCases.length > 0;
 
       clients.push({
         ...data,
@@ -109,47 +81,19 @@ async function loadClientsFromFirebase() {
         firestoreId: clientId,
         legacyId: data.id,
         source: 'clients',
-        // תמיכה בשני פורמטים
+        // תמיכה בשני פורמטים של שדות
         fullName: data.fullName || data.clientName,
         fileNumber: data.fileNumber || data.caseNumber,
-        // מטא-דאטה על תיקים
-        casesCount: clientCases.length,
-        activeCasesCount: clientCases.filter(c => c.status === 'active').length,
-        cases: clientCases, // רשימת התיקים המלאה
-        hasVirtualCase: !hasRealCases, // דגל שמסמן שזה לקוח ישן ללא תיקים אמיתיים
-        // תמיכה בארכיטקטורה ישנה - שומר את הפורמט המקורי
-        type: data.type || 'hours'
+        // CLIENT = CASE: אין תיקים מרובים, רק תיק אחד ללקוח
+        casesCount: 1,
+        activeCasesCount: data.status === 'active' ? 1 : 0,
+        cases: [],
+        hasVirtualCase: false,
+        type: data.type || data.procedureType || 'hours'
       });
     });
 
-    // שלב 3: טעינת תיקים שאין להם clientId (orphan cases)
-    // אלו תיקים שנוצרו עם לקוח חדש ולא קיים להם רשומת client נפרדת
-    casesSnapshot.forEach((doc) => {
-      const data = doc.data();
-
-      // אם אין clientId או שה-client לא קיים ב-clients collection
-      if (!data.clientId || !clientCasesMap.has(data.clientId)) {
-        clients.push({
-          ...data,
-          id: doc.id,
-          firestoreId: doc.id,
-          source: 'cases',
-          // ממיר שדות חדשים לפורמט הישן כדי שהתצוגה תעבוד
-          fullName: data.caseTitle || data.clientName || data.fullName,
-          fileNumber: data.caseNumber || data.fileNumber,
-          type: data.procedureType === 'legal_procedure' ? 'legal_procedure' :
-                data.procedureType === 'hours' ? 'hours' :
-                data.type || 'hours',
-          // מטא-דאטה
-          casesCount: 0,
-          activeCasesCount: 0,
-          cases: [],
-          hasVirtualCase: false
-        });
-      }
-    });
-
-    Logger.log(`✅ טעינה הושלמה: ${clientsSnapshot.size} לקוחות | ${casesSnapshot.size} תיקים | ${clients.length} רשומות סה"כ`);
+    Logger.log(`✅ טעינה הושלמה: ${clientsSnapshot.size} לקוחות/תיקים | ${clients.length} רשומות סה"כ`);
 
     return clients;
   } catch (error) {

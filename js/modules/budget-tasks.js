@@ -320,6 +320,77 @@ export function getCompletedTasksCount(budgetTasks) {
   ).length;
 }
 
+/**
+ * Render SVG Rings Section
+ * @param {Object} task - Task object
+ * @param {number} progress - Progress percentage
+ * @param {number} actualHours - Actual hours worked
+ * @param {number} estimatedHours - Estimated hours
+ * @param {number} originalEstimate - Original estimate (minutes)
+ * @param {boolean} wasAdjusted - Was budget adjusted
+ * @param {boolean} isOverOriginal - Is over original estimate
+ * @param {number} overageMinutes - Overage in minutes
+ * @param {number} daysUntilDeadline - Days until deadline
+ * @returns {string} SVG Rings HTML
+ */
+function renderSVGRingsSection(task, progress, actualHours, estimatedHours, originalEstimate, wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline) {
+  if (!window.SVGRings) return '';
+
+  const now = new Date();
+  const deadline = new Date(task.deadline);
+  const createdAt = task.createdAt ? new Date(task.createdAt) : now;
+  const totalDays = Math.max(1, (deadline - createdAt) / (1000 * 60 * 60 * 24));
+  const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+  const deadlineProgress = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+  const isDeadlineOverdue = daysUntilDeadline < 0;
+  const overdueDays = Math.abs(Math.min(0, daysUntilDeadline));
+
+  // Budget Ring Config
+  const budgetRingConfig = {
+    progress: Math.min(progress, 100),
+    color: isOverOriginal ? 'red' : progress >= 85 ? 'orange' : 'green',
+    icon: 'fas fa-clock',
+    label: 'תקציב זמן',
+    value: `${actualHours}h / ${estimatedHours}h`,
+    size: 80,
+    button: isOverOriginal && !wasAdjusted ? {
+      text: 'עדכן תקציב',
+      onclick: `event.stopPropagation(); manager.showAdjustBudgetDialog('${task.id}')`,
+      icon: 'fas fa-edit',
+      cssClass: 'budget-btn',
+      show: true
+    } : null
+  };
+
+  // Deadline Ring Config
+  const deadlineRingConfig = {
+    progress: deadlineProgress,
+    color: isDeadlineOverdue ? 'red' : deadlineProgress >= 85 ? 'orange' : 'blue',
+    icon: 'fas fa-calendar-alt',
+    label: 'תאריך יעד',
+    value: isDeadlineOverdue
+      ? `איחור ${overdueDays} ${overdueDays === 1 ? 'יום' : 'ימים'}`
+      : `${daysUntilDeadline} ${daysUntilDeadline === 1 ? 'יום' : 'ימים'} נותרו`,
+    size: 80,
+    button: isDeadlineOverdue ? {
+      text: 'הארך יעד',
+      onclick: `event.stopPropagation(); manager.showExtendDeadlineDialog('${task.id}')`,
+      icon: 'fas fa-calendar-plus',
+      cssClass: 'deadline-btn',
+      show: true
+    } : null
+  };
+
+  let ringsHTML = window.SVGRings.createDualRings(budgetRingConfig, deadlineRingConfig);
+
+  // Add info note if budget was adjusted
+  if (wasAdjusted) {
+    ringsHTML += `<div class="budget-adjusted-note" style="text-align: center; margin-top: 12px; font-size: 11px; color: #3b82f6;"><i class="fas fa-info-circle"></i> תקציב עודכן ל-${estimatedHours}h</div>`;
+  }
+
+  return ringsHTML;
+}
+
 /* ===========================
    RENDER FUNCTIONS
    =========================== */
@@ -344,6 +415,13 @@ export function createTaskCard(task, options = {}) {
       ? "progress-medium"
       : "progress-low";
   const progressStatus = getProgressStatusText(progress);
+
+  // 🆕 Phase 1: חישוב התקדמות מול תקציב מקורי
+  const originalEstimate = safeTask.originalEstimate || safeTask.estimatedMinutes;
+  const wasAdjusted = safeTask.estimatedMinutes !== originalEstimate;
+  const isOverOriginal = safeTask.actualMinutes > originalEstimate;
+  const overageMinutes = Math.max(0, safeTask.actualMinutes - originalEstimate);
+  const overagePercent = originalEstimate > 0 ? Math.round((overageMinutes / originalEstimate) * 100) : 0;
 
   const now = new Date();
   const deadline = new Date(safeTask.deadline);
@@ -405,30 +483,10 @@ export function createTaskCard(task, options = {}) {
           <span style="flex: 1;">${safeDescription}</span>
           ${completedIndicator}
         </h3>
-        <div class="linear-progress-section">
-          <div class="linear-visual-progress">
-            <div class="linear-progress-text">
-              <span class="progress-percentage">${progress}%</span>
-              <span class="progress-status">${safeText ? safeText(progressStatus) : progressStatus}</span>
-            </div>
-            <div class="linear-progress-bar">
-              <div class="linear-progress-fill ${progressClass}" style="width: ${Math.min(
-    progress,
-    100
-  )}%"></div>
-            </div>
-          </div>
-          <div class="linear-time-info">
-            <div class="time-item actual">
-              <span class="time-value">${actualHours}h</span>
-              <span class="time-label">בפועל</span>
-            </div>
-            <div class="time-item estimated">
-              <span class="time-value">${estimatedHours}h</span>
-              <span class="time-label">מתוכנן</span>
-            </div>
-          </div>
-        </div>
+
+        <!-- 🎯 SVG RINGS -->
+        ${!isCompleted && window.SVGRings ? renderSVGRingsSection(safeTask, progress, actualHours, estimatedHours, originalEstimate, wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline) : ''}
+
         <div class="linear-card-meta">
           <div class="linear-client-row">
             <span class="linear-client-label">לקוח:</span>

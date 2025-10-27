@@ -192,11 +192,15 @@ class ClientValidation {
     this.manager = manager;
     this.blockedClients = new Set();
     this.criticalClients = new Set();
+    this.blockedClientsData = []; // נתונים מלאים של לקוחות חסומים
+    this.criticalClientsData = []; // נתונים מלאים של לקוחות קריטיים
   }
 
   updateBlockedClients() {
     this.blockedClients.clear();
     this.criticalClients.clear();
+    this.blockedClientsData = [];
+    this.criticalClientsData = [];
 
     if (!this.manager.clients || !Array.isArray(this.manager.clients)) {
       return;
@@ -207,13 +211,22 @@ class ClientValidation {
 
       if (client.isBlocked) {
         this.blockedClients.add(client.fullName);
+        this.blockedClientsData.push({
+          name: client.fullName,
+          hoursRemaining: window.calculateRemainingHours(client)
+        });
       } else if (
         client.type === "hours" &&
-        typeof client.hoursRemaining === "number" &&
-        client.hoursRemaining <= 5 &&
-        client.hoursRemaining > 0
+        typeof client.hoursRemaining === "number"
       ) {
-        this.criticalClients.add(client.fullName);
+        const hours = window.calculateRemainingHours(client);
+        if (hours <= 5 && hours > 0) {
+          this.criticalClients.add(client.fullName);
+          this.criticalClientsData.push({
+            name: client.fullName,
+            hoursRemaining: hours
+          });
+        }
       }
     }
 
@@ -253,10 +266,11 @@ class ClientValidation {
             client.type === "hours" &&
             typeof client.hoursRemaining === "number"
           ) {
+            const hoursRemaining = window.calculateRemainingHours(client);
             const hoursText =
-              client.hoursRemaining <= 5
-                ? `🚨 ${client.hoursRemaining.toFixed(1)} שע' נותרות`
-                : `${client.hoursRemaining.toFixed(1)} שע' נותרות`;
+              hoursRemaining <= 5
+                ? `🚨 ${hoursRemaining.toFixed(1)} שע' נותרות`
+                : `${hoursRemaining.toFixed(1)} שע' נותרות`;
             displayText += ` (${hoursText})`;
           } else if (client.type === "fixed") {
             displayText += " (פיקס)";
@@ -286,8 +300,8 @@ class ClientValidation {
     );
 
     notificationBell.updateFromSystem(
-      this.blockedClients,
-      this.criticalClients,
+      this.blockedClientsData,  // שולח נתונים מלאים במקום Set
+      this.criticalClientsData, // שולח נתונים מלאים במקום Set
       urgentTasks
     );
   }

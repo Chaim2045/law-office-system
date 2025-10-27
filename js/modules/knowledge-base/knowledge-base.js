@@ -65,7 +65,7 @@ class KnowledgeBase {
     /**
      * פתיחת מרכז העזרה
      */
-    open() {
+    open(source = 'button') {
         if (this.isOpen) return;
 
         this.isOpen = true;
@@ -76,6 +76,12 @@ class KnowledgeBase {
         document.body.style.overflow = 'hidden';
 
         this.render();
+
+        // Analytics - מעקב אחר פתיחה
+        if (typeof kbAnalytics !== 'undefined') {
+            kbAnalytics.trackKBOpened(source);
+        }
+
         Logger.log('📖 Knowledge Base opened');
     }
 
@@ -89,6 +95,15 @@ class KnowledgeBase {
 
         // השבת scroll של הגוף
         document.body.style.overflow = '';
+
+        // Analytics - מעקב אחר סגירה
+        if (typeof kbAnalytics !== 'undefined') {
+            // סגירת מאמר אם פתוח
+            if (this.currentArticle) {
+                kbAnalytics.trackArticleClosed(this.currentArticle);
+            }
+            kbAnalytics.trackKBClosed();
+        }
 
         if (this.container) {
             this.container.style.animation = 'kbFadeOut 0.2s ease';
@@ -215,6 +230,12 @@ class KnowledgeBase {
         } else {
             // הצג תוצאות חיפוש
             const results = this.searchEngine.search(trimmedQuery);
+
+            // Analytics - מעקב אחר חיפוש
+            if (typeof kbAnalytics !== 'undefined') {
+                kbAnalytics.trackSearch(trimmedQuery, results.length);
+            }
+
             content.innerHTML = '';
             content.appendChild(this.createSearchResults(results, trimmedQuery));
         }
@@ -311,9 +332,19 @@ class KnowledgeBase {
             if (this.expandedCategories.has(category.id)) {
                 this.expandedCategories.delete(category.id);
                 categoryDiv.classList.remove('expanded');
+
+                // Analytics - מעקב אחר כיווץ
+                if (typeof kbAnalytics !== 'undefined') {
+                    kbAnalytics.trackCategoryCollapsed(category.id, category.name);
+                }
             } else {
                 this.expandedCategories.add(category.id);
                 categoryDiv.classList.add('expanded');
+
+                // Analytics - מעקב אחר הרחבה
+                if (typeof kbAnalytics !== 'undefined') {
+                    kbAnalytics.trackCategoryExpanded(category.id, category.name);
+                }
             }
         });
 
@@ -335,7 +366,7 @@ class KnowledgeBase {
     /**
      * יצירת פריט מאמר ברשימה
      */
-    createArticleListItem(article) {
+    createArticleListItem(article, fromSearch = false, searchQuery = null) {
         const item = document.createElement('div');
         item.className = 'kb-article-item';
 
@@ -369,7 +400,7 @@ class KnowledgeBase {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            this.openArticle(article.id);
+            this.openArticle(article.id, fromSearch, searchQuery);
         });
 
         return item;
@@ -400,7 +431,7 @@ class KnowledgeBase {
             container.appendChild(title);
 
             results.forEach(article => {
-                const articleElement = this.createArticleListItem(article);
+                const articleElement = this.createArticleListItem(article, true, query);
                 container.appendChild(articleElement);
             });
         }
@@ -411,15 +442,26 @@ class KnowledgeBase {
     /**
      * פתיחת מאמר
      */
-    openArticle(articleId) {
+    openArticle(articleId, fromSearch = false, searchQuery = null) {
         const article = this.articles.find(a => a.id === articleId);
         if (!article) {
             console.warn('Article not found:', articleId);
             return;
         }
 
+        // Analytics - סגירת מאמר קודם אם יש
+        if (this.currentArticle && typeof kbAnalytics !== 'undefined') {
+            kbAnalytics.trackArticleClosed(this.currentArticle);
+        }
+
         this.currentView = 'article';
         this.currentArticle = article;
+
+        // Analytics - פתיחת מאמר
+        if (typeof kbAnalytics !== 'undefined') {
+            kbAnalytics.trackArticleOpened(article, fromSearch, searchQuery);
+        }
+
         this.render();
 
         Logger.log('📄 Article opened:', article.title);
@@ -442,6 +484,13 @@ class KnowledgeBase {
         backBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+
+            // Analytics - מעקב אחר כפתור חזרה
+            if (typeof kbAnalytics !== 'undefined') {
+                kbAnalytics.trackBackButton(article);
+                kbAnalytics.trackArticleClosed(article);
+            }
+
             this.currentView = 'home';
             this.currentArticle = null;
             this.render();
@@ -555,6 +604,16 @@ class KnowledgeBase {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+
+                    // Analytics - מעקב אחר לחיצה על אקשן
+                    if (typeof kbAnalytics !== 'undefined') {
+                        kbAnalytics.trackActionButton(
+                            article,
+                            article.content.actionButton.text,
+                            article.content.actionButton.action
+                        );
+                    }
+
                     try {
                         eval(article.content.actionButton.action);
                         this.close();
@@ -602,6 +661,12 @@ class KnowledgeBase {
                         relatedItem.addEventListener('click', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
+
+                            // Analytics - מעקב אחר מאמר קשור
+                            if (typeof kbAnalytics !== 'undefined') {
+                                kbAnalytics.trackRelatedArticleClick(article, related);
+                            }
+
                             this.openArticle(related.id);
                         });
                         relatedList.appendChild(relatedItem);
@@ -613,6 +678,63 @@ class KnowledgeBase {
                 }
             }
         }
+
+        // Feedback Section - האם המאמר עזר?
+        const feedbackSection = document.createElement('div');
+        feedbackSection.className = 'kb-feedback';
+
+        const feedbackTitle = document.createElement('h4');
+        feedbackTitle.className = 'kb-feedback-title';
+        feedbackTitle.textContent = 'האם מדריך זה עזר לך?';
+
+        const feedbackButtons = document.createElement('div');
+        feedbackButtons.className = 'kb-feedback-buttons';
+
+        const yesBtn = document.createElement('button');
+        yesBtn.className = 'kb-feedback-btn kb-feedback-yes';
+        yesBtn.innerHTML = `${getKBIcon('check')} כן, עזר לי`;
+        yesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Analytics - feedback חיובי
+            if (typeof kbAnalytics !== 'undefined') {
+                kbAnalytics.trackArticleFeedback(article, true);
+            }
+
+            feedbackButtons.style.display = 'none';
+            feedbackThanks.style.display = 'block';
+        });
+
+        const noBtn = document.createElement('button');
+        noBtn.className = 'kb-feedback-btn kb-feedback-no';
+        noBtn.innerHTML = `${getKBIcon('info')} לא ממש`;
+        noBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Analytics - feedback שלילי
+            if (typeof kbAnalytics !== 'undefined') {
+                kbAnalytics.trackArticleFeedback(article, false);
+            }
+
+            feedbackButtons.style.display = 'none';
+            feedbackThanks.style.display = 'block';
+        });
+
+        feedbackButtons.appendChild(yesBtn);
+        feedbackButtons.appendChild(noBtn);
+
+        const feedbackThanks = document.createElement('div');
+        feedbackThanks.className = 'kb-feedback-thanks';
+        feedbackThanks.style.display = 'none';
+        feedbackThanks.innerHTML = `${getKBIcon('check')} תודה על המשוב! זה עוזר לנו לשפר את המערכת 💚`;
+
+        feedbackSection.appendChild(feedbackTitle);
+        feedbackSection.appendChild(feedbackButtons);
+        feedbackSection.appendChild(feedbackThanks);
+
+        content.appendChild(feedbackSection);
 
         container.appendChild(content);
         return container;

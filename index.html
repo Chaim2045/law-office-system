@@ -97,6 +97,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
     <link rel="stylesheet" href="style.css?v=1.0.5" />
+    <link rel="stylesheet" href="style-hitech-addon.css?v=1.0.0" />
     <link rel="stylesheet" href="tabs.css?v=2.1.2" />
     <link rel="stylesheet" href="statistics.css?v=3.2.0" />
     <link rel="stylesheet" href="sort.css?v=2.3.0" />
@@ -962,6 +963,12 @@
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
     <script src="js/modules/logger.js?v=1.0.0"></script>
 
+    <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Event-Driven System ===== -->
+    <!-- Type-safe Event Bus + Firebase Facade + Validation -->
+    <script type="module" src="dist/js/core/event-bus.js?v=2.0.0"></script>
+    <script type="module" src="dist/js/services/firebase-service.js?v=2.0.0"></script>
+    <script type="module" src="dist/js/schemas/index.js?v=2.0.0"></script>
+
     <script src="task-actions.js?v=1.1.0"></script>
     <script src="skeleton-loader.js?v=1.1.0"></script>
     <script src="firebase-pagination.js?v=1.1.0"></script>
@@ -1003,12 +1010,21 @@
     <!-- Full system state comparison for debugging -->
     <script src="system-snapshot.js?v=1.0.0"></script>
 
+    <!-- ===== SVG RINGS MODULE ===== -->
+    <script src="js/modules/svg-rings.js?v=1.0.0"></script>
+
     <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
     <!-- Modern modular architecture with ActionFlowManager -->
     <script type="module" src="js/main.js?v=5.0.1"></script>
 
     <!-- Work Hours Calculator - Smart Calendar System -->
     <script src="js/modules/work-hours-calculator.js?v=1.0.0"></script>
+
+    <!-- ===== 🔍 FUNCTION MONITOR - POC ===== -->
+    <!-- Advanced monitoring and debugging system -->
+    <script src="js/modules/function-monitor.js?v=1.0.0"></script>
+    <script src="js/modules/function-monitor-dashboard.js?v=1.0.0"></script>
+    <script src="js/modules/function-monitor-init.js?v=1.0.0"></script>
 
     <!-- ===== KNOWLEDGE BASE 1.0.0 - מרכז עזרה וידע ===== -->
     <!-- 🎓 NEW: Knowledge Base / FAQ System - Simple and Clear -->
@@ -1177,5 +1193,23 @@
         letter-spacing: 0.3px;
       }
     </style>
+
+    <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Debug Mode ===== -->
+    <script type="module">
+      // Enable debug mode in development
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Wait for modules to load
+        setTimeout(() => {
+          if (window.EventBus) {
+            window.EventBus.setDebugMode(true);
+            console.log('🎉 EventBus loaded and debug mode enabled!');
+          }
+          if (window.FirebaseService) {
+            window.FirebaseService.setDebugMode(true);
+            console.log('🎉 FirebaseService loaded and debug mode enabled!');
+          }
+        }, 1000);
+      }
+    </script>
   </body>
 </html>

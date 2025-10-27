@@ -321,7 +321,7 @@
       // חישובים עבור תמחור שעתי
       const totalHours = procedure.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
       const totalUsed = procedure.stages.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
-      const totalRemaining = procedure.stages.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+      const totalRemaining = procedure.stages.reduce((sum, s) => sum + window.calculateRemainingHours(s), 0);
 
       // חישובים עבור תמחור פיקס
       const totalPrice = procedure.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
@@ -377,7 +377,7 @@
             <div style="font-size: 13px; color: ${isFixed ? '#10b981' : '#3b82f6'}; margin-top: 4px;">
               ${isFixed
                 ? `מחיר: ₪${(currentStage.fixedPrice || 0).toLocaleString()}`
-                : `${this.formatHours(currentStage.hoursRemaining || 0)} נותרות מתוך ${this.formatHours(currentStage.totalHours || 0)}`
+                : `${this.formatHours(window.calculateRemainingHours(currentStage))} נותרות מתוך ${this.formatHours(currentStage.totalHours || 0)}`
               }
             </div>
           </div>
@@ -478,7 +478,7 @@
             " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
               <i class="fas fa-eye"></i> צפה בפרטים
             </button>
-            ${!isFixed && currentStage.status === 'active' && currentStage.hoursRemaining < 5 ? `
+            ${!isFixed && currentStage.status === 'active' && window.calculateRemainingHours(currentStage) < 5 ? `
               <button onclick="legalProceduresManager.showAddPackageDialog('${procedure.id}', '${currentStage.id}')" style="
                 padding: 10px 16px;
                 background: #f59e0b;
@@ -733,7 +733,7 @@
               <div style="text-align: center;">
                 <div style="font-size: 11px; color: #666;">נותר</div>
                 <div style="font-size: 16px; font-weight: 600; color: #10b981;">
-                  ${this.formatHours(stage.hoursRemaining || 0)}
+                  ${this.formatHours(window.calculateRemainingHours(stage))}
                 </div>
               </div>
             </div>

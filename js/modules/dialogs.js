@@ -174,6 +174,146 @@ function showAdvancedTimeDialog(taskId, manager) {
 }
 
 /**
+ * 🆕 Phase 1: Dialog לעדכון תקציב משימה
+ * @param {string} taskId - Task ID
+ * @param {Object} manager - Manager instance
+ */
+function showAdjustBudgetDialog(taskId, manager) {
+  const task = manager.budgetTasks.find((t) => t.id === taskId);
+  if (!task) {
+    manager.showNotification("המשימה לא נמצאה", "error");
+    return;
+  }
+
+  const originalEstimate = task.originalEstimate || task.estimatedMinutes;
+  const currentEstimate = task.estimatedMinutes;
+  const actualMinutes = task.actualMinutes || 0;
+  const overageMinutes = Math.max(0, actualMinutes - originalEstimate);
+
+  const overlay = document.createElement("div");
+  overlay.className = "popup-overlay";
+  overlay.innerHTML = `
+    <div class="popup" style="max-width: 550px;">
+      <div class="popup-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+        <i class="fas fa-edit"></i>
+        עדכון תקציב משימה
+      </div>
+      <div class="popup-content">
+        <!-- Task Info -->
+        <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
+          <h4 style="margin: 0 0 8px 0; color: #1f2937;">${window.safeText(task.taskDescription || task.description)}</h4>
+          <div style="font-size: 13px; color: #6b7280;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <i class="fas fa-building" style="color: #3b82f6;"></i>
+              <span>${window.safeText(task.clientName)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Status -->
+        <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #fca5a5;">
+          <div style="font-size: 14px; color: #991b1b; margin-bottom: 12px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>מצב נוכחי:</strong>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+            <div>
+              <div style="color: #6b7280; margin-bottom: 4px;">תקציב מקורי:</div>
+              <div style="font-weight: 600; color: #1f2937;">${Math.round(originalEstimate / 60 * 10) / 10}h (${originalEstimate} דק')</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; margin-bottom: 4px;">עבדת בפועל:</div>
+              <div style="font-weight: 600; color: #dc2626;">${Math.round(actualMinutes / 60 * 10) / 10}h (${actualMinutes} דק')</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; margin-bottom: 4px;">תקציב נוכחי:</div>
+              <div style="font-weight: 600; color: #1f2937;">${Math.round(currentEstimate / 60 * 10) / 10}h (${currentEstimate} דק')</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; margin-bottom: 4px;">חריגה:</div>
+              <div style="font-weight: 600; color: #dc2626;">+${Math.round(overageMinutes / 60 * 10) / 10}h (+${overageMinutes} דק')</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Budget Form -->
+        <form id="adjustBudgetForm">
+          <div class="form-group">
+            <label for="newBudgetMinutes">
+              <i class="fas fa-calculator"></i>
+              תקציב חדש (דקות)
+            </label>
+            <input
+              type="number"
+              id="newBudgetMinutes"
+              min="${actualMinutes}"
+              value="${Math.max(actualMinutes + 30, currentEstimate + 30)}"
+              required
+              style="font-size: 16px; padding: 12px; font-weight: 600;"
+            >
+            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+              = <span id="newBudgetHours">${Math.round((Math.max(actualMinutes + 30, currentEstimate + 30)) / 60 * 10) / 10}</span> שעות
+            </div>
+            <div style="font-size: 12px; color: #059669; margin-top: 8px; font-weight: 500;">
+              💡 מומלץ: ${Math.max(actualMinutes + 30, currentEstimate + 30)} דק' (הנוכחי + 30 דק')
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="adjustReason">
+              <i class="fas fa-pen"></i>
+              סיבה לעדכון (אופציונלי)
+            </label>
+            <textarea
+              id="adjustReason"
+              rows="3"
+              placeholder="למשל: המשימה מורכבת מהצפוי, נדרשו מסמכים נוספים..."
+              style="resize: vertical;"
+            ></textarea>
+          </div>
+        </form>
+
+        <!-- Info Box -->
+        <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 12px; margin-top: 15px;">
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <i class="fas fa-info-circle" style="color: #3b82f6; margin-top: 2px;"></i>
+            <div style="font-size: 12px; color: #1e40af; line-height: 1.5;">
+              <strong>שים לב:</strong> התקציב המקורי יישמר למעקב. העדכון יירשם בהיסטוריה ויוצג בכרטיסייה.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="popup-buttons">
+        <button
+          class="popup-btn popup-btn-confirm"
+          onclick="manager.submitBudgetAdjustment('${taskId}')"
+          style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+          <i class="fas fa-check"></i> עדכן תקציב
+        </button>
+        <button
+          class="popup-btn popup-btn-cancel"
+          onclick="this.closest('.popup-overlay').remove()">
+          <i class="fas fa-times"></i> ביטול
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Update hours display when minutes change
+  const minutesInput = overlay.querySelector('#newBudgetMinutes');
+  const hoursDisplay = overlay.querySelector('#newBudgetHours');
+
+  minutesInput.addEventListener('input', () => {
+    const minutes = parseInt(minutesInput.value) || 0;
+    const hours = Math.round((minutes / 60) * 10) / 10;
+    hoursDisplay.textContent = hours;
+  });
+
+  document.body.appendChild(overlay);
+}
+
+/**
  * הצגת modal סיום משימה מקצועי
  * @param {Object} task - אובייקט המשימה
  * @param {Object} manager - מופע ה-Manager
@@ -444,6 +584,7 @@ if (typeof window !== "undefined") {
     // ✅ Loading functions removed - use NotificationSystem.showLoading() instead
     showBlockedClientDialog,
     showAdvancedTimeDialog,
+    showAdjustBudgetDialog,  // 🆕 Phase 1
     showTaskCompletionModal,
     // ✅ Client form functions removed
     openSmartForm,

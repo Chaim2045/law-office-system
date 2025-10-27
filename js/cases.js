@@ -1884,6 +1884,14 @@
           }
 
           caseData.stages = stages;
+
+          // 🔍 DEBUG - מה נשלח ל-Firebase
+          console.log('🔍 DEBUG: Creating legal_procedure with data:', {
+            procedureType: caseData.procedureType,
+            pricingType: caseData.pricingType,
+            stages: caseData.stages,
+            fullData: caseData
+          });
         }
 
         // ✅ הצגת loading
@@ -1893,6 +1901,9 @@
 
         // יצירת התיק
         const result = await this.createCase(caseData);
+
+        // 🔍 DEBUG - מה חזר מהשרת
+        console.log('🔍 DEBUG: Server response:', result);
 
         // ✅ הסתרת loading
         if (window.NotificationSystem) {

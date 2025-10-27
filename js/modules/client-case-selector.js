@@ -665,9 +665,21 @@
       const stages = caseItem.stages || [];
       const isLegacyCase = services.length === 0 && stages.length === 0 &&
                           (caseItem.hoursTotal > 0 || caseItem.procedureType === 'legal_procedure');
+
+      // ✅ FIX: הליך משפטי עם שלבים תמיד נחשב כ"יש שירותים פעילים"
       const hasActiveServices = services.filter(s => s.status === 'active').length > 0 ||
+                                (caseItem.procedureType === 'legal_procedure' && stages.length > 0) ||
                                 stages.filter(s => s.status === 'active').length > 0 ||
                                 isLegacyCase;
+
+      console.log('🔍 DEBUG hasActiveServices:', {
+        hasActiveServices,
+        servicesActive: services.filter(s => s.status === 'active').length,
+        isLegalProcedure: caseItem.procedureType === 'legal_procedure',
+        stagesLength: stages.length,
+        stagesActive: stages.filter(s => s.status === 'active').length,
+        isLegacyCase
+      });
 
       if (hasActiveServices) {
         // ✅ יש שירותים - הסתר dropdown של תיקים, הצג רק כרטיסיות
@@ -762,6 +774,17 @@
       const services = caseItem.services || [];
       const stages = caseItem.stages || [];
 
+      // 🔍 DEBUG - מה יש ב-caseItem?
+      console.log('🔍 DEBUG renderServiceCards:', {
+        caseId: caseItem.id,
+        procedureType: caseItem.procedureType,
+        pricingType: caseItem.pricingType,
+        servicesLength: services.length,
+        stagesLength: stages.length,
+        stages: stages,
+        caseItem: caseItem
+      });
+
       // 🔄 Fallback: תיקים ישנים ללא services - נציג את התיק עצמו ככרטיס
       const isLegacyCase = services.length === 0 && stages.length === 0;
 
@@ -795,10 +818,38 @@
 
         // הליך משפטי
         if (caseItem.procedureType === 'legal_procedure' && stages.length > 0) {
-          cardsHtml = stages
-            .filter(s => s.status === 'active')
-            .map(stage => this.createServiceCard(stage, 'legal_procedure', caseItem.pricingType, caseItem))
-            .join('');
+          // 🔍 DEBUG - איזה שלבים יש בהליך משפטי
+          console.log('🔍 DEBUG: Displaying legal_procedure stages:', {
+            caseId: caseItem.id,
+            procedureType: caseItem.procedureType,
+            pricingType: caseItem.pricingType,
+            stagesCount: stages.length,
+            currentStage: caseItem.currentStage,
+            stages: stages,
+            caseItem: caseItem
+          });
+
+          // ✅ FIX: הצג את השלב הנוכחי בלבד
+          const currentStageId = caseItem.currentStage || 'stage_a';
+
+          // מציאת השלב הנוכחי
+          let currentStage = stages.find(s => s.id === currentStageId);
+
+          // אם לא נמצא, נסה למצוא את השלב הראשון (order=1)
+          if (!currentStage) {
+            currentStage = stages.find(s => s.order === 1);
+          }
+
+          // אם עדיין לא נמצא, קח את הראשון במערך
+          if (!currentStage && stages.length > 0) {
+            currentStage = stages[0];
+          }
+
+          console.log('🔍 DEBUG: Current stage to display:', currentStage);
+
+          if (currentStage) {
+            cardsHtml = this.createServiceCard(currentStage, 'legal_procedure', caseItem.pricingType, caseItem);
+          }
         }
       }
 
@@ -1049,7 +1100,14 @@
 
       // עדכון שדות נסתרים
       document.getElementById(`${this.containerId}_serviceId`).value = serviceId;
-      document.getElementById(`${this.containerId}_serviceName`).value = serviceData?.name || serviceData?.description || '';
+      // 🔧 FIX: נסה כל האפשרויות לשם השירות
+      const serviceName = serviceData?.name ||
+                         serviceData?.serviceName ||
+                         serviceData?.stageName ||
+                         serviceData?.description ||
+                         serviceData?.title ||
+                         '';
+      document.getElementById(`${this.containerId}_serviceName`).value = serviceName;
 
       // 🎨 הסתרת caseInfo
       this.hideCaseInfo();
@@ -1435,6 +1493,11 @@
      * Escape HTML
      */
     escapeHtml(text) {
+      if (text == null || text === undefined) {
+        return '';
+      }
+      // המרה למחרזת אם זה לא מחרזת
+      text = String(text);
       const map = {
         '&': '&amp;',
         '<': '&lt;',

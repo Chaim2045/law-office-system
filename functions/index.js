@@ -938,7 +938,56 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
 
       newService.pricingType = data.pricingType;
       newService.currentStage = 'stage_a';
-      newService.stages = []; // יש להוסיף לוגיקה מלאה לשלבים
+
+      // ✅ שמירת השלבים עם מזהים וסטטוסים
+      newService.stages = data.stages.map((stage, index) => {
+        const stageId = `stage_${['a', 'b', 'c'][index]}`;
+        const stageName = ['שלב א\'', 'שלב ב\'', 'שלב ג\''][index];
+
+        const processedStage = {
+          id: stageId,
+          name: stageName,
+          description: sanitizeString(stage.description || ''),
+          status: index === 0 ? 'active' : 'pending',
+          order: index + 1
+        };
+
+        if (data.pricingType === 'hourly') {
+          // תמחור שעתי - יצירת חבילת שעות ראשונית
+          const packageId = `pkg_${stageId}_${Date.now()}`;
+          processedStage.packages = [
+            {
+              id: packageId,
+              type: 'initial',
+              hours: stage.hours,
+              hoursUsed: 0,
+              hoursRemaining: stage.hours,
+              purchaseDate: now,
+              status: 'active',
+              description: 'חבילה ראשונית'
+            }
+          ];
+          processedStage.totalHours = stage.hours;
+          processedStage.hoursUsed = 0;
+          processedStage.hoursRemaining = stage.hours;
+        } else {
+          // תמחור פיקס
+          processedStage.fixedPrice = stage.fixedPrice;
+          processedStage.paid = false;
+        }
+
+        return processedStage;
+      });
+
+      // חישוב סיכומי שעות (אם שעתי)
+      if (data.pricingType === 'hourly') {
+        newService.totalHours = newService.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+        newService.hoursUsed = 0;
+        newService.hoursRemaining = newService.totalHours;
+      } else {
+        newService.totalPrice = newService.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
+        newService.totalPaid = 0;
+      }
     }
 
     // הוספת השירות למערך services[]
@@ -1411,6 +1460,9 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
 
     console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
 
+    // 🆕 Phase 1: שמירת ערכים מקוריים (לא ישתנו לעולם)
+    const deadlineTimestamp = data.deadline ? admin.firestore.Timestamp.fromDate(new Date(data.deadline)) : null;
+
     const taskData = {
       description: sanitizeString(data.description.trim()),
       clientId: clientId,  // ✅ מספר תיק
@@ -1423,8 +1475,17 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       estimatedMinutes: estimatedMinutes,
       actualHours: 0,
       actualMinutes: 0,
+
+      // 🆕 תקציב ויעד מקוריים (NEVER CHANGE)
+      originalEstimate: estimatedMinutes,
+      originalDeadline: deadlineTimestamp,
+
+      // 🆕 מערכים לעדכונים
+      budgetAdjustments: [],
+      deadlineExtensions: [],
+
       status: 'active',
-      deadline: data.deadline ? admin.firestore.Timestamp.fromDate(new Date(data.deadline)) : null,
+      deadline: deadlineTimestamp,
       employee: user.email, // ✅ EMAIL for security rules and queries
       lawyer: user.username, // ✅ Username for display
       createdBy: user.username,
@@ -1567,6 +1628,13 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
     }
 
     // הוספת הזמן
+    // 🆕 Phase 1: חישוב מצב תקציב אחרי ההוספה
+    const newActualMinutes = (taskData.actualMinutes || 0) + data.minutes;
+    const currentEstimate = taskData.estimatedMinutes || 0;
+    const percentOfBudget = currentEstimate > 0 ? Math.round((newActualMinutes / currentEstimate) * 100) : 0;
+    const isOverBudget = newActualMinutes > currentEstimate;
+    const overageMinutes = Math.max(0, newActualMinutes - currentEstimate);
+
     // ✅ תיקון: אי אפשר להשתמש ב-serverTimestamp() בתוך array
     // נשתמש ב-Date object רגיל במקום
     const timeEntry = {
@@ -1575,7 +1643,16 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
       hours: data.minutes / 60,
       description: data.description ? sanitizeString(data.description) : '',
       addedBy: user.username,
-      addedAt: new Date().toISOString()  // ✅ ISO string במקום Timestamp
+      addedAt: new Date().toISOString(),  // ✅ ISO string במקום Timestamp
+
+      // 🆕 Phase 1: מידע על מצב התקציב בזמן ההוספה
+      budgetStatus: {
+        currentEstimate,
+        totalMinutesAfter: newActualMinutes,
+        percentOfBudget,
+        isOverBudget,
+        overageMinutes
+      }
     };
 
     // ✅ שימוש ב-increment() למניעת race conditions
@@ -1700,15 +1777,15 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
                 console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
               }
             } else {
-              console.warn(`⚠️ שלב נוכחי ${currentStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
+              console.warn(`⚠️ שלב ${targetStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
             }
           }
           // ✅ הליך משפטי - תמחור פיקס (מעקב שעות בלבד)
           else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
-            // מציאת השלב הנוכחי
-            const currentStageId = clientData.currentStage || 'stage_a';
+            // ✅ FIX: Use serviceId from task if provided, otherwise use currentStage
+            const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
             const stages = clientData.stages || [];
-            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+            const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
 
             if (currentStageIndex !== -1) {
               const currentStage = stages[currentStageIndex];
@@ -1853,6 +1930,115 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה בסימון משימה: ${error.message}`
+    );
+  }
+});
+
+/**
+ * 🆕 Phase 1: עדכון תקציב משימה
+ * מאפשר למשתמש לעדכן את התקציב כשהוא רואה שהוא חורג
+ */
+exports.adjustTaskBudget = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Validation
+    if (!data.taskId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה משימה'
+      );
+    }
+
+    if (typeof data.newEstimate !== 'number' || data.newEstimate <= 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תקציב חדש חייב להיות מספר חיובי'
+      );
+    }
+
+    // בדיקה שהמשימה קיימת
+    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+
+    if (!taskDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'משימה לא נמצאה'
+      );
+    }
+
+    const taskData = taskDoc.data();
+
+    // רק בעל המשימה או admin יכולים לעדכן תקציב
+    if (taskData.employee !== user.email && user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'אין הרשאה לעדכן תקציב משימה זו'
+      );
+    }
+
+    // לא ניתן לעדכן תקציב של משימה שהושלמה
+    if (taskData.status === 'הושלם') {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'לא ניתן לעדכן תקציב של משימה שכבר הושלמה'
+      );
+    }
+
+    const oldEstimate = taskData.estimatedMinutes || 0;
+    const addedMinutes = data.newEstimate - oldEstimate;
+
+    // יצירת רשומת עדכון
+    const adjustment = {
+      timestamp: new Date().toISOString(),
+      type: addedMinutes > 0 ? 'increase' : 'decrease',
+      oldEstimate,
+      newEstimate: data.newEstimate,
+      addedMinutes,
+      reason: data.reason ? sanitizeString(data.reason) : 'לא צוין',
+      adjustedBy: user.username,
+      actualAtTime: taskData.actualMinutes || 0
+    };
+
+    // עדכון המשימה
+    await db.collection('budget_tasks').doc(data.taskId).update({
+      estimatedMinutes: data.newEstimate,
+      estimatedHours: data.newEstimate / 60,
+      budgetAdjustments: admin.firestore.FieldValue.arrayUnion(adjustment),
+      lastModifiedBy: user.username,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`✅ תקציב משימה ${data.taskId} עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות`);
+
+    // Audit log
+    await logAction('ADJUST_BUDGET', user.uid, user.username, {
+      taskId: data.taskId,
+      oldEstimate,
+      newEstimate: data.newEstimate,
+      addedMinutes,
+      reason: data.reason
+    });
+
+    return {
+      success: true,
+      taskId: data.taskId,
+      oldEstimate,
+      newEstimate: data.newEstimate,
+      addedMinutes,
+      message: `תקציב עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות`
+    };
+
+  } catch (error) {
+    console.error('Error in adjustTaskBudget:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בעדכון תקציב: ${error.message}`
     );
   }
 });
@@ -2165,10 +2351,11 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
           }
           // ✅ הליך משפטי - תמחור שעתי (עם חבילות!)
           else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
-            // מציאת השלב הנוכחי
-            const currentStageId = clientData.currentStage || 'stage_a';
+            // ✅ FIX: Use serviceId from task if provided, otherwise use currentStage
+            // This ensures hours are deducted from the correct stage that the task was created for
+            const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
             const stages = clientData.stages || [];
-            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+            const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
 
             if (currentStageIndex !== -1) {
               const currentStage = stages[currentStageIndex];
@@ -2199,15 +2386,15 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                 console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
               }
             } else {
-              console.warn(`⚠️ שלב נוכחי ${currentStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
+              console.warn(`⚠️ שלב ${targetStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
             }
           }
           // ✅ הליך משפטי - תמחור פיקס (מעקב שעות בלבד)
           else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
-            // מציאת השלב הנוכחי
-            const currentStageId = clientData.currentStage || 'stage_a';
+            // ✅ FIX: Use serviceId from task if provided, otherwise use currentStage
+            const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
             const stages = clientData.stages || [];
-            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+            const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
 
             if (currentStageIndex !== -1) {
               const currentStage = stages[currentStageIndex];
@@ -4004,5 +4191,155 @@ function formatDate(date) {
     day: 'numeric'
   }).format(date);
 }
+
+// ===============================
+// 🔧 Fix Broken Legal Procedures
+// ===============================
+
+/**
+ * 🔧 תיקון הליכים משפטיים ישנים ששלבים שלהם ריקים או שבורים
+ */
+exports.fixBrokenLegalProcedures = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin' && user.role !== 'מנהל') {
+      throw new functions.https.HttpsError('permission-denied', 'רק מנהל מערכת יכול להריץ תיקון');
+    }
+
+    const dryRun = data.dryRun === true;
+    const specificClientId = data.clientId || null;
+
+    console.log(`🔧 Starting fix by ${user.username}`, { dryRun, specificClientId });
+
+    const stats = { totalClients: 0, totalServices: 0, brokenProcedures: 0, fixed: 0, skipped: 0, errors: 0, details: [] };
+
+    let clientsSnapshot;
+    if (specificClientId) {
+      const clientDoc = await db.collection('clients').doc(specificClientId).get();
+      if (!clientDoc.exists) throw new functions.https.HttpsError('not-found', `לקוח ${specificClientId} לא נמצא`);
+      clientsSnapshot = { docs: [clientDoc], size: 1 };
+    } else {
+      clientsSnapshot = await db.collection('clients').get();
+    }
+
+    stats.totalClients = clientsSnapshot.size;
+
+    for (const clientDoc of clientsSnapshot.docs) {
+      try {
+        const clientData = clientDoc.data();
+        const services = clientData.services || [];
+        stats.totalServices += services.length;
+
+        let needsUpdate = false;
+        const fixedServices = [];
+
+        for (const service of services) {
+          if (service.type === 'legal_procedure') {
+            const isBroken = !service.stages || !Array.isArray(service.stages) || service.stages.length === 0 || service.stages.length !== 3;
+
+            if (isBroken) {
+              stats.brokenProcedures++;
+              console.log(`🔍 Broken: ${service.name} (${service.id}) in ${clientDoc.id}`);
+
+              const defaultHours = [20, 30, 10];
+              const pricingType = service.pricingType || 'hourly';
+              const now = new Date().toISOString();
+
+              const rebuiltStages = ['א', 'ב', 'ג'].map((letter, index) => {
+                const stageId = `stage_${['a', 'b', 'c'][index]}`;
+                const stageName = `שלב ${letter}'`;
+
+                const stage = {
+                  id: stageId,
+                  name: stageName,
+                  description: service.stages?.[index]?.description || `${stageName} - ${service.name}`,
+                  status: index === 0 ? 'active' : 'pending',
+                  order: index + 1
+                };
+
+                if (pricingType === 'hourly') {
+                  const hours = service.stages?.[index]?.hours || service.stages?.[index]?.totalHours || defaultHours[index];
+                  const packageId = `pkg_${stageId}_${Date.now()}`;
+                  stage.packages = [{
+                    id: packageId,
+                    type: 'initial',
+                    hours: hours,
+                    hoursUsed: service.stages?.[index]?.hoursUsed || 0,
+                    hoursRemaining: hours - (service.stages?.[index]?.hoursUsed || 0),
+                    purchaseDate: now,
+                    status: 'active',
+                    description: 'חבילה ראשונית - תוקן אוטומטית'
+                  }];
+                  stage.totalHours = hours;
+                  stage.hoursUsed = service.stages?.[index]?.hoursUsed || 0;
+                  stage.hoursRemaining = hours - (service.stages?.[index]?.hoursUsed || 0);
+                } else {
+                  stage.fixedPrice = service.stages?.[index]?.fixedPrice || 10000;
+                  stage.paid = service.stages?.[index]?.paid || false;
+                }
+
+                return stage;
+              });
+
+              const fixedService = { ...service, stages: rebuiltStages, _fixedAt: now, _fixedBy: user.username };
+
+              if (pricingType === 'hourly') {
+                fixedService.totalHours = rebuiltStages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+                fixedService.hoursUsed = rebuiltStages.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+                fixedService.hoursRemaining = fixedService.totalHours - fixedService.hoursUsed;
+              } else {
+                fixedService.totalPrice = rebuiltStages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
+                fixedService.totalPaid = 0;
+              }
+
+              fixedServices.push(fixedService);
+              needsUpdate = true;
+              stats.fixed++;
+
+              stats.details.push({ clientId: clientDoc.id, clientName: clientData.clientName || clientData.fullName, serviceId: service.id, serviceName: service.name, action: 'fixed', stagesCount: rebuiltStages.length, totalHours: fixedService.totalHours });
+
+              console.log(`✅ Fixed: ${service.name} - ${rebuiltStages.length} stages`);
+            } else {
+              fixedServices.push(service);
+              stats.skipped++;
+            }
+          } else {
+            fixedServices.push(service);
+          }
+        }
+
+        if (needsUpdate && !dryRun) {
+          await clientDoc.ref.update({
+            services: fixedServices,
+            lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastModifiedBy: user.username
+          });
+          console.log(`💾 Updated ${clientDoc.id}`);
+        }
+
+      } catch (error) {
+        stats.errors++;
+        console.error(`❌ Error in ${clientDoc.id}:`, error);
+        stats.details.push({ clientId: clientDoc.id, error: error.message });
+      }
+    }
+
+    await logAction('FIX_BROKEN_LEGAL_PROCEDURES', user.uid, user.username, { dryRun, ...stats });
+
+    const message = dryRun
+      ? `[DRY RUN] נמצאו ${stats.brokenProcedures} הליכים שבורים מתוך ${stats.totalServices} שירותים`
+      : `תוקנו ${stats.fixed} הליכים משפטיים מתוך ${stats.brokenProcedures} שבורים`;
+
+    console.log(`🎉 Fix complete:`, stats);
+
+    return { success: true, dryRun, ...stats, message };
+
+  } catch (error) {
+    console.error('Error in fixBrokenLegalProcedures:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', `שגיאה בתיקון הליכים משפטיים: ${error.message}`);
+  }
+});
 
 console.log('✅ Law Office Functions loaded successfully');

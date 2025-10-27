@@ -89,7 +89,12 @@
         `;
       }
 
-      // משימה פעילה - כל הכפתורים
+      // 🆕 Phase 1: בדיקה אם יש חריגה
+      const originalEstimate = task.originalEstimate || task.estimatedMinutes || 0;
+      const actualMinutes = task.actualMinutes || 0;
+      const isOverBudget = actualMinutes > originalEstimate;
+
+      // משימה פעילה - כל הכפתורים + עדכן תקציב אם יש חריגה
       return `
         <div class="linear-actions">
           <button class="linear-action-btn primary" onclick="manager.showAdvancedTimeDialog('${taskId}')">
@@ -98,6 +103,11 @@
           <button class="linear-action-btn info" onclick="manager.showTaskHistory('${taskId}')">
             <i class="fas fa-history"></i> היסטוריה
           </button>
+          ${isOverBudget ? `
+          <button class="linear-action-btn budget-adjust" onclick="manager.showAdjustBudgetDialog('${taskId}')">
+            <i class="fas fa-edit"></i> עדכן תקציב
+          </button>
+          ` : ''}
           <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog('${taskId}')">
             <i class="fas fa-calendar-plus"></i> האריך יעד
           </button>

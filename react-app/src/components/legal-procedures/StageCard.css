@@ -1,0 +1,180 @@
+/* Stage Card Styles */
+/* ================== */
+
+.stage-card {
+  padding: 1.5rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-color);
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stage-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Stage Status Styling */
+.stage-pending {
+  border-color: #ddd;
+}
+
+.stage-active {
+  border-color: var(--primary-color);
+  background-color: rgba(26, 115, 232, 0.02);
+}
+
+.stage-completed {
+  border-color: #28a745;
+  background-color: rgba(40, 167, 69, 0.02);
+}
+
+.stage-cancelled {
+  border-color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.02);
+  opacity: 0.7;
+}
+
+.stage-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.stage-number {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  background-color: var(--primary-light);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+}
+
+.stage-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-pending {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+.status-active {
+  background-color: #cfe2ff;
+  color: #084298;
+}
+
+.status-completed {
+  background-color: #d1e7dd;
+  color: #0a3622;
+}
+
+.status-cancelled {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.stage-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stage-name {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.stage-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+.stage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stage-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.stage-info-item i {
+  color: var(--primary-color);
+  width: 16px;
+  text-align: center;
+  margin-top: 0.125rem;
+}
+
+.stage-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.info-label {
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.info-value {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.info-remaining {
+  color: var(--primary-color);
+  font-size: 0.8125rem;
+}
+
+.paid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  color: #28a745;
+  font-size: 0.8125rem;
+}
+
+.stage-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stage-card {
+    padding: 1rem;
+  }
+
+  .stage-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .stage-card-actions {
+    flex-direction: column;
+  }
+}

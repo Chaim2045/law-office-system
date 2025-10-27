@@ -4229,7 +4229,9 @@ class AnalyticsEngine {
         this.events.push(event);
 
         try {
-            if (this.db) {
+            // 🔇 Analytics מושבת זמנית - גורם לשגיאות 400 בלופ אינסופי
+            // TODO: להפעיל מחדש אחרי הגדרת Firestore rules נכונה
+            if (false && this.db) {
                 // שמירה ב-Firestore
                 await this.db.collection('va_analytics').add(event);
 
@@ -4238,7 +4240,7 @@ class AnalyticsEngine {
 
                 logger.debug('Analytics event tracked:', eventType);
             } else {
-                // שמירה מקומית
+                // שמירה מקומית בלבד (Analytics מושבת)
                 this.saveEventLocally(event);
             }
         } catch (error) {

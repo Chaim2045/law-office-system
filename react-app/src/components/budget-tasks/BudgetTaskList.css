@@ -1,0 +1,44 @@
+/* Budget Task List Styles */
+/* ======================= */
+
+.budget-task-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.budget-task-list-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.budget-task-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 3rem;
+  text-align: center;
+}
+
+.budget-task-list-empty i {
+  font-size: 4rem;
+  color: var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.budget-task-list-empty p {
+  font-size: 1.125rem;
+  color: var(--text-light);
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .budget-task-list {
+    grid-template-columns: 1fr;
+  }
+}

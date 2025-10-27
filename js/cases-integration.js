@@ -137,7 +137,7 @@
             ${cases.map(c => `
               <option value="${c.id}" data-case='${JSON.stringify(c)}'>
                 ${this.escapeHtml(c.caseTitle)}
-                ${c.procedureType === 'hours' ? `(${this.formatHours(c.hoursRemaining)} נותרות)` : ''}
+                ${c.procedureType === 'hours' ? `(${this.formatHours(window.calculateRemainingHours(c))} נותרות)` : ''}
               </option>
             `).join('')}
           </select>
@@ -188,7 +188,7 @@
               ${this.escapeHtml(caseItem.caseTitle)}
             </div>
             <div style="font-size: 13px; color: #15803d;">
-              ${caseItem.procedureType === 'hours' ? `${this.formatHours(caseItem.hoursRemaining)} שעות נותרות` : 'מחיר קבוע'}
+              ${caseItem.procedureType === 'hours' ? `${this.formatHours(window.calculateRemainingHours(caseItem))} שעות נותרות` : 'מחיר קבוע'}
             </div>
           </div>
           <div style="color: #22c55e; font-size: 12px;">
