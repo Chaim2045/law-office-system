@@ -514,9 +514,21 @@
         clientNameField.value = clientName;
       }
 
-      // ✅ קריאה ל-callback
+      // ✅ NEW: EventBus Architecture v2.0
+      if (window.EventBus) {
+        window.EventBus.emit('client:selected', {
+          clientId: this.selectedClient.id,
+          clientName: this.selectedClient.name,
+          caseId: this.selectedCase?.id || undefined,
+          caseName: this.selectedCase?.name || undefined
+        });
+        Logger.log(`  🚀 [v2.0] EventBus: client:selected emitted`);
+      }
+
+      // ⚠️ DEPRECATED: Keep for backwards compatibility (will be removed in Phase 4)
       if (this.options.onClientSelected) {
         this.options.onClientSelected(this.selectedClient);
+        Logger.log(`  ⚠️ [DEPRECATED] onClientSelected callback called (use EventBus instead)`);
       }
 
       // טעינת תיקים של הלקוח (חיפוש לפי שם במבנה החדש)
@@ -706,9 +718,23 @@
         this.renderServiceCards(caseItem); // זה יסתיר אוטומטית את קבוצת השירותים
       }
 
-      // ✅ קריאה ל-callback
+      // ✅ NEW: EventBus Architecture v2.0
+      if (window.EventBus) {
+        window.EventBus.emit('case:selected', {
+          clientId: this.selectedClient?.id,
+          clientName: this.selectedClient?.name,
+          caseId: caseItem.id,
+          caseName: caseItem.caseTitle,
+          caseNumber: caseItem.caseNumber,
+          procedureType: caseItem.procedureType
+        });
+        Logger.log(`  🚀 [v2.0] EventBus: case:selected emitted`);
+      }
+
+      // ⚠️ DEPRECATED: Keep for backwards compatibility (will be removed in Phase 4)
       if (this.options.onCaseSelected) {
         this.options.onCaseSelected(caseItem);
+        Logger.log(`  ⚠️ [DEPRECATED] onCaseSelected callback called (use EventBus instead)`);
       }
     }
 
@@ -1480,6 +1506,16 @@
         const input = document.getElementById(`${this.containerId}_${field}`);
         if (input) input.value = '';
       });
+
+      // ✅ NEW: EventBus Architecture v2.0
+      if (window.EventBus) {
+        const selectorType = this.containerId.includes('budget') ? 'budget' :
+                            this.containerId.includes('timesheet') ? 'timesheet' : 'unknown';
+        window.EventBus.emit('selector:cleared', {
+          selectorType: selectorType
+        });
+        Logger.log(`  🚀 [v2.0] EventBus: selector:cleared emitted (${selectorType})`);
+      }
     }
 
     /**
