@@ -10884,14 +10884,14 @@ body.logged-in .main-footer {
 
 /* ===== עיצוב כרטיסיות שעתון משופרות ===== */
 
-/* גריד כרטיסיות שעתון */
-.timesheet-cards-grid {
+/* גריד כרטיסיות שעתון - מנוהל בכלל הראשי למעלה (שורה 2758) */
+/* .timesheet-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
   padding: 20px 0;
   direction: rtl;
-}
+} */
 
 /* כרטיס שעתון בסיסי */
 .timesheet-card {
