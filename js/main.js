@@ -1166,12 +1166,46 @@ class LawOfficeManager {
     await ActionFlowManager.execute({
       loadingMessage: 'שומר זמן...',
       action: async () => {
-        // קריאה ל-Cloud Function שמטפלת בהכל אטומית
-        await window.addTimeToTaskFirebase(taskId, {
-          minutes: workMinutes,
-          description: workDescription,
-          date: workDate
-        });
+        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
+        if (window.FirebaseService) {
+          Logger.log('  🚀 [v2.0] Using FirebaseService.call for addTimeToTask');
+
+          const result = await window.FirebaseService.call('addTimeToTask', {
+            taskId,
+            minutes: workMinutes,
+            description: workDescription,
+            date: workDate
+          }, {
+            retries: 3,
+            timeout: 15000
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || 'שגיאה בהוספת זמן');
+          }
+
+          // ✅ NEW: Emit EventBus event
+          if (window.EventBus) {
+            window.EventBus.emit('task:time-added', {
+              taskId,
+              clientId: task.clientId,
+              clientName: task.clientName,
+              minutes: workMinutes,
+              description: workDescription,
+              date: workDate,
+              addedBy: this.currentUser
+            });
+            Logger.log('  🚀 [v2.0] EventBus: task:time-added emitted');
+          }
+        } else {
+          // ⚠️ FALLBACK: Use old method
+          Logger.log('  ⚠️ [FALLBACK] Using addTimeToTaskFirebase (v2.0 not available)');
+          await window.addTimeToTaskFirebase(taskId, {
+            minutes: workMinutes,
+            description: workDescription,
+            date: workDate
+          });
+        }
 
         // 🔧 תיקון: טעינה מחדש של כל הנתונים (loadData() refreshes selectors automatically)
         await this.loadData();  // טוען clients + budgetTasks + timesheet + מרענן selectors
@@ -1197,12 +1231,46 @@ class LawOfficeManager {
     await ActionFlowManager.execute({
       loadingMessage: 'משלים משימה...',
       action: async () => {
-        // Update task status
-        task.status = 'הושלם';
-        task.completedAt = new Date();
-        task.completionNotes = completionNotes;
+        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
+        if (window.FirebaseService) {
+          Logger.log('  🚀 [v2.0] Using FirebaseService.call for completeTask');
 
-        await FirebaseOps.saveBudgetTaskToFirebase(task);
+          const result = await window.FirebaseService.call('completeTask', {
+            taskId,
+            completionNotes
+          }, {
+            retries: 3,
+            timeout: 15000
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || 'שגיאה בסיום משימה');
+          }
+
+          // ✅ NEW: Emit EventBus event
+          if (window.EventBus) {
+            window.EventBus.emit('task:completed', {
+              taskId,
+              clientId: task.clientId,
+              clientName: task.clientName,
+              completionNotes,
+              completedBy: this.currentUser,
+              estimatedMinutes: task.estimatedMinutes,
+              actualMinutes: task.totalMinutesSpent || 0
+            });
+            Logger.log('  🚀 [v2.0] EventBus: task:completed emitted');
+          }
+        } else {
+          // ⚠️ FALLBACK: Use old method
+          Logger.log('  ⚠️ [FALLBACK] Using FirebaseOps (v2.0 not available)');
+
+          // Update task status
+          task.status = 'הושלם';
+          task.completedAt = new Date();
+          task.completionNotes = completionNotes;
+
+          await FirebaseOps.saveBudgetTaskToFirebase(task);
+        }
 
         // Reload tasks
         this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
