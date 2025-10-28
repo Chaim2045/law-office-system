@@ -6176,6 +6176,9 @@ body.logged-in .main-footer {
   /* Main tabs - moved to tabs.css */
 }
 
+/* TODO: CLEANUP - כפילות! @media (768px) #2/9
+   מיזוג נדרש ל-@media (768px) MAIN בשורה 11285
+   תאריך סימון: 28.10.2025 */
 /* Mobile (max-width: 768px) */
 @media (max-width: 768px) {
   .minimal-sidebar {
@@ -11583,6 +11586,9 @@ body.logged-in .main-footer {
   font-weight: 600;
 }
 
+/* TODO: CLEANUP - כפילות! מיזוג ל-@media (768px) בשורה 11285
+   למחיקה בשינוי הבא של timesheet cards
+   תאריך סימון: 28.10.2025 */
 /* ריספונסיביות */
 @media (max-width: 768px) {
   .timesheet-cards-grid {
@@ -11604,6 +11610,7 @@ body.logged-in .main-footer {
     align-self: flex-end;
   }
 }
+/* END TODO: CLEANUP */
 
 /* אנימציות */
 @keyframes slideInCard {
