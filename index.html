@@ -96,16 +96,31 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
-    <link rel="stylesheet" href="style.css?v=1.0.5" />
+    <link rel="stylesheet" href="css/style.css?v=1.0.5" />
+    <link rel="stylesheet" href="css/header.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/content-areas.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/buttons.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/forms.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/tables.css?v=1.0.0" />
     <link rel="stylesheet" href="css/timesheet-cards.css?v=1.0.0" />
-    <link rel="stylesheet" href="style-hitech-addon.css?v=1.0.0" />
-    <link rel="stylesheet" href="tabs.css?v=2.1.2" />
-    <link rel="stylesheet" href="statistics.css?v=3.2.0" />
-    <link rel="stylesheet" href="sort.css?v=2.3.0" />
-    <link rel="stylesheet" href="reports.css" />
-    <link rel="stylesheet" href="pagination.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/modals.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/popups-unified.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/popups-rtl.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/expanded-cards.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/advanced-popups.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/combobox.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/style-hitech-addon.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/tabs.css?v=2.1.2" />
+    <link rel="stylesheet" href="css/statistics.css?v=3.2.0" />
+    <link rel="stylesheet" href="css/sort.css?v=2.3.0" />
+    <link rel="stylesheet" href="css/reports.css" />
+    <link rel="stylesheet" href="css/pagination.css?v=1.0.0" />
     <!-- New Notification System CSS -->
-    <link rel="stylesheet" href="notifications.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/notifications.css?v=1.0.0" />
+    <!-- Utility Classes - כלי עזר -->
+    <link rel="stylesheet" href="css/utilities.css?v=1.0.0" />
+    <!-- Responsive Design - מדיה queries -->
+    <link rel="stylesheet" href="css/responsive.css?v=1.0.0" />
 
     <!-- Virtual Assistant Styles - TEMPORARILY DISABLED -->
     <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=3.9.0" /> -->
@@ -366,11 +381,11 @@
           <!-- MAIN TABS NAVIGATION -->
           <div class="main-tabs-container">
             <div class="main-tabs">
-              <button class="tab-button active" onclick="switchTab('budget')">
+              <button id="budgetTabButton" class="tab-button active" onclick="switchTab('budget')">
                 <i class="fas fa-chart-bar"></i>
                 תקצוב משימות
               </button>
-              <button class="tab-button" onclick="switchTab('timesheet')">
+              <button id="timesheetTabButton" class="tab-button" onclick="switchTab('timesheet')">
                 <i class="fas fa-clock"></i>
                 שעתון
               </button>
@@ -955,11 +970,11 @@
 
     <!-- ===== סקריפטים וסגנונות ===== -->
     <!-- SCRIPTS AND STYLES -->
-    <script src="dates.js?v=1.2.0"></script>
-    <script src="statistics.js?v=3.2.0"></script>
-    <script src="reports.js?v=1.1.0"></script>
-    <script src="pagination.js?v=1.0.0"></script>
-    <script src="activity-logger.js?v=1.0.0"></script>
+    <script src="js/modules/dates.js?v=1.2.0"></script>
+    <script src="js/modules/statistics.js?v=3.2.0"></script>
+    <script src="js/modules/reports-stats.js?v=1.1.0"></script>
+    <script src="js/modules/pagination.js?v=1.0.0"></script>
+    <script src="js/modules/activity-logger.js?v=1.0.0"></script>
     <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
     <script src="js/modules/logger.js?v=1.0.0"></script>
@@ -970,15 +985,14 @@
     <script type="module" src="dist/js/services/firebase-service.js?v=2.0.0"></script>
     <script type="module" src="dist/js/schemas/index.js?v=2.0.0"></script>
 
-    <script src="task-actions.js?v=1.1.0"></script>
-    <script src="skeleton-loader.js?v=1.1.0"></script>
-    <script src="firebase-pagination.js?v=1.1.0"></script>
-    <script src="integration-manager.js?v=1.1.0"></script>
+    <script src="js/modules/task-actions.js?v=1.1.0"></script>
+    <script type="module" src="dist/js/modules/firebase-pagination.js?v=1.1.0"></script>
+    <script src="js/modules/integration-manager.js?v=1.1.0"></script>
     <!-- Firebase Functions Migration - Server-side Integration -->
-    <script src="api-client-v2.js?v=2.0.0"></script>
-    <script src="firebase-server-adapter.js?v=2.0.1"></script>
+    <script src="js/modules/api-client-v2.js?v=2.0.0"></script>
+    <script src="js/modules/firebase-server-adapter.js?v=2.0.1"></script>
     <!-- Employees Management System - ניהול עובדים -->
-    <script src="employees-manager.js?v=1.0.0"></script>
+    <script type="module" src="dist/js/modules/employees-manager.js?v=1.0.0"></script>
     <!-- ✅ Presence System - מעקב משתמשים בזמן אמת (Realtime Database) -->
     <script src="js/modules/presence-system.js?v=2.0.0"></script>
     <!-- Cases Management System - ניהול תיקים -->
@@ -1009,7 +1023,7 @@
 
     <!-- ===== System Diagnostics & Snapshot Tool ===== -->
     <!-- Full system state comparison for debugging -->
-    <script src="system-snapshot.js?v=1.0.0"></script>
+    <script src="js/modules/system-snapshot.js?v=1.0.0"></script>
 
     <!-- ===== SVG RINGS MODULE ===== -->
     <script src="js/modules/svg-rings.js?v=1.0.0"></script>
