@@ -515,6 +515,7 @@ class LawOfficeManager {
             serviceName: selectorValues.serviceName,  // ✅ שם השירות
             branch: branch,  // ✅ סניף מטפל
             estimatedMinutes: estimatedMinutes,
+            originalEstimate: estimatedMinutes, // ✅ NEW: originalEstimate for v2.0
             deadline: deadline,
             employee: this.currentUser,
             status: 'active',
@@ -525,7 +526,35 @@ class LawOfficeManager {
 
           Logger.log('📝 Creating budget task with data:', taskData);
 
-          await FirebaseOps.saveBudgetTaskToFirebase(taskData);
+          // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
+          if (window.FirebaseService) {
+            Logger.log('  🚀 [v2.0] Using FirebaseService.call');
+
+            const result = await window.FirebaseService.call('createBudgetTask', taskData, {
+              retries: 3,
+              timeout: 15000
+            });
+
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to create budget task');
+            }
+
+            // ✅ NEW: Emit EventBus event
+            if (window.EventBus) {
+              window.EventBus.emit('task:created', {
+                taskId: result.data?.taskId || 'unknown',
+                clientId: taskData.clientId,
+                clientName: taskData.clientName,
+                employee: taskData.employee,
+                originalEstimate: taskData.estimatedMinutes
+              });
+              Logger.log('  🚀 [v2.0] EventBus: task:created emitted');
+            }
+          } else {
+            // ⚠️ FALLBACK: Use old method if FirebaseService not available
+            Logger.log('  ⚠️ [FALLBACK] Using FirebaseOps (v2.0 not available)');
+            await FirebaseOps.saveBudgetTaskToFirebase(taskData);
+          }
 
           // ✅ Invalidate cache to force fresh data on next load
           this.dataCache.invalidate(`budgetTasks:${this.currentUser}`);
@@ -1059,12 +1088,44 @@ class LawOfficeManager {
     await ActionFlowManager.execute({
       loadingMessage: 'מאריך תאריך יעד...',
       action: async () => {
-        // Call Firebase Function
-        await window.extendTaskDeadlineFirebase(taskId, newDate, reason);
+        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
+        if (window.FirebaseService) {
+          Logger.log('  🚀 [v2.0] Using FirebaseService.call for extendTaskDeadline');
+
+          const result = await window.FirebaseService.call('extendTaskDeadline', {
+            taskId,
+            newDeadline: newDate,
+            reason
+          }, {
+            retries: 3,
+            timeout: 10000
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || 'שגיאה בהארכת יעד');
+          }
+        } else {
+          // ⚠️ FALLBACK: Use old method
+          Logger.log('  ⚠️ [FALLBACK] Using extendTaskDeadlineFirebase (v2.0 not available)');
+          await window.extendTaskDeadlineFirebase(taskId, newDate, reason);
+        }
 
         // Reload tasks (loadData() already refreshes all selectors)
         await this.loadData();
         this.filterBudgetTasks();
+
+        // ✅ NEW: Emit EventBus event AFTER reload (when we have fresh data)
+        if (window.FirebaseService && window.EventBus) {
+          const task = this.budgetTasks.find(t => t.id === taskId);
+          window.EventBus.emit('task:deadline-extended', {
+            taskId,
+            oldDeadline: task?.deadline || newDate, // Use current deadline (or newDate if not found)
+            newDeadline: newDate,
+            reason,
+            extendedBy: this.currentUser
+          });
+          Logger.log('  🚀 [v2.0] EventBus: task:deadline-extended emitted');
+        }
       },
       successMessage: 'תאריך היעד הוארך בהצלחה',
       errorMessage: 'שגיאה בהארכת יעד',
@@ -1173,15 +1234,48 @@ class LawOfficeManager {
     await ActionFlowManager.execute({
       loadingMessage: 'מעדכן תקציב...',
       action: async () => {
-        // Call Firebase Function
-        const result = await window.callFunction('adjustTaskBudget', {
-          taskId,
-          newEstimate: newBudgetMinutes,
-          reason
-        });
+        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
+        if (window.FirebaseService) {
+          Logger.log('  🚀 [v2.0] Using FirebaseService.call for adjustTaskBudget');
 
-        if (!result.success) {
-          throw new Error(result.message || 'שגיאה בעדכון תקציב');
+          const result = await window.FirebaseService.call('adjustTaskBudget', {
+            taskId,
+            newEstimate: newBudgetMinutes,
+            reason
+          }, {
+            retries: 3,
+            timeout: 10000
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || 'שגיאה בעדכון תקציב');
+          }
+
+          // ✅ NEW: Emit EventBus event
+          if (window.EventBus) {
+            // Find the task to get old estimate
+            const task = this.budgetTasks.find(t => t.id === taskId);
+            window.EventBus.emit('task:budget-adjusted', {
+              taskId,
+              oldEstimate: task?.estimatedMinutes || 0,
+              newEstimate: newBudgetMinutes,
+              reason,
+              adjustedBy: this.currentUser
+            });
+            Logger.log('  🚀 [v2.0] EventBus: task:budget-adjusted emitted');
+          }
+        } else {
+          // ⚠️ FALLBACK: Use old method
+          Logger.log('  ⚠️ [FALLBACK] Using callFunction (v2.0 not available)');
+          const result = await window.callFunction('adjustTaskBudget', {
+            taskId,
+            newEstimate: newBudgetMinutes,
+            reason
+          });
+
+          if (!result.success) {
+            throw new Error(result.message || 'שגיאה בעדכון תקציב');
+          }
         }
 
         // Reload tasks
