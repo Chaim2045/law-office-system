@@ -742,7 +742,37 @@ class LawOfficeManager {
 
         Logger.log('📝 Creating internal timesheet entry:', entryData);
 
-        await FirebaseOps.saveTimesheetToFirebase(entryData);
+        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
+        if (window.FirebaseService) {
+          Logger.log('  🚀 [v2.0] Using FirebaseService.call for createTimesheetEntry');
+
+          const result = await window.FirebaseService.call('createTimesheetEntry', entryData, {
+            retries: 3,
+            timeout: 15000
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || 'שגיאה ברישום פעילות');
+          }
+
+          // ✅ NEW: Emit EventBus event
+          if (window.EventBus) {
+            window.EventBus.emit('timesheet:entry-created', {
+              entryId: result.data?.entryId || 'unknown',
+              date,
+              minutes,
+              action,
+              notes,
+              employee: this.currentUser,
+              isInternal: true
+            });
+            Logger.log('  🚀 [v2.0] EventBus: timesheet:entry-created emitted');
+          }
+        } else {
+          // ⚠️ FALLBACK: Use old method
+          Logger.log('  ⚠️ [FALLBACK] Using FirebaseOps (v2.0 not available)');
+          await FirebaseOps.saveTimesheetToFirebase(entryData);
+        }
 
         // ✅ Invalidate cache to force fresh data on next load
         this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
