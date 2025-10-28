@@ -198,7 +198,12 @@ async function loadTimesheetFromFirebase(employee) {
 /**
  * Save budget task to Firebase
  */
+/**
+ * @deprecated Use FirebaseService.call('createBudgetTask') instead
+ */
 async function saveBudgetTaskToFirebase(taskData) {
+  console.warn('⚠️ [DEPRECATED] saveBudgetTaskToFirebase is deprecated. Use FirebaseService.call("createBudgetTask") instead.');
+
   try {
     // ✅ Check internet connection first
     if (!navigator.onLine) {
@@ -235,8 +240,11 @@ async function saveBudgetTaskToFirebase(taskData) {
 
 /**
  * Save timesheet entry to Firebase
+ * @deprecated Use FirebaseService.call('createTimesheetEntry') instead
  */
 async function saveTimesheetToFirebase(entryData) {
+  console.warn('⚠️ [DEPRECATED] saveTimesheetToFirebase is deprecated. Use FirebaseService.call("createTimesheetEntry") instead.');
+
   try {
     // ✅ Check internet connection first
     if (!navigator.onLine) {
@@ -273,8 +281,11 @@ async function saveTimesheetToFirebase(entryData) {
 
 /**
  * Update timesheet entry in Firebase
+ * @deprecated Use FirebaseService.call('updateTimesheetEntry') instead
  */
 async function updateTimesheetEntryFirebase(entryId, minutes, reason = "") {
+  console.warn('⚠️ [DEPRECATED] updateTimesheetEntryFirebase is deprecated. Use FirebaseService.call("updateTimesheetEntry") instead.');
+
   try {
     // Call Firebase Function for secure validation and update
     const result = await callFunction('updateTimesheetEntry', {
@@ -295,7 +306,12 @@ async function updateTimesheetEntryFirebase(entryId, minutes, reason = "") {
 }
 
 // הוספת זמן למשימה מתוקצבת (Firebase)
+/**
+ * @deprecated Use FirebaseService.call('addTimeToTask') instead
+ */
 async function addTimeToTaskFirebase(taskId, timeData) {
+  console.warn('⚠️ [DEPRECATED] addTimeToTaskFirebase is deprecated. Use FirebaseService.call("addTimeToTask") instead.');
+
   try {
     // ✅ תיקון: שליחת הנתונים ישירות (לא עטופים ב-timeEntry)
     const result = await callFunction('addTimeToTask', {
@@ -317,7 +333,12 @@ async function addTimeToTaskFirebase(taskId, timeData) {
 }
 
 // סיום משימה מתוקצבת (Firebase)
+/**
+ * @deprecated Use FirebaseService.call('completeTask') instead
+ */
 async function completeTaskFirebase(taskId, completionNotes = "") {
+  console.warn('⚠️ [DEPRECATED] completeTaskFirebase is deprecated. Use FirebaseService.call("completeTask") instead.');
+
   try {
     // Call Firebase Function for secure validation and update
     const result = await callFunction('completeTask', {
@@ -337,7 +358,12 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
 }
 
 // הארכת תאריך יעד למשימה (Firebase)
+/**
+ * @deprecated Use FirebaseService.call('extendTaskDeadline') instead
+ */
 async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
+  console.warn('⚠️ [DEPRECATED] extendTaskDeadlineFirebase is deprecated. Use FirebaseService.call("extendTaskDeadline") instead.');
+
   try {
     // Call Firebase Function for secure validation and update
     const result = await callFunction('extendTaskDeadline', {
