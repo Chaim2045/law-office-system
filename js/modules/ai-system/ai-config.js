@@ -33,7 +33,7 @@ const AI_CONFIG = {
    *
    * ⚠️ שמור את המפתח בסוד! אל תשתף אותו עם אחרים!
    */
-  apiKey: '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', // ← הדבק את המפתח שלך כאן!
+  apiKey: '', // ← הדבק את המפתח שלך כאן מ-https://platform.openai.com/api-keys
 
   /**
    * @property model
