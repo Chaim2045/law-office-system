@@ -10,6 +10,7 @@
 - [טכנולוגיות](#-טכנולוגיות)
 - [תכונות עיקריות](#-תכונות-עיקריות)
 - [מבנה הפרויקט](#-מבנה-הפרויקט)
+- [🧹 ניקיון CSS הדרגתי](#-ניקיון-css-הדרגתי)
 - [יומן שינויים](#-יומן-שינויים)
 - [הוראות התקנה](#-הוראות-התקנה)
 - [תצורה](#-תצורה)
@@ -83,6 +84,36 @@ law-office-system/
 ├── api.js.backup                 # גיבוי API (לא בשימוש)
 └── README.md                     # קובץ זה
 ```
+
+---
+
+## 🧹 ניקיון CSS הדרגתי
+
+**⚠️ חשוב למפתחים ולבינה מלאכותית!**
+
+קובץ `style.css` נמצא בתהליך ניקיון הדרגתי של **273 כפילויות**.
+
+### 📚 קבצי הדרכה:
+
+- **[AI_CSS_CLEANUP_INSTRUCTIONS.md](AI_CSS_CLEANUP_INSTRUCTIONS.md)** - 🤖 הנחיות לבינה מלאכותית (קרא ראשון!)
+- **[CSS_CLEANUP_README.md](CSS_CLEANUP_README.md)** - 👤 הנחיות למפתחים
+- **[CSS_CLEANUP_GUIDE.md](CSS_CLEANUP_GUIDE.md)** - 📋 רשימת כל הכפילויות
+
+### 🎯 עקרון העבודה:
+
+**כל שינוי ב-CSS = הזדמנות לניקיון!**
+
+1. חפש `/* TODO: CLEANUP */` tags באזור שבו אתה עובד
+2. מזג כפילויות שמצאת
+3. עדכן את [CSS_CLEANUP_GUIDE.md](CSS_CLEANUP_GUIDE.md)
+4. המשך עם השינוי המקורי
+
+### 📊 התקדמות:
+
+- נמחקו: 2/273 כפילויות (0.7%)
+- חיסכון צפוי: ~2,800 שורות (22%)
+
+**תאריך התחלה**: 28.10.2025
 
 ---
 

@@ -1,5 +1,7 @@
 # 🧹 CSS Cleanup Guide - מדריך ניקיון CSS הדרגתי
 
+> **⚠️ FOR AI ASSISTANTS**: This file contains instructions for gradual CSS cleanup. When editing style.css, ALWAYS check for `/* TODO: CLEANUP */` comments in your working area and remove duplicates before making changes. Update this file after each deletion.
+
 > **מטרה**: לנקות את style.css בצורה הדרגתית ובטוחה, מבלי לשבור כלום
 
 ## 📊 סטטיסטיקות נוכחיות
@@ -7,6 +9,64 @@
 - **שורות כוללות**: ~12,500
 - **כפילויות שזוהו**: 273 selectors + 24 media queries
 - **חסכון פוטנציאלי**: ~2,800 שורות (22%)
+
+---
+
+## 📚 Example for AI Assistants - דוגמה לבינה מלאכותית
+
+### Before Cleanup (לפני):
+```css
+/* Line 11285 - MAIN - KEEP THIS! */
+@media (max-width: 768px) {
+  .timesheet-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px 0;
+  }
+  .modern-timesheet-table {
+    font-size: 12px;
+  }
+}
+
+/* ... 300 lines later ... */
+
+/* TODO: CLEANUP - כפילות! מיזוג ל-@media (768px) בשורה 11285 */
+@media (max-width: 768px) {
+  .timesheet-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .timesheet-linear-card {
+    margin: 0 8px;
+  }
+}
+/* END TODO: CLEANUP */
+```
+
+### After Cleanup (אחרי):
+```css
+/* Line 11285 - MAIN */
+@media (max-width: 768px) {
+  .timesheet-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px 0;
+  }
+  .timesheet-linear-card {    /* ← MERGED from line 11590 */
+    margin: 0 8px;
+  }
+  .modern-timesheet-table {
+    font-size: 12px;
+  }
+}
+
+/* Line 11590 - DELETED! */
+```
+
+### Update This File:
+```markdown
+- [x] שורה 11590 - נמחק ב-28.10.2025
+```
 
 ---
 
