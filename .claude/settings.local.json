@@ -40,7 +40,8 @@
       "Bash(git push:*)",
       "Bash(cp:*)",
       "Read(//c/**)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
