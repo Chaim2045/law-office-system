@@ -526,35 +526,27 @@ class LawOfficeManager {
 
           Logger.log('📝 Creating budget task with data:', taskData);
 
-          // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-          if (window.FirebaseService) {
-            Logger.log('  🚀 [v2.0] Using FirebaseService.call');
+          // Architecture v2.0 - FirebaseService with retry
+          Logger.log('  🚀 [v2.0] Using FirebaseService.call');
 
-            const result = await window.FirebaseService.call('createBudgetTask', taskData, {
-              retries: 3,
-              timeout: 15000
-            });
+          const result = await window.FirebaseService.call('createBudgetTask', taskData, {
+            retries: 3,
+            timeout: 15000
+          });
 
-            if (!result.success) {
-              throw new Error(result.error || 'Failed to create budget task');
-            }
-
-            // ✅ NEW: Emit EventBus event
-            if (window.EventBus) {
-              window.EventBus.emit('task:created', {
-                taskId: result.data?.taskId || 'unknown',
-                clientId: taskData.clientId,
-                clientName: taskData.clientName,
-                employee: taskData.employee,
-                originalEstimate: taskData.estimatedMinutes
-              });
-              Logger.log('  🚀 [v2.0] EventBus: task:created emitted');
-            }
-          } else {
-            // ⚠️ FALLBACK: Use old method if FirebaseService not available
-            Logger.log('  ⚠️ [FALLBACK] Using FirebaseOps (v2.0 not available)');
-            await FirebaseOps.saveBudgetTaskToFirebase(taskData);
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to create budget task');
           }
+
+          // Emit EventBus event
+          window.EventBus.emit('task:created', {
+            taskId: result.data?.taskId || 'unknown',
+            clientId: taskData.clientId,
+            clientName: taskData.clientName,
+            employee: taskData.employee,
+            originalEstimate: taskData.estimatedMinutes
+          });
+          Logger.log('  🚀 [v2.0] EventBus: task:created emitted');
 
           // ✅ Invalidate cache to force fresh data on next load
           this.dataCache.invalidate(`budgetTasks:${this.currentUser}`);
@@ -721,7 +713,7 @@ class LawOfficeManager {
       return;
     }
 
-    // ✅ Use ActionFlowManager for consistent UX
+    // Use ActionFlowManager for consistent UX
     await ActionFlowManager.execute({
       loadingMessage: 'שומר פעילות פנימית...',
       action: async () => {
@@ -736,45 +728,25 @@ class LawOfficeManager {
           action: action,
           notes: notes,
           employee: this.currentUser,
-          isInternal: true,  // ✅ Always internal activity
+          isInternal: true,  // Always internal activity
           createdAt: new Date()
         };
 
         Logger.log('📝 Creating internal timesheet entry:', entryData);
 
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for createTimesheetEntry');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for createTimesheetEntry');
 
-          const result = await window.FirebaseService.call('createTimesheetEntry', entryData, {
-            retries: 3,
-            timeout: 15000
-          });
+        const result = await window.FirebaseService.call('createTimesheetEntry', entryData, {
+          retries: 3,
+          timeout: 15000
+        });
 
-          if (!result.success) {
-            throw new Error(result.error || 'שגיאה ברישום פעילות');
-          }
-
-          // ✅ NEW: Emit EventBus event
-          if (window.EventBus) {
-            window.EventBus.emit('timesheet:entry-created', {
-              entryId: result.data?.entryId || 'unknown',
-              date,
-              minutes,
-              action,
-              notes,
-              employee: this.currentUser,
-              isInternal: true
-            });
-            Logger.log('  🚀 [v2.0] EventBus: timesheet:entry-created emitted');
-          }
-        } else {
-          // ⚠️ FALLBACK: Use old method
-          Logger.log('  ⚠️ [FALLBACK] Using FirebaseOps (v2.0 not available)');
-          await FirebaseOps.saveTimesheetToFirebase(entryData);
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה ברישום פעילות');
         }
 
-        // ✅ Invalidate cache to force fresh data on next load
+        // Invalidate cache to force fresh data on next load
         this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
 
         // Reload entries with cache (will fetch fresh because invalidated)
@@ -782,6 +754,18 @@ class LawOfficeManager {
           FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         );
         this.filterTimesheetEntries();
+
+        // Emit EventBus event
+        window.EventBus.emit('timesheet:entry-created', {
+          entryId: result.data?.entryId || 'unknown',
+          date,
+          minutes,
+          action,
+          notes,
+          employee: this.currentUser,
+          isInternal: true
+        });
+        Logger.log('  🚀 [v2.0] EventBus: timesheet:entry-created emitted');
       },
       successMessage: '✅ הפעילות הפנימית נרשמה בהצלחה',
       errorMessage: 'שגיאה ברישום פעילות',
@@ -1114,48 +1098,40 @@ class LawOfficeManager {
       return;
     }
 
-    // ✅ NEW: Use ActionFlowManager with auto-close popup
+    // Use ActionFlowManager with auto-close popup
     await ActionFlowManager.execute({
       loadingMessage: 'מאריך תאריך יעד...',
       action: async () => {
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for extendTaskDeadline');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for extendTaskDeadline');
 
-          const result = await window.FirebaseService.call('extendTaskDeadline', {
-            taskId,
-            newDeadline: newDate,
-            reason
-          }, {
-            retries: 3,
-            timeout: 10000
-          });
+        const result = await window.FirebaseService.call('extendTaskDeadline', {
+          taskId,
+          newDeadline: newDate,
+          reason
+        }, {
+          retries: 3,
+          timeout: 10000
+        });
 
-          if (!result.success) {
-            throw new Error(result.error || 'שגיאה בהארכת יעד');
-          }
-        } else {
-          // ⚠️ FALLBACK: Use old method
-          Logger.log('  ⚠️ [FALLBACK] Using extendTaskDeadlineFirebase (v2.0 not available)');
-          await window.extendTaskDeadlineFirebase(taskId, newDate, reason);
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה בהארכת יעד');
         }
 
         // Reload tasks (loadData() already refreshes all selectors)
         await this.loadData();
         this.filterBudgetTasks();
 
-        // ✅ NEW: Emit EventBus event AFTER reload (when we have fresh data)
-        if (window.FirebaseService && window.EventBus) {
-          const task = this.budgetTasks.find(t => t.id === taskId);
-          window.EventBus.emit('task:deadline-extended', {
-            taskId,
-            oldDeadline: task?.deadline || newDate, // Use current deadline (or newDate if not found)
-            newDeadline: newDate,
-            reason,
-            extendedBy: this.currentUser
-          });
-          Logger.log('  🚀 [v2.0] EventBus: task:deadline-extended emitted');
-        }
+        // Emit EventBus event AFTER reload (when we have fresh data)
+        const task = this.budgetTasks.find(t => t.id === taskId);
+        window.EventBus.emit('task:deadline-extended', {
+          taskId,
+          oldDeadline: task?.deadline || newDate, // Use current deadline (or newDate if not found)
+          newDeadline: newDate,
+          reason,
+          extendedBy: this.currentUser
+        });
+        Logger.log('  🚀 [v2.0] EventBus: task:deadline-extended emitted');
       },
       successMessage: 'תאריך היעד הוארך בהצלחה',
       errorMessage: 'שגיאה בהארכת יעד',
@@ -1192,54 +1168,42 @@ class LawOfficeManager {
       return;
     }
 
-    // ✅ קריאה ישירה ל-Cloud Function - קוד נקי ופשוט
+    // Direct call to Cloud Function - clean and simple
     await ActionFlowManager.execute({
       loadingMessage: 'שומר זמן...',
       action: async () => {
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for addTimeToTask');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for addTimeToTask');
 
-          const result = await window.FirebaseService.call('addTimeToTask', {
-            taskId,
-            minutes: workMinutes,
-            description: workDescription,
-            date: workDate
-          }, {
-            retries: 3,
-            timeout: 15000
-          });
+        const result = await window.FirebaseService.call('addTimeToTask', {
+          taskId,
+          minutes: workMinutes,
+          description: workDescription,
+          date: workDate
+        }, {
+          retries: 3,
+          timeout: 15000
+        });
 
-          if (!result.success) {
-            throw new Error(result.error || 'שגיאה בהוספת זמן');
-          }
-
-          // ✅ NEW: Emit EventBus event
-          if (window.EventBus) {
-            window.EventBus.emit('task:time-added', {
-              taskId,
-              clientId: task.clientId,
-              clientName: task.clientName,
-              minutes: workMinutes,
-              description: workDescription,
-              date: workDate,
-              addedBy: this.currentUser
-            });
-            Logger.log('  🚀 [v2.0] EventBus: task:time-added emitted');
-          }
-        } else {
-          // ⚠️ FALLBACK: Use old method
-          Logger.log('  ⚠️ [FALLBACK] Using addTimeToTaskFirebase (v2.0 not available)');
-          await window.addTimeToTaskFirebase(taskId, {
-            minutes: workMinutes,
-            description: workDescription,
-            date: workDate
-          });
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה בהוספת זמן');
         }
 
-        // 🔧 תיקון: טעינה מחדש של כל הנתונים (loadData() refreshes selectors automatically)
-        await this.loadData();  // טוען clients + budgetTasks + timesheet + מרענן selectors
+        // Reload all data (loadData() refreshes selectors automatically)
+        await this.loadData();  // Loads clients + budgetTasks + timesheet + refreshes selectors
         this.filterBudgetTasks();
+
+        // Emit EventBus event
+        window.EventBus.emit('task:time-added', {
+          taskId,
+          clientId: task.clientId,
+          clientName: task.clientName,
+          minutes: workMinutes,
+          description: workDescription,
+          date: workDate,
+          addedBy: this.currentUser
+        });
+        Logger.log('  🚀 [v2.0] EventBus: task:time-added emitted');
       },
       successMessage: '✅ הזמן נוסף למשימה ונרשם בשעתון',
       errorMessage: 'שגיאה בהוספת זמן',
@@ -1257,54 +1221,40 @@ class LawOfficeManager {
 
     const completionNotes = document.getElementById('completionNotes')?.value?.trim();
 
-    // ✅ NEW: Use ActionFlowManager with auto-close popup
+    // Use ActionFlowManager with auto-close popup
     await ActionFlowManager.execute({
       loadingMessage: 'משלים משימה...',
       action: async () => {
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for completeTask');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for completeTask');
 
-          const result = await window.FirebaseService.call('completeTask', {
-            taskId,
-            completionNotes
-          }, {
-            retries: 3,
-            timeout: 15000
-          });
+        const result = await window.FirebaseService.call('completeTask', {
+          taskId,
+          completionNotes
+        }, {
+          retries: 3,
+          timeout: 15000
+        });
 
-          if (!result.success) {
-            throw new Error(result.error || 'שגיאה בסיום משימה');
-          }
-
-          // ✅ NEW: Emit EventBus event
-          if (window.EventBus) {
-            window.EventBus.emit('task:completed', {
-              taskId,
-              clientId: task.clientId,
-              clientName: task.clientName,
-              completionNotes,
-              completedBy: this.currentUser,
-              estimatedMinutes: task.estimatedMinutes,
-              actualMinutes: task.totalMinutesSpent || 0
-            });
-            Logger.log('  🚀 [v2.0] EventBus: task:completed emitted');
-          }
-        } else {
-          // ⚠️ FALLBACK: Use old method
-          Logger.log('  ⚠️ [FALLBACK] Using FirebaseOps (v2.0 not available)');
-
-          // Update task status
-          task.status = 'הושלם';
-          task.completedAt = new Date();
-          task.completionNotes = completionNotes;
-
-          await FirebaseOps.saveBudgetTaskToFirebase(task);
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה בסיום משימה');
         }
 
         // Reload tasks
         this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
         this.filterBudgetTasks();
+
+        // Emit EventBus event
+        window.EventBus.emit('task:completed', {
+          taskId,
+          clientId: task.clientId,
+          clientName: task.clientName,
+          completionNotes,
+          completedBy: this.currentUser,
+          estimatedMinutes: task.estimatedMinutes,
+          actualMinutes: task.totalMinutesSpent || 0
+        });
+        Logger.log('  🚀 [v2.0] EventBus: task:completed emitted');
       },
       successMessage: 'המשימה הושלמה בהצלחה',
       errorMessage: 'שגיאה בסיום משימה',
@@ -1332,53 +1282,36 @@ class LawOfficeManager {
     await ActionFlowManager.execute({
       loadingMessage: 'מעדכן תקציב...',
       action: async () => {
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for adjustTaskBudget');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for adjustTaskBudget');
 
-          const result = await window.FirebaseService.call('adjustTaskBudget', {
-            taskId,
-            newEstimate: newBudgetMinutes,
-            reason
-          }, {
-            retries: 3,
-            timeout: 10000
-          });
+        const result = await window.FirebaseService.call('adjustTaskBudget', {
+          taskId,
+          newEstimate: newBudgetMinutes,
+          reason
+        }, {
+          retries: 3,
+          timeout: 10000
+        });
 
-          if (!result.success) {
-            throw new Error(result.error || 'שגיאה בעדכון תקציב');
-          }
-
-          // ✅ NEW: Emit EventBus event
-          if (window.EventBus) {
-            // Find the task to get old estimate
-            const task = this.budgetTasks.find(t => t.id === taskId);
-            window.EventBus.emit('task:budget-adjusted', {
-              taskId,
-              oldEstimate: task?.estimatedMinutes || 0,
-              newEstimate: newBudgetMinutes,
-              reason,
-              adjustedBy: this.currentUser
-            });
-            Logger.log('  🚀 [v2.0] EventBus: task:budget-adjusted emitted');
-          }
-        } else {
-          // ⚠️ FALLBACK: Use old method
-          Logger.log('  ⚠️ [FALLBACK] Using callFunction (v2.0 not available)');
-          const result = await window.callFunction('adjustTaskBudget', {
-            taskId,
-            newEstimate: newBudgetMinutes,
-            reason
-          });
-
-          if (!result.success) {
-            throw new Error(result.message || 'שגיאה בעדכון תקציב');
-          }
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה בעדכון תקציב');
         }
 
         // Reload tasks
         this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
         this.filterBudgetTasks();
+
+        // Emit EventBus event
+        const task = this.budgetTasks.find(t => t.id === taskId);
+        window.EventBus.emit('task:budget-adjusted', {
+          taskId,
+          oldEstimate: task?.estimatedMinutes || 0,
+          newEstimate: newBudgetMinutes,
+          reason,
+          adjustedBy: this.currentUser
+        });
+        Logger.log('  🚀 [v2.0] EventBus: task:budget-adjusted emitted');
       },
       successMessage: `תקציב עודכן בהצלחה ל-${Math.round(newBudgetMinutes / 60 * 10) / 10} שעות`,
       errorMessage: 'שגיאה בעדכון תקציב',

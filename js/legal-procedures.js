@@ -129,44 +129,31 @@
           throw new Error(validation.errors.join('\n'));
         }
 
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        let result;
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for createClient');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for createClient');
 
-          const serviceResult = await window.FirebaseService.call('createClient', procedureData, {
-            retries: 3,
-            timeout: 15000
+        const serviceResult = await window.FirebaseService.call('createClient', procedureData, {
+          retries: 3,
+          timeout: 15000
+        });
+
+        if (!serviceResult.success) {
+          throw new Error(serviceResult.error || 'שגיאה ביצירת הליך משפטי');
+        }
+
+        const result = serviceResult.data;
+
+        // Emit EventBus event
+        if (result.caseId) {
+          window.EventBus.emit('legal-procedure:created', {
+            procedureId: result.caseId,
+            caseNumber: result.caseNumber || procedureData.caseNumber,
+            caseTitle: procedureData.caseTitle,
+            pricingType: procedureData.pricingType,
+            stagesCount: procedureData.stages?.length || 0,
+            createdBy: this.currentUser
           });
-
-          if (!serviceResult.success) {
-            throw new Error(serviceResult.error || 'שגיאה ביצירת הליך משפטי');
-          }
-
-          result = serviceResult.data;
-
-          // ✅ NEW: Emit EventBus event
-          if (window.EventBus && result.caseId) {
-            window.EventBus.emit('legal-procedure:created', {
-              procedureId: result.caseId,
-              caseNumber: result.caseNumber || procedureData.caseNumber,
-              caseTitle: procedureData.caseTitle,
-              pricingType: procedureData.pricingType,
-              stagesCount: procedureData.stages?.length || 0,
-              createdBy: this.currentUser
-            });
-            Logger.log('  🚀 [v2.0] EventBus: legal-procedure:created emitted');
-          }
-        } else {
-          // ⚠️ FALLBACK: Use old method
-          Logger.log('  ⚠️ [FALLBACK] Using firebase.functions() (v2.0 not available)');
-          const oldResult = await firebase.functions().httpsCallable('createClient')(procedureData);
-
-          if (!oldResult.data.success) {
-            throw new Error(oldResult.data.message || 'שגיאה ביצירת הליך משפטי');
-          }
-
-          result = oldResult.data;
+          Logger.log('  🚀 [v2.0] EventBus: legal-procedure:created emitted');
         }
 
         Logger.log('✅ Legal procedure created successfully:', result.caseId);
@@ -195,87 +182,36 @@
           throw new Error(validation.errors.join('\n'));
         }
 
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for addHoursPackage');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for addHoursPackage');
 
-          const result = await window.FirebaseService.call('addHoursPackageToStage', {
-            caseId,
-            stageId,
-            hours: packageData.hours,
-            reason: packageData.reason,
-            purchaseDate: packageData.purchaseDate
-          }, {
-            retries: 3,
-            timeout: 10000
-          });
+        const result = await window.FirebaseService.call('addHoursPackageToStage', {
+          caseId,
+          stageId,
+          hours: packageData.hours,
+          reason: packageData.reason,
+          purchaseDate: packageData.purchaseDate
+        }, {
+          retries: 3,
+          timeout: 10000
+        });
 
-          if (!result.success) {
-            throw new Error(result.error || 'שגיאה בהוספת חבילת שעות');
-          }
-
-          // ✅ NEW: Emit EventBus event
-          if (window.EventBus) {
-            window.EventBus.emit('legal-procedure:hours-added', {
-              caseId,
-              stageId,
-              hours: packageData.hours,
-              reason: packageData.reason,
-              addedBy: this.currentUser || firebase.auth().currentUser?.email
-            });
-            Logger.log('  🚀 [v2.0] EventBus: legal-procedure:hours-added emitted');
-          }
-
-          Logger.log('✅ Hours package added successfully');
-          return { success: true, message: 'חבילת השעות נוספה בהצלחה' };
-
-        } else {
-          // ⚠️ FALLBACK: Use direct Firestore access
-          Logger.log('  ⚠️ [FALLBACK] Using direct Firestore (v2.0 not available)');
-
-          const db = firebase.firestore();
-          const clientRef = db.collection('clients').doc(caseId);
-          const clientDoc = await clientRef.get();
-
-          if (!clientDoc.exists) {
-            throw new Error('תיק לא נמצא');
-          }
-
-          const clientData = clientDoc.data();
-          if (!clientData.stages || !Array.isArray(clientData.stages)) {
-            throw new Error('אין שלבים בתיק זה');
-          }
-
-          // מצא את השלב ועדכן את חבילת השעות
-          const stages = [...clientData.stages];
-          const stageIndex = stages.findIndex(s => s.id === stageId);
-
-          if (stageIndex === -1) {
-            throw new Error('שלב לא נמצא');
-          }
-
-          if (!stages[stageIndex].hoursPackages) {
-            stages[stageIndex].hoursPackages = [];
-          }
-
-          stages[stageIndex].hoursPackages.push({
-            id: Date.now().toString(),
-            hours: packageData.hours,
-            reason: packageData.reason || '',
-            addedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            addedBy: firebase.auth().currentUser?.email || 'system'
-          });
-
-          // עדכן את המסמך
-          await clientRef.update({
-            stages: stages,
-            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            lastModifiedBy: firebase.auth().currentUser?.email || 'system'
-          });
-
-          Logger.log('✅ Hours package added successfully');
-          return { success: true, message: 'חבילת השעות נוספה בהצלחה' };
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה בהוספת חבילת שעות');
         }
+
+        // Emit EventBus event
+        window.EventBus.emit('legal-procedure:hours-added', {
+          caseId,
+          stageId,
+          hours: packageData.hours,
+          reason: packageData.reason,
+          addedBy: this.currentUser || firebase.auth().currentUser?.email
+        });
+        Logger.log('  🚀 [v2.0] EventBus: legal-procedure:hours-added emitted');
+
+        Logger.log('✅ Hours package added successfully');
+        return { success: true, message: 'חבילת השעות נוספה בהצלחה' };
 
       } catch (error) {
         console.error('❌ Error adding hours package:', error);
@@ -293,90 +229,38 @@
       try {
         Logger.log('➡️ Moving to next stage:', { caseId, currentStageId });
 
-        // ✅ NEW: Architecture v2.0 - Use FirebaseService if available
-        if (window.FirebaseService) {
-          Logger.log('  🚀 [v2.0] Using FirebaseService.call for moveToNextStage');
+        // Architecture v2.0 - FirebaseService with retry
+        Logger.log('  🚀 [v2.0] Using FirebaseService.call for moveToNextStage');
 
-          const result = await window.FirebaseService.call('moveToNextStage', {
-            caseId,
-            currentStageId
-          }, {
-            retries: 3,
-            timeout: 10000
-          });
+        const result = await window.FirebaseService.call('moveToNextStage', {
+          caseId,
+          currentStageId
+        }, {
+          retries: 3,
+          timeout: 10000
+        });
 
-          if (!result.success) {
-            throw new Error(result.error || 'שגיאה במעבר לשלב הבא');
-          }
-
-          // ✅ NEW: Emit EventBus event
-          if (window.EventBus && result.data) {
-            window.EventBus.emit('legal-procedure:stage-moved', {
-              caseId,
-              fromStageId: currentStageId,
-              toStageId: result.data.nextStage?.id,
-              toStageName: result.data.nextStage?.name,
-              movedBy: this.currentUser || firebase.auth().currentUser?.email
-            });
-            Logger.log('  🚀 [v2.0] EventBus: legal-procedure:stage-moved emitted');
-          }
-
-          Logger.log('✅ Moved to next stage successfully');
-          return result.data || {
-            success: true,
-            message: 'עבר לשלב הבא בהצלחה'
-          };
-
-        } else {
-          // ⚠️ FALLBACK: Use direct Firestore access
-          Logger.log('  ⚠️ [FALLBACK] Using direct Firestore (v2.0 not available)');
-
-          const db = firebase.firestore();
-          const clientRef = db.collection('clients').doc(caseId);
-          const clientDoc = await clientRef.get();
-
-          if (!clientDoc.exists) {
-            throw new Error('תיק לא נמצא');
-          }
-
-          const clientData = clientDoc.data();
-          if (!clientData.stages || !Array.isArray(clientData.stages)) {
-            throw new Error('אין שלבים בתיק זה');
-          }
-
-          // מצא את השלב הנוכחי והשלב הבא
-          const stages = [...clientData.stages];
-          const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
-
-          if (currentStageIndex === -1) {
-            throw new Error('שלב נוכחי לא נמצא');
-          }
-
-          if (currentStageIndex === stages.length - 1) {
-            throw new Error('זהו השלב האחרון');
-          }
-
-          // עדכן סטטוסים
-          stages[currentStageIndex].status = 'completed';
-          stages[currentStageIndex].completedAt = firebase.firestore.FieldValue.serverTimestamp();
-
-          stages[currentStageIndex + 1].status = 'active';
-          stages[currentStageIndex + 1].startedAt = firebase.firestore.FieldValue.serverTimestamp();
-
-          // עדכן את המסמך
-          await clientRef.update({
-            stages: stages,
-            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            lastModifiedBy: firebase.auth().currentUser?.email || 'system'
-          });
-
-          Logger.log('✅ Moved to next stage successfully');
-          return {
-            success: true,
-            message: 'עבר לשלב הבא בהצלחה',
-            nextStage: stages[currentStageIndex + 1]
-          };
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה במעבר לשלב הבא');
         }
+
+        // Emit EventBus event
+        if (result.data) {
+          window.EventBus.emit('legal-procedure:stage-moved', {
+            caseId,
+            fromStageId: currentStageId,
+            toStageId: result.data.nextStage?.id,
+            toStageName: result.data.nextStage?.name,
+            movedBy: this.currentUser || firebase.auth().currentUser?.email
+          });
+          Logger.log('  🚀 [v2.0] EventBus: legal-procedure:stage-moved emitted');
+        }
+
+        Logger.log('✅ Moved to next stage successfully');
+        return result.data || {
+          success: true,
+          message: 'עבר לשלב הבא בהצלחה'
+        };
 
       } catch (error) {
         console.error('❌ Error moving to next stage:', error);
