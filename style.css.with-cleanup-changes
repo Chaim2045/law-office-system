@@ -3,6 +3,36 @@
    גרסה: 2025 מנוקה
    ========================================================================== */
 
+/* ⚠️  IMPORTANT - קרא לפני עריכה! READ BEFORE EDITING! ⚠️
+
+   🧹 CSS CLEANUP PROTOCOL - פרוטוקול ניקיון הדרגתי
+
+   קובץ זה נמצא בתהליך ניקיון הדרגתי של 273 כפילויות.
+
+   📋 לפני כל שינוי - בצע את השלבים הבאים:
+
+   1. קרא את CSS_CLEANUP_README.md (בשורש הפרויקט)
+   2. חפש tags של /* TODO: CLEANUP */ באזור שבו אתה עובד
+   3. אם מצאת - מחק את הכפילות לפני השינוי שלך!
+   4. עדכן את CSS_CLEANUP_GUIDE.md (סמן ✓ ליד מה שמחקת)
+   5. בדוק שהעיצוב עדיין עובד
+
+   🎯 מטרה: כל שינוי = הזדמנות לניקיון
+
+   ⚠️  כללי זהב:
+   - אל תמחק keyframes/animations
+   - אל תמחק CSS variables (:root)
+   - אם לא בטוח - אל תמחק! סמן כ-TODO: VERIFY
+
+   📊 התקדמות: 2/273 כפילויות נמחקו (0.7%)
+
+   📁 קבצים קשורים:
+   - CSS_CLEANUP_GUIDE.md - רשימת כל הכפילויות
+   - CSS_CLEANUP_README.md - הנחיות מפורטות
+
+   עדכון אחרון: 28.10.2025
+   ========================================================================== */
+
 /* ==========================================================================
    1. CSS VARIABLES - משתנים גלובליים
    ========================================================================== */
@@ -2759,10 +2789,10 @@ button[onclick*="addBudget"]:hover {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 30px;
-  padding: 0 40px; /* הקטנת שוליים */
+  padding: 0 50px; /* שוליים פנימיים */
   margin: 32px auto; /* ממרכז אוטומטי */
   direction: rtl;
-  max-width: 95%; /* הרחבה לכמעט מלא */
+  max-width: 1400px;
   width: 100%;
 }
 
@@ -6176,6 +6206,9 @@ body.logged-in .main-footer {
   /* Main tabs - moved to tabs.css */
 }
 
+/* TODO: CLEANUP - כפילות! @media (768px) #2/9
+   מיזוג נדרש ל-@media (768px) MAIN בשורה 11285
+   תאריך סימון: 28.10.2025 */
 /* Mobile (max-width: 768px) */
 @media (max-width: 768px) {
   .minimal-sidebar {
@@ -10882,6 +10915,775 @@ body.logged-in .main-footer {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
 }
 
+/* ===== עיצוב כרטיסיות שעתון משופרות ===== */
+
+/* גריד כרטיסיות שעתון */
+.timesheet-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+  direction: rtl;
+}
+
+/* כרטיס שעתון בסיסי */
+.timesheet-card {
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  direction: rtl;
+  text-align: right;
+  font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
+.timesheet-card:hover {
+  border-color: #d0d7de;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* תוכן הכרטיס */
+.timesheet-card-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+/* כותרת הכרטיס - תאריך וזמן */
+.timesheet-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.timesheet-card-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.timesheet-card-date i {
+  color: #6366f1;
+  font-size: 16px;
+}
+
+.timesheet-card-time {
+  display: flex;
+  align-items: center;
+}
+
+.time-badge {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #2563eb;
+}
+
+.time-badge.high-time {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border-color: #b91c1c;
+}
+
+.time-badge.medium-time {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #d97706;
+}
+
+.time-badge.low-time {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #059669;
+}
+
+/* חלק מרכזי - לקוח ופעולה */
+.timesheet-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timesheet-card-client {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 16px;
+}
+
+.timesheet-card-client i {
+  color: #6366f1;
+  font-size: 16px;
+  min-width: 16px;
+}
+
+.timesheet-card-action {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
+  font-weight: 500;
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 8px;
+  border-right: 3px solid #6366f1;
+}
+
+.timesheet-card-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.timesheet-card-file i {
+  color: #f59e0b;
+  font-size: 14px;
+}
+
+/* הערות */
+.timesheet-card-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  background: #f9fafb;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.timesheet-card-notes i {
+  color: #f59e0b;
+  font-size: 14px;
+  margin-top: 2px;
+  min-width: 14px;
+}
+
+/* כפתורי פעולות */
+.timesheet-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  justify-content: flex-start;
+  direction: rtl;
+}
+
+.timesheet-card-actions .action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.edit-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: 1px solid #2563eb;
+}
+
+.edit-btn:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+/* וריאציות כרטיס לפי כמות זמן */
+.timesheet-card.high-time {
+  border-right: 4px solid #dc2626;
+}
+
+.timesheet-card.high-time:hover {
+  border-right-color: #b91c1c;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.15);
+}
+
+.timesheet-card.medium-time {
+  border-right: 4px solid #f59e0b;
+}
+
+.timesheet-card.medium-time:hover {
+  border-right-color: #d97706;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
+}
+
+.timesheet-card.low-time {
+  border-right: 4px solid #10b981;
+}
+
+.timesheet-card.low-time:hover {
+  border-right-color: #059669;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+}
+
+/* עיצוב הטבלה המשופרת */
+.modern-timesheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  direction: rtl;
+  border: 1px solid #e2e8f0;
+}
+
+.modern-timesheet-table thead {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.modern-timesheet-table th {
+  padding: 16px 20px;
+  color: #1f2328;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border: 1px solid #e2e8f0;
+}
+
+.modern-timesheet-table td {
+  padding: 16px 20px;
+  color: #374151;
+  font-weight: 500;
+  vertical-align: middle;
+  border-right: 1px solid rgba(226, 232, 240, 0.3);
+  border-left: 1px solid rgba(226, 232, 240, 0.3);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  text-align: right;
+  direction: rtl;
+  font-size: 14px;
+}
+
+.modern-timesheet-table tbody tr {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.modern-timesheet-table tbody tr:nth-child(even) {
+  background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
+}
+
+.modern-timesheet-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.modern-timesheet-table tbody tr:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-left: 3px solid #3b82f6;
+}
+
+.modern-timesheet-table tr:last-child td {
+  border-bottom: none;
+}
+
+.modern-timesheet-table tbody td:first-child {
+  border-right: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.modern-timesheet-table tbody td:last-child {
+  border-left: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+/* פינות מעוגלות לטבלה */
+.modern-timesheet-table th:first-child {
+  border-top-right-radius: 12px;
+  border-right: 1px solid #e2e8f0;
+}
+
+.modern-timesheet-table th:last-child {
+  border-top-left-radius: 12px;
+  border-left: 1px solid #e2e8f0;
+}
+
+.modern-timesheet-table tbody tr:last-child td:first-child {
+  border-bottom-right-radius: 12px;
+}
+
+.modern-timesheet-table tbody tr:last-child td:last-child {
+  border-bottom-left-radius: 12px;
+}
+
+/* עיצוב עמודות מיוחדות בטבלה */
+.timesheet-cell-date {
+  font-weight: 700;
+  color: #3b82f6;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.timesheet-cell-action {
+  max-width: 250px;
+  line-height: 1.5;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.timesheet-cell-time {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.time-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #3b82f6;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid #bfdbfe;
+}
+
+.timesheet-cell-client {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+/* דיאלוג עריכת שעתון */
+.edit-timesheet-popup {
+  max-width: 500px;
+}
+
+.edit-timesheet-popup .popup-content {
+  padding: 18px 22px;
+}
+
+.edit-timesheet-popup .form-group input[type="number"] {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  background: rgba(99, 102, 241, 0.05);
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.edit-timesheet-popup .form-group input[type="number"]:focus {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.edit-timesheet-popup .form-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.required {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* רספונסיביות */
+@media (max-width: 768px) {
+  .timesheet-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px 0;
+  }
+
+  .timesheet-card-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .timesheet-card-time {
+    justify-content: flex-end;
+  }
+
+  .modern-timesheet-table {
+    font-size: 12px;
+  }
+
+  .modern-timesheet-table th,
+  .modern-timesheet-table td {
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .timesheet-card-content {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .timesheet-card-actions .action-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+/* ===== עיצוב כרטיסיות השעתון ===== */
+
+/* כרטיס שעתון - זהה למשימות + מסגרת כחולה דקה מסביב */
+.linear-minimal-card.timesheet-card {
+  border: 2px solid #3b82f6;
+}
+
+.linear-minimal-card.timesheet-card:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+}
+
+/* כפתור עריכה בכרטיס שעתון - שמאל למטה */
+.linear-minimal-card.timesheet-card .linear-expand-btn {
+  position: absolute !important;
+  bottom: 15px !important;
+  left: 15px !important;
+  right: auto !important;
+  top: auto !important;
+}
+
+/* מידע התאריך */
+.timesheet-date-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.date-icon {
+  font-size: 16px;
+}
+
+.date-text {
+  color: #475569;
+}
+
+/* תגי תאריך מיוחדים */
+.timesheet-date-info.today .date-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.timesheet-date-info.yesterday .date-text {
+  color: #f59e0b;
+}
+
+.timesheet-date-info.this-week .date-text {
+  color: #3b82f6;
+}
+
+.timesheet-date-info.old .date-text {
+  color: #6b7280;
+}
+
+.today-badge {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* תג הזמן */
+.timesheet-time-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.timesheet-time-badge.high-time {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: white;
+}
+
+.timesheet-time-badge.medium-time {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: white;
+}
+
+.timesheet-time-badge.low-time {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+}
+
+.time-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.time-unit {
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+/* תוכן ראשי */
+.timesheet-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timesheet-action-title {
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+/* מידע הלקוח */
+.timesheet-client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.client-row,
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.client-row i,
+.file-row i {
+  width: 14px;
+  color: #3b82f6;
+}
+
+.client-name {
+  font-weight: 500;
+  color: #374151;
+}
+
+.file-number {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* הערות */
+.timesheet-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.timesheet-notes i {
+  color: #f59e0b;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.notes-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* פוטר הכרטיס */
+.timesheet-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* מידע מטה */
+.timesheet-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.created-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edited-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* פעולות כרטיס */
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.timesheet-action-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.timesheet-action-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.timesheet-action-btn.edit-btn {
+  color: #3b82f6;
+}
+
+.timesheet-action-btn.edit-btn:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.timesheet-action-btn.history-btn {
+  color: #6b7280;
+}
+
+.timesheet-action-btn.history-btn:hover {
+  background: #f3f4f6;
+  border-color: #6b7280;
+}
+
+.history-count {
+  background: #374151;
+  color: white;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* TODO: CLEANUP - כפילות! מיזוג ל-@media (768px) בשורה 11285
+   למחיקה בשינוי הבא של timesheet cards
+   תאריך סימון: 28.10.2025 */
+/* ריספונסיביות */
+@media (max-width: 768px) {
+  .timesheet-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .timesheet-linear-card {
+    margin: 0 8px;
+  }
+
+  .timesheet-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .timesheet-time-badge {
+    align-self: flex-end;
+  }
+}
+/* END TODO: CLEANUP */
+
+/* אנימציות */
+@keyframes slideInCard {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.timesheet-linear-card {
+  animation: slideInCard 0.3s ease-out;
+}
+
+/* מצב כהה (אופציונלי) */
+@media (prefers-color-scheme: dark) {
+  .timesheet-linear-card {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .timesheet-action-title {
+    color: #f1f5f9;
+  }
+
+  .client-name {
+    color: #cbd5e1;
+  }
+
+  .timesheet-notes {
+    background: #0f172a;
+    border-color: #334155;
+  }
+
+  .notes-text {
+    color: #94a3b8;
+  }
+}
+/* ===== CSS עבור קטגוריות פעולות ===== */
 /* הוסף את הקוד הזה לקובץ style.css הקיים שלך */
 
 /* עיצוב רכיב החיפוש הניתן לחיפוש */

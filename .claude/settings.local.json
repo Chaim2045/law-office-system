@@ -36,7 +36,11 @@
       "Bash(npm run compile-ts:*)",
       "Bash(if [ -f \"c:\\Users\\haim\\law-office-system\\js\\modules\\modern-client-case-selector.js\" ])",
       "Bash(then rm \"c:\\Users\\haim\\law-office-system\\js\\modules\\modern-client-case-selector.js\")",
-      "Bash(else echo \"❌ File not found\")"
+      "Bash(else echo \"❌ File not found\")",
+      "Bash(git push:*)",
+      "Bash(cp:*)",
+      "Read(//c/**)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []
