@@ -492,4 +492,59 @@ if (typeof window !== 'undefined') {
   };
 
   Logger.log('✅ Notification System loaded and ready');
+
+  // ===== EventBus Listeners (Architecture v2.0) =====
+  // מאזין לאירועים ומציג הודעות אוטומטיות
+
+  /**
+   * Initialize EventBus listeners for automatic notifications
+   * ✅ הודעות אוטומטיות לפי אירועים
+   */
+  function initializeNotificationListeners() {
+    if (!window.EventBus) {
+      console.warn('⚠️ EventBus not available - skipping notification listeners');
+      return;
+    }
+
+    // 👂 Listen to task:completed - הודעת הצלחה
+    window.EventBus.on('task:completed', (data) => {
+      notificationSystem.show(
+        `✅ משימה הושלמה: ${data.clientName}`,
+        'success',
+        3000
+      );
+      Logger.log(`👂 [Notifications] Showed completion notification for task ${data.taskId}`);
+    });
+
+    // 👂 Listen to task:budget-adjusted - הודעת עדכון תקציב
+    window.EventBus.on('task:budget-adjusted', (data) => {
+      const diff = data.newEstimate - data.oldEstimate;
+      const message = diff > 0
+        ? `📈 תקציב הוגדל: +${diff} דקות`
+        : `📉 תקציב הוקטן: ${diff} דקות`;
+
+      notificationSystem.show(message, 'info', 3000);
+      Logger.log(`👂 [Notifications] Showed budget adjustment notification`);
+    });
+
+    // 👂 Listen to system:error - הודעת שגיאה
+    window.EventBus.on('system:error', (data) => {
+      notificationSystem.show(
+        `❌ שגיאה: ${data.message}`,
+        'error',
+        5000
+      );
+      Logger.log(`👂 [Notifications] Showed error notification`);
+    });
+
+    Logger.log('✅ Notification EventBus listeners initialized (v2.0)');
+  }
+
+  // Initialize listeners when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeNotificationListeners);
+  } else {
+    // DOM already ready, initialize immediately
+    initializeNotificationListeners();
+  }
 }
