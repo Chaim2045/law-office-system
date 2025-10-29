@@ -262,6 +262,207 @@ EventBus.on('client:selected', (data) => {
 // - SystemEvents: system:error, system:data-loaded, system:cache-updated
 ```
 
+### 🎓 מדריך שימוש מלא ב-EventBus
+
+#### 📌 מתי להשתמש?
+
+**1. כשרוצים להוסיף feature חדש:**
+```javascript
+// ✅ לא צריך לערוך קוד קיים - רק תיצור קובץ חדש!
+// js/modules/analytics.js (קובץ חדש)
+
+window.EventBus.on('task:created', (data) => {
+  Analytics.track('task_created', {
+    clientName: data.clientName,
+    employee: data.employee
+  });
+});
+
+window.EventBus.on('task:completed', (data) => {
+  Analytics.track('task_completed', {
+    taskId: data.taskId,
+    duration: data.totalMinutes
+  });
+});
+```
+
+**2. כשרוצים להגיב לפעולה במערכת:**
+```javascript
+// ✅ הודעות אוטומטיות
+EventBus.on('task:urgent', (data) => {
+  NotificationSystem.show(`🚨 משימה דחופה: ${data.clientName}!`, 'warning');
+  sendEmailToManager(data);
+});
+
+// ✅ עדכון סטטיסטיקות
+EventBus.on('task:created', (data) => {
+  updateTaskCount();
+  refreshDashboard();
+});
+```
+
+#### 📝 איך להוסיף אירוע חדש?
+
+**שלב 1: הגדרה ב-EventBus.ts**
+```typescript
+// js/core/event-bus.ts - הוסף את האירוע החדש!
+
+export interface TaskEvents {
+  'task:created': { ... };
+  'task:completed': { ... };
+  'task:assigned': {          // ← אירוע חדש!
+    taskId: string;
+    assignedTo: string;
+    assignedBy: string;
+    deadline: string;
+  };
+}
+```
+
+**שלב 2: שדר את האירוע (emit)**
+```javascript
+// js/main.js - במקום שהפעולה קורה
+
+async function assignTask(taskId, employeeEmail) {
+  // 1. עדכן ב-Firebase
+  await firebase.firestore()
+    .collection('budget_tasks')
+    .doc(taskId)
+    .update({ assignedTo: employeeEmail });
+
+  // 2. שדר אירוע! 📤
+  window.EventBus.emit('task:assigned', {
+    taskId: taskId,
+    assignedTo: employeeEmail,
+    assignedBy: currentUser.email,
+    deadline: task.deadline
+  });
+}
+```
+
+**שלב 3: האזן לאירוע (on)**
+```javascript
+// js/modules/notifications.js - קובץ מאזין
+
+window.EventBus.on('task:assigned', (data) => {
+  // הצג הודעה
+  NotificationSystem.show(
+    `📋 משימה חדשה הוקצתה לך על ידי ${data.assignedBy}`,
+    'info'
+  );
+
+  Logger.log(`👂 [Notifications] Task assigned: ${data.taskId}`);
+});
+
+// js/modules/statistics.js - מאזין נוסף
+
+window.EventBus.on('task:assigned', (data) => {
+  updateTaskAssignmentStats();
+  Logger.log(`📊 [Statistics] Task ${data.taskId} assigned`);
+});
+```
+
+**שלב 4: בדוק שזה עובד!**
+```javascript
+// Console (F12):
+
+// בדוק את הזרימה
+await EventAnalyzer.analyze()
+EventAnalyzer.visualizeFlow('task:assigned')
+
+// צפוי לראות:
+// 📤 EMITTERS: js/main.js
+// 👂 LISTENERS: js/modules/notifications.js, js/modules/statistics.js
+```
+
+#### 🧪 דיבאג ובדיקה:
+
+```javascript
+// 1. בדוק אילו אירועים יש במערכת
+await EventAnalyzer.analyze()
+EventAnalyzer.printReport()
+
+// 2. בדוק אירוע ספציפי
+EventAnalyzer.visualizeFlow('task:created')
+
+// 3. בדוק אם יש בעיות
+EventAnalyzer.getRecommendations()
+
+// 4. שדר אירוע ידנית לבדיקה
+EventBus.emit('task:created', {
+  taskId: 'TEST-123',
+  clientName: 'בדיקה',
+  employee: 'test@test.com'
+});
+```
+
+#### ⚠️ חשוב לזכור:
+
+**✅ עשה:**
+- תמיד הוסף הגדרה ל-EventBus.ts לפני שימוש
+- השתמש בשמות ברורים: `task:created` לא `task:new`
+- הוסף Logger.log() בכל listener לדיבאג
+- בדוק עם EventAnalyzer אחרי כל שינוי
+
+**❌ אל תעשה:**
+- לא לשלוח אירועים ללא הגדרה
+- לא לשכוח payload מלא
+- לא ליצור listeners כפולים
+- לא לשכוח try/catch
+
+#### 📚 מסמכים נוספים:
+- `docs/EVENTBUS_MIGRATION_GUIDE.md` - מדריך המיגרציה המלא
+- `docs/FEATURE_PLANNING_TEMPLATE.md` - תבנית תכנון feature
+- `js/modules/event-analyzer.js` - כלי ניתוח אירועים
+
+#### 🎯 דוגמאות נוספות:
+
+**דוגמה 1: התראות חכמות**
+```javascript
+EventBus.on('task:budget-adjusted', (data) => {
+  const percentage = (data.newEstimate / data.oldEstimate - 1) * 100;
+
+  if (percentage > 50) {
+    NotificationSystem.show(
+      `⚠️ תקציב גדל ב-${percentage.toFixed(0)}%!`,
+      'warning'
+    );
+  }
+});
+```
+
+**דוגמה 2: לוגיקה מותנית**
+```javascript
+EventBus.on('client:selected', (data) => {
+  if (isVIPClient(data.clientId)) {
+    // טען היסטוריה מלאה
+    loadFullClientHistory(data.clientId);
+    showVIPBadge();
+  } else {
+    // טען רק מידע בסיסי
+    loadBasicClientInfo(data.clientId);
+  }
+});
+```
+
+**דוגמה 3: שרשור אירועים**
+```javascript
+// אירוע אחד מפעיל אירוע אחר
+EventBus.on('task:completed', async (data) => {
+  const task = await getTask(data.taskId);
+
+  if (task.subtasks && task.subtasks.length > 0) {
+    // אם יש תת-משימות - שדר אירוע נוסף
+    EventBus.emit('task:all-subtasks-completed', {
+      parentTaskId: data.taskId,
+      totalTime: task.totalTime
+    });
+  }
+});
+```
+
+---
+
 ### FirebaseService (js/services/firebase-service.ts)
 ```typescript
 // ✅ טוב - קריאות Firebase עם retry, cache, validation
