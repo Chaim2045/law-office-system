@@ -239,6 +239,9 @@ window.EventAnalyzer = {
    * 📄 הדפס דוח מפורט
    */
   printReport() {
+    // ✅ Fix: Use window.EventAnalyzer to avoid 'this' context issues
+    const results = window.EventAnalyzer.results;
+
     console.log('\n');
     console.log('═══════════════════════════════════════════════════════');
     console.log('📊 EVENT ANALYSIS REPORT');
@@ -247,17 +250,17 @@ window.EventAnalyzer = {
 
     // סיכום
     console.log('📋 SUMMARY:');
-    console.log(`   Defined events:     ${this.results.defined.length}`);
-    console.log(`   Emitted events:     ${this.results.emitted.length}`);
-    console.log(`   Listened events:    ${this.results.listened.length}`);
-    console.log(`   Orphan events:      ${this.results.orphans.length} ⚠️`);
-    console.log(`   Dead listeners:     ${this.results.deadListeners.length} ⚠️`);
+    console.log(`   Defined events:     ${results.defined.length}`);
+    console.log(`   Emitted events:     ${results.emitted.length}`);
+    console.log(`   Listened events:    ${results.listened.length}`);
+    console.log(`   Orphan events:      ${results.orphans.length} ⚠️`);
+    console.log(`   Dead listeners:     ${results.deadListeners.length} ⚠️`);
     console.log('');
 
     // אירועים יתומים
-    if (this.results.orphans.length > 0) {
+    if (results.orphans.length > 0) {
       console.log('🔴 ORPHAN EVENTS (נשלחים אבל אף אחד לא מאזין):');
-      this.results.orphans.forEach(({ event, locations }) => {
+      results.orphans.forEach(({ event, locations }) => {
         console.log(`   ❌ ${event}`);
         locations.forEach(loc => console.log(`      📍 Emitted in: ${loc}`));
       });
@@ -265,9 +268,9 @@ window.EventAnalyzer = {
     }
 
     // listeners מתים
-    if (this.results.deadListeners.length > 0) {
+    if (results.deadListeners.length > 0) {
       console.log('💀 DEAD LISTENERS (מאזינים לאירועים שלא נשלחים):');
-      this.results.deadListeners.forEach(({ event, locations }) => {
+      results.deadListeners.forEach(({ event, locations }) => {
         console.log(`   ❌ ${event}`);
         locations.forEach(loc => console.log(`      👂 Listening in: ${loc}`));
       });
@@ -275,14 +278,14 @@ window.EventAnalyzer = {
     }
 
     // אירועים תקינים
-    const healthyEvents = this.results.emitted.filter(e => {
-      return !this.results.orphans.find(o => o.event === e.event);
+    const healthyEvents = results.emitted.filter(e => {
+      return !results.orphans.find(o => o.event === e.event);
     });
 
     if (healthyEvents.length > 0) {
       console.log(`✅ HEALTHY EVENTS (${healthyEvents.length} events working correctly):`);
       healthyEvents.forEach(({ event }) => {
-        const flow = this.results.flows[event];
+        const flow = results.flows[event];
         console.log(`   ✅ ${event}`);
         console.log(`      📤 Emitters:  ${flow.emitters.length}`);
         console.log(`      👂 Listeners: ${flow.listeners.length}`);
