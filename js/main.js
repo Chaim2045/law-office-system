@@ -1470,12 +1470,42 @@ window.invalidateCache = (key) => {
   return found;
 };
 
-// Initialize application when DOM is ready
+// ===== EventBus UI Listeners (Architecture v2.0) =====
+
+/**
+ * Initialize UI-related EventBus listeners
+ * ✅ מאזין לאירועים ומעדכן UI אוטומטית
+ */
+function initializeUIListeners() {
+  if (!window.EventBus) {
+    console.warn('⚠️ EventBus not available - skipping UI listeners');
+    return;
+  }
+
+  // 👂 Listen to system:data-loaded - הסתר spinner
+  window.EventBus.on('system:data-loaded', (data) => {
+    Logger.log(`👂 [UI] system:data-loaded received - hiding spinner`);
+    window.hideSimpleLoading();
+  });
+
+  // 👂 Listen to system:error - הצג הודעת שגיאה
+  window.EventBus.on('system:error', (data) => {
+    Logger.log(`👂 [UI] system:error received:`, data.message);
+    // ההודעה כבר מוצגת על ידי notification-system.js
+    // כאן אפשר להוסיף UI נוסף (אייקון אדום, badge, וכו')
+  });
+
+  Logger.log('✅ UI EventBus listeners initialized (v2.0)');
+}
+
+// Initialize listeners when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
+    initializeUIListeners();
     manager.init();
   });
 } else {
+  initializeUIListeners();
   manager.init();
 }
 

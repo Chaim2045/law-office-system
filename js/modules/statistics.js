@@ -3,13 +3,15 @@
  * משרד עורכי דין - מערכת ניהול מתקדמת
  *
  * נוצר: 08/10/2025
- * עודכן: 08/10/2025
- * גרסה: 3.1.0 - Modern Badge Style
+ * עודכן: 29/10/2025
+ * גרסה: 5.2.0 - Fixed Icons + Better Layout
  *
  * תכונות:
- * - תצוגת Badge מודרנית עם קופסאות נפרדות
- * - עיצוב נקי ומקצועי
- * - פריטים בקופסאות עם גרדיאנטים עדינים
+ * - Ultra minimal design כמו Linear, Vercel, Raycast
+ * - Font Awesome icons (far = outline) - תוקן לאייקונים שקיימים
+ * - Stat compact cards עם אייקונים
+ * - 4px spacing grid system
+ * - מיקום מושלם של טקסט ואייקונים
  * - חישובים חכמים: מטרות חודשיות, התקדמות, אזהרות
  */
 
@@ -144,7 +146,7 @@ function createBudgetStatsBar(stats, currentFilter = 'all') {
     <div class="stats-badge">
       <div class="stat-compact ${currentFilter === 'all' ? 'stat-highlight' : ''}">
         <div class="stat-icon">
-          <i class="far fa-tasks"></i>
+          <i class="far fa-folder-open"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">משימות</div>
@@ -154,7 +156,7 @@ function createBudgetStatsBar(stats, currentFilter = 'all') {
 
       <div class="stat-compact ${currentFilter === 'active' ? 'stat-highlight' : ''}">
         <div class="stat-icon">
-          <i class="far fa-play-circle"></i>
+          <i class="far fa-circle-play"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">פעילות</div>
@@ -164,7 +166,7 @@ function createBudgetStatsBar(stats, currentFilter = 'all') {
 
       <div class="stat-compact stat-success ${currentFilter === 'completed' ? 'stat-highlight' : ''}">
         <div class="stat-icon">
-          <i class="far fa-check-circle"></i>
+          <i class="far fa-circle-check"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">הושלמו</div>
@@ -174,7 +176,7 @@ function createBudgetStatsBar(stats, currentFilter = 'all') {
 
       <div class="stat-compact">
         <div class="stat-icon">
-          <i class="far fa-chart-line"></i>
+          <i class="far fa-chart-bar"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">התקדמות</div>
@@ -185,7 +187,7 @@ function createBudgetStatsBar(stats, currentFilter = 'all') {
       ${stats.urgent > 0 ? `
       <div class="stat-compact stat-urgent">
         <div class="stat-icon">
-          <i class="far fa-exclamation-triangle"></i>
+          <i class="far fa-circle-exclamation"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">דחופות</div>
@@ -374,7 +376,7 @@ function createTimesheetStatsBar(stats) {
     <div class="stats-badge">
       <div class="stat-compact stat-highlight">
         <div class="stat-icon">
-          <i class="far fa-calendar-alt"></i>
+          <i class="far fa-calendar"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">החודש</div>
@@ -384,7 +386,7 @@ function createTimesheetStatsBar(stats) {
 
       <div class="stat-compact">
         <div class="stat-icon">
-          <i class="far fa-bullseye"></i>
+          <i class="far fa-flag"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">יעד</div>
@@ -404,7 +406,7 @@ function createTimesheetStatsBar(stats) {
 
       <div class="stat-compact">
         <div class="stat-icon">
-          <i class="far fa-chart-line"></i>
+          <i class="far fa-chart-bar"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">התקדמות</div>
@@ -414,7 +416,7 @@ function createTimesheetStatsBar(stats) {
 
       <div class="stat-compact">
         <div class="stat-icon">
-          <i class="far fa-calendar-week"></i>
+          <i class="far fa-calendar-days"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">השבוע</div>
@@ -460,6 +462,36 @@ function initializeStatisticsListeners() {
   window.EventBus.on('timesheet:entry-created', (data) => {
     Logger.log(`👂 [Statistics] timesheet:entry-created received:`, data);
     Logger.log(`  ⏱️ New timesheet entry: ${data.minutes} minutes`);
+  });
+
+  // 👂 Listen to task:deadline-extended event
+  window.EventBus.on('task:deadline-extended', (data) => {
+    Logger.log(`👂 [Statistics] task:deadline-extended received:`, data);
+    Logger.log(`  📅 Deadline extended: ${data.taskId} from ${data.oldDeadline} to ${data.newDeadline}`);
+  });
+
+  // 👂 Listen to task:time-added event
+  window.EventBus.on('task:time-added', (data) => {
+    Logger.log(`👂 [Statistics] task:time-added received:`, data);
+    Logger.log(`  ⏲️ Time added to task: ${data.taskId} (+${data.minutesAdded} minutes)`);
+  });
+
+  // 👂 Listen to legal-procedure:created event
+  window.EventBus.on('legal-procedure:created', (data) => {
+    Logger.log(`👂 [Statistics] legal-procedure:created received:`, data);
+    Logger.log(`  ⚖️ New legal procedure created: ${data.procedureId}`);
+  });
+
+  // 👂 Listen to legal-procedure:hours-added event
+  window.EventBus.on('legal-procedure:hours-added', (data) => {
+    Logger.log(`👂 [Statistics] legal-procedure:hours-added received:`, data);
+    Logger.log(`  ⚖️ Hours added to legal procedure: ${data.procedureId}`);
+  });
+
+  // 👂 Listen to legal-procedure:stage-moved event
+  window.EventBus.on('legal-procedure:stage-moved', (data) => {
+    Logger.log(`👂 [Statistics] legal-procedure:stage-moved received:`, data);
+    Logger.log(`  ⚖️ Legal procedure stage moved: ${data.procedureId}`);
   });
 
   Logger.log('✅ Statistics EventBus listeners initialized (v2.0)');
