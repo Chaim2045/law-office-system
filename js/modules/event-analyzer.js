@@ -124,10 +124,13 @@ window.EventAnalyzer = {
       'js/modules/budget-tasks.js',
       'js/modules/timesheet.js',
       'js/modules/client-case-selector.js',
+      'js/modules/selectors-init.js',           // ✅ Added - listeners for client/case selection
       'js/modules/modals-compat.js',
       'js/modules/statistics.js',
+      'js/modules/notification-system.js',      // ✅ Added - notification listeners
       'js/modules/task-actions.js',
-      'js/modules/integration-manager.js'
+      'js/modules/integration-manager.js',
+      'dist/js/services/firebase-service.js'    // ✅ Added - system events (compiled TS)
     ];
 
     const emittedEvents = new Map();  // event -> [locations]
