@@ -40,13 +40,8 @@
       // Create immediately - no setTimeout needed
       window.clientCaseSelectors.budget = new ClientCaseSelector('budgetClientCaseSelector', {
         required: true,
-        showOnlyActive: true,
-        onClientSelected: (client) => {
-          // Client selected callback
-        },
-        onCaseSelected: (caseData) => {
-          // Case selected callback
-        }
+        showOnlyActive: true
+        // ✅ Callbacks removed - using EventBus listeners instead (v2.0)
       });
 
     } catch (error) {
@@ -82,17 +77,8 @@
       // Create immediately - no setTimeout needed
       window.clientCaseSelectors.timesheet = new ClientCaseSelector('timesheetClientCaseSelector', {
         required: true,
-        showOnlyActive: true,
-        onClientSelected: (client) => {
-          // Auto-fill file number (backward compatibility)
-          const fileNumberInput = document.getElementById('fileNumber');
-          if (fileNumberInput && client.fileNumber) {
-            fileNumberInput.value = client.fileNumber;
-          }
-        },
-        onCaseSelected: (caseData) => {
-          // Case selected callback
-        }
+        showOnlyActive: true
+        // ✅ Callbacks removed - using EventBus listeners instead (v2.0)
       });
 
     } catch (error) {
@@ -101,10 +87,51 @@
   }
 
   /**
+   * Initialize EventBus listeners for client/case selection
+   * ✅ Architecture v2.0 - Event-Driven
+   */
+  function initializeEventListeners() {
+    if (!window.EventBus) {
+      console.warn('⚠️ EventBus not available - skipping listener initialization');
+      return;
+    }
+
+    // 👂 Listen to client:selected event
+    window.EventBus.on('client:selected', (data) => {
+      Logger.log(`👂 [EventBus] client:selected received:`, data);
+
+      // Auto-fill file number in timesheet form
+      const fileNumberInput = document.getElementById('fileNumber');
+      if (fileNumberInput && data.clientId) {
+        // מצא את הלקוח ב-cache כדי לקבל את fileNumber
+        const clientsCache = window.LawOfficeManager?.clientsCache || [];
+        const client = clientsCache.find(c => c.id === data.clientId);
+
+        if (client && client.fileNumber) {
+          fileNumberInput.value = client.fileNumber;
+          Logger.log(`  ✅ Auto-filled fileNumber: ${client.fileNumber}`);
+        }
+      }
+    });
+
+    // 👂 Listen to case:selected event
+    window.EventBus.on('case:selected', (data) => {
+      Logger.log(`👂 [EventBus] case:selected received:`, data);
+      // כאן אפשר להוסיף לוגיקה נוספת כשתיק נבחר
+    });
+
+    Logger.log('✅ EventBus listeners initialized (v2.0)');
+  }
+
+  /**
    * Initialize all client-case selectors (calls lazy initializers)
    */
   function initializeSelectors() {
     Logger.log('🎯 Setting up ClientCaseSelectors (lazy initialization)...');
+
+    // Initialize EventBus listeners
+    initializeEventListeners();
+
     // Selectors will be initialized when forms are first opened
     // This prevents issues with hidden forms
     Logger.log('✅ ClientCaseSelectors ready for lazy initialization');
