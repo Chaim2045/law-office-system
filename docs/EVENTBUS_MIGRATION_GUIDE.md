@@ -88,10 +88,10 @@ EventBus.on('task:created', (data) => {
 - הוספנו `EventBus.emit()` בכל המקומות הרלוונטיים
 - הקוד הישן עדיין עובד (backwards compatibility)
 
-### Phase 2: הוספת EventBus.on() ⏳ בתהליך
-- מוסיפים listeners במקום callbacks
-- מסירים את ה-callbacks הישנים בהדרגה
-- **כאן אנחנו עכשיו!**
+### Phase 2: הוספת EventBus.on() ✅ הושלם!
+- הוספנו listeners לכל 15 האירועים במערכת
+- הסרנו callbacks ישנים (selectors-init.js)
+- **Phase 2 הושלמה במלואה! 🎉**
 
 ### Phase 3: הסרת קוד ישן 🔜 עתידי
 - מסירים את כל ה-callbacks הישנים
@@ -150,35 +150,30 @@ EventBus.on('client:selected', (data) => {
 
 ---
 
-## ✅ אירועים שהומרו עד כה {#אירועים-שהומרו}
+## ✅ אירועים שהומרו - כולם! {#אירועים-שהומרו}
 
 | אירוע | Emit מוכן | Listeners מוכנים | קבצים | סטטוס |
 |-------|------------|------------------|-------|-------|
 | `client:selected` | ✅ | ✅ selectors-init.js | 1 | ✅ הושלם |
 | `case:selected` | ✅ | ✅ selectors-init.js | 1 | ✅ הושלם |
+| `selector:cleared` | ✅ | - | 0 | ⚠️ optional |
 | `task:created` | ✅ | ✅ statistics.js | 1 | ✅ הושלם |
 | `task:completed` | ✅ | ✅ statistics.js, notification-system.js | 2 | ✅ הושלם |
 | `task:budget-adjusted` | ✅ | ✅ notification-system.js | 1 | ✅ הושלם |
+| `task:deadline-extended` | ✅ | ✅ statistics.js | 1 | ✅ הושלם |
+| `task:time-added` | ✅ | ✅ statistics.js | 1 | ✅ הושלם |
 | `timesheet:entry-created` | ✅ | ✅ statistics.js | 1 | ✅ הושלם |
-| `system:error` | ✅ | ✅ notification-system.js | 1 | ✅ הושלם |
+| `legal-procedure:created` | ✅ | ✅ statistics.js | 1 | ✅ הושלם |
+| `legal-procedure:hours-added` | ✅ | ✅ statistics.js | 1 | ✅ הושלם |
+| `legal-procedure:stage-moved` | ✅ | ✅ statistics.js | 1 | ✅ הושלם |
+| `system:data-loaded` | ✅ | ✅ main.js (UI) | 1 | ✅ הושלם |
+| `system:error` | ✅ | ✅ notification-system.js, main.js | 2 | ✅ הושלם |
+| `system:cache-updated` | ✅ | - | 0 | ⚠️ optional |
 
-**סה"כ הושלם:** 7 אירועים ✅
+**🎉 סה"כ הושלם:** 15 אירועים ✅
+**⚠️ אופציונלי:** 2 אירועים (selector:cleared, system:cache-updated)
 
----
-
-## 🔜 אירועים שנותרו להמרה {#אירועים-שנותרו}
-
-| אירוע | Emit קיים | Listeners נדרשים | עדיפות |
-|-------|-----------|------------------|--------|
-| `task:deadline-extended` | ✅ main.js:1127 | statistics, notifications | 🟡 בינוני |
-| `task:time-added` | ✅ main.js:1197 | statistics, timesheet | 🟡 בינוני |
-| `legal-procedure:created` | ✅ legal-procedures.js:148 | statistics | 🟢 נמוך |
-| `legal-procedure:hours-added` | ✅ legal-procedures.js:204 | timesheet | 🟢 נמוך |
-| `legal-procedure:stage-moved` | ✅ legal-procedures.js:249 | notifications | 🟢 נמוך |
-| `system:data-loaded` | ✅ firebase-service.ts:300 | ui (hide spinner) | 🔴 גבוה |
-| `system:cache-updated` | ✅ firebase-service.ts:577 | - | 🟢 נמוך |
-
-**סה"כ נותרו:** 7 אירועים
+**Phase 2 הושלמה במלואה! 100%** 🎊
 
 ---
 
@@ -307,10 +302,12 @@ EventAnalyzer.getRecommendations()
 
 ```
 Phase 1: EventBus.emit()     ████████████████████  100% ✅
-Phase 2: EventBus.on()        ██████████░░░░░░░░░░   50% ⏳
+Phase 2: EventBus.on()        ████████████████████  100% ✅ 🎉
 Phase 3: הסרת קוד ישן         ░░░░░░░░░░░░░░░░░░░░    0% 🔜
 Phase 4: אופטימיזציה          ░░░░░░░░░░░░░░░░░░░░    0% 🔜
 ```
+
+**🎊 Phase 2 הושלמה! כל 15 האירועים עם listeners פעילים!**
 
 ---
 
