@@ -1470,6 +1470,8 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
       serviceId: data.serviceId || null, // ✅ תמיכה בבחירת שירות ספציפי
       serviceName: data.serviceName || null, // ✅ שם השירות
+      serviceType: data.serviceType || null, // ✅ סוג השירות (legal_procedure/hours)
+      parentServiceId: data.parentServiceId || null, // ✅ service.id עבור הליך משפטי
       branch: sanitizeString(data.branch.trim()), // ✅ סניף מטפל
       estimatedHours: estimatedHours,
       estimatedMinutes: estimatedMinutes,
@@ -1673,6 +1675,8 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
       caseNumber: taskData.caseNumber || taskData.clientId,  // ✅ מספר תיק
       serviceId: taskData.serviceId || null,  // ✅ שירות ספציפי
       serviceName: taskData.serviceName || null,  // ✅ שם השירות
+      serviceType: taskData.serviceType || null,  // ✅ סוג השירות (legal_procedure/hours)
+      parentServiceId: taskData.parentServiceId || null,  // ✅ service.id עבור הליך משפטי
       taskId: data.taskId,
       taskDescription: taskData.description,
       date: data.date,
@@ -2253,6 +2257,8 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
       caseNumber: data.caseNumber || finalClientId,  // ✅ מספר תיק
       serviceId: data.serviceId || null,  // ✅ שירות ספציפי
       serviceName: data.serviceName || null,  // ✅ שם השירות
+      serviceType: data.serviceType || null, // ✅ סוג השירות (legal_procedure/hours)
+      parentServiceId: data.parentServiceId || null, // ✅ service.id עבור הליך משפטי
       stageId: null,  // ✅ יעודכן אחר כך אם זה הליך משפטי
       packageId: null, // ✅ יעודכן אחר כך אם זה חבילת שעות
       date: data.date,
@@ -2349,7 +2355,58 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
               console.warn(`⚠️ לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
             }
           }
-          // ✅ הליך משפטי - תמחור שעתי (עם חבילות!)
+          // ✅ NEW: הליך משפטי כשירות (Architecture v2.0)
+          else if (data.serviceType === 'legal_procedure' && data.parentServiceId) {
+            console.log(`🆕 [v2.0] הליך משפטי כשירות - parentServiceId: ${data.parentServiceId}, stageId: ${data.serviceId}`);
+
+            // מציאת השירות בתוך services array
+            const service = clientData.services?.find(s => s.id === data.parentServiceId);
+
+            if (service && service.type === 'legal_procedure') {
+              // מציאת השלב בתוך השירות
+              const targetStageId = data.serviceId || service.currentStage || 'stage_a';
+              const stages = service.stages || [];
+              const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
+
+              if (currentStageIndex !== -1) {
+                const currentStage = stages[currentStageIndex];
+                updatedStageId = currentStage.id;
+
+                // מציאת החבילה הפעילה בשלב
+                const activePackage = getActivePackage(currentStage);
+
+                if (activePackage) {
+                  // קיזוז מהחבילה הפעילה
+                  deductHoursFromPackage(activePackage, hoursWorked);
+                  updatedPackageId = activePackage.id;
+
+                  // עדכון השלב
+                  stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
+                  stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
+
+                  // עדכון השירות בתוך services array
+                  service.stages = stages;
+
+                  // עדכון הלקוח
+                  await clientDoc.ref.update({
+                    services: clientData.services,
+                    hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                    minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                    lastActivity: admin.firestore.FieldValue.serverTimestamp()
+                  });
+
+                  console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} של ${service.name}, חבילה ${activePackage.id}`);
+                } else {
+                  console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
+                }
+              } else {
+                console.warn(`⚠️ שלב ${targetStageId} לא נמצא בשירות ${service.name}`);
+              }
+            } else {
+              console.warn(`⚠️ שירות ${data.parentServiceId} לא נמצא או אינו הליך משפטי`);
+            }
+          }
+          // ✅ הליך משפטי - תמחור שעתי (עם חבילות!) [LEGACY - case level]
           else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
             // ✅ FIX: Use serviceId from task if provided, otherwise use currentStage
             // This ensures hours are deducted from the correct stage that the task was created for
@@ -4342,4 +4399,36 @@ exports.fixBrokenLegalProcedures = functions.https.onCall(async (data, context) 
   }
 });
 
-console.log('✅ Law Office Functions loaded successfully');
+// ===============================
+// Master Admin Panel Functions
+// ===============================
+
+// Import admin panel functions
+const { adminTransferUserData } = require('./admin/transfer-user-data');
+const { adminGetUserFullDetails } = require('./admin/get-user-full-details');
+const { adminGenerateClientReport } = require('./admin/generate-client-report');
+const { adminUpdateClientFull } = require('./admin/update-client-full');
+
+// Import Master Admin Panel Phase 4 Wrappers (for Phase 3 UI)
+const {
+  createUser,
+  updateUser,
+  blockUser,
+  deleteUser,
+  getUserFullDetails
+} = require('./admin/master-admin-wrappers');
+
+// Export admin functions
+exports.adminTransferUserData = adminTransferUserData;
+exports.adminGetUserFullDetails = adminGetUserFullDetails;
+exports.adminGenerateClientReport = adminGenerateClientReport;
+exports.adminUpdateClientFull = adminUpdateClientFull;
+
+// Export Master Admin Panel Phase 4 Wrappers (Simple names for UI)
+exports.createUser = createUser;
+exports.updateUser = updateUser;
+exports.blockUser = blockUser;
+exports.deleteUser = deleteUser;
+exports.getUserFullDetails = getUserFullDetails;
+
+console.log('✅ Law Office Functions loaded successfully (including 9 Master Admin functions)');
