@@ -1247,9 +1247,6 @@
 
       document.body.insertAdjacentHTML('beforeend', dialogHTML);
 
-      // ✅ טעינת מספר תיק אוטומטי מיד כשפותחים את הדיאלוג
-      this.loadNextCaseNumber();
-
       // Event listeners for Tabs
       const existingTab = document.getElementById('existingClientTab');
       const newTab = document.getElementById('newClientTab');
