@@ -671,7 +671,7 @@ const KB_ARTICLES = [
 
             actionButton: {
                 text: '🚀 פתח טופס תיק חדש',
-                action: 'window.casesManager?.showCreateCaseDialog?.()'
+                action: '(new CaseCreationDialog()).open()'
             },
 
             relatedArticles: ['search_client', 'create_task', 'edit_case']

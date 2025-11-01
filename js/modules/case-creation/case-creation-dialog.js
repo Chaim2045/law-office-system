@@ -831,12 +831,15 @@
         newBtn.style.color = '#6b7280';
         newBtn.style.boxShadow = 'none';
 
-        // ✅ נקה מספר תיק (לא רלוונטי ללקוח קיים)
+        // ✅ נקה מספר תיק ונעל אותו (יטען אוטומטית לאחר בחירת לקוח)
         const caseNumberInput = document.getElementById('caseNumber');
         if (caseNumberInput) {
-          caseNumberInput.value = 'לא רלוונטי - יש תיק קיים';
+          caseNumberInput.value = '';
+          caseNumberInput.disabled = true;
+          caseNumberInput.style.background = '#f9fafb';
           caseNumberInput.style.color = '#9ca3af';
-          caseNumberInput.style.fontWeight = 'normal';
+          caseNumberInput.style.cursor = 'not-allowed';
+          caseNumberInput.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
         }
 
         // צור selector אם לא קיים
@@ -846,6 +849,34 @@
 
         // ✅ האזנה לאירוע בחירת לקוח
         this.setupClientSelectorListener();
+
+        // ✅ עדכון מצב כפתור שמור
+        this.updateSubmitButton();
+      }
+    }
+
+    /**
+     * עדכון מצב כפתור שמור (enable/disable)
+     * במצב existing - הכפתור נעול עד שבוחרים לקוח
+     */
+    updateSubmitButton() {
+      const submitBtn = document.querySelector('#modernCaseForm button[type="submit"]');
+      if (!submitBtn) return;
+
+      if (this.currentMode === 'existing' && !this.currentCase) {
+        // ❌ במצב existing ללא לקוח - נעל כפתור
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+        submitBtn.title = 'יש לבחור לקוח לפני שמירה';
+        Logger.log('🔒 Submit button disabled - no client selected');
+      } else {
+        // ✅ מצב תקין - אפשר שמירה
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+        submitBtn.title = '';
+        Logger.log('🔓 Submit button enabled');
       }
     }
 
@@ -864,8 +895,8 @@
      * האזנה לבחירת לקוח מה-ClientCaseSelector
      */
     setupClientSelectorListener() {
-      // האזנה לאירוע clientSelected דרך EventBus
-      window.EventBus?.on('clientSelected', async (data) => {
+      // האזנה לאירוע client:selected דרך EventBus (v2.0 naming convention)
+      window.EventBus?.on('client:selected', async (data) => {
         Logger.log('🎯 Client selected:', data);
 
         if (data.clientId) {
@@ -881,18 +912,38 @@
               const caseNumberField = document.getElementById('caseNumber');
               if (caseNumberField) {
                 caseNumberField.value = existingCase.caseNumber;
+                caseNumberField.placeholder = '';  // ✅ הסרת placeholder
                 caseNumberField.disabled = true;
-                caseNumberField.style.background = '#f3f4f6';
+                caseNumberField.style.background = '#ecfdf5';  // ✅ ירוק בהיר
+                caseNumberField.style.color = '#059669';        // ✅ ירוק כהה
+                caseNumberField.style.fontWeight = '600';       // ✅ הדגשה
                 caseNumberField.style.cursor = 'not-allowed';
+                caseNumberField.title = `תיק קיים #${existingCase.caseNumber} - לא ניתן לשינוי`;
               }
 
               // הצגת כרטיס מידע על התיק והשירותים הקיימים
               this.showExistingCaseInfo(existingCase);
 
               Logger.log('✅ Existing case loaded for adding service');
+
+              // ✅ עדכון כפתור שמור (אפשר שמירה)
+              this.updateSubmitButton();
             } else {
               // ✅ ריסט אם אין תיק קיים
               this.currentCase = null;
+
+              // ריסט שדה מספר תיק למצב התחלתי
+              const caseNumberField = document.getElementById('caseNumber');
+              if (caseNumberField) {
+                caseNumberField.value = '';
+                caseNumberField.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
+                caseNumberField.disabled = true;
+                caseNumberField.style.background = '#f9fafb';
+                caseNumberField.style.color = '#9ca3af';
+                caseNumberField.style.fontWeight = 'normal';
+                caseNumberField.style.cursor = 'not-allowed';
+                caseNumberField.title = '';
+              }
 
               // הסרת כרטיס מידע אם קיים
               const existingInfo = document.getElementById('existingCaseInfo');
@@ -901,10 +952,47 @@
               }
 
               Logger.log('⚠️ No existing case found for this client');
+
+              // ✅ עדכון כפתור שמור (נעל כפתור)
+              this.updateSubmitButton();
             }
           } catch (error) {
             console.error('❌ Error loading client case:', error);
+            this.currentCase = null;
+
+            // ריסט שדה מספר תיק
+            const caseNumberField = document.getElementById('caseNumber');
+            if (caseNumberField) {
+              caseNumberField.value = '';
+              caseNumberField.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
+              caseNumberField.disabled = true;
+              caseNumberField.style.background = '#f9fafb';
+              caseNumberField.style.color = '#9ca3af';
+              caseNumberField.style.fontWeight = 'normal';
+              caseNumberField.style.cursor = 'not-allowed';
+              caseNumberField.title = '';
+            }
+
+            this.updateSubmitButton();
           }
+        } else {
+          // ❌ אם לא נבחר לקוח (ביטול בחירה)
+          this.currentCase = null;
+
+          // ריסט שדה מספר תיק
+          const caseNumberField = document.getElementById('caseNumber');
+          if (caseNumberField) {
+            caseNumberField.value = '';
+            caseNumberField.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
+            caseNumberField.disabled = true;
+            caseNumberField.style.background = '#f9fafb';
+            caseNumberField.style.color = '#9ca3af';
+            caseNumberField.style.fontWeight = 'normal';
+            caseNumberField.style.cursor = 'not-allowed';
+            caseNumberField.title = '';
+          }
+
+          this.updateSubmitButton();
         }
       });
 
@@ -990,9 +1078,12 @@
               border-radius: 6px;
               margin-bottom: 6px;
               border-right: 3px solid ${service.status === 'active' ? '#10b981' : '#9ca3af'};
+              opacity: 0.85;
+              cursor: default;
             ">
               <div>
                 <div style="font-weight: 500; color: #1a1a1a; font-size: 13px;">
+                  <i class="fas fa-lock" style="font-size: 9px; color: #9ca3af; margin-left: 6px;"></i>
                   ${serviceType || service.name || `שירות ${index + 1}`}
                 </div>
                 <div style="font-size: 11px; color: #666; margin-top: 2px;">
@@ -1052,8 +1143,26 @@
 
           <!-- רשימת שירותים -->
           <div style="margin-bottom: 12px;">
-            <div style="font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 8px;">
-              שירותים קיימים:
+            <div style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 8px;
+            ">
+              <div style="font-size: 12px; font-weight: 600; color: #1e40af;">
+                שירותים קיימים:
+              </div>
+              <div style="
+                font-size: 10px;
+                color: #6b7280;
+                background: #f3f4f6;
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-weight: 500;
+              ">
+                <i class="fas fa-eye" style="margin-left: 4px;"></i>
+                למידע בלבד
+              </div>
             </div>
             ${servicesHTML}
           </div>
@@ -1065,13 +1174,18 @@
             border-radius: 6px;
             padding: 10px;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
           ">
-            <i class="fas fa-lightbulb" style="color: #f59e0b; font-size: 16px;"></i>
-            <span style="font-size: 12px; color: #92400e;">
-              השירות החדש יתווסף לתיק זה
-            </span>
+            <i class="fas fa-lightbulb" style="color: #f59e0b; font-size: 16px; margin-top: 2px;"></i>
+            <div style="flex: 1;">
+              <div style="font-size: 12px; color: #92400e; font-weight: 600; margin-bottom: 4px;">
+                הוספת שירות חדש
+              </div>
+              <div style="font-size: 11px; color: #92400e;">
+                השירות החדש שתגדיר למטה יתווסף לתיק זה. השירותים המוצגים למעלה הם למידע בלבד ואינם ניתנים לעריכה.
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -1102,6 +1216,13 @@
       // הסתרת שגיאות קודמות
       document.getElementById('formErrors').style.display = 'none';
       document.getElementById('formWarnings').style.display = 'none';
+
+      // 🛡️ Defensive Check: אם במצב existing אבל לא נבחר לקוח - שגיאה!
+      if (this.currentMode === 'existing' && !this.currentCase) {
+        window.CaseFormValidator.displayErrors(['חובה לבחור לקוח מהרשימה לפני הוספת שירות']);
+        Logger.log('❌ Validation failed: No client selected in existing mode');
+        return;
+      }
 
       // 🎯 נקודת החלטה: הוספת שירות או יצירת תיק חדש?
       if (this.currentCase) {

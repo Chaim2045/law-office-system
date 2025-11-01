@@ -3801,7 +3801,7 @@ class SystemTour {
             {
                 title: '📁 תיק חדש',
                 text: 'כפתור זה פותח חלון להוספת לקוח חדש או יצירת תיק חדש ללקוח קיים',
-                element: 'button[onclick*="casesManager.showCreateCaseDialog"]',
+                element: 'button[onclick*="CaseCreationDialog"]',
                 position: 'bottom'
             },
             {

@@ -343,13 +343,13 @@
       }
     }
 
-    // פתיחת דיאלוג ישן (להשוואה)
+    // פתיחת דיאלוג נוסף
     function openOldDialog() {
-      if (window.casesManager && typeof window.casesManager.showCreateCaseDialog === 'function') {
-        window.casesManager.showCreateCaseDialog();
-        logEvent('✅ דיאלוג ישן נפתח להשוואה');
+      if (window.CaseCreationDialog) {
+        (new CaseCreationDialog()).open();
+        logEvent('✅ דיאלוג נוסף נפתח');
       } else {
-        logEvent('❌ הדיאלוג הישן לא זמין (אין casesManager)', true);
+        logEvent('❌ CaseCreationDialog לא זמין', true);
       }
     }
 

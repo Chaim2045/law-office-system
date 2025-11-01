@@ -966,7 +966,7 @@ const ACTION_DATABASE = {
                     description: 'לחץ על **"תיק חדש"** בסרגל הצדדי השמאלי',
                     actionButton: {
                         text: '🚀 פתח טופס תיק',
-                        handler: 'window.casesManager?.showCreateCaseDialog?.()'
+                        handler: '(new CaseCreationDialog()).open()'
                     }
                 },
                 {
