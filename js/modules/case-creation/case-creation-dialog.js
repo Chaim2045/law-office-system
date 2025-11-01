@@ -427,24 +427,74 @@
 
       document.body.insertAdjacentHTML('beforeend', dialogHTML);
 
-      // טעינת מספר תיק אוטומטי
-      this.loadCaseNumber();
-
       // רינדור סקשן שירות (ברירת מחדל: שעות)
       this.renderServiceSection();
+
+      // ❌ הוסר: מספר תיק לא נטען אוטומטית
+      // ✅ חדש: מספר תיק ייטען רק אחרי שהמשתמש הזין שם לקוח
     }
 
     /**
      * טעינת מספר תיק אוטומטי
      */
-    loadCaseNumber() {
+    async loadCaseNumber() {
       const input = document.getElementById('caseNumber');
-      if (!input) return;
+      if (!input) {
+        console.error('❌ Case number input not found!');
+        return;
+      }
 
-      const nextNumber = window.CaseNumberGenerator.getNextCaseNumber();
-      input.value = nextNumber;
+      // בדיקה אם Generator קיים
+      if (!window.CaseNumberGenerator) {
+        console.error('❌ CaseNumberGenerator not loaded!');
+        input.value = 'שגיאה: Generator לא נטען';
+        input.style.color = '#ef4444';
+        return;
+      }
+
+      // אם לא מאותחל - חכה לאתחול
+      if (!window.CaseNumberGenerator.isInitialized) {
+        input.value = 'טוען...';
+        input.style.color = '#9ca3af';
+
+        // חכה עד 5 שניות לאתחול
+        let attempts = 0;
+        const maxAttempts = 50; // 50 * 100ms = 5 seconds
+
+        while (!window.CaseNumberGenerator.isInitialized && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+
+        if (!window.CaseNumberGenerator.isInitialized) {
+          console.error('❌ CaseNumberGenerator initialization timeout!');
+          input.value = 'שגיאה: לא הצליח לטעון';
+          input.style.color = '#ef4444';
+          return;
+        }
+      }
+
+      // ✅ טען מספר תיק חכם עם בדיקת זמינות בזמן אמת
+      input.value = 'בודק זמינות...';
       input.style.color = '#3b82f6';
       input.style.fontWeight = '600';
+
+      try {
+        const nextNumber = await window.CaseNumberGenerator.getNextAvailableCaseNumber();
+        input.value = nextNumber;
+        input.style.color = '#059669';
+
+        Logger.log(`✅ Available case number loaded: ${nextNumber}`);
+      } catch (error) {
+        console.error('❌ Error loading available case number:', error);
+
+        // Fallback לפונקציה הרגילה אם הזמינות נכשלה
+        const fallbackNumber = window.CaseNumberGenerator.getNextCaseNumber();
+        input.value = fallbackNumber;
+        input.style.color = '#f59e0b'; // צהוב לסימן אזהרה
+
+        Logger.log(`⚠️ Using fallback case number: ${fallbackNumber}`);
+      }
     }
 
     /**
@@ -678,6 +728,24 @@
       document.getElementById('newClientModeBtn')?.addEventListener('click', () => this.switchMode('new'));
       document.getElementById('existingClientModeBtn')?.addEventListener('click', () => this.switchMode('existing'));
 
+      // ✅ NEW: טעינת מספר תיק רק אחרי שהמשתמש הזין שם לקוח
+      const newClientNameInput = document.getElementById('newClientName');
+      if (newClientNameInput) {
+        newClientNameInput.addEventListener('input', (e) => {
+          const name = e.target.value.trim();
+          // טען מספר תיק רק אם השם ארוך מ-2 תווים
+          if (name.length >= 2 && this.currentMode === 'new') {
+            this.loadCaseNumber();
+          } else {
+            // נקה את השדה אם השם קצר מדי
+            const caseNumberInput = document.getElementById('caseNumber');
+            if (caseNumberInput) {
+              caseNumberInput.value = '';
+            }
+          }
+        });
+      }
+
       // שינוי סוג הליך
       document.getElementById('procedureType')?.addEventListener('change', (e) => {
         this.procedureType = e.target.value;
@@ -738,6 +806,18 @@
         existingBtn.style.background = 'transparent';
         existingBtn.style.color = '#6b7280';
         existingBtn.style.boxShadow = 'none';
+
+        // ✅ טען מספר תיק רק אם כבר יש שם לקוח
+        const clientName = document.getElementById('newClientName')?.value?.trim();
+        if (clientName && clientName.length >= 2) {
+          setTimeout(() => this.loadCaseNumber(), 50);
+        } else {
+          // נקה את שדה מספר התיק
+          const caseNumberInput = document.getElementById('caseNumber');
+          if (caseNumberInput) {
+            caseNumberInput.value = '';
+          }
+        }
       } else {
         newMode.style.display = 'none';
         existingMode.style.display = 'block';
@@ -749,6 +829,14 @@
         newBtn.style.background = 'transparent';
         newBtn.style.color = '#6b7280';
         newBtn.style.boxShadow = 'none';
+
+        // ✅ נקה מספר תיק (לא רלוונטי ללקוח קיים)
+        const caseNumberInput = document.getElementById('caseNumber');
+        if (caseNumberInput) {
+          caseNumberInput.value = 'לא רלוונטי - יש תיק קיים';
+          caseNumberInput.style.color = '#9ca3af';
+          caseNumberInput.style.fontWeight = 'normal';
+        }
 
         // צור selector אם לא קיים
         if (!this.clientSelector) {

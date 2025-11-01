@@ -58,19 +58,22 @@ EventBus.on('case:created', (data) => {
 ### CaseNumberGenerator
 
 ```javascript
-// קבלת מספר תיק הבא
+// ✅ RECOMMENDED: קבלת מספר תיק הבא עם בדיקת זמינות בזמן אמת
+const nextNumber = await window.CaseNumberGenerator.getNextAvailableCaseNumber();
+
+// קבלת מספר תיק הבא (מהקאש, ללא בדיקת זמינות)
 const nextNumber = window.CaseNumberGenerator.getNextCaseNumber();
 
 // רזרבציה של מספר (למניעת כפילויות)
 const reserved = window.CaseNumberGenerator.reserveNextNumber();
 
-// בדיקה אם מספר תקין
-const isValid = window.CaseNumberGenerator.isValidCaseNumber('24001');
+// בדיקה אם מספר תקין (פורמט: YYYYNNN, לדוגמה: 2025042)
+const isValid = window.CaseNumberGenerator.isValidCaseNumber('2025042');
 
-// בדיקה אם מספר קיים
-const exists = await window.CaseNumberGenerator.caseNumberExists('24001');
+// בדיקה אם מספר קיים ב-Firebase
+const exists = await window.CaseNumberGenerator.caseNumberExists('2025042');
 
-// רענון ידני
+// רענון ידני של הקאש
 await window.CaseNumberGenerator.refresh();
 ```
 

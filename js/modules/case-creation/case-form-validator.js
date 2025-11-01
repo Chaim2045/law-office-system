@@ -107,11 +107,11 @@
       const errors = [];
       const warnings = [];
 
-      // מספר תיק
-      if (!caseData.caseNumber) {
-        errors.push('חובה מספר תיק');
+      // מספר תיק - בדיקה מרוככת (יתווסף אוטומטית אם חסר)
+      if (!caseData.caseNumber || caseData.caseNumber.trim() === '') {
+        warnings.push('מספר תיק ייווצר אוטומטית בעת השמירה');
       } else if (!window.CaseNumberGenerator?.isValidCaseNumber(caseData.caseNumber)) {
-        errors.push('מספר תיק לא תקין');
+        errors.push('מספר תיק לא תקין - חייב להיות בפורמט: שנה + 3 ספרות (לדוגמה: 2025042)');
       }
 
       // כותרת תיק

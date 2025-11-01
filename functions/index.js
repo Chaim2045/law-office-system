@@ -580,9 +580,26 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       });
     }
 
-    // ✅ NEW ARCHITECTURE: יצירת מספר תיק אוטומטי
-    const caseNumber = await generateCaseNumber();
-    console.log(`🎯 Generated case number: ${caseNumber} for client: ${data.clientName}`);
+    // ✅ NEW ARCHITECTURE: שימוש במספר תיק מהדיאלוג או יצירה אוטומטית
+    let caseNumber = data.caseNumber;
+
+    // אם לא נשלח מספר תיק (או ריק), ניצור אוטומטית
+    if (!caseNumber || caseNumber.trim() === '') {
+      caseNumber = await generateCaseNumber();
+      console.log(`🎯 Generated NEW case number: ${caseNumber} for client: ${data.clientName}`);
+    } else {
+      // בדיקת ייחודיות של המספר שנשלח
+      const existingDoc = await db.collection('clients').doc(caseNumber).get();
+      if (existingDoc.exists) {
+        // ⚠️ Race Condition! מישהו אחר כבר יצר תיק עם המספר הזה
+        // במקום להחזיר שגיאה, פשוט ניצור מספר חדש אוטומטית
+        console.warn(`⚠️ Case number ${caseNumber} already exists! Generating new number...`);
+        caseNumber = await generateCaseNumber();
+        console.log(`🔄 Generated REPLACEMENT case number: ${caseNumber} (original ${data.caseNumber} was taken)`);
+      } else {
+        console.log(`✅ Using provided case number: ${caseNumber} for client: ${data.clientName}`);
+      }
+    }
 
     // ✅ יצירת המסמך המאוחד (Client = Case)
     const now = new Date().toISOString();
@@ -590,10 +607,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       // ✅ זיהוי ומידע בסיסי
       caseNumber: caseNumber,  // מספר תיק (גם Document ID)
       clientName: sanitizeString(data.clientName.trim()),
+      fullName: sanitizeString(data.clientName.trim()), // ✅ גם fullName ל-backward compatibility
       phone: data.phone ? sanitizeString(data.phone.trim()) : '',
       email: data.email ? sanitizeString(data.email.trim()) : '',
 
-      // ✅ מידע משפטי
+      // ✅ מידע משפטי - כותרת התיק
+      caseTitle: data.caseTitle ? sanitizeString(data.caseTitle.trim()) : '',
       procedureType: data.procedureType,
       status: 'active',
       priority: 'medium',
@@ -798,7 +817,8 @@ exports.createClient = functions.https.onCall(async (data, context) => {
     }
 
     // ✅ יצירת המסמך עם מספר תיק כ-Document ID
-    await db.collection('clients').doc(caseNumber).set(clientData);
+    // שימוש ב-.create() במקום .set() - מונע דריסה ומבטיח ייחודיות
+    await db.collection('clients').doc(caseNumber).create(clientData);
 
     // Audit log
     await logAction('CREATE_CLIENT', user.uid, user.username, {
@@ -1750,7 +1770,8 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
           // ✅ הליך משפטי - תמחור שעתי (עם חבילות!)
           else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
             // מציאת השלב הנוכחי
-            const currentStageId = clientData.currentStage || 'stage_a';
+            // ✅ FIX: Use serviceId from task if provided (the specific stage), otherwise use currentStage
+            const currentStageId = taskData.serviceId || clientData.currentStage || 'stage_a';
             const stages = clientData.stages || [];
             const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
 
@@ -4415,7 +4436,8 @@ const {
   updateUser,
   blockUser,
   deleteUser,
-  getUserFullDetails
+  getUserFullDetails,
+  adminUpdateTask
 } = require('./admin/master-admin-wrappers');
 
 // Export admin functions
@@ -4430,5 +4452,267 @@ exports.updateUser = updateUser;
 exports.blockUser = blockUser;
 exports.deleteUser = deleteUser;
 exports.getUserFullDetails = getUserFullDetails;
+exports.adminUpdateTask = adminUpdateTask;
 
-console.log('✅ Law Office Functions loaded successfully (including 9 Master Admin functions)');
+// ═══════════════════════════════════════════════════════════════════════
+// 🔧 DATA FIX: Add missing packages to legal procedure stages
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * תיקון חבילות חסרות בשלבים של הליכים משפטיים
+ * מוסיף חבילה אוטומטית לכל שלב שאין לו חבילות
+ */
+exports.fixMissingPackages = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Only admin can run this
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק אדמין יכול להריץ תיקון זה'
+      );
+    }
+
+    const clientId = data.clientId;
+    if (!clientId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה לקוח'
+      );
+    }
+
+    console.log(`🔧 Starting package fix for client: ${clientId}`);
+
+    const clientRef = db.collection('clients').doc(clientId);
+    const clientDoc = await clientRef.get();
+
+    if (!clientDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'לקוח לא נמצא'
+      );
+    }
+
+    const clientData = clientDoc.data();
+
+    // ודא שזה הליך משפטי שעתי
+    if (clientData.procedureType !== 'legal_procedure' || clientData.pricingType !== 'hourly') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'פונקציה זו רלוונטית רק להליכים משפטיים שעתיים'
+      );
+    }
+
+    if (!clientData.stages || clientData.stages.length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'אין שלבים בלקוח זה'
+      );
+    }
+
+    console.log(`  📋 Found ${clientData.stages.length} stages`);
+
+    let stagesFixed = 0;
+    const updatedStages = clientData.stages.map((stage, idx) => {
+      // אם כבר יש חבילות - דלג
+      if (stage.packages && stage.packages.length > 0) {
+        console.log(`  ✅ ${stage.name || stage.id}: already has packages`);
+        return stage;
+      }
+
+      // צור חבילה חדשה
+      const hours = stage.totalHours || stage.initialHours || 20;
+      const hoursUsed = stage.hoursUsed || 0;
+
+      const newPackage = {
+        id: `pkg_fix_${stage.id}_${Date.now()}`,
+        type: 'initial',
+        hours: hours,
+        hoursUsed: hoursUsed,
+        hoursRemaining: hours - hoursUsed,
+        purchaseDate: new Date().toISOString(),
+        status: 'active',
+        note: 'חבילה נוספה אוטומטית ע"י תיקון מערכת'
+      };
+
+      console.log(`  ➕ ${stage.name || stage.id}: adding package (${hours} hours)`);
+      stagesFixed++;
+
+      return {
+        ...stage,
+        packages: [newPackage]
+      };
+    });
+
+    // שמירה
+    await clientRef.update({
+      stages: updatedStages,
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastModifiedBy: `${user.username} (system_fix)`
+    });
+
+    console.log(`✅ Fixed ${stagesFixed} stages for client ${clientId}`);
+
+    return {
+      success: true,
+      clientId: clientId,
+      stagesFixed: stagesFixed,
+      totalStages: clientData.stages.length,
+      message: `תוקנו ${stagesFixed} שלבים בהצלחה`
+    };
+
+  } catch (error) {
+    console.error('Error in fixMissingPackages:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      'שגיאה בתיקון חבילות: ' + error.message
+    );
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🔧 DATA FIX: Rebuild stages structure for old legal procedures
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * שחזור מבנה שלבים ישן למבנה חדש עם stage_a/b/c
+ * מתקן לקוחות שנוצרו בגרסה ישנה עם id: 1,2,3 במקום stage_a,b,c
+ */
+exports.rebuildStagesStructure = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Only admin can run this
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק אדמין יכול להריץ תיקון זה'
+      );
+    }
+
+    const clientId = data.clientId;
+    if (!clientId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה לקוח'
+      );
+    }
+
+    console.log(`🔧 Rebuilding stages structure for client: ${clientId}`);
+
+    const clientRef = db.collection('clients').doc(clientId);
+    const clientDoc = await clientRef.get();
+
+    if (!clientDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'לקוח לא נמצא'
+      );
+    }
+
+    const clientData = clientDoc.data();
+
+    // ודא שזה הליך משפטי שעתי
+    if (clientData.procedureType !== 'legal_procedure' || clientData.pricingType !== 'hourly') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'פונקציה זו רלוונטית רק להליכים משפטיים שעתיים'
+      );
+    }
+
+    if (!clientData.stages || clientData.stages.length !== 3) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'צפויים בדיוק 3 שלבים'
+      );
+    }
+
+    console.log(`  📋 Rebuilding ${clientData.stages.length} stages...`);
+
+    // שחזור השלבים עם המבנה הנכון
+    const stageMapping = [
+      { oldId: 1, newId: 'stage_a', name: 'שלב א', order: 1 },
+      { oldId: 2, newId: 'stage_b', name: 'שלב ב', order: 2 },
+      { oldId: 3, newId: 'stage_c', name: 'שלב ג', order: 3 }
+    ];
+
+    const rebuiltStages = clientData.stages.map((oldStage, idx) => {
+      const mapping = stageMapping[idx];
+
+      // חישוב totalHours מהחבילות
+      let totalHours = 20; // default
+      let hoursUsed = 0;
+      let hoursRemaining = 20;
+
+      if (oldStage.packages && oldStage.packages.length > 0) {
+        totalHours = oldStage.packages.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
+        hoursUsed = oldStage.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
+        hoursRemaining = oldStage.packages.reduce((sum, pkg) => sum + (pkg.hoursRemaining || pkg.hours || 0), 0);
+      }
+
+      const newStage = {
+        id: mapping.newId,
+        name: mapping.name,
+        description: oldStage.description || `${mapping.name}`,
+        order: mapping.order,
+        status: idx === 0 ? 'active' : 'pending',
+        pricingType: 'hourly',
+        initialHours: totalHours,
+        totalHours: totalHours,
+        hoursUsed: hoursUsed,
+        hoursRemaining: hoursRemaining,
+        packages: oldStage.packages || [],
+        completed: oldStage.completed || false,
+        completedAt: oldStage.completedAt || null,
+        completedBy: oldStage.completedBy || null
+      };
+
+      console.log(`  ✅ שלב ${idx + 1}: ${oldStage.id} → ${newStage.id} (${newStage.name})`);
+
+      return newStage;
+    });
+
+    // עדכון הלקוח
+    await clientRef.update({
+      stages: rebuiltStages,
+      currentStage: 'stage_a',
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastModifiedBy: `${user.username} (rebuild_stages)`
+    });
+
+    console.log(`✅ Rebuilt stages structure for client ${clientId}`);
+
+    return {
+      success: true,
+      clientId: clientId,
+      stagesRebuilt: rebuiltStages.length,
+      message: 'מבנה השלבים שוחזר בהצלחה'
+    };
+
+  } catch (error) {
+    console.error('Error in rebuildStagesStructure:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      'שגיאה בשחזור מבנה שלבים: ' + error.message
+    );
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🚨 NUCLEAR CLEANUP - Admin Only
+// ═══════════════════════════════════════════════════════════════════════
+const { nuclearCleanup } = require('./admin/nuclear-cleanup');
+exports.nuclearCleanup = nuclearCleanup;
+
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes)');

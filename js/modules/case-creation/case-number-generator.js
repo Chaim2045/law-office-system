@@ -49,16 +49,17 @@
 
         if (!snapshot.empty) {
           const lastCase = snapshot.docs[0].data();
-          this.lastCaseNumber = parseInt(lastCase.caseNumber) || 24000;
+          // שמירה כ-string (כי זה הפורמט: "2025042")
+          this.lastCaseNumber = lastCase.caseNumber || null;
         } else {
-          this.lastCaseNumber = 24000; // מספר התחלתי
+          this.lastCaseNumber = null; // אין תיקים עדיין
         }
 
         Logger.log('📊 Updated last case number:', this.lastCaseNumber);
       } catch (error) {
         console.error('❌ Error updating last case number:', error);
-        // fallback למספר ברירת מחדל
-        this.lastCaseNumber = 24000;
+        // fallback - אין מספר
+        this.lastCaseNumber = null;
       }
     }
 
@@ -75,9 +76,10 @@
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
               const newCase = change.doc.data();
-              const newNumber = parseInt(newCase.caseNumber);
+              const newNumber = newCase.caseNumber;
 
-              if (newNumber && newNumber > this.lastCaseNumber) {
+              // עדכון רק אם המספר החדש גדול יותר (השוואה לקסיקוגרפית)
+              if (newNumber && (!this.lastCaseNumber || newNumber > this.lastCaseNumber)) {
                 this.lastCaseNumber = newNumber;
                 Logger.log('🔄 Case number updated in real-time:', this.lastCaseNumber);
               }
@@ -87,17 +89,96 @@
     }
 
     /**
-     * קבלת מספר התיק הבא
+     * קבלת מספר התיק הבא (מ-cache)
+     * 🎯 לוגיקה זהה לשרת (functions/index.js:286-335)
      * @returns {string} מספר תיק חדש
      */
     getNextCaseNumber() {
       if (!this.isInitialized) {
         console.warn('⚠️ CaseNumberGenerator not initialized. Using fallback.');
-        return '24001';
+        return '2025001';
       }
 
-      const nextNumber = (this.lastCaseNumber || 24000) + 1;
-      return nextNumber.toString();
+      const currentYear = new Date().getFullYear();
+      const yearPrefix = currentYear.toString();
+
+      // אם אין מספר אחרון, התחל מ-001
+      if (!this.lastCaseNumber) {
+        return `${yearPrefix}001`;
+      }
+
+      const lastCaseNumber = this.lastCaseNumber.toString();
+
+      // חילוץ המספר הסידורי (3 הספרות האחרונות)
+      const lastSequential = parseInt(lastCaseNumber.slice(-3));
+
+      let nextNumber = 1; // ברירת מחדל
+
+      // אם המספר האחרון מהשנה הנוכחית, נמשיך את הסדרה
+      if (lastCaseNumber.startsWith(yearPrefix)) {
+        nextNumber = lastSequential + 1;
+      }
+      // אחרת (שנה חדשה), נתחיל מ-1
+
+      // יצירת מספר תיק: שנה + 3 ספרות סידוריות
+      const caseNumber = `${yearPrefix}${nextNumber.toString().padStart(3, '0')}`;
+
+      return caseNumber;
+    }
+
+    /**
+     * 🎯 קבלת מספר תיק הבא הזמין (עם בדיקת זמינות ב-Firebase)
+     * פונקציה חכמה שבודקת בזמן אמת מה המספר האחרון ומוודאת שהמספר החדש פנוי
+     * @param {number} maxRetries - מספר ניסיונות מקסימלי (ברירת מחדל: 10)
+     * @returns {Promise<string>} מספר תיק חדש וזמין
+     */
+    async getNextAvailableCaseNumber(maxRetries = 10) {
+      try {
+        Logger.log('🔍 Finding next available case number...');
+
+        // רענון המספר האחרון מ-Firebase (בזמן אמת)
+        await this.updateLastCaseNumber();
+
+        // קבלת מספר מועמד
+        let candidateNumber = this.getNextCaseNumber();
+
+        // בדיקת זמינות עם retry logic
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          Logger.log(`  🔎 Attempt ${attempt}: Checking if ${candidateNumber} is available...`);
+
+          const exists = await this.caseNumberExists(candidateNumber);
+
+          if (!exists) {
+            // ✅ מצאנו מספר פנוי!
+            Logger.log(`  ✅ Case number ${candidateNumber} is available!`);
+
+            // עדכון ה-cache כדי למנוע התנגשויות עתידיות
+            this.lastCaseNumber = candidateNumber;
+
+            return candidateNumber;
+          }
+
+          // ❌ המספר תפוס, ננסה את הבא
+          Logger.log(`  ⚠️ Case number ${candidateNumber} is taken, trying next...`);
+
+          // עדכון lastCaseNumber למספר הנוכחי (התפוס) ונסיון הבא
+          this.lastCaseNumber = candidateNumber;
+          candidateNumber = this.getNextCaseNumber();
+        }
+
+        // אם הגענו לכאן, כל הניסיונות נכשלו
+        throw new Error(`Failed to find available case number after ${maxRetries} attempts`);
+
+      } catch (error) {
+        console.error('❌ Error finding available case number:', error);
+
+        // Fallback: מספר עם timestamp
+        const currentYear = new Date().getFullYear();
+        const fallback = `${currentYear}${Math.floor(Math.random() * 900) + 100}`;
+        Logger.log(`⚠️ Using fallback case number: ${fallback}`);
+
+        return fallback;
+      }
     }
 
     /**
@@ -106,19 +187,40 @@
      */
     reserveNextNumber() {
       const reserved = this.getNextCaseNumber();
-      this.lastCaseNumber = parseInt(reserved);
+      this.lastCaseNumber = reserved; // שמירה כ-string
       Logger.log('🔒 Reserved case number:', reserved);
       return reserved;
     }
 
     /**
      * ולידציה של מספר תיק
+     * פורמט: שנה (4 ספרות) + מספר סידורי (3 ספרות) = 7 ספרות
+     * דוגמה: 2025042
      * @param {string|number} caseNumber - מספר תיק לבדיקה
      * @returns {boolean}
      */
     isValidCaseNumber(caseNumber) {
-      const num = parseInt(caseNumber);
-      return !isNaN(num) && num > 24000 && num < 999999;
+      if (!caseNumber) return false;
+
+      const caseStr = caseNumber.toString();
+
+      // בדיקה: בדיוק 7 ספרות
+      if (caseStr.length !== 7) return false;
+
+      // בדיקה: כל התווים הם ספרות
+      if (!/^\d{7}$/.test(caseStr)) return false;
+
+      // חילוץ שנה ומספר סידורי
+      const year = parseInt(caseStr.substring(0, 4));
+      const sequential = parseInt(caseStr.substring(4, 7));
+
+      // בדיקת שנה סבירה (2024-2030)
+      if (year < 2024 || year > 2030) return false;
+
+      // בדיקת מספר סידורי תקין (1-999)
+      if (sequential < 1 || sequential > 999) return false;
+
+      return true;
     }
 
     /**
