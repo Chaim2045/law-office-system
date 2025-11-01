@@ -15,6 +15,7 @@
       this.clientSelector = null;
       this.procedureType = 'hours';
       this.pricingType = 'hourly';
+      this.currentCase = null; // ✅ תיק קיים (למצב הוספת שירות)
     }
 
     /**
@@ -842,6 +843,9 @@
         if (!this.clientSelector) {
           this.initClientSelector();
         }
+
+        // ✅ האזנה לאירוע בחירת לקוח
+        this.setupClientSelectorListener();
       }
     }
 
@@ -857,12 +861,258 @@
     }
 
     /**
+     * האזנה לבחירת לקוח מה-ClientCaseSelector
+     */
+    setupClientSelectorListener() {
+      // האזנה לאירוע clientSelected דרך EventBus
+      window.EventBus?.on('clientSelected', async (data) => {
+        Logger.log('🎯 Client selected:', data);
+
+        if (data.clientId) {
+          try {
+            // בדיקה אם ללקוח יש תיק קיים
+            const existingCase = await this.checkExistingCaseForClient(data.clientId);
+
+            if (existingCase) {
+              // ✅ שמירת התיק הקיים
+              this.currentCase = existingCase;
+
+              // נעילת שדה מספר תיק (read-only)
+              const caseNumberField = document.getElementById('caseNumber');
+              if (caseNumberField) {
+                caseNumberField.value = existingCase.caseNumber;
+                caseNumberField.disabled = true;
+                caseNumberField.style.background = '#f3f4f6';
+                caseNumberField.style.cursor = 'not-allowed';
+              }
+
+              // הצגת כרטיס מידע על התיק והשירותים הקיימים
+              this.showExistingCaseInfo(existingCase);
+
+              Logger.log('✅ Existing case loaded for adding service');
+            } else {
+              // ✅ ריסט אם אין תיק קיים
+              this.currentCase = null;
+
+              // הסרת כרטיס מידע אם קיים
+              const existingInfo = document.getElementById('existingCaseInfo');
+              if (existingInfo) {
+                existingInfo.remove();
+              }
+
+              Logger.log('⚠️ No existing case found for this client');
+            }
+          } catch (error) {
+            console.error('❌ Error loading client case:', error);
+          }
+        }
+      });
+
+      Logger.log('✅ Client selector listener setup');
+    }
+
+    /**
+     * בדיקה אם ללקוח יש תיק קיים
+     * @param {string} clientId - מזהה הלקוח (document ID = caseNumber)
+     * @returns {Promise<Object|null>} תיק קיים או null
+     */
+    async checkExistingCaseForClient(clientId) {
+      try {
+        Logger.log(`🔍 Checking existing case for client: ${clientId}`);
+
+        // ✅ במבנה החדש: כל client הוא case
+        const clientDoc = await firebase.firestore()
+          .collection('clients')
+          .doc(clientId)
+          .get();
+
+        if (!clientDoc.exists) {
+          Logger.log('  ❌ Client not found');
+          return null;
+        }
+
+        const data = clientDoc.data();
+
+        // בדיקת סטטוס פעיל
+        if (data.status !== 'active') {
+          Logger.log('  ⚠️ Client exists but not active');
+          return null;
+        }
+
+        Logger.log('  ✅ Found existing case');
+        return {
+          id: clientDoc.id,
+          ...data
+        };
+      } catch (error) {
+        console.error('❌ Error checking existing case:', error);
+        return null;
+      }
+    }
+
+    /**
+     * הצגת מידע על תיק קיים ושירותים
+     * @param {Object} existingCase - התיק הקיים
+     */
+    showExistingCaseInfo(existingCase) {
+      const services = existingCase.services || [];
+      const totalServices = services.length;
+      const activeServices = services.filter(s => s.status === 'active').length;
+
+      // בניית רשימת שירותים
+      let servicesHTML = '';
+      if (services.length > 0) {
+        servicesHTML = services.map((service, index) => {
+          let serviceInfo = '';
+          let serviceType = '';
+
+          if (service.type === 'hours') {
+            const hours = window.calculateRemainingHours?.(service) || service.hoursRemaining || 0;
+            const totalHours = service.totalHours || 0;
+            serviceType = 'תוכנית שעות';
+            serviceInfo = `${hours.toFixed(1)}/${totalHours} שעות`;
+          } else if (service.type === 'legal_procedure') {
+            serviceType = 'הליך משפטי';
+            const currentStage = service.stages?.find(s => s.status === 'active');
+            serviceInfo = currentStage ? currentStage.name : 'הליך משפטי';
+          } else if (service.type === 'fixed') {
+            serviceType = 'מחיר קבוע';
+            serviceInfo = 'מחיר קבוע';
+          }
+
+          return `
+            <div style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 8px 12px;
+              background: ${service.status === 'active' ? '#f0fdf4' : '#f3f4f6'};
+              border-radius: 6px;
+              margin-bottom: 6px;
+              border-right: 3px solid ${service.status === 'active' ? '#10b981' : '#9ca3af'};
+            ">
+              <div>
+                <div style="font-weight: 500; color: #1a1a1a; font-size: 13px;">
+                  ${serviceType || service.name || `שירות ${index + 1}`}
+                </div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                  ${serviceInfo}
+                </div>
+              </div>
+              <span style="
+                padding: 3px 8px;
+                background: ${service.status === 'active' ? '#10b981' : '#9ca3af'};
+                color: white;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 500;
+              ">
+                ${service.status === 'active' ? 'פעיל' : 'לא פעיל'}
+              </span>
+            </div>
+          `;
+        }).join('');
+      } else {
+        servicesHTML = `
+          <div style="text-align: center; padding: 12px; color: #666; font-size: 12px;">
+            אין שירותים פעילים
+          </div>
+        `;
+      }
+
+      const infoHTML = `
+        <div id="existingCaseInfo" style="
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+          border: 2px solid #3b82f6;
+          border-radius: 12px;
+          padding: 16px;
+          margin-top: 16px;
+          margin-bottom: 16px;
+          animation: slideDown 0.3s ease-out;
+        ">
+          <!-- כותרת -->
+          <div style="
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #bfdbfe;
+          ">
+            <i class="fas fa-info-circle" style="color: #3b82f6; font-size: 18px;"></i>
+            <div>
+              <div style="font-weight: 600; color: #1e40af; font-size: 14px;">
+                תיק #${existingCase.caseNumber}
+              </div>
+              <div style="font-size: 11px; color: #60a5fa; margin-top: 2px;">
+                ${totalServices} ${totalServices === 1 ? 'שירות' : 'שירותים'} • ${activeServices} פעיל${activeServices === 1 ? '' : 'ים'}
+              </div>
+            </div>
+          </div>
+
+          <!-- רשימת שירותים -->
+          <div style="margin-bottom: 12px;">
+            <div style="font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 8px;">
+              שירותים קיימים:
+            </div>
+            ${servicesHTML}
+          </div>
+
+          <!-- הודעה -->
+          <div style="
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          ">
+            <i class="fas fa-lightbulb" style="color: #f59e0b; font-size: 16px;"></i>
+            <span style="font-size: 12px; color: #92400e;">
+              השירות החדש יתווסף לתיק זה
+            </span>
+          </div>
+        </div>
+      `;
+
+      // הצגת הכרטיס - נחפש את המיקום המתאים
+      const existingClientMode = document.getElementById('existingClientMode');
+      if (existingClientMode) {
+        // הסרת כרטיס קודם אם קיים
+        const oldInfo = document.getElementById('existingCaseInfo');
+        if (oldInfo) {
+          oldInfo.remove();
+        }
+
+        // הוספת הכרטיס אחרי ה-selector
+        const selector = document.getElementById('caseDialogClientSelector');
+        if (selector) {
+          selector.insertAdjacentHTML('afterend', infoHTML);
+        }
+      }
+
+      Logger.log('✅ Existing case info displayed');
+    }
+
+    /**
      * טיפול בשליחת טופס
      */
     async handleSubmit() {
       // הסתרת שגיאות קודמות
       document.getElementById('formErrors').style.display = 'none';
       document.getElementById('formWarnings').style.display = 'none';
+
+      // 🎯 נקודת החלטה: הוספת שירות או יצירת תיק חדש?
+      if (this.currentCase) {
+        // ✅ מצב הוספת שירות לתיק קיים
+        Logger.log('🔄 Mode: Adding service to existing case');
+        await this.handleAddServiceToCase();
+        return;
+      }
+
+      // ✅ מצב רגיל - יצירת תיק חדש
+      Logger.log('🆕 Mode: Creating new case');
 
       // איסוף נתונים
       const formData = this.collectFormData();
@@ -946,6 +1196,160 @@
         hours: isHourly ? parseFloat(document.getElementById(`stage${stageKey}_hours`)?.value) : null,
         fixedPrice: !isHourly ? parseFloat(document.getElementById(`stage${stageKey}_fixedPrice`)?.value) : null
       };
+    }
+
+    /**
+     * הוספת שירות לתיק קיים
+     */
+    async handleAddServiceToCase() {
+      try {
+        const procedureType = document.getElementById('procedureType').value;
+
+        // בניית נתוני השירות
+        const serviceData = {
+          clientId: this.currentCase.id, // 🔥 במבנה החדש: Client = Case
+          serviceType: procedureType,
+          serviceName: document.getElementById('caseTitle').value.trim(),
+          description: document.getElementById('caseDescription')?.value?.trim() || ''
+        };
+
+        if (!serviceData.serviceName) {
+          if (window.NotificationSystem) {
+            window.NotificationSystem.error('אנא הזן שם שירות');
+          } else {
+            alert('אנא הזן שם שירות');
+          }
+          return;
+        }
+
+        // שדות ספציפיים לסוג הליך
+        if (procedureType === 'hours') {
+          const totalHours = parseFloat(document.getElementById('totalHours').value);
+          if (!totalHours || totalHours < 1) {
+            if (window.NotificationSystem) {
+              window.NotificationSystem.error('אנא הזן כמות שעות תקינה');
+            } else {
+              alert('אנא הזן כמות שעות תקינה');
+            }
+            return;
+          }
+          serviceData.hours = totalHours;
+
+        } else if (procedureType === 'legal_procedure') {
+          const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
+          serviceData.pricingType = pricingType;
+
+          // איסוף נתוני שלבים
+          const stages = [
+            { ...this.collectStageData('A'), id: 'stage_a' },
+            { ...this.collectStageData('B'), id: 'stage_b' },
+            { ...this.collectStageData('C'), id: 'stage_c' }
+          ];
+
+          // ולידציה בסיסית
+          for (let i = 0; i < stages.length; i++) {
+            const stage = stages[i];
+            if (!stage.description || stage.description.trim().length < 2) {
+              if (window.NotificationSystem) {
+                window.NotificationSystem.error(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין תיאור`);
+              } else {
+                alert(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין תיאור`);
+              }
+              return;
+            }
+
+            if (pricingType === 'hourly' && (!stage.hours || stage.hours <= 0)) {
+              if (window.NotificationSystem) {
+                window.NotificationSystem.error(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין כמות שעות תקינה`);
+              } else {
+                alert(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין כמות שעות תקינה`);
+              }
+              return;
+            }
+
+            if (pricingType === 'fixed' && (!stage.fixedPrice || stage.fixedPrice <= 0)) {
+              if (window.NotificationSystem) {
+                window.NotificationSystem.error(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין מחיר תקין`);
+              } else {
+                alert(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין מחיר תקין`);
+              }
+              return;
+            }
+          }
+
+          serviceData.stages = stages;
+        }
+
+        Logger.log('📝 Adding service to case:', serviceData);
+
+        // הצגת loading
+        if (window.NotificationSystem) {
+          window.NotificationSystem.showLoading('מוסיף שירות...');
+        }
+
+        // 🚀 קריאה ל-Firebase Cloud Function
+        const addService = firebase.functions().httpsCallable('addServiceToClient');
+        const result = await addService(serviceData);
+
+        // הסתרת loading
+        if (window.NotificationSystem) {
+          window.NotificationSystem.hideLoading();
+        }
+
+        if (!result.data.success) {
+          throw new Error(result.data.message || 'שגיאה בהוספת שירות');
+        }
+
+        Logger.log('✅ Service added successfully:', result.data.serviceId);
+
+        // המתנה קצרה
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // הצגת הודעת הצלחה
+        if (window.NotificationSystem) {
+          window.NotificationSystem.success(`השירות "${serviceData.serviceName}" נוסף בהצלחה!`, 3000);
+        } else {
+          alert(`השירות "${serviceData.serviceName}" נוסף בהצלחה!`);
+        }
+
+        // 🔔 שידור אירוע global
+        window.EventBus?.emit('serviceAdded', {
+          caseId: serviceData.clientId,
+          clientId: serviceData.clientId,
+          serviceId: result.data.serviceId,
+          serviceName: serviceData.serviceName
+        });
+        Logger.log('🔔 Event emitted: serviceAdded');
+
+        // סגירת דיאלוג אוטומטית
+        setTimeout(() => {
+          this.close();
+        }, 500);
+
+        // ריסט המצב
+        this.currentCase = null;
+
+        // רענון נתונים (אם יש manager)
+        if (window.manager && typeof window.manager.loadClients === 'function') {
+          await window.manager.loadClients();
+        }
+
+      } catch (error) {
+        console.error('❌ Error adding service:', error);
+
+        if (window.NotificationSystem) {
+          window.NotificationSystem.hideLoading();
+        }
+
+        // המתנה קצרה לפני הצגת שגיאה
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('שגיאה בהוספת שירות: ' + error.message, 5000);
+        } else {
+          alert('שגיאה בהוספת שירות: ' + error.message);
+        }
+      }
     }
 
     /**
