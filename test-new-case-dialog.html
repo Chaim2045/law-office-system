@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 בדיקת דיאלוג תיק חדש</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // Mock Logger
+    window.Logger = {
+      log: (...args) => console.log('[Logger]', ...args),
+      error: (...args) => console.error('[Logger]', ...args),
+      warn: (...args) => console.warn('[Logger]', ...args)
+    };
+
+    // Mock NotificationSystem
+    window.NotificationSystem = {
+      success: (msg) => {
+        console.log('✅ SUCCESS:', msg);
+        alert('✅ ' + msg);
+      },
+      error: (msg) => {
+        console.error('❌ ERROR:', msg);
+        alert('❌ ' + msg);
+      },
+      showLoading: (msg) => console.log('⏳ LOADING:', msg),
+      hideLoading: () => console.log('⏳ Loading hidden')
+    };
+  </script>
+
+  <!-- EventBus -->
+  <script src="js/modules/event-bus.js"></script>
+
+  <!-- ClientCaseSelector -->
+  <script src="js/modules/client-case-selector.js"></script>
+
+  <!-- המודול החדש -->
+  <script src="js/modules/case-creation/case-number-generator.js"></script>
+  <script src="js/modules/case-creation/case-form-validator.js"></script>
+  <script src="js/modules/case-creation/case-creation-dialog.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #1f2937;
+      margin-bottom: 16px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      margin-bottom: 32px;
+      font-size: 16px;
+    }
+
+    .test-section {
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .test-section h2 {
+      font-size: 20px;
+      color: #374151;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .test-section h2 i {
+      color: #3b82f6;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .test-button {
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .test-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .test-button:active {
+      transform: translateY(0);
+    }
+
+    .test-button.secondary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .test-button.secondary:hover {
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border: 2px solid #93c5fd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .info-box h3 {
+      font-size: 16px;
+      color: #1e40af;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-box ul {
+      margin: 0;
+      padding-right: 20px;
+      color: #1e3a8a;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .console-output {
+      background: #1f2937;
+      color: #10b981;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 16px;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #10b981;
+      color: white;
+    }
+
+    .status-badge.pending {
+      background: #f59e0b;
+    }
+
+    .status-badge.error {
+      background: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 בדיקת מודול תיק חדש</h1>
+    <p class="subtitle">
+      <span class="status-badge" id="statusBadge">ממתין לאימות</span>
+    </p>
+
+    <!-- Test 1: פתיחת דיאלוג -->
+    <div class="test-section">
+      <h2>
+        <i class="fas fa-rocket"></i>
+        בדיקה 1: פתיחת הדיאלוג
+      </h2>
+      <div class="button-group">
+        <button class="test-button" onclick="openNewDialog()">
+          <i class="fas fa-folder-plus"></i>
+          פתח דיאלוג חדש
+        </button>
+        <button class="test-button secondary" onclick="openOldDialog()">
+          <i class="fas fa-folder"></i>
+          פתח דיאלוג ישן (להשוואה)
+        </button>
+      </div>
+      <div class="info-box">
+        <h3><i class="fas fa-info-circle"></i> מה לבדוק:</h3>
+        <ul>
+          <li>✅ הדיאלוג נפתח בצורה חלקה עם אנימציה</li>
+          <li>✅ מספר תיק מתמלא אוטומטית</li>
+          <li>✅ יש 2 טאבים: לקוח חדש / לקוח קיים</li>
+          <li>✅ הטופס נראה מודרני ונקי</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Test 2: בדיקת ולידציה -->
+    <div class="test-section">
+      <h2>
+        <i class="fas fa-check-circle"></i>
+        בדיקה 2: ולידציה
+      </h2>
+      <div class="button-group">
+        <button class="test-button" onclick="testValidation()">
+          <i class="fas fa-vial"></i>
+          בדוק ולידציה
+        </button>
+        <button class="test-button secondary" onclick="testCaseNumberGenerator()">
+          <i class="fas fa-hashtag"></i>
+          בדוק מחולל מספרים
+        </button>
+      </div>
+      <div class="info-box">
+        <h3><i class="fas fa-info-circle"></i> מה לבדוק:</h3>
+        <ul>
+          <li>✅ השאר שדות ריקים ונסה לשלוח - אמור להראות שגיאות</li>
+          <li>✅ הזן טלפון לא תקין - אמור להראות שגיאה</li>
+          <li>✅ הזן אימייל לא תקין - אמור להראות שגיאה</li>
+          <li>✅ מספר תיק חדש תמיד גבוה מהקודם</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Test 3: בדיקת EventBus -->
+    <div class="test-section">
+      <h2>
+        <i class="fas fa-broadcast-tower"></i>
+        בדיקה 3: אירועים (EventBus)
+      </h2>
+      <button class="test-button" onclick="setupEventListeners()" style="width: 100%;">
+        <i class="fas fa-ear-listen"></i>
+        הפעל מאזינים לאירועים
+      </button>
+      <div class="console-output" id="eventConsole">
+        מאזינים לאירועים... פתח דיאלוג ובחר לקוח כדי לראות אירועים כאן.
+      </div>
+    </div>
+
+    <!-- Test 4: בדיקת שמירה -->
+    <div class="test-section">
+      <h2>
+        <i class="fas fa-save"></i>
+        בדיקה 4: שמירה (⚠️ זהירות - ישמור באמת!)
+      </h2>
+      <div class="info-box">
+        <h3><i class="fas fa-exclamation-triangle"></i> לפני שתשמור:</h3>
+        <ul>
+          <li>⚠️ ודא שאתה מחובר לחשבון</li>
+          <li>⚠️ זה ישמור תיק אמיתי ב-Firebase</li>
+          <li>⚠️ אם אתה רק בודק, השתמש בנתונים דמה</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let dialog = null;
+    let eventsSetup = false;
+
+    // אימות חיבור
+    auth.onAuthStateChanged(user => {
+      const badge = document.getElementById('statusBadge');
+      if (user) {
+        badge.textContent = `✅ מחובר: ${user.email}`;
+        badge.classList.remove('pending');
+      } else {
+        badge.textContent = '❌ לא מחובר - התחבר קודם';
+        badge.classList.add('error');
+      }
+    });
+
+    // פתיחת דיאלוג חדש
+    function openNewDialog() {
+      try {
+        dialog = new CaseCreationDialog();
+        dialog.open();
+        logEvent('✅ דיאלוג חדש נפתח בהצלחה');
+      } catch (error) {
+        logEvent('❌ שגיאה: ' + error.message, true);
+      }
+    }
+
+    // פתיחת דיאלוג ישן (להשוואה)
+    function openOldDialog() {
+      if (window.casesManager && typeof window.casesManager.showCreateCaseDialog === 'function') {
+        window.casesManager.showCreateCaseDialog();
+        logEvent('✅ דיאלוג ישן נפתח להשוואה');
+      } else {
+        logEvent('❌ הדיאלוג הישן לא זמין (אין casesManager)', true);
+      }
+    }
+
+    // בדיקת ולידציה
+    function testValidation() {
+      const testData = {
+        isNewClient: true,
+        client: {
+          name: '', // ריק - אמור לזרוק שגיאה
+          phone: '123', // לא תקין
+          email: 'invalid-email' // לא תקין
+        },
+        case: {
+          caseNumber: '24001',
+          title: 'AB', // קצר מדי
+          procedureType: 'hours'
+        },
+        service: {
+          totalHours: -5 // שלילי - לא תקין
+        }
+      };
+
+      const validation = window.CaseFormValidator.validateCaseForm(testData);
+
+      console.log('Validation result:', validation);
+      logEvent(`🧪 בדיקת ולידציה: ${validation.errors.length} שגיאות נמצאו`);
+
+      if (validation.errors.length > 0) {
+        logEvent('✅ ולידציה עובדת! שגיאות:');
+        validation.errors.forEach(err => logEvent('   • ' + err));
+      } else {
+        logEvent('❌ בעיה: לא נמצאו שגיאות למרות שהנתונים שגויים!', true);
+      }
+    }
+
+    // בדיקת מחולל מספרים
+    function testCaseNumberGenerator() {
+      if (!window.CaseNumberGenerator) {
+        logEvent('❌ CaseNumberGenerator לא זמין', true);
+        return;
+      }
+
+      const generator = window.CaseNumberGenerator;
+
+      logEvent('🔢 בדיקת מחולל מספרים:');
+      logEvent(`   מספר נוכחי: ${generator.lastCaseNumber || 'N/A'}`);
+      logEvent(`   מספר הבא: ${generator.getNextCaseNumber()}`);
+      logEvent(`   מאותחל: ${generator.isInitialized ? 'כן' : 'לא'}`);
+
+      const testNumber = generator.reserveNextNumber();
+      logEvent(`   רזרבציה: ${testNumber}`);
+      logEvent(`✅ מחולל מספרים עובד!`);
+    }
+
+    // הקמת מאזינים
+    function setupEventListeners() {
+      if (eventsSetup) {
+        logEvent('⚠️ מאזינים כבר הופעלו');
+        return;
+      }
+
+      if (!window.EventBus) {
+        logEvent('❌ EventBus לא זמין', true);
+        return;
+      }
+
+      window.EventBus.on('client:selected', (data) => {
+        logEvent(`📡 client:selected - ${data.clientName}`);
+      });
+
+      window.EventBus.on('case:selected', (data) => {
+        logEvent(`📡 case:selected - תיק ${data.caseNumber}`);
+      });
+
+      window.EventBus.on('service:selected', (data) => {
+        logEvent(`📡 service:selected - ${data.serviceName}`);
+      });
+
+      window.EventBus.on('case:created', (data) => {
+        logEvent(`🎉 case:created - תיק ${data.caseNumber} נוצר!`);
+      });
+
+      eventsSetup = true;
+      logEvent('✅ כל המאזינים הופעלו - פתח דיאלוג ובדוק');
+    }
+
+    // לוג לקונסול
+    function logEvent(message, isError = false) {
+      const console = document.getElementById('eventConsole');
+      const timestamp = new Date().toLocaleTimeString('he-IL');
+      const color = isError ? '#ef4444' : '#10b981';
+
+      console.innerHTML += `<div style="color: ${color}; margin-bottom: 4px;">[${timestamp}] ${message}</div>`;
+      console.scrollTop = console.scrollHeight;
+
+      // גם ללוג הרגיל
+      if (isError) {
+        console.error(message);
+      } else {
+        console.log(message);
+      }
+    }
+
+    // הפעלת מאזינים אוטומטית
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(setupEventListeners, 1000);
+      logEvent('🚀 מערכת בדיקה מוכנה');
+    });
+  </script>
+</body>
+</html>

@@ -96,29 +96,35 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
-    <link rel="stylesheet" href="css/style.css?v=1.0.5" />
+    <!-- ===== Vanilla Calendar Pro - Modern Date Picker ===== -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro/build/vanilla-calendar.min.css" />
+    <!-- ===== DESIGN SYSTEM - Must be loaded first ===== -->
+    <link rel="stylesheet" href="css/design-system.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/style.css?v=1.0.7" />
     <link rel="stylesheet" href="css/header.css?v=1.0.0" />
     <link rel="stylesheet" href="css/content-areas.css?v=1.0.0" />
-    <link rel="stylesheet" href="css/buttons.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/buttons.css?v=2.0.0" />
     <link rel="stylesheet" href="css/forms.css?v=1.0.0" />
-    <link rel="stylesheet" href="css/tables.css?v=1.0.0" />
-    <link rel="stylesheet" href="css/timesheet-cards.css?v=1.0.0" />
-    <link rel="stylesheet" href="css/modals.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/tables.css?v=4.3.1" />
+    <link rel="stylesheet" href="css/timesheet-cards.css?v=1.0.1" />
+    <link rel="stylesheet" href="css/modals.css?v=2.0.0" />
     <link rel="stylesheet" href="css/popups-unified.css?v=1.0.0" />
     <link rel="stylesheet" href="css/popups-rtl.css?v=1.0.0" />
     <link rel="stylesheet" href="css/expanded-cards.css?v=1.0.0" />
-    <link rel="stylesheet" href="css/advanced-popups.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/advanced-popups.css?v=2.1.0" />
     <link rel="stylesheet" href="css/combobox.css?v=1.0.0" />
     <link rel="stylesheet" href="css/style-hitech-addon.css?v=1.0.0" />
     <link rel="stylesheet" href="css/tabs.css?v=2.1.2" />
-    <link rel="stylesheet" href="css/statistics.css?v=3.2.0" />
+    <link rel="stylesheet" href="css/statistics.css?v=5.2.0" />
     <link rel="stylesheet" href="css/sort.css?v=2.3.0" />
     <link rel="stylesheet" href="css/reports.css" />
     <link rel="stylesheet" href="css/pagination.css?v=1.0.0" />
     <!-- New Notification System CSS -->
     <link rel="stylesheet" href="css/notifications.css?v=1.0.0" />
     <!-- Utility Classes - כלי עזר -->
-    <link rel="stylesheet" href="css/utilities.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/utilities.css?v=1.2.7" />
+    <!-- Smart Combo Selector - בורר תיאורים חכם -->
+    <link rel="stylesheet" href="css/smart-combo-selector.css?v=3.0.2" />
     <!-- Responsive Design - מדיה queries -->
     <link rel="stylesheet" href="css/responsive.css?v=1.0.0" />
 
@@ -401,11 +407,11 @@
                 <!-- ✅ NEW: Unified Client-Case Selector -->
                 <div id="budgetClientCaseSelector"></div>
 
-                <!-- Compact Row: סניף + דקות -->
-                <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+                <!-- Compact Row: סניף + תאריך + דקות - הכל בשורה אחת מאוזנת -->
+                <div class="form-row" style="grid-template-columns: 1fr 1fr 160px; gap: 12px;">
                   <div class="form-group">
                     <label for="budgetBranch"
-                      >סניף מטפל
+                      ><i class="fas fa-map-marker-alt"></i> סניף מטפל
                       <span class="category-required">*</span></label
                     >
                     <select id="budgetBranch" required>
@@ -415,8 +421,22 @@
                     </select>
                   </div>
                   <div class="form-group">
+                    <label for="budgetDeadline"
+                      ><i class="fas fa-calendar-alt"></i> תאריך יעד
+                      <span class="category-required">*</span></label
+                    >
+                    <input
+                      type="text"
+                      id="budgetDeadline"
+                      placeholder="בחר תאריך ושעה..."
+                      autocomplete="off"
+                      required
+                      readonly
+                    />
+                  </div>
+                  <div class="form-group">
                     <label for="estimatedTime"
-                      >דקות משוערות
+                      ><i class="fas fa-hourglass-half"></i> דקות
                       <span class="category-required">*</span></label
                     >
                     <input
@@ -431,37 +451,17 @@
                   </div>
                 </div>
 
-                <!-- תאריך יעד - שורה מלאה -->
+                <!-- תיאור המשימה - Smart Selector -->
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="budgetDeadline"
-                      >תאריך יעד
+                    <label for="budgetDescriptionSelector"
+                      ><i class="fas fa-align-right"></i> תיאור המשימה
                       <span class="category-required">*</span></label
                     >
-                    <input
-                      type="datetime-local"
-                      id="budgetDeadline"
-                      autocomplete="off"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <!-- תיאור המשימה -->
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="budgetDescription"
-                      >תיאור המשימה
-                      <span class="category-required">*</span></label
-                    >
-                    <textarea
-                      id="budgetDescription"
-                      placeholder="תאר את המשימה (לפחות 3 תווים)"
-                      rows="3"
-                      autocomplete="off"
-                      required
-                      style="resize: vertical; min-height: 60px;"
-                    ></textarea>
+                    <div id="budgetDescriptionSelector"></div>
+                    <!-- Hidden inputs for validation -->
+                    <input type="hidden" id="budgetDescription" required>
+                    <input type="hidden" id="budgetDescriptionCategory">
                   </div>
                 </div>
 
@@ -747,8 +747,9 @@
                       <th class="sortable" data-sort="action">פעולה</th>
                       <th class="sortable" data-sort="minutes">זמן</th>
                       <th class="sortable" data-sort="clientName">לקוח</th>
-                      <th class="sortable" data-sort="fileNumber">מס׳ תיק</th>
+                      <th>נוצר</th>
                       <th>הערות</th>
+                      <th>פעולות</th>
                     </tr>
                   </thead>
                   <tbody id="timesheetTableBody"></tbody>
@@ -970,8 +971,11 @@
 
     <!-- ===== סקריפטים וסגנונות ===== -->
     <!-- SCRIPTS AND STYLES -->
+    <!-- ===== Vanilla Calendar Pro - Modern Date Picker ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro/build/vanilla-calendar.min.js"></script>
+    <script src="js/modules/vanilla-calendar-picker.js?v=1.1.0"></script>
     <script src="js/modules/dates.js?v=1.2.0"></script>
-    <script src="js/modules/statistics.js?v=3.2.0"></script>
+    <script src="js/modules/statistics.js?v=5.2.1"></script>
     <script src="js/modules/reports-stats.js?v=1.1.0"></script>
     <script src="js/modules/pagination.js?v=1.0.0"></script>
     <script src="js/modules/activity-logger.js?v=1.0.0"></script>
@@ -985,7 +989,7 @@
     <script type="module" src="dist/js/services/firebase-service.js?v=2.0.0"></script>
     <script type="module" src="dist/js/schemas/index.js?v=2.0.0"></script>
 
-    <script src="js/modules/task-actions.js?v=1.1.0"></script>
+    <script src="js/modules/task-actions.js?v=2.0.0"></script>
     <script type="module" src="dist/js/modules/firebase-pagination.js?v=1.1.0"></script>
     <script src="js/modules/integration-manager.js?v=1.1.0"></script>
     <!-- Firebase Functions Migration - Server-side Integration -->
@@ -1013,13 +1017,24 @@
 
     <!-- ===== NEW: Client-Case Selector Component ===== -->
     <!-- Unified two-step client→case selection -->
-    <script src="js/modules/client-case-selector.js?v=1.0.0"></script>
+    <script src="js/modules/client-case-selector.js?v=1.2.1"></script>
     <!-- Client-Case Selectors Initialization -->
     <script src="js/modules/selectors-init.js?v=1.0.0"></script>
 
+    <!-- ===== 🧪 TESTING: New Case Creation Module ===== -->
+    <!-- Modern modular case creation system - currently in testing -->
+    <script src="js/modules/case-creation/case-number-generator.js?v=3.0.0"></script>
+    <script src="js/modules/case-creation/case-form-validator.js?v=3.0.0"></script>
+    <script src="js/modules/case-creation/case-creation-dialog.js?v=3.0.0"></script>
+
+    <!-- ===== Smart Descriptions System ===== -->
+    <!-- Structured descriptions manager for tasks and work entries -->
+    <script src="js/modules/descriptions/descriptions-manager.js?v=1.0.0"></script>
+    <script src="js/modules/descriptions/smart-combo-selector.js?v=3.0.0"></script>
+
     <!-- ===== Dialogs Module ===== -->
-    <!-- Task completion, advanced dialogs, and other modals -->
-    <script src="js/modules/dialogs.js?v=2.1.0"></script>
+    <!-- Task completion, advanced dialogs, and other modals + Smart Descriptions -->
+    <script src="js/modules/dialogs.js?v=5.2.0"></script>
 
     <!-- ===== System Diagnostics & Snapshot Tool ===== -->
     <!-- Full system state comparison for debugging -->
@@ -1028,11 +1043,14 @@
     <script src="js/modules/event-analyzer.js?v=1.0.0"></script>
 
     <!-- ===== SVG RINGS MODULE ===== -->
-    <script src="js/modules/svg-rings.js?v=1.0.0"></script>
+    <script src="js/modules/svg-rings.js?v=1.3.0"></script>
+
+    <!-- ===== INLINE EXPANSION POPOVER (CSS-only) ===== -->
+    <script src="js/modules/popover-positioning.js?v=3.0.0"></script>
 
     <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
-    <!-- Modern modular architecture with ActionFlowManager -->
-    <script type="module" src="js/main.js?v=5.0.1"></script>
+    <!-- Modern modular architecture with ActionFlowManager + Smart Descriptions -->
+    <script type="module" src="js/main.js?v=5.0.7"></script>
 
     <!-- Work Hours Calculator - Smart Calendar System -->
     <script src="js/modules/work-hours-calculator.js?v=1.0.0"></script>
@@ -1211,6 +1229,11 @@
       }
     </style>
 
+    <!-- ===== Scroll to Top Button ===== -->
+    <button id="scrollToTopBtn" title="חזור למעלה" aria-label="חזור למעלה">
+      <i class="fas fa-arrow-up"></i>
+    </button>
+
     <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Debug Mode ===== -->
     <script type="module">
       // Enable debug mode in development
@@ -1227,6 +1250,40 @@
           }
         }, 1000);
       }
+    </script>
+
+    <!-- ===== Scroll to Top Button Logic ===== -->
+    <script>
+      (function() {
+        'use strict';
+
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        const scrollThreshold = 300; // Show button after scrolling 300px
+
+        // Show/hide button based on scroll position
+        function toggleScrollButton() {
+          if (window.pageYOffset > scrollThreshold) {
+            scrollToTopBtn.classList.add('show');
+          } else {
+            scrollToTopBtn.classList.remove('show');
+          }
+        }
+
+        // Smooth scroll to top
+        function scrollToTop() {
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        }
+
+        // Event listeners
+        window.addEventListener('scroll', toggleScrollButton, { passive: true });
+        scrollToTopBtn.addEventListener('click', scrollToTop);
+
+        // Check initial scroll position
+        toggleScrollButton();
+      })();
     </script>
   </body>
 </html>
