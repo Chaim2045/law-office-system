@@ -1,0 +1,395 @@
+/* ==========================================================================
+   UNIFIED POPUP STYLES - סגנונות popup מאוחדים
+   Based on extend-deadline-popup design
+   
+   Includes:
+   - Task History Popup
+   - Time Entry Popup  
+   - Task Completion Popup
+   - Enhanced form styling
+   - Statistics display
+   - Responsive improvements
+   ========================================================================== */
+
+/* ==========================================================================
+   UNIFIED POPUP STYLES - Based on extend-deadline-popup
+   ========================================================================== */
+
+/* Task History Popup Specific */
+.task-history-popup {
+  max-width: 650px;
+}
+
+.task-history-popup .popup-content {
+  padding: 18px 22px;
+}
+
+.task-summary {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 10px;
+  border-left: 4px solid var(--primary-500);
+}
+
+.task-summary h4 {
+  font-size: 16px;
+  margin: 0 0 8px;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-summary p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.history-container {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.history-entry {
+  background: var(--gray-50);
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gray-200);
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.history-entry:hover {
+  background: white;
+  border-color: var(--primary-300);
+  transform: translateX(2px);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.history-date {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-600);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-minutes {
+  background: linear-gradient(135deg, var(--success-50) 0%, #ecfdf5 100%);
+  color: var(--success-700);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--success-200);
+}
+
+.history-description {
+  color: var(--gray-700);
+  line-height: 1.5;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.history-timestamp {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Time Entry Popup Specific */
+.time-entry-popup {
+  max-width: 550px;
+}
+
+.time-entry-popup .popup-content {
+  padding: 18px 22px;
+}
+
+.task-info-section {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 10px;
+  border-left: 4px solid var(--primary-500);
+}
+
+.task-info-section h4 {
+  font-size: 16px;
+  margin: 0 0 8px;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-info-section p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-row.single {
+  grid-template-columns: 1fr;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-input {
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Task Completion Popup Specific */
+.task-completion-popup {
+  max-width: 550px;
+}
+
+.task-completion-popup .popup-content {
+  padding: 18px 22px;
+}
+
+.completion-overview {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: rgba(16, 185, 129, 0.05);
+  border-radius: 10px;
+  border-left: 4px solid var(--success-500);
+}
+
+.completion-overview h3 {
+  font-size: 16px;
+  margin: 0 0 8px;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completion-overview p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.completion-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.stat-item {
+  background: var(--gray-50);
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gray-200);
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.completion-notes {
+  margin-bottom: 15px;
+}
+
+.completion-notes textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s ease;
+}
+
+.completion-notes textarea:focus {
+  outline: none;
+  border-color: var(--success-500);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.completion-summary {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid var(--success-200);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.completion-summary h4 {
+  font-size: 14px;
+  margin: 0 0 10px;
+  color: var(--success-700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.summary-label {
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.summary-value {
+  color: var(--gray-800);
+  font-weight: 600;
+}
+
+/* Additional utility styles for completion popup */
+.text-danger {
+  color: var(--danger-600) !important;
+  font-weight: 600;
+}
+
+.text-success {
+  color: var(--success-600) !important;
+  font-weight: 600;
+}
+
+/* Enhanced focus and interaction states */
+.form-input:focus,
+.completion-notes textarea:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+.popup-btn-success {
+  background: linear-gradient(
+    135deg,
+    var(--success-500) 0%,
+    var(--success-600) 100%
+  );
+  color: white;
+  border-color: var(--success-500);
+}
+
+.popup-btn-success:hover {
+  background: linear-gradient(135deg, var(--success-600) 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Scrollbar styling for history container */
+.history-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.history-container::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 4px;
+}
+
+.history-container::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: 4px;
+}
+
+.history-container::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+
+/* Animation improvements */
+@keyframes slideInPopup {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Responsive improvements for new popups */
+@media (max-width: 600px) {
+  .task-history-popup,
+  .time-entry-popup,
+  .task-completion-popup {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .completion-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+

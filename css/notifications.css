@@ -1,0 +1,812 @@
+/**
+ * ========================================
+ * Notification System Styles
+ * ========================================
+ * עיצוב מודרני למערכת ההודעות
+ *
+ * תכונות:
+ * ✅ עיצוב מודרני עם צללים ועיגול פינות
+ * ✅ אנימציות חלקות (slide + fade)
+ * ✅ תמיכה מלאה ב-RTL
+ * ✅ Responsive לכל המסכים
+ * ✅ תמיכה ב-Dark mode (מוכן לעתיד)
+ * ✅ Accessibility מלא
+ *
+ * @version 1.0.0
+ * @date 2025-01-17
+ */
+
+/* ========================================
+   Notification Container
+   ======================================== */
+
+.notification-container {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  pointer-events: none;
+}
+
+/* RTL Support */
+[dir="rtl"] .notification-container {
+  left: auto;
+  right: 20px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .notification-container {
+    left: 10px;
+    right: 10px;
+    max-width: calc(100% - 20px);
+    top: 70px;
+  }
+}
+
+/* ========================================
+   Notification Base Styles
+   ======================================== */
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+              0 2px 4px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid currentcolor;
+  min-height: 64px;
+  pointer-events: auto;
+  transform: translateX(-120%);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* RTL - Border on right side */
+[dir="rtl"] .notification {
+  border-left: none;
+  border-right: 4px solid currentcolor;
+  transform: translateX(120%);
+}
+
+/* Show Animation */
+.notification.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Hide Animation */
+.notification.hide {
+  transform: translateX(-120%);
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+}
+
+[dir="rtl"] .notification.hide {
+  transform: translateX(120%);
+}
+
+/* Hover Effect */
+.notification:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2),
+              0 3px 6px rgba(0, 0, 0, 0.15);
+  transform: translateX(0) translateY(-2px);
+}
+
+/* ========================================
+   Notification Types
+   ======================================== */
+
+.notification-success {
+  color: #10b981;
+  background: linear-gradient(135deg, #fff 0%, #f0fdf4 100%);
+}
+
+.notification-error {
+  color: #ef4444;
+  background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+}
+
+.notification-warning {
+  color: #f59e0b;
+  background: linear-gradient(135deg, #fff 0%, #fffbeb 100%);
+}
+
+.notification-info {
+  color: #3b82f6;
+  background: linear-gradient(135deg, #fff 0%, #eff6ff 100%);
+}
+
+/* ========================================
+   Notification Icon
+   ======================================== */
+
+.notification-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: currentcolor;
+  color: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.notification-icon i {
+  color: white;
+}
+
+/* ========================================
+   Notification Content
+   ======================================== */
+
+.notification-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.notification-message {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  direction: rtl;
+  text-align: right;
+}
+
+/* ========================================
+   Notification Close Button
+   ======================================== */
+
+.notification-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  font-size: 14px;
+}
+
+.notification-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1f2937;
+}
+
+.notification-close:active {
+  transform: scale(0.95);
+}
+
+.notification-close:focus {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+/* ========================================
+   Loading Overlay - Simple Blur on Screen
+   ======================================== */
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* רקע שקוף עם blur חזק על המסך */
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.loading-overlay.show {
+  opacity: 1;
+}
+
+/* Content - ללא כרטיסייה! ללא רקע! */
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  background: none !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ========================================
+   Loading Animation - Lottie Container
+   ======================================== */
+
+.loading-spinner {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Lottie animation container */
+#lottie-loader {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+}
+
+/* Fallback CSS spinner if Lottie fails */
+.loading-spinner.fallback {
+  width: 80px;
+  height: 80px;
+}
+
+.loading-spinner.fallback::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-message {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  direction: rtl;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================
+   Confirm Dialog
+   ======================================== */
+
+.confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.confirm-overlay.show {
+  opacity: 1;
+}
+
+.confirm-overlay.show .confirm-dialog {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-width: 440px;
+  width: 100%;
+  overflow: hidden;
+  transform: scale(0.92) translateY(20px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ========================================
+   Confirm Dialog - Header
+   ======================================== */
+
+.confirm-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #fafafa 0%, #fff 100%);
+  direction: rtl;
+}
+
+.confirm-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  background: currentcolor;
+  color: white;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-icon i {
+  color: white;
+}
+
+.confirm-title {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* ========================================
+   Confirm Dialog - Body
+   ======================================== */
+
+.confirm-body {
+  padding: 28px 24px;
+  direction: rtl;
+  background: white;
+}
+
+.confirm-message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #4b5563;
+  text-align: right;
+  font-weight: 400;
+}
+
+/* ========================================
+   Confirm Dialog - Footer
+   ======================================== */
+
+.confirm-footer {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+  direction: rtl;
+}
+
+.confirm-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.confirm-btn:active {
+  transform: scale(0.98);
+}
+
+.confirm-btn:focus {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+.confirm-btn-cancel {
+  background: white;
+  color: #6b7280;
+  border: 2px solid #e5e7eb;
+  order: 2; /* במובייל יופיע תחתון */
+}
+
+.confirm-btn-cancel:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #4b5563;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.confirm-btn-confirm {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  order: 1; /* במובייל יופיע עליון */
+  font-weight: 700;
+}
+
+.confirm-btn-confirm:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+}
+
+.confirm-btn-confirm:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+
+/* ========================================
+   Mobile Responsive
+   ======================================== */
+
+@media (max-width: 480px) {
+  .confirm-dialog {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+    border-radius: 16px;
+  }
+
+  .confirm-header {
+    padding: 20px;
+  }
+
+  .confirm-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+
+  .confirm-title {
+    font-size: 18px;
+  }
+
+  .confirm-body {
+    padding: 20px;
+  }
+
+  .confirm-message {
+    font-size: 14px;
+  }
+
+  .confirm-footer {
+    flex-direction: column;
+    padding: 16px 20px;
+    gap: 10px;
+  }
+
+  .confirm-btn {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
+  }
+
+  /* סדר הכפתורים במובייל: מחק הכל למעלה, ביטול למטה */
+  .confirm-btn-confirm {
+    order: 1;
+  }
+
+  .confirm-btn-cancel {
+    order: 2;
+  }
+}
+
+/* ✅ NO padding for loading - keep it transparent */
+.loading-content {
+  padding: 0 !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+/* Focus visible for keyboard navigation */
+.notification:focus-visible,
+.confirm-btn:focus-visible,
+.notification-close:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .notification,
+  .loading-overlay,
+  .confirm-overlay,
+  .confirm-dialog,
+  .loading-content,
+  .spinner-ring {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .notification {
+    border-width: 2px;
+  }
+
+  .confirm-btn {
+    border: 2px solid currentcolor;
+  }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+  .notification-container,
+  .loading-overlay,
+  .confirm-overlay {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   Notification Bell & Dropdown
+   ======================================== */
+
+.notification-bell {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+
+.notification-bell:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.notification-bell i {
+  font-size: 20px;
+}
+
+.notification-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.notification-count.hidden {
+  display: none;
+}
+
+/* Notifications Dropdown */
+.notifications-dropdown {
+  position: fixed;
+  bottom: 120px;
+  left: 30px;
+  width: 420px;
+  max-height: 600px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10001;
+  direction: rtl;
+}
+
+.notifications-dropdown.show {
+  display: flex;
+}
+
+/* Header */
+.notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.notifications-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.notifications-title i {
+  font-size: 22px;
+}
+
+.clear-all-btn,
+.clear-all-btn-mobile {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-all-btn:hover,
+.clear-all-btn-mobile:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Content */
+.notifications-content {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 480px;
+}
+
+.no-notifications {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+/* Notification Item */
+.notification-item {
+  display: flex;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.notification-item:hover {
+  background: #f9fafb;
+}
+
+.notification-item.unread {
+  background: #eff6ff;
+}
+
+.notification-item.unread:hover {
+  background: #dbeafe;
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.notification-icon i {
+  font-size: 18px;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.notification-message {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 50%;
+}
+
+/* Footer */
+.notifications-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  justify-content: center;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .notifications-dropdown {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: calc(100vw - 20px);
+  }
+
+  .clear-all-text {
+    display: none;
+  }
+
+  .notification-item {
+    padding: 12px 16px;
+  }
+
+  .notification-title {
+    font-size: 13px;
+  }
+
+  .notification-message {
+    font-size: 12px;
+  }
+}

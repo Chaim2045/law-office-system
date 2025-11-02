@@ -1,0 +1,244 @@
+/**
+ * Main Tabs Styles - עיצוב טאבים ראשיים
+ * משרד עורכי דין - מערכת ניהול מתקדמת
+ *
+ * נוצר: 08/10/2025
+ * עודכן: 10/10/2025
+ * גרסה: 3.0.0 - עיצוב דומה ל-view-tabs
+ *
+ * תכונות:
+ * - עיצוב הרמוני עם כפתורי תצוגה (כרטיסיות/טבלה)
+ * - gradient background כחול כשפעיל
+ * - padding מהודק יותר
+ * - נעים לעין ומקצועי
+ * - Responsive מלא
+ */
+
+/* ===== Container ===== */
+.main-tabs-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 16px auto 24px;
+}
+
+.main-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== Tab Button - דומה לview-tabs אבל יותר גדול ===== */
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 36px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  min-width: 180px;
+  justify-content: center;
+  position: relative;
+}
+
+.tab-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  opacity: 0;
+  transition: all 0.25s ease;
+  z-index: -1;
+}
+
+.tab-button i {
+  font-size: 19px;
+  transition: all 0.25s ease;
+}
+
+/* ===== Hover State ===== */
+.tab-button:hover:not(.active) {
+  background: #f8fafc;
+  color: #374151;
+}
+
+.tab-button:hover:not(.active) i {
+  color: #3b82f6;
+  transform: scale(1.1);
+}
+
+/* ===== Active State - עם עיגול יפה ===== */
+.tab-button.active::before {
+  opacity: 1;
+}
+
+.tab-button.active {
+  color: white;
+  font-weight: 700;
+  transform: translateY(-1px);
+  position: relative;
+  z-index: 1;
+}
+
+.tab-button.active::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px white;
+}
+
+.tab-button.active i {
+  color: white;
+  font-size: 20px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* ===== צבעים ספציפיים לכל טאב ===== */
+/* תקצוב משימות - כחול (ברירת מחדל) */
+#budgetTabButton.active::before {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+#budgetTabButton.active::after {
+  background: #3b82f6;
+}
+
+#budgetTabButton:hover:not(.active) i {
+  color: #3b82f6;
+}
+
+/* שעתון - כתום 🧡 */
+#timesheetTabButton.active::before {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+#timesheetTabButton.active::after {
+  background: #f97316;
+}
+
+#timesheetTabButton:hover:not(.active) i {
+  color: #f97316;
+}
+
+/* ===== Tab Content ===== */
+.tab-content {
+  display: none;
+  padding: 0;
+  margin-top: 0;
+}
+
+.tab-content.active {
+  display: flex;
+  flex-direction: column;
+  min-height: auto;
+}
+
+/* ===== Responsive - Desktop Large ===== */
+@media (min-width: 1440px) {
+  .main-tabs {
+    gap: 14px;
+  }
+
+  .tab-button {
+    min-width: 165px;
+    padding: 15px 30px;
+    font-size: 16px;
+  }
+
+  .tab-button i {
+    font-size: 18px;
+  }
+
+  .tab-button.active i {
+    font-size: 19px;
+  }
+}
+
+/* ===== Responsive - Tablet ===== */
+@media (max-width: 1024px) {
+  .main-tabs-container {
+    margin: 12px auto 20px;
+  }
+
+  .main-tabs {
+    gap: 10px;
+  }
+
+  .tab-button {
+    min-width: 120px;
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+
+  .tab-button i {
+    font-size: 15px;
+  }
+}
+
+/* ===== Responsive - Mobile Large ===== */
+@media (max-width: 768px) {
+  .main-tabs-container {
+    margin: 10px auto 16px;
+  }
+
+  .main-tabs {
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 8px;
+  }
+
+  .tab-button {
+    min-width: 110px;
+    padding: 10px 16px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .tab-button i {
+    font-size: 14px;
+  }
+}
+
+/* ===== Responsive - Mobile Small ===== */
+@media (max-width: 480px) {
+  .main-tabs {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .tab-button {
+    width: 100%;
+    min-width: auto;
+    padding: 12px 16px;
+    justify-content: flex-start;
+  }
+}
+
+/* ===== Print Styles ===== */
+@media print {
+  .main-tabs-container,
+  .main-tabs,
+  .tab-button {
+    display: none !important;
+  }
+}

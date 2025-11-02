@@ -1,0 +1,252 @@
+/**
+ * ========================================
+ * Connection Status Indicator Styles
+ * ========================================
+ * עיצוב לאינדיקטור מצב החיבור
+ *
+ * @version 1.0.0
+ * @date 2025-11-02
+ */
+
+/* ========================================
+   System Status Indicator
+   ======================================== */
+
+.system-status-indicator {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 20px;
+  border-radius: 8px;
+
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  font-family: 'Assistant', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.system-status-indicator.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ========================================
+   Icon Styles
+   ======================================== */
+
+.system-status-indicator .status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.system-status-indicator .status-icon i {
+  font-size: 18px;
+}
+
+/* ========================================
+   Status Text
+   ======================================== */
+
+.system-status-indicator .status-text {
+  color: #333;
+  white-space: nowrap;
+}
+
+/* ========================================
+   Status Colors - Online (Green)
+   ======================================== */
+
+.system-status-indicator.status-online {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.system-status-indicator.status-online .status-icon i {
+  color: white;
+}
+
+.system-status-indicator.status-online .status-text {
+  color: white;
+}
+
+/* ========================================
+   Status Colors - Offline (Red)
+   ======================================== */
+
+.system-status-indicator.status-offline {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.system-status-indicator.status-offline .status-icon i {
+  color: white;
+}
+
+.system-status-indicator.status-offline .status-text {
+  color: white;
+}
+
+/* ========================================
+   Status Colors - Degraded (Orange/Yellow)
+   ======================================== */
+
+.system-status-indicator.status-degraded {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.system-status-indicator.status-degraded .status-icon i {
+  color: white;
+}
+
+.system-status-indicator.status-degraded .status-text {
+  color: white;
+}
+
+/* ========================================
+   Status Colors - Connecting (Blue)
+   ======================================== */
+
+.system-status-indicator.status-connecting {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.system-status-indicator.status-connecting .status-icon i {
+  color: white;
+  animation: spin 1s linear infinite;
+}
+
+.system-status-indicator.status-connecting .status-text {
+  color: white;
+}
+
+/* ========================================
+   Status Colors - Info (Light Blue)
+   ======================================== */
+
+.system-status-indicator.status-info {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: white;
+}
+
+.system-status-indicator.status-info .status-icon i {
+  color: white;
+}
+
+.system-status-indicator.status-info .status-text {
+  color: white;
+}
+
+/* ========================================
+   Status Colors - Warning (Orange)
+   ======================================== */
+
+.system-status-indicator.status-warning {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+}
+
+.system-status-indicator.status-warning .status-icon i {
+  color: white;
+}
+
+.system-status-indicator.status-warning .status-text {
+  color: white;
+}
+
+/* ========================================
+   Status Colors - Error (Red)
+   ======================================== */
+
+.system-status-indicator.status-error {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+}
+
+.system-status-indicator.status-error .status-icon i {
+  color: white;
+}
+
+.system-status-indicator.status-error .status-text {
+  color: white;
+}
+
+/* ========================================
+   Status Colors - Success (Green)
+   ======================================== */
+
+.system-status-indicator.status-success {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+}
+
+.system-status-indicator.status-success .status-icon i {
+  color: white;
+}
+
+.system-status-indicator.status-success .status-text {
+  color: white;
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+  .system-status-indicator {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+    font-size: 12px;
+    padding: 10px 16px;
+  }
+
+  .system-status-indicator .status-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .system-status-indicator .status-icon i {
+    font-size: 16px;
+  }
+}
+
+/* ========================================
+   RTL Support
+   ======================================== */
+
+[dir="rtl"] .system-status-indicator {
+  direction: rtl;
+  text-align: right;
+}

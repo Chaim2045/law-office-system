@@ -1,0 +1,506 @@
+/* ===============================================
+   MINIMAL CLEAN BUDGET OVERAGE WITH SHIMMER
+   =============================================== */
+
+.budget-over-display {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Budget Overage Warning - כתום */
+.over-warning {
+  position: relative;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1.5px solid #f59e0b;
+  border-radius: 20px;
+  color: #78350f;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.over-warning i {
+  margin-left: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Shimmer Effect - כתום */
+.over-warning::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
+  animation: shimmerSlide 3s infinite;
+  pointer-events: none;
+}
+
+/* Deadline Overage - אדום */
+.deadline-over {
+  position: relative;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 1.5px solid #ef4444;
+  border-radius: 20px;
+  color: #7f1d1d;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.deadline-over i {
+  margin-left: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Shimmer Effect - אדום */
+.deadline-over::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: shimmerSlide 3s infinite;
+  animation-delay: 0.5s;
+  pointer-events: none;
+}
+
+/* Budget Adjusted Note - כחול */
+.budget-adjusted-note {
+  position: relative;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 1.5px solid #3b82f6;
+  border-radius: 20px;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.budget-adjusted-note i {
+  margin-left: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Shimmer Effect - כחול */
+.budget-adjusted-note::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  animation: shimmerSlide 3s infinite;
+  animation-delay: 1s;
+  pointer-events: none;
+}
+
+/* Shimmer Animation - מימין לשמאל */
+@keyframes shimmerSlide {
+  0% {
+    right: -100%;
+  }
+  100% {
+    right: 100%;
+  }
+}
+
+/* ===============================================
+   METRICS CARDS - כרטיסיות מטריקס מקצועיות
+   =============================================== */
+
+.budget-metrics-cards {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+  direction: rtl;
+}
+
+.metric-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Metric Icon */
+.metric-icon {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 18px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Metric Info */
+.metric-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.metric-label {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.8;
+  letter-spacing: 0.3px;
+}
+
+.metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+/* Planned Card - כחול */
+.metric-planned {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1.5px solid #93c5fd;
+  color: #1e40af;
+}
+
+.metric-planned .metric-icon {
+  background: #3b82f6;
+  color: #fff;
+}
+
+/* Actual Card - סגול/כתום */
+.metric-actual {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1.5px solid #fcd34d;
+  color: #92400e;
+}
+
+.metric-actual .metric-icon {
+  background: #f59e0b;
+  color: #fff;
+}
+
+/* Overage Card - אדום */
+.metric-overage {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
+}
+
+.metric-overage .metric-icon {
+  background: #ef4444;
+  color: #fff;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Shimmer Effect על כרטיסים */
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: shimmerSlide 4s infinite;
+  pointer-events: none;
+}
+
+.metric-planned::before {
+  animation-delay: 0s;
+}
+
+.metric-actual::before {
+  animation-delay: 0.5s;
+}
+
+.metric-overage::before {
+  animation-delay: 1s;
+}
+
+/* ===============================================
+   SVG RINGS - Circular Progress Indicators
+   =============================================== */
+
+/* Dual rings layout */
+.svg-rings-dual-layout {
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  align-items: flex-start;
+  margin: 14px 0;
+  direction: rtl;
+}
+
+/* Single ring container */
+.svg-ring-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+}
+
+/* Ring wrapper (SVG + percentage overlay) - META CLEAN STYLE */
+.svg-ring-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  /* Clean shadow - no glow, just depth */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08))
+          drop-shadow(0 1px 2px rgba(0, 0, 0, 0.06));
+  transform: translateZ(0);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 🎯 Hover Effect - Instagram style (micro-interaction) */
+.svg-ring-wrapper:hover {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.12))
+          drop-shadow(0 2px 6px rgba(0, 0, 0, 0.08));
+  transform: translateY(-2px) translateZ(0);
+}
+
+/* 🔴 Danger State - Minimal Pulse (only when overage) */
+.svg-ring-wrapper.status-danger {
+  animation: metaPulse 2.5s ease-in-out infinite;
+}
+
+/* Meta Minimal Pulse - 2% scale only */
+@keyframes metaPulse {
+  0%, 100% {
+    transform: scale(1) translateZ(0);
+  }
+  50% {
+    transform: scale(1.02) translateZ(0);
+  }
+}
+
+/* SVG ring */
+.svg-ring {
+  width: 100%;
+  height: 100%;
+}
+
+/* Progress circle animation - Clean transition only */
+.svg-ring-progress {
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Percentage text overlay */
+.svg-ring-percentage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  font-weight: 700;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* Ring info (label + value) */
+.svg-ring-info {
+  text-align: center;
+  direction: rtl;
+}
+
+.svg-ring-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.svg-ring-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Action button מתחת לרינג */
+.svg-ring-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-top: 8px;
+  color: #fff;
+  border: none;
+  border-radius: 16px; /* יותר מעוגל */
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+/* Budget button - כתום */
+.svg-ring-action-btn.budget-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+}
+
+.svg-ring-action-btn.budget-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.35);
+}
+
+.svg-ring-action-btn.budget-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+/* Deadline button - כחול/סגול */
+.svg-ring-action-btn.deadline-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+}
+
+.svg-ring-action-btn.deadline-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.35);
+}
+
+.svg-ring-action-btn.deadline-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+}
+
+.svg-ring-action-btn i {
+  font-size: 9px;
+}
+
+/* Overage indicator */
+.svg-ring-overage {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.svg-ring-overage-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.svg-ring-overage-badge i {
+  font-size: 11px;
+}
+
+.svg-ring-overage-text {
+  font-size: 13px;
+}
+
+/* Overage action button */
+.svg-ring-overage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+  white-space: nowrap;
+}
+
+.svg-ring-overage-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+}
+
+.svg-ring-overage-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.2);
+}
+
+.svg-ring-overage-btn i {
+  font-size: 10px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .svg-rings-dual-layout {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .svg-ring-container {
+    width: 100%;
+  }
+}

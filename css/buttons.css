@@ -1,0 +1,323 @@
+/* ==========================================================================
+   5. BUTTONS - כפתורים
+   Ultra Minimal Hi-Tech Design
+   גרסה: 2.0.0
+   ========================================================================== */
+
+.btn {
+  background: linear-gradient(
+    135deg,
+    var(--blue) 0%,
+    var(--blue-dark) 100%
+  );
+  color: white;
+  border: none;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--letter-spacing-tight);
+  transition: var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transition: var(--transition-smooth);
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn.loading {
+  pointer-events: none;
+  opacity: 0.7;
+  position: relative;
+}
+
+.btn.loading::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top: 2px solid currentcolor;
+  border-radius: 50%;
+  animation: button-loading-spinner 1s ease infinite;
+  inset: 0;
+}
+
+.btn-secondary {
+  background: var(--gray-50);
+  color: var(--gray-900);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-300);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+  background: linear-gradient(
+    135deg,
+    var(--green) 0%,
+    var(--green-dark) 100%
+  );
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, var(--green-dark) 0%, #047857 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-warning {
+  background: linear-gradient(
+    135deg,
+    var(--orange) 0%,
+    var(--orange-dark) 100%
+  );
+  color: white;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.15);
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, var(--orange-dark) 0%, #c2410c 100%);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+}
+
+.btn-danger {
+  background: linear-gradient(
+    135deg,
+    var(--red) 0%,
+    var(--red-dark) 100%
+  );
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, var(--red-dark) 0%, #b91c1c 100%);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+/* כפתור פלוס - 2025 Modern */
+.plus-button {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(
+    135deg,
+    var(--green) 0%,
+    var(--green-dark) 100%
+  );
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25),
+              0 0 0 0 rgba(16, 185, 129, 0);
+  transform-origin: center;
+  position: relative;
+  animation: plusButtonPulse 3s ease-in-out infinite;
+}
+
+.plus-button i {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.plus-button:hover {
+  transform: scale(1.05) translateY(-1px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35),
+              0 0 0 4px rgba(16, 185, 129, 0.1);
+  background: linear-gradient(135deg, var(--green-dark) 0%, #047857 100%);
+  animation: none;
+}
+
+.plus-button:hover i {
+  transform: rotate(15deg);
+}
+
+.plus-button.active {
+  transform: rotate(45deg) !important;
+  animation: none;
+}
+
+.plus-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.2);
+}
+
+@keyframes plusButtonPulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25),
+                0 0 0 0 rgba(16, 185, 129, 0);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25),
+                0 0 0 6px rgba(16, 185, 129, 0.08);
+  }
+}
+
+/* כפתור פלוס בפינה עליונה - 2025 Modern */
+.plus-button-top {
+  position: fixed;
+  top: var(--space-5);
+  left: var(--space-10);
+  width: 56px;
+  height: 56px;
+  z-index: var(--z-sticky);
+
+  background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+  border: none;
+  border-radius: 50%;
+  color: white;
+
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  font-family: inherit;
+
+  cursor: pointer;
+  outline: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25),
+              0 0 0 0 rgba(16, 185, 129, 0);
+  animation: plusButtonPulse 3s ease-in-out infinite;
+}
+
+.plus-button-top i {
+  font-size: var(--text-2xl);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.plus-button-top:hover {
+  background: linear-gradient(135deg, var(--green-dark) 0%, #047857 100%);
+  transform: scale(1.05) translateY(-1px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35),
+              0 0 0 4px rgba(16, 185, 129, 0.1);
+  animation: none;
+}
+
+.plus-button-top:hover i {
+  transform: rotate(15deg);
+}
+
+.plus-button-top:active {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.2);
+}
+
+.plus-button-top.active {
+  transform: rotate(135deg);
+  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+  animation: none;
+}
+
+.plus-button-top.active:hover {
+  background: linear-gradient(135deg, var(--orange-dark) 0%, #c2410c 100%);
+  transform: rotate(135deg) scale(1.05) translateY(-1px);
+  box-shadow: 0 4px 16px rgba(251, 146, 60, 0.35),
+              0 0 0 4px rgba(251, 146, 60, 0.1);
+}
+
+/* Tooltip לכפתור פלוס */
+/* Tooltips removed - using notifications only */
+
+/* Button variations for specific contexts */
+#addTaskBtn,
+#addTimesheetBtn,
+#addBudgetBtn,
+.add-task-btn,
+.add-timesheet-btn,
+.add-budget-btn,
+.btn-add-task,
+.btn-add-timesheet,
+.btn-add-budget,
+button[onclick*="addTask"],
+button[onclick*="addTimesheet"],
+button[onclick*="addBudget"] {
+  cursor: pointer;
+  transition: var(--transition-fast);
+  background: linear-gradient(
+    135deg,
+    var(--blue) 0%,
+    var(--blue-dark) 100%
+  );
+  color: white;
+  border: none;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-base);
+  letter-spacing: var(--letter-spacing-tight);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-sm);
+}
+
+#addTaskBtn:hover,
+#addTimesheetBtn:hover,
+#addBudgetBtn:hover,
+.add-task-btn:hover,
+.add-timesheet-btn:hover,
+.add-budget-btn:hover,
+.btn-add-task:hover,
+.btn-add-timesheet:hover,
+.btn-add-budget:hover,
+button[onclick*="addTask"]:hover,
+button[onclick*="addTimesheet"]:hover,
+button[onclick*="addBudget"]:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}

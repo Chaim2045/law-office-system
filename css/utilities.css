@@ -1,0 +1,406 @@
+/* ==========================================================================
+   14. UTILITIES - כלי עזר
+   v1.2.3 - Scroll to Top: Fine-tuned position (right: 20px, bottom: 100px)
+   ========================================================================== */
+
+/* Display utilities */
+.hidden {
+  display: none !important;
+}
+
+.d-none {
+  display: none;
+}
+.d-block {
+  display: block;
+}
+.d-inline {
+  display: inline;
+}
+.d-inline-block {
+  display: inline-block;
+}
+.d-flex {
+  display: flex;
+}
+.d-grid {
+  display: grid;
+}
+
+/* Text utilities */
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+.text-justify {
+  text-align: justify;
+}
+
+/* Margin utilities */
+.m-0 {
+  margin: 0;
+}
+.m-auto {
+  margin: auto;
+}
+.mt-auto {
+  margin-top: auto;
+}
+.mb-auto {
+  margin-bottom: auto;
+}
+.ml-auto {
+  margin-left: auto;
+}
+.mr-auto {
+  margin-right: auto;
+}
+
+/* Padding utilities */
+.p-0 {
+  padding: 0;
+}
+
+/* Flex utilities */
+.flex-row {
+  flex-direction: row;
+}
+.flex-column {
+  flex-direction: column;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-nowrap {
+  flex-wrap: nowrap;
+}
+.justify-start {
+  justify-content: flex-start;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-around {
+  justify-content: space-around;
+}
+.align-start {
+  align-items: flex-start;
+}
+.align-end {
+  align-items: flex-end;
+}
+.align-center {
+  align-items: center;
+}
+.align-stretch {
+  align-items: stretch;
+}
+
+/* Width and height utilities */
+.w-full {
+  width: 100%;
+}
+.w-auto {
+  width: auto;
+}
+.w-fit {
+  width: fit-content;
+}
+.h-full {
+  height: 100%;
+}
+.h-auto {
+  height: auto;
+}
+.h-fit {
+  height: fit-content;
+}
+
+/* Position utilities */
+.relative {
+  position: relative;
+}
+.absolute {
+  position: absolute;
+}
+.fixed {
+  position: fixed;
+}
+.sticky {
+  position: sticky;
+}
+
+/* Z-index utilities */
+.z-0 {
+  z-index: 0;
+}
+.z-10 {
+  z-index: 10;
+}
+.z-20 {
+  z-index: 20;
+}
+.z-30 {
+  z-index: 30;
+}
+.z-40 {
+  z-index: 40;
+}
+.z-50 {
+  z-index: 50;
+}
+
+/* Overflow utilities */
+.overflow-hidden {
+  overflow: hidden;
+}
+.overflow-auto {
+  overflow: auto;
+}
+.overflow-scroll {
+  overflow: scroll;
+}
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+.overflow-y-hidden {
+  overflow-y: hidden;
+}
+.overflow-x-auto {
+  overflow-x: auto;
+}
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+/* Cursor utilities */
+.cursor-pointer {
+  cursor: pointer;
+}
+.cursor-default {
+  cursor: default;
+}
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+/* User select utilities */
+.select-none {
+  user-select: none;
+}
+.select-all {
+  user-select: all;
+}
+.select-auto {
+  user-select: auto;
+}
+
+/* Pointer events utilities */
+.pointer-events-none {
+  pointer-events: none;
+}
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: slideIn 0.4s ease;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+.auto-footer {
+  margin-top: auto;
+}
+
+/* Error messages */
+.error-message {
+  color: var(--danger-600);
+  font-size: var(--font-sm);
+  margin-top: var(--space-xs);
+  display: block;
+  font-weight: 500;
+}
+
+.success-message {
+  color: var(--success-600);
+  font-size: var(--font-sm);
+  margin-top: var(--space-xs);
+  font-weight: 500;
+}
+
+/* Connection indicator - hidden */
+.connection-indicator {
+  display: none !important;
+}
+
+.connection-indicator.fade-out {
+  opacity: 0 !important;
+  transform: translateX(-120%) !important;
+  pointer-events: none;
+}
+
+.connection-indicator.hidden {
+  display: none !important;
+}
+
+/* Component state utilities */
+.task-action-btn,
+.budget-action-btn,
+.timesheet-action-btn {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+.popup-overlay,
+.modal-overlay,
+#taskModal,
+#timesheetModal,
+#budgetModal {
+  pointer-events: auto !important;
+  z-index: 2000 !important;
+}
+
+.popup-overlay.show,
+.modal-overlay.show,
+#taskModal.show,
+#timesheetModal.show,
+#budgetModal.show,
+.popup-overlay[style*="block"],
+.modal-overlay[style*="block"],
+#taskModal[style*="block"],
+#timesheetModal[style*="block"],
+#budgetModal[style*="block"] {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.popup-overlay[style*="none"],
+.modal-overlay[style*="none"],
+#taskModal[style*="none"],
+#timesheetModal[style*="none"],
+#budgetModal[style*="none"] {
+  display: none !important;
+}
+
+.popup,
+.modal,
+.popup-overlay .popup,
+.modal-overlay .modal,
+#taskModal .popup,
+#timesheetModal .popup,
+#budgetModal .popup {
+  z-index: 2001 !important;
+  position: relative;
+}
+
+/* Scrollbar utilities */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== Scroll to Top Button - Dark Compact (Above Chatbot) ===== */
+#scrollToTopBtn {
+  position: fixed;
+  bottom: 100px;
+  right: 38px;
+  width: 44px;
+  height: 44px;
+  background: #1f2937;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px) scale(0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-size: 16px;
+  color: #ffffff;
+}
+
+#scrollToTopBtn:hover {
+  background: #374151;
+  transform: translateY(-3px) scale(1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+#scrollToTopBtn:active {
+  transform: translateY(-1px) scale(0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+#scrollToTopBtn.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+/* RTL Support - עברית: מופיע משמאל */
+[dir="rtl"] #scrollToTopBtn {
+  right: auto;
+  left: 38px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  #scrollToTopBtn {
+    bottom: 85px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  [dir="rtl"] #scrollToTopBtn {
+    right: auto;
+    left: 16px;
+  }
+}
