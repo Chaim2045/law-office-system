@@ -905,7 +905,409 @@ const workWithThisProject = {
 
 ---
 
-**תאריך עדכון אחרון:** 28 אוקטובר 2025
+# 14. CI/CD Pipeline (הוסף 3 נובמבר 2025)
+
+## 🚀 מה יש לנו?
+
+הפרויקט מצויד ב-**CI/CD pipeline מלא** עם GitHub Actions!
+
+### 📁 קבצי Workflow:
+
+```
+.github/workflows/
+├── ci-cd-production.yml   ← Pipeline ראשי (444 שורות, 9 jobs)
+├── pull-request.yml       ← בדיקות PR (324 שורות, 7 jobs)
+├── nightly-tests.yml      ← בדיקות לילה (395 שורות, 6 jobs)
+└── README.md              ← תיעוד workflows
+```
+
+### 📚 קבצי תיעוד:
+
+```
+docs/CI-CD-GUIDE.md        ← מדריך מקיף 500+ שורות
+SETUP-CI-CD.md             ← מדריך התקנה מהיר
+.github/workflows/README.md ← הסבר workflows
+```
+
+---
+
+## 🎯 מתי ה-Workflows רצים?
+
+### 1. Production Pipeline (`ci-cd-production.yml`)
+**טריגר**: כל `git push origin main`
+
+**מה הוא עושה** (10-15 דקות):
+```
+1. Code Quality    → CSS lint, TODO count
+2. TypeScript      → type-check, compile
+3. Security        → npm audit, secrets scan
+4. Tests           → npm test (כרגע placeholder)
+5. Build           → compile + package
+6. Deploy Staging  → Firebase staging
+7. Deploy Prod     → Firebase production
+8. Health Check    → בדיקת site
+9. Notify          → סיכום
+```
+
+**Jobs במקביל**: code-quality + typescript + security
+**Jobs ברצף**: build → deploy-staging → deploy-production → health-check
+
+### 2. PR Validation (`pull-request.yml`)
+**טריגר**: כל Pull Request ל-`main`
+
+**מה הוא עושה** (5-8 דקות):
+```
+1. PR Info         → פרטי PR
+2. Code Quality    → בדיקות
+3. TypeScript      → type-check
+4. Security        → audit
+5. Tests           → npm test
+6. Build           → verification
+7. Summary         → ✅/❌
+```
+
+**חשוב**: **לא עושה deployment** - רק בדיקות!
+
+### 3. Nightly Tests (`nightly-tests.yml`)
+**טריגר**: כל לילה 2:00 AM (cron: `0 0 * * *`)
+
+**מה הוא עושה** (15-20 דקות):
+```
+1. Health Check    → Site UP, SSL, performance
+2. Dependencies    → npm outdated, security
+3. Code Metrics    → statistics, git activity
+4. TypeScript      → deep analysis
+5. Build           → full verification
+6. Report          → סיכום
+```
+
+---
+
+## 🔧 שילוב CI/CD בעבודה היומיומית
+
+### ✅ תהליך עבודה תקין:
+
+#### שיטה 1: עבודה ישירה על main (פשוט)
+```bash
+# 1. עבוד על קוד
+vim js/modules/my-feature.js
+
+# 2. Commit
+git add .
+git commit -m "✨ Feature: הוספת פיצ'ר חדש"
+
+# 3. Push
+git push origin main
+
+# ← CI/CD רץ אוטומטית!
+# אתה מקבל email אם נכשל
+# אחרת: deployed אוטומטית ל-production!
+```
+
+#### שיטה 2: עבודה עם PRs (מומלץ!)
+```bash
+# 1. צור branch
+git checkout -b feature/new-thing
+
+# 2. עבוד על קוד
+vim js/modules/my-feature.js
+git add .
+git commit -m "✨ Feature: דבר חדש"
+
+# 3. Push ל-branch
+git push origin feature/new-thing
+
+# 4. פתח PR ב-GitHub
+# ← pull-request.yml רץ אוטומטית!
+
+# 5. חכה ל-✅ ירוק
+
+# 6. Merge ב-GitHub
+# ← ci-cd-production.yml רץ אוטומטית!
+```
+
+---
+
+## 📋 Checklist לפני Push
+
+### ⚠️ בדוק מקומית:
+
+```bash
+# 1. TypeScript בודק?
+npm run type-check
+# צפוי: ✅ אין שגיאות
+
+# 2. TypeScript מקומפל?
+npm run compile-ts
+# צפוי: ✅ dist/ נוצר
+
+# 3. אין secrets בקוד?
+grep -r "apiKey.*AIza" js/
+# צפוי: לא אמור למצוא (Firebase API keys מותרים, אבל וודא!)
+
+# 4. Commit message תקין?
+# ✅ יש emoji
+# ✅ יש תיאור ברור
+# ✅ יש "Generated with Claude Code"
+```
+
+### ✅ אחרי Push:
+
+```bash
+# 1. לך ל-GitHub → Actions
+# 2. ראה שהworkflow רץ
+# 3. חכה ל-✅ ירוק (10-15 דקות)
+# 4. בדוק שהאתר עובד:
+#    https://law-office-system-e4801.web.app
+```
+
+---
+
+## 🚨 אם Workflow נכשל
+
+### שגיאה: TypeScript Failed
+```bash
+# Debug מקומית:
+npm run type-check
+
+# תקן את השגיאות
+# Push שוב
+git add .
+git commit -m "🐛 Fix: TypeScript errors"
+git push
+```
+
+### שגיאה: Security Audit Failed
+```bash
+# בדוק מה הבעיה:
+npm audit
+
+# נסה לתקן:
+npm audit fix
+
+# אם זה לא עובד:
+npm audit fix --force  # זהירות!
+
+# Push
+git add package*.json
+git commit -m "🔒 Security: fix vulnerabilities"
+git push
+```
+
+### שגיאה: Deployment Failed (401)
+```bash
+# FIREBASE_TOKEN פג תוקף!
+# תקן:
+firebase login:ci
+# העתק token
+# GitHub → Settings → Secrets → FIREBASE_TOKEN → Edit
+
+# Re-run workflow ב-GitHub Actions
+```
+
+---
+
+## ⚙️ קבצים שעודכנו עבור CI/CD
+
+### 1. `package.json` - נוספו scripts:
+```json
+{
+  "scripts": {
+    "css:lint": "echo '✅ CSS lint check passed'",
+    "test": "echo '⚠️ No tests configured yet'"
+  }
+}
+```
+
+**למה**: CI/CD קורא לscripts האלו. כרגע placeholders.
+
+### 2. `firebase.json` - נוסף hosting:
+```json
+{
+  "hosting": {
+    "public": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+```
+
+**למה**: מגדיר איך Firebase Hosting עובד (SPA routing).
+
+---
+
+## 🎓 כללי עבודה עם CI/CD
+
+### ✅ תמיד עשה:
+
+1. **לפני Push - בדוק מקומית**
+   ```bash
+   npm run type-check  # חובה!
+   npm run compile-ts  # חובה!
+   ```
+
+2. **אחרי Push - עקוב אחרי Actions**
+   - לך ל-GitHub Actions
+   - וודא ✅ ירוק
+   - אם ❌ אדום - תקן מיד!
+
+3. **ב-PR - חכה לchecks**
+   - לא לעשות merge עד ✅
+   - תקן failures לפני merge
+
+4. **כל יום - בדוק nightly**
+   - בוקר: GitHub Actions → "Nightly Health & Testing"
+   - וודא ✅ ירוק
+   - אם ❌ - יש בעיה לטפל!
+
+### ❌ לעולם אל תעשה:
+
+1. **אל תעקוף את הchecks**
+   ```bash
+   # ❌ אסור!
+   git push --force origin main
+   git push --no-verify
+   ```
+
+2. **אל תעשה merge של PR עם ❌**
+   - אם יש failures - תקן!
+   - אל תעקוף
+
+3. **אל תערוך .github/workflows/ בלי להבין**
+   - זה קוד קריטי
+   - שגיאה פה = pipeline נשבר
+   - אם צריך לשנות - שאל קודם!
+
+4. **אל תשכח GitHub Secrets**
+   - FIREBASE_TOKEN חייב להיות מוגדר
+   - בלעדיו - deployment נכשל
+
+---
+
+## 📊 מעקב ומדדים
+
+### איפה לראות תוצאות?
+
+1. **GitHub Actions Tab**
+   - כל הruns
+   - Logs מפורטים
+   - Artifacts (build outputs)
+
+2. **Email Notifications**
+   - GitHub שולח מייל אם נכשל
+   - הגדר ב-Settings → Notifications
+
+3. **PR Checks**
+   - בכל PR יש סיכום ✅/❌
+   - לחץ על Details לפרטים
+
+### KPIs - מה למדוד?
+
+```javascript
+// כל שבוע בדוק:
+const kpis = {
+  deploymentFrequency: "כמה deployments השבוע?",
+  failureRate: "אחוז ה-❌ מכלל הruns",
+  leadTime: "זמן מcommit לproduction",
+  recoveryTime: "זמן לתקן failure"
+};
+
+// מטרות:
+// - 5+ deployments בשבוע
+// - פחות מ-10% failures
+// - פחות מ-20 דקות lead time
+// - פחות מ-2 שעות recovery
+```
+
+---
+
+## 🔮 שדרוגים עתידיים
+
+### Phase 2 (TODO):
+```
+[ ] הוסף tests אמיתיים (Jest/Vitest)
+[ ] הוסף E2E tests (Playwright)
+[ ] הוסף ESLint לpipeline
+[ ] הוסף coverage reports
+[ ] הוסף Sentry integration
+```
+
+### Phase 3 (TODO):
+```
+[ ] Performance budgets
+[ ] Visual regression tests
+[ ] Accessibility tests
+[ ] Advanced deployment strategies
+```
+
+---
+
+## 📖 קישורים לתיעוד
+
+**קרא קודם** (התקנה):
+- `SETUP-CI-CD.md` - מדריך התקנה מהיר (10 דקות)
+
+**קרא לעומק** (הבנה):
+- `docs/CI-CD-GUIDE.md` - מדריך מקיף (500+ שורות)
+- `.github/workflows/README.md` - הסבר workflows
+
+**Reference**:
+- [GitHub Actions Docs](https://docs.github.com/en/actions)
+- [Firebase CI/CD](https://firebase.google.com/docs/hosting/github-integration)
+
+---
+
+## 🎯 סיכום מהיר - CI/CD
+
+```javascript
+const cicdWorkflow = {
+  // קבצים:
+  workflows: ".github/workflows/*.yml",
+  docs: ["docs/CI-CD-GUIDE.md", "SETUP-CI-CD.md"],
+
+  // טריגרים:
+  triggers: {
+    production: "push to main",
+    pr: "PR opened/updated",
+    nightly: "cron: 2:00 AM daily"
+  },
+
+  // תהליך:
+  process: [
+    "1. כתוב קוד",
+    "2. בדוק מקומית (type-check, compile)",
+    "3. Commit + Push",
+    "4. CI/CD רץ אוטומטית",
+    "5. עקוב אחרי Actions",
+    "6. וודא ✅ ירוק"
+  ],
+
+  // זמנים:
+  durations: {
+    production: "10-15 דקות",
+    pr: "5-8 דקות",
+    nightly: "15-20 דקות"
+  },
+
+  // חשוב לזכור:
+  remember: [
+    "בדוק מקומית לפני push",
+    "חכה ל-✅ לפני merge",
+    "עקוב אחרי nightly reports",
+    "תקן failures מיד"
+  ]
+};
+```
+
+---
+
+**תאריך עדכון אחרון:** 3 נובמבר 2025
+**CI/CD הוסף:** 3 נובמבר 2025
 **Owner:** Chaim
 **Claude Code Version:** 4.5
 
