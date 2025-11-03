@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════════╗
+    ║              🔐 Master Admin Panel - דשבורד ניהול ראשי               ║
+    ╠═══════════════════════════════════════════════════════════════════════╣
+    ║  ניהול משתמשים מקצועי עם אבטחה מלאה                                  ║
+    ║  גישה למנהלי מערכת בלבד                                              ║
+    ║                                                                       ║
+    ║  📚 קרא את WORK_PLAN.md לפני עריכה!                                 ║
+    ╚═══════════════════════════════════════════════════════════════════════╝
+
+    מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ
+    נוצר: 31/10/2025
+    גרסה: 1.0.0
+    Phase: 1 - Foundation
+    -->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Master Admin Panel - ניהול משתמשים">
+    <title>🔐 Master Admin Panel | מערכת ניהול</title>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System (from parent) ===== -->
+    <link rel="stylesheet" href="../css/design-system.css">
+
+    <!-- ===== Master Admin Panel Styles ===== -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/user-details.css">
+</head>
+
+<body class="login-page">
+    <!-- ===== Login Screen ===== -->
+    <div id="loginScreen" class="login-container">
+        <!-- Background Animation -->
+        <div class="login-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+            <div class="gradient-orb orb-3"></div>
+        </div>
+
+        <!-- Login Box -->
+        <div class="login-box">
+            <!-- Logo & Title -->
+            <div class="login-header">
+                <div class="logo-circle">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <h1 class="login-title">Master Admin Panel</h1>
+                <p class="login-subtitle">מערכת ניהול מרכזית</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="login-form">
+                <!-- Email Input -->
+                <div class="form-group">
+                    <label for="emailInput" class="form-label">
+                        <i class="fas fa-envelope"></i>
+                        אימייל
+                    </label>
+                    <input
+                        type="email"
+                        id="emailInput"
+                        class="form-input"
+                        placeholder="admin@example.com"
+                        autocomplete="email"
+                        required
+                    >
+                </div>
+
+                <!-- Password Input -->
+                <div class="form-group">
+                    <label for="passwordInput" class="form-label">
+                        <i class="fas fa-lock"></i>
+                        סיסמה
+                    </label>
+                    <div class="password-wrapper">
+                        <input
+                            type="password"
+                            id="passwordInput"
+                            class="form-input"
+                            placeholder="••••••••"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            id="togglePassword"
+                            aria-label="הצג/הסתר סיסמה"
+                        >
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember Me -->
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="rememberMe">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">זכור אותי</span>
+                    </label>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="error-message" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="errorText"></span>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn-login" id="loginButton">
+                    <span class="btn-text">כניסה למערכת</span>
+                    <i class="fas fa-arrow-left btn-icon"></i>
+                </button>
+            </form>
+
+            <!-- Footer Info -->
+            <div class="login-footer">
+                <p class="footer-text">
+                    <i class="fas fa-info-circle"></i>
+                    גישה למנהלי מערכת בלבד
+                </p>
+                <p class="footer-version">v1.0.0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Dashboard Screen (Hidden by default) ===== -->
+    <div id="dashboardScreen" class="dashboard-container" style="display: none;">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="header-title">
+                    <i class="fas fa-shield-halved"></i>
+                    Master Admin Panel
+                </h1>
+            </div>
+            <div class="header-right">
+                <div class="admin-info" id="adminInfo">
+                    <div class="admin-avatar">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="admin-details">
+                        <span class="admin-name" id="adminName">Admin</span>
+                        <span class="admin-role">מנהל מערכת</span>
+                    </div>
+                </div>
+                <button class="btn-logout" id="logoutButton">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>יציאה</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div id="dashboardContent" class="dashboard-content">
+                <!-- Dashboard UI will be rendered here by DashboardUI.js -->
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js"></script>
+    <script src="js/core/auth.js"></script>
+
+    <!-- ===== Phase 2: Data & UI Components ===== -->
+    <script src="js/managers/DataManager.js"></script>
+    <script src="js/ui/StatsCards.js"></script>
+    <script src="js/ui/UsersTable.js"></script>
+    <script src="js/ui/FilterBar.js"></script>
+    <script src="js/ui/Pagination.js"></script>
+    <script src="js/ui/DashboardUI.js"></script>
+
+    <!-- ===== Phase 3: User Management Logic ===== -->
+    <script src="js/ui/Modals.js"></script>
+    <script src="js/ui/Notifications.js"></script>
+    <script src="js/ui/UserForm.js"></script>
+    <script src="js/ui/UserDetailsModal.js"></script>
+    <script src="js/managers/UsersActions.js"></script>
+
+    <!-- ===== Initialization Script ===== -->
+    <script>
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Master Admin Panel - Phase 2 Loaded');
+
+            // Initialize Authentication System
+            if (window.AuthSystem) {
+                window.AuthSystem.init();
+            } else {
+                console.error('❌ AuthSystem not loaded');
+            }
+
+            // Initialize Dashboard UI when user logs in
+            window.addEventListener('dashboard:ready', async () => {
+                console.log('📊 Initializing Dashboard UI...');
+
+                if (window.DashboardUI) {
+                    await window.DashboardUI.init();
+                } else {
+                    console.error('❌ DashboardUI not loaded');
+                }
+            });
+
+            // Listen to auth state change to trigger dashboard
+            if (window.firebaseAuth) {
+                window.firebaseAuth.onAuthStateChanged(async (user) => {
+                    if (user) {
+                        // User is logged in - trigger dashboard initialization
+                        setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('dashboard:ready'));
+                        }, 500); // Small delay to ensure DOM is ready
+                    }
+                });
+            }
+        });
+
+        // Password Toggle Functionality
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('passwordInput');
+
+        togglePassword?.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+
+            const icon = togglePassword.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+
+        // Prevent form submission on Enter (handled by auth.js)
+        document.getElementById('loginForm')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
