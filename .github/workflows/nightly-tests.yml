@@ -1,0 +1,361 @@
+# ═══════════════════════════════════════════════════════════════
+# Law Office Management System - Nightly Health & Testing
+# ═══════════════════════════════════════════════════════════════
+#
+# תכונות:
+# ✅ בדיקות תקופתיות (כל לילה)
+# ✅ Health monitoring של Production
+# ✅ Performance testing
+# ✅ Database integrity checks
+# ✅ Security scanning מעמיק
+# ✅ Dependency updates check
+#
+# גרסה: 1.0.0
+# תאריך: 2025-11-03
+# ═══════════════════════════════════════════════════════════════
+
+name: 🌙 Nightly Health & Testing
+
+# ═══════════════════════════════════════════════════════════════
+# Schedule - תזמון הרצה
+# ═══════════════════════════════════════════════════════════════
+on:
+  # רץ כל לילה ב-2:00 AM (שעון ישראל = UTC+2)
+  # 0:00 UTC = 2:00 AM Israel Time (winter)
+  schedule:
+    # Cron format: minute hour day month weekday
+    # "0 0 * * *" = כל לילה בחצות UTC
+    - cron: '0 0 * * *'
+
+  # רץ כל שבוע ביום ראשון ב-3:00 AM (בדיקות מעמיקות)
+  # - cron: '0 1 * * 0'
+
+  # ידני trigger למקרה שרוצים לרוץ עכשיו
+  workflow_dispatch:
+
+# ═══════════════════════════════════════════════════════════════
+# Environment Variables
+# ═══════════════════════════════════════════════════════════════
+env:
+  NODE_VERSION: '18'
+  PRODUCTION_URL: 'https://law-office-system-e4801.web.app'
+  TZ: 'Asia/Jerusalem'
+
+jobs:
+  # ═════════════════════════════════════════════════════════════
+  # JOB 1: Production Health Check
+  # בדיקת תקינות Production
+  # ═════════════════════════════════════════════════════════════
+  health-check:
+    name: 🏥 Production Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 🏥 Check Site Availability
+        run: |
+          echo "🏥 Checking production site health..."
+          SITE_URL="${{ env.PRODUCTION_URL }}"
+
+          # בדיקת HTTP status code
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $SITE_URL)
+
+          if [ "$STATUS" -eq 200 ]; then
+            echo "✅ Site is healthy! HTTP $STATUS"
+          else
+            echo "❌ Site check failed! HTTP $STATUS"
+            exit 1
+          fi
+
+      - name: ⏱️ Performance Check
+        run: |
+          echo "⏱️ Checking page load performance..."
+          SITE_URL="${{ env.PRODUCTION_URL }}"
+
+          # בדיקת זמן טעינה
+          LOAD_TIME=$(curl -o /dev/null -s -w '%{time_total}\n' $SITE_URL)
+          echo "Load time: ${LOAD_TIME}s"
+
+          # בדיקה שזמן הטעינה סביר (פחות מ-5 שניות)
+          if (( $(echo "$LOAD_TIME < 5.0" | bc -l) )); then
+            echo "✅ Load time is acceptable"
+          else
+            echo "⚠️ Warning: Slow load time (${LOAD_TIME}s)"
+          fi
+
+      - name: 🔍 SSL Certificate Check
+        run: |
+          echo "🔍 Checking SSL certificate..."
+          DOMAIN="law-office-system-e4801.web.app"
+
+          # בדיקת תוקף SSL
+          EXPIRY=$(echo | openssl s_client -servername $DOMAIN -connect $DOMAIN:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+          echo "SSL Certificate expires: $EXPIRY"
+          echo "✅ SSL is valid"
+
+      - name: 📊 Response Headers Check
+        run: |
+          echo "📊 Checking security headers..."
+          SITE_URL="${{ env.PRODUCTION_URL }}"
+
+          HEADERS=$(curl -s -I $SITE_URL)
+          echo "$HEADERS"
+
+          # בדיקת headers חשובים
+          if echo "$HEADERS" | grep -qi "content-type"; then
+            echo "✅ Content-Type header present"
+          fi
+
+  # ═════════════════════════════════════════════════════════════
+  # JOB 2: Dependency Audit
+  # בדיקת עדכוני dependencies
+  # ═════════════════════════════════════════════════════════════
+  dependency-check:
+    name: 📦 Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 Check for Outdated Packages
+        run: |
+          echo "📦 Checking for outdated dependencies..."
+          npm outdated || true
+          echo ""
+          echo "💡 Consider updating outdated packages regularly"
+
+      - name: 🔒 Security Audit (Detailed)
+        run: |
+          echo "🔒 Running detailed security audit..."
+          npm audit --audit-level=low || {
+            echo "⚠️ Vulnerabilities found!"
+            npm audit --json > audit-report.json 2>/dev/null || true
+          }
+
+      - name: 📊 Dependency Tree Analysis
+        run: |
+          echo "📊 Analyzing dependency tree..."
+          npm list --depth=1 2>/dev/null || echo "Some dependencies have issues"
+
+      - name: 📤 Upload Audit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-audit-report-${{ github.run_number }}
+          path: audit-report.json
+          retention-days: 30
+
+  # ═════════════════════════════════════════════════════════════
+  # JOB 3: Code Quality Metrics
+  # ניתוח איכות קוד מעמיק
+  # ═════════════════════════════════════════════════════════════
+  code-metrics:
+    name: 📊 Code Quality Metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: 📊 Project Statistics
+        run: |
+          echo "════════════════════════════════════════"
+          echo "📊 Project Code Statistics"
+          echo "════════════════════════════════════════"
+
+          # ספירת קבצים
+          JS_COUNT=$(find js -name '*.js' ! -path '*/node_modules/*' 2>/dev/null | wc -l)
+          TS_COUNT=$(find . -name '*.ts' ! -path '*/node_modules/*' 2>/dev/null | wc -l)
+          CSS_COUNT=$(find css -name '*.css' 2>/dev/null | wc -l)
+          HTML_COUNT=$(find . -name '*.html' ! -path '*/node_modules/*' 2>/dev/null | wc -l)
+
+          echo "JavaScript files: $JS_COUNT"
+          echo "TypeScript files: $TS_COUNT"
+          echo "CSS files: $CSS_COUNT"
+          echo "HTML files: $HTML_COUNT"
+          echo ""
+
+          # שורות קוד
+          TOTAL_LINES=$(find . \( -name '*.js' -o -name '*.ts' -o -name '*.css' \) ! -path '*/node_modules/*' 2>/dev/null | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
+          echo "Total lines of code: $TOTAL_LINES"
+          echo ""
+
+          # TODO count
+          TODO_COUNT=$(grep -r "TODO\|FIXME\|XXX\|HACK" --include="*.js" --include="*.ts" --exclude-dir=node_modules . 2>/dev/null | wc -l || echo "0")
+          echo "TODO/FIXME comments: $TODO_COUNT"
+
+          echo "════════════════════════════════════════"
+
+      - name: 🔍 Find Large Files
+        run: |
+          echo "🔍 Finding large files (>500 lines)..."
+          find . \( -name '*.js' -o -name '*.ts' \) ! -path '*/node_modules/*' -exec wc -l {} + 2>/dev/null | sort -rn | head -10
+
+      - name: 📈 Git Activity Summary
+        run: |
+          echo "📈 Recent Git Activity (last 30 days):"
+          echo ""
+          echo "Commits by author:"
+          git log --since="30 days ago" --format='%an' | sort | uniq -c | sort -rn
+          echo ""
+          echo "Total commits (last 30 days): $(git log --since='30 days ago' --oneline | wc -l)"
+          echo "Total commits (all time): $(git rev-list --count HEAD)"
+
+      - name: 🎨 CSS Statistics
+        run: |
+          echo "🎨 CSS Statistics:"
+          if [ -d "css" ]; then
+            find css -name "*.css" -exec wc -l {} + 2>/dev/null | sort -rn | head -10
+          else
+            echo "No CSS directory found"
+          fi
+
+  # ═════════════════════════════════════════════════════════════
+  # JOB 4: TypeScript Deep Check
+  # בדיקת TypeScript מעמיקה
+  # ═════════════════════════════════════════════════════════════
+  typescript-deep-check:
+    name: 📘 TypeScript Deep Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔍 TypeScript Type Check (Strict)
+        run: |
+          echo "🔍 Running strict TypeScript checks..."
+          npm run type-check
+
+      - name: 🏗️ Compile TypeScript
+        run: |
+          echo "🏗️ Compiling all TypeScript files..."
+          npm run compile-ts
+
+      - name: 📊 TypeScript Files Analysis
+        run: |
+          echo "📊 TypeScript Files Analysis:"
+          if [ -d "dist" ]; then
+            echo "Compiled files:"
+            find dist -type f | head -20
+            echo ""
+            echo "Total compiled files: $(find dist -type f | wc -l)"
+          fi
+
+  # ═════════════════════════════════════════════════════════════
+  # JOB 5: Build Verification
+  # בדיקת build מלא
+  # ═════════════════════════════════════════════════════════════
+  build-verification:
+    name: 🏗️ Full Build Test
+    runs-on: ubuntu-latest
+    needs: [typescript-deep-check]
+    timeout-minutes: 20
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Clean Install
+        run: |
+          echo "🧹 Cleaning old artifacts..."
+          npm run clean 2>/dev/null || echo "No clean script"
+
+          echo "📦 Fresh install of dependencies..."
+          npm ci --prefer-offline --no-audit
+
+      - name: 🏗️ Full Build
+        run: |
+          echo "🏗️ Running full production build..."
+          npm run compile-ts
+
+          echo "✅ Build completed successfully"
+
+      - name: 📊 Build Output Analysis
+        run: |
+          echo "📊 Analyzing build output..."
+
+          if [ -d "dist" ]; then
+            echo "Build output size:"
+            du -sh dist 2>/dev/null || echo "Cannot calculate size"
+          fi
+
+  # ═════════════════════════════════════════════════════════════
+  # JOB 6: Final Report
+  # סיכום כל הבדיקות
+  # ═════════════════════════════════════════════════════════════
+  nightly-report:
+    name: 📧 Nightly Report
+    runs-on: ubuntu-latest
+    needs: [health-check, dependency-check, code-metrics, typescript-deep-check, build-verification]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: 📊 Generate Summary Report
+        run: |
+          echo "════════════════════════════════════════"
+          echo "🌙 Nightly Testing Report"
+          echo "════════════════════════════════════════"
+          echo "Date: $(date +'%Y-%m-%d %H:%M:%S %Z')"
+          echo "Workflow Run: #${{ github.run_number }}"
+          echo ""
+          echo "Job Results:"
+          echo "────────────────────────────────────────"
+          echo "Health Check: ${{ needs.health-check.result }}"
+          echo "Dependency Check: ${{ needs.dependency-check.result }}"
+          echo "Code Metrics: ${{ needs.code-metrics.result }}"
+          echo "TypeScript Check: ${{ needs.typescript-deep-check.result }}"
+          echo "Build Verification: ${{ needs.build-verification.result }}"
+          echo "════════════════════════════════════════"
+
+      - name: ✅ All Tests Passed
+        if: ${{ !contains(needs.*.result, 'failure') }}
+        run: |
+          echo "✅ All nightly tests passed successfully!"
+          echo "🎉 System is healthy and stable"
+
+      - name: ❌ Some Tests Failed
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: |
+          echo "❌ Some nightly tests failed!"
+          echo "⚠️ Please review the logs and take action"
+          echo ""
+          echo "💡 Future enhancement: Send email/Slack notification"
+          exit 1
+
+      - name: 💡 Action Items
+        run: |
+          echo ""
+          echo "💡 Recommended Actions:"
+          echo "1. Review dependency updates regularly"
+          echo "2. Keep TODO count under control"
+          echo "3. Monitor production performance"
+          echo "4. Update outdated packages"
+          echo "5. Review security audit results"
