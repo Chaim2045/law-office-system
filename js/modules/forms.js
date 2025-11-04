@@ -32,8 +32,10 @@ export function clearTimesheetForm(manager) {
   const timesheetForm = document.getElementById("timesheetForm");
   if (timesheetForm) timesheetForm.reset();
   const actionDate = document.getElementById("actionDate");
-  if (actionDate) {
-    actionDate.value = new Date().toISOString().split("T")[0];
+  if (actionDate && manager.formatDateTime) {
+    // Use calendar picker format with time
+    const now = new Date();
+    actionDate.value = manager.formatDateTime(now);
   }
 }
 

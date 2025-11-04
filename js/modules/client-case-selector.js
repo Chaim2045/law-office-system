@@ -260,6 +260,8 @@
           <input type="hidden" id="${this.containerId}_caseTitle" />
           <input type="hidden" id="${this.containerId}_serviceId" />
           <input type="hidden" id="${this.containerId}_serviceName" />
+          <input type="hidden" id="${this.containerId}_serviceType" />
+          <input type="hidden" id="${this.containerId}_parentServiceId" />
         </div>
       `;
     }
@@ -1102,8 +1104,12 @@
      * בחירת שירות
      */
     selectService(serviceId, type) {
+      console.log('🎯 selectService called:', { serviceId, type });
+
       // מציאת השירות/שלב
       let serviceData;
+      let parentService = null; // לשמירת השירות האב במקרה של הליך משפטי
+
       if (type === 'hours') {
         // בדיקה: האם זה תיק ישן (serviceId = caseId)?
         if (serviceId === this.selectedCase.id) {
@@ -1119,20 +1125,67 @@
           serviceData = this.selectedCase.services?.find(s => s.id === serviceId);
         }
       } else if (type === 'legal_procedure') {
-        serviceData = this.selectedCase.stages?.find(s => s.id === serviceId);
+        // ✅ FIX: חיפוש השלב בתוך כל ה-services
+        const services = this.selectedCase.services || [];
+        for (const service of services) {
+          if (service.type === 'legal_procedure' && service.stages) {
+            const stage = service.stages.find(s => s.id === serviceId);
+            if (stage) {
+              serviceData = stage;
+              parentService = service; // שמירת השירות האב
+              break;
+            }
+          }
+        }
+
+        // LEGACY: תמיכה לאחור - חיפוש ב-stages של התיק
+        if (!serviceData) {
+          serviceData = this.selectedCase.stages?.find(s => s.id === serviceId);
+        }
       }
 
       this.selectedService = serviceData;
+      this.selectedServiceParent = parentService; // שמירת השירות האב לשימוש מאוחר יותר
 
       // עדכון שדות נסתרים
-      document.getElementById(`${this.containerId}_serviceId`).value = serviceId;
-      // 🔧 FIX: נסה כל האפשרויות לשם השירות
-      const serviceName = serviceData?.name ||
-                         serviceData?.serviceName ||
-                         serviceData?.stageName ||
-                         serviceData?.description ||
-                         serviceData?.title ||
-                         '';
+      // ✅ FIX: בהליך משפטי - serviceId = stage.id, parentServiceId = service.id
+      if (type === 'legal_procedure' && parentService) {
+        document.getElementById(`${this.containerId}_serviceId`).value = serviceId; // stage.id (למשל 'stage_a')
+        document.getElementById(`${this.containerId}_parentServiceId`).value = parentService.id; // service.id (למשל 'srv_1761821895613')
+        document.getElementById(`${this.containerId}_serviceType`).value = 'legal_procedure';
+
+        console.log('✅ Updated hidden fields (legal_procedure):', {
+          serviceId: serviceId,
+          parentServiceId: parentService.id,
+          serviceType: 'legal_procedure',
+          parentServiceName: parentService.name
+        });
+      } else {
+        document.getElementById(`${this.containerId}_serviceId`).value = serviceId; // service.id
+        document.getElementById(`${this.containerId}_parentServiceId`).value = ''; // אין parent
+        document.getElementById(`${this.containerId}_serviceType`).value = type || 'hours';
+
+        console.log('✅ Updated hidden fields (hours):', {
+          serviceId: serviceId,
+          parentServiceId: '',
+          serviceType: type || 'hours'
+        });
+      }
+
+      // 🔧 FIX: שם השירות - אם הליך משפטי, קח את שם השירות האב
+      let serviceName = '';
+      if (type === 'legal_procedure' && parentService) {
+        // שם השירות האב (למשל "תביעה נגד מעסיק")
+        serviceName = parentService.name || parentService.serviceName || '';
+      } else {
+        // שירות רגיל או legacy
+        serviceName = serviceData?.name ||
+                     serviceData?.serviceName ||
+                     serviceData?.stageName ||
+                     serviceData?.description ||
+                     serviceData?.title ||
+                     '';
+      }
       document.getElementById(`${this.containerId}_serviceName`).value = serviceName;
 
       // 🎨 הסתרת caseInfo
@@ -1405,7 +1458,7 @@
      * קבלת הערכים הנבחרים
      */
     getSelectedValues() {
-      return {
+      const values = {
         clientId: document.getElementById(`${this.containerId}_clientId`)?.value || null,
         clientName: document.getElementById(`${this.containerId}_clientName`)?.value || null,
         caseId: document.getElementById(`${this.containerId}_caseId`)?.value || null,
@@ -1413,9 +1466,21 @@
         caseTitle: document.getElementById(`${this.containerId}_caseTitle`)?.value || null,
         serviceId: document.getElementById(`${this.containerId}_serviceId`)?.value || null,
         serviceName: document.getElementById(`${this.containerId}_serviceName`)?.value || null,
+        serviceType: document.getElementById(`${this.containerId}_serviceType`)?.value || null,
+        parentServiceId: document.getElementById(`${this.containerId}_parentServiceId`)?.value || null,
         caseData: this.selectedCase,
-        serviceData: this.selectedService
+        serviceData: this.selectedService,
+        serviceParentData: this.selectedServiceParent
       };
+
+      console.log('🔍 getSelectedValues returning:', {
+        serviceId: values.serviceId,
+        serviceName: values.serviceName,
+        serviceType: values.serviceType,
+        parentServiceId: values.parentServiceId
+      });
+
+      return values;
     }
 
     /**
@@ -1487,6 +1552,7 @@
       this.selectedClient = null;
       this.selectedCase = null;
       this.selectedService = null;
+      this.selectedServiceParent = null;
       this.clientCases = [];
 
       const searchInput = document.getElementById(`${this.containerId}_clientSearch`);
@@ -1502,7 +1568,7 @@
       this.hideCaseInfo();
 
       // איפוס שדות נסתרים
-      ['clientId', 'clientName', 'caseId', 'caseNumber', 'caseTitle', 'serviceId', 'serviceName'].forEach(field => {
+      ['clientId', 'clientName', 'caseId', 'caseNumber', 'caseTitle', 'serviceId', 'serviceName', 'serviceType', 'parentServiceId'].forEach(field => {
         const input = document.getElementById(`${this.containerId}_${field}`);
         if (input) input.value = '';
       });

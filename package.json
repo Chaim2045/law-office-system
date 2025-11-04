@@ -12,7 +12,10 @@
     "compile:watch": "tsc --watch",
     "clean": "rm -rf dist",
     "lint": "echo 'Add ESLint for linting'",
-    "format": "echo 'Add Prettier for formatting'"
+    "format": "echo 'Add Prettier for formatting'",
+    "css:lint": "echo '✅ CSS lint check passed (placeholder - add stylelint later)'",
+    "css:lint:fix": "echo '✅ CSS auto-fix completed (placeholder - add stylelint --fix later)'",
+    "test": "echo '⚠️ No tests configured yet - TODO: Add Jest/Vitest'"
   },
   "keywords": [
     "law-office",

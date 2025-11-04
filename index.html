@@ -211,7 +211,7 @@
         <nav class="sidebar-nav">
           <button
             class="nav-item"
-            onclick="casesManager.showCreateCaseDialog();"
+            onclick="new CaseCreationDialog().open();"
             title="הוסף לקוח חדש או תיק חדש ללקוח קיים"
           >
             <i class="fas fa-folder-plus"></i>
@@ -612,18 +612,27 @@
                   </div>
                 </div>
 
-                <div class="form-row" style="grid-template-columns: 2fr 1fr">
+                <!-- Compact Row: תאריך + דקות - שווים ברוחב -->
+                <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 12px;">
                   <div class="form-group">
-                    <label for="actionDate">תאריך</label>
+                    <label for="actionDate"
+                      ><i class="fas fa-calendar-alt"></i> תאריך ושעה
+                      <span class="category-required">*</span></label
+                    >
                     <input
-                      type="date"
+                      type="text"
                       id="actionDate"
+                      placeholder="בחר תאריך ושעה..."
                       autocomplete="off"
                       required
+                      readonly
                     />
                   </div>
                   <div class="form-group">
-                    <label for="actionMinutes">דקות</label>
+                    <label for="actionMinutes"
+                      ><i class="fas fa-hourglass-half"></i> דקות
+                      <span class="category-required">*</span></label
+                    >
                     <input
                       type="number"
                       id="actionMinutes"
@@ -636,10 +645,11 @@
                   </div>
                 </div>
 
+                <!-- תיאור המשימה -->
                 <div class="form-row">
                   <div class="form-group">
                     <label for="actionDescription"
-                      >תיאור הפעילות הפנימית
+                      ><i class="fas fa-align-right"></i> תיאור הפעילות הפנימית
                       <span class="category-required">*</span></label
                     >
                     <textarea
@@ -649,18 +659,6 @@
                       autocomplete="off"
                       required
                       style="resize: vertical; min-height: 50px;"
-                    ></textarea>
-                  </div>
-                </div>
-
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="actionNotes">הערות (אופציונלי)</label>
-                    <textarea
-                      id="actionNotes"
-                      rows="1"
-                      placeholder="הערות נוספות..."
-                      autocomplete="off"
                     ></textarea>
                   </div>
                 </div>
@@ -1017,7 +1015,7 @@
 
     <!-- ===== NEW: Client-Case Selector Component ===== -->
     <!-- Unified two-step client→case selection -->
-    <script src="js/modules/client-case-selector.js?v=1.2.1"></script>
+    <script src="js/modules/client-case-selector.js?v=1.3.0"></script>
     <!-- Client-Case Selectors Initialization -->
     <script src="js/modules/selectors-init.js?v=1.0.0"></script>
 
@@ -1050,7 +1048,7 @@
 
     <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
     <!-- Modern modular architecture with ActionFlowManager + Smart Descriptions -->
-    <script type="module" src="js/main.js?v=5.0.7"></script>
+    <script type="module" src="js/main.js?v=5.0.8"></script>
 
     <!-- Work Hours Calculator - Smart Calendar System -->
     <script src="js/modules/work-hours-calculator.js?v=1.0.0"></script>

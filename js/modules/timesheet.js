@@ -19,7 +19,8 @@
 import {
   createCaseNumberBadge,
   createServiceBadge,
-  createServiceInfoHeader
+  createServiceInfoHeader,
+  createCombinedInfoBadge
 } from './timesheet-constants.js';
 
 // Utility functions (assumed to be available globally)
@@ -337,7 +338,9 @@ export function createTimesheetCard(entry) {
     caseNumber: entry.caseNumber || "",
     serviceName: entry.serviceName || "",
     notes: entry.notes || "",
-    createdAt: entry.createdAt || null
+    createdAt: entry.createdAt || null,
+    serviceType: entry.serviceType || null,
+    parentServiceId: entry.parentServiceId || null
   };
 
   const hours = Math.round((safeEntry.minutes / 60) * 10) / 10;
@@ -346,27 +349,23 @@ export function createTimesheetCard(entry) {
   const safeFileNumber = safeText(safeEntry.fileNumber);
   const safeNotes = safeText(safeEntry.notes);
 
-  // Use helper functions for badges - MUCH cleaner! 🎯
-  const caseNumberBadge = createCaseNumberBadge(safeEntry.caseNumber, 'small', {
-    marginRight: '6px',
-    marginBottom: '8px'
-  });
+  // 🎯 Combined info badge (case + service)
+  const combinedBadge = createCombinedInfoBadge(
+    safeEntry.caseNumber,
+    safeEntry.serviceName,
+    safeEntry.serviceType
+  );
 
-  const serviceBadge = createServiceBadge(safeEntry.serviceName, 'small', {
-    marginBottom: '8px'
-  });
-
-  // 🎯 שני ה-badges בשורה אחת (inline)
-  const badgesRow = (caseNumberBadge || serviceBadge) ? `
-    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
-      ${caseNumberBadge}${serviceBadge}
+  const badgesRow = combinedBadge ? `
+    <div style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+      ${combinedBadge}
     </div>
   ` : '';
 
   return `
     <div class="linear-minimal-card timesheet-card" data-entry-id="${safeEntry.id}" onclick="manager.expandTimesheetCard('${safeEntry.id}', event)">
+      ${badgesRow}
       <div class="linear-card-content">
-        ${badgesRow}
         <h3 class="linear-card-title">
           ${safeAction}
         </h3>
@@ -437,7 +436,9 @@ export function showExpandedTimesheetCard(entry) {
     fileNumber: safeText(entry.fileNumber || ""),
     caseNumber: entry.caseNumber || "",
     serviceName: entry.serviceName || "",
-    notes: safeText(entry.notes || "")
+    notes: safeText(entry.notes || ""),
+    serviceType: entry.serviceType || null,
+    parentServiceId: entry.parentServiceId || null
   };
 
   const hours = Math.round((safeEntry.minutes / 60) * 10) / 10;
@@ -522,22 +523,21 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
           return '';
         }
 
-        // Use helper functions for badges - consistent styling! 🎯
-        const serviceBadge = createServiceBadge(entry.serviceName, 'small', {
-          marginRight: '6px'
-        });
-
-        const caseBadge = createCaseNumberBadge(entry.caseNumber, 'small');
+        // 🎯 Combined info badge (case + service)
+        const combinedBadge = createCombinedInfoBadge(
+          entry.caseNumber,
+          entry.serviceName,
+          entry.serviceType
+        );
 
         const entryId = entry.id || entry.entryId || Date.now();
-        const hasBadges = serviceBadge || caseBadge;
 
         return `
       <tr data-entry-id="${entryId}">
         <td class="timesheet-cell-date">${formatDate(entry.date)}</td>
         <td class="timesheet-cell-action">
-          ${serviceBadge}${caseBadge}
-          <div style="margin-top: ${hasBadges ? '4px' : '0'};">
+          ${combinedBadge}
+          <div style="margin-top: ${combinedBadge ? '4px' : '0'};">
             ${safeText(entry.action || "")}
           </div>
         </td>
@@ -891,16 +891,4 @@ export function searchClientsForEdit(clients, searchTerm) {
  */
 export function getTotalMinutes(entries) {
   return entries.reduce((total, entry) => total + (entry.minutes || 0), 0);
-}
-
-/**
- * Clear timesheet form
- */
-export function clearTimesheetForm() {
-  const timesheetForm = document.getElementById("timesheetForm");
-  if (timesheetForm) timesheetForm.reset();
-  const actionDate = document.getElementById("actionDate");
-  if (actionDate) {
-    actionDate.value = new Date().toISOString().split("T")[0];
-  }
 }

@@ -13,7 +13,8 @@
 
 import {
   createCaseNumberBadge,
-  createServiceBadge
+  createServiceBadge,
+  createCombinedInfoBadge
 } from './timesheet-constants.js';
 
 /* ===========================
@@ -260,6 +261,10 @@ export function sanitizeTaskData(task) {
     updatedAt: task.updatedAt || null,
     caseId: task.caseId || null,
     caseTitle: task.caseTitle || null,
+    caseNumber: task.caseNumber || null,
+    serviceName: task.serviceName || null,
+    serviceType: task.serviceType || null,
+    parentServiceId: task.parentServiceId || null
   };
 }
 
@@ -461,24 +466,24 @@ export function createTaskCard(task, options = {}) {
     </span>
   ` : '';
 
-  // 🎯 Service & Case badges (small and inline)
-  const caseNumberBadge = createCaseNumberBadge(safeTask.caseNumber, 'small', {
-    marginRight: '6px'
-  });
+  // 🎯 Combined info badge (case + service)
+  const combinedBadge = createCombinedInfoBadge(
+    safeTask.caseNumber,
+    safeTask.serviceName,
+    safeTask.serviceType
+  );
 
-  const serviceBadge = createServiceBadge(safeTask.serviceName, 'small');
-
-  const badgesRow = (caseNumberBadge || serviceBadge) ? `
-    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
-      ${caseNumberBadge}${serviceBadge}
+  const badgesRow = combinedBadge ? `
+    <div style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+      ${combinedBadge}
     </div>
   ` : '';
 
   return `
     <div class="linear-minimal-card" data-task-id="${safeTask.id}">
       ${window.DatesModule ? window.DatesModule.getCreationDateCorner(safeTask) : ''}
+      ${badgesRow}
       <div class="linear-card-content">
-        ${badgesRow}
         <h3 class="linear-card-title" title="${safeClientName}" style="display: flex; align-items: center;">
           <span style="flex: 1;">${safeDescription}</span>
           ${completedIndicator}

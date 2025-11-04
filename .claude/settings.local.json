@@ -41,7 +41,16 @@
       "Bash(cp:*)",
       "Read(//c/**)",
       "Bash(awk:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(xargs grep:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(find:*)",
+      "Bash(sort:*)",
+      "Bash(notification-demo.html)",
+      "Bash(test-professional-icons.html)",
+      "Bash(test-progress.html)",
+      "Bash(cat:*)",
+      "Bash(firebase login:ci:*)"
     ],
     "deny": [],
     "ask": []

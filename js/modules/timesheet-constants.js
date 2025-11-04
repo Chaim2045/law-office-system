@@ -195,3 +195,134 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+/* ========================================
+   COMBINED INFO BADGE
+   ======================================== */
+
+/**
+ * Create combined info badge with case and service info
+ * @param {string} caseNumber - Case number to display
+ * @param {string} serviceName - Service name to display
+ * @param {string} serviceType - Service type ('legal_procedure' or other)
+ * @returns {string} HTML string for combined badge
+ */
+export function createCombinedInfoBadge(caseNumber, serviceName, serviceType) {
+  if (!caseNumber && !serviceName) {
+    return '';
+  }
+
+  // Generate unique ID for this badge
+  const badgeId = `badge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Determine service icon based on type
+  const serviceIcon = (serviceType === 'legal_procedure')
+    ? '<i class="fas fa-balance-scale"></i>'
+    : '<i class="fas fa-briefcase"></i>';
+
+  const caseIcon = '<i class="fas fa-folder"></i>';
+
+  return `
+    <div class="combined-info-badge" onclick="event.stopPropagation(); window.TimesheetConstants.showCombinedInfoPopup('${escapeHtml(caseNumber)}', '${escapeHtml(serviceName)}', '${serviceType}')">
+      ${caseNumber ? caseIcon : ''}
+      ${serviceName ? serviceIcon : ''}
+    </div>
+  `;
+}
+
+/**
+ * Show popup with combined case and service info
+ * @param {string} caseNumber - Case number
+ * @param {string} serviceName - Service name
+ * @param {string} serviceType - Service type
+ */
+export function showCombinedInfoPopup(caseNumber, serviceName, serviceType) {
+  // Remove existing popup if any
+  const existingPopup = document.querySelector('.info-popup');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
+
+  // Determine service icon and label
+  const serviceIcon = (serviceType === 'legal_procedure')
+    ? '<i class="fas fa-balance-scale"></i>'
+    : '<i class="fas fa-briefcase"></i>';
+
+  const serviceLabel = (serviceType === 'legal_procedure')
+    ? 'הליך משפטי'
+    : 'שירות';
+
+  // Create popup HTML
+  const popupHtml = `
+    <div class="info-popup combined-popup">
+      <div class="info-popup-content">
+        <div class="info-popup-header">
+          <i class="fas fa-info-circle"></i>
+          <span>פרטי משימה</span>
+        </div>
+        <div class="info-popup-body">
+          ${caseNumber ? `
+          <div class="info-row">
+            <i class="fas fa-folder"></i>
+            <span class="info-label">תיק:</span>
+            <strong>${escapeHtml(caseNumber)}</strong>
+          </div>
+          ` : ''}
+          ${serviceName ? `
+          <div class="info-row">
+            ${serviceIcon}
+            <span class="info-label">${serviceLabel}:</span>
+            <strong>${escapeHtml(serviceName)}</strong>
+          </div>
+          ` : ''}
+        </div>
+        <div class="info-popup-footer">
+          <button onclick="window.TimesheetConstants.closeInfoPopup()">
+            <i class="fas fa-times"></i>
+            סגור
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Add popup to body
+  document.body.insertAdjacentHTML('beforeend', popupHtml);
+
+  // Activate popup with animation
+  setTimeout(() => {
+    const popup = document.querySelector('.info-popup');
+    if (popup) {
+      popup.classList.add('active');
+    }
+  }, 10);
+
+  // Close on background click
+  const popup = document.querySelector('.info-popup');
+  if (popup) {
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) {
+        closeInfoPopup();
+      }
+    });
+  }
+}
+
+/**
+ * Close info popup
+ */
+export function closeInfoPopup() {
+  const popup = document.querySelector('.info-popup');
+  if (popup) {
+    popup.classList.remove('active');
+    setTimeout(() => popup.remove(), 300);
+  }
+}
+
+// Expose functions globally for onclick handlers
+if (typeof window !== 'undefined') {
+  window.TimesheetConstants = {
+    showCombinedInfoPopup,
+    closeInfoPopup
+  };
+}

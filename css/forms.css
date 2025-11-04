@@ -135,6 +135,11 @@
   transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Timesheet form - Narrower for better calendar display */
+#timesheetFormContainer {
+  max-width: 600px;
+}
+
 .compact-form.hidden {
   display: none;
 }
@@ -301,104 +306,94 @@
 }
 
 /* ===============================================
-   ✨ Vanilla Calendar Pro - Ultra-Minimal Styling
+   ✨ Vanilla Calendar Pro - Modern Design
    =============================================== */
 
-/* Calendar Wrapper Container (positioned wrapper) */
-.vanilla-calendar-container {
-  position: fixed !important;
-  z-index: 9999 !important;
-  max-height: none !important;
-  overflow: visible !important;
+/* Calendar Wrapper - Positioned Container */
+.vanilla-calendar-wrapper {
+  position: fixed;
+  z-index: 9999;
+  direction: rtl;
 }
 
-/* Calendar Instance (from Vanilla Calendar library) */
+/* Vanilla Calendar Base */
 .vanilla-calendar {
   background: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02);
-  font-family: inherit;
-  direction: rtl;
-  padding: 16px;
+  border-radius: 16px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+  padding: 20px;
   width: 340px;
-  max-height: none;
-  overflow: visible;
-  animation: calendarSlideIn 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: calendarFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Calendar Wrapper - clean structure */
-.vanilla-calendar-wrapper {
-  overflow: visible !important;
-  max-height: none !important;
-  display: flex;
-  flex-direction: column;
-}
-
-@keyframes calendarSlideIn {
+@keyframes calendarFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.96);
+    transform: scale(0.95) translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1) translateY(0);
   }
 }
 
-/* Header - Ultra Minimal */
+/* Header */
 .vanilla-calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0 12px 0;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #f5f5f5;
-  gap: 0;
+  margin-bottom: 20px;
+  gap: 12px;
 }
 
 .vanilla-calendar-header__content {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  flex: 1;
-  justify-content: center;
-  order: 2;
-}
-
-/* Month & Year - Clean Typography */
-.vanilla-calendar-month,
-.vanilla-calendar-year {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #171717;
-  letter-spacing: -0.02em;
 }
 
 .vanilla-calendar-month {
-  margin-left: 4px;
+  color: #171717;
 }
 
-/* Navigation Arrows - Clean Minimal Style */
+.vanilla-calendar-year {
+  color: #737373;
+}
+
+/* Navigation Arrows */
 .vanilla-calendar-arrow {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: white;
-  border: 1px solid #e5e5e5;
-  color: #a3a3a3;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: #737373;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* RTL: Previous arrow on far right */
-.vanilla-calendar-arrow_prev {
-  order: 1;
-  margin-left: 0;
+.vanilla-calendar-arrow:hover {
+  background: #f5f5f5;
+  color: #171717;
+}
+
+.vanilla-calendar-arrow:active {
+  transform: scale(0.95);
+}
+
+.vanilla-calendar-arrow svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* RTL: Next arrow on far left */
@@ -440,17 +435,17 @@
   transform: scaleX(-1);
 }
 
-/* Backdrop - Subtle */
+/* Backdrop - Darker for better visibility */
 .calendar-backdrop {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   z-index: 9998 !important;
   animation: backdropFadeIn 0.15s ease;
-  backdrop-filter: blur(1px);
+  backdrop-filter: blur(2px);
 }
 
 @keyframes backdropFadeIn {

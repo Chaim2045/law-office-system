@@ -223,10 +223,21 @@ class LawOfficeManager {
 
     // ✅ Client form removed - now handled by CasesManager
 
-    // Set default action date
+    // Initialize Vanilla Calendar Picker for timesheet date/time
     const actionDate = document.getElementById("actionDate");
-    if (actionDate) {
-      actionDate.value = new Date().toISOString().split("T")[0];
+    if (actionDate && typeof VanillaCalendarPicker !== 'undefined') {
+      this.timesheetCalendar = new VanillaCalendarPicker(actionDate, {
+        minDate: '2020-01-01', // Allow past dates for timesheet entries
+        defaultHour: new Date().getHours(),
+        defaultMinute: new Date().getMinutes(),
+        showTime: true  // Explicitly enable time picker
+      });
+
+      // Set default to current date and time
+      const now = new Date();
+      actionDate.value = this.formatDateTime(now);
+
+      Logger.log('✅ Timesheet calendar picker initialized with time picker');
     }
 
     // ✅ Budget search box - live text search with debouncing
@@ -511,8 +522,10 @@ class LawOfficeManager {
             caseId: selectorValues.caseId,
             caseNumber: selectorValues.caseNumber,
             caseTitle: selectorValues.caseTitle,
-            serviceId: selectorValues.serviceId,  // ✅ שירות/שלב נבחר
+            serviceId: selectorValues.serviceId,  // ✅ שירות/שלב נבחר (stage.id עבור הליך משפטי)
             serviceName: selectorValues.serviceName,  // ✅ שם השירות
+            serviceType: selectorValues.serviceType,  // ✅ סוג השירות (legal_procedure/hours)
+            parentServiceId: selectorValues.parentServiceId,  // ✅ service.id עבור הליך משפטי
             branch: branch,  // ✅ סניף מטפל
             estimatedMinutes: estimatedMinutes,
             originalEstimate: estimatedMinutes, // ✅ NEW: originalEstimate for v2.0
@@ -525,6 +538,10 @@ class LawOfficeManager {
           };
 
           Logger.log('📝 Creating budget task with data:', taskData);
+          console.log('🔍 FULL taskData:', JSON.stringify(taskData, null, 2));
+          console.log('🔍 serviceType:', taskData.serviceType);
+          console.log('🔍 parentServiceId:', taskData.parentServiceId);
+          console.log('🔍 serviceId:', taskData.serviceId);
 
           // Architecture v2.0 - FirebaseService with retry
           Logger.log('  🚀 [v2.0] Using FirebaseService.call');
@@ -692,8 +709,16 @@ class LawOfficeManager {
     // ✅ This form is now ONLY for internal activities
     // Time tracking on clients is done automatically through tasks
 
-    // Validate form fields
-    const date = document.getElementById("actionDate")?.value;
+    // Validate form fields - get date from calendar picker
+    let date;
+    if (this.timesheetCalendar) {
+      date = this.timesheetCalendar.getSelectedDateISO();
+    }
+    if (!date) {
+      // Fallback to input value if calendar not available
+      date = document.getElementById("actionDate")?.value;
+    }
+
     const minutes = parseInt(document.getElementById("actionMinutes")?.value);
     const action = document.getElementById("actionDescription")?.value?.trim();
     const notes = document.getElementById("actionNotes")?.value?.trim();
