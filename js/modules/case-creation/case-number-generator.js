@@ -40,6 +40,11 @@
      * עדכון מספר תיק אחרון מ-Firebase
      */
     async updateLastCaseNumber() {
+      // 🔍 Performance Monitoring - Start
+      const opId = window.PerformanceMonitor?.start('case-number-query', {
+        action: 'updateLastCaseNumber'
+      });
+
       try {
         const snapshot = await firebase.firestore()
           .collection('clients')
@@ -56,8 +61,15 @@
         }
 
         Logger.log('📊 Updated last case number:', this.lastCaseNumber);
+
+        // 🔍 Performance Monitoring - Success
+        window.PerformanceMonitor?.success(opId, { lastCaseNumber: this.lastCaseNumber });
       } catch (error) {
         console.error('❌ Error updating last case number:', error);
+
+        // 🔍 Performance Monitoring - Failure
+        window.PerformanceMonitor?.failure(opId, error);
+
         // fallback - אין מספר
         this.lastCaseNumber = null;
       }
@@ -133,6 +145,12 @@
      * @returns {Promise<string>} מספר תיק חדש וזמין
      */
     async getNextAvailableCaseNumber(maxRetries = 10) {
+      // 🔍 Performance Monitoring - Start
+      const opId = window.PerformanceMonitor?.start('case-number-generation', {
+        action: 'getNextAvailableCaseNumber',
+        maxRetries: maxRetries
+      });
+
       try {
         Logger.log('🔍 Finding next available case number...');
 
@@ -155,6 +173,12 @@
             // עדכון ה-cache כדי למנוע התנגשויות עתידיות
             this.lastCaseNumber = candidateNumber;
 
+            // 🔍 Performance Monitoring - Success
+            window.PerformanceMonitor?.success(opId, {
+              caseNumber: candidateNumber,
+              attempts: attempt
+            });
+
             return candidateNumber;
           }
 
@@ -167,10 +191,23 @@
         }
 
         // אם הגענו לכאן, כל הניסיונות נכשלו
-        throw new Error(`Failed to find available case number after ${maxRetries} attempts`);
+        const error = new Error(`Failed to find available case number after ${maxRetries} attempts`);
+
+        // 🔍 Performance Monitoring - Failure
+        window.PerformanceMonitor?.failure(opId, error);
+
+        throw error;
 
       } catch (error) {
         console.error('❌ Error finding available case number:', error);
+
+        // 🔍 Performance Monitoring - Failure (if not already reported)
+        if (window.PerformanceMonitor && opId) {
+          const activeOps = window.PerformanceMonitor.getActiveOperations();
+          if (activeOps.some(op => op.id === opId)) {
+            window.PerformanceMonitor.failure(opId, error);
+          }
+        }
 
         // Fallback: מספר עם timestamp
         const currentYear = new Date().getFullYear();
@@ -229,15 +266,29 @@
      * @returns {Promise<boolean>}
      */
     async caseNumberExists(caseNumber) {
+      // 🔍 Performance Monitoring - Start
+      const opId = window.PerformanceMonitor?.start('case-number-existence-check', {
+        caseNumber: caseNumber.toString()
+      });
+
       try {
         const doc = await firebase.firestore()
           .collection('clients')
           .doc(caseNumber.toString())
           .get();
 
-        return doc.exists;
+        const exists = doc.exists;
+
+        // 🔍 Performance Monitoring - Success
+        window.PerformanceMonitor?.success(opId, { exists: exists });
+
+        return exists;
       } catch (error) {
         console.error('❌ Error checking case number existence:', error);
+
+        // 🔍 Performance Monitoring - Failure
+        window.PerformanceMonitor?.failure(opId, error);
+
         return false;
       }
     }
