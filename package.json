@@ -11,11 +11,19 @@
     "compile-ts": "tsc",
     "compile:watch": "tsc --watch",
     "clean": "rm -rf dist",
-    "lint": "echo 'Add ESLint for linting'",
+    "lint": "eslint . --ext .js,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.ts,.tsx --fix",
     "format": "echo 'Add Prettier for formatting'",
-    "css:lint": "echo '✅ CSS lint check passed (placeholder - add stylelint later)'",
-    "css:lint:fix": "echo '✅ CSS auto-fix completed (placeholder - add stylelint --fix later)'",
-    "test": "echo '⚠️ No tests configured yet - TODO: Add Jest/Vitest'"
+    "css:lint": "stylelint \"**/*.css\"",
+    "css:lint:fix": "stylelint \"**/*.css\" --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "prepare": "husky install"
   },
   "keywords": [
     "law-office",
@@ -26,13 +34,42 @@
   "author": "Chaim",
   "license": "UNLICENSED",
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@testing-library/dom": "^10.4.1",
     "@types/firebase": "^2.4.32",
     "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
+    "@typescript-eslint/parser": "^8.46.3",
+    "@vitest/coverage-v8": "^4.0.6",
+    "@vitest/ui": "^4.0.6",
+    "eslint": "^9.39.1",
+    "eslint-plugin-import": "^2.32.0",
     "firebase": "^9.22.0",
+    "happy-dom": "^20.0.10",
+    "husky": "^9.1.7",
+    "jsdom": "^27.1.0",
+    "lint-staged": "^16.2.6",
+    "playwright": "^1.56.1",
+    "stylelint": "^16.25.0",
+    "stylelint-config-standard": "^39.0.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "vitest": "^4.0.6"
   },
   "dependencies": {
     "zod": "^4.1.12"
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx}": [
+      "eslint --fix",
+      "git add"
+    ],
+    "*.css": [
+      "stylelint --fix",
+      "git add"
+    ],
+    "*.ts": [
+      "tsc --noEmit"
+    ]
   }
 }
