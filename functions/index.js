@@ -1485,6 +1485,8 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
 
     const taskData = {
       description: sanitizeString(data.description.trim()),
+      categoryId: data.categoryId || null, // ✅ מזהה קטגוריית עבודה (Work Category ID)
+      categoryName: data.categoryName || null, // ✅ שם קטגוריית העבודה (Work Category Name)
       clientId: clientId,  // ✅ מספר תיק
       clientName: clientData.clientName || data.clientName,
       caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
