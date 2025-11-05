@@ -232,9 +232,12 @@ function getActivePackage(stage) {
   }
 
   // מחפש את החבילה הראשונה שפעילה ויש לה שעות
-  const activePackage = stage.packages.find(pkg =>
-    pkg.status === 'active' && (pkg.hoursRemaining || 0) > 0
-  );
+  // ✅ תמיכה בחבילות ללא status (נחשב כ-active)
+  const activePackage = stage.packages.find(pkg => {
+    const hasHoursRemaining = (pkg.hoursRemaining || 0) > 0;
+    const isActive = !pkg.status || pkg.status === 'active'; // אם אין status, נחשב כ-active
+    return isActive && hasHoursRemaining;
+  });
 
   return activePackage || null;
 }
@@ -267,11 +270,17 @@ function deductHoursFromPackage(pkg, hoursToDeduct) {
   pkg.hoursUsed = (pkg.hoursUsed || 0) + hoursToDeduct;
   pkg.hoursRemaining = (pkg.hoursRemaining || 0) - hoursToDeduct;
 
+  // ✅ ודא שיש status - אם אין, הגדר כ-active
+  if (!pkg.status) {
+    pkg.status = 'active';
+  }
+
   // סגירה אוטומטית אם התרוקנה
   if (pkg.hoursRemaining <= 0) {
     pkg.status = 'depleted';
     pkg.closedDate = new Date().toISOString();
-    console.log(`📦 חבילה ${pkg.id} נסגרה אוטומטית (${pkg.hoursUsed}/${pkg.hours} שעות נוצלו)`);
+    const totalHours = pkg.hoursInPackage || pkg.hours || 0;
+    console.log(`📦 חבילה ${pkg.id || 'unknown'} נסגרה אוטומטית (${pkg.hoursUsed}/${totalHours} שעות נוצלו)`);
   }
 
   return pkg;
@@ -1940,8 +1949,71 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
           const clientData = clientDoc.data();
           const hoursWorked = data.minutes / 60;
 
-          // ✅ לקוח שעתי - מציאת החבילה הפעילה
-          if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+          // ✅ הליך משפטי - תמחור שעתי (מבנה חדש: שירות בתוך services)
+          // 🎯 IMPORTANT: בדוק זאת ראשון! לפני hours רגיל!
+          if (taskData.serviceType === 'legal_procedure' && taskData.parentServiceId) {
+            // מבנה חדש: השירות הוא בתוך clientData.services
+            const services = clientData.services || [];
+            const targetService = services.find(s => s.id === taskData.parentServiceId);
+
+            if (targetService && targetService.type === 'legal_procedure') {
+              // ✅ תמיכה גם ב-pricingType: 'hourly' וגם ללא pricingType (legacy)
+              const isHourly = !targetService.pricingType || targetService.pricingType === 'hourly';
+
+              if (isHourly) {
+                const currentStageId = taskData.serviceId || 'stage_a';
+                const stages = targetService.stages || [];
+                const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
+
+                if (currentStageIndex !== -1) {
+                  const currentStage = stages[currentStageIndex];
+
+                  // מציאת החבילה הפעילה בשלב
+                  const activePackage = getActivePackage(currentStage);
+
+                  if (activePackage) {
+                    // קיזוז מהחבילה הפעילה
+                    deductHoursFromPackage(activePackage, hoursWorked);
+
+                    // ✅ עדכון השלב (aggregates)
+                    stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
+                    stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
+                    stages[currentStageIndex].minutesUsed = (currentStage.minutesUsed || 0) + data.minutes;
+                    stages[currentStageIndex].minutesRemaining = (currentStage.minutesRemaining || 0) - data.minutes;
+
+                    // ✅ עדכון השירות (aggregates)
+                    targetService.stages = stages;
+                    targetService.hoursUsed = (targetService.hoursUsed || 0) + hoursWorked;
+                    targetService.hoursRemaining = (targetService.hoursRemaining || 0) - hoursWorked;
+                    // ❌ לא ניתן להשתמש ב-serverTimestamp() בתוך array! משתמשים ב-Date רגיל
+                    targetService.lastActivity = new Date().toISOString();
+
+                    // ✅ עדכון הלקוח (aggregates + services array)
+                    await clientDoc.ref.update({
+                      services: clientData.services,
+                      hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
+                      hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                      minutesUsed: admin.firestore.FieldValue.increment(data.minutes),
+                      minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                      lastActivity: admin.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} בשירות ${targetService.name}, חבילה ${activePackage.id || 'unknown'}`);
+                  } else {
+                    console.warn(`⚠️ ${currentStage.name} בשירות ${targetService.name} - אין חבילה פעילה!`);
+                  }
+                } else {
+                  console.warn(`⚠️ שלב ${currentStageId} לא נמצא בשירות ${targetService.name}`);
+                }
+              } else {
+                console.warn(`⚠️ שירות ${targetService.name} אינו בתמחור שעתי`);
+              }
+            } else {
+              console.warn(`⚠️ שירות ${taskData.parentServiceId} לא נמצא`);
+            }
+          }
+          // ✅ לקוח שעתי - מציאת החבילה הפעילה (מבנה חדש)
+          else if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
             // 🎯 מציאת השירות הספציפי לפי serviceId (לא תמיד הראשון!)
             let service = null;
 
@@ -1978,12 +2050,12 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
                 lastActivity: admin.firestore.FieldValue.serverTimestamp()
               });
 
-              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id} (${activePackage.hoursUsed}/${activePackage.hours})`);
+              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id} (${activePackage.hoursUsed}/${activePackage.hoursInPackage || activePackage.hours})`);
             } else {
               console.warn(`⚠️ שירות ${service.name || service.id} עבור לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
             }
           }
-          // ✅ הליך משפטי - תמחור שעתי (עם חבילות!)
+          // ✅ הליך משפטי - תמחור שעתי (מבנה ישן: stages ברמת הלקוח)
           else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
             // מציאת השלב הנוכחי
             // ✅ FIX: Use serviceId from task if provided (the specific stage), otherwise use currentStage
@@ -2018,7 +2090,7 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
                 console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
               }
             } else {
-              console.warn(`⚠️ שלב ${targetStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
+              console.warn(`⚠️ שלב ${currentStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
             }
           }
           // ✅ הליך משפטי - תמחור פיקס (מעקב שעות בלבד)
