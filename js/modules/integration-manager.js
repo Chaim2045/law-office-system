@@ -17,7 +17,7 @@
 
   /* === Feature Configuration === */
   const FEATURE_CONFIG = {
-    USE_FIREBASE_PAGINATION: false, // כבוי כברירת מחדל
+    USE_FIREBASE_PAGINATION: true, // ✅ מופעל - Keyset Pagination
     PAGINATION_PAGE_SIZE: 20,
     SKELETON_DELAY_MS: 800,
     ENABLE_SCROLL_PRESERVATION: true,

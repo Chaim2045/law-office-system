@@ -41,14 +41,14 @@ function initializeFirebase() {
   try {
 
     if (!window.firebaseDB) {
-      console.error("❌ Firebase Database לא זמין");
-      throw new Error("Firebase Database לא מחובר");
+      console.error('❌ Firebase Database לא זמין');
+      throw new Error('Firebase Database לא מחובר');
     }
 
     // Database ready - silent mode
     return true;
   } catch (error) {
-    console.error("❌ שגיאה באתחול Firebase:", error);
+    console.error('❌ שגיאה באתחול Firebase:', error);
     return false;
   }
 }
@@ -62,11 +62,11 @@ async function loadClientsFromFirebase() {
   try {
     const db = window.firebaseDB;
     if (!db) {
-      throw new Error("Firebase לא מחובר");
+      throw new Error('Firebase לא מחובר');
     }
 
     // ✅ CLIENT = CASE: טעינה ישירה מ-clients collection
-    const clientsSnapshot = await db.collection("clients").get();
+    const clientsSnapshot = await db.collection('clients').get();
 
     const clients = [];
 
@@ -97,8 +97,8 @@ async function loadClientsFromFirebase() {
 
     return clients;
   } catch (error) {
-    console.error("Firebase error:", error);
-    throw new Error("שגיאה בטעינת לקוחות: " + error.message);
+    console.error('Firebase error:', error);
+    throw new Error('שגיאה בטעינת לקוחות: ' + error.message);
   }
 }
 
@@ -109,12 +109,13 @@ async function loadBudgetTasksFromFirebase(employee) {
   try {
     const db = window.firebaseDB;
     if (!db) {
-      throw new Error("Firebase לא מחובר");
+      throw new Error('Firebase לא מחובר');
     }
 
     const snapshot = await db
-      .collection("budget_tasks")
-      .where("employee", "==", employee)
+      .collection('budget_tasks')
+      .where('employee', '==', employee)
+      .limit(50) // ✅ Safety net - prevents loading all tasks in fallback mode
       .get();
 
     const tasks = [];
@@ -130,7 +131,7 @@ async function loadBudgetTasksFromFirebase(employee) {
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
         updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
         completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : data.completedAt,
-        deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline,
+        deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline
       };
 
       // Only set 'id' if it doesn't exist in the data
@@ -143,8 +144,8 @@ async function loadBudgetTasksFromFirebase(employee) {
 
     return tasks;
   } catch (error) {
-    console.error("Firebase error:", error);
-    throw new Error("שגיאה בטעינת משימות: " + error.message);
+    console.error('Firebase error:', error);
+    throw new Error('שגיאה בטעינת משימות: ' + error.message);
   }
 }
 
@@ -155,12 +156,13 @@ async function loadTimesheetFromFirebase(employee) {
   try {
     const db = window.firebaseDB;
     if (!db) {
-      throw new Error("Firebase לא מחובר");
+      throw new Error('Firebase לא מחובר');
     }
 
     const snapshot = await db
-      .collection("timesheet_entries")
-      .where("employee", "==", employee)
+      .collection('timesheet_entries')
+      .where('employee', '==', employee)
+      .limit(50) // ✅ Safety net - prevents loading all entries in fallback mode
       .get();
 
     const entries = [];
@@ -173,21 +175,25 @@ async function loadTimesheetFromFirebase(employee) {
         id: doc.id,
         ...data,
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
       });
     });
 
     // Sort by date (manual sorting instead of orderBy)
     entries.sort((a, b) => {
-      if (!a.date) return 1;
-      if (!b.date) return -1;
+      if (!a.date) {
+return 1;
+}
+      if (!b.date) {
+return -1;
+}
       return new Date(b.date) - new Date(a.date);
     });
 
     return entries;
   } catch (error) {
-    console.error("Firebase error:", error);
-    throw new Error("שגיאה בטעינת שעתון: " + error.message);
+    console.error('Firebase error:', error);
+    throw new Error('שגיאה בטעינת שעתון: ' + error.message);
   }
 }
 
@@ -219,7 +225,7 @@ async function saveBudgetTaskToFirebase(taskData) {
 
     return result.taskId;
   } catch (error) {
-    console.error("Firebase error:", error);
+    console.error('Firebase error:', error);
 
     // ✅ Provide better error messages
     if (error.message?.includes('אין חיבור לאינטרנט')) {
@@ -260,7 +266,7 @@ async function saveTimesheetToFirebase(entryData) {
 
     return result.entryId;
   } catch (error) {
-    console.error("Firebase error:", error);
+    console.error('Firebase error:', error);
 
     // ✅ Provide better error messages
     if (error.message?.includes('אין חיבור לאינטרנט')) {
@@ -283,7 +289,7 @@ async function saveTimesheetToFirebase(entryData) {
  * Update timesheet entry in Firebase
  * @deprecated Use FirebaseService.call('updateTimesheetEntry') instead
  */
-async function updateTimesheetEntryFirebase(entryId, minutes, reason = "") {
+async function updateTimesheetEntryFirebase(entryId, minutes, reason = '') {
   console.warn('⚠️ [DEPRECATED] updateTimesheetEntryFirebase is deprecated. Use FirebaseService.call("updateTimesheetEntry") instead.');
 
   try {
@@ -300,7 +306,7 @@ async function updateTimesheetEntryFirebase(entryId, minutes, reason = "") {
 
     return result;
   } catch (error) {
-    console.error("Firebase error:", error);
+    console.error('Firebase error:', error);
     throw error;
   }
 }
@@ -327,7 +333,7 @@ async function addTimeToTaskFirebase(taskId, timeData) {
 
     return result;
   } catch (error) {
-    console.error("❌ שגיאה בהוספת זמן למשימה:", error);
+    console.error('❌ שגיאה בהוספת זמן למשימה:', error);
     throw error;
   }
 }
@@ -336,7 +342,7 @@ async function addTimeToTaskFirebase(taskId, timeData) {
 /**
  * @deprecated Use FirebaseService.call('completeTask') instead
  */
-async function completeTaskFirebase(taskId, completionNotes = "") {
+async function completeTaskFirebase(taskId, completionNotes = '') {
   console.warn('⚠️ [DEPRECATED] completeTaskFirebase is deprecated. Use FirebaseService.call("completeTask") instead.');
 
   try {
@@ -352,7 +358,7 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
 
     return result;
   } catch (error) {
-    console.error("❌ שגיאה בהשלמת משימה:", error);
+    console.error('❌ שגיאה בהשלמת משימה:', error);
     throw error;
   }
 }
@@ -361,7 +367,7 @@ async function completeTaskFirebase(taskId, completionNotes = "") {
 /**
  * @deprecated Use FirebaseService.call('extendTaskDeadline') instead
  */
-async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
+async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = '') {
   console.warn('⚠️ [DEPRECATED] extendTaskDeadlineFirebase is deprecated. Use FirebaseService.call("extendTaskDeadline") instead.');
 
   try {
@@ -378,46 +384,46 @@ async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = "") {
 
     return result;
   } catch (error) {
-    console.error("❌ שגיאה בהארכת תאריך יעד:", error);
+    console.error('❌ שגיאה בהארכת תאריך יעד:', error);
     throw error;
   }
 }
 
 // רישום כניסת משתמש (Firebase)
-async function logUserLoginFirebase(employee, userAgent = "", ipAddress = "") {
+async function logUserLoginFirebase(employee, userAgent = '', ipAddress = '') {
   try {
     const db = window.firebaseDB;
     if (!db) {
-      console.warn("Firebase לא מחובר - דילוג על רישום כניסה");
+      console.warn('Firebase לא מחובר - דילוג על רישום כניסה');
       return { success: true };
     }
 
     const loginData = {
       employee: employee,
-      action: "login",
+      action: 'login',
       userAgent: userAgent || navigator.userAgent,
-      ipAddress: ipAddress || "לא זמין",
+      ipAddress: ipAddress || 'לא זמין',
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       sessionId: Date.now().toString(),
       browserInfo: {
         language: navigator.language,
         platform: navigator.platform,
         cookieEnabled: navigator.cookieEnabled,
-        onlineStatus: navigator.onLine,
-      },
+        onlineStatus: navigator.onLine
+      }
     };
 
-    db.collection("user_logs")
+    db.collection('user_logs')
       .add(loginData)
       .then(() => {
       })
       .catch((error) => {
-        console.warn("שגיאה ברישום כניסה:", error.message);
+        console.warn('שגיאה ברישום כניסה:', error.message);
       });
 
-    return { success: true, message: "כניסה נרשמה" };
+    return { success: true, message: 'כניסה נרשמה' };
   } catch (error) {
-    console.error("שגיאה ברישום כניסת משתמש:", error);
+    console.error('שגיאה ברישום כניסת משתמש:', error);
     return { success: true };
   }
 }

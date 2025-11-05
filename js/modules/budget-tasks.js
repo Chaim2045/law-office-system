@@ -14,8 +14,11 @@
 import {
   createCaseNumberBadge,
   createServiceBadge,
-  createCombinedInfoBadge
+  createCombinedInfoBadge,
+  createStatusBadge
 } from './timesheet-constants.js';
+
+import DescriptionTooltips from './description-tooltips.js';
 
 /* ===========================
    FIREBASE OPERATIONS
@@ -30,12 +33,13 @@ export async function loadBudgetTasksFromFirebase(employee) {
   try {
     const db = window.firebaseDB;
     if (!db) {
-      throw new Error("Firebase לא מחובר");
+      throw new Error('Firebase לא מחובר');
     }
 
     const snapshot = await db
-      .collection("budget_tasks")
-      .where("employee", "==", employee)
+      .collection('budget_tasks')
+      .where('employee', '==', employee)
+      .limit(50) // ✅ Safety net - prevents loading all tasks
       .get();
 
     const tasks = [];
@@ -51,7 +55,7 @@ export async function loadBudgetTasksFromFirebase(employee) {
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : data.createdAt),
         updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : data.updatedAt),
         completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : (data.completedAt ? new Date(data.completedAt) : data.completedAt),
-        deadline: data.deadline?.toDate ? data.deadline.toDate() : (data.deadline ? new Date(data.deadline) : data.deadline),
+        deadline: data.deadline?.toDate ? data.deadline.toDate() : (data.deadline ? new Date(data.deadline) : data.deadline)
       };
 
       // Only set 'id' if it doesn't exist in the data
@@ -64,8 +68,8 @@ export async function loadBudgetTasksFromFirebase(employee) {
 
     return tasks;
   } catch (error) {
-    console.error("Firebase error:", error);
-    throw new Error("שגיאה בטעינת משימות: " + error.message);
+    console.error('Firebase error:', error);
+    throw new Error('שגיאה בטעינת משימות: ' + error.message);
   }
 }
 
@@ -85,7 +89,7 @@ export async function saveBudgetTaskToFirebase(taskData) {
 
     return result.taskId;
   } catch (error) {
-    console.error("Firebase error:", error);
+    console.error('Firebase error:', error);
     throw error;
   }
 }
@@ -102,41 +106,41 @@ export function validateBudgetTaskForm() {
   const errors = [];
 
   const description = document
-    .getElementById("budgetDescription")
+    .getElementById('budgetDescription')
     ?.value?.trim();
   if (!description || description.length < 3) {
-    errors.push("תיאור המשימה חייב להכיל לפחות 3 תווים");
+    errors.push('תיאור המשימה חייב להכיל לפחות 3 תווים');
   }
 
-  const caseSelect = document.getElementById("budgetCaseSelect")?.value;
+  const caseSelect = document.getElementById('budgetCaseSelect')?.value;
   if (!caseSelect) {
-    errors.push("חובה לבחור תיק");
+    errors.push('חובה לבחור תיק');
   }
 
   // ✅ בדיקת סניף מטפל
-  const branch = document.getElementById("budgetBranch")?.value;
+  const branch = document.getElementById('budgetBranch')?.value;
   if (!branch) {
-    errors.push("חובה לבחור סניף מטפל");
+    errors.push('חובה לבחור סניף מטפל');
   }
 
   // ✅ בדיקה אם יש dropdown שירותים (במקרה של מספר שירותים)
-  const serviceSelectElement = document.getElementById("budgetServiceSelect");
+  const serviceSelectElement = document.getElementById('budgetServiceSelect');
   if (serviceSelectElement && serviceSelectElement.type === 'select-one') {
     // יש dropdown - בדיקה שנבחר שירות
     const serviceValue = serviceSelectElement.value;
     if (!serviceValue) {
-      errors.push("חובה לבחור שירות מהרשימה");
+      errors.push('חובה לבחור שירות מהרשימה');
     }
   }
 
-  const estimatedTime = document.getElementById("estimatedTime")?.value;
+  const estimatedTime = document.getElementById('estimatedTime')?.value;
   if (!estimatedTime || parseInt(estimatedTime) <= 0) {
-    errors.push("זמן משוער חייב להיות גדול מ-0");
+    errors.push('זמן משוער חייב להיות גדול מ-0');
   }
 
   return {
     isValid: errors.length === 0,
-    errors,
+    errors
   };
 }
 
@@ -159,8 +163,12 @@ export function filterBudgetTasks(budgetTasks, filterValue) {
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
     return budgetTasks.filter(t => {
-      if (t.status !== 'הושלם') return false;
-      if (!t.completedAt) return true;
+      if (t.status !== 'הושלם') {
+return false;
+}
+      if (!t.completedAt) {
+return true;
+}
       const completedDate = new Date(t.completedAt);
       return completedDate >= oneMonthAgo;
     });
@@ -194,9 +202,15 @@ export function sortBudgetTasks(tasks, sortValue) {
         // Sort by client name - Hebrew A-Z
         const nameA = (a.clientName || '').trim();
         const nameB = (b.clientName || '').trim();
-        if (!nameA && !nameB) return 0;
-        if (!nameA) return 1;
-        if (!nameB) return -1;
+        if (!nameA && !nameB) {
+return 0;
+}
+        if (!nameA) {
+return 1;
+}
+        if (!nameB) {
+return -1;
+}
         return nameA.localeCompare(nameB, 'he');
 
       case 'deadline':
@@ -229,7 +243,9 @@ export function sortBudgetTasks(tasks, sortValue) {
  * @returns {Object} Sanitized task
  */
 export function sanitizeTaskData(task) {
-  if (!task) return {};
+  if (!task) {
+return {};
+}
 
   // ✅ המרת Firebase Timestamp לDate נכון
   let deadlineConverted = task.deadline;
@@ -242,20 +258,20 @@ export function sanitizeTaskData(task) {
 
   return {
     id: task.id || Date.now(),
-    clientName: task.clientName || "לקוח לא ידוע",
+    clientName: task.clientName || 'לקוח לא ידוע',
     description:
-      task.taskDescription || task.description || "משימה ללא תיאור",
+      task.taskDescription || task.description || 'משימה ללא תיאור',
     taskDescription:
-      task.taskDescription || task.description || "משימה ללא תיאור",
+      task.taskDescription || task.description || 'משימה ללא תיאור',
     // ✅ תמיכה הן ב-Hours והן ב-Minutes
     estimatedHours: Number(task.estimatedHours) || 0,
     actualHours: Number(task.actualHours) || 0,
     estimatedMinutes: Number(task.estimatedMinutes) || (Number(task.estimatedHours) || 0) * 60,
     actualMinutes: Number(task.actualMinutes) || (Number(task.actualHours) || 0) * 60,
     deadline: deadlineConverted,
-    status: task.status || "פעיל",
-    branch: task.branch || "",
-    fileNumber: task.fileNumber || "",
+    status: task.status || 'פעיל',
+    branch: task.branch || '',
+    fileNumber: task.fileNumber || '',
     history: task.history || [],
     createdAt: task.createdAt || null,
     updatedAt: task.updatedAt || null,
@@ -285,7 +301,7 @@ export function calculateSimpleProgress(task) {
   const progress = Math.round(
     ((task.actualMinutes || 0) / task.estimatedMinutes) * 100
   );
-  return Math.min(progress, 100);
+  return progress; // ✅ No 100% cap - allows 150%+ for overage visibility
 }
 
 /**
@@ -294,13 +310,25 @@ export function calculateSimpleProgress(task) {
  * @returns {string} Status text
  */
 export function getProgressStatusText(progress) {
-  if (progress >= 100) return "הושלם";
-  if (progress >= 90) return "כמעט סיימת";
-  if (progress >= 75) return "קרוב לסיום";
-  if (progress >= 50) return "באמצע הדרך";
-  if (progress >= 25) return "התחלנו";
-  if (progress > 0) return "בתחילת הדרך";
-  return "לא התחיל";
+  if (progress >= 100) {
+return 'הושלם';
+}
+  if (progress >= 90) {
+return 'כמעט סיימת';
+}
+  if (progress >= 75) {
+return 'קרוב לסיום';
+}
+  if (progress >= 50) {
+return 'באמצע הדרך';
+}
+  if (progress >= 25) {
+return 'התחלנו';
+}
+  if (progress > 0) {
+return 'בתחילת הדרך';
+}
+  return 'לא התחיל';
 }
 
 /**
@@ -310,7 +338,7 @@ export function getProgressStatusText(progress) {
  */
 export function getActiveTasksCount(budgetTasks) {
   return (budgetTasks || []).filter(
-    (task) => task && task.status !== "הושלם"
+    (task) => task && task.status !== 'הושלם'
   ).length;
 }
 
@@ -321,7 +349,7 @@ export function getActiveTasksCount(budgetTasks) {
  */
 export function getCompletedTasksCount(budgetTasks) {
   return (budgetTasks || []).filter(
-    (task) => task && task.status === "הושלם"
+    (task) => task && task.status === 'הושלם'
   ).length;
 }
 
@@ -339,7 +367,9 @@ export function getCompletedTasksCount(budgetTasks) {
  * @returns {string} SVG Rings HTML
  */
 function renderSVGRingsSection(task, progress, actualHours, estimatedHours, originalEstimate, wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline) {
-  if (!window.SVGRings) return '';
+  if (!window.SVGRings) {
+return '';
+}
 
   const now = new Date();
   const deadline = new Date(task.deadline);
@@ -352,14 +382,14 @@ function renderSVGRingsSection(task, progress, actualHours, estimatedHours, orig
 
   // Budget Ring Config
   const budgetRingConfig = {
-    progress: Math.min(progress, 100),
+    progress, // ✅ No 100% cap - shows 150%+ for overage
     color: isOverOriginal ? 'red' : progress >= 85 ? 'orange' : 'green',
     icon: 'fas fa-clock',
     label: 'תקציב זמן',
-    value: `${actualHours}h / ${estimatedHours}h`,
+    value: `${actualHours}ש / ${estimatedHours}ש`,
     size: 80,
-    button: isOverOriginal && !wasAdjusted ? {
-      text: 'עדכן תקציב',
+    button: isOverOriginal ? { // ✅ Removed !wasAdjusted - allows repeated budget updates
+      text: wasAdjusted ? 'עדכן שוב' : 'עדכן תקציב',
       onclick: `event.stopPropagation(); manager.showAdjustBudgetDialog('${task.id}')`,
       icon: 'fas fa-edit',
       cssClass: 'budget-btn',
@@ -368,6 +398,7 @@ function renderSVGRingsSection(task, progress, actualHours, estimatedHours, orig
   };
 
   // Deadline Ring Config
+  const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
   const deadlineRingConfig = {
     progress: deadlineProgress,
     color: isDeadlineOverdue ? 'red' : deadlineProgress >= 85 ? 'orange' : 'blue',
@@ -377,8 +408,8 @@ function renderSVGRingsSection(task, progress, actualHours, estimatedHours, orig
       ? `איחור ${overdueDays} ${overdueDays === 1 ? 'יום' : 'ימים'}`
       : `${daysUntilDeadline} ${daysUntilDeadline === 1 ? 'יום' : 'ימים'} נותרו`,
     size: 80,
-    button: isDeadlineOverdue ? {
-      text: 'הארך יעד',
+    button: isDeadlineOverdue ? { // ✅ Always shows when overdue - allows repeated extensions
+      text: wasExtended ? 'הארך שוב' : 'הארך יעד',
       onclick: `event.stopPropagation(); manager.showExtendDeadlineDialog('${task.id}')`,
       icon: 'fas fa-calendar-plus',
       cssClass: 'deadline-btn',
@@ -390,7 +421,7 @@ function renderSVGRingsSection(task, progress, actualHours, estimatedHours, orig
 
   // Add info note if budget was adjusted
   if (wasAdjusted) {
-    ringsHTML += `<div class="budget-adjusted-note" style="text-align: center; margin-top: 12px; font-size: 11px; color: #3b82f6;"><i class="fas fa-info-circle"></i> תקציב עודכן ל-${estimatedHours}h</div>`;
+    ringsHTML += `<div class="budget-adjusted-note" style="text-align: center; margin-top: 12px; font-size: 11px; color: #3b82f6;"><i class="fas fa-info-circle"></i> תקציב עודכן ל-${estimatedHours}ש</div>`;
   }
 
   return ringsHTML;
@@ -413,12 +444,12 @@ export function createTaskCard(task, options = {}) {
   const progress = calculateSimpleProgress(safeTask);
   const progressClass =
     progress >= 100
-      ? "progress-complete"
+      ? 'progress-complete'
       : progress >= 85
-      ? "progress-high"
+      ? 'progress-high'
       : progress >= 50
-      ? "progress-medium"
-      : "progress-low";
+      ? 'progress-medium'
+      : 'progress-low';
   const progressStatus = getProgressStatusText(progress);
 
   // 🆕 Phase 1: חישוב התקדמות מול תקציב מקורי
@@ -434,16 +465,16 @@ export function createTaskCard(task, options = {}) {
     (deadline - now) / (1000 * 60 * 60 * 24)
   );
 
-  let deadlineClass = "";
+  let deadlineClass = '';
   let deadlineIcon = '<i class="fas fa-calendar-alt"></i>';
   if (daysUntilDeadline < 0) {
-    deadlineClass = "overdue";
+    deadlineClass = 'overdue';
     deadlineIcon = '<i class="fas fa-exclamation-triangle"></i>';
   } else if (daysUntilDeadline <= 1) {
-    deadlineClass = "urgent";
+    deadlineClass = 'urgent';
     deadlineIcon = '<i class="fas fa-exclamation-circle"></i>';
   } else if (daysUntilDeadline <= 3) {
-    deadlineClass = "soon";
+    deadlineClass = 'soon';
     deadlineIcon = '<i class="fas fa-clock"></i>';
   }
 
@@ -455,7 +486,7 @@ export function createTaskCard(task, options = {}) {
   const safeClientName = safeText ? safeText(safeTask.clientName) : safeTask.clientName;
   const clientDisplayName =
     safeTask.clientName.length > 20
-      ? (safeText ? safeText(safeTask.clientName.substring(0, 20) + "...") : safeTask.clientName.substring(0, 20) + "...")
+      ? (safeText ? safeText(safeTask.clientName.substring(0, 20) + '...') : safeTask.clientName.substring(0, 20) + '...')
       : safeClientName;
 
   // Check if task is completed
@@ -474,41 +505,40 @@ export function createTaskCard(task, options = {}) {
   );
 
   const badgesRow = combinedBadge ? `
-    <div style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+    <div class="linear-card-badges">
       ${combinedBadge}
     </div>
   ` : '';
 
   return `
     <div class="linear-minimal-card" data-task-id="${safeTask.id}">
-      ${window.DatesModule ? window.DatesModule.getCreationDateCorner(safeTask) : ''}
       ${badgesRow}
       <div class="linear-card-content">
-        <h3 class="linear-card-title" title="${safeClientName}" style="display: flex; align-items: center;">
-          <span style="flex: 1;">${safeDescription}</span>
+        <h3 class="linear-card-title" title="${safeClientName}">
+          ${safeDescription}
           ${completedIndicator}
         </h3>
 
         <!-- 🎯 SVG RINGS -->
         ${!isCompleted && window.SVGRings ? renderSVGRingsSection(safeTask, progress, actualHours, estimatedHours, originalEstimate, wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline) : ''}
-
-        <div class="linear-card-meta">
-          <div class="linear-client-row">
-            <span class="linear-client-label">לקוח:</span>
-            <span class="linear-client-name" title="${safeClientName}">
-              ${clientDisplayName}
-            </span>
-          </div>
-          <div class="linear-deadline-row">
-            <span class="linear-progress-label">יעד:</span>
-            <span class="deadline-info ${deadlineClass}" title="${formatDate(
-    safeTask.deadline
-  )}">
-              ${deadlineIcon} ${formatShort(safeTask.deadline)}
-            </span>
-          </div>
-        </div>
       </div>
+
+      <!-- החלק התחתון - מחוץ ל-content -->
+      <div class="linear-card-meta">
+        <div class="linear-client-row">
+          <span class="linear-client-label">לקוח:</span>
+          <span class="linear-client-name" title="${safeClientName}">
+            ${clientDisplayName}
+          </span>
+        </div>
+        ${safeTask.createdAt ? `
+        <div class="creation-date-tag">
+          <i class="far fa-clock"></i>
+          <span>נוצר ב-${formatDate(safeTask.createdAt)} ${new Date(safeTask.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        ` : ''}
+      </div>
+
       <button class="linear-expand-btn" onclick="manager.expandTaskCard('${
         safeTask.id
       }', event)" title="הרחב פרטים">
@@ -530,37 +560,59 @@ export function createTableRow(task, options = {}) {
   const safeTask = sanitizeTaskData(task);
   const progress = calculateSimpleProgress(safeTask);
 
-  // Visual indicator for completed tasks
+  // Status badge with professional styling
   const isCompleted = safeTask.status === 'הושלם';
-  const statusDisplay = isCompleted ? `
-    <div style="display: flex; align-items: center; gap: 6px;">
-      <i class="fas fa-check-circle" style="color: #10b981; font-size: 16px;"></i>
-      <span>${safeText ? safeText(safeTask.status) : safeTask.status}</span>
-    </div>
-  ` : (safeText ? safeText(safeTask.status) : safeTask.status);
+  const statusDisplay = createStatusBadge(safeTask.status);
 
-  // 🎯 Service & Case badges for table view
-  const serviceBadge = createServiceBadge(safeTask.serviceName, 'small', {
-    marginRight: '6px'
-  });
+  // 🎯 Combined info badge for table view (same as card view)
+  const combinedBadge = createCombinedInfoBadge(
+    safeTask.caseNumber,
+    safeTask.serviceName,
+    safeTask.serviceType
+  );
 
-  const caseBadge = createCaseNumberBadge(safeTask.caseNumber, 'small');
+  // 🎨 Create progress bar for time progress column
+  const progressBarHtml = window.SVGRings ? window.SVGRings.createTableProgressBar({
+    progress: progress,
+    actualMinutes: safeTask.actualMinutes || 0,
+    estimatedMinutes: safeTask.estimatedMinutes || 1
+  }) : `${progress}%`;
 
-  const badgesHtml = (serviceBadge || caseBadge) ? `
-    <div style="display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap;">
-      ${serviceBadge}${caseBadge}
-    </div>
-  ` : '';
+  // 🎨 Create compact deadline ring for deadline column
+  let deadlineHtml;
+  if (window.SVGRings) {
+    const now = new Date();
+    const deadline = new Date(safeTask.deadline);
+    const createdAt = safeTask.createdAt ? new Date(safeTask.createdAt) : now;
+
+    // Calculate days remaining
+    const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+    // Calculate deadline progress (elapsed time / total time)
+    const totalDays = Math.max(1, (deadline - createdAt) / (1000 * 60 * 60 * 24));
+    const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+    const deadlineProgress = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+
+    deadlineHtml = window.SVGRings.createCompactDeadlineRing({
+      daysRemaining: daysUntilDeadline,
+      progress: deadlineProgress,
+      size: 52
+    });
+  } else {
+    deadlineHtml = formatDate ? formatDate(safeTask.deadline) : safeTask.deadline;
+  }
 
   return `
     <tr data-task-id="${safeTask.id}">
       <td>${safeText ? safeText(safeTask.clientName) : safeTask.clientName}</td>
-      <td>
-        ${badgesHtml}
-        <div>${safeText ? safeText(safeTask.description) : safeTask.description}</div>
+      <td class="td-description">
+        <div class="table-description-with-icons">
+          <span>${safeText ? safeText(safeTask.description) : safeTask.description}</span>
+          ${combinedBadge}
+        </div>
       </td>
-      <td>${progress}%</td>
-      <td>${formatDate ? formatDate(safeTask.deadline) : safeTask.deadline}</td>
+      <td>${progressBarHtml}</td>
+      <td style="text-align: center;">${deadlineHtml}</td>
       <td style="color: #6b7280; font-size: 13px;">${window.DatesModule ? window.DatesModule.getCreationDateTableCell(safeTask) : ''}</td>
       <td>${statusDisplay}</td>
       <td class="actions-column">
@@ -598,7 +650,7 @@ export function renderBudgetCards(tasks, options = {}) {
     safeText
   } = options;
 
-  const tasksHtml = tasks.map((task) => createTaskCard(task, options)).join("");
+  const tasksHtml = tasks.map((task) => createTaskCard(task, options)).join('');
 
   const statsBar = window.StatisticsModule
     ? window.StatisticsModule.createBudgetStatsBar(stats, currentTaskFilter || 'active')
@@ -651,6 +703,11 @@ export function renderBudgetCards(tasks, options = {}) {
   if (container) {
     container.innerHTML = html;
     container.classList.remove('hidden');
+
+    // ✅ Initialize description tooltips for cards
+    if (window.DescriptionTooltips) {
+      window.DescriptionTooltips.refresh(container);
+    }
   }
   if (tableContainer) {
     tableContainer.classList.add('hidden');
@@ -722,7 +779,7 @@ export function renderBudgetTable(tasks, options = {}) {
           </tr>
         </thead>
         <tbody>
-          ${tasks.map((task) => createTableRow(task, options)).join("")}
+          ${tasks.map((task) => createTableRow(task, options)).join('')}
         </tbody>
       </table>
       ${loadMoreButton}
@@ -734,6 +791,11 @@ export function renderBudgetTable(tasks, options = {}) {
   if (tableContainer) {
     tableContainer.innerHTML = html;
     tableContainer.classList.remove('hidden');
+
+    // ✅ Initialize description tooltips for table
+    if (window.DescriptionTooltips) {
+      window.DescriptionTooltips.refresh(tableContainer);
+    }
   }
   if (container) {
     container.classList.add('hidden');
@@ -748,8 +810,10 @@ export function renderBudgetTable(tasks, options = {}) {
  * Clear budget form
  */
 export function clearBudgetForm() {
-  const budgetForm = document.getElementById("budgetForm");
-  if (budgetForm) budgetForm.reset();
+  const budgetForm = document.getElementById('budgetForm');
+  if (budgetForm) {
+budgetForm.reset();
+}
 }
 
 /* ===========================

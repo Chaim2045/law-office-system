@@ -4,7 +4,7 @@
  *
  * נוצר: 08/10/2025
  * עודכן: 29/10/2025
- * גרסה: 5.2.0 - Fixed Icons + Better Layout
+ * גרסה: 5.3.0 - Server-Side Metrics Integration
  *
  * תכונות:
  * - Ultra minimal design כמו Linear, Vercel, Raycast
@@ -13,16 +13,41 @@
  * - 4px spacing grid system
  * - מיקום מושלם של טקסט ואייקונים
  * - חישובים חכמים: מטרות חודשיות, התקדמות, אזהרות
+ * - Server-side metrics עם fallback ללקוח
  */
+
+// ===== קבועים גלובליים =====
+
+/**
+ * Urgent Threshold - משותף ללקוח ולשרת
+ * משימה נחשבת דחופה אם deadline שלה עד 72 שעות (3 ימים)
+ */
+const URGENT_THRESHOLD_HOURS = 72;
+
+/**
+ * פונקציה לבדיקת דחיפות משימה
+ * @param {number} deadlineMs - deadline במילישניות
+ * @param {number} nowMs - זמן נוכחי במילישניות
+ * @returns {boolean} true אם המשימה דחופה
+ */
+function isUrgent(deadlineMs, nowMs) {
+  const timeUntilDeadline = deadlineMs - nowMs;
+  const urgentThresholdMs = URGENT_THRESHOLD_HOURS * 60 * 60 * 1000;
+
+  // דחוף אם הזמן עד deadline קטן או שווה ל-72 שעות
+  // ולא עבר יותר מ-24 שעות מאז deadline (לא נספור deadlines ישנים מדי)
+  return timeUntilDeadline <= urgentThresholdMs && timeUntilDeadline >= -24 * 60 * 60 * 1000;
+}
 
 // ===== תקצוב משימות - חישובי סטטיסטיקה =====
 
 /**
- * חישוב סטטיסטיקה מלאה לתקצוב משימות
+ * חישוב סטטיסטיקה לקוח (Client-side calculation)
+ * ✅ פונקציה פנימית - משמשת כ-fallback אם השרת לא זמין
  * @param {Array} tasks - מערך המשימות
  * @returns {Object} אובייקט עם כל הסטטיסטיקה
  */
-function calculateBudgetStatistics(tasks) {
+function _calculateBudgetStatisticsClient(tasks) {
   if (!tasks || tasks.length === 0) {
     return {
       total: 0,
@@ -37,6 +62,7 @@ function calculateBudgetStatistics(tasks) {
   }
 
   const now = new Date();
+  const nowMs = now.getTime();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const stats = {
@@ -79,17 +105,18 @@ function calculateBudgetStatistics(tasks) {
       stats.overBudget++;
     }
 
-    // בדיקת דחיפות - רק למשימות שלא הושלמו
+    // ✅ בדיקת דחיפות - משתמש בקבוע URGENT_THRESHOLD_HOURS ובפונקציה isUrgent
     if (task.deadline && task.status !== 'הושלם') {
       const deadline = new Date(task.deadline);
-      const daysUntil = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+      const deadlineMs = deadline.getTime();
 
-      // דחופות: deadline עבר או עד 3 ימים
-      if (daysUntil <= 3) {
+      // שימוש בפונקציה isUrgent המשותפת
+      if (isUrgent(deadlineMs, nowMs)) {
         stats.urgent++;
       }
 
-      // משימות קריטיות: deadline עד שבוע
+      // משימות קריטיות: deadline עד שבוע (נשאר כמו שהיה)
+      const daysUntil = Math.ceil((deadlineMs - nowMs) / (1000 * 60 * 60 * 24));
       if (daysUntil <= 7) {
         stats.criticalTasks++;
       }
@@ -129,6 +156,61 @@ function calculateBudgetStatistics(tasks) {
   stats.budgetStatus = status;
   stats.budgetStatusText = statusText;
 
+  return stats;
+}
+
+/**
+ * חישוב סטטיסטיקה מלאה לתקצוב משימות
+ * ✅ Server-first approach עם fallback ללקוח
+ *
+ * @param {Array} tasks - מערך המשימות
+ * @returns {Promise<Object>} אובייקט עם כל הסטטיסטיקה
+ */
+async function calculateBudgetStatistics(tasks) {
+  // ✅ נסה לקרוא מהשרת קודם (אם Firebase זמין)
+  if (window.firebase && window.firebase.functions) {
+    try {
+      const functions = window.firebase.functions();
+      const getUserMetrics = functions.httpsCallable('getUserMetrics');
+
+      // Timeout של 3 שניות - אם השרת לא עונה, נעבור ל-fallback
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Server timeout')), 3000)
+      );
+
+      const result = await Promise.race([
+        getUserMetrics(),
+        timeoutPromise
+      ]);
+
+      if (result?.data?.success && result.data.data) {
+        const serverMetrics = result.data.data;
+
+        // ✅ חישוב שדות נוספים שהשרת לא מספק (overBudget, progress, status)
+        // נעשה חישוב חלקי על המשימות
+        const clientStats = _calculateBudgetStatisticsClient(tasks);
+
+        // ✅ שילוב נתונים: שרת (total, active, completed, urgent) + לקוח (שאר השדות)
+        return {
+          ...clientStats, // כל השדות מהלקוח
+          // Override עם נתונים מהשרת
+          total: serverMetrics.total,
+          active: serverMetrics.active,
+          completed: serverMetrics.completed,
+          urgent: serverMetrics.urgent,
+          // סימן שהנתונים הגיעו מהשרת
+          source: serverMetrics.source || 'server'
+        };
+      }
+    } catch (error) {
+      // Silent fallback - אם השרת נכשל, נעבור ללקוח
+      Logger.log(`⚠️ Server metrics unavailable, using client calculation: ${error.message}`);
+    }
+  }
+
+  // ✅ Fallback: חישוב לקוח מלא
+  const stats = _calculateBudgetStatisticsClient(tasks);
+  stats.source = 'client'; // סימן שהנתונים חושבו בלקוח
   return stats;
 }
 
@@ -441,7 +523,7 @@ function initializeStatisticsListeners() {
 
   // 👂 Listen to task:created event
   window.EventBus.on('task:created', (data) => {
-    Logger.log(`👂 [Statistics] task:created received:`, data);
+    Logger.log('👂 [Statistics] task:created received:', data);
 
     // אין צורך לעדכן כאן - main.js כבר מריץ renderBudgetView
     // אבל זו דוגמה למשהו שאפשר להוסיף בעתיד:
@@ -454,43 +536,43 @@ function initializeStatisticsListeners() {
 
   // 👂 Listen to task:completed event
   window.EventBus.on('task:completed', (data) => {
-    Logger.log(`👂 [Statistics] task:completed received:`, data);
+    Logger.log('👂 [Statistics] task:completed received:', data);
     Logger.log(`  ✅ Task completed: ${data.taskId} (${data.totalMinutes} minutes)`);
   });
 
   // 👂 Listen to timesheet:entry-created event
   window.EventBus.on('timesheet:entry-created', (data) => {
-    Logger.log(`👂 [Statistics] timesheet:entry-created received:`, data);
+    Logger.log('👂 [Statistics] timesheet:entry-created received:', data);
     Logger.log(`  ⏱️ New timesheet entry: ${data.minutes} minutes`);
   });
 
   // 👂 Listen to task:deadline-extended event
   window.EventBus.on('task:deadline-extended', (data) => {
-    Logger.log(`👂 [Statistics] task:deadline-extended received:`, data);
+    Logger.log('👂 [Statistics] task:deadline-extended received:', data);
     Logger.log(`  📅 Deadline extended: ${data.taskId} from ${data.oldDeadline} to ${data.newDeadline}`);
   });
 
   // 👂 Listen to task:time-added event
   window.EventBus.on('task:time-added', (data) => {
-    Logger.log(`👂 [Statistics] task:time-added received:`, data);
+    Logger.log('👂 [Statistics] task:time-added received:', data);
     Logger.log(`  ⏲️ Time added to task: ${data.taskId} (+${data.minutesAdded} minutes)`);
   });
 
   // 👂 Listen to legal-procedure:created event
   window.EventBus.on('legal-procedure:created', (data) => {
-    Logger.log(`👂 [Statistics] legal-procedure:created received:`, data);
+    Logger.log('👂 [Statistics] legal-procedure:created received:', data);
     Logger.log(`  ⚖️ New legal procedure created: ${data.procedureId}`);
   });
 
   // 👂 Listen to legal-procedure:hours-added event
   window.EventBus.on('legal-procedure:hours-added', (data) => {
-    Logger.log(`👂 [Statistics] legal-procedure:hours-added received:`, data);
+    Logger.log('👂 [Statistics] legal-procedure:hours-added received:', data);
     Logger.log(`  ⚖️ Hours added to legal procedure: ${data.procedureId}`);
   });
 
   // 👂 Listen to legal-procedure:stage-moved event
   window.EventBus.on('legal-procedure:stage-moved', (data) => {
-    Logger.log(`👂 [Statistics] legal-procedure:stage-moved received:`, data);
+    Logger.log('👂 [Statistics] legal-procedure:stage-moved received:', data);
     Logger.log(`  ⚖️ Legal procedure stage moved: ${data.procedureId}`);
   });
 

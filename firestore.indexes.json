@@ -111,21 +111,47 @@
       ]
     },
     {
-      "collectionGroup": "clients",
+      "collectionGroup": "budget_tasks",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "caseNumber",
+          "fieldPath": "employee",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "clients",
+      "collectionGroup": "budget_tasks",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "createdAt",
+          "fieldPath": "employee",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "deadline",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "timesheet_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "employee",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
           "order": "DESCENDING"
         }
       ]

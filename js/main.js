@@ -2,7 +2,7 @@
  * Law Office Management System - Main Entry Point
  * Unified module system that combines all functionality
  *
- * @version 5.0.0
+ * @version 5.1.7
  * @created 2025-10-15
  * @description Central orchestration of all system modules
  */
@@ -71,13 +71,13 @@ class LawOfficeManager {
     this.clients = [];
     this.budgetTasks = [];
     this.timesheetEntries = [];
-    this.connectionStatus = "unknown";
+    this.connectionStatus = 'unknown';
 
     // View State - ✅ Load from localStorage if available
-    this.currentTaskFilter = localStorage.getItem('taskFilter') || "active"; // Show only active tasks by default
-    this.currentTimesheetFilter = localStorage.getItem('timesheetFilter') || "month";
-    this.currentBudgetView = localStorage.getItem('budgetView') || "cards";
-    this.currentTimesheetView = localStorage.getItem('timesheetView') || "table";
+    this.currentTaskFilter = localStorage.getItem('taskFilter') || 'active'; // Show only active tasks by default
+    this.currentTimesheetFilter = localStorage.getItem('timesheetFilter') || 'month';
+    this.currentBudgetView = localStorage.getItem('budgetView') || 'cards';
+    this.currentTimesheetView = localStorage.getItem('timesheetView') || 'table';
 
     // Filtered Data
     this.filteredBudgetTasks = [];
@@ -85,11 +85,11 @@ class LawOfficeManager {
 
     // Sorting State - ✅ Load from localStorage if available
     this.budgetSortField = null;
-    this.budgetSortDirection = "asc";
+    this.budgetSortDirection = 'asc';
     this.timesheetSortField = null;
-    this.timesheetSortDirection = "asc";
-    this.currentBudgetSort = localStorage.getItem('budgetSort') || "recent";
-    this.currentTimesheetSort = localStorage.getItem('timesheetSort') || "recent";
+    this.timesheetSortDirection = 'asc';
+    this.currentBudgetSort = localStorage.getItem('budgetSort') || 'recent';
+    this.currentTimesheetSort = localStorage.getItem('timesheetSort') || 'recent';
 
     // Pagination State
     this.currentBudgetPage = 1;
@@ -195,27 +195,27 @@ class LawOfficeManager {
    */
   setupEventListeners() {
     // Login form
-    const loginForm = document.getElementById("loginForm");
+    const loginForm = document.getElementById('loginForm');
     if (loginForm) {
-      loginForm.addEventListener("submit", async (e) => {
+      loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         await Auth.handleLogin.call(this);
       });
     }
 
     // Budget form
-    const budgetForm = document.getElementById("budgetForm");
+    const budgetForm = document.getElementById('budgetForm');
     if (budgetForm) {
-      budgetForm.addEventListener("submit", (e) => {
+      budgetForm.addEventListener('submit', (e) => {
         e.preventDefault();
         this.addBudgetTask();
       });
     }
 
     // Timesheet form
-    const timesheetForm = document.getElementById("timesheetForm");
+    const timesheetForm = document.getElementById('timesheetForm');
     if (timesheetForm) {
-      timesheetForm.addEventListener("submit", (e) => {
+      timesheetForm.addEventListener('submit', (e) => {
         e.preventDefault();
         this.addTimesheetEntry();
       });
@@ -223,32 +223,15 @@ class LawOfficeManager {
 
     // ✅ Client form removed - now handled by CasesManager
 
-    // Initialize Vanilla Calendar Picker for timesheet date/time
-    const actionDate = document.getElementById("actionDate");
-    if (actionDate && typeof VanillaCalendarPicker !== 'undefined') {
-      this.timesheetCalendar = new VanillaCalendarPicker(actionDate, {
-        minDate: '2020-01-01', // Allow past dates for timesheet entries
-        defaultHour: new Date().getHours(),
-        defaultMinute: new Date().getMinutes(),
-        showTime: true  // Explicitly enable time picker
-      });
-
-      // Set default to current date and time
-      const now = new Date();
-      actionDate.value = this.formatDateTime(now);
-
-      Logger.log('✅ Timesheet calendar picker initialized with time picker');
-    }
-
     // ✅ Budget search box - live text search with debouncing
-    const budgetSearchBox = document.getElementById("budgetSearchBox");
+    const budgetSearchBox = document.getElementById('budgetSearchBox');
     if (budgetSearchBox) {
       // Debounce search to avoid excessive filtering (300ms delay)
       const debouncedSearch = CoreUtils.debounce((searchTerm) => {
         this.searchBudgetTasks(searchTerm);
       }, 300);
 
-      budgetSearchBox.addEventListener("input", (e) => {
+      budgetSearchBox.addEventListener('input', (e) => {
         debouncedSearch(e.target.value);
       });
     }
@@ -324,10 +307,12 @@ class LawOfficeManager {
       const [clients, budgetTasks, timesheetEntries] = await Promise.all([
         this.dataCache.get('clients', () => FirebaseOps.loadClientsFromFirebase()),
         this.dataCache.get(`budgetTasks:${this.currentUser}`, () =>
-          FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+          this.integrationManager?.loadBudgetTasks(this.currentUser)
+            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
         ),
         this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
-          FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
+          this.integrationManager?.loadTimesheet(this.currentUser)
+            || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         )
       ]);
 
@@ -378,7 +363,9 @@ class LawOfficeManager {
       // Update notifications bell with urgent tasks and critical clients
       if (this.notificationBell) {
         const urgentTasks = budgetTasks.filter(task => {
-          if (task.status === 'הושלם') return false;
+          if (task.status === 'הושלם') {
+return false;
+}
           const deadline = new Date(task.deadline);
           const now = new Date();
           const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
@@ -423,7 +410,7 @@ class LawOfficeManager {
 
     try {
       await Promise.all(refreshPromises);
-      Logger.log(`✅ All client-case selectors refreshed`);
+      Logger.log('✅ All client-case selectors refreshed');
     } catch (error) {
       console.error('❌ Error refreshing client-case selectors:', error);
     }
@@ -485,9 +472,17 @@ class LawOfficeManager {
       }
 
     // Validate other form fields
-    const description = document.getElementById("budgetDescription")?.value?.trim();
-    const estimatedMinutes = parseInt(document.getElementById("estimatedTime")?.value);
-    const deadline = document.getElementById("budgetDeadline")?.value;
+    const description = document.getElementById('budgetDescription')?.value?.trim();
+    const descriptionCategory = document.getElementById('budgetDescriptionCategory')?.value || null;
+    const estimatedMinutes = parseInt(document.getElementById('estimatedTime')?.value);
+    const deadline = document.getElementById('budgetDeadline')?.value;
+
+    // ✅ Get category name for display purposes
+    let categoryName = null;
+    if (descriptionCategory && window.WorkCategories) {
+      const cat = window.WorkCategories.getCategoryById(descriptionCategory);
+      categoryName = cat?.name || null;
+    }
 
     if (!description || description.length < 3) {
       this.showNotification('חובה להזין תיאור משימה (לפחות 3 תווים)', 'error');
@@ -517,6 +512,8 @@ class LawOfficeManager {
         action: async () => {
           const taskData = {
             description: description,
+            categoryId: descriptionCategory,  // ✅ NEW: Work category ID for context-aware filtering
+            categoryName: categoryName,       // ✅ NEW: Work category name for display
             clientName: selectorValues.clientName,
             clientId: selectorValues.clientId,
             caseId: selectorValues.caseId,
@@ -570,7 +567,8 @@ class LawOfficeManager {
 
           // Reload tasks with cache (will fetch fresh because invalidated)
           this.budgetTasks = await this.dataCache.get(`budgetTasks:${this.currentUser}`, () =>
-            FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+            this.integrationManager?.loadBudgetTasks(this.currentUser)
+              || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
           );
           this.filterBudgetTasks();
         },
@@ -579,11 +577,13 @@ class LawOfficeManager {
         onSuccess: () => {
           // Clear form and hide
           Forms.clearBudgetForm(this);
-          document.getElementById("budgetFormContainer")?.classList.add("hidden");
+          document.getElementById('budgetFormContainer')?.classList.add('hidden');
 
           // Remove active class from plus button
-          const plusButton = document.getElementById("smartPlusBtn");
-          if (plusButton) plusButton.classList.remove("active");
+          const plusButton = document.getElementById('smartPlusBtn');
+          if (plusButton) {
+plusButton.classList.remove('active');
+}
 
           // Clear selector
           window.ClientCaseSelectorsManager?.clearBudget();
@@ -659,10 +659,11 @@ class LawOfficeManager {
     this.renderBudgetView();
   }
 
-  renderBudgetView() {
-    // Calculate statistics on ALL tasks (not filtered) to show total counts
+  async renderBudgetView() {
+    // ✅ Calculate statistics on ALL tasks (not filtered) to show total counts
+    // Server-first approach with fallback to client calculation
     const stats = window.StatisticsModule
-      ? window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks)
+      ? await window.StatisticsModule.calculateBudgetStatistics(this.budgetTasks)
       : null;
 
     const options = {
@@ -709,19 +710,12 @@ class LawOfficeManager {
     // ✅ This form is now ONLY for internal activities
     // Time tracking on clients is done automatically through tasks
 
-    // Validate form fields - get date from calendar picker
-    let date;
-    if (this.timesheetCalendar) {
-      date = this.timesheetCalendar.getSelectedDateISO();
-    }
-    if (!date) {
-      // Fallback to input value if calendar not available
-      date = document.getElementById("actionDate")?.value;
-    }
+    // Validate form fields
+    const date = document.getElementById('actionDate')?.value;
 
-    const minutes = parseInt(document.getElementById("actionMinutes")?.value);
-    const action = document.getElementById("actionDescription")?.value?.trim();
-    const notes = document.getElementById("actionNotes")?.value?.trim();
+    const minutes = parseInt(document.getElementById('actionMinutes')?.value);
+    const action = document.getElementById('actionDescription')?.value?.trim();
+    const notes = document.getElementById('actionNotes')?.value?.trim();
 
     if (!date) {
       this.showNotification('חובה לבחור תאריך', 'error');
@@ -776,7 +770,8 @@ class LawOfficeManager {
 
         // Reload entries with cache (will fetch fresh because invalidated)
         this.timesheetEntries = await this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
-          FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
+          this.integrationManager?.loadTimesheet(this.currentUser)
+            || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         );
         this.filterTimesheetEntries();
 
@@ -797,11 +792,13 @@ class LawOfficeManager {
       onSuccess: () => {
         // Clear form and hide
         Forms.clearTimesheetForm(this);
-        document.getElementById("timesheetFormContainer")?.classList.add("hidden");
+        document.getElementById('timesheetFormContainer')?.classList.add('hidden');
 
         // Remove active class from plus button
-        const plusButton = document.getElementById("smartPlusBtn");
-        if (plusButton) plusButton.classList.remove("active");
+        const plusButton = document.getElementById('smartPlusBtn');
+        if (plusButton) {
+plusButton.classList.remove('active');
+}
       }
     });
   }
@@ -870,6 +867,11 @@ class LawOfficeManager {
 
     // Replace only the content area (not the form or controls)
     parentContainer.innerHTML = html;
+
+    // ✅ Initialize description tooltips after rendering
+    if (window.DescriptionTooltips) {
+      window.DescriptionTooltips.refresh(parentContainer);
+    }
   }
 
   switchTimesheetView(view) {
@@ -905,8 +907,10 @@ class LawOfficeManager {
 
   expandTaskCard(taskId, event) {
     event.stopPropagation();
-    const task = this.filteredBudgetTasks.find((t) => t.id == taskId);
-    if (!task) return;
+    const task = this.filteredBudgetTasks.find((t) => t.id === taskId);
+    if (!task) {
+return;
+}
 
     this.showExpandedCard(task);
   }
@@ -916,7 +920,7 @@ class LawOfficeManager {
     let progress = 0;
     if (task.estimatedMinutes && task.estimatedMinutes > 0) {
       progress = Math.round(((task.actualMinutes || 0) / task.estimatedMinutes) * 100);
-      progress = Math.min(progress, 100);
+      // ✅ No 100% cap - shows 150%+ for overage in expanded card
     }
     const isCompleted = task.status === 'הושלם';
 
@@ -954,20 +958,20 @@ class LawOfficeManager {
       </div>
     `;
 
-    document.body.insertAdjacentHTML("beforeend", expandedContent);
+    document.body.insertAdjacentHTML('beforeend', expandedContent);
 
     setTimeout(() => {
-      const overlay = document.querySelector(".linear-expanded-overlay");
+      const overlay = document.querySelector('.linear-expanded-overlay');
       if (overlay) {
-        overlay.classList.add("active");
+        overlay.classList.add('active');
       }
     }, 10);
   }
 
   closeExpandedCard() {
-    const overlay = document.querySelector(".linear-expanded-overlay");
+    const overlay = document.querySelector('.linear-expanded-overlay');
     if (overlay) {
-      overlay.classList.remove("active");
+      overlay.classList.remove('active');
       setTimeout(() => overlay.remove(), 300);
     }
   }
@@ -1182,7 +1186,9 @@ class LawOfficeManager {
 
   async submitTimeEntry(taskId) {
     const task = this.budgetTasks.find((t) => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+return;
+}
 
     const workDate = document.getElementById('workDate')?.value;
     const workMinutes = parseInt(document.getElementById('workMinutes')?.value);
@@ -1242,7 +1248,9 @@ class LawOfficeManager {
 
   async submitTaskCompletion(taskId) {
     const task = this.budgetTasks.find((t) => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+return;
+}
 
     const completionNotes = document.getElementById('completionNotes')?.value?.trim();
 
@@ -1266,7 +1274,10 @@ class LawOfficeManager {
         }
 
         // Reload tasks
-        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
+        this.budgetTasks = await (
+          this.integrationManager?.loadBudgetTasks(this.currentUser)
+            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+        );
         this.filterBudgetTasks();
 
         // Emit EventBus event
@@ -1324,7 +1335,10 @@ class LawOfficeManager {
         }
 
         // Reload tasks
-        this.budgetTasks = await FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser);
+        this.budgetTasks = await (
+          this.integrationManager?.loadBudgetTasks(this.currentUser)
+            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+        );
         this.filterBudgetTasks();
 
         // Emit EventBus event
@@ -1509,13 +1523,13 @@ function initializeUIListeners() {
 
   // 👂 Listen to system:data-loaded - הסתר spinner
   window.EventBus.on('system:data-loaded', (data) => {
-    Logger.log(`👂 [UI] system:data-loaded received - hiding spinner`);
+    Logger.log('👂 [UI] system:data-loaded received - hiding spinner');
     window.hideSimpleLoading();
   });
 
   // 👂 Listen to system:error - הצג הודעת שגיאה
   window.EventBus.on('system:error', (data) => {
-    Logger.log(`👂 [UI] system:error received:`, data.message);
+    Logger.log('👂 [UI] system:error received:', data.message);
     // ההודעה כבר מוצגת על ידי notification-system.js
     // כאן אפשר להוסיף UI נוסף (אייקון אדום, badge, וכו')
   });

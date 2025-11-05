@@ -242,16 +242,16 @@ function getActivePackage(stage) {
 /**
  * סוגר חבילה אוטומטית אם היא התרוקנה
  *
- * @param {Object} package - אובייקט החבילה
+ * @param {Object} pkg - אובייקט החבילה
  * @returns {Object} - החבילה המעודכנת
  */
-function closePackageIfDepleted(package) {
-  if (package.hoursRemaining <= 0 && package.status === 'active') {
-    package.status = 'depleted';
-    package.closedDate = new Date().toISOString();
-    console.log(`📦 חבילה ${package.id} נסגרה (אזלו השעות)`);
+function closePackageIfDepleted(pkg) {
+  if (pkg.hoursRemaining <= 0 && pkg.status === 'active') {
+    pkg.status = 'depleted';
+    pkg.closedDate = new Date().toISOString();
+    console.log(`📦 חבילה ${pkg.id} נסגרה (אזלו השעות)`);
   }
-  return package;
+  return pkg;
 }
 
 /**
@@ -259,22 +259,22 @@ function closePackageIfDepleted(package) {
  * מעדכן: hoursUsed, hoursRemaining
  * סוגר את החבילה אם התרוקנה
  *
- * @param {Object} package - החבילה לקזז ממנה
+ * @param {Object} pkg - החבילה לקזז ממנה
  * @param {number} hoursToDeduct - כמה שעות לקזז
  * @returns {Object} - החבילה המעודכנת
  */
-function deductHoursFromPackage(package, hoursToDeduct) {
-  package.hoursUsed = (package.hoursUsed || 0) + hoursToDeduct;
-  package.hoursRemaining = (package.hoursRemaining || 0) - hoursToDeduct;
+function deductHoursFromPackage(pkg, hoursToDeduct) {
+  pkg.hoursUsed = (pkg.hoursUsed || 0) + hoursToDeduct;
+  pkg.hoursRemaining = (pkg.hoursRemaining || 0) - hoursToDeduct;
 
   // סגירה אוטומטית אם התרוקנה
-  if (package.hoursRemaining <= 0) {
-    package.status = 'depleted';
-    package.closedDate = new Date().toISOString();
-    console.log(`📦 חבילה ${package.id} נסגרה אוטומטית (${package.hoursUsed}/${package.hours} שעות נוצלו)`);
+  if (pkg.hoursRemaining <= 0) {
+    pkg.status = 'depleted';
+    pkg.closedDate = new Date().toISOString();
+    console.log(`📦 חבילה ${pkg.id} נסגרה אוטומטית (${pkg.hoursUsed}/${pkg.hours} שעות נוצלו)`);
   }
 
-  return package;
+  return pkg;
 }
 
 /**
@@ -1506,7 +1506,7 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       budgetAdjustments: [],
       deadlineExtensions: [],
 
-      status: 'active',
+      status: 'פעיל',
       deadline: deadlineTimestamp,
       employee: user.email, // ✅ EMAIL for security rules and queries
       lawyer: user.username, // ✅ Username for display
@@ -2883,6 +2883,114 @@ exports.migrateTaskHistory = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * מיגרציית סטטוס משימות - אנגלית לעברית
+ * ממיר: 'active' → 'פעיל', 'completed' → 'הושלם'
+ */
+exports.migrateBudgetTasksStatus = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    console.log(`🚀 Starting budget tasks status migration by ${user.username}...`);
+
+    const snapshot = await db.collection('budget_tasks').get();
+    let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
+    const errorDetails = [];
+
+    // Status mapping
+    const STATUS_MAP = {
+      'active': 'פעיל',
+      'Active': 'פעיל',
+      'ACTIVE': 'פעיל',
+      'completed': 'הושלם',
+      'Completed': 'הושלם',
+      'COMPLETED': 'הושלם',
+      'pending': 'ממתין',
+      'Pending': 'ממתין'
+    };
+
+    for (const doc of snapshot.docs) {
+      try {
+        const task = doc.data();
+        const currentStatus = task.status;
+
+        // בדוק אם הסטטוס באנגלית וצריך המרה
+        if (currentStatus && STATUS_MAP[currentStatus]) {
+          const newStatus = STATUS_MAP[currentStatus];
+
+          await doc.ref.update({
+            status: newStatus,
+            statusMigratedAt: admin.firestore.FieldValue.serverTimestamp(),
+            statusMigratedBy: user.username,
+            statusMigratedFrom: currentStatus,
+            lastModifiedBy: user.username,
+            lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+          migrated++;
+          console.log(`✅ ${doc.id}: Status updated from '${currentStatus}' to '${newStatus}'`);
+        } else if (!currentStatus) {
+          // אם אין סטטוס בכלל - תן ברירת מחדל
+          await doc.ref.update({
+            status: 'פעיל',
+            statusMigratedAt: admin.firestore.FieldValue.serverTimestamp(),
+            statusMigratedBy: user.username,
+            statusMigratedFrom: 'null',
+            lastModifiedBy: user.username,
+            lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          migrated++;
+          console.log(`✅ ${doc.id}: Status set to 'פעיל' (was null)`);
+        } else {
+          skipped++;
+          console.log(`⏭️  ${doc.id}: Status already in Hebrew ('${currentStatus}')`);
+        }
+
+      } catch (error) {
+        errors++;
+        const errorMsg = `${doc.id}: ${error.message}`;
+        errorDetails.push(errorMsg);
+        console.error(`❌ Error processing ${doc.id}:`, error);
+      }
+    }
+
+    // Audit log
+    await logAction('MIGRATE_STATUS', user.uid, user.username, {
+      totalTasks: snapshot.size,
+      migrated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined
+    });
+
+    console.log(`🎉 Status migration complete: ${migrated} migrated, ${skipped} skipped, ${errors} errors`);
+
+    return {
+      success: true,
+      totalTasks: snapshot.size,
+      migrated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined,
+      message: `מיגרציית סטטוס הושלמה: ${migrated} משימות עודכנו, ${skipped} כבר בעברית, ${errors} שגיאות`
+    };
+
+  } catch (error) {
+    console.error('Error in migrateBudgetTasksStatus:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במיגרציית סטטוס: ${error.message}`
+    );
+  }
+});
+
+/**
  * מיגרציית לקוחות - פיצול fullName למרכיבים נפרדים
  * ממיר fullName משולב → clientName + description
  */
@@ -4098,7 +4206,7 @@ exports.dailyTaskReminders = functions.pubsub
 
       // מצא משימות פעילות עם deadline בתוך 3 ימים או שעבר
       const tasksSnapshot = await db.collection('budget_tasks')
-        .where('status', '==', 'active')
+        .where('status', '==', 'פעיל')
         .where('deadline', '!=', null)
         .get();
 
@@ -4179,7 +4287,7 @@ exports.dailyBudgetWarnings = functions.pubsub
 
       // מצא משימות פעילות
       const tasksSnapshot = await db.collection('budget_tasks')
-        .where('status', '==', 'active')
+        .where('status', '==', 'פעיל')
         .get();
 
       let warningsCount = 0;
@@ -4425,34 +4533,38 @@ exports.fixBrokenLegalProcedures = functions.https.onCall(async (data, context) 
 // ===============================
 
 // Import admin panel functions
-const { adminTransferUserData } = require('./admin/transfer-user-data');
-const { adminGetUserFullDetails } = require('./admin/get-user-full-details');
-const { adminGenerateClientReport } = require('./admin/generate-client-report');
-const { adminUpdateClientFull } = require('./admin/update-client-full');
+// ⚠️ TEMPORARILY DISABLED - admin directory not deployed
+// const { adminTransferUserData } = require('./admin/transfer-user-data');
+// const { adminGetUserFullDetails } = require('./admin/get-user-full-details');
+// const { adminGenerateClientReport } = require('./admin/generate-client-report');
+// const { adminUpdateClientFull } = require('./admin/update-client-full');
 
 // Import Master Admin Panel Phase 4 Wrappers (for Phase 3 UI)
-const {
-  createUser,
-  updateUser,
-  blockUser,
-  deleteUser,
-  getUserFullDetails,
-  adminUpdateTask
-} = require('./admin/master-admin-wrappers');
+// ⚠️ TEMPORARILY DISABLED - admin directory not deployed
+// const {
+//   createUser,
+//   updateUser,
+//   blockUser,
+//   deleteUser,
+//   getUserFullDetails,
+//   adminUpdateTask
+// } = require('./admin/master-admin-wrappers');
 
 // Export admin functions
-exports.adminTransferUserData = adminTransferUserData;
-exports.adminGetUserFullDetails = adminGetUserFullDetails;
-exports.adminGenerateClientReport = adminGenerateClientReport;
-exports.adminUpdateClientFull = adminUpdateClientFull;
+// ⚠️ TEMPORARILY DISABLED - admin directory not deployed
+// exports.adminTransferUserData = adminTransferUserData;
+// exports.adminGetUserFullDetails = adminGetUserFullDetails;
+// exports.adminGenerateClientReport = adminGenerateClientReport;
+// exports.adminUpdateClientFull = adminUpdateClientFull;
 
 // Export Master Admin Panel Phase 4 Wrappers (Simple names for UI)
-exports.createUser = createUser;
-exports.updateUser = updateUser;
-exports.blockUser = blockUser;
-exports.deleteUser = deleteUser;
-exports.getUserFullDetails = getUserFullDetails;
-exports.adminUpdateTask = adminUpdateTask;
+// ⚠️ TEMPORARILY DISABLED - admin directory not deployed
+// exports.createUser = createUser;
+// exports.updateUser = updateUser;
+// exports.blockUser = blockUser;
+// exports.deleteUser = deleteUser;
+// exports.getUserFullDetails = getUserFullDetails;
+// exports.adminUpdateTask = adminUpdateTask;
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🔧 DATA FIX: Add missing packages to legal procedure stages
@@ -4710,9 +4822,231 @@ exports.rebuildStagesStructure = functions.https.onCall(async (data, context) =>
 });
 
 // ═══════════════════════════════════════════════════════════════════════
+// 📊 USER METRICS - Server-Side Statistics
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * getUserMetrics - קבלת סטטיסטיקות משתמש מהשרת
+ *
+ * מחזיר מטריקות מחושבות מראש מ-user_metrics collection
+ * אם לא קיים - מחשב בזמן אמת (fallback)
+ *
+ * @returns {Object} { total, active, completed, urgent, updatedAt }
+ */
+exports.getUserMetrics = functions.https.onCall(async (data, context) => {
+  try {
+    // Security: בדיקת הרשאות
+    const user = await checkUserPermissions(context);
+
+    // נסה לקרוא metrics מראש מחושבים
+    const metricsDoc = await db.collection('user_metrics').doc(user.email).get();
+
+    if (metricsDoc.exists) {
+      const metrics = metricsDoc.data();
+
+      // בדוק שהנתונים לא ישנים מדי (יותר מ-5 דקות)
+      const now = Date.now();
+      const updatedAt = metrics.updatedAt?.toMillis() || 0;
+      const ageMinutes = (now - updatedAt) / (1000 * 60);
+
+      if (ageMinutes < 5) {
+        // נתונים טריים - החזר מיידית
+        return {
+          success: true,
+          data: {
+            total: metrics.total || 0,
+            active: metrics.active || 0,
+            completed: metrics.completed || 0,
+            urgent: metrics.urgent || 0,
+            updatedAt: metrics.updatedAt,
+            source: 'cache'
+          }
+        };
+      }
+    }
+
+    // Fallback: חישוב בזמן אמת
+    console.log(`⚡ Computing real-time metrics for ${user.email}`);
+
+    const tasksSnapshot = await db.collection('budget_tasks')
+      .where('employee', '==', user.email)
+      .get();
+
+    const now = new Date();
+    const urgentThresholdMs = 72 * 60 * 60 * 1000; // 72 hours
+
+    let total = 0;
+    let active = 0;
+    let completed = 0;
+    let urgent = 0;
+
+    tasksSnapshot.forEach(doc => {
+      const task = doc.data();
+      total++;
+
+      if (task.status === 'הושלם') {
+        completed++;
+      } else {
+        active++;
+
+        // בדוק דחיפות
+        if (task.deadline) {
+          const deadline = task.deadline.toMillis ? task.deadline.toMillis() : new Date(task.deadline).getTime();
+          const timeUntilDeadline = deadline - now.getTime();
+
+          if (timeUntilDeadline <= urgentThresholdMs && timeUntilDeadline >= -24 * 60 * 60 * 1000) {
+            urgent++;
+          }
+        }
+      }
+    });
+
+    const metrics = {
+      total,
+      active,
+      completed,
+      urgent,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // שמור לcache עבור פעם הבאה
+    await db.collection('user_metrics').doc(user.email).set(metrics, { merge: true });
+
+    return {
+      success: true,
+      data: {
+        ...metrics,
+        source: 'computed'
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ getUserMetrics error:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בטעינת מטריקות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * updateMetricsOnTaskChange - טריגר עדכון מטריקות על שינוי משימה
+ *
+ * מתעדכן אוטומטית כאשר:
+ * - נוצרת משימה חדשה (onCreate)
+ * - משימה משתנה (onUpdate)
+ * - משימה נמחקת (onDelete)
+ *
+ * מעדכן את user_metrics/{email} באופן אטומי
+ */
+exports.updateMetricsOnTaskChange = functions.firestore
+  .document('budget_tasks/{taskId}')
+  .onWrite(async (change, context) => {
+    try {
+      const taskId = context.params.taskId;
+
+      // קבל את המשימה (לפני/אחרי)
+      const oldTask = change.before.exists ? change.before.data() : null;
+      const newTask = change.after.exists ? change.after.data() : null;
+
+      // אם אין employee - דלג
+      const employee = (newTask?.employee || oldTask?.employee);
+      if (!employee) {
+        console.log(`⏭️  Skipping task ${taskId} - no employee`);
+        return null;
+      }
+
+      console.log(`📊 Updating metrics for ${employee} (task: ${taskId})`);
+
+      // חשב שינוי במטריקות
+      const metricsRef = db.collection('user_metrics').doc(employee);
+
+      const now = new Date();
+      const urgentThresholdMs = 72 * 60 * 60 * 1000; // 72 hours
+
+      // פונקציה לבדיקת דחיפות
+      const isUrgent = (task) => {
+        if (!task?.deadline || task.status === 'הושלם') return false;
+        const deadline = task.deadline.toMillis ? task.deadline.toMillis() : new Date(task.deadline).getTime();
+        const timeUntilDeadline = deadline - now.getTime();
+        return timeUntilDeadline <= urgentThresholdMs && timeUntilDeadline >= -24 * 60 * 60 * 1000;
+      };
+
+      // חשב שינויים
+      let totalDelta = 0;
+      let activeDelta = 0;
+      let completedDelta = 0;
+      let urgentDelta = 0;
+
+      if (!oldTask && newTask) {
+        // משימה חדשה
+        totalDelta = 1;
+        if (newTask.status === 'הושלם') {
+          completedDelta = 1;
+        } else {
+          activeDelta = 1;
+          if (isUrgent(newTask)) urgentDelta = 1;
+        }
+      } else if (oldTask && !newTask) {
+        // משימה נמחקה
+        totalDelta = -1;
+        if (oldTask.status === 'הושלם') {
+          completedDelta = -1;
+        } else {
+          activeDelta = -1;
+          if (isUrgent(oldTask)) urgentDelta = -1;
+        }
+      } else if (oldTask && newTask) {
+        // משימה השתנתה
+        const oldCompleted = oldTask.status === 'הושלם';
+        const newCompleted = newTask.status === 'הושלם';
+        const oldUrgent = isUrgent(oldTask);
+        const newUrgent = isUrgent(newTask);
+
+        if (oldCompleted !== newCompleted) {
+          if (newCompleted) {
+            activeDelta = -1;
+            completedDelta = 1;
+            if (oldUrgent) urgentDelta = -1;
+          } else {
+            activeDelta = 1;
+            completedDelta = -1;
+            if (newUrgent) urgentDelta = 1;
+          }
+        } else if (!newCompleted && oldUrgent !== newUrgent) {
+          // שינוי בדחיפות (בלי שינוי סטטוס)
+          urgentDelta = newUrgent ? 1 : -1;
+        }
+      }
+
+      // עדכון אטומי
+      if (totalDelta !== 0 || activeDelta !== 0 || completedDelta !== 0 || urgentDelta !== 0) {
+        await metricsRef.set({
+          total: admin.firestore.FieldValue.increment(totalDelta),
+          active: admin.firestore.FieldValue.increment(activeDelta),
+          completed: admin.firestore.FieldValue.increment(completedDelta),
+          urgent: admin.firestore.FieldValue.increment(urgentDelta),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        console.log(`✅ Metrics updated: total(${totalDelta > 0 ? '+' : ''}${totalDelta}) active(${activeDelta > 0 ? '+' : ''}${activeDelta}) completed(${completedDelta > 0 ? '+' : ''}${completedDelta}) urgent(${urgentDelta > 0 ? '+' : ''}${urgentDelta})`);
+      } else {
+        console.log(`⏭️  No metric changes for task ${taskId}`);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ updateMetricsOnTaskChange error:', error);
+      // לא נזרוק שגיאה - טריגר לא צריך לעצור פעולות
+      return null;
+    }
+  });
+
+// ═══════════════════════════════════════════════════════════════════════
 // 🚨 NUCLEAR CLEANUP - Admin Only
 // ═══════════════════════════════════════════════════════════════════════
-const { nuclearCleanup } = require('./admin/nuclear-cleanup');
-exports.nuclearCleanup = nuclearCleanup;
+// ⚠️ TEMPORARILY DISABLED - admin directory not deployed
+// const { nuclearCleanup } = require('./admin/nuclear-cleanup');
+// exports.nuclearCleanup = nuclearCleanup;
 
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes)');
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics)');
