@@ -11,6 +11,7 @@
 
   // Global selectors storage
   window.clientCaseSelectors = window.clientCaseSelectors || {};
+  window.descriptionSelectors = window.descriptionSelectors || {};
 
   /**
    * Initialize budget selector (lazy initialization)
@@ -70,7 +71,8 @@
     try {
       const container = document.getElementById('timesheetClientCaseSelector');
       if (!container) {
-        console.error('❌ Timesheet container not found');
+        // Timesheet doesn't need ClientCaseSelector (internal activities only)
+        Logger.log('ℹ️ Timesheet selector container not found - skipping (internal activities form)');
         return;
       }
 
@@ -207,6 +209,58 @@
     }
   }
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * DESCRIPTION SELECTORS - Smart Work Description Selection
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+
+  /**
+   * Initialize budget description selector (lazy initialization)
+   * Called when budget form is opened
+   */
+  function initializeBudgetDescriptionSelector() {
+    // Check if already initialized
+    if (window.descriptionSelectors.budget) {
+      Logger.log('🔄 Budget description selector already initialized');
+      return;
+    }
+
+    try {
+      const container = document.getElementById('budgetDescriptionSelector');
+      if (!container) {
+        Logger.log('⚠️ Budget description selector container not found');
+        return;
+      }
+
+      // Create SmartComboSelector without taskId (new task doesn't have ID yet)
+      window.descriptionSelectors.budget = new SmartComboSelector('budgetDescriptionSelector', {
+        required: true,
+        contextAware: false,  // New task - no context yet
+        suggestLastUsed: false, // New task - no last-used
+        placeholder: 'בחר תיאור עבודה...'
+      });
+
+      Logger.log('✅ Budget description selector initialized');
+
+    } catch (error) {
+      console.error('❌ Error initializing Budget description selector:', error);
+    }
+  }
+
+  /**
+   * Clear budget description selector
+   * ✅ NEW: Also removes the reference so it can be re-initialized fresh
+   */
+  function clearBudgetDescriptionSelector() {
+    const selector = window.descriptionSelectors.budget;
+    if (selector) {
+      selector.reset();
+      // ✅ Remove reference so it can be re-initialized (no last-used for new tasks)
+      window.descriptionSelectors.budget = null;
+    }
+  }
+
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeSelectors);
@@ -218,12 +272,14 @@
   // Export globally
   window.ClientCaseSelectorsManager = {
     initialize: initializeSelectors,
-    initializeBudget: initializeBudgetSelector,      // ✅ NEW: Manual budget init
-    initializeTimesheet: initializeTimesheetSelector, // ✅ NEW: Manual timesheet init
+    initializeBudget: initializeBudgetSelector,      // ✅ Manual client-case selector init
+    initializeTimesheet: initializeTimesheetSelector,
+    initializeBudgetDescription: initializeBudgetDescriptionSelector, // ✅ NEW: Manual description selector init
     getBudgetValues: getBudgetTaskValues,
     getTimesheetValues: getTimesheetValues,
     clearBudget: clearBudgetSelector,
-    clearTimesheet: clearTimesheetSelector
+    clearTimesheet: clearTimesheetSelector,
+    clearBudgetDescription: clearBudgetDescriptionSelector // ✅ NEW: Clear description
   };
 
   Logger.log('✅ ClientCaseSelectorsManager ready (lazy initialization enabled)');

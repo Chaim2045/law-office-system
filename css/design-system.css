@@ -112,13 +112,30 @@
   --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.15);
 
   /* ========== Z-INDEX LAYERS ========== */
+  /* Base Levels */
   --z-base: 0;
+  --z-behind: -1;
+
+  /* Card Elements */
+  --z-card-button: 2;        /* כפתור הרחבה בכרטיס */
+  --z-card-badge: 10;        /* תגיות מידע בכרטיס */
+
+  /* UI Elements */
+  --z-sticky-header: 10;     /* כותרות sticky בטבלאות */
   --z-dropdown: 100;
   --z-sticky: 200;
+
+  /* Overlays & Modals */
+  --z-overlay-card: 1000;    /* overlay של כרטיס מורחב */
+  --z-overlay-form: 1001;    /* overlay של form dialog (גבוה יותר) */
   --z-modal-backdrop: 1000;
   --z-modal: 1001;
+
+  /* Notifications */
   --z-toast: 2000;
   --z-tooltip: 3000;
+  --z-notification: 10000;
+  --z-critical: 99999;
 }
 
 /* ========== UTILITY CLASSES ========== */

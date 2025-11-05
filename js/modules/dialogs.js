@@ -155,8 +155,14 @@ function showAdvancedTimeDialog(taskId, manager) {
             <input type="number" id="workMinutes" min="1" max="999" placeholder="60" required>
           </div>
           <div class="form-group">
-            <label for="workDescription">תיאור העבודה</label>
-            <textarea id="workDescription" rows="3" placeholder="תיאור מפורט..." required></textarea>
+            <label for="workDescriptionSelector">
+              <i class="fas fa-align-right"></i> תיאור העבודה
+              <span class="category-required">*</span>
+            </label>
+            <div id="workDescriptionSelector"></div>
+            <!-- Hidden inputs for validation -->
+            <input type="hidden" id="workDescription" required>
+            <input type="hidden" id="workDescriptionCategory">
           </div>
         </form>
       </div>
@@ -171,6 +177,33 @@ function showAdvancedTimeDialog(taskId, manager) {
     </div>
   `;
   document.body.appendChild(overlay);
+
+  // ✅ Initialize SmartComboSelector with context-aware filtering
+  // This is the KEY feature - selector knows the task's category!
+  setTimeout(() => {
+    try {
+      const descSelector = new SmartComboSelector('workDescriptionSelector', {
+        required: true,
+        taskId: taskId,              // 🎯 KEY: Task ID for context
+        task: task,                  // 🎯 KEY: Task object with categoryId
+        contextAware: true,          // ✅ Enable context filtering
+        suggestLastUsed: true,       // ✅ Enable last-used suggestion
+        autoSelectSuggestion: false, // Don't auto-select, let user confirm
+        placeholder: 'בחר תיאור עבודה...'
+      });
+
+      // Store for cleanup
+      overlay.descSelector = descSelector;
+
+      Logger.log(`✅ Work description selector initialized for task ${taskId}`, {
+        categoryId: task.categoryId,
+        categoryName: task.categoryName
+      });
+
+    } catch (error) {
+      Logger.log('❌ Error initializing work description selector:', error);
+    }
+  }, 100);
 }
 
 /**

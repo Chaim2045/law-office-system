@@ -243,98 +243,8 @@
   box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
 }
 
-/* עיצוב הטבלה המשופרת */
-.modern-timesheet-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  direction: rtl;
-  border: 1px solid #e2e8f0;
-}
-
-.modern-timesheet-table thead {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-}
-
-.modern-timesheet-table th {
-  padding: 16px 20px;
-  color: #1f2328;
-  font-weight: 700;
-  font-size: 12px;
-  text-align: right;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid #e2e8f0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  border: 1px solid #e2e8f0;
-}
-
-.modern-timesheet-table td {
-  padding: 16px 20px;
-  color: #374151;
-  font-weight: 500;
-  vertical-align: middle;
-  border-right: 1px solid rgba(226, 232, 240, 0.3);
-  border-left: 1px solid rgba(226, 232, 240, 0.3);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-  text-align: right;
-  direction: rtl;
-  font-size: 14px;
-}
-
-.modern-timesheet-table tbody tr {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.modern-timesheet-table tbody tr:nth-child(even) {
-  background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
-}
-
-.modern-timesheet-table tbody tr:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.modern-timesheet-table tbody tr:hover {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-left: 3px solid #3b82f6;
-}
-
-.modern-timesheet-table tr:last-child td {
-  border-bottom: none;
-}
-
-.modern-timesheet-table tbody td:first-child {
-  border-right: 1px solid rgba(226, 232, 240, 0.5);
-}
-
-.modern-timesheet-table tbody td:last-child {
-  border-left: 1px solid rgba(226, 232, 240, 0.5);
-}
-
-/* פינות מעוגלות לטבלה */
-.modern-timesheet-table th:first-child {
-  border-top-right-radius: 12px;
-  border-right: 1px solid #e2e8f0;
-}
-
-.modern-timesheet-table th:last-child {
-  border-top-left-radius: 12px;
-  border-left: 1px solid #e2e8f0;
-}
-
-.modern-timesheet-table tbody tr:last-child td:first-child {
-  border-bottom-right-radius: 12px;
-}
-
-.modern-timesheet-table tbody tr:last-child td:last-child {
-  border-bottom-left-radius: 12px;
-}
+/* עיצוב הטבלה המשופרת - MOVED TO tables.css FOR CONSISTENCY */
+/* All .modern-timesheet-table styles are now defined in tables.css to match modern-budget-table */
 
 /* עיצוב עמודות מיוחדות בטבלה */
 .timesheet-cell-date {
@@ -430,15 +340,6 @@
   .timesheet-card-time {
     justify-content: flex-end;
   }
-
-  .modern-timesheet-table {
-    font-size: 12px;
-  }
-
-  .modern-timesheet-table th,
-  .modern-timesheet-table td {
-    padding: 10px 8px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -453,26 +354,9 @@
   }
 }
 /* ===== עיצוב כרטיסיות השעתון ===== */
-/* ===== עיצוב כרטיסיות השעתון ===== */
-
-/* כרטיס שעתון - זהה למשימות + מסגרת כחולה דקה מסביב */
-.linear-minimal-card.timesheet-card {
-  border: 2px solid #3b82f6;
-}
-
-.linear-minimal-card.timesheet-card:hover {
-  border-color: #2563eb;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
-}
-
-/* כפתור עריכה בכרטיס שעתון - שמאל למטה */
-.linear-minimal-card.timesheet-card .linear-expand-btn {
-  position: absolute !important;
-  bottom: 15px !important;
-  left: 15px !important;
-  right: auto !important;
-  top: auto !important;
-}
+/* כרטיסיות השעתון משתמשות באותו עיצוב כמו כרטיסיות תקצוב */
+/* כל העיצובים מוגדרים ב-tables.css כ-Single Source of Truth */
+/* אין overrides ספציפיים - הכל אחיד! */
 
 /* מידע התאריך */
 .timesheet-date-info {
@@ -779,4 +663,65 @@
     color: #94a3b8;
   }
 }
+
+/* ==========================================================================
+   TIMESHEET CARDS HEIGHT OVERRIDE - הקטנת גובה רק לכרטיסיות שעתון
+   ========================================================================== */
+/*
+  השימוש ב-[data-entry-id] מבטיח שההגדרות האלו חלות רק על כרטיסיות שעתון,
+  ולא על כרטיסיות תקצוב משימות (שיש להן data-task-id).
+  כרטיסיות תקצוב משימות נשארות ב-380px כמו שהיו!
+*/
+
+/* Desktop - הקטנה משמעותית */
+.linear-minimal-card[data-entry-id] {
+  min-height: 260px !important;
+  max-height: 260px !important;
+  padding-bottom: 50px !important; /* הקטנה ממקור 70px */
+  gap: var(--space-2) !important; /* הקטנה ממקור space-3 */
+}
+
+.linear-minimal-card[data-entry-id] .linear-card-content {
+  gap: 10px !important; /* הקטנה ממקור 16px */
+  padding-bottom: 60px !important; /* הקטנה ממקור 80px */
+}
+
+.linear-minimal-card[data-entry-id] .linear-card-title {
+  padding-bottom: 10px !important; /* הקטנה ממקור 16px */
+  margin-bottom: 12px !important; /* הקטנה ממקור 20px */
+  min-height: 40px !important; /* הקטנה ממקור 48px */
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .linear-minimal-card[data-entry-id] {
+    min-height: 250px !important;
+    max-height: 250px !important;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .linear-minimal-card[data-entry-id] {
+    min-height: 240px !important;
+    max-height: 240px !important;
+    padding-bottom: 45px !important;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .linear-minimal-card[data-entry-id] {
+    min-height: 230px !important;
+    max-height: 230px !important;
+    padding: 16px !important;
+    padding-bottom: 40px !important;
+  }
+
+  .linear-minimal-card[data-entry-id] .linear-card-title {
+    font-size: 14px !important;
+    min-height: 36px !important;
+  }
+}
+
 /* ===== CSS עבור קטגוריות פעולות ===== */

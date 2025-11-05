@@ -58,6 +58,28 @@ export const BADGE_STYLES = {
       gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
       icon: '💼'
     }
+  },
+
+  status: {
+    פעיל: {
+      padding: '5px 10px',
+      fontSize: '10px',
+      fontWeight: '500',
+      borderRadius: '16px',
+      background: '#f0f9ff', // רקע כחול בהיר מאוד - מינימליסטי
+      color: '#0369a1', // כחול כהה
+      border: '0.5px solid #bae6fd' // גבול דק וקל
+    },
+    הושלם: {
+      padding: '5px 10px',
+      fontSize: '10px',
+      fontWeight: '500',
+      borderRadius: '16px',
+      background: '#ecfdf5', // רקע ירוק בהיר מאוד - מינימליסטי
+      color: '#047857', // ירוק כהה
+      border: '0.5px solid #a7f3d0', // גבול דק וקל
+      icon: '✓'
+    }
   }
 };
 
@@ -148,6 +170,54 @@ export function createServiceBadge(serviceName, size = 'normal', customStyles = 
     <div style="${styleString}">
       ${style.icon} ${escapeHtml(serviceName)}
     </div>
+  `;
+}
+
+/**
+ * Create status badge HTML
+ * @param {string} status - Status text ('פעיל' or 'הושלם')
+ * @param {Object} customStyles - Additional inline styles
+ * @returns {string} HTML string for badge
+ */
+export function createStatusBadge(status, customStyles = {}) {
+  if (!status || typeof status !== 'string') {
+    return status || '';
+  }
+
+  // Get style for specific status
+  const style = BADGE_STYLES.status[status];
+
+  if (!style) {
+    // Fallback for unknown status - return plain text
+    return `<span style="color: #6b7280;">${escapeHtml(status)}</span>`;
+  }
+
+  const allStyles = {
+    fontWeight: style.fontWeight || '500',
+    color: style.color || '#6b7280',
+    display: 'inline-block',
+    padding: style.padding,
+    fontSize: style.fontSize,
+    borderRadius: style.borderRadius,
+    background: style.background || style.gradient, // תמיכה גם בbackground וגם בgradient לתאימות
+    border: style.border || 'none',
+    boxShadow: 'none', // מינימליסטי - ללא צל
+    ...customStyles
+  };
+
+  const styleString = Object.entries(allStyles)
+    .map(([key, value]) => {
+      const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      return `${cssKey}: ${value}`;
+    })
+    .join('; ');
+
+  const icon = style.icon ? `${style.icon} ` : '';
+
+  return `
+    <span style="${styleString}">
+      ${icon}${escapeHtml(status)}
+    </span>
   `;
 }
 

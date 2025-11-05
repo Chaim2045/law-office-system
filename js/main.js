@@ -1452,6 +1452,7 @@ window._firebase_loadTimesheetFromFirebase_ORIGINAL = FirebaseOps.loadTimesheetF
 window._firebase_loadBudgetTasksFromFirebase_ORIGINAL = FirebaseOps.loadBudgetTasksFromFirebase;
 // ✅ saveClientToFirebase removed
 window._firebase_saveTimesheetToFirebase_ORIGINAL = FirebaseOps.saveTimesheetToFirebase;
+window._firebase_saveTimesheetToFirebase_v2_ORIGINAL = FirebaseOps.saveTimesheetToFirebase_v2;  // ✅ ENTERPRISE v2.0
 window._firebase_saveBudgetTaskToFirebase_ORIGINAL = FirebaseOps.saveBudgetTaskToFirebase;
 window._firebase_updateTimesheetEntryFirebase_ORIGINAL = FirebaseOps.updateTimesheetEntryFirebase;
 window._firebase_updateClientHoursImmediately_ORIGINAL = ClientHours.updateClientHoursImmediately;
@@ -1465,6 +1466,7 @@ window.loadTimesheetFromFirebase = FirebaseOps.loadTimesheetFromFirebase;
 window.loadBudgetTasksFromFirebase = FirebaseOps.loadBudgetTasksFromFirebase;
 // ✅ saveClientToFirebase removed
 window.saveTimesheetToFirebase = FirebaseOps.saveTimesheetToFirebase;
+window.saveTimesheetToFirebase_v2 = FirebaseOps.saveTimesheetToFirebase_v2;  // ✅ ENTERPRISE v2.0
 window.saveBudgetTaskToFirebase = FirebaseOps.saveBudgetTaskToFirebase;
 window.updateTimesheetEntryFirebase = FirebaseOps.updateTimesheetEntryFirebase;
 window.updateClientHoursImmediately = ClientHours.updateClientHoursImmediately;

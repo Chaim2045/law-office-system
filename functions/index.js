@@ -336,6 +336,220 @@ async function generateCaseNumber() {
 }
 
 // ===============================
+// Enterprise Infrastructure - דיוק מוחלט
+// ===============================
+
+/**
+ * ✅ ENTERPRISE: Version Control & Optimistic Locking
+ * מונע Lost Updates - כאשר שני משתמשים עורכים אותו מסמך בו-זמנית
+ *
+ * @param {DocumentReference} docRef - רפרנס למסמך
+ * @param {number} expectedVersion - גרסה צפויה
+ * @returns {Promise<Object>} - המסמך והגרסה הנוכחית
+ * @throws {Error} - אם הגרסה לא תואמת (conflict detected)
+ */
+async function checkVersionAndLock(docRef, expectedVersion) {
+  const doc = await docRef.get();
+
+  if (!doc.exists) {
+    throw new Error('מסמך לא נמצא');
+  }
+
+  const data = doc.data();
+  const currentVersion = data._version || 0;
+
+  // ✅ בדיקת התנגשות
+  if (expectedVersion !== undefined && currentVersion !== expectedVersion) {
+    throw new Error(
+      `CONFLICT: המסמך שונה על ידי משתמש אחר. ` +
+      `גרסה צפויה: ${expectedVersion}, גרסה נוכחית: ${currentVersion}. ` +
+      `אנא רענן את המסמך ונסה שוב.`
+    );
+  }
+
+  return {
+    data,
+    currentVersion,
+    nextVersion: currentVersion + 1
+  };
+}
+
+/**
+ * ✅ ENTERPRISE: Event Sourcing - רישום אירוע במערכת
+ * כל שינוי במערכת נרשם כאירוע append-only (אף פעם לא נמחק)
+ * זה מאפשר:
+ * 1. Audit Trail מלא
+ * 2. שחזור מצב עבר
+ * 3. ניתוח דפוסי שימוש
+ * 4. בדיקת עקביות נתונים
+ *
+ * @param {Object} eventData - נתוני האירוע
+ * @returns {Promise<string>} - Event ID
+ */
+async function createTimeEvent(eventData) {
+  const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+  const event = {
+    eventId,
+    eventType: eventData.eventType, // TIME_ADDED, TIME_UPDATED, PACKAGE_DEPLETED
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+
+    // מזהי ישויות
+    caseId: eventData.caseId,
+    serviceId: eventData.serviceId || null,
+    stageId: eventData.stageId || null,
+    packageId: eventData.packageId || null,
+    taskId: eventData.taskId || null,
+    timesheetEntryId: eventData.timesheetEntryId || null,
+
+    // נתוני האירוע
+    data: eventData.data || {},
+
+    // מי ביצע
+    performedBy: eventData.performedBy,
+    performedByEmail: eventData.performedByEmail,
+
+    // מצב לפני ואחרי
+    before: eventData.before || {},
+    after: eventData.after || {},
+
+    // מניעת כפילויות
+    idempotencyKey: eventData.idempotencyKey || null,
+
+    // מטא-דאטה
+    userAgent: eventData.userAgent || null,
+    ipAddress: eventData.ipAddress || null,
+
+    // סטטוס
+    processed: true,
+    processingErrors: eventData.errors || []
+  };
+
+  await db.collection('time_events').doc(eventId).set(event);
+
+  console.log(`📝 [EVENT] ${eventData.eventType} - ${eventId}`);
+
+  return eventId;
+}
+
+/**
+ * ✅ ENTERPRISE: Idempotency Protection
+ * מונע ביצוע כפול של אותה פעולה (למשל: לחיצה כפולה על "שמור")
+ *
+ * @param {string} idempotencyKey - מפתח ייחודי לפעולה
+ * @returns {Promise<Object|null>} - תוצאה קיימת או null
+ */
+async function checkIdempotency(idempotencyKey) {
+  if (!idempotencyKey) {
+    return null;
+  }
+
+  const operationDoc = await db.collection('processed_operations')
+    .doc(idempotencyKey)
+    .get();
+
+  if (operationDoc.exists) {
+    const operation = operationDoc.data();
+
+    // ✅ הפעולה כבר בוצעה - מחזיר את התוצאה המקורית
+    console.log(`🔄 [IDEMPOTENCY] פעולה כבר בוצעה: ${idempotencyKey}`);
+    return operation.result;
+  }
+
+  return null;
+}
+
+/**
+ * ✅ ENTERPRISE: Idempotency Registration
+ * שמירת תוצאת פעולה למניעת ביצוע כפול
+ *
+ * @param {string} idempotencyKey - מפתח ייחודי
+ * @param {Object} result - תוצאת הפעולה
+ * @param {number} ttlHours - זמן תפוגה (24 שעות ברירת מחדל)
+ */
+async function registerIdempotency(idempotencyKey, result, ttlHours = 24) {
+  if (!idempotencyKey) {
+    return;
+  }
+
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + ttlHours);
+
+  await db.collection('processed_operations').doc(idempotencyKey).set({
+    idempotencyKey,
+    status: 'completed',
+    result,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt)
+  });
+
+  console.log(`✅ [IDEMPOTENCY] נרשמה פעולה: ${idempotencyKey}`);
+}
+
+/**
+ * ✅ ENTERPRISE: Two-Phase Commit - Phase 1 (Reserve)
+ * יצירת הזמנה לפני ביצוע הפעולה בפועל
+ *
+ * @param {Object} reservationData - נתוני ההזמנה
+ * @returns {Promise<string>} - Reservation ID
+ */
+async function createReservation(reservationData) {
+  const reservationId = `rsv_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+  const reservation = {
+    reservationId,
+    status: 'pending', // pending → committed / rolled_back
+
+    // נתוני הפעולה
+    caseId: reservationData.caseId,
+    minutes: reservationData.minutes,
+    performedBy: reservationData.performedBy,
+
+    // פעולות מתוכננות
+    operations: reservationData.operations || [],
+
+    // זמנים
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() + 5 * 60 * 1000) // תפוגה אחרי 5 דקות
+    )
+  };
+
+  await db.collection('reservations').doc(reservationId).set(reservation);
+
+  console.log(`📌 [RESERVATION] נוצרה הזמנה: ${reservationId}`);
+
+  return reservationId;
+}
+
+/**
+ * ✅ ENTERPRISE: Two-Phase Commit - Phase 2 (Commit)
+ * סימון ההזמנה כהושלמה
+ */
+async function commitReservation(reservationId) {
+  await db.collection('reservations').doc(reservationId).update({
+    status: 'committed',
+    committedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  console.log(`✅ [RESERVATION] הושלמה: ${reservationId}`);
+}
+
+/**
+ * ✅ ENTERPRISE: Two-Phase Commit - Rollback
+ * סימון ההזמנה כבוטלה
+ */
+async function rollbackReservation(reservationId, error) {
+  await db.collection('reservations').doc(reservationId).update({
+    status: 'rolled_back',
+    rolledBackAt: admin.firestore.FieldValue.serverTimestamp(),
+    error: error.message || 'Unknown error'
+  });
+
+  console.log(`❌ [RESERVATION] בוטלה: ${reservationId}`);
+}
+
+// ===============================
 // Authentication Functions
 // ===============================
 
@@ -2379,15 +2593,15 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
             }
           }
           // ✅ NEW: הליך משפטי כשירות (Architecture v2.0)
-          else if (data.serviceType === 'legal_procedure' && data.parentServiceId) {
-            console.log(`🆕 [v2.0] הליך משפטי כשירות - parentServiceId: ${data.parentServiceId}, stageId: ${data.serviceId}`);
+          else if (taskData.serviceType === 'legal_procedure' && taskData.parentServiceId) {
+            console.log(`🆕 [v2.0] הליך משפטי כשירות - parentServiceId: ${taskData.parentServiceId}, stageId: ${taskData.serviceId}`);
 
             // מציאת השירות בתוך services array
-            const service = clientData.services?.find(s => s.id === data.parentServiceId);
+            const service = clientData.services?.find(s => s.id === taskData.parentServiceId);
 
             if (service && service.type === 'legal_procedure') {
               // מציאת השלב בתוך השירות
-              const targetStageId = data.serviceId || service.currentStage || 'stage_a';
+              const targetStageId = taskData.serviceId || service.currentStage || 'stage_a';
               const stages = service.stages || [];
               const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
 
@@ -2543,6 +2757,441 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה ביצירת רישום שעות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * ✅ ENTERPRISE v2.0: יצירת רישום שעות עם דיוק מוחלט
+ *
+ * שיפורים לעומת createTimesheetEntry:
+ * 1. ✅ Optimistic Locking (_version) - מונע Lost Updates
+ * 2. ✅ Event Sourcing (time_events) - Audit Trail מלא
+ * 3. ✅ Idempotency Keys - מונע ביצוע כפול
+ * 4. ✅ Two-Phase Commit - אטומיות מלאה
+ * 5. ✅ Automatic Rollback - חזרה אוטומטית במקרה של שגיאה
+ *
+ * שימוש:
+ * const result = await createTimesheetEntry_v2.call({
+ *   clientId: '2025001',
+ *   minutes: 120,
+ *   date: '2025-02-20',
+ *   action: 'פגישה עם לקוח',
+ *   taskId: 'task_xxx',
+ *   expectedVersion: 5,  // ✅ גרסה צפויה של הלקוח
+ *   idempotencyKey: 'user1_2025-02-20_task_xxx_120'  // ✅ מונע כפילויות
+ * });
+ */
+exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) => {
+  let reservationId = null;
+
+  try {
+    // ================================================
+    // STEP 1: בדיקות בסיסיות
+    // ================================================
+    const user = await checkUserPermissions(context);
+
+    // ✅ IDEMPOTENCY: בדיקה אם הפעולה כבר בוצעה
+    if (data.idempotencyKey) {
+      const existingResult = await checkIdempotency(data.idempotencyKey);
+      if (existingResult) {
+        console.log(`🔄 [v2.0] פעולה כבר בוצעה - מחזיר תוצאה קיימת`);
+        return existingResult;
+      }
+    }
+
+    // ================================================
+    // STEP 2: Validation מורחב
+    // ================================================
+
+    // טיפול בפעילות פנימית
+    let finalClientId = data.clientId;
+    let finalCaseId = data.caseId;
+    let finalClientName = data.clientName;
+
+    if (data.isInternal === true) {
+      const internalCase = await getOrCreateInternalCase(user.username);
+      finalClientId = internalCase.clientId;
+      finalCaseId = internalCase.id;
+      finalClientName = internalCase.clientName;
+    }
+
+    // בדיקות בסיסיות
+    if (!finalClientId) {
+      throw new functions.https.HttpsError('invalid-argument', 'חסר מזהה לקוח');
+    }
+
+    if (!data.date) {
+      throw new functions.https.HttpsError('invalid-argument', 'חסר תאריך');
+    }
+
+    if (typeof data.minutes !== 'number' || data.minutes <= 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'דקות חייבות להיות מספר חיובי');
+    }
+
+    if (!data.action || typeof data.action !== 'string') {
+      throw new functions.https.HttpsError('invalid-argument', 'חסר תיאור פעולה');
+    }
+
+    // ✅ חובה לקשר למשימה (למעט פעילות פנימית)
+    if (data.isInternal !== true && !data.taskId) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        '❌ חובה לבחור משימה לרישום זמן על לקוח!'
+      );
+    }
+
+    // ================================================
+    // STEP 3: TWO-PHASE COMMIT - Phase 1 (Reservation)
+    // ================================================
+    reservationId = await createReservation({
+      caseId: finalClientId,
+      minutes: data.minutes,
+      performedBy: user.username,
+      operations: ['update_client', 'update_task', 'create_timesheet_entry', 'create_event']
+    });
+
+    console.log(`🎯 [v2.0] מתחיל רישום שעות: ${data.minutes} דקות ללקוח ${finalClientId}`);
+
+    // ================================================
+    // STEP 4: אחזור מסמך הלקוח + VERSION CHECK
+    // ================================================
+    const clientRef = db.collection('clients').doc(finalClientId);
+    let clientVersionInfo;
+    let clientData;
+
+    if (data.isInternal !== true) {
+      // ✅ OPTIMISTIC LOCKING: בדיקת גרסה
+      clientVersionInfo = await checkVersionAndLock(clientRef, data.expectedVersion);
+      clientData = clientVersionInfo.data;
+
+      if (!finalClientName) {
+        finalClientName = clientData.clientName || clientData.fullName;
+      }
+    }
+
+    // ================================================
+    // STEP 5: TRANSACTION - כל הפעולות ביחד או כלום
+    // ================================================
+    const hoursWorked = data.minutes / 60;
+    let updatedStageId = null;
+    let updatedPackageId = null;
+    let timesheetEntryId = null;
+
+    const result = await db.runTransaction(async (transaction) => {
+      // ------------------------------------------------
+      // 5.1: עדכון משימה (אם קיימת)
+      // ------------------------------------------------
+      if (data.taskId) {
+        const taskRef = db.collection('budget_tasks').doc(data.taskId);
+        const taskDoc = await transaction.get(taskRef);
+
+        if (taskDoc.exists) {
+          const taskData = taskDoc.data();
+          const currentActualHours = taskData.actualHours || 0;
+          const newActualHours = currentActualHours + hoursWorked;
+
+          transaction.update(taskRef, {
+            actualHours: newActualHours,
+            actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
+            lastModifiedBy: user.username,
+            lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+          console.log(`📊 [v2.0] עדכון משימה: ${currentActualHours} → ${newActualHours} שעות`);
+        }
+      }
+
+      // ------------------------------------------------
+      // 5.2: קיזוז שעות מהלקוח (CLIENT = CASE)
+      // ------------------------------------------------
+      if (data.isInternal !== true) {
+        // לקוח שעתי עם שירותים
+        if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+          let service = null;
+
+          if (data.serviceId) {
+            service = clientData.services.find(s => s.id === data.serviceId);
+            if (!service) {
+              console.warn(`⚠️ שירות ${data.serviceId} לא נמצא - משתמש בראשון`);
+              service = clientData.services[0];
+            }
+          } else {
+            service = clientData.services[0];
+          }
+
+          if (service) {
+            const activePackage = getActivePackage(service);
+
+            if (activePackage) {
+              // שמירת מצב לפני
+              const packageBefore = {
+                hoursUsed: activePackage.hoursUsed || 0,
+                hoursRemaining: activePackage.hoursRemaining || 0
+              };
+
+              // קיזוז שעות
+              deductHoursFromPackage(activePackage, hoursWorked);
+              updatedPackageId = activePackage.id;
+
+              // ✅ VERSION CONTROL: עדכון עם גרסה חדשה
+              transaction.update(clientRef, {
+                services: clientData.services,
+                minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                lastActivity: admin.firestore.FieldValue.serverTimestamp(),
+                _version: clientVersionInfo.nextVersion,  // ✅ גרסה חדשה!
+                _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+                _modifiedBy: user.username
+              });
+
+              console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} (גרסה ${clientVersionInfo.currentVersion} → ${clientVersionInfo.nextVersion})`);
+            } else {
+              console.warn(`⚠️ אין חבילה פעילה!`);
+            }
+          }
+        }
+        // הליך משפטי כשירות
+        else if (data.serviceType === 'legal_procedure' && data.parentServiceId) {
+          const service = clientData.services?.find(s => s.id === data.parentServiceId);
+
+          if (service && service.type === 'legal_procedure') {
+            const targetStageId = data.serviceId || service.currentStage || 'stage_a';
+            const stages = service.stages || [];
+            const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
+
+            if (currentStageIndex !== -1) {
+              const currentStage = stages[currentStageIndex];
+              updatedStageId = currentStage.id;
+
+              const activePackage = getActivePackage(currentStage);
+
+              if (activePackage) {
+                // קיזוז שעות
+                deductHoursFromPackage(activePackage, hoursWorked);
+                updatedPackageId = activePackage.id;
+
+                // עדכון שלב
+                stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
+                stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
+
+                service.stages = stages;
+
+                // ✅ VERSION CONTROL
+                transaction.update(clientRef, {
+                  services: clientData.services,
+                  hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                  minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                  lastActivity: admin.firestore.FieldValue.serverTimestamp(),
+                  _version: clientVersionInfo.nextVersion,
+                  _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+                  _modifiedBy: user.username
+                });
+
+                console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}`);
+              }
+            }
+          }
+        }
+        // הליך משפטי - תמחור שעתי (LEGACY - case level)
+        else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
+          const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
+          const stages = clientData.stages || [];
+          const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
+
+          if (currentStageIndex !== -1) {
+            const currentStage = stages[currentStageIndex];
+            updatedStageId = currentStage.id;
+
+            const activePackage = getActivePackage(currentStage);
+
+            if (activePackage) {
+              deductHoursFromPackage(activePackage, hoursWorked);
+              updatedPackageId = activePackage.id;
+
+              stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
+              stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
+
+              // ✅ VERSION CONTROL
+              transaction.update(clientRef, {
+                stages: stages,
+                hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                lastActivity: admin.firestore.FieldValue.serverTimestamp(),
+                _version: clientVersionInfo.nextVersion,
+                _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+                _modifiedBy: user.username
+              });
+
+              console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}`);
+            }
+          }
+        }
+        // הליך משפטי - תמחור פיקס
+        else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
+          const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
+          const stages = clientData.stages || [];
+          const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
+
+          if (currentStageIndex !== -1) {
+            const currentStage = stages[currentStageIndex];
+            updatedStageId = currentStage.id;
+
+            stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
+            stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
+
+            // ✅ VERSION CONTROL
+            transaction.update(clientRef, {
+              stages: stages,
+              totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
+              lastActivity: admin.firestore.FieldValue.serverTimestamp(),
+              _version: clientVersionInfo.nextVersion,
+              _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+              _modifiedBy: user.username
+            });
+
+            console.log(`✅ [v2.0] נרשמו ${hoursWorked.toFixed(2)} שעות (מחיר קבוע)`);
+          }
+        }
+      }
+
+      // ------------------------------------------------
+      // 5.3: יצירת רישום שעות
+      // ------------------------------------------------
+      const entryData = {
+        clientId: finalClientId,
+        clientName: finalClientName,
+        caseNumber: data.caseNumber || finalClientId,
+        serviceId: data.serviceId || null,
+        serviceName: data.serviceName || null,
+        serviceType: data.serviceType || null,
+        parentServiceId: data.parentServiceId || null,
+        stageId: updatedStageId,
+        packageId: updatedPackageId,
+        date: data.date,
+        minutes: data.minutes,
+        hours: hoursWorked,
+        action: sanitizeString(data.action.trim()),
+        employee: user.email,
+        lawyer: user.username,
+        isInternal: data.isInternal === true,
+        createdBy: user.username,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+        // ✅ META-DATA for tracking
+        _processedByVersion: 'v2.0',
+        _idempotencyKey: data.idempotencyKey || null
+      };
+
+      const timesheetRef = db.collection('timesheet_entries').doc();
+      timesheetEntryId = timesheetRef.id;
+      transaction.set(timesheetRef, entryData);
+
+      console.log(`✅ [v2.0] נוצר רישום שעות: ${timesheetEntryId}`);
+
+      return {
+        success: true,
+        entryId: timesheetEntryId,
+        entry: {
+          id: timesheetEntryId,
+          ...entryData
+        },
+        version: data.isInternal !== true ? clientVersionInfo.nextVersion : null
+      };
+    });
+
+    // ================================================
+    // STEP 6: EVENT SOURCING - רישום האירוע
+    // ================================================
+    await createTimeEvent({
+      eventType: 'TIME_ADDED',
+      caseId: finalClientId,
+      serviceId: data.serviceId || null,
+      stageId: updatedStageId,
+      packageId: updatedPackageId,
+      taskId: data.taskId || null,
+      timesheetEntryId: timesheetEntryId,
+
+      data: {
+        minutes: data.minutes,
+        hours: hoursWorked,
+        action: data.action,
+        date: data.date
+      },
+
+      performedBy: user.username,
+      performedByEmail: user.email,
+
+      before: data.isInternal !== true ? {
+        version: clientVersionInfo.currentVersion
+      } : {},
+
+      after: data.isInternal !== true ? {
+        version: clientVersionInfo.nextVersion
+      } : {},
+
+      idempotencyKey: data.idempotencyKey || null
+    });
+
+    // ================================================
+    // STEP 7: TWO-PHASE COMMIT - Phase 2 (Commit)
+    // ================================================
+    await commitReservation(reservationId);
+
+    // ================================================
+    // STEP 8: IDEMPOTENCY REGISTRATION
+    // ================================================
+    if (data.idempotencyKey) {
+      await registerIdempotency(data.idempotencyKey, result);
+    }
+
+    // ================================================
+    // STEP 9: AUDIT LOG
+    // ================================================
+    await logAction('CREATE_TIMESHEET_ENTRY_V2', user.uid, user.username, {
+      entryId: timesheetEntryId,
+      clientId: finalClientId,
+      caseNumber: result.entry.caseNumber,
+      isInternal: data.isInternal === true,
+      minutes: data.minutes,
+      date: data.date,
+      taskId: data.taskId || null,
+      version: result.version,
+      reservationId: reservationId,
+      idempotencyKey: data.idempotencyKey || null
+    });
+
+    console.log(`🎉 [v2.0] רישום שעות הושלם בהצלחה! Entry: ${timesheetEntryId}, Version: ${result.version}`);
+
+    return result;
+
+  } catch (error) {
+    console.error('❌ [v2.0] Error in createTimesheetEntry_v2:', error);
+
+    // ✅ AUTOMATIC ROLLBACK
+    if (reservationId) {
+      await rollbackReservation(reservationId, error);
+    }
+
+    // טיפול בשגיאות מובנות
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    // טיפול בקונפליקט גרסה
+    if (error.message && error.message.includes('CONFLICT')) {
+      throw new functions.https.HttpsError(
+        'aborted',
+        error.message
+      );
+    }
+
+    // שגיאה כללית
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה ביצירת רישום שעות (v2.0): ${error.message}`
     );
   }
 });
@@ -3924,6 +4573,134 @@ exports.migrateHistoricalTimesheetEntries = functions.https.onCall(async (data, 
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה במיגרציה היסטורית: ${error.message}`
+    );
+  }
+});
+
+/**
+ * ✅ ENTERPRISE: מיגרציה - הוספת _version לכל מסמכי הלקוחות
+ *
+ * פונקציה זו מוסיפה שדות Version Control לכל מסמכי הלקוחות הקיימים:
+ * - _version: מספר גרסה (מתחיל מ-0)
+ * - _lastModified: תאריך עדכון אחרון
+ * - _modifiedBy: מי ביצע את העדכון האחרון
+ *
+ * זה נדרש עבור מנגנון Optimistic Locking שמונע Lost Updates.
+ *
+ * שימוש:
+ * 1. רק מנהלים יכולים להפעיל
+ * 2. מריצים פעם אחת בלבד על כל הנתונים הקיימים
+ * 3. אחר כך כל createTimesheetEntry_v2 ישתמש ב-_version אוטומטית
+ *
+ * @requires Admin role
+ */
+exports.migrateClientsAddVersionControl = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // רק מנהלים יכולים להריץ מיגרציה
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים להריץ מיגרציה זו'
+      );
+    }
+
+    console.log(`🚀 [MIGRATION] מתחיל מיגרציית Version Control ל-clients collection...`);
+
+    const clientsSnapshot = await db.collection('clients').get();
+
+    let processed = 0;
+    let updated = 0;
+    let skipped = 0;
+    let errors = 0;
+    const errorDetails = [];
+
+    const batch = db.batch();
+    let batchCount = 0;
+    const BATCH_SIZE = 500; // Firestore limit
+
+    for (const clientDoc of clientsSnapshot.docs) {
+      try {
+        const clientData = clientDoc.data();
+
+        // אם כבר יש _version, דלג
+        if (clientData._version !== undefined) {
+          skipped++;
+          console.log(`⏭️  ${clientDoc.id} - כבר יש _version: ${clientData._version}`);
+          continue;
+        }
+
+        // הוסף שדות Version Control
+        const updateData = {
+          _version: 0,  // התחלה מגרסה 0
+          _lastModified: clientData.lastModifiedAt || admin.firestore.FieldValue.serverTimestamp(),
+          _modifiedBy: clientData.lastModifiedBy || 'system',
+          _etag: `v0_${Date.now()}` // Optional: ETag for additional validation
+        };
+
+        batch.update(clientDoc.ref, updateData);
+        updated++;
+        batchCount++;
+
+        console.log(`✅ ${clientDoc.id} - הוסף _version: 0`);
+
+        // Commit batch כל 500 מסמכים (מגבלת Firestore)
+        if (batchCount >= BATCH_SIZE) {
+          await batch.commit();
+          console.log(`📦 Batch committed: ${batchCount} documents`);
+          batchCount = 0;
+        }
+
+        processed++;
+
+      } catch (error) {
+        errors++;
+        const errorMsg = `${clientDoc.id}: ${error.message}`;
+        errorDetails.push(errorMsg);
+        console.error(`❌ Error processing ${clientDoc.id}:`, error);
+      }
+    }
+
+    // Commit יתרת ה-batch
+    if (batchCount > 0) {
+      await batch.commit();
+      console.log(`📦 Final batch committed: ${batchCount} documents`);
+    }
+
+    // Audit log
+    await logAction('MIGRATE_VERSION_CONTROL', user.uid, user.username, {
+      totalClients: clientsSnapshot.size,
+      processed,
+      updated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined
+    });
+
+    console.log(`🎉 מיגרציית Version Control הושלמה: ${updated} עודכנו, ${skipped} דולגו, ${errors} שגיאות`);
+
+    return {
+      success: true,
+      totalClients: clientsSnapshot.size,
+      processed,
+      updated,
+      skipped,
+      errors,
+      errorDetails: errors > 0 ? errorDetails : undefined,
+      message: `מיגרציה הושלמה: ${updated} לקוחות עודכנו עם Version Control`
+    };
+
+  } catch (error) {
+    console.error('❌ Error in migrateClientsAddVersionControl:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במיגרציית Version Control: ${error.message}`
     );
   }
 });

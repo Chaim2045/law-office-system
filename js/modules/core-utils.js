@@ -99,16 +99,22 @@ document.head.appendChild(feedbackStyles);
 
 /**
  * Format date functions
+ * Updated to match VanillaCalendarPicker format for consistency
  */
 function formatDateTime(date) {
   try {
-    return new Date(date).toLocaleString("he-IL", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const d = new Date(date);
+    if (isNaN(d.getTime())) {
+      return "תאריך לא תקין";
+    }
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+
+    return `${day}/${month}/${year} בשעה ${hours}:${minutes}`;
   } catch (error) {
     console.warn("formatDateTime failed", { input: date, error });
     return "תאריך לא תקין";

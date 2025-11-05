@@ -23,6 +23,8 @@ import {
   createCombinedInfoBadge
 } from './timesheet-constants.js';
 
+import DescriptionTooltips from './description-tooltips.js';
+
 // Utility functions (assumed to be available globally)
 // - safeText(): Sanitizes text for HTML display
 // - formatDate(): Formats dates for display
@@ -304,6 +306,9 @@ export function renderTimesheetCards(entries, stats, paginationStatus, currentSo
       ${loadMoreButton}
     </div>
   `;
+
+  // ✅ Note: Caller should run DescriptionTooltips.refresh() after setting innerHTML
+  return html;
 }
 
 /**
@@ -349,6 +354,19 @@ export function createTimesheetCard(entry) {
   const safeFileNumber = safeText(safeEntry.fileNumber);
   const safeNotes = safeText(safeEntry.notes);
 
+  // Helper functions for date formatting
+  const formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const formatShort = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+  };
+
   // 🎯 Combined info badge (case + service)
   const combinedBadge = createCombinedInfoBadge(
     safeEntry.caseNumber,
@@ -357,57 +375,49 @@ export function createTimesheetCard(entry) {
   );
 
   const badgesRow = combinedBadge ? `
-    <div style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+    <div class="linear-card-badges">
       ${combinedBadge}
     </div>
   ` : '';
 
   return `
-    <div class="linear-minimal-card timesheet-card" data-entry-id="${safeEntry.id}" onclick="manager.expandTimesheetCard('${safeEntry.id}', event)">
+    <div class="linear-minimal-card" data-entry-id="${safeEntry.id}">
       ${badgesRow}
       <div class="linear-card-content">
-        <h3 class="linear-card-title">
+        <h3 class="linear-card-title" title="${safeClientName}">
           ${safeAction}
         </h3>
-        <div class="linear-progress-section">
-          <div class="linear-time-info">
-            <div class="time-item actual">
-              <span class="time-value">${hours}h</span>
-              <span class="time-label">${safeEntry.minutes} דק'</span>
-            </div>
-            <div class="time-item estimated">
-              <span class="time-value">${formatShort(safeEntry.date)}</span>
-              <span class="time-label">תאריך</span>
-            </div>
+
+        <!-- זמן ופרטים נוספים -->
+        <div style="margin-top: 8px; color: #6b7280; font-size: 13px;">
+          <div style="margin-bottom: 6px;">
+            <i class="fas fa-clock" style="width: 16px; text-align: center;"></i>
+            ${hours}h (${safeEntry.minutes} דקות)
           </div>
-        </div>
-        <div class="linear-card-meta">
-          <div class="linear-client-row">
-            <span class="linear-client-label">לקוח:</span>
-            <span class="linear-client-name">
-              ${safeClientName}
-            </span>
+          <div style="margin-bottom: 6px;">
+            <i class="fas fa-calendar-alt" style="width: 16px; text-align: center;"></i>
+            ${formatShort(safeEntry.date)}
           </div>
-          ${safeFileNumber ? `
-          <div class="linear-deadline-row">
-            <span class="linear-progress-label">תיק:</span>
-            <span class="deadline-info">
-              ${safeFileNumber}
-            </span>
-          </div>
-          ` : ''}
-          ${window.DatesModule.getCreationDateHTML(safeEntry)}
-          ${safeNotes ? `
-          <div class="linear-deadline-row">
-            <span class="linear-progress-label">הערות:</span>
-            <span class="deadline-info" style="color: #6b7280; font-size: 12px;">
-              ${safeNotes}
-            </span>
-          </div>
-          ` : ''}
         </div>
       </div>
-      <button class="linear-expand-btn" onclick="event.stopPropagation(); manager.showEditTimesheetDialog('${safeEntry.id}')" title="ערוך" style="position: absolute; bottom: 15px; left: 15px;">
+
+      <!-- החלק התחתון - מחוץ ל-content -->
+      <div class="linear-card-meta">
+        <div class="linear-client-row">
+          <span class="linear-client-label">לקוח:</span>
+          <span class="linear-client-name" title="${safeClientName}">
+            ${safeClientName}
+          </span>
+        </div>
+        ${safeEntry.createdAt ? `
+        <div class="creation-date-tag">
+          <i class="far fa-clock"></i>
+          <span>נוצר ב-${formatDate(safeEntry.createdAt)} ${new Date(safeEntry.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        ` : ''}
+      </div>
+
+      <button class="linear-expand-btn" onclick="event.stopPropagation(); manager.showEditTimesheetDialog('${safeEntry.id}')" title="ערוך">
         <i class="fas fa-edit"></i>
       </button>
     </div>
@@ -536,9 +546,9 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
       <tr data-entry-id="${entryId}">
         <td class="timesheet-cell-date">${formatDate(entry.date)}</td>
         <td class="timesheet-cell-action">
-          ${combinedBadge}
-          <div style="margin-top: ${combinedBadge ? '4px' : '0'};">
-            ${safeText(entry.action || "")}
+          <div class="table-description-with-icons">
+            <span>${safeText(entry.action || "")}</span>
+            ${combinedBadge}
           </div>
         </td>
         <td class="timesheet-cell-time">
@@ -547,7 +557,6 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
         <td class="timesheet-cell-client">${safeText(
           entry.clientName || ""
         )}</td>
-        <td>${safeText(entry.fileNumber || "")}</td>
         <td style="color: #6b7280; font-size: 13px;">${window.DatesModule.getCreationDateTableCell(entry)}</td>
         <td>${safeText(entry.notes || "—")}</td>
         <td class="actions-column">
@@ -609,7 +618,6 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
               <th>פעולה</th>
               <th>זמן</th>
               <th>לקוח</th>
-              <th>תיק</th>
               <th>נוצר</th>
               <th>הערות</th>
               <th>פעולות</th>
@@ -623,6 +631,9 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
       ${loadMoreButton}
     </div>
   `;
+
+  // ✅ Note: Caller should run DescriptionTooltips.refresh() after setting innerHTML
+  return html;
 }
 
 /**

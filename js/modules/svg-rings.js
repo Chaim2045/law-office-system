@@ -217,12 +217,178 @@
     `;
   }
 
+  /**
+   * יצירת Compact Ring לטבלה - קטן ומינימלי
+   * @param {Object} config - Configuration object
+   * @param {number} config.daysRemaining - Days until deadline (can be negative for overdue)
+   * @param {number} config.progress - Progress percentage (0-100)
+   * @param {string} [config.size=52] - Ring size in pixels
+   * @returns {string} - Compact ring HTML
+   */
+  function createCompactDeadlineRing(config) {
+    const {
+      daysRemaining,
+      progress,
+      size = 52
+    } = config;
+
+    const radius = 20;
+    const strokeWidth = 3;
+    const circumference = 2 * Math.PI * radius;
+    const dashOffset = calculateDashOffset(Math.min(progress, 100), radius);
+
+    // Determine color based on days remaining
+    let color, colorScheme;
+    const isOverdue = daysRemaining < 0;
+
+    if (isOverdue) {
+      color = 'red';
+      colorScheme = {
+        start: '#dc2626',
+        end: '#b91c1c',
+        bg: '#fee2e2',
+        text: '#991b1b'
+      };
+    } else if (daysRemaining <= 1) {
+      color = 'orange';
+      colorScheme = {
+        start: '#ea580c',
+        end: '#c2410c',
+        bg: '#fed7aa',
+        text: '#9a3412'
+      };
+    } else if (daysRemaining <= 3) {
+      color = 'orange';
+      colorScheme = {
+        start: '#f59e0b',
+        end: '#d97706',
+        bg: '#fef3c7',
+        text: '#92400e'
+      };
+    } else {
+      color = 'blue';
+      colorScheme = {
+        start: '#2563eb',
+        end: '#1e40af',
+        bg: '#dbeafe',
+        text: '#1e3a8a'
+      };
+    }
+
+    const gradientId = `compact-ring-${Math.random().toString(36).substr(2, 9)}`;
+    const displayDays = Math.abs(daysRemaining);
+
+    return `
+      <div class="compact-deadline-ring">
+        <svg width="${size}" height="${size}" viewBox="0 0 60 60" class="compact-svg-ring">
+          <!-- Background circle -->
+          <circle
+            cx="30"
+            cy="30"
+            r="${radius}"
+            fill="none"
+            stroke="${colorScheme.bg}"
+            stroke-width="${strokeWidth}"
+          />
+
+          <!-- Progress circle -->
+          <circle
+            cx="30"
+            cy="30"
+            r="${radius}"
+            fill="none"
+            stroke="url(#${gradientId})"
+            stroke-width="${strokeWidth}"
+            stroke-dasharray="${circumference}"
+            stroke-dashoffset="${dashOffset}"
+            stroke-linecap="round"
+            transform="rotate(-90 30 30)"
+            class="compact-ring-progress"
+          />
+
+          <!-- Gradient definition -->
+          <defs>
+            <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="${colorScheme.start}" />
+              <stop offset="100%" stop-color="${colorScheme.end}" />
+            </linearGradient>
+          </defs>
+
+          <!-- Days number in center (only number) -->
+          <text
+            x="30"
+            y="30"
+            text-anchor="middle"
+            dominant-baseline="central"
+            font-size="16"
+            font-weight="700"
+            fill="${colorScheme.text}"
+            class="compact-ring-number">
+            ${displayDays}
+          </text>
+        </svg>
+        <!-- "ימים" label below ring -->
+        <div class="compact-ring-label-below" style="color: ${colorScheme.text};">ימים</div>
+        ${isOverdue ? `<div class="compact-ring-status">איחור!</div>` : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * יצירת Progress Bar לטבלה - עבור עמודת התקדמות הזמן
+   * @param {Object} config - Configuration object
+   * @param {number} config.progress - Progress percentage (0-100+)
+   * @param {number} config.actualMinutes - Actual time worked
+   * @param {number} config.estimatedMinutes - Estimated time
+   * @returns {string} - Progress bar HTML
+   */
+  function createTableProgressBar(config) {
+    const {
+      progress,
+      actualMinutes,
+      estimatedMinutes
+    } = config;
+
+    // Convert to hours for display
+    const actualHours = Math.round((actualMinutes / 60) * 10) / 10;
+    const estimatedHours = Math.round((estimatedMinutes / 60) * 10) / 10;
+
+    // Determine color class
+    let colorClass;
+    if (progress >= 100) {
+      colorClass = 'progress-complete';
+    } else if (progress >= 85) {
+      colorClass = 'progress-high';
+    } else if (progress >= 50) {
+      colorClass = 'progress-medium';
+    } else {
+      colorClass = 'progress-low';
+    }
+
+    // Cap visual progress at 100%
+    const visualProgress = Math.min(progress, 100);
+
+    return `
+      <div class="table-progress-container">
+        <div class="table-progress-header">
+          <span class="table-progress-label">${actualHours}ש / ${estimatedHours}ש</span>
+          <span class="table-progress-percentage">${Math.round(progress)}%</span>
+        </div>
+        <div class="table-progress-bar">
+          <div class="table-progress-fill ${colorClass}" style="width: ${visualProgress}%"></div>
+        </div>
+      </div>
+    `;
+  }
+
   // Export to global scope
   if (typeof window !== 'undefined') {
     window.SVGRings = {
       createSVGRing,
       createDualRings,
       createOverageIndicator,
+      createCompactDeadlineRing,
+      createTableProgressBar,
       calculateDashOffset
     };
   }

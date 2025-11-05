@@ -800,7 +800,7 @@
 
       // בדיקה אם יש שירותים
       const services = caseItem.services || [];
-      const stages = caseItem.stages || [];
+      const stages = caseItem.stages || []; // LEGACY support
 
       // 🔍 DEBUG - מה יש ב-caseItem?
       console.log('🔍 DEBUG renderServiceCards:', {
@@ -810,6 +810,7 @@
         servicesLength: services.length,
         stagesLength: stages.length,
         stages: stages,
+        services: services,
         caseItem: caseItem
       });
 
@@ -836,65 +837,82 @@
         };
         cardsHtml = this.createServiceCard(legacyService, 'hours', caseItem.pricingType, caseItem);
       } else {
-        // תוכנית שעות רגילה
-        if (caseItem.procedureType === 'hours' && services.length > 0) {
-          cardsHtml = services
-            .filter(s => s.status === 'active')
-            .map(service => this.createServiceCard(service, 'hours', 'hourly', caseItem))
-            .join('');
-        }
+        // ✅ NEW ARCHITECTURE: מעבר על כל השירותים
+        services.forEach(service => {
+          if (service.status !== 'active') return; // דלג על שירותים לא פעילים
 
-        // הליך משפטי
+          if (service.type === 'hours') {
+            // תוכנית שעות רגילה
+            cardsHtml += this.createServiceCard(service, 'hours', 'hourly', caseItem);
+          } else if (service.type === 'legal_procedure') {
+            // ✅ FIX: הליך משפטי - הצג כרטיסייה לכל שלב פעיל
+            const serviceStages = service.stages || [];
+
+            console.log('🔍 DEBUG: Legal procedure service found:', {
+              serviceId: service.id,
+              serviceName: service.name,
+              stagesCount: serviceStages.length,
+              pricingType: service.pricingType,
+              stages: serviceStages
+            });
+
+            // הצג את כל השלבים הפעילים
+            serviceStages.forEach(stage => {
+              if (stage.status === 'active') {
+                cardsHtml += this.createServiceCard(
+                  stage,
+                  'legal_procedure',
+                  service.pricingType || 'hourly',
+                  caseItem
+                );
+              }
+            });
+          }
+        });
+
+        // ✅ LEGACY SUPPORT: תמיכה במבנה ישן (stages ברמת התיק)
         if (caseItem.procedureType === 'legal_procedure' && stages.length > 0) {
-          // 🔍 DEBUG - איזה שלבים יש בהליך משפטי
-          console.log('🔍 DEBUG: Displaying legal_procedure stages:', {
-            caseId: caseItem.id,
-            procedureType: caseItem.procedureType,
-            pricingType: caseItem.pricingType,
-            stagesCount: stages.length,
-            currentStage: caseItem.currentStage,
-            stages: stages,
-            caseItem: caseItem
+          console.log('🔍 DEBUG: LEGACY - Displaying legal_procedure stages from caseItem.stages');
+
+          stages.forEach(stage => {
+            if (stage.status === 'active') {
+              cardsHtml += this.createServiceCard(
+                stage,
+                'legal_procedure',
+                caseItem.pricingType || 'hourly',
+                caseItem
+              );
+            }
           });
-
-          // ✅ FIX: הצג את השלב הנוכחי בלבד
-          const currentStageId = caseItem.currentStage || 'stage_a';
-
-          // מציאת השלב הנוכחי
-          let currentStage = stages.find(s => s.id === currentStageId);
-
-          // אם לא נמצא, נסה למצוא את השלב הראשון (order=1)
-          if (!currentStage) {
-            currentStage = stages.find(s => s.order === 1);
-          }
-
-          // אם עדיין לא נמצא, קח את הראשון במערך
-          if (!currentStage && stages.length > 0) {
-            currentStage = stages[0];
-          }
-
-          console.log('🔍 DEBUG: Current stage to display:', currentStage);
-
-          if (currentStage) {
-            cardsHtml = this.createServiceCard(currentStage, 'legal_procedure', caseItem.pricingType, caseItem);
-          }
         }
       }
 
       servicesCards.innerHTML = cardsHtml;
-      servicesGroup.style.display = 'block';
+      servicesGroup.style.display = cardsHtml ? 'block' : 'none';
 
-      // בחירה אוטומטית אם יש שירות אחד בלבד
-      const activeServices = services.filter(s => s.status === 'active');
-      const activeStages = stages.filter(s => s.status === 'active');
+      // בחירה אוטומטית אם יש שירות/שלב אחד בלבד
+      const activeServices = services.filter(s => s.status === 'active' && s.type === 'hours');
+
+      // ספירת שלבים פעילים (הן במבנה חדש והן בישן)
+      let allActiveStages = [];
+      services.forEach(service => {
+        if (service.type === 'legal_procedure' && service.stages) {
+          allActiveStages.push(...service.stages.filter(s => s.status === 'active'));
+        }
+      });
+      if (stages.length > 0) {
+        allActiveStages.push(...stages.filter(s => s.status === 'active'));
+      }
 
       if (isLegacyCase) {
         // תיק ישן - בחירה אוטומטית
         this.selectService(caseItem.id, 'hours');
-      } else if (activeServices.length === 1 && services.length > 0) {
+      } else if (activeServices.length === 1 && allActiveStages.length === 0) {
+        // שירות שעות אחד בלבד - בחירה אוטומטית
         this.selectService(activeServices[0].id, 'hours');
-      } else if (activeStages.length === 1 && stages.length > 0) {
-        this.selectService(activeStages[0].id, 'legal_procedure');
+      } else if (allActiveStages.length === 1 && activeServices.length === 0) {
+        // שלב אחד בלבד - בחירה אוטומטית
+        this.selectService(allActiveStages[0].id, 'legal_procedure');
       }
     }
 
@@ -1257,7 +1275,7 @@
         title = `הליך משפטי - ${stageName}`;
         subtitle = serviceData.description || serviceData.name;
 
-        if (this.selectedCase.pricingType === 'hourly') {
+        if (this.selectedServiceParent?.pricingType === 'hourly') {
           const hoursRemaining = window.calculateRemainingHours(serviceData);
           const totalHours = serviceData.totalHours || 90;
           const hoursUsed = totalHours - hoursRemaining;

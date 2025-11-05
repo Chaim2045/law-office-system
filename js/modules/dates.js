@@ -101,6 +101,7 @@ function formatDate(date) {
 
 /**
  * פורמט תאריך ושעה מלא בעברית
+ * Updated to match VanillaCalendarPicker format: DD/MM/YYYY בשעה HH:MM
  * @param {Date|string|Object} date - תאריך להצגה
  * @returns {string} תאריך ושעה מפורמט או '-'
  */
@@ -110,13 +111,13 @@ function formatDateTime(date) {
   const d = convertFirebaseTimestamp(date);
   if (!d) return '-';
 
-  return d.toLocaleString("he-IL", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+
+  return `${day}/${month}/${year} בשעה ${hours}:${minutes}`;
 }
 
 // ===== הצגת תאריכי יצירה עם Fallback =====
@@ -161,15 +162,13 @@ function getCreationDateHTML(item) {
   const date = getCreationDate(item);
   if (!date) return '';
 
-  const shortDate = formatShort(date);
   const fullDate = formatDate(date);
+  const time = new Date(date).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
 
-  return `<div class="linear-deadline-row">
-<span class="linear-progress-label" style="opacity: 0.85; color: #6b7280;">נוצר:</span>
-<span class="deadline-info" title="${fullDate}" style="color: #6b7280; font-size: 11px; opacity: 0.85; font-style: italic;">
-${shortDate}
-</span>
-</div>`;
+  return `<div class="creation-date-tag">
+    <i class="far fa-clock"></i>
+    <span>נוצר ב-${fullDate} ${time}</span>
+  </div>`;
 }
 
 /**

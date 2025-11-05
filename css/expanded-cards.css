@@ -11,7 +11,7 @@
   inset: 0;
   background: rgba(31, 35, 40, 0.5);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: var(--z-overlay-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,7 +52,7 @@
   direction: rtl;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--z-sticky-header);
 }
 .linear-expanded-title {
   font-size: 18px;

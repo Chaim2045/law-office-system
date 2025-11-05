@@ -31,11 +31,11 @@ export function clearBudgetForm(manager) {
 export function clearTimesheetForm(manager) {
   const timesheetForm = document.getElementById("timesheetForm");
   if (timesheetForm) timesheetForm.reset();
-  const actionDate = document.getElementById("actionDate");
-  if (actionDate && manager.formatDateTime) {
-    // Use calendar picker format with time
+
+  // Use Flatpickr API instead of direct value assignment
+  if (manager && manager.timesheetCalendar) {
     const now = new Date();
-    actionDate.value = manager.formatDateTime(now);
+    manager.timesheetCalendar.setDate(now, false);
   }
 }
 

@@ -50,9 +50,13 @@ function switchTab(tabName) {
       btn.classList.add("active");
     });
 
+    // Let Flatpickr handle the date field initialization
+    // Don't set value directly - it conflicts with Flatpickr
     const dateField = document.getElementById("actionDate");
-    if (dateField) {
-      dateField.value = new Date().toISOString().split("T")[0];
+    if (dateField && window.manager && window.manager.timesheetCalendar) {
+      // Use Flatpickr API instead of direct value assignment
+      const now = new Date();
+      window.manager.timesheetCalendar.setDate(now, false);
     }
   } else if (tabName === "reports") {
     const reportsTab = document.getElementById("reportsTab");
@@ -145,8 +149,10 @@ function openSmartForm() {
     // ✅ Initialize the appropriate ClientCaseSelector when form opens
     if (window.ClientCaseSelectorsManager) {
       if (formType === 'budget') {
-        Logger.log('🎯 Opening budget form - initializing selector...');
+        Logger.log('🎯 Opening budget form - initializing selectors...');
         window.ClientCaseSelectorsManager.initializeBudget();
+        window.ClientCaseSelectorsManager.clearBudgetDescription(); // ✅ Clear first (no last-used for new tasks)
+        window.ClientCaseSelectorsManager.initializeBudgetDescription(); // ✅ Initialize description selector
       } else if (formType === 'timesheet') {
         Logger.log('🎯 Opening timesheet form - initializing selector...');
         window.ClientCaseSelectorsManager.initializeTimesheet();

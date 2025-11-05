@@ -96,8 +96,6 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
-    <!-- ===== Vanilla Calendar Pro - Modern Date Picker ===== -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro/build/vanilla-calendar.min.css" />
     <!-- ===== DESIGN SYSTEM - Must be loaded first ===== -->
     <link rel="stylesheet" href="css/design-system.css?v=1.0.0" />
     <link rel="stylesheet" href="css/style.css?v=1.0.7" />
@@ -105,15 +103,16 @@
     <link rel="stylesheet" href="css/content-areas.css?v=1.0.0" />
     <link rel="stylesheet" href="css/buttons.css?v=2.0.0" />
     <link rel="stylesheet" href="css/forms.css?v=1.0.0" />
-    <link rel="stylesheet" href="css/tables.css?v=4.3.1" />
-    <link rel="stylesheet" href="css/timesheet-cards.css?v=1.0.1" />
+    <link rel="stylesheet" href="css/tables.css?v=4.4.0" />
+    <link rel="stylesheet" href="css/timesheet-cards.css?v=2.0.1" />
     <link rel="stylesheet" href="css/modals.css?v=2.0.0" />
     <link rel="stylesheet" href="css/popups-unified.css?v=1.0.0" />
     <link rel="stylesheet" href="css/popups-rtl.css?v=1.0.0" />
     <link rel="stylesheet" href="css/expanded-cards.css?v=1.0.0" />
     <link rel="stylesheet" href="css/advanced-popups.css?v=2.1.0" />
     <link rel="stylesheet" href="css/info-popups.css?v=1.0.2" />
-    <link rel="stylesheet" href="css/cards.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/description-tooltips.css?v=1.1.0" />
+    <link rel="stylesheet" href="css/cards.css?v=1.0.13" />
     <link rel="stylesheet" href="css/combobox.css?v=1.0.0" />
     <link rel="stylesheet" href="css/style-hitech-addon.css?v=1.0.0" />
     <link rel="stylesheet" href="css/tabs.css?v=2.1.2" />
@@ -428,12 +427,9 @@
                       <span class="category-required">*</span></label
                     >
                     <input
-                      type="text"
+                      type="datetime-local"
                       id="budgetDeadline"
-                      placeholder="בחר תאריך ושעה..."
-                      autocomplete="off"
                       required
-                      readonly
                     />
                   </div>
                   <div class="form-group">
@@ -622,12 +618,9 @@
                       <span class="category-required">*</span></label
                     >
                     <input
-                      type="text"
+                      type="datetime-local"
                       id="actionDate"
-                      placeholder="בחר תאריך ושעה..."
-                      autocomplete="off"
                       required
-                      readonly
                     />
                   </div>
                   <div class="form-group">
@@ -971,17 +964,15 @@
 
     <!-- ===== סקריפטים וסגנונות ===== -->
     <!-- SCRIPTS AND STYLES -->
-    <!-- ===== Vanilla Calendar Pro - Modern Date Picker ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro/build/vanilla-calendar.min.js"></script>
-    <script src="js/modules/vanilla-calendar-picker.js?v=1.1.0"></script>
+    <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
+    <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
+    <script src="js/modules/logger.js?v=1.0.0"></script>
+
     <script src="js/modules/dates.js?v=1.2.0"></script>
     <script src="js/modules/statistics.js?v=5.2.1"></script>
     <script src="js/modules/reports-stats.js?v=1.1.0"></script>
     <script src="js/modules/pagination.js?v=1.0.0"></script>
     <script src="js/modules/activity-logger.js?v=1.0.0"></script>
-    <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
-    <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
-    <script src="js/modules/logger.js?v=1.0.0"></script>
 
     <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Event-Driven System ===== -->
     <!-- Type-safe Event Bus + Firebase Facade + Validation -->
@@ -1033,8 +1024,9 @@
 
     <!-- ===== Smart Descriptions System ===== -->
     <!-- Structured descriptions manager for tasks and work entries -->
-    <script src="js/modules/descriptions/descriptions-manager.js?v=1.0.0"></script>
-    <script src="js/modules/descriptions/smart-combo-selector.js?v=3.0.0"></script>
+    <script src="js/modules/descriptions/category-mapping.js?v=1.0.0"></script>
+    <script src="js/modules/descriptions/descriptions-manager.js?v=2.0.0"></script>
+    <script src="js/modules/descriptions/smart-combo-selector.js?v=3.4.0"></script>
 
     <!-- ===== Dialogs Module ===== -->
     <!-- Task completion, advanced dialogs, and other modals + Smart Descriptions -->
@@ -1054,7 +1046,8 @@
 
     <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
     <!-- Modern modular architecture with ActionFlowManager + Smart Descriptions -->
-    <script type="module" src="js/main.js?v=5.0.9"></script>
+    <script type="module" src="js/main.js?v=5.1.8"></script>
+    <script type="module" src="js/modules/description-tooltips.js?v=1.1.2"></script>
 
     <!-- Work Hours Calculator - Smart Calendar System -->
     <script src="js/modules/work-hours-calculator.js?v=1.0.0"></script>

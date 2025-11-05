@@ -1,0 +1,478 @@
+/**
+ * Description Tooltips & Popovers
+ * Law Office Management System
+ *
+ * Description: מערכת Tooltip + Popover לתיאורים ארוכים בטבלאות וכרטיסיות
+ * Features: Hover tooltip (desktop), Click popover (mobile), Linear minimal style
+ * Version: 1.0.0
+ * Created: 2025-01-15
+ */
+
+/* ========================================
+   TABLE DESCRIPTION TRUNCATION
+   ======================================== */
+
+/* Description cells with truncation */
+.td-description,
+.timesheet-cell-action {
+  position: relative;
+  cursor: help;
+}
+
+/* Description wrapper - maintains structure */
+.table-description-with-icons {
+  display: flex;
+  align-items: flex-start; /* ✅ Changed from center - icons align to top of 3 lines */
+  gap: 12px; /* ✅ Increased gap for better spacing between icon and badges */
+  max-width: 100%;
+  direction: rtl;
+}
+
+/* Truncated description text - 3 lines max */
+.table-description-with-icons > span {
+  /* ✅ Line clamp for 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal; /* Changed from nowrap */
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  position: relative;
+  line-height: 1.4;
+}
+
+/* Info indicator icon - appears when text is truncated */
+.description-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  margin-top: 2px; /* ✅ Align with first line of text */
+  color: var(--gray-500);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.description-info-icon:hover {
+  color: var(--blue);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Gradient fade effect - Linear style */
+.table-description-with-icons > span::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 100%;
+  background: linear-gradient(to left, white, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.table-description-with-icons > span.is-truncated::after {
+  opacity: 1;
+}
+
+/* ========================================
+   TOOLTIP - Desktop (Hover)
+   ======================================== */
+
+/* Tooltip container */
+.description-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-tooltip);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: all var(--transition-fast);
+  pointer-events: none;
+  max-width: 400px;
+  min-width: 200px;
+}
+
+/* Show tooltip on hover - desktop only */
+@media (hover: hover) {
+  .td-description:hover .description-tooltip,
+  .timesheet-cell-action:hover .description-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+}
+
+/* Tooltip content box - Linear minimal style */
+.description-tooltip-content {
+  background: var(--gray-900);
+  color: white;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
+              0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-align: right;
+  direction: rtl;
+  word-wrap: break-word;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Tooltip arrow */
+.description-tooltip-content::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--gray-900);
+}
+
+/* ========================================
+   POPOVER - Mobile/Tablet (Click)
+   ======================================== */
+
+/* Popover overlay backdrop */
+.description-popover-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-smooth);
+}
+
+.description-popover-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Popover content box - Linear minimal style */
+.description-popover {
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
+              0 0 0 1px rgba(0, 0, 0, 0.05);
+  max-width: 500px;
+  width: 100%;
+  transform: scale(0.95) translateY(8px);
+  transition: all var(--transition-smooth);
+  overflow: hidden;
+  direction: rtl;
+  text-align: right;
+}
+
+.description-popover-overlay.active .description-popover {
+  transform: scale(1) translateY(0);
+}
+
+/* Popover header */
+.description-popover-header {
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.description-popover-title {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--gray-900);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.description-popover-title i {
+  color: var(--gray-600);
+  font-size: var(--text-sm);
+}
+
+/* Close button - Linear style */
+.description-popover-close {
+  background: transparent;
+  border: none;
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: var(--space-1);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-size: var(--text-md);
+}
+
+.description-popover-close:hover {
+  background: var(--gray-200);
+  color: var(--gray-900);
+}
+
+.description-popover-close:active {
+  transform: scale(0.95);
+}
+
+/* Popover body */
+.description-popover-body {
+  padding: var(--space-5);
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--gray-700);
+  font-weight: 500;
+  max-height: 400px;
+  overflow-y: auto;
+  word-wrap: break-word;
+  direction: rtl;
+  text-align: right;
+}
+
+/* Scrollbar styling - Linear minimal */
+.description-popover-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.description-popover-body::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 3px;
+}
+
+.description-popover-body::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+}
+
+.description-popover-body::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* ========================================
+   CARD TITLE WITH INFO ICON
+   ======================================== */
+
+/* Card title wrapper */
+.linear-card-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Card title text */
+.linear-card-title-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Card info icon - same style as table */
+.card-description-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--gray-500);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  opacity: 0.6;
+  margin-left: auto; /* Push to the left */
+}
+
+.card-description-info-icon:hover {
+  color: var(--blue);
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Card tooltip - desktop */
+.card-description-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  z-index: var(--z-tooltip);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: all var(--transition-fast);
+  pointer-events: none;
+}
+
+/* Show tooltip on hover - desktop only */
+@media (hover: hover) {
+  .linear-card-title:hover .card-description-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+}
+
+/* Tooltip content - same style as table tooltip */
+.card-description-tooltip-content {
+  background: var(--gray-900);
+  color: white;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
+              0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-align: right;
+  direction: rtl;
+  word-wrap: break-word;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: normal;
+}
+
+/* Tooltip arrow */
+.card-description-tooltip-content::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--gray-900);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Hide tooltip on mobile/tablet */
+@media (hover: none) {
+  .description-tooltip {
+    display: none;
+  }
+}
+
+/* Hide popover trigger on desktop */
+@media (hover: hover) {
+  .description-info-icon.mobile-only {
+    display: none;
+  }
+}
+
+/* Truncation helper class */
+.truncate-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Line clamp helper classes */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popoverSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .description-popover {
+    max-width: calc(100vw - 32px);
+  }
+
+  .description-popover-body {
+    max-height: 300px;
+    font-size: var(--text-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .description-popover-header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .description-popover-body {
+    padding: var(--space-4);
+    max-height: 250px;
+  }
+
+  .description-popover-title {
+    font-size: var(--text-sm);
+  }
+}

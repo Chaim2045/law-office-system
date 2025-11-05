@@ -726,13 +726,47 @@
 .table-cell-description,
 .budget-table-description,
 .td-description {
-  max-width: 300px;
+  max-width: 180px; /* ✅ Reduced from 250px to bring icons closer */
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--gray-700);
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4; /* Match the span line-height */
+  font-size: 13px;
+}
+
+/* Table description with combined badge - Linear Minimal */
+.table-description-with-icons {
+  display: flex;
+  align-items: flex-start; /* ✅ Changed from center - icons align to top of 3 lines */
+  gap: 12px; /* ✅ Increased gap for better spacing between icon and badges */
+  max-width: 100%;
+  direction: rtl;
+}
+
+.table-description-with-icons span {
+  /* ✅ Line clamp for 3 lines instead of 1 line */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal; /* Changed from nowrap */
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  line-height: 1.4;
+}
+
+/* Compact variant for table rows - TRUE Linear style */
+.table-description-with-icons .combined-info-badge {
+  padding: 3px 6px;
+  gap: 5px;
+  flex-shrink: 0;
+  margin-top: 2px; /* ✅ Align with first line of text */
+}
+
+.table-description-with-icons .combined-info-badge i {
+  font-size: 13px;
 }
 
 .table-cell-deadline,
@@ -1368,37 +1402,44 @@
   overflow: hidden; /* חותך את הפינות */
 }
 
-.modern-budget-table tbody td {
+.modern-budget-table tbody td,
+.modern-timesheet-table tbody td {
   padding: 16px 12px;
   text-align: right;
   border-bottom: 1px solid #e2e8f0; /* גבול תחתון בלבד */
   vertical-align: middle;
 }
 
-.modern-budget-table tbody tr:last-child td {
+.modern-budget-table tbody tr:last-child td,
+.modern-timesheet-table tbody tr:last-child td {
   border-bottom: none; /* בטל גבול תחתון לשורה האחרונה */
 }
 
 /* פינות מעוגלות לטבלה */
-.modern-budget-table th:first-child {
+.modern-budget-table th:first-child,
+.modern-timesheet-table th:first-child {
   border-top-right-radius: 12px; /* פינה ימנית עליונה */
 }
 
-.modern-budget-table th:last-child {
+.modern-budget-table th:last-child,
+.modern-timesheet-table th:last-child {
   border-top-left-radius: 12px; /* פינה שמאלית עליונה */
 }
 
-.modern-budget-table tbody tr:last-child td:first-child {
+.modern-budget-table tbody tr:last-child td:first-child,
+.modern-timesheet-table tbody tr:last-child td:first-child {
   border-bottom-right-radius: 12px; /* פינה ימנית תחתונה */
 }
 
-.modern-budget-table tbody tr:last-child td:last-child {
+.modern-budget-table tbody tr:last-child td:last-child,
+.modern-timesheet-table tbody tr:last-child td:last-child {
   border-bottom-left-radius: 12px; /* פינה שמאלית תחתונה */
 }
 
 /* Removed duplicate - using single definition above */
 
-.modern-budget-table th {
+.modern-budget-table th,
+.modern-timesheet-table th {
   background: #ffffff;
   font-weight: var(--font-semibold);
   color: var(--gray-600);
@@ -1408,11 +1449,13 @@
   border-bottom: 1px solid var(--gray-200);
 }
 
-.modern-budget-table tbody tr:hover {
+.modern-budget-table tbody tr:hover,
+.modern-timesheet-table tbody tr:hover {
   background: #ffffff;
 }
 
-.modern-budget-table tbody tr:nth-child(even) {
+.modern-budget-table tbody tr:nth-child(even),
+.modern-timesheet-table tbody tr:nth-child(even) {
   background: var(--gray-50);
 }
 
@@ -1511,16 +1554,20 @@
 
 /* וודא שעמודת הפעולות תמיד נראית */
 .modern-budget-table th:last-child,
-.modern-budget-table td:last-child {
+.modern-budget-table td:last-child,
+.modern-timesheet-table th:last-child,
+.modern-timesheet-table td:last-child {
   min-width: 100px; /* הרחבה ל-100px */
   width: 100px;
   padding: 16px 12px; /* יותר padding */
   text-align: center;
 }
 
-/* Progress bars בטבלה */
+/* Progress bars בטבלה - Linear Minimal Style */
 .table-progress-container {
   width: 100%;
+  min-width: 120px;
+  max-width: 160px;
   direction: rtl;
 }
 
@@ -1528,8 +1575,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
-  margin-bottom: 4px;
+  font-size: 10px;
+  margin-bottom: 3px;
 }
 
 .table-progress-label {
@@ -1540,36 +1587,64 @@
 .table-progress-percentage {
   font-weight: 700;
   color: #1f2328;
+  font-size: 11px;
 }
 
 .table-progress-bar {
   width: 100%;
   height: 6px;
   background: #f1f5f9;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .table-progress-fill {
   height: 100%;
   border-radius: 12px;
-  transition: all 0.6s ease;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.table-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: progressShine 2s infinite;
+}
+
+@keyframes progressShine {
+  0% {
+    left: -50%;
+  }
+  100% {
+    left: 150%;
+  }
 }
 
 .table-progress-fill.progress-low {
-  background: var(--green);
+  background: linear-gradient(90deg, #10b981, #059669);
 }
 
 .table-progress-fill.progress-medium {
-  background: var(--orange);
+  background: linear-gradient(90deg, #f59e0b, #d97706);
 }
 
 .table-progress-fill.progress-high {
-  background: var(--red);
+  background: linear-gradient(90deg, #ef4444, #dc2626);
 }
 
 .table-progress-fill.progress-complete {
-  background: var(--red-dark);
+  background: linear-gradient(90deg, #dc2626, #991b1b);
 }
 
 
@@ -1660,44 +1735,43 @@
   transform: translateY(-2px);
 }
 
-/* כרטיס לינארי ריבועי - Ultra Minimal */
+/* כרטיס לינארי ריבועי - Ultra Minimal - גובה אחיד! */
 .linear-minimal-card {
-  background: var(--gray-50);
-  border: 1px solid var(--gray-200);
+  background: linear-gradient(135deg, #fafbfc 0%, #f8f9fb 100%); /* ✅ gradient מט ועדין */
+  border: 1px solid #e5e7eb;
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: var(--transition-smooth);
   position: relative;
 
-  /* גובה דינאמי מדויק - מתאים לתוכן */
+  /* ✅ גובה ורוחב קבועים - כולם זהים! */
   width: 100%;
-  height: auto;
-  min-height: fit-content;
-  max-height: 400px;
-  overflow: visible; /* Allow popover to escape */
-  padding: var(--space-3);
-  padding-bottom: 24px; /* מקום מצומצם לכפתור */
+  min-height: 380px; /* גובה מינימלי אחיד */
+  max-height: 380px; /* גובה מקסימלי אחיד */
+  overflow: visible; /* ✅ שונה מ-hidden - מאפשר לאלמנטים להיות גלויים */
+  padding: var(--space-5);
+  padding-bottom: 70px; /* מקום לכפתור + meta */
 
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06); /* ✅ צל יותר בולט ומקצועי */
   direction: rtl;
   text-align: right;
   display: flex;
   flex-direction: column;
-  gap: 6px; /* מרווח מאוד קומפקטי */
+  gap: var(--space-3);
 }
 
 .linear-minimal-card:hover {
-  background: #ffffff;
-  border-color: var(--gray-300);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); /* ✅ gradient בהיר יותר ב-hover */
+  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04); /* ✅ צל יותר בולט ב-hover */
   transform: translateY(-2px);
 }
 
 /* תאריך יצירה בפינה ימנית עליונה - עיצוב מקצועי */
 .card-creation-date {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 10px; /* ✅ בתוך ה-padding */
+  right: 10px; /* ✅ בתוך ה-padding */
   font-size: 10px;
   font-weight: 500;
   color: #6b7280;
@@ -1712,6 +1786,10 @@
   transition: all 0.2s ease;
   letter-spacing: 0.01em;
   line-height: 1.4;
+  max-width: calc(100% - 40px); /* ✅ מונע overflow */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .linear-minimal-card:hover .card-creation-date {
@@ -1731,6 +1809,9 @@
   flex-wrap: nowrap;
   opacity: 0.9;
   transition: opacity 0.2s ease;
+  /* ✅ מניעת overflow - הגבלת רוחב */
+  max-width: calc(100% - 40px); /* 10px ימין + 10px שמאל + 20px מרווח בטיחות */
+  overflow: hidden;
 }
 
 .linear-minimal-card:hover .card-badges-corner {
@@ -1741,8 +1822,9 @@
 .linear-card-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px; /* ✅ הוגדל (היה 6px) - יותר מרווח בין אלמנטים */
   flex: 1;
+  padding-bottom: 80px; /* ✅ הוגדל (היה 60px) - יותר מרווח מהקו התחתון */
 }
 
 /* כפתור הרחבה - למטה בצד שמאל */
@@ -1771,18 +1853,22 @@
   transform: translateY(-1px);
 }
 
-/* מטא-נתונים משופרים של הכרטיס */
+/* מטא-נתונים משופרים של הכרטיס - מוצמד לתחתית */
 .linear-card-meta {
+  position: absolute; /* מוצמד לתחתית כמו הכפתור */
+  bottom: 15px; /* אותו גובה כמו כפתור הפלוס */
+  right: 0; /* ✅ לכל הרוחב של הכרטיס */
+  left: 60px; /* מרווח מהכפתור פלוס בצד שמאל */
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
+  padding-top: 14px; /* ✅ הוגדל (היה 8px) - יותר מרווח מהקו */
+  padding-right: 24px; /* ✅ padding פנימי לטקסט */
+  border-top: 0.5px solid #e5e7eb; /* ✅ קו עדין ודק - אותו כמו העליון */
   font-size: 13px;
   color: var(--gray-600);
   direction: rtl;
   text-align: right;
-  margin-top: auto;
-  padding-top: 4px;
-  border-top: 1px solid var(--gray-200);
 }
 
 /* שורת לקוח */
@@ -1989,20 +2075,22 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--gray-900);
-  line-height: 1.4;
+  line-height: 1.5;
   letter-spacing: -0.01em;
   margin: 0;
+  margin-top: 4px; /* ממש בתחילת הכרטיסייה */
+  padding-top: 2px;
+  padding-bottom: 16px;
+  padding-left: 70px; /* מקום לאייקונים */
+  margin-bottom: 20px; /* ✅ מוריד את התוכן שאחרי הקו */
+  min-height: 48px; /* ✅ גובה קבוע - הקו תמיד באותו מקום! */
   text-align: right;
   direction: rtl;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  flex: 1;
-  max-height: 21px;
-  word-break: break-word;
   text-overflow: ellipsis;
-  cursor: help;
+  white-space: nowrap; /* שורה אחת בלבד */
+  border-bottom: 1px solid #e2e8f0; /* הקו תמיד באותו גובה */
+  cursor: default;
   transition: color 0.2s ease;
 }
 
@@ -2159,31 +2247,35 @@
   }
 }
 
-/* ===== Compact Deadline Ring (Table) ===== */
+/* ===== Compact Deadline Ring (Table) - Linear Minimal ===== */
 .compact-deadline-ring {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   cursor: default;
+  padding: 2px;
 }
 
 .compact-svg-ring {
   display: block;
-  transition: var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.06));
 }
 
 .compact-deadline-ring:hover .compact-svg-ring {
-  transform: scale(1.05);
+  transform: scale(1.04);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
 }
 
 .compact-ring-progress {
-  transition: stroke-dashoffset 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .compact-ring-number {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
 }
 
 .compact-ring-label {
@@ -2192,13 +2284,36 @@
   letter-spacing: 0;
 }
 
-.compact-ring-status {
+.compact-ring-label-below {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: 9px;
   font-weight: 600;
+  text-align: center;
+  margin-top: 2px;
+  letter-spacing: 0.2px;
+  opacity: 0.75;
+}
+
+.compact-ring-status {
+  font-size: 9px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--red-dark);
-  margin-top: -2px;
+  color: #dc2626;
+  margin-top: 4px;
+  background: #fee2e2;
+  padding: 2px 6px;
+  border-radius: 6px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* ===== Table Badges Button (Click to open modal) - Unified ===== */

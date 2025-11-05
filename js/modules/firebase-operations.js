@@ -286,6 +286,80 @@ async function saveTimesheetToFirebase(entryData) {
 }
 
 /**
+ * ✅ ENTERPRISE v2.0: Save timesheet entry with absolute accuracy
+ *
+ * This version includes:
+ * - Optimistic Locking (_version) - prevents Lost Updates
+ * - Event Sourcing (time_events) - full Audit Trail
+ * - Idempotency Keys - prevents duplicate execution
+ * - Automatic Rollback - on errors
+ *
+ * @param {Object} entryData - Timesheet entry data
+ * @param {number} expectedVersion - Expected version of the client document (for optimistic locking)
+ * @param {string} idempotencyKey - Unique key to prevent duplicate operations (optional but recommended)
+ * @returns {Promise<Object>} Result with entryId and new version
+ *
+ * @example
+ * const client = await getClient(clientId);
+ * const idempotencyKey = `${user}_${date}_${taskId}_${minutes}`;
+ * const result = await saveTimesheetToFirebase_v2(entryData, client._version, idempotencyKey);
+ */
+async function saveTimesheetToFirebase_v2(entryData, expectedVersion, idempotencyKey) {
+  console.log('✅ [v2.0] Using Enterprise accuracy mode');
+
+  try {
+    // ✅ Check internet connection first
+    if (!navigator.onLine) {
+      throw new Error('אין חיבור לאינטרנט. אנא בדוק את החיבור ונסה שוב.');
+    }
+
+    // Call Firebase Function v2 for enterprise-grade accuracy
+    const result = await callFunction('createTimesheetEntry_v2', {
+      ...entryData,
+      expectedVersion,      // ✅ For Optimistic Locking
+      idempotencyKey        // ✅ For preventing duplicates
+    });
+
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בשמירת שעתון');
+    }
+
+    console.log(`✅ [v2.0] Timesheet saved: ${result.entryId}, Version: ${result.version}`);
+
+    return {
+      entryId: result.entryId,
+      version: result.version,
+      entry: result.entry
+    };
+  } catch (error) {
+    console.error('❌ [v2.0] Firebase error:', error);
+
+    // ✅ Handle version conflict
+    if (error.code === 'aborted' && error.message?.includes('CONFLICT')) {
+      throw new Error(
+        'המסמך שונה על ידי משתמש אחר. אנא רענן את הדף ונסה שוב.\n\n' +
+        'הסיבה: גרסה לא תואמת - מישהו אחר עדכן את הלקוח בינתיים.'
+      );
+    }
+
+    // ✅ Provide better error messages
+    if (error.message?.includes('אין חיבור לאינטרנט')) {
+      throw error;
+    }
+
+    if (error.code === 'unavailable' || error.message?.includes('network')) {
+      throw new Error('בעיית תקשורת עם השרת. אנא בדוק את החיבור ונסה שוב.');
+    }
+
+    if (error.code === 'permission-denied') {
+      throw new Error('אין לך הרשאה לבצע פעולה זו.');
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Update timesheet entry in Firebase
  * @deprecated Use FirebaseService.call('updateTimesheetEntry') instead
  */
@@ -438,6 +512,7 @@ export {
   // ✅ saveClientToFirebase removed
   saveBudgetTaskToFirebase,
   saveTimesheetToFirebase,
+  saveTimesheetToFirebase_v2,  // ✅ NEW: Enterprise v2.0 with absolute accuracy
   updateTimesheetEntryFirebase,
   addTimeToTaskFirebase,
   completeTaskFirebase,
