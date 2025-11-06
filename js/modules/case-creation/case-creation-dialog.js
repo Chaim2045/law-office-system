@@ -503,7 +503,9 @@
      */
     renderServiceSection() {
       const container = document.getElementById('serviceSection');
-      if (!container) return;
+      if (!container) {
+return;
+}
 
       if (this.procedureType === 'hours') {
         container.innerHTML = this.renderHoursSection();
@@ -861,7 +863,9 @@
      */
     updateSubmitButton() {
       const submitBtn = document.querySelector('#modernCaseForm button[type="submit"]');
-      if (!submitBtn) return;
+      if (!submitBtn) {
+return;
+}
 
       if (this.currentMode === 'existing' && !this.currentCase) {
         // ❌ במצב existing ללא לקוח - נעל כפתור
@@ -1538,13 +1542,18 @@
         caseNumber: formData.case.caseNumber,
         caseTitle: formData.case.title,
         description: formData.case.description || '',
-        procedureType: formData.case.procedureType
+        procedureType: formData.case.procedureType,
+        // ✅ Idempotency key - unique per request
+        idempotencyKey: `create_${formData.case.caseNumber}_${Date.now()}`
       };
 
       if (formData.case.procedureType === 'hours') {
         data.totalHours = formData.service.totalHours;
       } else if (formData.case.procedureType === 'legal_procedure') {
         data.pricingType = formData.service.pricingType;
+        // ✅ שדות חדשים עבור המבנה החדש
+        data.legalProcedureName = formData.case.title;  // שם ההליך המשפטי
+        data.ratePerHour = 800;  // תעריף שעתי ברירת מחדל
         data.stages = [
           { id: 'stage_a', ...formData.service.stageA },
           { id: 'stage_b', ...formData.service.stageB },
