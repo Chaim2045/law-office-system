@@ -7,6 +7,7 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { addTimeToTaskWithTransaction } = require('./addTimeToTask_v2');
 
 // אתחול Admin SDK
 admin.initializeApp();
@@ -709,6 +710,17 @@ exports.createClient = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
+    // ✅ Idempotency: אם יש idempotencyKey, בדוק אם כבר עיבדנו את הפעולה
+    if (data.idempotencyKey) {
+      const idempotencyDoc = await db.collection('processed_operations')
+        .doc(data.idempotencyKey).get();
+
+      if (idempotencyDoc.exists) {
+        console.log(`♻️ Idempotency: returning cached result for key ${data.idempotencyKey}`);
+        return idempotencyDoc.data().result;
+      }
+    }
+
     // Validation - שדות חובה
     if (!data.clientName || typeof data.clientName !== 'string') {
       throw new functions.https.HttpsError(
@@ -1136,7 +1148,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
 
     console.log(`✅ Created client/case: ${caseNumber} - ${clientData.clientName}`);
 
-    return {
+    const result = {
       success: true,
       caseNumber: caseNumber,  // ✅ מספר תיק = מזהה
       clientId: caseNumber,    // ✅ לתאימות לאחור
@@ -1146,6 +1158,18 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         ...clientData
       }
     };
+
+    // ✅ שמירת תוצאה עבור Idempotency
+    if (data.idempotencyKey) {
+      await db.collection('processed_operations').doc(data.idempotencyKey).set({
+        result,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        operation: 'createClient',
+        user: user.username
+      });
+    }
+
+    return result;
 
   } catch (error) {
     console.error('Error in createClient:', error);
@@ -1910,7 +1934,8 @@ exports.getBudgetTasks = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * הוספת זמן למשימה
+ * הוספת זמן למשימה V2 - With Transaction + Optimistic Locking
+ * ✅ FIXED: כל הפעולות ב-transaction אחד למניעת race conditions
  */
 exports.addTimeToTask = functions.https.onCall(async (data, context) => {
   try {
@@ -1938,299 +1963,9 @@ exports.addTimeToTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // בדיקה שהמשימה קיימת
-    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
-
-    if (!taskDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'משימה לא נמצאה'
-      );
-    }
-
-    const taskData = taskDoc.data();
-
-    // רק בעל המשימה או admin יכולים להוסיף זמן
-    if (taskData.employee !== user.email && user.role !== 'admin') { // ✅ Check by EMAIL
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה להוסיף זמן למשימה זו'
-      );
-    }
-
-    // הוספת הזמן
-    // 🆕 Phase 1: חישוב מצב תקציב אחרי ההוספה
-    const newActualMinutes = (taskData.actualMinutes || 0) + data.minutes;
-    const currentEstimate = taskData.estimatedMinutes || 0;
-    const percentOfBudget = currentEstimate > 0 ? Math.round((newActualMinutes / currentEstimate) * 100) : 0;
-    const isOverBudget = newActualMinutes > currentEstimate;
-    const overageMinutes = Math.max(0, newActualMinutes - currentEstimate);
-
-    // ✅ תיקון: אי אפשר להשתמש ב-serverTimestamp() בתוך array
-    // נשתמש ב-Date object רגיל במקום
-    const timeEntry = {
-      date: data.date,
-      minutes: data.minutes,
-      hours: data.minutes / 60,
-      description: data.description ? sanitizeString(data.description) : '',
-      addedBy: user.username,
-      addedAt: new Date().toISOString(),  // ✅ ISO string במקום Timestamp
-
-      // 🆕 Phase 1: מידע על מצב התקציב בזמן ההוספה
-      budgetStatus: {
-        currentEstimate,
-        totalMinutesAfter: newActualMinutes,
-        percentOfBudget,
-        isOverBudget,
-        overageMinutes
-      }
-    };
-
-    // ✅ שימוש ב-increment() למניעת race conditions
-    // זה מבטיח שהעדכון אטומי גם בעומס גבוה של משתמשים
-    await db.collection('budget_tasks').doc(data.taskId).update({
-      actualHours: admin.firestore.FieldValue.increment(data.minutes / 60),
-      actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
-      timeEntries: admin.firestore.FieldValue.arrayUnion(timeEntry),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // ✨ יצירת שעתון אוטומטית (CLIENT = CASE)
-    // כשמוסיפים זמן למשימה, זה אוטומטית גם נרשם בשעתון
-    const timesheetEntry = {
-      clientId: taskData.clientId,  // ✅ מספר תיק (caseNumber)
-      clientName: taskData.clientName,
-      caseNumber: taskData.caseNumber || taskData.clientId,  // ✅ מספר תיק
-      serviceId: taskData.serviceId || null,  // ✅ שירות ספציפי
-      serviceName: taskData.serviceName || null,  // ✅ שם השירות
-      serviceType: taskData.serviceType || null,  // ✅ סוג השירות (legal_procedure/hours)
-      parentServiceId: taskData.parentServiceId || null,  // ✅ service.id עבור הליך משפטי
-      taskId: data.taskId,
-      taskDescription: taskData.description,
-      date: data.date,
-      minutes: data.minutes,
-      hours: data.minutes / 60,
-      action: data.description || taskData.description,
-      employee: user.email,
-      lawyer: user.username,
-      isInternal: false,
-      autoGenerated: true,  // ✅ מסומן כאוטומטי
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: user.username
-    };
-
-    await db.collection('timesheet_entries').add(timesheetEntry);
-    console.log(`✅ רישום זמן נוצר אוטומטית בשעתון עבור משימה ${data.taskId}`);
-
-    // ✅ קיזוז שעות מהלקוח (CLIENT = CASE)
-    // במבנה החדש: clientId = caseNumber = Document ID
-    if (taskData.clientId) {
-      try {
-        const clientDoc = await db.collection('clients').doc(taskData.clientId).get();
-
-        if (clientDoc.exists) {
-          const clientData = clientDoc.data();
-          const hoursWorked = data.minutes / 60;
-
-          // ✅ הליך משפטי - תמחור שעתי (מבנה חדש: שירות בתוך services)
-          // 🎯 IMPORTANT: בדוק זאת ראשון! לפני hours רגיל!
-          if (taskData.serviceType === 'legal_procedure' && taskData.parentServiceId) {
-            // מבנה חדש: השירות הוא בתוך clientData.services
-            const services = clientData.services || [];
-            const targetService = services.find(s => s.id === taskData.parentServiceId);
-
-            if (targetService && targetService.type === 'legal_procedure') {
-              // ✅ תמיכה גם ב-pricingType: 'hourly' וגם ללא pricingType (legacy)
-              const isHourly = !targetService.pricingType || targetService.pricingType === 'hourly';
-
-              if (isHourly) {
-                const currentStageId = taskData.serviceId || 'stage_a';
-                const stages = targetService.stages || [];
-                const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
-
-                if (currentStageIndex !== -1) {
-                  const currentStage = stages[currentStageIndex];
-
-                  // מציאת החבילה הפעילה בשלב
-                  const activePackage = getActivePackage(currentStage);
-
-                  if (activePackage) {
-                    // קיזוז מהחבילה הפעילה
-                    deductHoursFromPackage(activePackage, hoursWorked);
-
-                    // ✅ עדכון השלב (aggregates)
-                    stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
-                    stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
-                    stages[currentStageIndex].minutesUsed = (currentStage.minutesUsed || 0) + data.minutes;
-                    stages[currentStageIndex].minutesRemaining = (currentStage.minutesRemaining || 0) - data.minutes;
-
-                    // ✅ עדכון השירות (aggregates)
-                    targetService.stages = stages;
-                    targetService.hoursUsed = (targetService.hoursUsed || 0) + hoursWorked;
-                    targetService.hoursRemaining = (targetService.hoursRemaining || 0) - hoursWorked;
-                    // ❌ לא ניתן להשתמש ב-serverTimestamp() בתוך array! משתמשים ב-Date רגיל
-                    targetService.lastActivity = new Date().toISOString();
-
-                    // ✅ עדכון הלקוח (aggregates + services array)
-                    await clientDoc.ref.update({
-                      services: clientData.services,
-                      hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
-                      hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-                      minutesUsed: admin.firestore.FieldValue.increment(data.minutes),
-                      minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-                      lastActivity: admin.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} בשירות ${targetService.name}, חבילה ${activePackage.id || 'unknown'}`);
-                  } else {
-                    console.warn(`⚠️ ${currentStage.name} בשירות ${targetService.name} - אין חבילה פעילה!`);
-                  }
-                } else {
-                  console.warn(`⚠️ שלב ${currentStageId} לא נמצא בשירות ${targetService.name}`);
-                }
-              } else {
-                console.warn(`⚠️ שירות ${targetService.name} אינו בתמחור שעתי`);
-              }
-            } else {
-              console.warn(`⚠️ שירות ${taskData.parentServiceId} לא נמצא`);
-            }
-          }
-          // ✅ לקוח שעתי - מציאת החבילה הפעילה (מבנה חדש)
-          else if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
-            // 🎯 מציאת השירות הספציפי לפי serviceId (לא תמיד הראשון!)
-            let service = null;
-
-            if (taskData.serviceId) {
-              // מציאת השירות שנבחר במשימה
-              service = clientData.services.find(s => s.id === taskData.serviceId);
-
-              if (!service) {
-                console.warn(`⚠️ שירות ${taskData.serviceId} לא נמצא עבור לקוח ${clientData.caseNumber}! משתמש בשירות הראשון`);
-                service = clientData.services[0];
-              }
-            } else {
-              // Fallback למשימות ישנות ללא serviceId
-              service = clientData.services[0];
-              console.log(`ℹ️ משימה ללא serviceId - משתמש בשירות הראשון`);
-            }
-
-            if (!service) {
-              console.error(`❌ לא נמצא שירות עבור לקוח ${clientData.caseNumber}`);
-              return;
-            }
-
-            const activePackage = getActivePackage(service);
-
-            if (activePackage) {
-              // קיזוז מהחבילה הפעילה
-              deductHoursFromPackage(activePackage, hoursWorked);
-
-              // עדכון הלקוח
-              await clientDoc.ref.update({
-                services: clientData.services,
-                minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-                hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-                lastActivity: admin.firestore.FieldValue.serverTimestamp()
-              });
-
-              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id} (${activePackage.hoursUsed}/${activePackage.hoursInPackage || activePackage.hours})`);
-            } else {
-              console.warn(`⚠️ שירות ${service.name || service.id} עבור לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
-            }
-          }
-          // ✅ הליך משפטי - תמחור שעתי (מבנה ישן: stages ברמת הלקוח)
-          else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
-            // מציאת השלב הנוכחי
-            // ✅ FIX: Use serviceId from task if provided (the specific stage), otherwise use currentStage
-            const currentStageId = taskData.serviceId || clientData.currentStage || 'stage_a';
-            const stages = clientData.stages || [];
-            const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
-
-            if (currentStageIndex !== -1) {
-              const currentStage = stages[currentStageIndex];
-
-              // מציאת החבילה הפעילה בשלב
-              const activePackage = getActivePackage(currentStage);
-
-              if (activePackage) {
-                // קיזוז מהחבילה הפעילה
-                deductHoursFromPackage(activePackage, hoursWorked);
-
-                // עדכון השלב
-                stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
-                stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
-
-                // עדכון הלקוח
-                await clientDoc.ref.update({
-                  stages: stages,
-                  hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-                  minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-                  lastActivity: admin.firestore.FieldValue.serverTimestamp()
-                });
-
-                console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}, חבילה ${activePackage.id}`);
-              } else {
-                console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
-              }
-            } else {
-              console.warn(`⚠️ שלב ${currentStageId} לא נמצא עבור לקוח ${clientData.caseNumber}`);
-            }
-          }
-          // ✅ הליך משפטי - תמחור פיקס (מעקב שעות בלבד)
-          else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
-            // ✅ FIX: Use serviceId from task if provided, otherwise use currentStage
-            const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
-            const stages = clientData.stages || [];
-            const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
-
-            if (currentStageIndex !== -1) {
-              const currentStage = stages[currentStageIndex];
-
-              // עדכון מעקב שעות בלבד (לא קיזוז - זה מחיר קבוע!)
-              stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
-              stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
-
-              await clientDoc.ref.update({
-                stages: stages,
-                totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
-                lastActivity: admin.firestore.FieldValue.serverTimestamp()
-              });
-
-              console.log(`✅ נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
-            }
-          }
-          // ❓ סוג לא מוכר
-          else {
-            console.log(`ℹ️ לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
-          }
-        }
-      } catch (error) {
-        console.error(`⚠️ שגיאה בקיזוז שעות מלקוח ${taskData.clientId}:`, error);
-        // לא נכשיל את כל הפעולה בגלל זה
-      }
-    }
-
-    // Audit log
-    await logAction('ADD_TIME_TO_TASK', user.uid, user.username, {
-      taskId: data.taskId,
-      minutes: data.minutes,
-      date: data.date,
-      autoTimesheetCreated: true,
-      clientUpdated: true
-    });
-
-    // קריאת הערכים המעודכנים מהשרת
-    const updatedTaskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
-    const updatedTaskData = updatedTaskDoc.data();
-
-    return {
-      success: true,
-      taskId: data.taskId,
-      newActualHours: updatedTaskData.actualHours,
-      newActualMinutes: updatedTaskData.actualMinutes,
-      timesheetAutoCreated: true  // ✅ מחזיר למשתמש שנוצר שעתון
-    };
+    // ✅ שימוש בגרסה החדשה עם Transaction + Optimistic Locking
+    const result = await addTimeToTaskWithTransaction(db, data, user);
+    return result;
 
   } catch (error) {
     console.error('Error in addTimeToTask:', error);
