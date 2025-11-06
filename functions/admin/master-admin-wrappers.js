@@ -537,7 +537,7 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
  */
 exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
   try {
-    console.log('🔵 getUserFullDetails called with data:', { email: data.email });
+    console.log('🔵 getUserFullDetails called with data:', { email: data.email, month: data.month, year: data.year });
 
     // בדיקת הרשאות אדמין
     const adminUser = await checkAdminAuth(context);
@@ -556,6 +556,14 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
 
     const employeeData = employeeDoc.data();
     const username = employeeData.username || data.email.split('@')[0];
+
+    // תמיכה בבחירת חודש ושנה (default: חודש נוכחי)
+    const targetMonth = data.month || (new Date().getMonth() + 1); // 1-12
+    const targetYear = data.year || new Date().getFullYear();
+
+    // חישוב תאריכי התחלה וסוף חודש
+    const startOfMonth = new Date(targetYear, targetMonth - 1, 1).toISOString().split('T')[0]; // YYYY-MM-DD
+    const endOfMonth = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0]; // Last day of month
 
     // שליפה מקבילה של כל הנתונים (Performance Optimization)
     const [
@@ -581,10 +589,11 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
         .limit(50)
         .get(),
 
-      // שליפת שעות (מתחילת החודש)
+      // שליפת שעות (לפי חודש נבחר)
       db.collection('timesheet_entries')
         .where('employee', '==', data.email) // ✅ Use EMAIL (timesheet_entries.employee = user.email)
-        .where('date', '>=', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
+        .where('date', '>=', startOfMonth)
+        .where('date', '<=', endOfMonth)
         .orderBy('date', 'desc')
         .get(),
 

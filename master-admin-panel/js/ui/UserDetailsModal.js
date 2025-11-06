@@ -25,7 +25,8 @@
 
             // Hours tab state
             this.hoursViewMode = 'cards'; // 'cards' or 'table'
-            this.selectedMonth = 'all';
+            this.selectedMonth = new Date().getMonth() + 1; // Current month (1-12)
+            this.selectedYear = new Date().getFullYear(); // Current year
             this.hoursFilters = {
                 dateFrom: null,
                 dateTo: null,
@@ -403,6 +404,45 @@
                         </div>
                     </div>
 
+                    <!-- בורר חודש ושנה -->
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="flex: 0 0 auto;">
+                                <i class="fas fa-calendar-alt" style="font-size: 24px; color: white;"></i>
+                            </div>
+                            <div style="flex: 1; display: flex; gap: 12px; align-items: center;">
+                                <label style="color: white; font-weight: 600; font-size: 14px;">תקופה:</label>
+                                <select id="monthSelector" style="padding: 10px 14px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; color: #1f2937; cursor: pointer;">
+                                    <option value="1" ${this.selectedMonth === 1 ? 'selected' : ''}>ינואר</option>
+                                    <option value="2" ${this.selectedMonth === 2 ? 'selected' : ''}>פברואר</option>
+                                    <option value="3" ${this.selectedMonth === 3 ? 'selected' : ''}>מרץ</option>
+                                    <option value="4" ${this.selectedMonth === 4 ? 'selected' : ''}>אפריל</option>
+                                    <option value="5" ${this.selectedMonth === 5 ? 'selected' : ''}>מאי</option>
+                                    <option value="6" ${this.selectedMonth === 6 ? 'selected' : ''}>יוני</option>
+                                    <option value="7" ${this.selectedMonth === 7 ? 'selected' : ''}>יולי</option>
+                                    <option value="8" ${this.selectedMonth === 8 ? 'selected' : ''}>אוגוסט</option>
+                                    <option value="9" ${this.selectedMonth === 9 ? 'selected' : ''}>ספטמבר</option>
+                                    <option value="10" ${this.selectedMonth === 10 ? 'selected' : ''}>אוקטובר</option>
+                                    <option value="11" ${this.selectedMonth === 11 ? 'selected' : ''}>נובמבר</option>
+                                    <option value="12" ${this.selectedMonth === 12 ? 'selected' : ''}>דצמבר</option>
+                                </select>
+                                <select id="yearSelector" style="padding: 10px 14px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; color: #1f2937; cursor: pointer;">
+                                    ${this.renderYearOptions()}
+                                </select>
+                            </div>
+                            <div style="flex: 0 0 auto; display: flex; gap: 8px;">
+                                <button id="prevMonthBtn" style="padding: 10px 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                    <i class="fas fa-chevron-right"></i>
+                                    <span>חודש קודם</span>
+                                </button>
+                                <button id="nextMonthBtn" style="padding: 10px 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                    <span>חודש הבא</span>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- כפתורי תצוגה -->
                     <div style="display: flex; gap: 12px; margin-bottom: 24px;">
                         <button class="view-toggle-btn ${this.hoursViewMode === 'table' ? 'active' : ''}" data-view="table" style="padding: 12px 24px; border-radius: 8px; border: 2px solid ${this.hoursViewMode === 'table' ? '#3b82f6' : '#e5e7eb'}; background: ${this.hoursViewMode === 'table' ? '#3b82f6' : 'white'}; color: ${this.hoursViewMode === 'table' ? 'white' : '#6b7280'}; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
@@ -526,6 +566,19 @@
                     </div>
                 </div>
             `;
+        }
+
+        renderYearOptions() {
+            const currentYear = new Date().getFullYear();
+            const startYear = 2020; // Start from 2020
+            const years = [];
+
+            for (let year = currentYear; year >= startYear; year--) {
+                const selected = year === this.selectedYear ? 'selected' : '';
+                years.push(`<option value="${year}" ${selected}>${year}</option>`);
+            }
+
+            return years.join('');
         }
 
         renderEmptyState(icon, title, message) {
@@ -972,12 +1025,35 @@ return;
                 });
             });
 
-            // Month filter (Hours tab)
-            const monthFilter = modal.querySelector('#monthFilter');
-            if (monthFilter) {
-                monthFilter.addEventListener('change', (e) => {
-                    this.selectedMonth = e.target.value;
-                    this.switchTab('hours'); // Refresh hours tab
+            // Month/Year selectors (Hours tab)
+            const monthSelector = modal.querySelector('#monthSelector');
+            if (monthSelector) {
+                monthSelector.addEventListener('change', (e) => {
+                    this.selectedMonth = parseInt(e.target.value);
+                    this.loadHoursForSelectedMonth();
+                });
+            }
+
+            const yearSelector = modal.querySelector('#yearSelector');
+            if (yearSelector) {
+                yearSelector.addEventListener('change', (e) => {
+                    this.selectedYear = parseInt(e.target.value);
+                    this.loadHoursForSelectedMonth();
+                });
+            }
+
+            // Prev/Next month buttons
+            const prevMonthBtn = modal.querySelector('#prevMonthBtn');
+            if (prevMonthBtn) {
+                prevMonthBtn.addEventListener('click', () => {
+                    this.navigateMonth(-1);
+                });
+            }
+
+            const nextMonthBtn = modal.querySelector('#nextMonthBtn');
+            if (nextMonthBtn) {
+                nextMonthBtn.addEventListener('click', () => {
+                    this.navigateMonth(1);
                 });
             }
 
@@ -1133,6 +1209,79 @@ return;
         }
 
         /**
+         * Navigate between months (prev/next)
+         * ניווט בין חודשים
+         */
+        navigateMonth(direction) {
+            let newMonth = this.selectedMonth + direction;
+            let newYear = this.selectedYear;
+
+            if (newMonth > 12) {
+                newMonth = 1;
+                newYear++;
+            } else if (newMonth < 1) {
+                newMonth = 12;
+                newYear--;
+            }
+
+            this.selectedMonth = newMonth;
+            this.selectedYear = newYear;
+
+            this.loadHoursForSelectedMonth();
+        }
+
+        /**
+         * Load hours data for selected month
+         * טעינת נתוני שעות לחודש נבחר
+         */
+        async loadHoursForSelectedMonth() {
+            try {
+                console.log(`📥 Loading hours for ${this.selectedMonth}/${this.selectedYear}...`);
+
+                // Show loading indicator
+                const hoursTab = document.querySelector('.tab-panel.tab-hours');
+                if (hoursTab) {
+                    hoursTab.style.opacity = '0.5';
+                    hoursTab.style.pointerEvents = 'none';
+                }
+
+                // Call Cloud Function with month/year parameters
+                const getUserDetailsFunction = window.firebaseFunctions.httpsCallable('getUserFullDetails');
+
+                const result = await getUserDetailsFunction({
+                    email: this.currentUser.email,
+                    month: this.selectedMonth,
+                    year: this.selectedYear
+                });
+
+                // Parse the response
+                const responseData = result.data;
+
+                // Update only timesheet/hours data (keep other data unchanged)
+                this.userData.timesheet = responseData.timesheet || [];
+                this.userData.hours = responseData.timesheet || [];
+                this.userData.stats.hoursThisWeek = responseData.stats?.hoursThisWeek || 0;
+                this.userData.stats.hoursThisMonth = responseData.stats?.hoursThisMonth || 0;
+
+                // Refresh the tab
+                this.switchTab('hours');
+
+                console.log(`✅ Hours loaded for ${this.selectedMonth}/${this.selectedYear}`);
+
+            } catch (error) {
+                console.error('❌ Error loading hours:', error);
+                window.notify.error('שגיאה בטעינת שעות');
+
+                // Remove loading indicator
+                const hoursTab = document.querySelector('.tab-panel.tab-hours');
+                if (hoursTab) {
+                    hoursTab.style.opacity = '1';
+                    hoursTab.style.pointerEvents = 'auto';
+                }
+            }
+        }
+
+        /**
          * Handle action button click
          * טיפול בלחיצה על כפתור פעולה
          */
@@ -1189,7 +1338,9 @@ return '?';
         }
 
         formatDate(date) {
-            if (!date) return '-';
+            if (!date) {
+return '-';
+}
 
             try {
                 let dateObj;
