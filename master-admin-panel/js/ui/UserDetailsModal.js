@@ -370,10 +370,6 @@
         renderHoursTab() {
             const hours = this.userData?.hours || [];
 
-            if (hours.length === 0) {
-                return this.renderEmptyState('fas fa-clock', 'אין רישומי שעות', 'משתמש זה לא רשם שעות עדיין');
-            }
-
             // סנן את השעות
             const filteredHours = this.filterAndSortHours(hours);
 
