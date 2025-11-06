@@ -5210,15 +5210,14 @@ exports.fixBrokenLegalProcedures = functions.https.onCall(async (data, context) 
 // const { adminUpdateClientFull } = require('./admin/update-client-full');
 
 // Import Master Admin Panel Phase 4 Wrappers (for Phase 3 UI)
-// ⚠️ TEMPORARILY DISABLED - admin directory not deployed
-// const {
-//   createUser,
-//   updateUser,
-//   blockUser,
-//   deleteUser,
-//   getUserFullDetails,
-//   adminUpdateTask
-// } = require('./admin/master-admin-wrappers');
+// ✅ ENABLED - Master Admin Panel Cloud Functions
+const {
+  createUser,
+  updateUser,
+  blockUser,
+  deleteUser,
+  getUserFullDetails
+} = require('./admin/master-admin-wrappers');
 
 // Export admin functions
 // ⚠️ TEMPORARILY DISABLED - admin directory not deployed
@@ -5228,13 +5227,12 @@ exports.fixBrokenLegalProcedures = functions.https.onCall(async (data, context) 
 // exports.adminUpdateClientFull = adminUpdateClientFull;
 
 // Export Master Admin Panel Phase 4 Wrappers (Simple names for UI)
-// ⚠️ TEMPORARILY DISABLED - admin directory not deployed
-// exports.createUser = createUser;
-// exports.updateUser = updateUser;
-// exports.blockUser = blockUser;
-// exports.deleteUser = deleteUser;
-// exports.getUserFullDetails = getUserFullDetails;
-// exports.adminUpdateTask = adminUpdateTask;
+// ✅ ENABLED - Master Admin Panel Cloud Functions
+exports.createUser = createUser;
+exports.updateUser = updateUser;
+exports.blockUser = blockUser;
+exports.deleteUser = deleteUser;
+exports.getUserFullDetails = getUserFullDetails;
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🔧 DATA FIX: Add missing packages to legal procedure stages

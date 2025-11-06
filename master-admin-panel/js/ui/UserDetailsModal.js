@@ -98,7 +98,24 @@
                     email: this.currentUser.email
                 });
 
-                this.userData = result.data;
+                // Parse the response structure from Cloud Function
+                const responseData = result.data;
+
+                // Merge user data with stats and other data
+                this.userData = {
+                    ...responseData.user,
+                    clients: responseData.clients || [],
+                    tasks: responseData.tasks || [],
+                    timesheet: responseData.timesheet || [],
+                    hours: responseData.timesheet || [], // Alias for compatibility
+                    activity: responseData.activity || [],
+                    stats: responseData.stats || {},
+                    // Add flattened stats for easy access in templates
+                    clientsCount: responseData.stats?.totalClients || 0,
+                    tasksCount: responseData.stats?.activeTasks || 0,
+                    hoursThisWeek: responseData.stats?.hoursThisWeek || 0,
+                    hoursThisMonth: responseData.stats?.hoursThisMonth || 0
+                };
 
                 // Update modal content with full data
                 window.ModalManager.updateContent(this.modalId, this.renderContent());
@@ -110,18 +127,25 @@
 
             } catch (error) {
                 console.error('❌ Error loading user data:', error);
+                console.error('   Error message:', error.message);
+                console.error('   Error code:', error.code);
+                console.error('   Error details:', error.details);
 
                 // Fallback: Use basic user data from DataManager
-                console.log('⚠️ Using fallback data (Cloud Function not available yet)');
+                console.log('⚠️ Using fallback data');
 
                 this.userData = {
                     ...this.currentUser,
                     clients: [],
                     tasks: [],
-                    hours: [],
+                    timesheet: [],
+                    hours: [], // Alias for compatibility
                     activity: [],
+                    stats: {},
+                    clientsCount: 0,
+                    tasksCount: 0,
                     hoursThisWeek: 0,
-                    hoursThisYear: 0
+                    hoursThisMonth: 0
                 };
 
                 // Update modal content with fallback data
@@ -898,7 +922,9 @@
          */
         setupEvents() {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             // Close button
             const closeBtn = modal.querySelector('#userDetailsCloseBtn');
@@ -1117,7 +1143,9 @@
          */
 
         getInitials(name) {
-            if (!name) return '?';
+            if (!name) {
+return '?';
+}
             const parts = name.split(' ');
             if (parts.length >= 2) {
                 return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -1127,6 +1155,9 @@
 
         getAvatarColor(email) {
             const colors = ['avatar-blue', 'avatar-green', 'avatar-purple', 'avatar-orange', 'avatar-red'];
+            if (!email || typeof email !== 'string' || email.length === 0) {
+                return colors[0]; // Default color
+            }
             const index = email.charCodeAt(0) % colors.length;
             return colors[index];
         }
@@ -1142,7 +1173,9 @@
         }
 
         formatDate(date) {
-            if (!date) return '-';
+            if (!date) {
+return '-';
+}
             try {
                 const dateObj = date.toDate ? date.toDate() : new Date(date);
                 return dateObj.toLocaleDateString('he-IL', {
@@ -1785,7 +1818,9 @@
          */
         setupEditTaskEvents(modalId, task) {
             const modal = window.ModalManager.getElement(modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             // כפתור ביטול
             const cancelBtn = modal.querySelector('#cancelEditTask');
@@ -1814,7 +1849,9 @@
         async saveTaskChanges(modalId, originalTask) {
             try {
                 const modal = window.ModalManager.getElement(modalId);
-                if (!modal) return;
+                if (!modal) {
+return;
+}
 
                 // קריאת ערכים מהטופס
                 const description = modal.querySelector('#taskDescription')?.value.trim();
