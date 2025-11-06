@@ -910,9 +910,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       clientData.currentStage = 'stage_a';
       clientData.pricingType = data.pricingType;
 
+      // ✅ NEW STRUCTURE: שלבים בתוך services[] array
+      const legalServiceId = `srv_legal_${Date.now()}`;
+
       if (data.pricingType === 'hourly') {
         // ✅ תמחור שעתי - שלבים עם שעות וחבילות
-        clientData.stages = [
+        const stages = [
           {
             id: 'stage_a',
             name: 'שלב א',
@@ -934,7 +937,10 @@ exports.createClient = functions.https.onCall(async (data, context) => {
                 purchaseDate: now,
                 status: 'active'
               }
-            ]
+            ],
+            startDate: now,
+            completionDate: null,
+            lastActivity: now
           },
           {
             id: 'stage_b',
@@ -949,15 +955,18 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             hoursRemaining: data.stages[1].hours,
             packages: [
               {
-                id: `pkg_initial_b_${Date.now()}`,
+                id: `pkg_initial_b_${Date.now() + 1}`,
                 type: 'initial',
                 hours: data.stages[1].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[1].hours,
                 purchaseDate: now,
-                status: 'active'
+                status: 'pending'
               }
-            ]
+            ],
+            startDate: null,
+            completionDate: null,
+            lastActivity: null
           },
           {
             id: 'stage_c',
@@ -972,27 +981,64 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             hoursRemaining: data.stages[2].hours,
             packages: [
               {
-                id: `pkg_initial_c_${Date.now()}`,
+                id: `pkg_initial_c_${Date.now() + 2}`,
                 type: 'initial',
                 hours: data.stages[2].hours,
                 hoursUsed: 0,
                 hoursRemaining: data.stages[2].hours,
                 purchaseDate: now,
-                status: 'active'
+                status: 'pending'
               }
-            ]
+            ],
+            startDate: null,
+            completionDate: null,
+            lastActivity: null
           }
         ];
 
         // חישוב סה"כ שעות בהליך
         const totalProcedureHours = data.stages.reduce((sum, s) => sum + s.hours, 0);
+
+        // ✅ מבנה חדש: Services array
+        clientData.services = [
+          {
+            id: legalServiceId,
+            type: 'legal_procedure',
+            name: sanitizeString(data.legalProcedureName || 'הליך משפטי'),
+            pricingType: 'hourly',
+            ratePerHour: data.ratePerHour || 800,
+            status: 'active',
+            stages: stages,
+
+            // Service-level aggregates
+            totalStages: 3,
+            completedStages: 0,
+            currentStage: 'stage_a',
+            totalHours: totalProcedureHours,
+            hoursUsed: 0,
+            hoursRemaining: totalProcedureHours,
+            totalMinutes: totalProcedureHours * 60,
+            minutesUsed: 0,
+            minutesRemaining: totalProcedureHours * 60,
+
+            createdAt: now,
+            createdBy: user.username || 'system',
+            lastActivity: now
+          }
+        ];
+
+        // ✅ Client-level aggregates
         clientData.totalHours = totalProcedureHours;
+        clientData.hoursUsed = 0;
         clientData.hoursRemaining = totalProcedureHours;
         clientData.minutesRemaining = totalProcedureHours * 60;
 
+        // ✅ Legacy support: ריק לתאימות אחורה
+        clientData.stages = [];
+
       } else if (data.pricingType === 'fixed') {
         // ✅ תמחור פיקס - שלבים עם מחירים קבועים
-        clientData.stages = [
+        const stages = [
           {
             id: 'stage_a',
             name: 'שלב א',
@@ -1003,7 +1049,10 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             fixedPrice: data.stages[0].fixedPrice,
             paid: false,
             paymentDate: null,
-            paymentMethod: null
+            paymentMethod: null,
+            startDate: now,
+            completionDate: null,
+            lastActivity: now
           },
           {
             id: 'stage_b',
@@ -1015,7 +1064,10 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             fixedPrice: data.stages[1].fixedPrice,
             paid: false,
             paymentDate: null,
-            paymentMethod: null
+            paymentMethod: null,
+            startDate: null,
+            completionDate: null,
+            lastActivity: null
           },
           {
             id: 'stage_c',
@@ -1027,15 +1079,47 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             fixedPrice: data.stages[2].fixedPrice,
             paid: false,
             paymentDate: null,
-            paymentMethod: null
+            paymentMethod: null,
+            startDate: null,
+            completionDate: null,
+            lastActivity: null
           }
         ];
 
-        // חישוב סה"כ מחיר ויתרה
+        // חישוב סה"כ מחיר
         const totalFixedPrice = data.stages.reduce((sum, s) => sum + s.fixedPrice, 0);
+
+        // ✅ מבנה חדש: Services array
+        clientData.services = [
+          {
+            id: legalServiceId,
+            type: 'legal_procedure',
+            name: sanitizeString(data.legalProcedureName || 'הליך משפטי'),
+            pricingType: 'fixed',
+            status: 'active',
+            stages: stages,
+
+            // Service-level aggregates
+            totalStages: 3,
+            completedStages: 0,
+            currentStage: 'stage_a',
+            totalFixedPrice: totalFixedPrice,
+            totalPaid: 0,
+            remainingBalance: totalFixedPrice,
+
+            createdAt: now,
+            createdBy: user.username || 'system',
+            lastActivity: now
+          }
+        ];
+
+        // ✅ Client-level aggregates
         clientData.totalFixedPrice = totalFixedPrice;
         clientData.totalPaid = 0;
         clientData.remainingBalance = totalFixedPrice;
+
+        // ✅ Legacy support: ריק לתאימות אחורה
+        clientData.stages = [];
       }
     }
 
