@@ -664,7 +664,7 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       activity: activity,
       stats: {
         totalClients: clients.length,
-        activeTasks: tasks.filter(t => t.status === 'ממתין' || t.status === 'בטיפול').length,
+        activeTasks: tasks.filter(t => t.status !== 'הושלם').length, // ✅ System uses "פעיל" (not "ממתין"/"בטיפול")
         completedTasks: tasks.filter(t => t.status === 'הושלם').length,
         hoursThisWeek: Math.round(hoursThisWeek * 10) / 10,
         hoursThisMonth: Math.round(hoursThisMonth * 10) / 10
