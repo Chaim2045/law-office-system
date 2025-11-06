@@ -104,6 +104,8 @@
                 // Merge user data with stats and other data
                 this.userData = {
                     ...responseData.user,
+                    // Convert isActive (boolean) to status (string) for UI compatibility
+                    status: responseData.user.isActive ? 'active' : 'blocked',
                     clients: responseData.clients || [],
                     tasks: responseData.tasks || [],
                     timesheet: responseData.timesheet || [],
@@ -116,6 +118,15 @@
                     hoursThisWeek: responseData.stats?.hoursThisWeek || 0,
                     hoursThisMonth: responseData.stats?.hoursThisMonth || 0
                 };
+
+                // Debug logging
+                console.log('📊 User Data:', this.userData);
+                console.log('   email:', this.userData.email);
+                console.log('   status:', this.userData.status, '(isActive:', responseData.user.isActive, ')');
+                console.log('   createdAt:', this.userData.createdAt);
+                console.log('   lastLogin:', this.userData.lastLogin);
+                console.log('   clientsCount:', this.userData.clientsCount);
+                console.log('   tasksCount:', this.userData.tasksCount);
 
                 // Update modal content with full data
                 window.ModalManager.updateContent(this.modalId, this.renderContent());
@@ -1163,7 +1174,12 @@ return '?';
         }
 
         getRoleText(role) {
-            const roleMap = { 'admin': 'מנהל', 'user': 'משתמש' };
+            const roleMap = {
+                'admin': 'מנהל',
+                'lawyer': 'עורך דין',
+                'employee': 'עובד',
+                'user': 'משתמש'
+            };
             return roleMap[role] || role;
         }
 
@@ -1173,11 +1189,37 @@ return '?';
         }
 
         formatDate(date) {
-            if (!date) {
-return '-';
-}
+            if (!date) return '-';
+
             try {
-                const dateObj = date.toDate ? date.toDate() : new Date(date);
+                let dateObj;
+
+                // Handle Firestore Timestamp object
+                if (date.toDate && typeof date.toDate === 'function') {
+                    dateObj = date.toDate();
+                } else if (date._seconds !== undefined) {
+                    // Handle Firestore Timestamp serialized (from Cloud Function)
+                    dateObj = new Date(date._seconds * 1000);
+                } else if (typeof date === 'number') {
+                    // Handle regular timestamp
+                    dateObj = new Date(date);
+                } else if (typeof date === 'string') {
+                    // Handle string date
+                    dateObj = new Date(date);
+                } else if (date instanceof Date) {
+                    // Handle Date object
+                    dateObj = date;
+                } else {
+                    console.warn('Unknown date format:', date);
+                    return '-';
+                }
+
+                // Check if valid date
+                if (isNaN(dateObj.getTime())) {
+                    console.warn('Invalid date:', date);
+                    return '-';
+                }
+
                 return dateObj.toLocaleDateString('he-IL', {
                     year: 'numeric',
                     month: 'short',
@@ -1186,6 +1228,7 @@ return '-';
                     minute: '2-digit'
                 });
             } catch (error) {
+                console.error('Error formatting date:', error, date);
                 return '-';
             }
         }

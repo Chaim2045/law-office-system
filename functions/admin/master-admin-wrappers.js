@@ -576,7 +576,7 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
 
       // שליפת משימות
       db.collection('budget_tasks')
-        .where('employee', '==', data.email)
+        .where('employee', '==', username)
         .orderBy('createdAt', 'desc')
         .limit(50)
         .get(),
