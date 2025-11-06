@@ -8,6 +8,7 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { addTimeToTaskWithTransaction } = require('./addTimeToTask_v2');
+const { updateBudgetTask, markNotificationAsRead } = require('./task-update-realtime');
 
 // אתחול Admin SDK
 admin.initializeApp();
@@ -5233,6 +5234,10 @@ exports.updateUser = updateUser;
 exports.blockUser = blockUser;
 exports.deleteUser = deleteUser;
 exports.getUserFullDetails = getUserFullDetails;
+
+// Real-time Task Updates & Notifications
+exports.updateBudgetTask = updateBudgetTask;
+exports.markNotificationAsRead = markNotificationAsRead;
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🔧 DATA FIX: Add missing packages to legal procedure stages

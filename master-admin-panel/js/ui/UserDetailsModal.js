@@ -954,17 +954,55 @@
         }
 
         renderActivityLog(log) {
+            // Format action to Hebrew
+            const actionText = this.formatActivityAction(log.action);
+
+            // Format details if exist
+            let detailsText = '';
+            if (log.details) {
+                try {
+                    const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                    const detailsArray = Object.entries(details)
+                        .filter(([key, val]) => val !== null && val !== undefined)
+                        .map(([key, val]) => `${key}: ${val}`);
+
+                    if (detailsArray.length > 0) {
+                        detailsText = `<div class="activity-details">${detailsArray.slice(0, 3).join(' • ')}</div>`;
+                    }
+                } catch (e) {
+                    // Ignore JSON parse errors
+                }
+            }
+
             return `
                 <div class="activity-log">
                     <div class="activity-icon">
-                        <i class="${this.getActivityIcon(log.type)}"></i>
+                        <i class="${this.getActivityIcon(log.action)}"></i>
                     </div>
                     <div class="activity-content">
-                        <p class="activity-text">${log.message}</p>
+                        <p class="activity-text">${actionText}</p>
+                        ${detailsText}
                         <span class="activity-time">${this.formatDate(log.timestamp)}</span>
                     </div>
                 </div>
             `;
+        }
+
+        formatActivityAction(action) {
+            const actionMap = {
+                'CREATE_TIMESHEET_ENTRY': 'רישום שעות',
+                'CREATE_TASK': 'יצירת משימה',
+                'UPDATE_TASK': 'עדכון משימה',
+                'COMPLETE_TASK': 'השלמת משימה',
+                'CREATE_CLIENT': 'יצירת לקוח',
+                'UPDATE_CLIENT': 'עדכון לקוח',
+                'DELETE_CLIENT': 'מחיקת לקוח',
+                'LOGIN': 'התחברות',
+                'LOGOUT': 'התנתקות',
+                'VIEW_USER_DETAILS': 'צפייה בפרטי משתמש'
+            };
+
+            return actionMap[action] || action || 'פעולה';
         }
 
         /**
@@ -1384,15 +1422,26 @@ return '-';
             }
         }
 
-        getActivityIcon(type) {
+        getActivityIcon(action) {
             const iconMap = {
+                'CREATE_TIMESHEET_ENTRY': 'fas fa-clock',
+                'CREATE_TASK': 'fas fa-plus-circle',
+                'UPDATE_TASK': 'fas fa-edit',
+                'COMPLETE_TASK': 'fas fa-check-circle',
+                'CREATE_CLIENT': 'fas fa-user-plus',
+                'UPDATE_CLIENT': 'fas fa-user-edit',
+                'DELETE_CLIENT': 'fas fa-user-times',
+                'LOGIN': 'fas fa-sign-in-alt',
+                'LOGOUT': 'fas fa-sign-out-alt',
+                'VIEW_USER_DETAILS': 'fas fa-eye',
+                // Legacy support
                 'login': 'fas fa-sign-in-alt',
                 'logout': 'fas fa-sign-out-alt',
                 'create': 'fas fa-plus',
                 'update': 'fas fa-edit',
                 'delete': 'fas fa-trash'
             };
-            return iconMap[type] || 'fas fa-circle';
+            return iconMap[action] || 'fas fa-circle';
         }
 
         escapeHtml(text) {
@@ -1439,12 +1488,13 @@ return '-';
         filterAndSortHours(hours) {
             let filtered = [...hours];
 
-            // סינון לפי חודש
-            if (this.selectedMonth !== 'all') {
+            // סינון לפי חודש (מבורר החדש)
+            // Note: selectedMonth is now a number (1-12), selectedYear is a number
+            if (this.selectedMonth && this.selectedYear) {
                 filtered = filtered.filter(entry => {
                     const entryDate = new Date(entry.date);
-                    const [year, month] = this.selectedMonth.split('-');
-                    return entryDate.getFullYear() === parseInt(year) && entryDate.getMonth() === parseInt(month);
+                    return entryDate.getFullYear() === this.selectedYear &&
+                           (entryDate.getMonth() + 1) === this.selectedMonth;
                 });
             }
 

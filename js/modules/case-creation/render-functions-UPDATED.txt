@@ -1,0 +1,154 @@
+/**
+ * פונקציות רינדור מתוקנות למודול case-creation-dialog.js
+ * להחליף את הפונקציות המקוריות
+ */
+
+// ===== renderServiceSection() - שורות 504-520 =====
+renderServiceSection() {
+  const container = document.getElementById('serviceSection');
+  if (!container) {
+    return;
+  }
+
+  if (this.procedureType === 'hours') {
+    container.innerHTML = this.renderHoursSection();
+  } else if (this.procedureType === 'legal_procedure') {
+    container.innerHTML = this.renderLegalProcedureSection();
+  }
+
+  // Event listeners לסוג תמחור (אם הליך משפטי)
+  if (this.procedureType === 'legal_procedure') {
+    this.attachPricingTypeListeners();
+  }
+}
+
+// ===== renderHoursSection() - שורות 525-563 =====
+renderHoursSection() {
+  return `
+    <div class="form-section">
+      <h3>
+        <i class="fas fa-clock"></i>
+        שעות
+      </h3>
+
+      <div class="form-group">
+        <label class="form-label">
+          <i class="fas fa-hourglass-half"></i>
+          כמות שעות <span class="required">*</span>
+        </label>
+        <input
+          type="number"
+          id="totalHours"
+          class="form-input"
+          min="1"
+          step="0.5"
+          placeholder="50"
+          required
+        >
+        <p class="help-text">
+          <i class="fas fa-info-circle"></i>
+          מספר השעות שהלקוח רכש
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+// ===== renderLegalProcedureSection() - שורות 568-646 =====
+renderLegalProcedureSection() {
+  return `
+    <div class="form-section">
+      <h3>
+        <i class="fas fa-balance-scale"></i>
+        הליך משפטי
+      </h3>
+
+      <!-- הודעה מידעית -->
+      <div class="info-box">
+        <p>
+          <i class="fas fa-info-circle"></i>
+          יש למלא <strong>3 שלבים מלאים</strong>. בחר סוג תמחור ומלא את הפרטים עבור כל שלב.
+        </p>
+      </div>
+
+      <!-- בחירת סוג תמחור -->
+      <div class="form-group">
+        <label class="form-label">
+          <i class="fas fa-calculator"></i>
+          סוג תמחור <span class="required">*</span>
+        </label>
+        <div class="pricing-types">
+          <label class="pricing-type-label selected">
+            <input type="radio" name="pricingType" value="hourly" checked>
+            <div class="pricing-type-content">
+              <div class="pricing-type-title">
+                <i class="fas fa-clock"></i>
+                תמחור שעתי
+              </div>
+              <div class="pricing-type-desc">תקרת שעות לכל שלב</div>
+            </div>
+          </label>
+
+          <label class="pricing-type-label">
+            <input type="radio" name="pricingType" value="fixed">
+            <div class="pricing-type-content">
+              <div class="pricing-type-title">
+                <i class="fas fa-shekel-sign"></i>
+                מחיר פיקס
+              </div>
+              <div class="pricing-type-desc">מחיר קבוע לכל שלב</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- 3 שלבים -->
+      ${this.renderStage('A', 'א\'', 'stage-a')}
+      ${this.renderStage('B', 'ב\'', 'stage-b')}
+      ${this.renderStage('C', 'ג\'', 'stage-c')}
+    </div>
+  `;
+}
+
+// ===== renderStage() - שורות 651-720 =====
+renderStage(stageKey, stageName, stageClass) {
+  const isHourly = this.pricingType === 'hourly';
+
+  return `
+    <div class="stage-container">
+      <h4 class="stage-header">
+        <span class="stage-badge ${stageClass}">${stageName}</span>
+        שלב ${stageName}
+      </h4>
+
+      <div class="form-group">
+        <label class="form-label">
+          תיאור השלב <span class="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="stage${stageKey}_description"
+          class="form-input"
+          placeholder="לדוגמה: הגשת תביעה"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          ${isHourly ? 'שעות' : 'מחיר פיקס'} <span class="required">*</span>
+        </label>
+        <input
+          type="number"
+          id="stage${stageKey}_${isHourly ? 'hours' : 'fixedPrice'}"
+          class="${isHourly ? 'hourly-field' : 'fixed-field'}"
+          class="form-input"
+          min="1"
+          step="${isHourly ? '0.5' : '100'}"
+          placeholder="${isHourly ? '20' : '5000'}"
+          required
+        >
+      </div>
+    </div>
+  `;
+}

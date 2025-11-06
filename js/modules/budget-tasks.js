@@ -94,6 +94,59 @@ export async function saveBudgetTaskToFirebase(taskData) {
   }
 }
 
+/**
+ * Start real-time tasks listener (NEW - Recommended)
+ * התחלת מאזין משימות בזמן אמת
+ *
+ * @param {string} employee - Employee email
+ * @param {Function} onUpdate - Callback when tasks update (tasks) => {}
+ * @param {Function} onError - Callback on error (error) => {}
+ * @returns {Function} Unsubscribe function
+ */
+export function startRealTimeTasks(employee, onUpdate, onError) {
+  // Dynamic import to avoid circular dependencies
+  import('./real-time-listeners.js').then(({ startTasksListener }) => {
+    return startTasksListener(employee, onUpdate, onError);
+  }).catch((error) => {
+    console.error('❌ Error importing real-time-listeners:', error);
+    if (onError) {
+      onError(error);
+    }
+  });
+}
+
+/**
+ * Update budget task (NEW - for admin/manager use)
+ * עדכון משימה (לשימוש מנהל)
+ *
+ * @param {string} taskId - Task ID
+ * @param {Object} updates - Fields to update
+ * @returns {Promise<Object>} Result with changes
+ */
+export async function updateBudgetTask(taskId, updates) {
+  try {
+    if (!window.callFunction) {
+      throw new Error('callFunction לא זמין');
+    }
+
+    const result = await window.callFunction('updateBudgetTask', {
+      taskId,
+      updates
+    });
+
+    if (!result.success) {
+      throw new Error(result.message || 'שגיאה בעדכון משימה');
+    }
+
+    console.log(`✅ Task ${taskId} updated:`, result.changes);
+
+    return result;
+  } catch (error) {
+    console.error('❌ Error updating task:', error);
+    throw error;
+  }
+}
+
 /* ===========================
    VALIDATION
    =========================== */

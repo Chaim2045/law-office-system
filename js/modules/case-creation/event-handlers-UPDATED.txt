@@ -1,0 +1,78 @@
+/**
+ * פונקציות event handlers מתוקנות
+ * להחליף ב-case-creation-dialog.js
+ */
+
+// ===== attachPricingTypeListeners() - שורות 768-788 =====
+attachPricingTypeListeners() {
+  const pricingRadios = document.querySelectorAll('input[name="pricingType"]');
+  pricingRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      this.pricingType = e.target.value;
+      this.renderServiceSection();
+
+      // עדכון סטייל של הלייבלים
+      document.querySelectorAll('.pricing-type-label').forEach(label => {
+        const input = label.querySelector('input');
+        if (input.checked) {
+          label.classList.add('selected');
+        } else {
+          label.classList.remove('selected');
+        }
+      });
+    });
+  });
+}
+
+// ===== switchMode() - שורות 793-858 =====
+switchMode(mode) {
+  this.currentMode = mode;
+
+  const newMode = document.getElementById('newClientMode');
+  const existingMode = document.getElementById('existingClientMode');
+  const newBtn = document.getElementById('newClientModeBtn');
+  const existingBtn = document.getElementById('existingClientModeBtn');
+
+  if (mode === 'new') {
+    newMode.style.display = 'block';
+    existingMode.style.display = 'none';
+    newBtn.classList.add('active');
+    existingBtn.classList.remove('active');
+
+    // ✅ טען מספר תיק רק אם כבר יש שם לקוח
+    const clientName = document.getElementById('newClientName')?.value?.trim();
+    if (clientName && clientName.length >= 2) {
+      setTimeout(() => this.loadCaseNumber(), 50);
+    } else {
+      // נקה את שדה מספר התיק
+      const caseNumberInput = document.getElementById('caseNumber');
+      if (caseNumberInput) {
+        caseNumberInput.value = '';
+      }
+    }
+  } else {
+    newMode.style.display = 'none';
+    existingMode.style.display = 'block';
+    existingBtn.classList.add('active');
+    newBtn.classList.remove('active');
+
+    // ✅ נקה מספר תיק ונעל אותו (יטען אוטומטית לאחר בחירת לקוח)
+    const caseNumberInput = document.getElementById('caseNumber');
+    if (caseNumberInput) {
+      caseNumberInput.value = '';
+      caseNumberInput.disabled = true;
+      caseNumberInput.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
+    }
+
+    // צור selector אם לא קיים
+    if (!this.clientSelector) {
+      this.initClientSelector();
+    }
+
+    // ✅ האזנה לאירוע בחירת לקוח
+    this.setupClientSelectorListener();
+
+    // ✅ עדכון מצב כפתור שמור
+    this.updateSubmitButton();
+  }
+}

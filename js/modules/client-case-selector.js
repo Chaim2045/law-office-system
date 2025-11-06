@@ -40,7 +40,12 @@
       ClientCaseSelector.clientsCache = [];
 
       // 🎯 Snapshot listener - מעדכן את ה-cache בזמן אמת
-      ClientCaseSelector.cacheListener = db.collection('clients').onSnapshot(
+      // ⚡ אופטימיזציה: טוען רק לקוחות פעילים, הכי חדשים, עד 100
+      ClientCaseSelector.cacheListener = db.collection('clients')
+        .where('status', '==', 'active')
+        .orderBy('createdAt', 'desc')
+        .limit(100)
+        .onSnapshot(
         (snapshot) => {
           snapshot.docChanges().forEach((change) => {
             const doc = change.doc;

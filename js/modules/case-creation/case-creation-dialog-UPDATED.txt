@@ -1,0 +1,201 @@
+/**
+ * זוהי גרסה מתוקנת של פונקציית renderDialog()
+ * להחליף את הפונקציה המקורית בשורות 61-427 בקובץ case-creation-dialog.js
+ */
+
+renderDialog() {
+  const dialogHTML = `
+    <div id="modernCaseDialog" class="case-dialog-overlay">
+      <div class="case-dialog-container">
+        <!-- Header -->
+        <div class="case-dialog-header">
+          <div class="case-dialog-header-content">
+            <i class="fas fa-folder-plus"></i>
+            <h2>תיק חדש</h2>
+          </div>
+          <button id="modernCaseDialog_close" class="case-dialog-close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="case-dialog-content">
+          <form id="modernCaseForm">
+
+            <!-- שגיאות ואזהרות -->
+            <div id="formErrors" class="form-errors" style="display: none;"></div>
+            <div id="formWarnings" class="form-warnings" style="display: none;"></div>
+
+            <!-- Step 1: בחירת מצב לקוח -->
+            <div class="form-section">
+              <h3>
+                <i class="fas fa-user"></i>
+                לקוח
+              </h3>
+
+              <!-- Tabs -->
+              <div class="mode-tabs">
+                <button type="button" id="newClientModeBtn" class="mode-tab active">
+                  <i class="fas fa-user-plus"></i> לקוח חדש
+                </button>
+                <button type="button" id="existingClientModeBtn" class="mode-tab">
+                  <i class="fas fa-users"></i> לקוח קיים
+                </button>
+              </div>
+
+              <!-- New Client Mode -->
+              <div id="newClientMode">
+                <div class="form-group">
+                  <label class="form-label">
+                    <i class="fas fa-id-card"></i>
+                    שם הלקוח <span class="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="newClientName"
+                    class="form-input"
+                    placeholder="שם מלא"
+                  >
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">
+                      <i class="fas fa-phone"></i>
+                      טלפון
+                    </label>
+                    <input
+                      type="text"
+                      id="newClientPhone"
+                      class="form-input"
+                      placeholder="050-1234567"
+                    >
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">
+                      <i class="fas fa-envelope"></i>
+                      אימייל
+                    </label>
+                    <input
+                      type="email"
+                      id="newClientEmail"
+                      class="form-input"
+                      placeholder="email@example.com"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Existing Client Mode -->
+              <div id="existingClientMode" style="display: none;">
+                <div id="caseDialogClientSelector"></div>
+              </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="form-divider"></div>
+
+            <!-- Step 2: פרטי תיק -->
+            <div class="form-section">
+              <h3>
+                <i class="fas fa-folder"></i>
+                פרטי התיק
+              </h3>
+
+              <div class="form-row">
+                <!-- מספר תיק -->
+                <div class="form-group">
+                  <label class="form-label">
+                    <i class="fas fa-hashtag"></i>
+                    מספר תיק <span class="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="caseNumber"
+                    class="form-input"
+                    readonly
+                    placeholder="יתווסף אוטומטית..."
+                  >
+                </div>
+
+                <!-- סוג הליך -->
+                <div class="form-group">
+                  <label class="form-label">
+                    <i class="fas fa-gavel"></i>
+                    סוג הליך <span class="required">*</span>
+                  </label>
+                  <select
+                    id="procedureType"
+                    class="form-select"
+                    required
+                  >
+                    <option value="hours">⏱️ שעות (ללא שלבים)</option>
+                    <option value="legal_procedure">⚖️ הליך משפטי מבוסס שלבים</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- כותרת תיק -->
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-file-alt"></i>
+                  כותרת התיק <span class="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="caseTitle"
+                  class="form-input"
+                  required
+                  placeholder="לדוגמה: תביעה עירונית - עיריית ת״א"
+                >
+              </div>
+
+              <!-- תיאור -->
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-align-right"></i>
+                  תיאור נוסף
+                </label>
+                <textarea
+                  id="caseDescription"
+                  class="form-textarea"
+                  rows="3"
+                  placeholder="תיאור קצר של התיק..."
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="form-divider"></div>
+
+            <!-- Step 3: שירות -->
+            <div id="serviceSection">
+              <!-- יוצג דינמית לפי סוג הליך -->
+            </div>
+
+            <!-- Actions -->
+            <div class="case-dialog-actions">
+              <button type="button" id="modernCaseDialog_cancel" class="btn btn-secondary">
+                ביטול
+              </button>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                שמור תיק
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', dialogHTML);
+
+  // רינדור סקשן שירות (ברירת מחדל: שעות)
+  this.renderServiceSection();
+
+  // ❌ הוסר: מספר תיק לא נטען אוטומטית
+  // ✅ חדש: מספר תיק ייטען רק אחרי שהמשתמש הזין שם לקוח
+}
