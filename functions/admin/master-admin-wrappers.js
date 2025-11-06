@@ -583,7 +583,7 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
 
       // שליפת שעות (מתחילת החודש)
       db.collection('timesheet_entries')
-        .where('employee', '==', username)
+        .where('employee', '==', data.email) // ✅ Use EMAIL (timesheet_entries.employee = user.email)
         .where('date', '>=', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
         .orderBy('date', 'desc')
         .get(),
