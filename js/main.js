@@ -163,6 +163,11 @@ class LawOfficeManager {
    */
   async handleAuthenticatedUser(user) {
     try {
+      // ✅ Don't interfere if handleLogin() is managing the welcome screen
+      if (window.isInWelcomeScreen) {
+        return;
+      }
+
       const snapshot = await window.firebaseDB
         .collection('employees')
         .where('authUID', '==', user.uid)
@@ -200,6 +205,14 @@ class LawOfficeManager {
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         await Auth.handleLogin.call(this);
+      });
+    }
+
+    // Forgot Password form
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+    if (forgotPasswordForm) {
+      forgotPasswordForm.addEventListener('submit', async (e) => {
+        await Auth.handleForgotPassword.call(this, e);
       });
     }
 
@@ -306,9 +319,9 @@ class LawOfficeManager {
       // Third load (5-15 min): Return stale cache + refresh in background
       const [clients, budgetTasks, timesheetEntries] = await Promise.all([
         this.dataCache.get('clients', () => FirebaseOps.loadClientsFromFirebase()),
-        this.dataCache.get(`budgetTasks:${this.currentUser}`, () =>
-          this.integrationManager?.loadBudgetTasks(this.currentUser)
-            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+        this.dataCache.get(`budgetTasks:${this.currentUser}:${this.currentTaskFilter}`, () =>
+          this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
+            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
         ),
         this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
           this.integrationManager?.loadTimesheet(this.currentUser)
@@ -346,6 +359,12 @@ class LawOfficeManager {
       // Apply filters and render
       this.filterBudgetTasks();
       this.filterTimesheetEntries();
+
+      // ✅ סנכרון מצב הטוגל עם currentTaskFilter (מה-localStorage)
+      this.syncToggleState();
+
+      // ✅ עדכון המונים בטעינה ראשונית
+      await this.updateTaskCountBadges();
 
       // 🔄 Update client validation and selectors (for old system)
       if (this.clientValidation) {
@@ -562,13 +581,15 @@ return false;
           });
           Logger.log('  🚀 [v2.0] EventBus: task:created emitted');
 
-          // ✅ Invalidate cache to force fresh data on next load
-          this.dataCache.invalidate(`budgetTasks:${this.currentUser}`);
+          // ✅ Invalidate cache to force fresh data on next load (all filters)
+          this.dataCache.invalidate(`budgetTasks:${this.currentUser}:active`);
+          this.dataCache.invalidate(`budgetTasks:${this.currentUser}:completed`);
+          this.dataCache.invalidate(`budgetTasks:${this.currentUser}:all`);
 
           // Reload tasks with cache (will fetch fresh because invalidated)
-          this.budgetTasks = await this.dataCache.get(`budgetTasks:${this.currentUser}`, () =>
-            this.integrationManager?.loadBudgetTasks(this.currentUser)
-              || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+          this.budgetTasks = await this.dataCache.get(`budgetTasks:${this.currentUser}:${this.currentTaskFilter}`, () =>
+            this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
+              || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
           );
           this.filterBudgetTasks();
         },
@@ -609,11 +630,10 @@ plusButton.classList.remove('active');
       return;
     }
 
-    // תחילה - סנן לפי הפילטר הרגיל (active/completed/all)
-    const baseFiltered = Search.filterBudgetTasks(this.budgetTasks, this.currentTaskFilter);
-
-    // אחר כך - חיפוש טקסט בתוך התוצאות
-    this.filteredBudgetTasks = baseFiltered.filter(task => {
+    // ✅ budgetTasks is already filtered by server-side (active/completed/all)
+    // So we just search within these pre-filtered tasks
+    // No need to filter again - prevents double filtering and potential mixing
+    this.filteredBudgetTasks = this.budgetTasks.filter(task => {
       return (
         // חיפוש בתיאור המשימה
         task.description?.toLowerCase().includes(trimmed) ||
@@ -633,17 +653,136 @@ plusButton.classList.remove('active');
     this.renderBudgetView();
   }
 
-  filterBudgetTasks() {
-    // Get current filter value from the select element
-    const filterSelect = document.getElementById('taskFilter');
-    if (filterSelect) {
-      this.currentTaskFilter = filterSelect.value;
-      // ✅ Save to localStorage
-      localStorage.setItem('taskFilter', this.currentTaskFilter);
+  /**
+   * ✅ Handle iOS toggle switch change
+   * @param {HTMLInputElement} checkbox - The checkbox element
+   */
+  async handleToggleSwitch(checkbox) {
+    const viewMode = checkbox.checked ? 'completed' : 'active';
+    await this.toggleTaskView(viewMode);
+  }
+
+  /**
+   * ✅ Toggle between active and completed tasks view
+   * @param {string} viewMode - 'active' or 'completed'
+   */
+  async toggleTaskView(viewMode) {
+    // אם כבר בתצוגה הזו - לא עושים כלום
+    if (viewMode === this.currentTaskFilter) {
+return;
+}
+
+    // ✅ RACE CONDITION GUARD: Prevent concurrent toggle operations
+    if (this.isTogglingView) {
+      console.warn('⚠️ Toggle already in progress, ignoring duplicate call');
+      return;
     }
 
-    const filterValue = this.currentTaskFilter;
-    this.filteredBudgetTasks = Search.filterBudgetTasks(this.budgetTasks, filterValue);
+    try {
+      // ✅ Set loading flag
+      this.isTogglingView = true;
+
+      // ✅ עדכון ה-state
+      this.currentTaskFilter = viewMode;
+      localStorage.setItem('taskFilter', viewMode);
+
+      // ✅ עדכון ה-labels (iOS toggle)
+      const activeLabel = document.getElementById('activeLabel');
+      const completedLabel = document.getElementById('completedLabel');
+      const toggleCheckbox = document.getElementById('taskViewToggle');
+
+      if (activeLabel && completedLabel) {
+        if (viewMode === 'active') {
+          activeLabel.classList.add('active');
+          completedLabel.classList.remove('active');
+          if (toggleCheckbox) {
+toggleCheckbox.checked = false;
+}
+        } else {
+          activeLabel.classList.remove('active');
+          completedLabel.classList.add('active');
+          if (toggleCheckbox) {
+toggleCheckbox.checked = true;
+}
+        }
+      }
+
+      // ✅ טעינה מהשרת עם הסינון הנכון + cache update
+      // Invalidate old cache first
+      this.dataCache.invalidate(`budgetTasks:${this.currentUser}:${viewMode}`);
+
+      // Load with cache (will fetch fresh because invalidated)
+      const loadedTasks = await this.dataCache.get(
+        `budgetTasks:${this.currentUser}:${viewMode}`,
+        () => BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, viewMode, 50)
+      );
+
+      // ✅ RACE CONDITION GUARD: Verify state hasn't changed during async operation
+      // If user clicked toggle again while loading, ignore stale results
+      if (this.currentTaskFilter !== viewMode) {
+        console.warn('⚠️ View mode changed during load, discarding stale results');
+        return;
+      }
+
+      // המשימות כבר מסוננות מהשרת
+      this.budgetTasks = loadedTasks;
+      this.filteredBudgetTasks = [...this.budgetTasks];
+
+      // ✅ עדכון המונים
+      this.updateTaskCountBadges();
+
+      this.renderBudgetView();
+
+      // ✅ EventBus notification
+      window.EventBus.emit('tasks:view-changed', {
+        view: viewMode,
+        count: this.budgetTasks.length
+      });
+
+    } catch (error) {
+      console.error('Error toggling task view:', error);
+      this.showNotification('שגיאה בטעינת משימות', 'error');
+    } finally {
+      // ✅ Always clear loading flag
+      this.isTogglingView = false;
+    }
+  }
+
+  /**
+   * ✅ Sync toggle UI state with currentTaskFilter
+   * Called during initialization to ensure UI matches localStorage state
+   */
+  syncToggleState() {
+    const activeLabel = document.getElementById('activeLabel');
+    const completedLabel = document.getElementById('completedLabel');
+    const toggleCheckbox = document.getElementById('taskViewToggle');
+
+    if (!activeLabel || !completedLabel || !toggleCheckbox) {
+      return; // Elements not ready yet
+    }
+
+    // ✅ Update UI to match currentTaskFilter
+    if (this.currentTaskFilter === 'completed') {
+      activeLabel.classList.remove('active');
+      completedLabel.classList.add('active');
+      toggleCheckbox.checked = true;
+    } else {
+      activeLabel.classList.add('active');
+      completedLabel.classList.remove('active');
+      toggleCheckbox.checked = false;
+    }
+
+    Logger.log(`✅ Toggle state synced: ${this.currentTaskFilter}`);
+  }
+
+  /**
+   * ✅ Filter budget tasks - ensures filteredBudgetTasks is always synced with budgetTasks
+   * CRITICAL: Must always update to prevent mixing of active/completed tasks
+   */
+  async filterBudgetTasks() {
+    // ✅ ALWAYS sync filteredBudgetTasks with budgetTasks
+    // This prevents completed tasks from appearing in active view and vice versa
+    this.filteredBudgetTasks = [...this.budgetTasks];
     this.renderBudgetView();
   }
 
@@ -657,6 +796,35 @@ plusButton.classList.remove('active');
 
     this.filteredBudgetTasks = Search.sortBudgetTasks(this.filteredBudgetTasks, sortValue);
     this.renderBudgetView();
+  }
+
+  /**
+   * ✅ Update task count badges for both active and completed
+   */
+  async updateTaskCountBadges() {
+    try {
+      // טעינה מהירה של שני הסוגים לספירה
+      const [activeTasks, completedTasks] = await Promise.all([
+        BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, 'active', 50),
+        BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, 'completed', 50)
+      ]);
+
+      // עדכון המונה של פעילות
+      const activeBadge = document.getElementById('activeCountBadge');
+      if (activeBadge) {
+        activeBadge.textContent = activeTasks.length;
+        activeBadge.style.display = activeTasks.length > 0 ? 'inline-flex' : 'none';
+      }
+
+      // עדכון המונה של מושלמות
+      const completedBadge = document.getElementById('completedCountBadge');
+      if (completedBadge) {
+        completedBadge.textContent = completedTasks.length;
+        completedBadge.style.display = completedTasks.length > 0 ? 'inline-flex' : 'none';
+      }
+    } catch (error) {
+      console.error('Error updating count badges:', error);
+    }
   }
 
   async renderBudgetView() {
@@ -1275,8 +1443,8 @@ return;
 
         // Reload tasks
         this.budgetTasks = await (
-          this.integrationManager?.loadBudgetTasks(this.currentUser)
-            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+          this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
+            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
         );
         this.filterBudgetTasks();
 
@@ -1292,13 +1460,17 @@ return;
         });
         Logger.log('  🚀 [v2.0] EventBus: task:completed emitted');
       },
-      successMessage: 'המשימה הושלמה בהצלחה',
+      successMessage: null,  // ✅ No automatic success message - will show custom one in onSuccess
       errorMessage: 'שגיאה בסיום משימה',
       closePopupOnSuccess: true,  // ✅ Auto-close popup
       closeDelay: 500,
-      onSuccess: () => {
+      onSuccess: async () => {
         // Close expanded card if open
         this.closeExpandedCard();
+
+        // ✅ החלפה אוטומטית לתצוגת משימות מושלמות
+        await this.toggleTaskView('completed');
+        this.showNotification('המשימה הושלמה ועברה לתצוגת "הושלמו" ✓', 'success');
       }
     });
   }
@@ -1336,8 +1508,8 @@ return;
 
         // Reload tasks
         this.budgetTasks = await (
-          this.integrationManager?.loadBudgetTasks(this.currentUser)
-            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser)
+          this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
+            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
         );
         this.filterBudgetTasks();
 
@@ -1421,6 +1593,8 @@ window.clearAllNotifications = Navigation.clearAllNotifications;
 window.openSmartForm = Navigation.openSmartForm;
 window.logout = Auth.logout;
 window.confirmLogout = Auth.confirmLogout;
+window.showLogin = Auth.showLogin;
+window.showForgotPassword = Auth.showForgotPassword;
 
 // ✅ OLD client search functions removed - now using ClientCaseSelector component
 // Old: window.searchClients, window.selectClient

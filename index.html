@@ -49,10 +49,22 @@
 
         // אופטימיזציות ביצועים + דיכוי לוגים
         db.settings({
-          cacheSizeBytes: 1048576, // 1MB במקום unlimited - פחות חיבורים
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, // Unlimited cache for offline support
           merge: true,
           ignoreUndefinedProperties: true
         });
+
+        // ⚡ הפעלת Offline Persistence - תמיכה בעבודה ללא אינטרנט
+        db.enablePersistence({ synchronizeTabs: true })
+          .catch((err) => {
+            if (err.code === 'failed-precondition') {
+              console.warn('⚠️ Offline persistence: נפתחו מספר טאבים, persistence פעיל רק בטאב הראשון');
+            } else if (err.code === 'unimplemented') {
+              console.warn('⚠️ Offline persistence: הדפדפן לא תומך בפיצ\'ר זה');
+            } else {
+              console.error('❌ Offline persistence error:', err);
+            }
+          });
 
         // 🔍 Firestore logs - error level (מאפשר לוגים חשובים)
         firebase.firestore.setLogLevel('error');
@@ -106,6 +118,7 @@
     <link rel="stylesheet" href="css/tables.css?v=4.4.0" />
     <link rel="stylesheet" href="css/timesheet-cards.css?v=2.0.1" />
     <link rel="stylesheet" href="css/modals.css?v=2.0.0" />
+    <link rel="stylesheet" href="css/case-creation-dialog.css?v=1.0.0" />
     <link rel="stylesheet" href="css/popups-unified.css?v=1.0.0" />
     <link rel="stylesheet" href="css/popups-rtl.css?v=1.0.0" />
     <link rel="stylesheet" href="css/expanded-cards.css?v=1.0.0" />
@@ -281,7 +294,7 @@
         <div class="login-wrapper" id="loginSection">
           <!-- Logo - Outside the card -->
           <div class="login-logo">
-            <img src="images/logo.png" alt="משרד עו"ד גיא הרשקוביץ" class="logo-image" />
+            <img src="images/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="logo-image" />
             <h1>משרד עו"ד גיא הרשקוביץ</h1>
             <p>מערכת ניהול מתקדמת</p>
           </div>
@@ -318,10 +331,76 @@
                 <i class="fas fa-sign-in-alt"></i>
                 כניסה
               </button>
+
+              <!-- Forgot Password Link -->
+              <div class="forgot-password-link">
+                <a href="#" onclick="showForgotPassword(); return false;">
+                  <i class="fas fa-key"></i>
+                  שכחתי סיסמה
+                </a>
+              </div>
             </form>
           </div>
 
           <!-- Login Footer -->
+          <div class="login-footer">
+            <p>© 2025 כל הזכויות שמורות למשרד עורכי דין גיא הרשקוביץ וחיים פרץ</p>
+          </div>
+        </div>
+
+        <!-- ===== מסך שחזור סיסמה ===== -->
+        <!-- PASSWORD RESET SECTION -->
+        <div class="login-wrapper hidden" id="forgotPasswordSection">
+          <!-- Logo -->
+          <div class="login-logo">
+            <img src="images/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="logo-image" />
+            <h1>משרד עו"ד גיא הרשקוביץ</h1>
+            <p>שחזור סיסמה</p>
+          </div>
+
+          <!-- Reset Card -->
+          <div class="login-card">
+            <h3>שכחת את הסיסמה?</h3>
+            <p class="reset-description">
+              הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה
+            </p>
+
+            <form id="forgotPasswordForm">
+              <div class="form-group">
+                <label for="resetEmail">אימייל</label>
+                <input
+                  type="email"
+                  id="resetEmail"
+                  placeholder="your@email.com"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+
+              <div class="error-message hidden" id="resetErrorMessage">
+                שגיאה בשליחת מייל
+              </div>
+
+              <div class="success-message hidden" id="resetSuccessMessage">
+                <i class="fas fa-check-circle"></i>
+                קישור לאיפוס סיסמה נשלח למייל שלך
+              </div>
+
+              <br />
+
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i>
+                שלח קישור לאיפוס
+              </button>
+
+              <button type="button" class="btn btn-secondary" onclick="showLogin()">
+                <i class="fas fa-arrow-right"></i>
+                חזור למסך כניסה
+              </button>
+            </form>
+          </div>
+
+          <!-- Footer -->
           <div class="login-footer">
             <p>© 2025 כל הזכויות שמורות למשרד עורכי דין גיא הרשקוביץ וחיים פרץ</p>
           </div>
@@ -503,16 +582,28 @@
 
               <div class="search-filter-row">
                 <div class="filter-container">
-                  <span class="filter-label">הצג:</span>
-                  <select
-                    class="filter-select"
-                    id="budgetTaskFilter"
-                    onchange="manager.filterBudgetTasks()"
-                  >
-                    <option value="active">פעילות בלבד</option>
-                    <option value="completed">שהושלמו (חודש אחרון)</option>
-                    <option value="all">הכל</option>
-                  </select>
+                  <div class="ios-toggle-container">
+                    <span class="toggle-label active" id="activeLabel">
+                      <i class="fas fa-tasks"></i>
+                      משימות פעילות
+                      <span class="task-count-badge" id="activeCountBadge">0</span>
+                    </span>
+
+                    <label class="ios-toggle-switch">
+                      <input
+                        type="checkbox"
+                        id="taskViewToggle"
+                        onchange="manager.handleToggleSwitch(this)"
+                      />
+                      <span class="ios-slider"></span>
+                    </label>
+
+                    <span class="toggle-label" id="completedLabel">
+                      <i class="fas fa-check-circle"></i>
+                      משימות הושלמו
+                      <span class="task-count-badge" id="completedCountBadge">0</span>
+                    </span>
+                  </div>
                 </div>
 
                 <div class="search-container">
