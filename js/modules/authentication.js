@@ -247,12 +247,12 @@ bubblesContainer.classList.remove('hidden');
 }
 
 /**
- * וידוא שמסך הברוך הבא מוצג לפחות 6 שניות
+ * וידוא שמסך הברוך הבא מוצג לפחות 3 שניות
  */
 async function waitForWelcomeMinimumTime() {
-  // Ensure welcome screen shows for at least 6 seconds
+  // Ensure welcome screen shows for at least 3 seconds
   const elapsed = Date.now() - this.welcomeScreenStartTime;
-  const remaining = Math.max(0, 6000 - elapsed);
+  const remaining = Math.max(0, 3000 - elapsed);
   if (remaining > 0) {
     await new Promise((resolve) => setTimeout(resolve, remaining));
   }
