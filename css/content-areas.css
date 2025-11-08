@@ -100,13 +100,13 @@
   flex-direction: column;
   justify-content: center;
   min-height: 100vh;
-  padding: 20px 0;
+  padding: 50px 0 20px 0;
   box-sizing: border-box;
 }
 
 /* Logo - Premium Reveal Animation 2025 */
 .login-logo {
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   animation: logoRevealContainer 1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -225,7 +225,7 @@
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  padding: 40px 35px;
+  padding: 30px 35px;
   box-sizing: border-box;
   animation: fadeInUp 0.6s ease-out 0.2s both;
   position: relative;
@@ -233,7 +233,7 @@
 
 .login-card h3 {
   color: var(--gray-800);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   font-size: 20px;
   font-weight: 700;
   position: relative;
@@ -247,7 +247,7 @@
   backdrop-filter: blur(10px);
   border: 2px solid rgba(59, 130, 246, 0.15);
   border-radius: 12px;
-  padding: 14px 18px;
+  padding: 12px 16px;
   font-size: 15px;
   color: var(--gray-800);
   transition: all 0.3s ease;
@@ -279,7 +279,7 @@
 
 .login-card label {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--gray-700);
   font-weight: 600;
   font-size: 14px;
@@ -290,7 +290,7 @@
 
 .login-card .form-group {
   position: relative;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 /* אנימציית גלים כשמקלידים - כחול עדין */
