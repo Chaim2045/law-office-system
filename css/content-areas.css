@@ -111,25 +111,24 @@
 }
 
 .logo-image {
-  max-width: 140px;
+  max-width: 100px;
   height: auto;
-  margin: 0 auto 20px;
+  margin: 0 auto 15px;
   display: block;
-  filter: drop-shadow(0 8px 24px rgba(99, 102, 241, 0.3)) drop-shadow(0 4px 12px rgba(139, 92, 246, 0.2));
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
   animation: logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.2s;
   position: relative;
 }
 
-/* אנימציית זוהר לוגו - Modern Tech Blue/Purple */
+/* אנימציית זוהר לוגו */
 .logo-image::before {
   content: '';
   position: absolute;
-  inset: -15px;
+  inset: -10px;
   background: radial-gradient(
     circle,
-    rgba(99, 102, 241, 0.4) 0%,
-    rgba(139, 92, 246, 0.2) 40%,
+    rgba(212, 175, 55, 0.3) 0%,
     transparent 70%
   );
   opacity: 0;
@@ -182,31 +181,27 @@
 }
 
 .login-logo h1 {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
-  background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0 0 8px;
-  /* Modern Tech Glow */
+  color: #1f2937;
+  margin: 0 0 6px;
+  /* Enhanced Text Shadow 2025 */
   text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    0 4px 12px rgba(99, 102, 241, 0.3),
-    0 8px 24px rgba(139, 92, 246, 0.2);
-  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.5));
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(212, 175, 55, 0.08),
+    0 8px 16px rgba(0, 0, 0, 0.05);
   animation: titleFadeIn 0.8s ease-out 0.4s both;
 }
 
 .login-logo p {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  color: #6b7280;
   margin: 0;
   font-weight: 500;
   /* Enhanced Text Shadow */
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.2),
-    0 2px 8px rgba(99, 102, 241, 0.3);
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.04);
   animation: titleFadeIn 0.8s ease-out 0.6s both;
 }
 
@@ -221,106 +216,76 @@
   }
 }
 
-/* Login card - Advanced Glassmorphism Modern Tech */
+/* Login card - Simplified Glassmorphism */
 .login-card {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 24px;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow:
-    0 8px 32px rgba(31, 38, 135, 0.37),
-    0 4px 16px rgba(99, 102, 241, 0.2),
-    inset 0 1px 2px rgba(255, 255, 255, 0.4),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.1);
-  padding: 45px 40px;
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  padding: 40px 35px;
   box-sizing: border-box;
   animation: fadeInUp 0.6s ease-out 0.2s both;
   position: relative;
-  overflow: hidden;
-}
-
-/* Subtle gradient overlay */
-.login-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(99, 102, 241, 0.05) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
 }
 
 .login-card h3 {
-  color: #ffffff;
-  margin-bottom: 24px;
-  font-size: 22px;
+  color: var(--gray-800);
+  margin-bottom: 20px;
+  font-size: 20px;
   font-weight: 700;
   position: relative;
   z-index: 1;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Modern Tech Input Fields - Purple/Blue Glow */
-.login-card input[type="password"],
-.login-card input[type="email"] {
+/* Premium Input Animations 2025 - צבעים כחולים עדינים */
+.login-card input[type="password"] {
   position: relative;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 14px;
-  padding: 16px 20px;
+  border: 2px solid rgba(59, 130, 246, 0.15);
+  border-radius: 12px;
+  padding: 14px 18px;
   font-size: 15px;
-  color: #ffffff;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--gray-800);
+  transition: all 0.3s ease;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 2px rgba(255, 255, 255, 0.15);
-  z-index: 1;
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.login-card input[type="password"]:focus,
-.login-card input[type="email"]:focus {
+.login-card input[type="password"]:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(59, 130, 246, 0.4);
   box-shadow:
-    0 6px 20px rgba(99, 102, 241, 0.3),
-    0 0 0 4px rgba(99, 102, 241, 0.1),
-    inset 0 1px 2px rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
+    0 4px 12px rgba(59, 130, 246, 0.1),
+    0 0 0 3px rgba(59, 130, 246, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
 }
 
-.login-card input[type="password"]::placeholder,
-.login-card input[type="email"]::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+.login-card input[type="password"]::placeholder {
+  color: rgba(107, 114, 128, 0.6);
   transition: all 0.3s ease;
 }
 
-.login-card input[type="password"]:focus::placeholder,
-.login-card input[type="email"]:focus::placeholder {
-  color: rgba(99, 102, 241, 0.7);
-  transform: translateX(3px);
+.login-card input[type="password"]:focus::placeholder {
+  color: rgba(59, 130, 246, 0.5);
+  transform: translateX(2px);
 }
 
 .login-card label {
   display: block;
   margin-bottom: 10px;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--gray-700);
   font-weight: 600;
   font-size: 14px;
   position: relative;
   z-index: 1;
   transition: all 0.3s ease;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .login-card .form-group {
@@ -350,79 +315,18 @@
   width: 100%;
 }
 
-/* Login footer - Modern Tech */
+/* Login footer - copyright */
 .login-footer {
-  margin-top: 24px;
-  padding-top: 18px;
+  margin-top: 20px;
+  padding-top: 15px;
   animation: fadeIn 0.6s ease-out 0.4s both;
 }
 
 .login-footer p {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: #9ca3af;
   margin: 0;
-  line-height: 1.6;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-/* Modern Tech Login Button - Override buttons.css */
-.login-card .btn,
-.login-card button[type="submit"],
-#loginForm .btn,
-#loginForm button[type="submit"] {
-  position: relative !important;
-  width: 100% !important;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.9) 100%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.3) !important;
-  border-radius: 14px !important;
-  padding: 16px 24px !important;
-  font-size: 16px !important;
-  font-weight: 600 !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
-  cursor: pointer !important;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow:
-    0 4px 16px rgba(99, 102, 241, 0.4),
-    0 2px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
-  z-index: 1;
-  overflow: hidden !important;
-}
-
-.login-card .btn::before,
-.login-card button[type="submit"]::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.6s ease;
-}
-
-.login-card .btn:hover::before,
-.login-card button[type="submit"]:hover::before {
-  left: 100%;
-}
-
-.login-card .btn:hover,
-.login-card button[type="submit"]:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 24px rgba(99, 102, 241, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 2px rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.login-card .btn:active,
-.login-card button[type="submit"]:active {
-  transform: translateY(0);
-  box-shadow:
-    0 2px 8px rgba(99, 102, 241, 0.3),
-    inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  line-height: 1.5;
 }
 
 /* Animations */

@@ -132,41 +132,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
-  /* Modern Tech Gradient Background - Blue-Purple Mesh (Login Screen Only) */
-  background:
-    radial-gradient(
-      circle at 15% 25%,
-      rgba(99, 102, 241, 0.15) 0%,
-      transparent 45%
-    ),
-    radial-gradient(
-      circle at 85% 75%,
-      rgba(139, 92, 246, 0.12) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 50% 50%,
-      rgba(59, 130, 246, 0.08) 0%,
-      transparent 55%
-    ),
-    linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-  background-attachment: fixed;
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  position: relative;
-  overflow: hidden;
-  height: 100vh;
-  direction: rtl;
-  color: var(--gray-700);
-  line-height: 1.6;
-  padding: 0;
-  margin: 0;
-  transition: var(--transition-normal);
-}
-
-/* Add small padding to body when logged in for better spacing on all screens */
-body.logged-in {
-  /* RESTORE ORIGINAL BACKGROUND FOR LOGGED IN STATE */
+  /* Gradient Background - מופשט */
   background:
     radial-gradient(
       ellipse at 20% 30%,
@@ -180,6 +146,20 @@ body.logged-in {
     ),
     linear-gradient(135deg, #f8fafc 0%, #e9ecf1 50%, #e2e8f0 100%);
 
+  background-attachment: fixed;
+  position: relative;
+  overflow: hidden;
+  height: 100vh;
+  direction: rtl;
+  color: var(--gray-700);
+  line-height: 1.6;
+  padding: 0;
+  margin: 0;
+  transition: var(--transition-normal);
+}
+
+/* Add small padding to body when logged in for better spacing on all screens */
+body.logged-in {
   padding: clamp(4px, 0.5vw, 8px);
   overflow: hidden auto; /* לאפשר גלילה אנכית */ /* למנוע גלילה אופקית */
   height: auto; /* גובה אוטומטי */
