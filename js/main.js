@@ -15,6 +15,7 @@
 import * as CoreUtils from './modules/core-utils.js';
 import { DOMCache } from './modules/dom-cache.js';
 import DataCache from './modules/data-cache.js';
+import STATE_CONFIG from './config/state-config.js';
 
 // Notification System
 import { NotificationBellSystem } from './modules/notification-bell.js';
@@ -73,23 +74,25 @@ class LawOfficeManager {
     this.timesheetEntries = [];
     this.connectionStatus = 'unknown';
 
-    // View State - ✅ Load from localStorage if available
-    this.currentTaskFilter = localStorage.getItem('taskFilter') || 'active'; // Show only active tasks by default
-    this.currentTimesheetFilter = localStorage.getItem('timesheetFilter') || 'month';
-    this.currentBudgetView = localStorage.getItem('budgetView') || 'cards';
-    this.currentTimesheetView = localStorage.getItem('timesheetView') || 'table';
+    // View State - ✅ Managed by STATE_CONFIG (config/state-config.js)
+    // Session-only (resets on page load): taskFilter, timesheetFilter
+    // Persisted (saved): budgetView, timesheetView, budgetSort, timesheetSort
+    this.currentTaskFilter = STATE_CONFIG.getStateValue('taskFilter'); // ✅ Always 'active'
+    this.currentTimesheetFilter = STATE_CONFIG.getStateValue('timesheetFilter'); // ✅ Always 'month'
+    this.currentBudgetView = STATE_CONFIG.getStateValue('budgetView'); // ✅ Persisted
+    this.currentTimesheetView = STATE_CONFIG.getStateValue('timesheetView'); // ✅ Persisted
 
     // Filtered Data
     this.filteredBudgetTasks = [];
     this.filteredTimesheetEntries = [];
 
-    // Sorting State - ✅ Load from localStorage if available
+    // Sorting State - ✅ Managed by STATE_CONFIG
     this.budgetSortField = null;
     this.budgetSortDirection = 'asc';
     this.timesheetSortField = null;
     this.timesheetSortDirection = 'asc';
-    this.currentBudgetSort = localStorage.getItem('budgetSort') || 'recent';
-    this.currentTimesheetSort = localStorage.getItem('timesheetSort') || 'recent';
+    this.currentBudgetSort = STATE_CONFIG.getStateValue('budgetSort'); // ✅ Persisted
+    this.currentTimesheetSort = STATE_CONFIG.getStateValue('timesheetSort'); // ✅ Persisted
 
     // Pagination State
     this.currentBudgetPage = 1;
@@ -684,7 +687,7 @@ return;
 
       // ✅ עדכון ה-state
       this.currentTaskFilter = viewMode;
-      localStorage.setItem('taskFilter', viewMode);
+      STATE_CONFIG.setStateValue('taskFilter', viewMode); // ⚠️ Won't persist - session-only
 
       // ✅ עדכון ה-labels (iOS toggle)
       const activeLabel = document.getElementById('activeLabel');
@@ -791,8 +794,8 @@ toggleCheckbox.checked = true;
     const sortValue = event?.target?.value || event;
     this.currentBudgetSort = sortValue;
 
-    // ✅ Save to localStorage
-    localStorage.setItem('budgetSort', sortValue);
+    // ✅ Save user preference (persisted)
+    STATE_CONFIG.setStateValue('budgetSort', sortValue);
 
     this.filteredBudgetTasks = Search.sortBudgetTasks(this.filteredBudgetTasks, sortValue);
     this.renderBudgetView();
@@ -854,8 +857,8 @@ toggleCheckbox.checked = true;
   }
 
   switchBudgetView(view) {
-    // ✅ Save to localStorage
-    localStorage.setItem('budgetView', view);
+    // ✅ Save user preference (persisted)
+    STATE_CONFIG.setStateValue('budgetView', view);
     this.currentBudgetView = view;
 
     // Update view tabs
@@ -1629,7 +1632,15 @@ window._firebase_saveTimesheetToFirebase_ORIGINAL = FirebaseOps.saveTimesheetToF
 window._firebase_saveTimesheetToFirebase_v2_ORIGINAL = FirebaseOps.saveTimesheetToFirebase_v2;  // ✅ ENTERPRISE v2.0
 window._firebase_saveBudgetTaskToFirebase_ORIGINAL = FirebaseOps.saveBudgetTaskToFirebase;
 window._firebase_updateTimesheetEntryFirebase_ORIGINAL = FirebaseOps.updateTimesheetEntryFirebase;
+
+// 🆕 NEW: Keep originals for both old and new client hours functions
+window._firebase_calculateClientHoursByCaseNumber_ORIGINAL = ClientHours.calculateClientHoursByCaseNumber;
+window._firebase_updateClientHoursImmediatelyByCaseNumber_ORIGINAL = ClientHours.updateClientHoursImmediatelyByCaseNumber;
+
+// 🔄 LEGACY: Keep originals for backward compatibility
+window._firebase_calculateClientHoursAccurate_ORIGINAL = ClientHours.calculateClientHoursAccurate;
 window._firebase_updateClientHoursImmediately_ORIGINAL = ClientHours.updateClientHoursImmediately;
+
 window._firebase_addTimeToTaskFirebase_ORIGINAL = FirebaseOps.addTimeToTaskFirebase;
 window._firebase_completeTaskFirebase_ORIGINAL = FirebaseOps.completeTaskFirebase;
 window._firebase_extendTaskDeadlineFirebase_ORIGINAL = FirebaseOps.extendTaskDeadlineFirebase;
@@ -1643,7 +1654,15 @@ window.saveTimesheetToFirebase = FirebaseOps.saveTimesheetToFirebase;
 window.saveTimesheetToFirebase_v2 = FirebaseOps.saveTimesheetToFirebase_v2;  // ✅ ENTERPRISE v2.0
 window.saveBudgetTaskToFirebase = FirebaseOps.saveBudgetTaskToFirebase;
 window.updateTimesheetEntryFirebase = FirebaseOps.updateTimesheetEntryFirebase;
+
+// 🆕 NEW: caseNumber-based client hours functions (recommended)
+window.calculateClientHoursByCaseNumber = ClientHours.calculateClientHoursByCaseNumber;
+window.updateClientHoursImmediatelyByCaseNumber = ClientHours.updateClientHoursImmediatelyByCaseNumber;
+
+// 🔄 LEGACY: clientName-based functions (backward compatibility)
 window.updateClientHoursImmediately = ClientHours.updateClientHoursImmediately;
+window.calculateClientHoursAccurate = ClientHours.calculateClientHoursAccurate;
+
 window.addTimeToTaskFirebase = FirebaseOps.addTimeToTaskFirebase;
 window.completeTaskFirebase = FirebaseOps.completeTaskFirebase;
 window.extendTaskDeadlineFirebase = FirebaseOps.extendTaskDeadlineFirebase;
