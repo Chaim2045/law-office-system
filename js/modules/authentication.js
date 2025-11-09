@@ -478,6 +478,8 @@ async function handleForgotPassword(event) {
 
   } catch (error) {
     console.error('Password reset error:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
 
     let errorText = 'שגיאה בשליחת מייל לאיפוס סיסמה';
 
@@ -487,6 +489,15 @@ async function handleForgotPassword(event) {
       errorText = 'כתובת אימייל לא תקינה';
     } else if (error.code === 'auth/too-many-requests') {
       errorText = 'יותר מדי ניסיונות. נסה שוב מאוחר יותר';
+    } else if (error.code === 'auth/missing-continue-uri') {
+      errorText = 'שגיאת הגדרות Firebase - פנה למפתח';
+    } else if (error.code === 'auth/invalid-continue-uri') {
+      errorText = 'שגיאת הגדרות Firebase - פנה למפתח';
+    } else if (error.code === 'auth/unauthorized-continue-uri') {
+      errorText = 'שגיאת הרשאות Firebase - פנה למפתח';
+    } else {
+      // הצג את הקוד המלא לדיבוג
+      errorText = `שגיאה: ${error.code || 'unknown'} - בדוק את ה-Console`;
     }
 
     if (resetErrorMessage) {
