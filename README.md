@@ -2,6 +2,12 @@
 
 מערכת ניהול מתקדמת למשרד עו"ד גיא הרשקוביץ עם ניהול לקוחות, תקצוב משימות ושעתון עבודה.
 
+## 🌐 כתובות האתר
+
+- **🚀 Production (Netlify)**: https://gh-law-office-system.netlify.app
+- **🔥 Firebase Backend**: https://law-office-system-e4801.web.app
+- **📦 GitHub Repository**: https://github.com/Chaim2045/law-office-system
+
 ---
 
 ## 📋 תוכן עניינים

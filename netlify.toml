@@ -1,8 +1,29 @@
+# ════════════════════════════════════════════════════════════════
+# Law Office Management System - Netlify Configuration
+# ════════════════════════════════════════════════════════════════
+# Production URL: https://gh-law-office-system.netlify.app
+# Firebase Backend: law-office-system-e4801.web.app
+# ════════════════════════════════════════════════════════════════
+
 [build]
   publish = "."
-  command = "echo 'Static site - no build needed'"
+  command = "npm run compile-ts || echo 'TypeScript compilation skipped'"
 
+# Production environment variables
+[context.production.environment]
+  NODE_VERSION = "18"
+
+# SPA routing - redirect all to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
