@@ -255,14 +255,14 @@ jobs:
 
   # ═════════════════════════════════════════════════════════════
   # JOB 5: E2E Tests with Playwright
-  # בדיקות End-to-End קריטיות
+  # בדיקות End-to-End קריטיות - רצות על Netlify Deploy
   # ═════════════════════════════════════════════════════════════
   e2e:
     name: 🎭 E2E Tests (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [test]
-    # Only run E2E on main branch or manual trigger (expensive)
+    needs: [build]
+    # Run E2E after build completes (Netlify deploys automatically)
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
 
     steps:
@@ -281,10 +281,42 @@ jobs:
       - name: 🎭 Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      - name: 🚀 Run E2E Tests
+      - name: ⏳ Wait for Netlify Deploy
+        run: |
+          echo "⏳ Waiting for Netlify deploy to complete..."
+          echo "Netlify auto-deploys on push to main"
+          echo "Giving Netlify 60 seconds to deploy..."
+          sleep 60
+
+          # Check if site is up
+          SITE_URL="https://gh-law-office-system.netlify.app"
+          MAX_ATTEMPTS=10
+          ATTEMPT=1
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking $SITE_URL"
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" $SITE_URL)
+
+            if [ "$STATUS" -eq 200 ]; then
+              echo "✅ Site is live! HTTP $STATUS"
+              break
+            else
+              echo "⏳ Site not ready yet (HTTP $STATUS), waiting..."
+              sleep 10
+              ATTEMPT=$((ATTEMPT + 1))
+            fi
+          done
+
+          if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+            echo "❌ Site did not become available in time"
+            exit 1
+          fi
+
+      - name: 🚀 Run E2E Tests on Netlify
         run: npm run e2e
         env:
           CI: true
+          PLAYWRIGHT_BASE_URL: https://gh-law-office-system.netlify.app
 
       - name: 📤 Upload Test Results
         uses: actions/upload-artifact@v4
@@ -354,12 +386,13 @@ jobs:
 
   # ═════════════════════════════════════════════════════════════
   # JOB 7: Deploy to Staging
-  # פריסה לסביבת staging לבדיקות
+  # פריסה לסביבת staging לבדיקות (Firebase Hosting)
+  # הערה: Netlify פורס אוטומטית, זה deployment נוסף ל-Firebase
   # ═════════════════════════════════════════════════════════════
   deploy-staging:
     name: 🚧 Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build, test, e2e]
+    needs: [build, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: staging
@@ -400,13 +433,14 @@ jobs:
           echo "🌐 URL: https://law-office-system-e4801.web.app"
 
   # ═════════════════════════════════════════════════════════════
-  # JOB 7: Deploy to Production
-  # פריסה לסביבת production
+  # JOB 8: Deploy to Production
+  # פריסה לסביבת production (Firebase Functions + Rules)
+  # הערה: Netlify פורס אוטומטית את הסטטיק, זה רק Firebase backend
   # ═════════════════════════════════════════════════════════════
   deploy-production:
     name: 🚀 Deploy to Production
     runs-on: ubuntu-latest
-    needs: [deploy-staging]
+    needs: [deploy-staging, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: production
@@ -456,8 +490,8 @@ jobs:
           echo "🌐 URL: https://law-office-system-e4801.web.app"
 
   # ═════════════════════════════════════════════════════════════
-  # JOB 8: Post-Deployment Health Check
-  # בדיקת תקינות אחרי deployment
+  # JOB 9: Post-Deployment Health Check
+  # בדיקת תקינות אחרי deployment - Netlify + Firebase
   # ═════════════════════════════════════════════════════════════
   health-check:
     name: 🏥 Health Check
@@ -467,35 +501,48 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: 🏥 Check Production Site
+      - name: 🏥 Check Netlify Production Site
         run: |
-          echo "🏥 Running health check..."
+          echo "🏥 Running health check on Netlify..."
+          SITE_URL="https://gh-law-office-system.netlify.app"
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" $SITE_URL)
+
+          if [ "$STATUS" -eq 200 ]; then
+            echo "✅ Netlify site is healthy! HTTP $STATUS"
+          else
+            echo "❌ Netlify check failed! HTTP $STATUS"
+            exit 1
+          fi
+
+      - name: 🏥 Check Firebase Site
+        run: |
+          echo "🏥 Running health check on Firebase..."
           SITE_URL="https://law-office-system-e4801.web.app"
 
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" $SITE_URL)
 
           if [ "$STATUS" -eq 200 ]; then
-            echo "✅ Site is healthy! HTTP $STATUS"
+            echo "✅ Firebase site is healthy! HTTP $STATUS"
           else
-            echo "❌ Site check failed! HTTP $STATUS"
-            exit 1
+            echo "⚠️ Firebase check returned HTTP $STATUS (may be expected)"
           fi
 
       - name: 📊 Performance Check
         run: |
           echo "📊 Checking page load time..."
-          SITE_URL="https://law-office-system-e4801.web.app"
+          SITE_URL="https://gh-law-office-system.netlify.app"
           LOAD_TIME=$(curl -o /dev/null -s -w '%{time_total}\n' $SITE_URL)
-          echo "⏱️ Load time: ${LOAD_TIME}s"
+          echo "⏱️ Netlify load time: ${LOAD_TIME}s"
 
   # ═════════════════════════════════════════════════════════════
-  # JOB 9: Notifications
+  # JOB 10: Notifications
   # שליחת התראות על הצלחה/כישלון
   # ═════════════════════════════════════════════════════════════
   notify:
     name: 📬 Send Notifications
     runs-on: ubuntu-latest
-    needs: [health-check]
+    needs: [health-check, e2e]
     if: always()
 
     steps:

@@ -34,9 +34,9 @@ export default defineConfig({
   // Shared settings for all the projects below
   use: {
     // Base URL to use in actions like `await page.goto('/')`
-    baseURL: process.env.CI
-      ? 'https://law-office-system-e4801.web.app'
-      : 'http://localhost:5173',
+    // Priority: PLAYWRIGHT_BASE_URL env var > CI (Netlify) > localhost
+    baseURL: process.env.PLAYWRIGHT_BASE_URL
+      || (process.env.CI ? 'https://gh-law-office-system.netlify.app' : 'http://localhost:5173'),
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
