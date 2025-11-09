@@ -1620,7 +1620,10 @@ exports.updateClient = functions.https.onCall(async (data, context) => {
           'שם לקוח חייב להכיל לפחות 2 תווים'
         );
       }
-      updates.fullName = sanitizeString(data.fullName.trim());
+      // ✅ CRITICAL FIX: סנכרון fullName + clientName למניעת אי-התאמה
+      const sanitizedName = sanitizeString(data.fullName.trim());
+      updates.fullName = sanitizedName;
+      updates.clientName = sanitizedName;  // Keep in sync!
     }
 
     if (data.phone !== undefined) {

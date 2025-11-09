@@ -25,22 +25,64 @@ import DescriptionTooltips from './description-tooltips.js';
    =========================== */
 
 /**
- * Load budget tasks from Firebase for a specific employee
- * @param {string} employee - Employee name
+ * Load budget tasks from Firebase for a specific employee with server-side filtering
+ * ✅ OPTIMIZED: Server-side filtering for better performance (20+ users, 100+ tasks)
+ *
+ * @param {string} employee - Employee email
+ * @param {string} statusFilter - Filter type: 'active', 'completed', 'all'
+ * @param {number} limit - Max results (default 50)
  * @returns {Promise<Array>} Array of budget tasks
  */
-export async function loadBudgetTasksFromFirebase(employee) {
+export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'active', limit = 50) {
   try {
     const db = window.firebaseDB;
     if (!db) {
       throw new Error('Firebase לא מחובר');
     }
 
-    const snapshot = await db
-      .collection('budget_tasks')
-      .where('employee', '==', employee)
-      .limit(50) // ✅ Safety net - prevents loading all tasks
-      .get();
+    let query = db.collection('budget_tasks').where('employee', '==', employee);
+    let snapshot;
+    let usedFallback = false;
+
+    // ✅ Try server-side filtering first (optimal performance)
+    // ⚠️ Falls back to client-side if index is not ready yet
+    try {
+      if (statusFilter === 'active') {
+        // משימות פעילות - כל מה שלא "הושלם"
+        query = query.where('status', '!=', 'הושלם');
+      } else if (statusFilter === 'completed') {
+        // משימות מושלמות - ממוינות לפי תאריך השלמה (החדשות ראשון)
+        query = query
+          .where('status', '==', 'הושלם')
+          .orderBy('completedAt', 'desc');
+      }
+      // 'all' - לא מוסיף סינון, טוען הכל
+
+      query = query.limit(limit);
+      snapshot = await query.get();
+
+    } catch (indexError) {
+      // ⚠️ Index not ready yet - fallback to client-side filtering
+      // Silent fallback - no warnings to user
+      if (indexError.code !== 'failed-precondition' && !indexError.message?.includes('index')) {
+        console.warn('⚠️ Unexpected error, using fallback:', indexError.message);
+      }
+      usedFallback = true;
+
+      // Load all tasks for this employee (no filtering)
+      try {
+        query = db.collection('budget_tasks')
+          .where('employee', '==', employee)
+          .limit(100); // Higher limit for fallback
+        snapshot = await query.get();
+      } catch (fallbackError) {
+        // If fallback also fails, try without any complex queries
+        console.error('Fallback also failed, loading basic query:', fallbackError);
+        query = db.collection('budget_tasks')
+          .where('employee', '==', employee);
+        snapshot = await query.get();
+      }
+    }
 
     const tasks = [];
 
@@ -66,7 +108,26 @@ export async function loadBudgetTasksFromFirebase(employee) {
       tasks.push(taskWithFirebaseId);
     });
 
-    return tasks;
+    // ✅ Client-side filtering if fallback was used
+    let filteredTasks = tasks;
+    if (usedFallback) {
+      if (statusFilter === 'active') {
+        filteredTasks = tasks.filter(task => task.status !== 'הושלם');
+      } else if (statusFilter === 'completed') {
+        filteredTasks = tasks
+          .filter(task => task.status === 'הושלם')
+          .sort((a, b) => {
+            const dateA = a.completedAt ? new Date(a.completedAt) : new Date(0);
+            const dateB = b.completedAt ? new Date(b.completedAt) : new Date(0);
+            return dateB - dateA; // newest first
+          });
+      }
+      filteredTasks = filteredTasks.slice(0, limit);
+    }
+
+    console.log(`✅ Loaded ${filteredTasks.length} tasks (filter: ${statusFilter}, fallback: ${usedFallback})`);
+    return usedFallback ? filteredTasks : tasks;
+
   } catch (error) {
     console.error('Firebase error:', error);
     throw new Error('שגיאה בטעינת משימות: ' + error.message);
@@ -677,9 +738,24 @@ export function createTableRow(task, options = {}) {
 
 /**
  * Create empty state HTML
+ * @param {string} filterType - The current filter type ('active', 'completed', 'all')
  * @returns {string} HTML string
  */
-export function createEmptyTableState() {
+export function createEmptyTableState(filterType = 'active') {
+  // ✅ Special encouraging message for completed tasks
+  if (filterType === 'completed') {
+    return `
+      <div class="empty-state">
+        <i class="fas fa-check-circle" style="font-size: 4rem; color: var(--success-500); margin-bottom: 1rem;"></i>
+        <h4>עדיין אין משימות שהושלמו</h4>
+        <p style="color: var(--gray-600); font-size: 1.1rem; margin-top: 0.5rem;">
+          אבל אל תדאג, סומכים עליך שבקרוב זה יהיה מלא! 💪
+        </p>
+      </div>
+    `;
+  }
+
+  // Default empty state for active tasks
   return `
     <div class="empty-state">
       <i class="fas fa-chart-bar"></i>
@@ -702,6 +778,21 @@ export function renderBudgetCards(tasks, options = {}) {
     currentBudgetSort,
     safeText
   } = options;
+
+  const container = document.getElementById('budgetContainer');
+  const tableContainer = document.getElementById('budgetTableContainer');
+
+  // ✅ Check for empty state first
+  if (!tasks || tasks.length === 0) {
+    if (container) {
+      container.innerHTML = createEmptyTableState(currentTaskFilter || 'active');
+      container.classList.remove('hidden');
+    }
+    if (tableContainer) {
+      tableContainer.classList.add('hidden');
+    }
+    return;
+  }
 
   const tasksHtml = tasks.map((task) => createTaskCard(task, options)).join('');
 
@@ -751,8 +842,6 @@ export function renderBudgetCards(tasks, options = {}) {
     </div>
   `;
 
-  const container = document.getElementById('budgetContainer');
-  const tableContainer = document.getElementById('budgetTableContainer');
   if (container) {
     container.innerHTML = html;
     container.classList.remove('hidden');
@@ -796,7 +885,7 @@ export function renderBudgetTable(tasks, options = {}) {
     </div>
   ` : '';
 
-  const html = (!tasks || tasks.length === 0) ? createEmptyTableState() : `
+  const html = (!tasks || tasks.length === 0) ? createEmptyTableState(currentTaskFilter || 'active') : `
     <div class="modern-table-container">
       <div class="modern-table-header">
         <h3 class="modern-table-title">
