@@ -141,22 +141,39 @@ class LawOfficeManager {
      ======================================== */
 
   /**
-   * Initialize the application
+   * המתן עד שה-Firebase Auth יהיה מוכן
+   * 🎯 מונע race conditions עם מודולים שדורשים authentication
+   * @returns {Promise<firebase.User|null>}
    */
-  init() {
+  waitForAuthReady() {
+    return new Promise((resolve) => {
+      const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+        unsubscribe();
+        resolve(user);
+      });
+    });
+  }
+
+  /**
+   * Initialize the application
+   * 🎯 אתחול נכון: Auth קודם, אז מודולים
+   */
+  async init() {
     Logger.log('🚀 Initializing Law Office System...');
 
-    // Setup Firebase Auth listener
-    firebase.auth().onAuthStateChanged(async (user) => {
-      if (user) {
-        await this.handleAuthenticatedUser(user);
-      } else {
-        this.showLogin();
-      }
-    });
-
-    // Setup event listeners
+    // Setup event listeners (UI only)
     this.setupEventListeners();
+
+    // 🛡️ המתן ל-Firebase Auth להיות מוכן
+    Logger.log('⏳ Waiting for Firebase Auth...');
+    const user = await this.waitForAuthReady();
+
+    // טיפול בהתאם למצב authentication
+    if (user) {
+      await this.handleAuthenticatedUser(user);
+    } else {
+      this.showLogin();
+    }
 
     Logger.log('✅ System initialized');
   }
@@ -308,6 +325,7 @@ class LawOfficeManager {
 
   /**
    * Load all data from Firebase
+   * 🎯 מתבצע רק אחרי Authentication מוצלח
    */
   async loadData() {
     try {
@@ -315,6 +333,16 @@ class LawOfficeManager {
 
       // Initialize Firebase
       FirebaseOps.initializeFirebase();
+
+      // 🎯 אתחול CaseNumberGenerator (רק אחרי auth!)
+      if (window.CaseNumberGenerator) {
+        try {
+          await window.CaseNumberGenerator.initialize();
+        } catch (error) {
+          Logger.log('⚠️ CaseNumberGenerator initialization failed:', error);
+          // לא עוצרים את הטעינה בגלל זה
+        }
+      }
 
       // ✅ Load all data in parallel with smart caching
       // First load: Fetch from Firebase and cache

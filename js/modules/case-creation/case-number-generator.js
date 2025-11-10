@@ -17,10 +17,62 @@
     }
 
     /**
+     * בדיקה אם המשתמש מחובר
+     * @returns {boolean}
+     */
+    isAuthenticated() {
+      return firebase.auth().currentUser !== null;
+    }
+
+    /**
+     * בדיקה אם השגיאה ניתנת לתיקון (recoverable)
+     * @param {Error} error
+     * @returns {boolean}
+     */
+    isRecoverableError(error) {
+      // שגיאות רשת - אפשר לנסות שוב
+      if (error.code === 'unavailable') {
+return true;
+}
+      if (error.code === 'deadline-exceeded') {
+return true;
+}
+      if (error.code === 'resource-exhausted') {
+return true;
+}
+
+      // שגיאות הרשאות - לא אפשר לתקן ב-retry
+      if (error.code === 'permission-denied') {
+return false;
+}
+      if (error.code === 'unauthenticated') {
+return false;
+}
+
+      return false;
+    }
+
+    /**
+     * המתנה (delay) - לשימוש ב-retry logic
+     * @param {number} ms - מילישניות
+     * @returns {Promise<void>}
+     */
+    delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
      * אתחול המחולל - טוען את המספר האחרון מ-Firebase
+     * 🛡️ דורש authentication!
      */
     async initialize() {
       if (this.isInitialized) {
+        return;
+      }
+
+      // 🛡️ Authentication Guard
+      if (!this.isAuthenticated()) {
+        Logger.log('⚠️ CaseNumberGenerator: User not authenticated - skipping initialization');
         return;
       }
 
@@ -38,66 +90,119 @@
 
     /**
      * עדכון מספר תיק אחרון מ-Firebase
+     * 🛡️ עם Authentication Guard ו-Error Handling חכם
+     * @param {number} retries - מספר ניסיונות (ברירת מחדל: 3)
      */
-    async updateLastCaseNumber() {
+    async updateLastCaseNumber(retries = 3) {
+      // 🛡️ Authentication Guard
+      if (!this.isAuthenticated()) {
+        Logger.log('⚠️ User not authenticated - cannot update case number');
+        this.lastCaseNumber = null;
+        return;
+      }
+
       // 🔍 Performance Monitoring - Start
       const opId = window.PerformanceMonitor?.start('case-number-query', {
-        action: 'updateLastCaseNumber'
+        action: 'updateLastCaseNumber',
+        retries: retries
       });
 
-      try {
-        const snapshot = await firebase.firestore()
-          .collection('clients')
-          .orderBy('caseNumber', 'desc')
-          .limit(1)
-          .get();
+      // Retry Loop
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const snapshot = await firebase.firestore()
+            .collection('clients')
+            .orderBy('caseNumber', 'desc')
+            .limit(1)
+            .get();
 
-        if (!snapshot.empty) {
-          const lastCase = snapshot.docs[0].data();
-          // שמירה כ-string (כי זה הפורמט: "2025042")
-          this.lastCaseNumber = lastCase.caseNumber || null;
-        } else {
-          this.lastCaseNumber = null; // אין תיקים עדיין
+          if (!snapshot.empty) {
+            const lastCase = snapshot.docs[0].data();
+            // שמירה כ-string (כי זה הפורמט: "2025042")
+            this.lastCaseNumber = lastCase.caseNumber || null;
+          } else {
+            this.lastCaseNumber = null; // אין תיקים עדיין
+          }
+
+          Logger.log('📊 Updated last case number:', this.lastCaseNumber);
+
+          // 🔍 Performance Monitoring - Success
+          window.PerformanceMonitor?.success(opId, {
+            lastCaseNumber: this.lastCaseNumber,
+            attempts: attempt
+          });
+
+          return; // ✅ הצלחה!
+
+        } catch (error) {
+          // 🎯 הבחנה בין סוגי שגיאות
+          if (this.isRecoverableError(error) && attempt < retries) {
+            Logger.log(`⚠️ Attempt ${attempt} failed (${error.code}), retrying...`);
+            await this.delay(1000 * attempt); // exponential backoff
+            continue;
+          }
+
+          // שגיאה שאין מנה לתקן או שנגמרו הניסיונות
+          console.error('❌ Error updating last case number:', error);
+
+          // 🔍 Performance Monitoring - Failure
+          window.PerformanceMonitor?.failure(opId, error);
+
+          // הודעה למשתמש בהתאם לסוג השגיאה
+          if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+            Logger.log('🔒 Permission denied - user may need to re-login');
+            window.NotificationSystem?.show('נדרשת התחברות מחדש', 'warning');
+          } else {
+            Logger.log('⚠️ Failed to load case number - using fallback');
+          }
+
+          // fallback - אין מספר
+          this.lastCaseNumber = null;
+          break;
         }
-
-        Logger.log('📊 Updated last case number:', this.lastCaseNumber);
-
-        // 🔍 Performance Monitoring - Success
-        window.PerformanceMonitor?.success(opId, { lastCaseNumber: this.lastCaseNumber });
-      } catch (error) {
-        console.error('❌ Error updating last case number:', error);
-
-        // 🔍 Performance Monitoring - Failure
-        window.PerformanceMonitor?.failure(opId, error);
-
-        // fallback - אין מספר
-        this.lastCaseNumber = null;
       }
     }
 
     /**
      * הקמת listener לעדכונים בזמן אמת
+     * 🛡️ עם Authentication Guard
      */
     setupRealtimeListener() {
+      // 🛡️ Authentication Guard
+      if (!this.isAuthenticated()) {
+        Logger.log('⚠️ Cannot setup realtime listener - user not authenticated');
+        return;
+      }
+
       // מאזין רק ליצירת לקוחות חדשים
       this.updateListener = firebase.firestore()
         .collection('clients')
         .orderBy('createdAt', 'desc')
         .limit(1)
-        .onSnapshot((snapshot) => {
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              const newCase = change.doc.data();
-              const newNumber = newCase.caseNumber;
+        .onSnapshot(
+          (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+              if (change.type === 'added') {
+                const newCase = change.doc.data();
+                const newNumber = newCase.caseNumber;
 
-              // עדכון רק אם המספר החדש גדול יותר (השוואה לקסיקוגרפית)
-              if (newNumber && (!this.lastCaseNumber || newNumber > this.lastCaseNumber)) {
-                this.lastCaseNumber = newNumber;
-                Logger.log('🔄 Case number updated in real-time:', this.lastCaseNumber);
+                // עדכון רק אם המספר החדש גדול יותר (השוואה לקסיקוגרפית)
+                if (newNumber && (!this.lastCaseNumber || newNumber > this.lastCaseNumber)) {
+                  this.lastCaseNumber = newNumber;
+                  Logger.log('🔄 Case number updated in real-time:', this.lastCaseNumber);
+                }
               }
+            });
+          },
+          (error) => {
+            // Error handler
+            console.error('❌ Realtime listener error:', error);
+            if (error.code === 'permission-denied') {
+              Logger.log('🔒 Realtime listener: Permission denied');
+              window.NotificationSystem?.show('אין הרשאות גישה לנתונים', 'error');
             }
-          });
-        });
+          }
+        );
     }
 
     /**
@@ -237,35 +342,52 @@
      * @returns {boolean}
      */
     isValidCaseNumber(caseNumber) {
-      if (!caseNumber) return false;
+      if (!caseNumber) {
+return false;
+}
 
       const caseStr = caseNumber.toString();
 
       // בדיקה: בדיוק 7 ספרות
-      if (caseStr.length !== 7) return false;
+      if (caseStr.length !== 7) {
+return false;
+}
 
       // בדיקה: כל התווים הם ספרות
-      if (!/^\d{7}$/.test(caseStr)) return false;
+      if (!/^\d{7}$/.test(caseStr)) {
+return false;
+}
 
       // חילוץ שנה ומספר סידורי
       const year = parseInt(caseStr.substring(0, 4));
       const sequential = parseInt(caseStr.substring(4, 7));
 
       // בדיקת שנה סבירה (2024-2030)
-      if (year < 2024 || year > 2030) return false;
+      if (year < 2024 || year > 2030) {
+return false;
+}
 
       // בדיקת מספר סידורי תקין (1-999)
-      if (sequential < 1 || sequential > 999) return false;
+      if (sequential < 1 || sequential > 999) {
+return false;
+}
 
       return true;
     }
 
     /**
      * בדיקה אם מספר תיק קיים כבר
+     * 🛡️ עם Authentication Guard
      * @param {string|number} caseNumber
      * @returns {Promise<boolean>}
      */
     async caseNumberExists(caseNumber) {
+      // 🛡️ Authentication Guard
+      if (!this.isAuthenticated()) {
+        Logger.log('⚠️ Cannot check case number existence - user not authenticated');
+        return false;
+      }
+
       // 🔍 Performance Monitoring - Start
       const opId = window.PerformanceMonitor?.start('case-number-existence-check', {
         caseNumber: caseNumber.toString()
@@ -317,14 +439,8 @@
   // ✅ יצירת instance גלובלי יחיד (Singleton)
   window.CaseNumberGenerator = window.CaseNumberGenerator || new CaseNumberGenerator();
 
-  // ✅ אתחול אוטומטי כשהמודול נטען
-  window.addEventListener('DOMContentLoaded', async () => {
-    try {
-      await window.CaseNumberGenerator.initialize();
-    } catch (error) {
-      console.error('❌ Failed to initialize CaseNumberGenerator:', error);
-    }
-  });
+  // 🎯 אתחול מתבצע ב-main.js לאחר Authentication
+  // הסרנו auto-initialization כדי למנוע race condition
 
   Logger.log('✅ CaseNumberGenerator module loaded');
 
