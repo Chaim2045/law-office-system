@@ -67,7 +67,9 @@
       "Bash(git fsck:*)",
       "Bash(npx tsc:*)",
       "Bash(firebase functions:list:*)",
-      "Bash(timeout 30 bash:*)"
+      "Bash(timeout 30 bash:*)",
+      "Bash(git stash:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,109 @@
+CLIENTS SYSTEM - KEY ISSUES FOUND
+
+CRITICAL ISSUES:
+
+1. fullName vs clientName INCONSISTENCY
+   File: js/modules/client-hours.js
+   Line 23: .where("fullName", "==", clientName)
+   Line 35: .where("clientName", "==", clientName)
+   Problem: Searches different fields - could return wrong client
+   
+2. NO DUPLICATE PREVENTION
+   File: functions/index.js (createClient)
+   Problem: No unique constraint on clientName
+   Can create two clients with same name
+   Query by name could return wrong one
+   
+3. NO CASCADING DELETE
+   File: functions/index.js (deleteClient)
+   Problem: Deletes only client document
+   Orphans: timesheet_entries, budget_tasks, etc.
+   
+4. NO VERSION CONTROL IN UPDATE
+   File: functions/index.js (updateClient:1582)
+   Problem: No optimistic locking check
+   Lost update if two users edit simultaneously
+
+MEDIUM ISSUES:
+
+5. DUPLICATE HOURS FIELDS
+   totalHours, hoursRemaining, minutesRemaining, hoursUsed, totalMinutesUsed
+   Problem: Sync could break, unclear which is source of truth
+
+6. UNCLEAR SOURCE OF TRUTH
+   Option A: hoursRemaining field in clients document
+   Option B: Live calculation from timesheet_entries
+   Problem: If timesheet corrupted, hours calculation wrong
+
+7. SERVICE STRUCTURE MIGRATION
+   Old: client.stages[]
+   New: client.services[].stages[]
+   Problem: Code must handle both, creates complexity
+
+8. NO PAGINATION
+   File: functions/index.js (getClients:1544)
+   Problem: Loads ALL clients at once
+   Performance issue with large datasets
+
+9. CACHE ISSUES
+   ClientCaseSelector cache: Only top 100 active clients
+   clientsCasesCache: Never cleared, memory leak
+
+MINOR ISSUES:
+
+10. RACE CONDITION IN CASE NUMBERING
+    Problem: Two creates could generate same number
+    Handled with recursive retry (not ideal)
+
+KEY FILES TO REVIEW:
+
+Frontend:
+  C:\Users\haim\law-office-system\js\modules\client-validation.js
+  C:\Users\haim\law-office-system\js\modules\client-hours.js
+  C:\Users\haim\law-office-system\js\modules\client-case-selector.js
+  C:\Users\haim\law-office-system\js\cases.js
+  C:\Users\haim\law-office-system\js\cases-integration.js
+
+Backend:
+  C:\Users\haim\law-office-system\functions\index.js (createClient, getClients, updateClient, deleteClient)
+  C:\Users\haim\law-office-system\functions\validators.js
+  C:\Users\haim\law-office-system\functions\addTimeToTask_v2.js
+
+CRITICAL PATHS:
+
+1. Client Creation:
+   Form → createClient() → Generate caseNumber → Create clients/{caseNumber}
+   → Event emit 'case:created' → Cache refresh
+
+2. Hours Calculation:
+   calculateClientHoursAccurate() → Query clients + ALL timesheet_entries
+   → Sum minutes → Update hoursRemaining
+
+3. Client Selection:
+   Type → Filter from cache (NO reads) → selectClient() → loadClientCases()
+   → selectService() → Populate hidden fields
+
+RECOMMENDATIONS (PRIORITY ORDER):
+
+1. Normalize: Use ONLY clientName (not fullName)
+2. Add unique constraint on clientName
+3. Add version control to updateClient()
+4. Implement cascading delete
+5. Add pagination to getClients()
+6. Clear Source of Truth for hours calculation
+7. Consolidate duplicate hours fields
+
+TESTING FOCUS:
+
+- Create duplicate client names - should be prevented
+- Edit client while another user editing - check for lost updates
+- Delete client with timesheet entries - check for orphans
+- Calculate hours with many timesheet entries - verify accuracy
+- Old vs new service structure - verify both load correctly
+
+MONITORING:
+
+- Audit logs for unexpected client modifications
+- Check for orphaned timesheet entries
+- Verify hoursRemaining accuracy daily
+- Monitor for race conditions in case creation
