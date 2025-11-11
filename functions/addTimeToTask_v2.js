@@ -12,34 +12,11 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
-// פונקציות עזר (מהקוד המקורי)
-function getActivePackage(stageOrService) {
-  if (!stageOrService || !stageOrService.packages || stageOrService.packages.length === 0) {
-    return null;
-  }
-
-  const activePackage = stageOrService.packages.find(pkg => {
-    const hasHoursRemaining = (pkg.hoursRemaining || 0) > 0;
-    const isActive = !pkg.status || pkg.status === 'active';
-    return isActive && hasHoursRemaining;
-  });
-
-  return activePackage || null;
-}
-
-function deductHoursFromPackage(pkg, hoursToDeduct) {
-  pkg.hoursUsed = (pkg.hoursUsed || 0) + hoursToDeduct;
-  pkg.hoursRemaining = (pkg.hoursRemaining || 0) - hoursToDeduct;
-
-  if (!pkg.status) {
-    pkg.status = 'active';
-  }
-
-  if (pkg.hoursRemaining <= 0) {
-    pkg.status = 'depleted';
-    pkg.closedDate = new Date().toISOString();
-  }
-}
+// Import deduction system helpers from modular system
+const {
+  getActivePackage,
+  deductHoursFromPackage
+} = require('../src/modules/deduction');
 
 function sanitizeString(str) {
   if (typeof str !== 'string') return '';
