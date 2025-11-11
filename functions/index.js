@@ -10,6 +10,9 @@ const admin = require('firebase-admin');
 const { addTimeToTaskWithTransaction } = require('./addTimeToTask_v2');
 const { updateBudgetTask, markNotificationAsRead } = require('./task-update-realtime');
 
+// ✨ NEW: Import modular deduction system
+const DeductionSystem = require('../src/modules/deduction');
+
 // אתחול Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
@@ -221,72 +224,16 @@ async function getOrCreateInternalCase(employeeName) {
   return newCase;
 }
 
-/**
- * מוצא את החבילה הפעילה בשלב
- * חבילה פעילה = status: 'active' וגם hoursRemaining > 0
- *
- * @param {Object} stage - אובייקט השלב
- * @returns {Object|null} - החבילה הפעילה או null
- */
-function getActivePackage(stage) {
-  if (!stage.packages || stage.packages.length === 0) {
-    return null;
-  }
-
-  // מחפש את החבילה הראשונה שפעילה ויש לה שעות
-  // ✅ תמיכה בחבילות ללא status (נחשב כ-active)
-  const activePackage = stage.packages.find(pkg => {
-    const hasHoursRemaining = (pkg.hoursRemaining || 0) > 0;
-    const isActive = !pkg.status || pkg.status === 'active'; // אם אין status, נחשב כ-active
-    return isActive && hasHoursRemaining;
-  });
-
-  return activePackage || null;
-}
-
-/**
- * סוגר חבילה אוטומטית אם היא התרוקנה
- *
- * @param {Object} pkg - אובייקט החבילה
- * @returns {Object} - החבילה המעודכנת
- */
-function closePackageIfDepleted(pkg) {
-  if (pkg.hoursRemaining <= 0 && pkg.status === 'active') {
-    pkg.status = 'depleted';
-    pkg.closedDate = new Date().toISOString();
-    console.log(`📦 חבילה ${pkg.id} נסגרה (אזלו השעות)`);
-  }
-  return pkg;
-}
-
-/**
- * מקזז שעות מחבילה ספציפית
- * מעדכן: hoursUsed, hoursRemaining
- * סוגר את החבילה אם התרוקנה
- *
- * @param {Object} pkg - החבילה לקזז ממנה
- * @param {number} hoursToDeduct - כמה שעות לקזז
- * @returns {Object} - החבילה המעודכנת
- */
-function deductHoursFromPackage(pkg, hoursToDeduct) {
-  pkg.hoursUsed = (pkg.hoursUsed || 0) + hoursToDeduct;
-  pkg.hoursRemaining = (pkg.hoursRemaining || 0) - hoursToDeduct;
-
-  // ✅ ודא שיש status - אם אין, הגדר כ-active
-  if (!pkg.status) {
-    pkg.status = 'active';
-  }
-
-  // סגירה אוטומטית אם התרוקנה
-  if (pkg.hoursRemaining <= 0) {
-    pkg.status = 'depleted';
-    pkg.closedDate = new Date().toISOString();
-    const totalHours = pkg.hoursInPackage || pkg.hours || 0;
-    console.log(`📦 חבילה ${pkg.id || 'unknown'} נסגרה אוטומטית (${pkg.hoursUsed}/${totalHours} שעות נוצלו)`);
-  }
-
-  return pkg;
-}
+// =====================================================================
+// ✅ DEPRECATED: Old deduction functions moved to modular system
+// =====================================================================
+// The following functions are now imported from DeductionSystem module:
+// - getActivePackage()
+// - closePackageIfDepleted()
+// - deductHoursFromPackage()
+//
+// See: src/modules/deduction/
+// =====================================================================
 
 /**
  * 🎯 יצירת מספר תיק אוטומטי
@@ -2467,11 +2414,11 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
               return;
             }
 
-            const activePackage = getActivePackage(service);
+            const activePackage = DeductionSystem.getActivePackage(service);
 
             if (activePackage) {
               // קיזוז מהחבילה הפעילה
-              deductHoursFromPackage(activePackage, hoursWorked);
+              DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
 
               // עדכון הלקוח
@@ -2505,11 +2452,11 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                 updatedStageId = currentStage.id;
 
                 // מציאת החבילה הפעילה בשלב
-                const activePackage = getActivePackage(currentStage);
+                const activePackage = DeductionSystem.getActivePackage(currentStage);
 
                 if (activePackage) {
                   // קיזוז מהחבילה הפעילה
-                  deductHoursFromPackage(activePackage, hoursWorked);
+                  DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
                   updatedPackageId = activePackage.id;
 
                   // עדכון השלב
@@ -2551,11 +2498,11 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
               updatedStageId = currentStage.id;
 
               // מציאת החבילה הפעילה בשלב
-              const activePackage = getActivePackage(currentStage);
+              const activePackage = DeductionSystem.getActivePackage(currentStage);
 
               if (activePackage) {
                 // קיזוז מהחבילה הפעילה
-                deductHoursFromPackage(activePackage, hoursWorked);
+                DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
                 updatedPackageId = activePackage.id;
 
                 // עדכון השלב
@@ -2816,7 +2763,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
           }
 
           if (service) {
-            const activePackage = getActivePackage(service);
+            const activePackage = DeductionSystem.getActivePackage(service);
 
             if (activePackage) {
               // שמירת מצב לפני
@@ -2826,7 +2773,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               };
 
               // קיזוז שעות
-              deductHoursFromPackage(activePackage, hoursWorked);
+              DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
 
               // ✅ VERSION CONTROL: עדכון עם גרסה חדשה
@@ -2859,11 +2806,11 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               const currentStage = stages[currentStageIndex];
               updatedStageId = currentStage.id;
 
-              const activePackage = getActivePackage(currentStage);
+              const activePackage = DeductionSystem.getActivePackage(currentStage);
 
               if (activePackage) {
                 // קיזוז שעות
-                deductHoursFromPackage(activePackage, hoursWorked);
+                DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
                 updatedPackageId = activePackage.id;
 
                 // עדכון שלב
@@ -2898,10 +2845,10 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
             const currentStage = stages[currentStageIndex];
             updatedStageId = currentStage.id;
 
-            const activePackage = getActivePackage(currentStage);
+            const activePackage = DeductionSystem.getActivePackage(currentStage);
 
             if (activePackage) {
-              deductHoursFromPackage(activePackage, hoursWorked);
+              DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
 
               stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;

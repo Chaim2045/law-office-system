@@ -15,10 +15,13 @@ function getActivePackage(stage) {
     return null;
   }
 
-  // Find first package with status 'active' and hoursRemaining > 0
-  return stage.packages.find(pkg =>
-    pkg.status === 'active' && (pkg.hoursRemaining || 0) > 0
-  ) || null;
+  // Find first package with status 'active' (or no status) and hoursRemaining > 0
+  // Backward compatibility: packages without status are considered active
+  return stage.packages.find(pkg => {
+    const isActive = !pkg.status || pkg.status === 'active';
+    const hasHours = (pkg.hoursRemaining || 0) > 0;
+    return isActive && hasHours;
+  }) || null;
 }
 
 /**
