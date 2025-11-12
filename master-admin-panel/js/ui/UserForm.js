@@ -501,16 +501,40 @@
                     password: userData.password,
                     displayName: userData.displayName,
                     username: userData.username || userData.email.split('@')[0],
-                    role: userData.role
+                    role: userData.role,
+                    phone: userData.phone || ''
                 });
 
-                console.log('✅ User created:', result.data);
+                console.log('✅ User created successfully:', result.data);
+
+                // Log to audit
+                if (window.AuditLogger && window.AuditLogger.initialized) {
+                    await window.AuditLogger.logUserCreation(userData.email, {
+                        username: userData.username || userData.email.split('@')[0],
+                        role: userData.role,
+                        status: 'active'
+                    });
+                }
+
                 return result.data;
 
             } catch (error) {
-                // Phase 4 fallback
-                console.warn('⚠️ Cloud Function not available (Phase 4)');
-                throw new Error('יצירת משתמשים תהיה זמינה ב-Phase 4 (Cloud Functions)');
+                console.error('❌ Error creating user:', error);
+
+                // Parse Firebase error messages
+                let errorMessage = error.message || 'אירעה שגיאה ביצירת המשתמש';
+
+                if (error.code === 'already-exists') {
+                    errorMessage = 'משתמש עם כתובת מייל זו כבר קיים במערכת';
+                } else if (error.code === 'invalid-argument') {
+                    errorMessage = error.message;
+                } else if (error.code === 'permission-denied') {
+                    errorMessage = 'אין לך הרשאות לבצע פעולה זו';
+                } else if (error.code === 'unauthenticated') {
+                    errorMessage = 'יש להתחבר מחדש למערכת';
+                }
+
+                throw new Error(errorMessage);
             }
         }
 
@@ -522,6 +546,9 @@
             console.log('✏️ Updating user:', userData.email);
 
             try {
+                // Get old data for audit log
+                const oldData = { ...this.currentUser };
+
                 // Call Cloud Function to update user
                 const updateUserFunction = window.firebaseFunctions.httpsCallable('updateUser');
 
@@ -530,16 +557,41 @@
                     displayName: userData.displayName,
                     username: userData.username,
                     role: userData.role,
-                    status: userData.status
+                    status: userData.status,
+                    phone: userData.phone
                 });
 
-                console.log('✅ User updated:', result.data);
+                console.log('✅ User updated successfully:', result.data);
+
+                // Log to audit
+                if (window.AuditLogger && window.AuditLogger.initialized) {
+                    const changes = {};
+                    Object.keys(userData).forEach(key => {
+                        if (oldData[key] !== userData[key]) {
+                            changes[key] = { old: oldData[key], new: userData[key] };
+                        }
+                    });
+
+                    await window.AuditLogger.logUserUpdate(userData.email, changes, oldData);
+                }
+
                 return result.data;
 
             } catch (error) {
-                // Phase 4 fallback
-                console.warn('⚠️ Cloud Function not available (Phase 4)');
-                throw new Error('עדכון משתמשים יהיה זמין ב-Phase 4 (Cloud Functions)');
+                console.error('❌ Error updating user:', error);
+
+                // Parse Firebase error messages
+                let errorMessage = error.message || 'אירעה שגיאה בעדכון המשתמש';
+
+                if (error.code === 'not-found') {
+                    errorMessage = 'המשתמש לא נמצא במערכת';
+                } else if (error.code === 'invalid-argument') {
+                    errorMessage = error.message;
+                } else if (error.code === 'permission-denied') {
+                    errorMessage = 'אין לך הרשאות לבצע פעולה זו';
+                }
+
+                throw new Error(errorMessage);
             }
         }
 
