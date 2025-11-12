@@ -1380,7 +1380,13 @@ return;
       return;
     }
 
-    window.DialogsModule.showTaskCompletionModal(task, this);
+    // ✨ NEW: Use task completion validation system
+    if (window.TaskCompletionValidation) {
+      window.TaskCompletionValidation.initiateTaskCompletion(task, this);
+    } else {
+      // Fallback to standard completion if validation module not loaded
+      window.DialogsModule.showTaskCompletionModal(task, this);
+    }
   }
 
   async submitTimeEntry(taskId) {
@@ -1453,6 +1459,9 @@ return;
 
     const completionNotes = document.getElementById('completionNotes')?.value?.trim();
 
+    // ✨ NEW: Get gap metadata from validation flow (if exists)
+    const metadata = window._taskCompletionMetadata || {};
+
     // Use ActionFlowManager with auto-close popup
     await ActionFlowManager.execute({
       loadingMessage: 'משלים משימה...',
@@ -1462,11 +1471,17 @@ return;
 
         const result = await window.FirebaseService.call('completeTask', {
           taskId,
-          completionNotes
+          completionNotes,
+          // ✨ NEW: Pass gap metadata to server
+          gapReason: metadata.gapReason || null,
+          gapNotes: metadata.gapNotes || null
         }, {
           retries: 3,
           timeout: 15000
         });
+
+        // Clear metadata after use
+        delete window._taskCompletionMetadata;
 
         if (!result.success) {
           throw new Error(result.error || 'שגיאה בסיום משימה');

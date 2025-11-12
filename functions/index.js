@@ -1980,27 +1980,87 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    await db.collection('budget_tasks').doc(data.taskId).update({
+    // ✨ NEW: Calculate time gap for validation tracking
+    const estimatedMinutes = taskData.estimatedMinutes || 0;
+    const actualMinutes = taskData.actualMinutes || 0;
+    const gapMinutes = actualMinutes - estimatedMinutes;
+    const gapPercent = estimatedMinutes > 0 ? Math.abs((gapMinutes / estimatedMinutes) * 100) : 0;
+    const isCritical = gapPercent >= 50;
+
+    // Prepare update object
+    const updateData = {
       status: 'הושלם',
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
       completedBy: user.username,
       completionNotes: data.completionNotes ? sanitizeString(data.completionNotes) : '',
       lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      // ✨ NEW: Add completion metadata
+      completion: {
+        gapPercent: Math.round(gapPercent),
+        gapMinutes: Math.abs(gapMinutes),
+        estimatedMinutes,
+        actualMinutes,
+        isOver: gapMinutes > 0,
+        isUnder: gapMinutes < 0,
+        gapReason: data.gapReason || null,
+        gapNotes: data.gapNotes || null,
+        requiresReview: isCritical,
+        completedAt: admin.firestore.FieldValue.serverTimestamp()
+      }
+    };
+
+    // Update task
+    await db.collection('budget_tasks').doc(data.taskId).update(updateData);
 
     console.log(`✅ משימה סומנה כהושלמה: ${data.taskId}`);
     console.log(`ℹ️ קיזוז שעות כבר בוצע בעת רישום השעתון (createTimesheetEntry)`);
+    console.log(`📊 פער זמן: ${Math.round(gapPercent)}% (${Math.abs(gapMinutes)} דקות)`);
+
+    // ✨ NEW: Create admin alert for critical gaps
+    if (isCritical) {
+      try {
+        await db.collection('task_completion_alerts').add({
+          taskId: data.taskId,
+          taskTitle: taskData.taskDescription || taskData.description || 'משימה ללא כותרת',
+          clientName: taskData.clientName || '',
+          employee: user.username,
+          employeeEmail: user.email,
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          gapPercent: Math.round(gapPercent),
+          gapMinutes: Math.abs(gapMinutes),
+          isOver: gapMinutes > 0,
+          estimatedMinutes,
+          actualMinutes,
+          gapReason: data.gapReason || null,
+          gapNotes: data.gapNotes || null,
+          completionNotes: data.completionNotes || '',
+          status: 'pending', // pending, reviewed, approved, rejected
+          reviewedBy: null,
+          reviewedAt: null,
+          reviewNotes: null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`🚨 התראה נוצרה למנהל - פער קריטי של ${Math.round(gapPercent)}%`);
+      } catch (alertError) {
+        console.error('❌ שגיאה ביצירת התראה למנהל:', alertError);
+        // Don't fail the completion if alert creation fails
+      }
+    }
 
     // Audit log
     await logAction('COMPLETE_TASK', user.uid, user.username, {
       taskId: data.taskId,
-      actualMinutes: taskData.actualMinutes || 0
+      actualMinutes: taskData.actualMinutes || 0,
+      gapPercent: Math.round(gapPercent),
+      isCritical
     });
 
     return {
       success: true,
-      taskId: data.taskId
+      taskId: data.taskId,
+      gapPercent: Math.round(gapPercent),
+      isCritical
     };
 
   } catch (error) {
