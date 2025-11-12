@@ -14,6 +14,13 @@
   NODE_VERSION = "18"
 
 # SPA routing - redirect all to index.html
+# Exception: Allow reset-password.html to be served directly
+[[redirects]]
+  from = "/reset-password.html"
+  to = "/reset-password.html"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -449,11 +449,13 @@ async function handleForgotPassword(event) {
   }
 
   try {
-    // שליחת Email Reset מ-Firebase
-    await firebase.auth().sendPasswordResetEmail(email, {
-      url: window.location.origin + '/index.html',
+    // שליחת Email Reset מ-Firebase עם URL מותאם אישית
+    const actionCodeSettings = {
+      url: window.location.origin + '/reset-password.html',
       handleCodeInApp: false
-    });
+    };
+
+    await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
 
     // הצג הודעת הצלחה
     if (resetSuccessMessage) {
