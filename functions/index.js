@@ -11,7 +11,7 @@ const { addTimeToTaskWithTransaction } = require('./addTimeToTask_v2');
 const { updateBudgetTask, markNotificationAsRead } = require('./task-update-realtime');
 
 // ✨ NEW: Import modular deduction system
-const DeductionSystem = require('../src/modules/deduction');
+const DeductionSystem = require('./src/modules/deduction');
 
 // אתחול Admin SDK
 admin.initializeApp();
