@@ -1,17 +1,27 @@
 # ════════════════════════════════════════════════════════════════
-# Law Office Management System - Netlify Configuration
+# Law Office Management System - Netlify Configuration (Main App)
 # ════════════════════════════════════════════════════════════════
 # Production URL: https://gh-law-office-system.netlify.app
+# Admin Panel URL: https://admin--gh-law-office-system.netlify.app
 # Firebase Backend: law-office-system-e4801.web.app
 # ════════════════════════════════════════════════════════════════
 
 [build]
   publish = "."
   command = "npm run compile-ts || echo 'TypeScript compilation skipped'"
+  # Ignore admin panel - it has its own deployment
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!master-admin-panel'"
 
 # Production environment variables
 [context.production.environment]
   NODE_VERSION = "18"
+
+# Block access to admin panel from main site
+[[redirects]]
+  from = "/master-admin-panel/*"
+  to = "https://admin--gh-law-office-system.netlify.app/:splat"
+  status = 301
+  force = true
 
 # SPA routing - redirect all to index.html
 # Exception: Allow reset-password.html to be served directly

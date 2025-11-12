@@ -1,0 +1,64 @@
+# ════════════════════════════════════════════════════════════════
+# Master Admin Panel - Netlify Configuration
+# ════════════════════════════════════════════════════════════════
+# Production URL: https://admin--gh-law-office-system.netlify.app
+# Main App URL: https://gh-law-office-system.netlify.app
+# Firebase Backend: law-office-system-e4801.web.app
+# ════════════════════════════════════════════════════════════════
+
+[build]
+  # Publish only the master-admin-panel directory
+  publish = "."
+  command = "echo 'Admin panel build complete'"
+
+# Production environment variables
+[context.production.environment]
+  NODE_VERSION = "18"
+
+# SPA routing - all routes to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers - Enhanced for Admin Panel
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Security headers
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+    # Admin-specific security
+    X-XSS-Protection = "1; mode=block"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+
+    # Content Security Policy (strict for admin)
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com;
+      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+      font-src 'self' https://cdnjs.cloudflare.com;
+      img-src 'self' data: https:;
+      connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com wss://*.firebaseio.com;
+      frame-ancestors 'none';
+    """
+
+# Cache control for static assets
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Prevent caching of HTML
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
