@@ -16,7 +16,7 @@ const admin = require('firebase-admin');
 const {
   getActivePackage,
   deductHoursFromPackage
-} = require('../src/modules/deduction');
+} = require('./src/modules/deduction');
 
 function sanitizeString(str) {
   if (typeof str !== 'string') return '';
