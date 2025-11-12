@@ -451,7 +451,7 @@ async function handleForgotPassword(event) {
   try {
     // שליחת Email Reset מ-Firebase עם URL מותאם אישית
     const actionCodeSettings = {
-      url: window.location.origin + '/reset-password.html',
+      url: 'https://gh-law-office-system.netlify.app/reset-password.html',
       handleCodeInApp: false
     };
 
