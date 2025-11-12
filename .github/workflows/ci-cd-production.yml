@@ -47,7 +47,7 @@ on:
 # Environment Variables - משתני סביבה גלובליים
 # ═══════════════════════════════════════════════════════════════
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   CACHE_KEY_PREFIX: 'law-office-v1'
   TZ: 'Asia/Jerusalem'
 
