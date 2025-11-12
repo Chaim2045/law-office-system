@@ -110,6 +110,15 @@
                         <!-- Statistics Cards -->
                         <div id="statsContainer" class="stats-container" style="display: none;"></div>
 
+                        <!-- Action Bar with Add User Button -->
+                        <div id="actionBar" class="action-bar" style="display: none;">
+                            <h2 class="section-title">ניהול עובדים</h2>
+                            <button class="btn-primary btn-add-user" id="addUserButton">
+                                <i class="fas fa-user-plus"></i>
+                                <span>הוסף עובד חדש</span>
+                            </button>
+                        </div>
+
                         <!-- Filter Bar -->
                         <div id="filterContainer" class="filter-container" style="display: none;"></div>
 
@@ -136,6 +145,12 @@
             const retryButton = document.getElementById('retryButton');
             if (retryButton) {
                 retryButton.addEventListener('click', () => this.handleRetry());
+            }
+
+            // Add User button
+            const addUserButton = document.getElementById('addUserButton');
+            if (addUserButton) {
+                addUserButton.addEventListener('click', () => this.handleAddUser());
             }
 
             // Listen to filter changes
@@ -371,6 +386,7 @@
         showContainers() {
             const containers = [
                 'statsContainer',
+                'actionBar',
                 'filterContainer',
                 'tableContainer',
                 'paginationContainer'
@@ -378,7 +394,7 @@
 
             containers.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.style.display = 'block';
+                if (el) el.style.display = id === 'actionBar' ? 'flex' : 'block';
             });
         }
 
@@ -389,6 +405,7 @@
         hideContainers() {
             const containers = [
                 'statsContainer',
+                'actionBar',
                 'filterContainer',
                 'tableContainer',
                 'paginationContainer'
@@ -410,6 +427,24 @@
 
             // You can implement a toast notification here
             // For now, just log it
+        }
+
+        /**
+         * Handle add user
+         * טיפול בהוספת משתמש חדש
+         */
+        handleAddUser() {
+            console.log('➕ Opening Add User form...');
+
+            // Check if UserForm exists
+            if (!window.UserForm) {
+                console.error('❌ UserForm not loaded');
+                alert('שגיאה: טופס משתמש לא נטען');
+                return;
+            }
+
+            // Open user form in create mode
+            window.UserForm.open(null);
         }
 
         /**

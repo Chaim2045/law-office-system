@@ -212,6 +212,11 @@
 
                 console.log('✅ Login successful:', userCredential.user.email);
 
+                // Log admin login
+                if (window.AuditLogger && window.AuditLogger.initialized) {
+                    await window.AuditLogger.logAdminLogin();
+                }
+
                 // Save credentials if Remember Me is checked
                 if (this.rememberMe) {
                     this.saveCredentials(email);
@@ -259,6 +264,11 @@
         async handleLogout() {
             try {
                 this.showLoading();
+
+                // Log admin logout BEFORE signing out
+                if (window.AuditLogger && window.AuditLogger.initialized) {
+                    await window.AuditLogger.logAdminLogout();
+                }
 
                 // Cleanup real-time listeners before logout
                 if (window.DataManager) {
