@@ -620,7 +620,7 @@ return false;
           // Reload tasks with cache (will fetch fresh because invalidated)
           this.budgetTasks = await this.dataCache.get(`budgetTasks:${this.currentUser}:${this.currentTaskFilter}`, () =>
             this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
-              || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
+              || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
           );
           this.filterBudgetTasks();
         },
@@ -1490,7 +1490,7 @@ return;
         // Reload tasks
         this.budgetTasks = await (
           this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
-            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
+            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
         );
         this.filterBudgetTasks();
 
@@ -1555,7 +1555,7 @@ return;
         // Reload tasks
         this.budgetTasks = await (
           this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
-            || FirebaseOps.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
+            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
         );
         this.filterBudgetTasks();
 

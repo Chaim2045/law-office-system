@@ -6,6 +6,13 @@
  * Part of Law Office Management System
  */
 
+/* ===========================
+   IMPORTS
+   =========================== */
+
+// ✅ Import budget tasks functions from dedicated module (DRY principle)
+import { loadBudgetTasksFromFirebase } from './budget-tasks.js';
+
 /* === Firebase Functions Wrapper === */
 // Helper to call Firebase Cloud Functions
 const callFunction = async (functionName, data = {}) => {
@@ -102,52 +109,8 @@ async function loadClientsFromFirebase() {
   }
 }
 
-/**
- * Load budget tasks from Firebase
- */
-async function loadBudgetTasksFromFirebase(employee) {
-  try {
-    const db = window.firebaseDB;
-    if (!db) {
-      throw new Error('Firebase לא מחובר');
-    }
-
-    const snapshot = await db
-      .collection('budget_tasks')
-      .where('employee', '==', employee)
-      .limit(50) // ✅ Safety net - prevents loading all tasks in fallback mode
-      .get();
-
-    const tasks = [];
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-
-      // ⚡ CRITICAL: Convert Firebase Timestamps to JavaScript Date objects
-      const taskWithFirebaseId = {
-        ...data,
-        firebaseDocId: doc.id, // ✅ Always save Firebase document ID
-        // Convert Timestamps to Date objects for proper formatting
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
-        completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : data.completedAt,
-        deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline
-      };
-
-      // Only set 'id' if it doesn't exist in the data
-      if (!taskWithFirebaseId.id) {
-        taskWithFirebaseId.id = doc.id;
-      }
-
-      tasks.push(taskWithFirebaseId);
-    });
-
-    return tasks;
-  } catch (error) {
-    console.error('Firebase error:', error);
-    throw new Error('שגיאה בטעינת משימות: ' + error.message);
-  }
-}
+// ✅ loadBudgetTasksFromFirebase moved to budget-tasks.js (DRY principle)
+// ✅ Imported above and re-exported below for backwards compatibility
 
 /**
  * Load timesheet entries from Firebase
