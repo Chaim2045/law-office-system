@@ -207,16 +207,19 @@
           throw new Error('Firebase לא מחובר');
         }
 
+        // 🔑 Use separate cache key for each statusFilter to prevent mixing
+        const cacheKey = `budget_tasks_${statusFilter}`;
+
         if (!loadMore) {
-          this.reset('budget_tasks');
+          this.reset(cacheKey);
         }
 
-        if (!this.hasMore.budget_tasks && loadMore) {
-          this._log('No more budget tasks to load');
+        if (!this.hasMore[cacheKey] && loadMore) {
+          this._log(`No more budget tasks to load (filter: ${statusFilter})`);
           return {
             items: [],
             hasMore: false,
-            total: this.cache.budget_tasks.length
+            total: (this.cache[cacheKey] || []).length
           };
         }
 
@@ -225,8 +228,8 @@
           .orderBy('createdAt', 'desc')
           .limit(limit);
 
-        if (this.lastDocs.budget_tasks && loadMore) {
-          query = query.startAfter(this.lastDocs.budget_tasks);
+        if (this.lastDocs[cacheKey] && loadMore) {
+          query = query.startAfter(this.lastDocs[cacheKey]);
         }
 
         this._log(`Loading budget tasks for ${employee} (limit: ${limit}, loadMore: ${loadMore}, filter: ${statusFilter})`);
@@ -260,23 +263,23 @@
         // 'all' - no filtering
 
         if (snapshot.docs.length > 0) {
-          this.lastDocs.budget_tasks = snapshot.docs[snapshot.docs.length - 1];
+          this.lastDocs[cacheKey] = snapshot.docs[snapshot.docs.length - 1];
         }
 
-        this.hasMore.budget_tasks = snapshot.docs.length === limit;
+        this.hasMore[cacheKey] = snapshot.docs.length === limit;
 
         if (loadMore) {
-          this.cache.budget_tasks = [...this.cache.budget_tasks, ...filteredTasks];
+          this.cache[cacheKey] = [...(this.cache[cacheKey] || []), ...filteredTasks];
         } else {
-          this.cache.budget_tasks = filteredTasks;
+          this.cache[cacheKey] = filteredTasks;
         }
 
-        this._log(`Loaded ${filteredTasks.length} budget tasks (hasMore: ${this.hasMore.budget_tasks}, filtered from ${tasks.length})`);
+        this._log(`Loaded ${filteredTasks.length} budget tasks (hasMore: ${this.hasMore[cacheKey]}, filtered from ${tasks.length}, cacheKey: ${cacheKey})`);
 
         return {
           items: filteredTasks,
-          hasMore: this.hasMore.budget_tasks,
-          total: this.cache.budget_tasks.length
+          hasMore: this.hasMore[cacheKey],
+          total: (this.cache[cacheKey] || []).length
         };
       } catch (error) {
         console.error('Firebase Pagination error (budget_tasks):', error);
