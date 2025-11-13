@@ -166,7 +166,20 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
 }
 
 /**
- * הפונקציה הראשית - עם Transaction
+ * הפונקציה הראשית - עם Transaction (אפשרות 1: Simple & Safe)
+ *
+ * Architecture:
+ * - Phase 1: READ all documents upfront (Firestore requirement)
+ * - Phase 2: CALCULATE all updates (no DB access)
+ * - Phase 3: WRITE all changes atomically
+ *
+ * Benefits:
+ * - ✅ Simple and predictable flow
+ * - ✅ Easy to debug and maintain
+ * - ✅ Consistent behavior across all scenarios
+ * - ✅ Complies with Firestore transaction rules
+ *
+ * @see https://firebase.google.com/docs/firestore/manage-data/transactions
  */
 async function addTimeToTaskWithTransaction(db, data, user) {
   const MAX_RETRIES = 3;
@@ -175,6 +188,14 @@ async function addTimeToTaskWithTransaction(db, data, user) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const result = await db.runTransaction(async (transaction) => {
+
+        // ========================================
+        // PHASE 1: READ OPERATIONS (קריאות בלבד)
+        // ========================================
+        // All reads MUST come before any writes (Firestore requirement)
+
+        console.log(`📖 [Transaction Phase 1] Reading documents...`);
+
         // 1️⃣ קריאת המשימה
         const taskRef = db.collection('budget_tasks').doc(data.taskId);
         const taskDoc = await transaction.get(taskRef);
@@ -190,10 +211,42 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           throw new functions.https.HttpsError('permission-denied', 'אין הרשאה');
         }
 
-        // 2️⃣ חישוב נתוני המשימה
+        // 2️⃣ קריאת הלקוח (תמיד - אפשרות 1: Simple & Safe)
+        // קוראים את הלקוח תמיד, גם אם אולי לא נצטרך לעדכן אותו
+        // זה מבטיח flow עקבי ופשוט, ועולה רק 1-2ms
+        let clientRef = null;
+        let clientDoc = null;
+        let clientData = null;
+        let currentVersion = 0;
+
+        if (taskData.clientId) {
+          clientRef = db.collection('clients').doc(taskData.clientId);
+          clientDoc = await transaction.get(clientRef);
+
+          if (clientDoc.exists) {
+            clientData = clientDoc.data();
+            currentVersion = clientData._version || 0;
+            console.log(`✅ Client read: ${taskData.clientId} (version: ${currentVersion})`);
+          } else {
+            console.log(`⚠️ Client ${taskData.clientId} not found (will skip client update)`);
+          }
+        }
+
+        console.log(`✅ [Transaction Phase 1] All reads completed`);
+
+        // ========================================
+        // PHASE 2: CALCULATIONS (חישובים - ללא נגיעה ב-DB)
+        // ========================================
+        // Pure calculations with no database access
+
+        console.log(`🧮 [Transaction Phase 2] Calculating updates...`);
+
+        // חישוב נתוני המשימה
         const newActualMinutes = (taskData.actualMinutes || 0) + data.minutes;
         const currentEstimate = taskData.estimatedMinutes || 0;
-        const percentOfBudget = currentEstimate > 0 ? Math.round((newActualMinutes / currentEstimate) * 100) : 0;
+        const percentOfBudget = currentEstimate > 0
+          ? Math.round((newActualMinutes / currentEstimate) * 100)
+          : 0;
         const isOverBudget = newActualMinutes > currentEstimate;
         const overageMinutes = Math.max(0, newActualMinutes - currentEstimate);
 
@@ -213,17 +266,17 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           }
         };
 
-        // 3️⃣ עדכון המשימה
-        transaction.update(taskRef, {
-          actualHours: admin.firestore.FieldValue.increment(data.minutes / 60),
-          actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
-          timeEntries: admin.firestore.FieldValue.arrayUnion(timeEntry),
-          lastModifiedBy: user.username,
-          lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        // חישוב עדכוני הלקוח (אם יש לקוח)
+        let clientUpdates = null;
+        let clientLogs = [];
 
-        // 4️⃣ יצירת רשומת שעתון
-        const timesheetRef = db.collection('timesheet_entries').doc();
+        if (clientData) {
+          clientUpdates = calculateClientUpdates(clientData, taskData, data.minutes);
+          clientLogs = clientUpdates.logs;
+          console.log(`🧮 Client updates calculated: ${clientUpdates.clientUpdate ? 'YES' : 'NO'}`);
+        }
+
+        // הכנת רשומת שעתון
         const timesheetEntry = {
           clientId: taskData.clientId,
           clientName: taskData.clientName,
@@ -245,34 +298,45 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           createdBy: user.username
         };
+
+        console.log(`✅ [Transaction Phase 2] All calculations completed`);
+
+        // ========================================
+        // PHASE 3: WRITE OPERATIONS (כתיבות בלבד)
+        // ========================================
+        // All writes happen here, after all reads are done
+
+        console.log(`✍️ [Transaction Phase 3] Writing updates...`);
+
+        // 3️⃣ עדכון המשימה
+        transaction.update(taskRef, {
+          actualHours: admin.firestore.FieldValue.increment(data.minutes / 60),
+          actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
+          timeEntries: admin.firestore.FieldValue.arrayUnion(timeEntry),
+          lastModifiedBy: user.username,
+          lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`✅ Task updated: ${data.taskId}`);
+
+        // 4️⃣ יצירת רשומת שעתון
+        const timesheetRef = db.collection('timesheet_entries').doc();
         transaction.set(timesheetRef, timesheetEntry);
+        console.log(`✅ Timesheet entry created: ${timesheetRef.id}`);
 
-        // 5️⃣ עדכון לקוח (עם optimistic locking)
+        // 5️⃣ עדכון לקוח (אם נחוץ)
         let clientUpdated = false;
-        let clientLogs = [];
 
-        if (taskData.clientId) {
-          const clientRef = db.collection('clients').doc(taskData.clientId);
-          const clientDoc = await transaction.get(clientRef);
+        if (clientRef && clientUpdates && clientUpdates.clientUpdate) {
+          // הוספת optimistic locking metadata
+          clientUpdates.clientUpdate._version = currentVersion + 1;
+          clientUpdates.clientUpdate._lastModified = admin.firestore.FieldValue.serverTimestamp();
+          clientUpdates.clientUpdate._modifiedBy = user.username;
 
-          if (clientDoc.exists) {
-            const clientData = clientDoc.data();
-            const currentVersion = clientData._version || 0;
-
-            // חישוב עדכוני הלקוח
-            const updates = calculateClientUpdates(clientData, taskData, data.minutes);
-
-            if (updates.clientUpdate) {
-              // ✅ הוספת _version לעדכון
-              updates.clientUpdate._version = currentVersion + 1;
-              updates.clientUpdate._lastModified = admin.firestore.FieldValue.serverTimestamp();
-              updates.clientUpdate._modifiedBy = user.username;
-
-              transaction.update(clientRef, updates.clientUpdate);
-              clientUpdated = true;
-              clientLogs = updates.logs;
-            }
-          }
+          transaction.update(clientRef, clientUpdates.clientUpdate);
+          clientUpdated = true;
+          console.log(`✅ Client updated: ${taskData.clientId} (new version: ${currentVersion + 1})`);
+        } else {
+          console.log(`⏭️ Client update skipped (no updates needed)`);
         }
 
         // 6️⃣ לוג פעולה
@@ -290,6 +354,9 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           },
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
+        console.log(`✅ Action log created: ${logRef.id}`);
+
+        console.log(`✅ [Transaction Phase 3] All writes completed successfully`);
 
         // החזרת תוצאה
         return {
@@ -304,6 +371,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
       });
 
       // הצלחה!
+      console.log(`🎉 Transaction completed successfully on attempt ${attempt}`);
       result.clientLogs.forEach(log => console.log(log));
       return result;
 
@@ -313,11 +381,12 @@ async function addTimeToTaskWithTransaction(db, data, user) {
       // אם זה version conflict, נסה שוב
       if (error.code === 'aborted' && attempt < MAX_RETRIES) {
         console.log(`⚠️ Version conflict on attempt ${attempt}, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // backoff
+        await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // exponential backoff
         continue;
       }
 
       // שגיאה אחרת או נגמרו הניסיונות
+      console.error(`❌ Transaction failed on attempt ${attempt}:`, error);
       throw error;
     }
   }
