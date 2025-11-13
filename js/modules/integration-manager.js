@@ -80,17 +80,20 @@
 
     /**
      * טעינת משימות תקצוב (עם או בלי פגינציה)
+     * @param {string} employee - שם העובד
+     * @param {string} statusFilter - סינון לפי סטטוס: 'active', 'completed', 'all'
      */
-    async loadBudgetTasks(employee) {
+    async loadBudgetTasks(employee, statusFilter = 'active') {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
         const result = await this.firebasePagination.loadBudgetTasksPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
-          false
+          false,
+          statusFilter
         );
         return result.items;
       } else {
-        return await window.loadBudgetTasksFromFirebase(employee);
+        return await window.loadBudgetTasksFromFirebase(employee, statusFilter);
       }
     }
 
@@ -112,13 +115,17 @@
 
     /**
      * טעינת עוד משימות תקצוב
+     * @param {string} employee - שם העובד
+     * @param {Array} currentTasks - המשימות הקיימות
+     * @param {string} statusFilter - סינון לפי סטטוס: 'active', 'completed', 'all'
      */
-    async loadMoreBudgetTasks(employee, currentTasks) {
+    async loadMoreBudgetTasks(employee, currentTasks, statusFilter = 'active') {
       if (this.config.USE_FIREBASE_PAGINATION && this.firebasePagination) {
         const result = await this.firebasePagination.loadBudgetTasksPaginated(
           employee,
           this.config.PAGINATION_PAGE_SIZE,
-          true
+          true,
+          statusFilter
         );
         return [...currentTasks, ...result.items];
       }

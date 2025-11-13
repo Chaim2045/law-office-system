@@ -123,7 +123,7 @@
       try {
         const db = window.firebaseDB;
         if (!db) {
-          throw new Error("Firebase לא מחובר");
+          throw new Error('Firebase לא מחובר');
         }
 
         // אם זו לא "טען עוד", איפוס
@@ -142,8 +142,8 @@
         }
 
         // בניית השאילתא
-        let query = db.collection("clients")
-          .orderBy("createdAt", "desc")
+        let query = db.collection('clients')
+          .orderBy('createdAt', 'desc')
           .limit(limit);
 
         // אם יש lastDoc - התחל אחריו
@@ -187,8 +187,8 @@
           total: this.cache.clients.length
         };
       } catch (error) {
-        console.error("Firebase Pagination error (clients):", error);
-        throw new Error("שגיאה בטעינת לקוחות: " + error.message);
+        console.error('Firebase Pagination error (clients):', error);
+        throw new Error('שגיאה בטעינת לקוחות: ' + error.message);
       }
     }
 
@@ -197,13 +197,14 @@
      * @param {string} employee - שם העובד
      * @param {number} limit - מספר רשומות
      * @param {boolean} loadMore - האם זה "טען עוד"
+     * @param {string} statusFilter - סינון לפי סטטוס: 'active', 'completed', 'all'
      * @returns {Promise<{items: Array, hasMore: boolean, total: number}>}
      */
-    async loadBudgetTasksPaginated(employee, limit = PAGINATION_CONFIG.DEFAULT_PAGE_SIZE, loadMore = false) {
+    async loadBudgetTasksPaginated(employee, limit = PAGINATION_CONFIG.DEFAULT_PAGE_SIZE, loadMore = false, statusFilter = 'active') {
       try {
         const db = window.firebaseDB;
         if (!db) {
-          throw new Error("Firebase לא מחובר");
+          throw new Error('Firebase לא מחובר');
         }
 
         if (!loadMore) {
@@ -219,16 +220,16 @@
           };
         }
 
-        let query = db.collection("budget_tasks")
-          .where("employee", "==", employee)
-          .orderBy("createdAt", "desc")
+        let query = db.collection('budget_tasks')
+          .where('employee', '==', employee)
+          .orderBy('createdAt', 'desc')
           .limit(limit);
 
         if (this.lastDocs.budget_tasks && loadMore) {
           query = query.startAfter(this.lastDocs.budget_tasks);
         }
 
-        this._log(`Loading budget tasks for ${employee} (limit: ${limit}, loadMore: ${loadMore})`);
+        this._log(`Loading budget tasks for ${employee} (limit: ${limit}, loadMore: ${loadMore}, filter: ${statusFilter})`);
 
         const snapshot = await query.get();
         const tasks = [];
@@ -248,6 +249,16 @@
           tasks.push(taskWithFirebaseId);
         });
 
+        // 🛡️ CLIENT-SIDE FILTERING: Always filter by status to ensure consistency
+        // This prevents issues with Firebase pagination not respecting status filters
+        let filteredTasks = tasks;
+        if (statusFilter === 'active') {
+          filteredTasks = tasks.filter(task => task.status !== 'הושלם');
+        } else if (statusFilter === 'completed') {
+          filteredTasks = tasks.filter(task => task.status === 'הושלם');
+        }
+        // 'all' - no filtering
+
         if (snapshot.docs.length > 0) {
           this.lastDocs.budget_tasks = snapshot.docs[snapshot.docs.length - 1];
         }
@@ -255,21 +266,21 @@
         this.hasMore.budget_tasks = snapshot.docs.length === limit;
 
         if (loadMore) {
-          this.cache.budget_tasks = [...this.cache.budget_tasks, ...tasks];
+          this.cache.budget_tasks = [...this.cache.budget_tasks, ...filteredTasks];
         } else {
-          this.cache.budget_tasks = tasks;
+          this.cache.budget_tasks = filteredTasks;
         }
 
-        this._log(`Loaded ${tasks.length} budget tasks (hasMore: ${this.hasMore.budget_tasks})`);
+        this._log(`Loaded ${filteredTasks.length} budget tasks (hasMore: ${this.hasMore.budget_tasks}, filtered from ${tasks.length})`);
 
         return {
-          items: tasks,
+          items: filteredTasks,
           hasMore: this.hasMore.budget_tasks,
           total: this.cache.budget_tasks.length
         };
       } catch (error) {
-        console.error("Firebase Pagination error (budget_tasks):", error);
-        throw new Error("שגיאה בטעינת משימות: " + error.message);
+        console.error('Firebase Pagination error (budget_tasks):', error);
+        throw new Error('שגיאה בטעינת משימות: ' + error.message);
       }
     }
 
@@ -284,7 +295,7 @@
       try {
         const db = window.firebaseDB;
         if (!db) {
-          throw new Error("Firebase לא מחובר");
+          throw new Error('Firebase לא מחובר');
         }
 
         if (!loadMore) {
@@ -300,9 +311,9 @@
           };
         }
 
-        let query = db.collection("timesheet_entries")
-          .where("employee", "==", employee)
-          .orderBy("createdAt", "desc")
+        let query = db.collection('timesheet_entries')
+          .where('employee', '==', employee)
+          .orderBy('createdAt', 'desc')
           .limit(limit);
 
         if (this.lastDocs.timesheet_entries && loadMore) {
@@ -342,8 +353,8 @@
           total: this.cache.timesheet_entries.length
         };
       } catch (error) {
-        console.error("Firebase Pagination error (timesheet):", error);
-        throw new Error("שגיאה בטעינת שעתון: " + error.message);
+        console.error('Firebase Pagination error (timesheet):', error);
+        throw new Error('שגיאה בטעינת שעתון: ' + error.message);
       }
     }
 
