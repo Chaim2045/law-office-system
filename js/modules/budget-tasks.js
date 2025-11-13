@@ -125,8 +125,20 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
       filteredTasks = filteredTasks.slice(0, limit);
     }
 
-    console.log(`✅ Loaded ${filteredTasks.length} tasks (filter: ${statusFilter}, fallback: ${usedFallback})`);
-    return usedFallback ? filteredTasks : tasks;
+    // 🛡️ SAFETY NET: Always apply client-side filtering as a double-check
+    // This prevents race conditions and Firebase cache inconsistencies
+    // that can occur during page refresh or initial load
+    let finalTasks = usedFallback ? filteredTasks : tasks;
+
+    if (statusFilter === 'active') {
+      finalTasks = finalTasks.filter(task => task.status !== 'הושלם');
+    } else if (statusFilter === 'completed') {
+      finalTasks = finalTasks.filter(task => task.status === 'הושלם');
+    }
+    // 'all' filter - no additional filtering needed
+
+    console.log(`✅ Loaded ${finalTasks.length} tasks (filter: ${statusFilter}, fallback: ${usedFallback})`);
+    return finalTasks;
 
   } catch (error) {
     console.error('Firebase error:', error);
