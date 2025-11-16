@@ -125,7 +125,7 @@ class FirebaseServiceClass {
   // Rate limiting (10 requests per second)
   private rateLimitBucket: RateLimitBucket = {
     count: 0,
-    resetTime: Date.now() + 1000
+    resetTime: Date.now() + 1000,
   };
   private readonly maxRequestsPerSecond = 10;
 
@@ -142,7 +142,7 @@ class FirebaseServiceClass {
     retriedCalls: 0,
     averageResponseTime: 0,
     rateLimitHits: 0,
-    queuedRequests: 0
+    queuedRequests: 0,
   };
 
   // Debug mode
@@ -192,7 +192,7 @@ class FirebaseServiceClass {
       timeout = 30000,
       priority = 0,
       skipRateLimit = false,
-      onError
+      onError,
     } = options;
 
     if (this.debugMode) {
@@ -217,7 +217,7 @@ class FirebaseServiceClass {
             success: true,
             data: cached,
             duration: performance.now() - startTime,
-            cached: true
+            cached: true,
           };
         }
       }
@@ -249,7 +249,7 @@ class FirebaseServiceClass {
             resolve,
             reject,
             priority,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
 
           // Start processing queue
@@ -300,12 +300,12 @@ class FirebaseServiceClass {
       EventBus.emit('system:data-loaded', {
         dataType: functionName,
         recordCount: 1,
-        duration
+        duration,
       });
 
       return {
         ...response,
-        duration
+        duration,
       };
     } catch (error) {
       this.stats.failedCalls++;
@@ -321,13 +321,13 @@ class FirebaseServiceClass {
       EventBus.emit('system:error', {
         error: error as Error,
         context: `Firebase function: ${functionName}`,
-        severity: 'high'
+        severity: 'high',
       });
 
       return {
         success: false,
         error: errorMessage,
-        duration: performance.now() - startTime
+        duration: performance.now() - startTime,
       };
     }
   }
@@ -371,7 +371,7 @@ class FirebaseServiceClass {
           success: true,
           data: result,
           duration: 0,
-          retries: retryCount
+          retries: retryCount,
         };
       } catch (error) {
         lastError = error as Error;
@@ -399,7 +399,7 @@ class FirebaseServiceClass {
       error: errorMessage,
       errorCode,
       duration: 0,
-      retries: retryCount
+      retries: retryCount,
     };
   }
 
@@ -419,8 +419,7 @@ class FirebaseServiceClass {
     });
 
     // Race between actual call and timeout
-    // ✅ Specify region explicitly to ensure proper authentication headers
-    const callPromise = firebase.app().functions('us-central1').httpsCallable(functionName)(data);
+    const callPromise = firebase.functions().httpsCallable(functionName)(data);
 
     const result = await Promise.race([callPromise, timeoutPromise]);
 
@@ -431,9 +430,7 @@ class FirebaseServiceClass {
    * Check if error is retryable
    */
   private isRetryableError(error: any): boolean {
-    if (!error) {
-return false;
-}
+    if (!error) return false;
 
     // Network errors are retryable
     if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
@@ -457,15 +454,9 @@ return false;
    * Get error code from error object
    */
   private getErrorCode(error: any): string | undefined {
-    if (error?.code) {
-return error.code;
-}
-    if (error?.message?.includes('timeout')) {
-return 'timeout';
-}
-    if (error?.message?.includes('network')) {
-return 'network';
-}
+    if (error?.code) return error.code;
+    if (error?.message?.includes('timeout')) return 'timeout';
+    if (error?.message?.includes('network')) return 'network';
     return undefined;
   }
 
@@ -479,7 +470,7 @@ return 'network';
     if (now >= this.rateLimitBucket.resetTime) {
       this.rateLimitBucket = {
         count: 0,
-        resetTime: now + 1000
+        resetTime: now + 1000,
       };
     }
 
@@ -514,9 +505,7 @@ return 'network';
 
       // Get next request
       const request = this.queue.shift();
-      if (!request) {
-break;
-}
+      if (!request) break;
 
       this.stats.queuedRequests--;
 
@@ -556,9 +545,7 @@ break;
     const key = this.getCacheKey(functionName, data);
     const entry = this.cache.get(key);
 
-    if (!entry) {
-return null;
-}
+    if (!entry) return null;
 
     // Check expiration
     const now = Date.now();
@@ -583,13 +570,13 @@ return null;
     this.cache.set(key, {
       data: result,
       timestamp: Date.now(),
-      ttl
+      ttl,
     });
 
     // Emit cache update event
     EventBus.emit('system:cache-updated', {
       cacheKey: key,
-      action: 'add'
+      action: 'add',
     });
   }
 
@@ -600,7 +587,7 @@ return null;
     this.cache.clear();
     EventBus.emit('system:cache-updated', {
       cacheKey: 'all',
-      action: 'clear'
+      action: 'clear',
     });
 
     if (this.debugMode) {
@@ -617,7 +604,7 @@ return null;
 
     EventBus.emit('system:cache-updated', {
       cacheKey: key,
-      action: 'delete'
+      action: 'delete',
     });
   }
 
@@ -640,7 +627,7 @@ return null;
       retriedCalls: 0,
       averageResponseTime: 0,
       rateLimitHits: 0,
-      queuedRequests: this.queue.length
+      queuedRequests: this.queue.length,
     };
 
     if (this.debugMode) {
