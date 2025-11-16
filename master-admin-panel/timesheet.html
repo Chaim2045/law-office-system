@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════════╗
+    ║              ⏰ Master Admin Panel - ניהול שעות                       ║
+    ╠═══════════════════════════════════════════════════════════════════════╣
+    ║  ניהול מקצועי של דיווחי שעות במערכת                                  ║
+    ║  גישה למנהלי מערכת בלבד                                              ║
+    ║                                                                       ║
+    ║  📚 קרא את WORK_PLAN.md לפני עריכה!                                 ║
+    ╚═══════════════════════════════════════════════════════════════════════╝
+
+    מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ
+    נוצר: 13/11/2025
+    גרסה: 1.1.0
+    Phase: 4 - Timesheet Management
+    -->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Master Admin Panel - ניהול שעות">
+    <title>⏰ ניהול שעות | Master Admin Panel</title>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System (standalone copy) ===== -->
+    <link rel="stylesheet" href="css/design-system.css">
+
+    <!-- ===== Master Admin Panel Styles ===== -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+
+<body class="admin-page">
+    <!-- ===== Navigation Bar ===== -->
+    <div id="navigationContainer"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="admin-main">
+        <div class="admin-content">
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="page-header-content">
+                    <div class="page-title-section">
+                        <h1 class="page-title">
+                            <i class="fas fa-clock"></i>
+                            ניהול שעות
+                        </h1>
+                        <p class="page-subtitle">מעקב וניהול מלא של דיווחי שעות במערכת</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn-primary" id="addTimesheetBtn">
+                            <i class="fas fa-plus"></i>
+                            <span>דיווח חדש</span>
+                        </button>
+                        <button class="btn-secondary" id="exportTimesheetBtn">
+                            <i class="fas fa-download"></i>
+                            <span>ייצוא נתונים</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="timesheetStatsContainer">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">סה"כ רשומות</div>
+                        <div class="stat-value" id="totalEntriesStat">-</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">סה"כ שעות</div>
+                        <div class="stat-value" id="totalHoursStat">-</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+                        <i class="fas fa-calendar-week"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">השבוע</div>
+                        <div class="stat-value" id="thisWeekStat">-</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">החודש</div>
+                        <div class="stat-value" id="thisMonthStat">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <!-- Search Section -->
+                <div class="search-section">
+                    <div class="search-box">
+                        <i class="fas fa-search search-icon"></i>
+                        <input
+                            type="text"
+                            id="searchInput"
+                            class="search-input"
+                            placeholder="חיפוש לפי משימה, לקוח או עובד..."
+                        >
+                        <button class="clear-search" id="clearSearchBtn" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters Section -->
+                <div class="filters-section">
+                    <select class="filter-select" id="employeeFilter">
+                        <option value="all">כל העובדים</option>
+                    </select>
+
+                    <select class="filter-select" id="clientFilter">
+                        <option value="all">כל הלקוחות</option>
+                    </select>
+
+                    <select class="filter-select" id="dateRangeFilter">
+                        <option value="all">כל התקופות</option>
+                        <option value="today">היום</option>
+                        <option value="week">השבוע</option>
+                        <option value="month">החודש</option>
+                        <option value="custom">מותאם אישית</option>
+                    </select>
+
+                    <button class="btn-filter-reset" id="resetFiltersBtn">
+                        <i class="fas fa-redo"></i>
+                        <span>אפס פילטרים</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="action-bar">
+                <div class="section-title">
+                    <h2 id="resultsCount">טוען...</h2>
+                </div>
+                <div class="action-bar-buttons">
+                    <button class="btn-action" id="refreshTimesheetBtn">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>רענן</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Timesheet Table Container -->
+            <div class="table-container" id="timesheetTableContainer">
+                <p class="loading-message">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    טוען דיווחי שעות...
+                </p>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-container" id="timesheetPaginationContainer">
+                <!-- Pagination will be rendered here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js"></script>
+    <script src="js/core/auth.js"></script>
+
+    <!-- ===== Managers ===== -->
+    <script src="js/managers/AuditLogger.js"></script>
+    <script src="js/managers/TimesheetManager.js"></script>
+
+    <!-- ===== UI Components ===== -->
+    <script src="js/ui/Navigation.js"></script>
+    <script src="js/ui/TimesheetTable.js"></script>
+    <script src="js/ui/Notifications.js"></script>
+    <script src="js/ui/Modals.js"></script>
+
+    <!-- ===== Initialization Script ===== -->
+    <script>
+        (async function() {
+            'use strict';
+
+            console.log('⏰ Timesheet Management Page - Loading...');
+
+            // Wait for Firebase to initialize
+            async function waitForFirebase() {
+                return new Promise((resolve) => {
+                    if (window.FirebaseManager && window.FirebaseManager.initialized) {
+                        resolve();
+                    } else {
+                        const checkInterval = setInterval(() => {
+                            if (window.FirebaseManager && window.FirebaseManager.initialized) {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 100);
+                    }
+                });
+            }
+
+            // Check authentication
+            async function checkAuth() {
+                if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
+                    console.warn('⚠️ User not authenticated, redirecting...');
+                    window.location.href = 'index.html';
+                    return false;
+                }
+                return true;
+            }
+
+            // Initialize page
+            async function initPage() {
+                try {
+                    // Wait for Firebase
+                    await waitForFirebase();
+                    console.log('✅ Firebase ready');
+
+                    // Check auth
+                    const isAuthed = await checkAuth();
+                    if (!isAuthed) return;
+
+                    // Initialize Navigation
+                    if (window.Navigation) {
+                        window.Navigation.init();
+                        console.log('✅ Navigation initialized');
+                    }
+
+                    // Initialize TimesheetManager
+                    if (window.TimesheetManager) {
+                        await window.TimesheetManager.init();
+                        console.log('✅ TimesheetManager initialized');
+                    }
+
+                    // Load and render timesheet entries
+                    await loadTimesheet();
+
+                    // Setup event listeners
+                    setupEventListeners();
+
+                    console.log('✅ Timesheet page fully initialized');
+
+                } catch (error) {
+                    console.error('❌ Error initializing timesheet page:', error);
+                    alert('שגיאה בטעינת הדף. אנא נסה שוב.');
+                }
+            }
+
+            // Load and render timesheet
+            async function loadTimesheet() {
+                const container = document.getElementById('timesheetTableContainer');
+                if (!container) return;
+
+                try {
+                    // Get paginated entries
+                    const entries = window.TimesheetManager.getPaginatedEntries();
+
+                    // Render table
+                    if (window.TimesheetTable) {
+                        window.TimesheetTable.render(container, entries);
+                    }
+
+                    // Update stats
+                    updateStats();
+
+                    // Update results count
+                    updateResultsCount();
+
+                } catch (error) {
+                    console.error('❌ Error loading timesheet:', error);
+                    container.innerHTML = `
+                        <div class="error-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>שגיאה בטעינת דיווחי השעות</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // Update statistics
+            function updateStats() {
+                const allEntries = window.TimesheetManager.allEntries;
+
+                const totalEntries = allEntries.length;
+                const totalMinutes = allEntries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+                const totalHours = (totalMinutes / 60).toFixed(1);
+
+                // This week
+                const now = new Date();
+                const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+                const weekEntries = allEntries.filter(e => {
+                    const entryDate = e.date?.toDate ? e.date.toDate() : new Date(e.date);
+                    return entryDate >= weekStart;
+                });
+                const weekMinutes = weekEntries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+                const weekHours = (weekMinutes / 60).toFixed(1);
+
+                // This month
+                const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                const monthEntries = allEntries.filter(e => {
+                    const entryDate = e.date?.toDate ? e.date.toDate() : new Date(e.date);
+                    return entryDate >= monthStart;
+                });
+                const monthMinutes = monthEntries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+                const monthHours = (monthMinutes / 60).toFixed(1);
+
+                document.getElementById('totalEntriesStat').textContent = totalEntries;
+                document.getElementById('totalHoursStat').textContent = totalHours + ' שעות';
+                document.getElementById('thisWeekStat').textContent = weekHours + ' שעות';
+                document.getElementById('thisMonthStat').textContent = monthHours + ' שעות';
+            }
+
+            // Update results count
+            function updateResultsCount() {
+                const filtered = window.TimesheetManager.filteredEntries.length;
+                const total = window.TimesheetManager.allEntries.length;
+
+                const resultsEl = document.getElementById('resultsCount');
+                if (resultsEl) {
+                    resultsEl.textContent = `${filtered} רשומות מתוך ${total}`;
+                }
+            }
+
+            // Setup event listeners
+            function setupEventListeners() {
+                // Search
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        window.TimesheetManager.filters.search = e.target.value;
+                        window.TimesheetManager.applyFilters();
+                        loadTimesheet();
+                    });
+                }
+
+                // Filters
+                const employeeFilter = document.getElementById('employeeFilter');
+                if (employeeFilter) {
+                    // Populate employees
+                    const employees = window.TimesheetManager.employees;
+                    employees.forEach(emp => {
+                        const option = document.createElement('option');
+                        option.value = emp.email;
+                        option.textContent = emp.displayName;
+                        employeeFilter.appendChild(option);
+                    });
+
+                    employeeFilter.addEventListener('change', (e) => {
+                        window.TimesheetManager.filters.employee = e.target.value;
+                        window.TimesheetManager.applyFilters();
+                        loadTimesheet();
+                    });
+                }
+
+                const clientFilter = document.getElementById('clientFilter');
+                if (clientFilter) {
+                    // Populate clients
+                    const clients = window.TimesheetManager.clients;
+                    clients.forEach(client => {
+                        const option = document.createElement('option');
+                        option.value = client.id;
+                        option.textContent = client.name;
+                        clientFilter.appendChild(option);
+                    });
+
+                    clientFilter.addEventListener('change', (e) => {
+                        window.TimesheetManager.filters.client = e.target.value;
+                        window.TimesheetManager.applyFilters();
+                        loadTimesheet();
+                    });
+                }
+
+                // Reset filters
+                const resetBtn = document.getElementById('resetFiltersBtn');
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        // Reset all filters
+                        window.TimesheetManager.filters = {
+                            search: '',
+                            employee: 'all',
+                            client: 'all',
+                            dateRange: 'all'
+                        };
+
+                        // Reset UI
+                        searchInput.value = '';
+                        employeeFilter.value = 'all';
+                        clientFilter.value = 'all';
+
+                        // Reload
+                        window.TimesheetManager.applyFilters();
+                        loadTimesheet();
+                    });
+                }
+
+                // Refresh button
+                const refreshBtn = document.getElementById('refreshTimesheetBtn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', async () => {
+                        refreshBtn.disabled = true;
+                        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מרענן...';
+
+                        await window.TimesheetManager.loadEntries(true);
+                        await loadTimesheet();
+
+                        refreshBtn.disabled = false;
+                        refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> רענן';
+                    });
+                }
+
+                // Listen for timesheet updates
+                window.addEventListener('timesheet:loaded', () => {
+                    loadTimesheet();
+                });
+
+                window.addEventListener('timesheet:filtered', () => {
+                    updateResultsCount();
+                });
+
+                window.addEventListener('timesheet:action', (e) => {
+                    const { action, entryId } = e.detail;
+                    console.log(`Timesheet action: ${action} for ${entryId}`);
+                    // Handle timesheet actions here (view, edit, delete, etc.)
+                });
+            }
+
+            // Start initialization
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initPage);
+            } else {
+                initPage();
+            }
+
+        })();
+    </script>
+</body>
+</html>
