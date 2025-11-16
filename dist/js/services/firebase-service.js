@@ -262,7 +262,8 @@ class FirebaseServiceClass {
             }, timeout);
         });
         // Race between actual call and timeout
-        const callPromise = firebase.functions().httpsCallable(functionName)(data);
+        // ✅ Specify region explicitly to ensure proper authentication headers
+        const callPromise = firebase.app().functions('us-central1').httpsCallable(functionName)(data);
         const result = await Promise.race([callPromise, timeoutPromise]);
         return result.data;
     }
