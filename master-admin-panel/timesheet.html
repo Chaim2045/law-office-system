@@ -231,12 +231,28 @@
 
             // Check authentication
             async function checkAuth() {
-                if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
-                    console.warn('⚠️ User not authenticated, redirecting...');
-                    window.location.href = 'index.html';
-                    return false;
-                }
-                return true;
+                return new Promise((resolve) => {
+                    if (!window.firebaseAuth) {
+                        console.warn('⚠️ Firebase Auth not initialized, redirecting...');
+                        window.location.href = 'index.html';
+                        resolve(false);
+                        return;
+                    }
+
+                    // Wait for auth state to be determined
+                    const unsubscribe = window.firebaseAuth.onAuthStateChanged((user) => {
+                        unsubscribe();
+
+                        if (!user) {
+                            console.warn('⚠️ User not authenticated, redirecting...');
+                            window.location.href = 'index.html';
+                            resolve(false);
+                        } else {
+                            console.log('✅ User authenticated:', user.email);
+                            resolve(true);
+                        }
+                    });
+                });
             }
 
             // Initialize page
