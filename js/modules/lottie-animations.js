@@ -377,21 +377,4 @@ if (typeof window !== 'undefined') {
   }
 }
 
-/**
- * ========================================
- * ES6 Module Exports (for future use)
- * ========================================
- */
-
-export {
-  LottieAnimations,
-  LottieFallback,
-  AnimationMetadata,
-  getAnimationUrl,
-  getAnimationMetadata,
-  hasAnimation,
-  getAvailableAnimations,
-  getAnimationsByCategory
-};
-
-export default LottieAnimations;
+// ✅ Global access via window.LottieAnimations (defined above)

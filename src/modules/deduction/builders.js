@@ -164,7 +164,8 @@ function addPackageToStage(stage, hours, description) {
   return newPackage;
 }
 
-module.exports = {
+// ES6 Export (for client-side use)
+export {
   createPackage,
   createStage,
   createLegalProcedureStages,

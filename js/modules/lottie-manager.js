@@ -466,11 +466,4 @@ if (typeof window !== 'undefined') {
   }
 }
 
-/**
- * ========================================
- * ES6 Module Export
- * ========================================
- */
-
-export default lottieManager;
-export { LottieManager };
+// ✅ Global access via window.LottieManager (defined above)

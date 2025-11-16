@@ -484,7 +484,7 @@ return false;
 
           // Re-filter and render
           this.filterBudgetTasks();
-          this.renderBudgetTasks();
+          this.renderBudgetView();
 
           // Update task count badges
           this.updateTaskCountBadges();

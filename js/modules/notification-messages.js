@@ -499,11 +499,4 @@ if (typeof window !== 'undefined') {
   }
 }
 
-/**
- * ========================================
- * ES6 Module Export
- * ========================================
- */
-
-export default notificationMessages;
-export { NotificationMessages };
+// ✅ Global access via window.NotificationMessages (defined above)
