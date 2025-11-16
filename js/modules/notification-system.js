@@ -158,7 +158,9 @@ class NotificationSystem {
    * @param {HTMLElement} notification - The notification element to close
    */
   close(notification) {
-    if (!notification || !notification.parentElement) return;
+    if (!notification || !notification.parentElement) {
+return;
+}
 
     // Remove from array
     const index = this.notifications.indexOf(notification);
@@ -225,10 +227,17 @@ class NotificationSystem {
   /**
    * Show loading overlay with Lottie animation
    * @param {string} message - Loading message
+   * @param {Object} options - Loading options
+   * @param {string} options.animationType - Type of Lottie animation (loading, saving, uploading, etc.)
    */
-  showLoading(message = 'מעבד...') {
+  showLoading(message = 'מעבד...', options = {}) {
     // Don't show during welcome screen
-    if (window.isInWelcomeScreen) return;
+    if (window.isInWelcomeScreen) {
+return;
+}
+
+    // Default to 'loading' animation if not specified (backward compatibility)
+    const animationType = options.animationType || 'loading';
 
     // Remove existing loading if any
     this.hideLoading();
@@ -257,52 +266,59 @@ class NotificationSystem {
       this.loadingOverlay.classList.add('show');
     }, 10);
 
-    // Load Lottie animation
-    this.loadLottieAnimation();
+    // Load Lottie animation with specified type
+    this.loadLottieAnimation(animationType);
   }
 
   /**
    * Load Lottie animation for loading spinner
    * @private
+   * @param {string} animationType - Type of animation to load (loading, saving, uploading, etc.)
    */
-  loadLottieAnimation() {
+  async loadLottieAnimation(animationType = 'loading') {
     const container = document.getElementById('lottie-loader');
-    if (!container) return;
+    if (!container) {
+return;
+}
 
-    // Check if lottie library is loaded
-    if (typeof lottie === 'undefined') {
-      console.warn('⚠️ Lottie library not loaded, using CSS fallback');
+    // Check if LottieManager is available
+    if (!window.LottieManager) {
+      console.warn('⚠️ LottieManager not available, using CSS fallback');
       const spinner = document.getElementById('loading-spinner-container');
-      if (spinner) spinner.classList.add('fallback');
+      if (spinner) {
+spinner.classList.add('fallback');
+}
       return;
     }
 
     try {
-      // Load a beautiful loading animation
-      // Using a simple, reliable loading spinner from LottieFiles CDN
-      const animationPath = 'https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json';
+      // Use LottieManager to load animation
+      // LottieManager handles all fallback and error handling automatically
+      const animation = await window.LottieManager.load(
+        animationType,
+        container,
+        {
+          loop: true,
+          autoplay: true,
+          renderer: 'svg',
+          speed: 1
+        }
+      );
 
-      const animation = lottie.loadAnimation({
-        container: container,
-        renderer: 'svg',
-        loop: true,
-        autoplay: true,
-        path: animationPath
-      });
-
-      Logger.log('✅ Lottie animation loaded successfully');
-
-      // Handle animation errors
-      animation.addEventListener('data_failed', () => {
-        console.error('❌ Failed to load Lottie animation data');
-        const spinner = document.getElementById('loading-spinner-container');
-        if (spinner) spinner.classList.add('fallback');
-      });
+      if (animation) {
+        Logger.log(`✅ Lottie animation loaded: ${animationType}`);
+      } else {
+        // LottieManager already handled fallback
+        Logger.log(`⚠️ LottieManager used fallback for: ${animationType}`);
+      }
 
     } catch (error) {
-      console.error('❌ Error loading Lottie animation:', error);
+      console.error(`❌ Error loading Lottie animation (${animationType}):`, error);
+      // LottieManager already showed fallback, but add class for extra safety
       const spinner = document.getElementById('loading-spinner-container');
-      if (spinner) spinner.classList.add('fallback');
+      if (spinner) {
+spinner.classList.add('fallback');
+}
     }
   }
 
@@ -321,6 +337,16 @@ class NotificationSystem {
         document.body.style.overflow = '';
       }, 300);
     }
+  }
+
+  /**
+   * Show loading with custom animation type
+   * Convenience wrapper for showLoading with animationType
+   * @param {string} message - Loading message
+   * @param {string} animationType - Type of Lottie animation
+   */
+  showLoadingWithAnimation(message, animationType) {
+    this.showLoading(message, { animationType });
   }
 
   /**
@@ -392,21 +418,27 @@ class NotificationSystem {
     const confirmBtn = overlay.querySelector('.confirm-btn-confirm');
     confirmBtn.addEventListener('click', () => {
       this.closeConfirm(overlay);
-      if (onConfirm) onConfirm();
+      if (onConfirm) {
+onConfirm();
+}
     });
 
     // Handle cancel
     const cancelBtn = overlay.querySelector('.confirm-btn-cancel');
     cancelBtn.addEventListener('click', () => {
       this.closeConfirm(overlay);
-      if (onCancel) onCancel();
+      if (onCancel) {
+onCancel();
+}
     });
 
     // Handle ESC key
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         this.closeConfirm(overlay);
-        if (onCancel) onCancel();
+        if (onCancel) {
+onCancel();
+}
         document.removeEventListener('keydown', handleEsc);
       }
     };
@@ -423,7 +455,9 @@ class NotificationSystem {
    * @private
    */
   closeConfirm(overlay) {
-    if (!overlay || !overlay.parentElement) return;
+    if (!overlay || !overlay.parentElement) {
+return;
+}
 
     overlay.classList.remove('show');
 
@@ -524,7 +558,7 @@ if (typeof window !== 'undefined') {
         : `📉 תקציב הוקטן: ${diff} דקות`;
 
       notificationSystem.show(message, 'info', 3000);
-      Logger.log(`👂 [Notifications] Showed budget adjustment notification`);
+      Logger.log('👂 [Notifications] Showed budget adjustment notification');
     });
 
     // 👂 Listen to system:error - הודעת שגיאה
@@ -534,7 +568,7 @@ if (typeof window !== 'undefined') {
         'error',
         5000
       );
-      Logger.log(`👂 [Notifications] Showed error notification`);
+      Logger.log('👂 [Notifications] Showed error notification');
     });
 
     Logger.log('✅ Notification EventBus listeners initialized (v2.0)');

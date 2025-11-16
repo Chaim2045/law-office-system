@@ -284,7 +284,28 @@ class LawOfficeManager {
       this.notificationBell.cleanup();
     }
 
+    // ✅ Stop real-time listeners
+    this.stopRealTimeListeners();
+
     Logger.log('✅ Manager cleanup completed');
+  }
+
+  /**
+   * Stop real-time listeners
+   * עצירת מאזינים בזמן אמת
+   */
+  stopRealTimeListeners() {
+    try {
+      // Stop all listeners using the centralized listener manager
+      import('./modules/real-time-listeners.js').then(({ stopAllListeners }) => {
+        stopAllListeners();
+        Logger.log('✅ Real-time listeners stopped');
+      }).catch((error) => {
+        console.error('❌ Error stopping listeners:', error);
+      });
+    } catch (error) {
+      console.error('❌ Error stopping real-time listeners:', error);
+    }
   }
 
   /* ========================================
@@ -429,11 +450,76 @@ return false;
         this.notificationBell.updateFromSystem(blockedClients, criticalClients, urgentTasks);
       }
 
+      // ✅ הפעלת Real-time listeners למשימות ושעות
+      this.startRealTimeListeners();
+
       Logger.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
     } catch (error) {
       console.error('❌ Error loading data:', error);
       this.showNotification('שגיאה בטעינת נתונים', 'error');
       throw error;
+    }
+  }
+
+  /**
+   * Start real-time listeners for tasks and timesheet
+   * הפעלת מאזינים בזמן אמת למשימות ושעות
+   */
+  startRealTimeListeners() {
+    try {
+      Logger.log('🔊 Starting real-time listeners...');
+
+      // ✅ Real-time listener for tasks
+      BudgetTasks.startRealTimeTasks(
+        this.currentUser,
+        (tasks) => {
+          Logger.log(`📡 Tasks updated: ${tasks.length} tasks`);
+
+          // Invalidate cache
+          this.dataCache.invalidate(`budgetTasks:${this.currentUser}:${this.currentTaskFilter}`);
+
+          // Update local data
+          this.budgetTasks = tasks;
+          window.budgetTasks = tasks;
+
+          // Re-filter and render
+          this.filterBudgetTasks();
+          this.renderBudgetTasks();
+
+          // Update task count badges
+          this.updateTaskCountBadges();
+        },
+        (error) => {
+          console.error('❌ Tasks listener error:', error);
+        }
+      );
+
+      // ✅ Real-time listener for timesheet
+      Timesheet.startRealTimeTimesheet(
+        this.currentUser,
+        (entries) => {
+          Logger.log(`📡 Timesheet updated: ${entries.length} entries`);
+
+          // Invalidate cache
+          this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
+
+          // Update local data
+          this.timesheetEntries = entries;
+          window.timesheetEntries = entries;
+
+          // Re-filter and render
+          this.filterTimesheetEntries();
+          this.renderTimesheet();
+        },
+        (error) => {
+          console.error('❌ Timesheet listener error:', error);
+        }
+      );
+
+      Logger.log('✅ Real-time listeners started');
+    } catch (error) {
+      console.error('❌ Error starting real-time listeners:', error);
+      // Don't throw - allow app to continue without real-time
     }
   }
 
@@ -556,9 +642,11 @@ return false;
       return;
     }
 
-      // ✅ NEW: Use ActionFlowManager for consistent UX
+      // ✅ NEW: Use ActionFlowManager for consistent UX with NotificationMessages
+      const msgs = window.NotificationMessages.tasks;
+
       await ActionFlowManager.execute({
-        loadingMessage: 'שומר משימה...',
+        ...msgs.loading.create(selectorValues.clientName),
         action: async () => {
           const taskData = {
             description: description,
@@ -624,8 +712,8 @@ return false;
           );
           this.filterBudgetTasks();
         },
-        successMessage: 'המשימה נוספה בהצלחה',
-        errorMessage: 'שגיאה בהוספת משימה',
+        successMessage: msgs.success.created(selectorValues.clientName, description),
+        errorMessage: msgs.error.createFailed,
         onSuccess: () => {
           // Clear form and hide
           Forms.clearBudgetForm(this);
@@ -931,9 +1019,11 @@ toggleCheckbox.checked = true;
       return;
     }
 
-    // Use ActionFlowManager for consistent UX
+    // Use ActionFlowManager for consistent UX with NotificationMessages
+    const msgs = window.NotificationMessages.timesheet;
+
     await ActionFlowManager.execute({
-      loadingMessage: 'שומר פעילות פנימית...',
+      ...msgs.loading.createInternal(),
       action: async () => {
         const entryData = {
           date: date,
@@ -986,8 +1076,8 @@ toggleCheckbox.checked = true;
         });
         Logger.log('  🚀 [v2.0] EventBus: timesheet:entry-created emitted');
       },
-      successMessage: '✅ הפעילות הפנימית נרשמה בהצלחה',
-      errorMessage: 'שגיאה ברישום פעילות',
+      successMessage: msgs.success.internalCreated(minutes),
+      errorMessage: msgs.error.createFailed,
       onSuccess: () => {
         // Clear form and hide
         Forms.clearTimesheetForm(this);
@@ -1326,9 +1416,11 @@ return;
       return;
     }
 
-    // Use ActionFlowManager with auto-close popup
+    // Use ActionFlowManager with auto-close popup and NotificationMessages
+    const msgs = window.NotificationMessages.tasks;
+
     await ActionFlowManager.execute({
-      loadingMessage: 'מאריך תאריך יעד...',
+      ...msgs.loading.extendDeadline(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry
         Logger.log('  🚀 [v2.0] Using FirebaseService.call for extendTaskDeadline');
@@ -1361,8 +1453,8 @@ return;
         });
         Logger.log('  🚀 [v2.0] EventBus: task:deadline-extended emitted');
       },
-      successMessage: 'תאריך היעד הוארך בהצלחה',
-      errorMessage: 'שגיאה בהארכת יעד',
+      successMessage: msgs.success.deadlineExtended(newDate),
+      errorMessage: msgs.error.updateFailed,
       closePopupOnSuccess: true,  // ✅ Auto-close popup
       closeDelay: 500
     });
@@ -1404,9 +1496,11 @@ return;
       return;
     }
 
-    // Direct call to Cloud Function - clean and simple
+    // Direct call to Cloud Function - clean and simple with NotificationMessages
+    const msgs = window.NotificationMessages.tasks;
+
     await ActionFlowManager.execute({
-      loadingMessage: 'שומר זמן...',
+      ...msgs.loading.addTime(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry
         Logger.log('  🚀 [v2.0] Using FirebaseService.call for addTimeToTask');
@@ -1441,8 +1535,8 @@ return;
         });
         Logger.log('  🚀 [v2.0] EventBus: task:time-added emitted');
       },
-      successMessage: '✅ הזמן נוסף למשימה ונרשם בשעתון',
-      errorMessage: 'שגיאה בהוספת זמן',
+      successMessage: msgs.success.timeAdded(workMinutes),
+      errorMessage: msgs.error.updateFailed,
       closePopupOnSuccess: true,
       closeDelay: 500,
       onSuccess: () => {
@@ -1462,9 +1556,11 @@ return;
     // ✨ NEW: Get gap metadata from validation flow (if exists)
     const metadata = window._taskCompletionMetadata || {};
 
-    // Use ActionFlowManager with auto-close popup
+    // Use ActionFlowManager with auto-close popup and NotificationMessages
+    const msgs = window.NotificationMessages.tasks;
+
     await ActionFlowManager.execute({
-      loadingMessage: 'משלים משימה...',
+      ...msgs.loading.complete(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry
         Logger.log('  🚀 [v2.0] Using FirebaseService.call for completeTask');
@@ -1507,7 +1603,7 @@ return;
         Logger.log('  🚀 [v2.0] EventBus: task:completed emitted');
       },
       successMessage: null,  // ✅ No automatic success message - will show custom one in onSuccess
-      errorMessage: 'שגיאה בסיום משימה',
+      errorMessage: msgs.error.completeFailed,
       closePopupOnSuccess: true,  // ✅ Auto-close popup
       closeDelay: 500,
       onSuccess: async () => {
@@ -1516,7 +1612,7 @@ return;
 
         // ✅ החלפה אוטומטית לתצוגת משימות מושלמות
         await this.toggleTaskView('completed');
-        this.showNotification('המשימה הושלמה ועברה לתצוגת "הושלמו" ✓', 'success');
+        this.showNotification(msgs.success.completed(task.clientName), 'success');
       }
     });
   }
@@ -1533,8 +1629,10 @@ return;
       return;
     }
 
+    const msgs = window.NotificationMessages.tasks;
+
     await ActionFlowManager.execute({
-      loadingMessage: 'מעדכן תקציב...',
+      ...msgs.loading.updateBudget(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry
         Logger.log('  🚀 [v2.0] Using FirebaseService.call for adjustTaskBudget');
@@ -1570,8 +1668,8 @@ return;
         });
         Logger.log('  🚀 [v2.0] EventBus: task:budget-adjusted emitted');
       },
-      successMessage: `תקציב עודכן בהצלחה ל-${Math.round(newBudgetMinutes / 60 * 10) / 10} שעות`,
-      errorMessage: 'שגיאה בעדכון תקציב',
+      successMessage: msgs.success.budgetUpdated(Math.round(newBudgetMinutes / 60 * 10) / 10),
+      errorMessage: msgs.error.updateFailed,
       closePopupOnSuccess: true,
       closeDelay: 500
     });

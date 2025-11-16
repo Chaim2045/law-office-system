@@ -6,8 +6,8 @@
  * Part of Law Office Management System
  */
 
-import { safeText } from './core-utils.js';
-import { globalListeners } from './core-utils.js';
+import { safeText , globalListeners } from './core-utils.js';
+
 
 /* === Utility Classes === */
 
@@ -55,8 +55,8 @@ class NotificationBellSystem {
 
   init() {
     this.clickHandler = (e) => {
-      const bell = document.getElementById("notificationBell");
-      const dropdown = document.getElementById("notificationsDropdown");
+      const bell = document.getElementById('notificationBell');
+      const dropdown = document.getElementById('notificationsDropdown');
       if (
         bell &&
         dropdown &&
@@ -67,12 +67,12 @@ class NotificationBellSystem {
       }
     };
     globalListeners.notificationClick = this.clickHandler;
-    document.addEventListener("click", this.clickHandler);
+    document.addEventListener('click', this.clickHandler);
   }
 
   cleanup() {
     if (this.clickHandler) {
-      document.removeEventListener("click", this.clickHandler);
+      document.removeEventListener('click', this.clickHandler);
     }
   }
 
@@ -82,8 +82,8 @@ class NotificationBellSystem {
       type,
       title,
       description,
-      time: new Date().toLocaleString("he-IL"),
-      urgent,
+      time: new Date().toLocaleString('he-IL'),
+      urgent
     };
     this.notifications.unshift(notification);
     this.updateBell();
@@ -103,32 +103,32 @@ class NotificationBellSystem {
   }
 
   updateBell() {
-    const bell = document.getElementById("notificationBell");
-    const count = document.getElementById("notificationCount");
+    const bell = document.getElementById('notificationBell');
+    const count = document.getElementById('notificationCount');
     if (bell && count) {
       if (this.notifications.length > 0) {
-        bell.classList.add("has-notifications");
-        count.classList.remove("hidden");
+        bell.classList.add('has-notifications');
+        count.classList.remove('hidden');
         count.textContent = this.notifications.length;
       } else {
-        bell.classList.remove("has-notifications");
-        count.classList.add("hidden");
+        bell.classList.remove('has-notifications');
+        count.classList.add('hidden');
       }
     }
   }
 
   showDropdown() {
-    const dropdown = document.getElementById("notificationsDropdown");
+    const dropdown = document.getElementById('notificationsDropdown');
     if (dropdown) {
-      dropdown.classList.add("show");
+      dropdown.classList.add('show');
       this.isDropdownOpen = true;
     }
   }
 
   hideDropdown() {
-    const dropdown = document.getElementById("notificationsDropdown");
+    const dropdown = document.getElementById('notificationsDropdown');
     if (dropdown) {
-      dropdown.classList.remove("show");
+      dropdown.classList.remove('show');
       this.isDropdownOpen = false;
     }
   }
@@ -138,8 +138,10 @@ class NotificationBellSystem {
   }
 
   renderNotifications() {
-    const container = document.getElementById("notificationsContent");
-    if (!container) return;
+    const container = document.getElementById('notificationsContent');
+    if (!container) {
+return;
+}
 
     if (this.notifications.length === 0) {
       container.innerHTML = `
@@ -153,16 +155,16 @@ class NotificationBellSystem {
     }
 
     const iconMap = {
-      blocked: "fas fa-ban",
-      critical: "fas fa-exclamation-triangle",
-      urgent: "fas fa-clock",
+      blocked: 'fas fa-ban',
+      critical: 'fas fa-exclamation-triangle',
+      urgent: 'fas fa-clock'
     };
 
     const notificationsHtml = this.notifications
       .map((notification) => {
-        const notificationDiv = document.createElement("div");
+        const notificationDiv = document.createElement('div');
         notificationDiv.className = `notification-item ${notification.type} ${
-          notification.urgent ? "urgent" : ""
+          notification.urgent ? 'urgent' : ''
         }`;
         notificationDiv.id = `notification-${notification.id}`;
 
@@ -175,7 +177,7 @@ class NotificationBellSystem {
           <div class="notification-content">
             <div class="notification-icon ${notification.type}">
               <i class="${
-                iconMap[notification.type] || "fas fa-info-circle"
+                iconMap[notification.type] || 'fas fa-info-circle'
               }"></i>
             </div>
             <div class="notification-text">
@@ -193,7 +195,7 @@ class NotificationBellSystem {
         `;
         return notificationDiv.outerHTML;
       })
-      .join("");
+      .join('');
 
     container.innerHTML = notificationsHtml;
   }
@@ -203,18 +205,18 @@ class NotificationBellSystem {
 
     if (blockedClients.size > 0) {
       this.addSystemNotification(
-        "blocked",
+        'blocked',
         `${blockedClients.size} לקוחות חסומים`,
-        `לקוחות ללא שעות: ${Array.from(blockedClients).join(", ")}`,
+        `לקוחות ללא שעות: ${Array.from(blockedClients).join(', ')}`,
         true
       );
     }
 
     if (criticalClients.size > 0) {
       this.addSystemNotification(
-        "critical",
+        'critical',
         `${criticalClients.size} לקוחות קריטיים`,
-        `לקוחות עם מעט שעות: ${Array.from(criticalClients).join(", ")}`,
+        `לקוחות עם מעט שעות: ${Array.from(criticalClients).join(', ')}`,
         false
       );
     }
@@ -225,9 +227,9 @@ class NotificationBellSystem {
       ).length;
       if (overdueCount > 0) {
         this.addSystemNotification(
-          "urgent",
+          'urgent',
           `${overdueCount} משימות באיחור`,
-          "משימות שעבר תאריך היעד שלהן",
+          'משימות שעבר תאריך היעד שלהן',
           true
         );
       }
@@ -240,9 +242,9 @@ class NotificationBellSystem {
       type,
       title,
       description,
-      time: new Date().toLocaleString("he-IL"),
+      time: new Date().toLocaleString('he-IL'),
       urgent,
-      isSystemGenerated: true,
+      isSystemGenerated: true
     };
     this.notifications.unshift(notification);
     this.updateBell();
@@ -257,6 +259,7 @@ class NotificationBellSystem {
  * @example
  * await ActionFlowManager.execute({
  *   loadingMessage: 'שומר משימה...',
+ *   animationType: 'saving', // Optional: loading, saving, uploading, syncing, etc.
  *   action: async () => await saveTask(data),
  *   successMessage: 'המשימה נשמרה בהצלחה',
  *   errorMessage: 'שגיאה בשמירת משימה',
@@ -269,6 +272,7 @@ class ActionFlowManager {
    * Execute an action with consistent UX flow
    * @param {Object} options Configuration options
    * @param {string} options.loadingMessage - Loading message to display
+   * @param {string} options.animationType - Type of Lottie animation (loading, saving, uploading, etc.)
    * @param {Function} options.action - Async function to execute
    * @param {string} options.successMessage - Success message
    * @param {string} options.errorMessage - Error message prefix
@@ -284,6 +288,7 @@ class ActionFlowManager {
   static async execute(options) {
     const {
       loadingMessage = 'מעבד...',
+      animationType = 'loading', // ✅ NEW: Animation type for Lottie
       action,
       successMessage,
       errorMessage = 'שגיאה בביצוע הפעולה',
@@ -311,7 +316,7 @@ class ActionFlowManager {
       startTime = Date.now();
 
       if (window.NotificationSystem) {
-        window.NotificationSystem.showLoading(loadingMessage);
+        window.NotificationSystem.showLoading(loadingMessage, { animationType });
       } else {
         window.showSimpleLoading?.(loadingMessage);
       }
@@ -425,17 +430,23 @@ class ActionFlowManager {
         // Reset form
         if (formId) {
           const form = document.getElementById(formId);
-          if (form) form.reset();
+          if (form) {
+form.reset();
+}
         }
 
         // Hide form container
         if (formContainerId) {
           const container = document.getElementById(formContainerId);
-          if (container) container.classList.add('hidden');
+          if (container) {
+container.classList.add('hidden');
+}
 
           // Remove active state from plus button
           const plusButton = document.getElementById('smartPlusBtn');
-          if (plusButton) plusButton.classList.remove('active');
+          if (plusButton) {
+plusButton.classList.remove('active');
+}
         }
 
         // Call original callback
@@ -450,36 +461,38 @@ class ActionFlowManager {
 /* === Public API Functions === */
 
 function updateUserDisplay(userName) {
-  const userDisplay = document.getElementById("currentUserDisplay");
+  const userDisplay = document.getElementById('currentUserDisplay');
   if (userDisplay && userName) {
     userDisplay.textContent = `${userName} - משרד עו"ד גיא הרשקוביץ`;
   }
 }
 
 function updateSidebarUser(userName) {
-  const userAvatar = document.querySelector(".user-avatar");
-  if (!userAvatar) return;
+  const userAvatar = document.querySelector('.user-avatar');
+  if (!userAvatar) {
+return;
+}
 
   if (userName) {
-    userAvatar.setAttribute("title", `מחובר: ${userName}`);
-    userAvatar.setAttribute("data-user", userName);
+    userAvatar.setAttribute('title', `מחובר: ${userName}`);
+    userAvatar.setAttribute('data-user', userName);
 
     const colors = [
-      "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-      "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-      "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-      "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-      "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-      "linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)",
-      "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-      "linear-gradient(135deg, #84cc16 0%, #65a30d 100%)",
+      'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+      'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+      'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+      'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+      'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
+      'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+      'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)'
     ];
 
     const colorIndex = userName.charCodeAt(0) % colors.length;
     userAvatar.style.background = colors[colorIndex];
-    userAvatar.style.transform = "scale(1.05)";
+    userAvatar.style.transform = 'scale(1.05)';
     setTimeout(() => {
-      userAvatar.style.transform = "";
+      userAvatar.style.transform = '';
     }, 300);
   }
 }
