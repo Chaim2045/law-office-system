@@ -284,10 +284,8 @@ return;
     // Check if LottieManager is available
     if (!window.LottieManager) {
       console.warn('⚠️ LottieManager not available, using CSS fallback');
-      const spinner = document.getElementById('loading-spinner-container');
-      if (spinner) {
-spinner.classList.add('fallback');
-}
+      // Add fallback class to the actual spinner element
+      container.classList.add('fallback');
       return;
     }
 
@@ -315,10 +313,7 @@ spinner.classList.add('fallback');
     } catch (error) {
       console.error(`❌ Error loading Lottie animation (${animationType}):`, error);
       // LottieManager already showed fallback, but add class for extra safety
-      const spinner = document.getElementById('loading-spinner-container');
-      if (spinner) {
-spinner.classList.add('fallback');
-}
+      container.classList.add('fallback');
     }
   }
 

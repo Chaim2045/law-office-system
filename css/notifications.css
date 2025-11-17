@@ -265,12 +265,18 @@
 }
 
 /* Fallback CSS spinner if Lottie fails */
-.loading-spinner.fallback {
+.loading-spinner.fallback,
+#loading-spinner-container.fallback {
   width: 80px;
   height: 80px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.loading-spinner.fallback::after {
+.loading-spinner.fallback::after,
+#loading-spinner-container.fallback::after {
   content: '';
   position: absolute;
   width: 100%;
