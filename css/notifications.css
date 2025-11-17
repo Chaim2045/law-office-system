@@ -234,13 +234,17 @@
 
 /* Content - ללא כרטיסייה! ללא רקע! */
 .loading-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  background: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 24px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
   padding: 0 !important;
+  margin: 0 !important;
   border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
 }
 
@@ -529,14 +533,6 @@
   .confirm-btn-cancel {
     order: 2;
   }
-}
-
-/* ✅ NO padding for loading - keep it transparent */
-.loading-content {
-  padding: 0 !important;
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
 }
 
 /* ========================================

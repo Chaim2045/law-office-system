@@ -134,7 +134,7 @@
     <link rel="stylesheet" href="css/reports.css" />
     <link rel="stylesheet" href="css/pagination.css?v=1.0.0" />
     <!-- New Notification System CSS -->
-    <link rel="stylesheet" href="css/notifications.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/notifications.css?v=1.0.1" />
     <!-- Utility Classes - כלי עזר -->
     <link rel="stylesheet" href="css/utilities.css?v=1.2.7" />
     <!-- Smart Combo Selector - בורר תיאורים חכם -->
@@ -578,34 +578,31 @@
                   <i class="fas fa-table"></i>
                   טבלה
                 </button>
+
+                <!-- Task Filter Icon Buttons -->
+                <button
+                  class="view-tab task-filter-btn active"
+                  data-filter="active"
+                  id="activeFilterBtn"
+                  onclick="manager.toggleTaskView('active')"
+                  title="משימות פעילות"
+                >
+                  <i class="fas fa-tasks"></i>
+                  <span class="task-count-badge" id="activeCountBadge">0</span>
+                </button>
+                <button
+                  class="view-tab task-filter-btn"
+                  data-filter="completed"
+                  id="completedFilterBtn"
+                  onclick="manager.toggleTaskView('completed')"
+                  title="משימות הושלמו"
+                >
+                  <i class="fas fa-check-circle"></i>
+                  <span class="task-count-badge" id="completedCountBadge">0</span>
+                </button>
               </div>
 
               <div class="search-filter-row">
-                <div class="filter-container">
-                  <div class="ios-toggle-container">
-                    <span class="toggle-label active" id="activeLabel">
-                      <i class="fas fa-tasks"></i>
-                      משימות פעילות
-                      <span class="task-count-badge" id="activeCountBadge">0</span>
-                    </span>
-
-                    <label class="ios-toggle-switch">
-                      <input
-                        type="checkbox"
-                        id="taskViewToggle"
-                        onchange="manager.handleToggleSwitch(this)"
-                      />
-                      <span class="ios-slider"></span>
-                    </label>
-
-                    <span class="toggle-label" id="completedLabel">
-                      <i class="fas fa-check-circle"></i>
-                      משימות הושלמו
-                      <span class="task-count-badge" id="completedCountBadge">0</span>
-                    </span>
-                  </div>
-                </div>
-
                 <div class="search-container">
                   <input
                     type="text"
