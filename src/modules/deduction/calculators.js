@@ -5,7 +5,31 @@
  * @module deduction/calculators
  * @description Contains pure functions for calculating hours, remaining time, and progress
  * @created 2025-11-11
- * @version 1.0.0
+ * @version 1.1.0
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - תיקון: תמיכה בהליכים משפטיים עם שלבים
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-17
+ * 📦 גרסה: 1.0.0 → 1.1.0
+ *
+ * ✅ שינויים:
+ * 1. calculateRemainingHours() - הוספתי תמיכה ב-legal_procedure עם stages
+ *    - הפונקציה עכשיו סוכמת שעות מכל השלבים הפעילים
+ *    - תומכת בחבילות בתוך שלבים (stage.packages)
+ *    - Fallback ל-stage.hoursRemaining אם אין packages
+ *
+ * 2. הפונקציה מטפלת כעת ב-3 מקרים:
+ *    a) Legal procedure עם stages → סכום שעות מכל השלבים
+ *    b) Service רגיל עם packages → סכום מהחבילות הפעילות
+ *    c) Legacy structure → hoursRemaining ישירות
+ *
+ * למה זה חשוב:
+ * ללא התיקון הזה, הליכים משפטיים עם שלבים היו מציגים 0 שעות
+ * במקום הסכום האמיתי מכל השלבים.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 /**

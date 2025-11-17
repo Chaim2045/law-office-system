@@ -5,7 +5,33 @@
  * @module deduction
  * @description Entry point for the deduction system
  * @created 2025-11-11
- * @version 1.0.0
+ * @version 1.1.0
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - ייצוא פונקציות חישוב ל-window object
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-17
+ * 📦 גרסה: 1.0.0 → 1.1.0
+ *
+ * ✅ שינויים:
+ * הוספתי ייצוא global (window) לפונקציות חישוב נוספות:
+ * - window.calculateHoursUsed() - חדש!
+ * - window.calculateTotalHours() - חדש!
+ * - window.calculateProgress() - חדש!
+ * - window.calculateRemainingHours() - היה קיים
+ *
+ * למה זה חשוב:
+ * הפונקציות האלה נדרשות בצד לקוח (client-case-selector.js) כדי
+ * לחשב נכון את progress bar. בלי הייצוא הזה, הקוד היה מחשב:
+ *   hoursUsed = totalHours - hoursRemaining  ❌ שגוי!
+ *
+ * עכשיו הקוד קורא ישירות מהחבילות:
+ *   hoursUsed = calculateHoursUsed(service)  ✅ נכון!
+ *
+ * מיקום בקוד: שורות 81-84
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 // Import all sub-modules

@@ -7,6 +7,46 @@
  * 2. Consistency - אין data inconsistency
  * 3. Isolation - אין race conditions בין משתמשים
  * 4. Optimistic Locking - בדיקת _version למניעת overwrites
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - תיקון קריטי: קיזוז שעות לא עבד במקרים מסוימים
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-17
+ *
+ * ❌ הבעיה שהתגלתה:
+ * כאשר לקוח הוא מסוג 'legal_procedure' ויש לו שירות רגיל (type: 'hours'),
+ * הקיזוז לא התבצע כלל! הקוד בדק את procedureType של הלקוח במקום לבדוק
+ * את type של השירות.
+ *
+ * תרחיש שנכשל:
+ * - לקוח: procedureType = 'legal_procedure'
+ * - שירות: type = 'hours', יש לו packages
+ * - משימה: serviceId = 'srv_xxx'
+ * - תוצאה: רישום זמן נוצר אבל לא קוזז מהחבילה ❌
+ *
+ * ✅ התיקון שבוצע:
+ * הוספתי תנאי חדש בשורה 85-108 שבודק:
+ * 1. האם יש services array ללקוח
+ * 2. האם יש serviceId במשימה
+ * 3. מוצא את השירות לפי ID
+ * 4. מקזז ממנו ישירות (ללא תלות ב-procedureType של הלקוח)
+ *
+ * קוד קודם:
+ *   if (clientData.procedureType === 'hours' && ...) { קזז }
+ *
+ * קוד חדש:
+ *   if (clientData.services && taskData.serviceId) {
+ *     const service = clientData.services.find(s => s.id === taskData.serviceId);
+ *     if (service && service.type !== 'legal_procedure') { קזז }
+ *   }
+ *
+ * 💡 הבנה ארכיטקטורית:
+ * לקוח = Container (יכול להכיל מספר שירותים)
+ * שירות = הישות שמוגדרת כסוג (hours, legal_procedure, וכו')
+ * הלוגיקה צריכה לבדוק את השירות, לא את הלקוח!
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 const functions = require('firebase-functions');
@@ -81,18 +121,34 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       }
     }
   }
-  // ✅ לקוח שעתי (מבנה חדש)
-  else if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
-    let service = null;
+  // ✅ שירות עם חבילות (לקוח שעתי או שירות בתוך הליך משפטי)
+  else if (clientData.services && clientData.services.length > 0 && taskData.serviceId) {
+    // מצא את השירות המבוקש
+    const service = clientData.services.find(s => s.id === taskData.serviceId);
 
-    if (taskData.serviceId) {
-      service = clientData.services.find(s => s.id === taskData.serviceId);
-      if (!service) {
-        service = clientData.services[0];
+    if (service && service.type !== 'legal_procedure') {
+      // שירות רגיל עם חבילות (לא הליך משפטי)
+      const activePackage = getActivePackage(service);
+
+      if (activePackage) {
+        deductHoursFromPackage(activePackage, hoursWorked);
+
+        updates.clientUpdate = {
+          services: clientData.services,
+          minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
+          hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+          lastActivity: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id}`);
+      } else {
+        updates.logs.push(`⚠️ שירות ${service.name || service.id} - אין חבילה פעילה`);
       }
-    } else {
-      service = clientData.services[0];
     }
+  }
+  // ✅ לקוח שעתי ללא serviceId ספציפי (fallback)
+  else if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+    const service = clientData.services[0];
 
     if (service) {
       const activePackage = getActivePackage(service);
