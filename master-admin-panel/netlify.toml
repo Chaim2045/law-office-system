@@ -42,7 +42,7 @@
       style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
       font-src 'self' https://cdnjs.cloudflare.com;
       img-src 'self' data: https:;
-      connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com wss://*.firebaseio.com;
+      connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://*.cloudfunctions.net wss://*.firebaseio.com;
       frame-ancestors 'none';
     """
 
