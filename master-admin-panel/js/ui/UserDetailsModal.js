@@ -92,42 +92,22 @@
             try {
                 console.log('📥 Loading full user data...');
 
-                // Call Cloud Function to get full user details
-                const getUserDetailsFunction = window.firebaseFunctions.httpsCallable('getUserFullDetails');
+                // Try to load from Cloud Function with timeout
+                const cloudFunctionPromise = this.loadFromCloudFunction();
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('timeout')), 2000) // 2 second timeout
+                );
 
-                const result = await getUserDetailsFunction({
-                    email: this.currentUser.email
-                });
-
-                // Parse the response structure from Cloud Function
-                const responseData = result.data;
-
-                // Merge user data with stats and other data
-                this.userData = {
-                    ...responseData.user,
-                    // Convert isActive (boolean) to status (string) for UI compatibility
-                    status: responseData.user.isActive ? 'active' : 'blocked',
-                    clients: responseData.clients || [],
-                    tasks: responseData.tasks || [],
-                    timesheet: responseData.timesheet || [],
-                    hours: responseData.timesheet || [], // Alias for compatibility
-                    activity: responseData.activity || [],
-                    stats: responseData.stats || {},
-                    // Add flattened stats for easy access in templates
-                    clientsCount: responseData.stats?.totalClients || 0,
-                    tasksCount: responseData.stats?.activeTasks || 0,
-                    hoursThisWeek: responseData.stats?.hoursThisWeek || 0,
-                    hoursThisMonth: responseData.stats?.hoursThisMonth || 0
-                };
-
-                // Debug logging
-                console.log('📊 User Data:', this.userData);
-                console.log('   email:', this.userData.email);
-                console.log('   status:', this.userData.status, '(isActive:', responseData.user.isActive, ')');
-                console.log('   createdAt:', this.userData.createdAt);
-                console.log('   lastLogin:', this.userData.lastLogin);
-                console.log('   clientsCount:', this.userData.clientsCount);
-                console.log('   tasksCount:', this.userData.tasksCount);
+                try {
+                    // Race between Cloud Function and timeout
+                    await Promise.race([cloudFunctionPromise, timeoutPromise]);
+                    console.log('✅ User data loaded from Cloud Function');
+                } catch (cloudError) {
+                    // If Cloud Function fails or times out, use Firestore directly
+                    console.log('⚡ Cloud Function failed/timeout, loading from Firestore...');
+                    await this.loadFromFirestore();
+                    console.log('✅ User data loaded from Firestore (fast fallback)');
+                }
 
                 // Update modal content with full data
                 window.ModalManager.updateContent(this.modalId, this.renderContent());
@@ -135,16 +115,11 @@
                 // Setup events after content is rendered
                 this.setupEvents();
 
-                console.log('✅ User data loaded:', this.userData);
-
             } catch (error) {
                 console.error('❌ Error loading user data:', error);
-                console.error('   Error message:', error.message);
-                console.error('   Error code:', error.code);
-                console.error('   Error details:', error.details);
 
-                // Fallback: Use basic user data from DataManager
-                console.log('⚠️ Using fallback data');
+                // Ultimate fallback: Use basic user data from DataManager
+                console.log('⚠️ Using basic fallback data');
 
                 this.userData = {
                     ...this.currentUser,
@@ -172,6 +147,132 @@
                     'מצב פיתוח'
                 );
             }
+        }
+
+        /**
+         * Load data from Cloud Function
+         * טעינת דאטה מ-Cloud Function
+         */
+        async loadFromCloudFunction() {
+            // Call Cloud Function to get full user details
+            const getUserDetailsFunction = window.firebaseFunctions.httpsCallable('getUserFullDetails');
+
+            const result = await getUserDetailsFunction({
+                email: this.currentUser.email
+            });
+
+            // Parse the response structure from Cloud Function
+            const responseData = result.data;
+
+            // Merge user data with stats and other data
+            this.userData = {
+                ...responseData.user,
+                status: responseData.user.isActive ? 'active' : 'blocked',
+                clients: responseData.clients || [],
+                tasks: responseData.tasks || [],
+                timesheet: responseData.timesheet || [],
+                hours: responseData.timesheet || [],
+                activity: responseData.activity || [],
+                stats: responseData.stats || {},
+                clientsCount: responseData.stats?.totalClients || 0,
+                tasksCount: responseData.stats?.activeTasks || 0,
+                hoursThisWeek: responseData.stats?.hoursThisWeek || 0,
+                hoursThisMonth: responseData.stats?.hoursThisMonth || 0
+            };
+        }
+
+        /**
+         * Load data directly from Firestore (fast fallback)
+         * טעינת דאטה ישירה מ-Firestore - מהיר!
+         */
+        async loadFromFirestore() {
+            const db = window.firebaseDB;
+            const userEmail = this.currentUser.email;
+
+            // Load user data from employees collection
+            const userDoc = await db.collection('employees').doc(userEmail).get();
+            const userData = userDoc.exists ? userDoc.data() : this.currentUser;
+
+            // Load related data in parallel for speed
+            const [clientsSnapshot, tasksSnapshot, timesheetSnapshot] = await Promise.all([
+                // Get user's clients (limit to recent 50)
+                db.collection('cases')
+                    .where('assignedTo', 'array-contains', userEmail)
+                    .orderBy('createdAt', 'desc')
+                    .limit(50)
+                    .get()
+                    .catch(() => ({ docs: [] })),
+
+                // Get user's tasks (active only)
+                db.collection('tasks')
+                    .where('assignedTo', '==', userEmail)
+                    .where('status', '!=', 'completed')
+                    .limit(50)
+                    .get()
+                    .catch(() => ({ docs: [] })),
+
+                // Get recent timesheet entries (last 3 months)
+                db.collection('timesheet')
+                    .where('employeeEmail', '==', userEmail)
+                    .where('date', '>=', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))
+                    .orderBy('date', 'desc')
+                    .limit(100)
+                    .get()
+                    .catch(() => ({ docs: [] }))
+            ]);
+
+            // Process clients
+            const clients = clientsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Process tasks
+            const tasks = tasksSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Process timesheet
+            const timesheet = timesheetSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Calculate stats
+            const now = new Date();
+            const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const hoursThisWeek = timesheet
+                .filter(entry => new Date(entry.date.toDate?.() || entry.date) >= startOfWeek)
+                .reduce((sum, entry) => sum + (entry.hours || 0), 0);
+
+            const hoursThisMonth = timesheet
+                .filter(entry => new Date(entry.date.toDate?.() || entry.date) >= startOfMonth)
+                .reduce((sum, entry) => sum + (entry.hours || 0), 0);
+
+            // Set user data
+            this.userData = {
+                ...userData,
+                email: userEmail,
+                status: userData.isActive !== false ? 'active' : 'blocked',
+                clients,
+                tasks,
+                timesheet,
+                hours: timesheet,
+                activity: [],
+                stats: {
+                    totalClients: clients.length,
+                    activeTasks: tasks.length,
+                    hoursThisWeek,
+                    hoursThisMonth
+                },
+                clientsCount: clients.length,
+                tasksCount: tasks.length,
+                hoursThisWeek,
+                hoursThisMonth
+            };
         }
 
         /**
