@@ -101,7 +101,7 @@ class AIContextBuilder {
       }
 
       const snapshot = await this.db
-        .collection('budgetTasks')
+        .collection('budget_tasks')
         .where('assignedTo', '==', userId)
         .where('status', '==', 'active')
         .orderBy('deadline', 'asc')
@@ -147,7 +147,7 @@ class AIContextBuilder {
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
       const snapshot = await this.db
-        .collection('timesheet')
+        .collection('timesheet_entries')
         .where('userId', '==', userId)
         .where('date', '>=', oneMonthAgo.toISOString())
         .orderBy('date', 'desc')
@@ -230,7 +230,9 @@ class AIContextBuilder {
       // חישובים
       const totalTasks = tasks.length;
       const overdueTasks = tasks.filter(t => {
-        if (!t.deadline) return false;
+        if (!t.deadline) {
+return false;
+}
         return new Date(t.deadline) < new Date();
       }).length;
 
@@ -368,7 +370,9 @@ ${index + 1}. ${task.description}
   async buildBasicContext(userId = null) {
     try {
       const user = userId || window.currentUser?.uid;
-      if (!user) return 'לא נמצא משתמש מחובר.';
+      if (!user) {
+return 'לא נמצא משתמש מחובר.';
+}
 
       const stats = await this.getUserStats(user);
       const userName = window.currentUser?.displayName || 'משתמש';
