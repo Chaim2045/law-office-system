@@ -407,7 +407,9 @@
 
         // 🎯 חיפוש מהיר בזיכרון - ללא Firebase reads!
         const matches = ClientCaseSelector.clientsCache.filter(client => {
-          if (!client.fullName) return false;
+          if (!client.fullName) {
+return false;
+}
           return client.fullName.includes(query);
         });
 
@@ -495,7 +497,7 @@
      * בחירת לקוח
      */
     async selectClient(clientId, clientName) {
-      Logger.log(`🎯 selectClient called:`, { clientId, clientName });
+      Logger.log('🎯 selectClient called:', { clientId, clientName });
 
       this.selectedClient = { id: clientId, name: clientName };
 
@@ -508,7 +510,7 @@
 
       // הסתרת תוצאות החיפוש
       this.hideClientResults();
-      Logger.log(`  ✓ Hidden client results`);
+      Logger.log('  ✓ Hidden client results');
 
       // שמירת clientId
       const clientIdField = document.getElementById(`${this.containerId}_clientId`);
@@ -529,19 +531,19 @@
           caseId: this.selectedCase?.id || undefined,
           caseName: this.selectedCase?.name || undefined
         });
-        Logger.log(`  🚀 [v2.0] EventBus: client:selected emitted`);
+        Logger.log('  🚀 [v2.0] EventBus: client:selected emitted');
       }
 
       // ⚠️ DEPRECATED: Keep for backwards compatibility (will be removed in Phase 4)
       if (this.options.onClientSelected) {
         this.options.onClientSelected(this.selectedClient);
-        Logger.log(`  ⚠️ [DEPRECATED] onClientSelected callback called (use EventBus instead)`);
+        Logger.log('  ⚠️ [DEPRECATED] onClientSelected callback called (use EventBus instead)');
       }
 
       // טעינת תיקים של הלקוח (חיפוש לפי שם במבנה החדש)
       Logger.log(`  🔍 Loading cases for client ${clientName}...`);
       await this.loadClientCases(clientId, clientName);
-      Logger.log(`  ✅ selectClient completed`);
+      Logger.log('  ✅ selectClient completed');
     }
 
     /**
@@ -590,7 +592,7 @@
         Logger.log(`  ✅ Final cases count: ${clientCases.length}`);
 
         // בניית dropdown של תיקים
-        Logger.log(`  🎨 Rendering case dropdown...`);
+        Logger.log('  🎨 Rendering case dropdown...');
         this.renderCaseDropdown();
 
       } catch (error) {
@@ -608,7 +610,7 @@
       const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
       const caseGroup = document.getElementById(`${this.containerId}_caseGroup`);
 
-      Logger.log(`  📍 Elements found:`, { caseSelect: !!caseSelect, caseGroup: !!caseGroup });
+      Logger.log('  📍 Elements found:', { caseSelect: !!caseSelect, caseGroup: !!caseGroup });
 
       if (!caseSelect || !caseGroup) {
         console.error(`  ❌ Missing elements! caseSelect: ${!!caseSelect}, caseGroup: ${!!caseGroup}`);
@@ -616,7 +618,7 @@
       }
 
       if (this.clientCases.length === 0) {
-        console.warn(`  ⚠️ No cases found - hiding case group`);
+        console.warn('  ⚠️ No cases found - hiding case group');
         caseGroup.style.display = 'none';
         alert('❌ ללקוח זה אין תיקים פעילים');
         return;
@@ -656,7 +658,7 @@
         this.selectCase(this.clientCases[0].id);
       }
 
-      Logger.log(`  ✅ renderCaseDropdown completed`);
+      Logger.log('  ✅ renderCaseDropdown completed');
     }
 
     /**
@@ -735,13 +737,13 @@
           caseNumber: caseItem.caseNumber,
           procedureType: caseItem.procedureType
         });
-        Logger.log(`  🚀 [v2.0] EventBus: case:selected emitted`);
+        Logger.log('  🚀 [v2.0] EventBus: case:selected emitted');
       }
 
       // ⚠️ DEPRECATED: Keep for backwards compatibility (will be removed in Phase 4)
       if (this.options.onCaseSelected) {
         this.options.onCaseSelected(caseItem);
-        Logger.log(`  ⚠️ [DEPRECATED] onCaseSelected callback called (use EventBus instead)`);
+        Logger.log('  ⚠️ [DEPRECATED] onCaseSelected callback called (use EventBus instead)');
       }
     }
 
@@ -750,7 +752,9 @@
      */
     showCaseInfo(caseItem) {
       const caseInfo = document.getElementById(`${this.containerId}_caseInfo`);
-      if (!caseInfo) return;
+      if (!caseInfo) {
+return;
+}
 
       const icon = caseItem.procedureType === 'legal_procedure' ? '⚖️' : '⏱️';
 
@@ -844,7 +848,9 @@
       } else {
         // ✅ NEW ARCHITECTURE: מעבר על כל השירותים
         services.forEach(service => {
-          if (service.status !== 'active') return; // דלג על שירותים לא פעילים
+          if (service.status !== 'active') {
+return;
+} // דלג על שירותים לא פעילים
 
           if (service.type === 'hours') {
             // תוכנית שעות רגילה
@@ -899,7 +905,7 @@
       const activeServices = services.filter(s => s.status === 'active' && s.type === 'hours');
 
       // ספירת שלבים פעילים (הן במבנה חדש והן בישן)
-      let allActiveStages = [];
+      const allActiveStages = [];
       services.forEach(service => {
         if (service.type === 'legal_procedure' && service.stages) {
           allActiveStages.push(...service.stages.filter(s => s.status === 'active'));
@@ -934,10 +940,11 @@
         title = 'תוכנית שעות';
         subtitle = service.name;
 
-        const hoursRemaining = window.calculateRemainingHours(service);
-        const totalHours = service.totalHours || 90; // fallback
-        const hoursUsed = totalHours - hoursRemaining;
-        const progressPercent = Math.round((hoursUsed / totalHours) * 100);
+        // ✅ Calculate from packages (Single Source of Truth)
+        const totalHours = window.calculateTotalHours ? window.calculateTotalHours(service) : (service.totalHours || 90);
+        const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(service) : 0;
+        const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(service) : 0;
+        const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
 
         statsHtml = `
           <div style="margin-top: 12px;">
@@ -984,9 +991,10 @@
         subtitle = service.description || service.name;
 
         if (pricingType === 'hourly') {
-          const hoursRemaining = window.calculateRemainingHours(service);
-          const totalHours = service.totalHours || 0;
-          const hoursUsed = totalHours - hoursRemaining;
+          // ✅ Calculate from packages (Single Source of Truth)
+          const totalHours = window.calculateTotalHours ? window.calculateTotalHours(service) : (service.totalHours || 0);
+          const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(service) : 0;
+          const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(service) : 0;
           const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
 
           statsHtml = `
@@ -1223,7 +1231,9 @@
      */
     showSelectedServiceOnly(serviceData, type) {
       const servicesCards = document.getElementById(`${this.containerId}_servicesCards`);
-      if (!servicesCards) return;
+      if (!servicesCards) {
+return;
+}
 
       let iconClass, title, subtitle, statsHtml;
 
@@ -1232,10 +1242,11 @@
         title = 'תוכנית שעות';
         subtitle = serviceData.name;
 
-        const hoursRemaining = window.calculateRemainingHours(serviceData);
-        const totalHours = serviceData.totalHours || 90;
-        const hoursUsed = totalHours - hoursRemaining;
-        const progressPercent = Math.round((hoursUsed / totalHours) * 100);
+        // ✅ Calculate from packages (Single Source of Truth)
+        const totalHours = window.calculateTotalHours ? window.calculateTotalHours(serviceData) : (serviceData.totalHours || 90);
+        const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(serviceData) : 0;
+        const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(serviceData) : 0;
+        const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
 
         statsHtml = `
           <div style="margin-top: 12px;">
@@ -1281,10 +1292,11 @@
         subtitle = serviceData.description || serviceData.name;
 
         if (this.selectedServiceParent?.pricingType === 'hourly') {
-          const hoursRemaining = window.calculateRemainingHours(serviceData);
-          const totalHours = serviceData.totalHours || 90;
-          const hoursUsed = totalHours - hoursRemaining;
-          const progressPercent = Math.round((hoursUsed / totalHours) * 100);
+          // ✅ Calculate from packages (Single Source of Truth)
+          const totalHours = window.calculateTotalHours ? window.calculateTotalHours(serviceData) : (serviceData.totalHours || 90);
+          const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(serviceData) : 0;
+          const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(serviceData) : 0;
+          const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
 
           statsHtml = `
             <div style="margin-top: 12px;">
@@ -1455,7 +1467,7 @@
      * שינוי שירות - חזרה לרשימה
      */
     changeService() {
-      Logger.log(`🔄 Change service requested`);
+      Logger.log('🔄 Change service requested');
 
       // איפוס בחירת שירות
       this.selectedService = null;
@@ -1579,13 +1591,19 @@
       this.clientCases = [];
 
       const searchInput = document.getElementById(`${this.containerId}_clientSearch`);
-      if (searchInput) searchInput.value = '';
+      if (searchInput) {
+searchInput.value = '';
+}
 
       const caseGroup = document.getElementById(`${this.containerId}_caseGroup`);
-      if (caseGroup) caseGroup.style.display = 'none';
+      if (caseGroup) {
+caseGroup.style.display = 'none';
+}
 
       const servicesGroup = document.getElementById(`${this.containerId}_servicesGroup`);
-      if (servicesGroup) servicesGroup.style.display = 'none';
+      if (servicesGroup) {
+servicesGroup.style.display = 'none';
+}
 
       this.hideClientResults();
       this.hideCaseInfo();
@@ -1593,7 +1611,9 @@
       // איפוס שדות נסתרים
       ['clientId', 'clientName', 'caseId', 'caseNumber', 'caseTitle', 'serviceId', 'serviceName', 'serviceType', 'parentServiceId'].forEach(field => {
         const input = document.getElementById(`${this.containerId}_${field}`);
-        if (input) input.value = '';
+        if (input) {
+input.value = '';
+}
       });
 
       // ✅ NEW: EventBus Architecture v2.0
@@ -1618,7 +1638,7 @@
      * Escape HTML
      */
     escapeHtml(text) {
-      if (text == null || text === undefined) {
+      if (text === null || text === undefined) {
         return '';
       }
       // המרה למחרזת אם זה לא מחרזת

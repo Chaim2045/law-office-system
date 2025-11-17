@@ -77,8 +77,11 @@ const DeductionSystem = {
 if (typeof window !== 'undefined') {
   window.DeductionSystem = DeductionSystem;
 
-  // Keep the critical global function
+  // Keep the critical global functions
   window.calculateRemainingHours = Calculators.calculateRemainingHours;
+  window.calculateHoursUsed = Calculators.calculateHoursUsed;
+  window.calculateTotalHours = Calculators.calculateTotalHours;
+  window.calculateProgress = Calculators.calculateProgress;
 }
 
 // CommonJS Export
