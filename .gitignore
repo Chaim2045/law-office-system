@@ -1,6 +1,12 @@
 # Firebase admin credentials and backend scripts
 law-office-firebase/
 
+# 🔒 SECURITY: Firebase Admin SDK Service Account (contains admin credentials!)
+# NEVER commit these files - they contain private keys
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+service-account*.json
+
 # Backup files
 *.backup
 *.backup.*
@@ -22,3 +28,6 @@ node_modules/
 
 # Temp files
 nul
+
+# Local Netlify folder
+.netlify
