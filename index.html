@@ -1386,5 +1386,42 @@
         toggleScrollButton();
       })();
     </script>
+
+    <!-- Set default values for datetime-local inputs -->
+    <script>
+      (function() {
+        // Set current datetime as default for datetime-local inputs
+        function setDateTimeDefaults() {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+
+          // Format: YYYY-MM-DDTHH:MM
+          const datetimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+          // Set default for budgetDeadline
+          const budgetDeadline = document.getElementById('budgetDeadline');
+          if (budgetDeadline && !budgetDeadline.value) {
+            budgetDeadline.value = datetimeValue;
+          }
+
+          // Set default for actionDate
+          const actionDate = document.getElementById('actionDate');
+          if (actionDate && !actionDate.value) {
+            actionDate.value = datetimeValue;
+          }
+        }
+
+        // Run when DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', setDateTimeDefaults);
+        } else {
+          setDateTimeDefaults();
+        }
+      })();
+    </script>
   </body>
 </html>
