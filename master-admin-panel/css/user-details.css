@@ -325,6 +325,80 @@
   margin: 0;
 }
 
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ * 🎨 TASK CARDS STYLING - TIMESHEET STYLE (Clean & Compact)
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * 📅 Last Updated: 2025-01-17
+ * 🔧 Changes Made: Complete redesign to match timesheet hours-card style
+ * 🎯 Goal: Cleaner, more compact, fewer colors, more professional appearance
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ * 🔧 WHAT CHANGED:
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * BEFORE (Multi-Color Design):
+ * ❌ Multiple colored badges (status, client, deadline)
+ * ❌ Heavy backgrounds and borders on meta info
+ * ❌ Complex visual hierarchy with many colors
+ * ❌ Cluttered appearance with colored backgrounds everywhere
+ * ❌ Grid: 280px minimum width
+ *
+ * AFTER (Timesheet Style):
+ * ✅ Single border-right accent color (like hours-card)
+ * ✅ Clean white background with minimal hover effect
+ * ✅ Status shown as icon + label (no colored badge boxes)
+ * ✅ Progress shown as simple percentage (no heavy progress bars)
+ * ✅ Compact information display (client, deadline in one line)
+ * ✅ Thin progress bar at bottom (subtle, not dominant)
+ * ✅ Grid: 300px minimum width (more compact)
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ * 🎯 DESIGN PRINCIPLES (from timesheet hours-card):
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * 1. Color Strategy:
+ *    - White background only
+ *    - Single colored border-right (4px) for status indication
+ *    - Icons use semantic colors (not backgrounds)
+ *    - Minimal use of background colors
+ *
+ * 2. Layout:
+ *    - Header: Status icon + label | Progress %
+ *    - Body: Title, client info, deadline (compact)
+ *    - Footer: Thin progress bar (optional)
+ *
+ * 3. Hover Effect:
+ *    - Subtle border color change
+ *    - Minimal shadow (0 4px 12px rgba(0,0,0,0.05))
+ *    - Small transform (-1px up)
+ *
+ * 4. Typography:
+ *    - Clean hierarchy with font-weight only
+ *    - No colored text backgrounds
+ *    - Gray scale for secondary information
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ * 💡 HOW THIS CONTRIBUTES TO THE SYSTEM:
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * User Experience:
+ * ✅ Reduced visual noise - easier to scan task list
+ * ✅ Consistent design language across admin panel (matches timesheet)
+ * ✅ More tasks visible on screen (compact 300px vs 280px + less padding)
+ * ✅ Clearer status indication (color-coded border, not scattered badges)
+ * ✅ Professional appearance - less "busy" design
+ *
+ * Technical Benefits:
+ * ✅ Simplified CSS - fewer class combinations needed
+ * ✅ Better performance - less complex rendering
+ * ✅ Easier maintenance - follows established pattern (hours-card)
+ * ✅ More flexible - easier to add new task types
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+
 /* Clients & Tasks Lists */
 .clients-list {
   display: grid;
@@ -332,8 +406,7 @@
   gap: var(--space-4);
 }
 
-.client-card,
-.task-card {
+.client-card {
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
@@ -341,14 +414,12 @@
   transition: all var(--transition-fast);
 }
 
-.client-card:hover,
-.task-card:hover {
+.client-card:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
-.client-card h4,
-.task-card h4 {
+.client-card h4 {
   margin: 0 0 var(--space-2) 0;
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
@@ -361,171 +432,199 @@
   margin: 0;
 }
 
+/* ========== TASK CARDS - TIMESHEET STYLE ========== */
+
+.tasks-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-3);
+  max-width: 100%;
+}
+
 .task-card {
-  border-right: 4px solid var(--blue);
-  position: relative;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
 }
 
+/* Border-right accent (like hours-card) */
+.task-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--blue);
+}
+
+/* Status-based border colors */
+.task-card.active-task::before {
+  background: var(--blue);
+}
+
+.task-card.completed-task::before {
+  background: var(--green);
+}
+
+.task-card.pending-task::before {
+  background: var(--gray-400);
+}
+
+.task-card.cancelled-task::before {
+  background: var(--red);
+}
+
+/* Hover effect (like hours-card) */
+.task-card:hover {
+  border-color: var(--gray-300);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
+}
+
+/* Task Header - Clean icon + label layout */
 .task-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.task-type {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.task-type i {
+  font-size: var(--text-sm);
+}
+
+.task-type-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--gray-700);
+}
+
+.task-progress-compact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progress-percent {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--blue);
+}
+
+/* Task Body - Clean content area */
+.task-body {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
 .task-title {
-  flex: 1;
-  margin: 0 !important;
-  font-size: var(--text-sm) !important;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--gray-900);
+  margin: 0;
+  line-height: 1.4;
 }
 
-.task-status {
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  font-weight: var(--font-medium);
-  white-space: nowrap;
-}
-
-.task-status-active {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.task-status-completed {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-/* Task meta info row - לקוח + יעד בשורה אחת */
-.task-meta {
+.task-client-info,
+.task-deadline-info {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--space-2);
-  align-items: center;
-}
-
-.task-client {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--gray-700);
-  padding: 4px 10px;
-  background: var(--gray-50);
-  border-radius: var(--radius-sm);
-  width: fit-content;
-}
-
-.task-client i {
-  color: var(--blue);
-  font-size: 11px;
-}
-
-.task-deadline {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--gray-700);
-  padding: 4px 10px;
-  background: var(--gray-50);
-  border-radius: var(--radius-sm);
-  width: fit-content;
-}
-
-.task-deadline i {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--gray-600);
 }
 
-.task-deadline.deadline-overdue {
-  background: rgba(239, 68, 68, 0.1);
+.task-client-info i,
+.task-deadline-info i {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--gray-500);
+  font-size: var(--text-sm);
+}
+
+.task-client-info {
+  font-weight: var(--font-medium);
+  color: var(--gray-900);
+}
+
+/* Deadline color indicators (minimal - icon only) */
+.task-deadline-info.deadline-overdue i {
   color: var(--red);
-  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.task-deadline.deadline-overdue i {
-  color: var(--red);
+.task-deadline-info.deadline-today i {
+  color: var(--yellow);
 }
 
-.task-deadline.deadline-today {
-  background: rgba(234, 179, 8, 0.1);
-  color: #d97706;
-  border: 1px solid rgba(234, 179, 8, 0.2);
+.task-deadline-info.deadline-soon i {
+  color: var(--orange);
 }
 
-.task-deadline.deadline-today i {
-  color: #d97706;
+/* Progress Bar - Thin and subtle (like hours-card progress concept) */
+.task-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: var(--space-2);
 }
 
-.task-deadline.deadline-soon {
-  background: rgba(234, 179, 8, 0.05);
-  color: #d97706;
-  border: 1px solid rgba(234, 179, 8, 0.15);
+.task-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 2px;
 }
 
-.task-deadline.deadline-soon i {
-  color: #d97706;
+/* Progress fill colors by status */
+.active-task .task-progress-fill {
+  background: var(--blue);
 }
 
-.task-budget {
+.completed-task .task-progress-fill {
+  background: var(--green);
+}
+
+.pending-task .task-progress-fill {
+  background: var(--gray-400);
+}
+
+/* Budget Info - Minimal styling */
+.task-budget-info {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-2);
-  background: var(--gray-50);
-  border-radius: var(--radius-sm);
-}
-
-.budget-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.budget-label {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--gray-600);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--gray-100);
+}
+
+.task-budget-label {
   font-weight: var(--font-medium);
 }
 
-.budget-value {
-  font-size: var(--text-sm);
+.task-budget-value {
   font-weight: var(--font-semibold);
   color: var(--gray-900);
 }
 
-.task-progress {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.progress-bar {
-  flex: 1;
-  height: 6px;
-  background: var(--gray-200);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-.progress-text {
-  font-size: 11px;
-  font-weight: var(--font-semibold);
-  color: var(--gray-700);
-  min-width: 35px;
-  text-align: left;
-}
-
+/* Legacy classes for backward compatibility */
 .task-actions {
   display: flex;
   justify-content: flex-end;
@@ -545,19 +644,6 @@
 .btn-icon:hover {
   background: var(--gray-100);
   color: var(--blue);
-}
-
-.task-card p {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--gray-600);
-}
-
-.tasks-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-3);
-  max-width: 100%;
 }
 
 /* Hours Tab */

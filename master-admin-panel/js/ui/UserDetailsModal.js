@@ -877,17 +877,45 @@
             `;
         }
 
+        /**
+         * ════════════════════════════════════════════════════════════════════
+         * RENDER TASK CARD - Timesheet Style (Clean & Compact)
+         * ════════════════════════════════════════════════════════════════════
+         *
+         * 🔧 CHANGES MADE (2025-01-17):
+         * - Adopted hours-card styling from timesheet
+         * - Cleaner, more compact layout
+         * - Reduced visual clutter (fewer colors, simpler structure)
+         * - Better readability with consistent spacing
+         *
+         * 🎯 WHY THESE CHANGES:
+         * - User requested timesheet card style
+         * - Too many colors made tasks hard to read
+         * - Timesheet style is proven to be clean and professional
+         *
+         * 📊 IMPACT:
+         * - More tasks visible on screen (compact)
+         * - Better visual hierarchy
+         * - Consistent with timesheet design language
+         * ════════════════════════════════════════════════════════════════════
+         */
         renderTaskCard(task) {
+            // חישוב progress
             const progress = task.estimatedHours > 0
                 ? Math.round((task.actualHours / task.estimatedHours) * 100)
                 : 0;
 
-            const progressColor = progress > 100 ? '#ef4444' : progress > 80 ? '#f59e0b' : '#10b981';
-            const statusBadge = task.status === 'active' ? 'פעילה' : task.status === 'completed' ? 'הושלמה' : task.status;
+            // קביעת סטטוס ואייקון
+            const statusInfo = {
+                'active': { label: 'פעילה', color: '#3b82f6', icon: 'fa-tasks' },
+                'completed': { label: 'הושלמה', color: '#10b981', icon: 'fa-check-circle' },
+                'pending': { label: 'ממתינה', color: '#f59e0b', icon: 'fa-clock' }
+            };
+            const status = statusInfo[task.status] || statusInfo['active'];
 
-            // פורמט תאריך יעד
-            let deadlineText = 'לא הוגדר';
-            let deadlineClass = '';
+            // פורמט תאריך יעד (compact)
+            let deadlineText = '';
+            let deadlineWarning = '';
             if (task.deadline) {
                 try {
                     const deadlineDate = new Date(task.deadline);
@@ -899,65 +927,80 @@
                         const diffTime = deadlineDate - today;
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                        deadlineText = deadlineDate.toLocaleDateString('he-IL');
+                        deadlineText = deadlineDate.toLocaleDateString('he-IL', {
+                            day: 'numeric',
+                            month: 'short'
+                        });
 
                         if (diffDays < 0) {
-                            deadlineClass = 'deadline-overdue';
-                            deadlineText += ` (באיחור ${Math.abs(diffDays)} ימים)`;
+                            deadlineWarning = `⚠️ באיחור ${Math.abs(diffDays)} ימים`;
                         } else if (diffDays === 0) {
-                            deadlineClass = 'deadline-today';
-                            deadlineText += ' (היום!)';
+                            deadlineWarning = '🔥 היום!';
                         } else if (diffDays <= 3) {
-                            deadlineClass = 'deadline-soon';
-                            deadlineText += ` (עוד ${diffDays} ימים)`;
+                            deadlineWarning = `📌 עוד ${diffDays} ימים`;
                         }
                     }
                 } catch (e) {
                     console.warn('Invalid deadline:', task.deadline);
+                    deadlineText = 'תאריך לא תקין';
                 }
+            } else {
+                deadlineText = 'לא הוגדר';
             }
 
+            // סטטוס progress - בחירת צבע
+            const progressColor = progress > 100 ? '#ef4444' : progress >= 80 ? '#f59e0b' : '#10b981';
+
             return `
-                <div class="task-card" data-task-id="${task.id}">
+                <div class="task-card ${task.status}-task" data-task-id="${task.id}">
+                    <!-- Header: סטטוס ו-progress -->
                     <div class="task-header">
-                        <h4 class="task-title">${this.escapeHtml(task.title)}</h4>
-                        <span class="task-status task-status-${task.status}">${statusBadge}</span>
+                        <div class="task-type">
+                            <i class="fas ${status.icon}" style="color: ${status.color};"></i>
+                            <span class="task-type-label">${status.label}</span>
+                        </div>
+                        <div class="task-progress-compact">
+                            <span class="progress-percent" style="color: ${progressColor};">${progress}%</span>
+                        </div>
                     </div>
 
-                    <div class="task-meta">
+                    <!-- Body: פרטי משימה -->
+                    <div class="task-body">
+                        <!-- שם המשימה -->
+                        <div class="task-title-row">
+                            <i class="fas fa-check-square"></i>
+                            <span class="task-name">${this.escapeHtml(task.title)}</span>
+                        </div>
+
+                        <!-- לקוח -->
                         <div class="task-client">
                             <i class="fas fa-briefcase"></i>
                             <span>${this.escapeHtml(task.clientName)}</span>
                         </div>
 
-                        <div class="task-deadline ${deadlineClass}">
+                        <!-- תאריך יעד -->
+                        <div class="task-deadline">
                             <i class="fas fa-calendar-alt"></i>
                             <span>יעד: ${deadlineText}</span>
+                            ${deadlineWarning ? `<span class="deadline-alert">${deadlineWarning}</span>` : ''}
                         </div>
-                    </div>
 
-                    <div class="task-budget">
-                        <div class="budget-info">
-                            <span class="budget-label">תקציב:</span>
-                            <span class="budget-value">${task.estimatedHours.toFixed(2)} ש'</span>
+                        <!-- תקציב: פשוט וקומפקטי -->
+                        <div class="task-budget-row">
+                            <span class="budget-item">
+                                <i class="fas fa-hourglass-start"></i>
+                                תקציב: ${task.estimatedHours.toFixed(1)} ש'
+                            </span>
+                            <span class="budget-item" style="color: ${progressColor};">
+                                <i class="fas fa-hourglass-half"></i>
+                                בוצע: ${task.actualHours.toFixed(1)} ש'
+                            </span>
                         </div>
-                        <div class="budget-info">
-                            <span class="budget-label">בוצע:</span>
-                            <span class="budget-value" style="color: ${progressColor};">${task.actualHours.toFixed(2)} ש'</span>
-                        </div>
-                    </div>
 
-                    <div class="task-progress">
-                        <div class="progress-bar">
+                        <!-- Progress bar (דק ומינימלי) -->
+                        <div class="task-progress-bar">
                             <div class="progress-fill" style="width: ${Math.min(progress, 100)}%; background-color: ${progressColor};"></div>
                         </div>
-                        <span class="progress-text">${progress}%</span>
-                    </div>
-
-                    <div class="task-actions">
-                        <button class="btn-icon btn-edit-task" data-task-id="${task.id}" title="ערוך משימה">
-                            <i class="fas fa-edit"></i>
-                        </button>
                     </div>
                 </div>
             `;
