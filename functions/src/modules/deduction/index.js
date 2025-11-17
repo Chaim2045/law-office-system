@@ -1,112 +1,32 @@
 /**
  * Deduction System - Public API (Facade)
- * Unified interface for all deduction operations
+ * CommonJS version for Firebase Functions
  *
  * @module deduction
  * @description Entry point for the deduction system
  * @created 2025-11-11
- * @version 1.0.0
+ * @version 1.1.0 - CommonJS
  */
 
-// Import all sub-modules
-import * as Calculators from './calculators.js';
-import * as Validators from './validators.js';
-import * as Aggregators from './aggregators.js';
-
-// Import deduction logic (if needed for re-export)
-import {
-  getActivePackage,
-  deductHoursFromPackage,
-  deductHoursFromStage,
-  calculateClientUpdates
-} from './deduction-logic.js';
-
-// Import builders (if needed for re-export)
-import {
-  createPackage,
-  createStage,
-  createLegalProcedureStages,
-  createLegalProcedureService,
-  createHourlyService,
-  addPackageToStage
-} from './builders.js';
+// ✅ CommonJS imports - compatible with Firebase Functions
+const deductionLogic = require('./deduction-logic');
 
 /**
- * Deduction System - Unified API
+ * Deduction System - Unified API (CommonJS)
+ *
+ * This is a simplified version that exports only the core deduction functions
+ * needed by Firebase Functions. The full ES6 version with all modules is available
+ * for client-side use.
  */
 const DeductionSystem = {
-  // Calculators
-  calculateRemainingHours: Calculators.calculateRemainingHours,
-  calculateTotalHours: Calculators.calculateTotalHours,
-  calculateHoursUsed: Calculators.calculateHoursUsed,
-  calculateProgress: Calculators.calculateProgress,
-  minutesToHours: Calculators.minutesToHours,
-  hoursToMinutes: Calculators.hoursToMinutes,
-  formatHours: Calculators.formatHours,
-
-  // Validators
-  validateTimeEntry: Validators.validateTimeEntry,
-  validatePackage: Validators.validatePackage,
-  validateHoursPackage: Validators.validateHoursPackage,
-  validateStages: Validators.validateStages,
-  validateDeduction: Validators.validateDeduction,
-
-  // Aggregators
-  updateServiceAggregates: Aggregators.updateServiceAggregates,
-  updateStageAggregates: Aggregators.updateStageAggregates,
-  updateClientAggregates: Aggregators.updateClientAggregates,
-  updateLegalProcedureAggregates: Aggregators.updateLegalProcedureAggregates,
-  createIncrementUpdate: Aggregators.createIncrementUpdate,
-
-  // Deduction Logic
-  getActivePackage,
-  deductHoursFromPackage,
-  deductHoursFromStage,
-  calculateClientUpdates,
-
-  // Builders
-  createPackage,
-  createStage,
-  createLegalProcedureStages,
-  createLegalProcedureService,
-  createHourlyService,
-  addPackageToStage
+  // Core deduction functions
+  getActivePackage: deductionLogic.getActivePackage,
+  calculateRemainingHours: deductionLogic.calculateRemainingHours,
+  deductHoursFromPackage: deductionLogic.deductHoursFromPackage,
+  deductHoursFromStage: deductionLogic.deductHoursFromStage,
+  calculateClientUpdates: deductionLogic.calculateClientUpdates,
+  validateTimeEntry: deductionLogic.validateTimeEntry,
 };
-
-// Global access (for backward compatibility)
-if (typeof window !== 'undefined') {
-  window.DeductionSystem = DeductionSystem;
-
-  // Keep the critical global function
-  window.calculateRemainingHours = Calculators.calculateRemainingHours;
-}
 
 // CommonJS Export
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = DeductionSystem;
-}
-
-// ES6 Export
-export default DeductionSystem;
-
-// Named exports for tree-shaking
-export {
-  // Calculators
-  Calculators,
-  // Validators
-  Validators,
-  // Aggregators
-  Aggregators,
-  // Deduction Logic
-  getActivePackage,
-  deductHoursFromPackage,
-  deductHoursFromStage,
-  calculateClientUpdates,
-  // Builders
-  createPackage,
-  createStage,
-  createLegalProcedureStages,
-  createLegalProcedureService,
-  createHourlyService,
-  addPackageToStage
-};
+module.exports = DeductionSystem;
