@@ -905,13 +905,31 @@
                 ? Math.round((task.actualHours / task.estimatedHours) * 100)
                 : 0;
 
+            // מיפוי סטטוס לאנגלית (לתמיכה בעברית ואנגלית)
+            const statusMapping = {
+                'active': 'active',
+                'פעיל': 'active',
+                'פעילה': 'active',
+                'completed': 'completed',
+                'הושלם': 'completed',
+                'הושלמה': 'completed',
+                'pending': 'pending',
+                'ממתין': 'pending',
+                'ממתינה': 'pending',
+                'cancelled': 'cancelled',
+                'בוטל': 'cancelled',
+                'בוטלה': 'cancelled'
+            };
+            const statusClass = statusMapping[task.status] || 'active';
+
             // קביעת סטטוס ואייקון
             const statusInfo = {
                 'active': { label: 'פעילה', color: '#3b82f6', icon: 'fa-tasks' },
                 'completed': { label: 'הושלמה', color: '#10b981', icon: 'fa-check-circle' },
-                'pending': { label: 'ממתינה', color: '#f59e0b', icon: 'fa-clock' }
+                'pending': { label: 'ממתינה', color: '#f59e0b', icon: 'fa-clock' },
+                'cancelled': { label: 'בוטלה', color: '#ef4444', icon: 'fa-times-circle' }
             };
-            const status = statusInfo[task.status] || statusInfo['active'];
+            const status = statusInfo[statusClass] || statusInfo['active'];
 
             // פורמט תאריך יעד (compact)
             let deadlineText = '';
@@ -952,7 +970,7 @@
             const progressColor = progress > 100 ? '#ef4444' : progress >= 80 ? '#f59e0b' : '#10b981';
 
             return `
-                <div class="task-card ${task.status}-task" data-task-id="${task.id}">
+                <div class="task-card ${statusClass}-task" data-task-id="${task.id}">
                     <!-- Header: סטטוס ו-progress -->
                     <div class="task-header">
                         <div class="task-type">
