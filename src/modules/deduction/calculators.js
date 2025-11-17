@@ -41,17 +41,34 @@ function calculateRemainingHours(entity) {
     return 0;
   }
 
-  // No packages? Fallback to legacy structure
-  if (!entity.packages || !Array.isArray(entity.packages) || entity.packages.length === 0) {
-    return entity.hoursRemaining || 0;
+  // ✅ NEW: Support for legal_procedure with stages
+  // If this is a legal procedure, sum hours from all active stages
+  if (entity.type === 'legal_procedure' && entity.stages && Array.isArray(entity.stages)) {
+    return entity.stages
+      .filter(stage => stage.status === 'active' || stage.status === 'pending')
+      .reduce((sum, stage) => {
+        // Each stage can have packages
+        if (stage.packages && Array.isArray(stage.packages) && stage.packages.length > 0) {
+          const stageHours = stage.packages
+            .filter(pkg => pkg.status === 'active' || pkg.status === 'pending' || !pkg.status)
+            .reduce((pkgSum, pkg) => pkgSum + (pkg.hoursRemaining || 0), 0);
+          return sum + stageHours;
+        }
+        // Fallback to stage.hoursRemaining
+        return sum + (stage.hoursRemaining || 0);
+      }, 0);
   }
 
-  // Calculate from active packages (Single Source of Truth)
-  const totalHours = entity.packages
-    .filter(pkg => pkg.status === 'active' || !pkg.status)
-    .reduce((sum, pkg) => sum + (pkg.hoursRemaining || 0), 0);
+  // Regular service with packages
+  if (entity.packages && Array.isArray(entity.packages) && entity.packages.length > 0) {
+    const totalHours = entity.packages
+      .filter(pkg => pkg.status === 'active' || !pkg.status)
+      .reduce((sum, pkg) => sum + (pkg.hoursRemaining || 0), 0);
+    return totalHours;
+  }
 
-  return totalHours;
+  // Fallback to legacy structure
+  return entity.hoursRemaining || 0;
 }
 
 /**
@@ -90,7 +107,9 @@ function calculateHoursUsed(entity) {
  */
 function calculateProgress(entity) {
   const total = calculateTotalHours(entity);
-  if (total === 0) return 0;
+  if (total === 0) {
+return 0;
+}
 
   const used = calculateHoursUsed(entity);
   return Math.round((used / total) * 100 * 10) / 10;
@@ -125,12 +144,16 @@ function hoursToMinutes(hours) {
  * @returns {string} Formatted string
  */
 function formatHours(hours, showMinutes = false) {
-  if (!hours || hours === 0) return '0 שעות';
+  if (!hours || hours === 0) {
+return '0 שעות';
+}
 
   if (showMinutes) {
     const h = Math.floor(hours);
     const m = Math.round((hours - h) * 60);
-    if (m === 0) return `${h} שעות`;
+    if (m === 0) {
+return `${h} שעות`;
+}
     return `${h}:${m.toString().padStart(2, '0')} שעות`;
   }
 

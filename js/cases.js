@@ -109,7 +109,7 @@
 
         const clientData = { id: clientDoc.id, ...clientDoc.data() };
 
-        Logger.log(`✅ Fetched client/case:`, clientId);
+        Logger.log('✅ Fetched client/case:', clientId);
         return {
           success: true,
           client: clientData,
@@ -268,13 +268,16 @@
       details.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;';
 
       if (caseItem.procedureType === 'hours') {
+        // ✅ חישוב שעות נותרות מחבילות (Single Source of Truth)
+        const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(caseItem) : (caseItem.hoursRemaining || 0);
+
         details.innerHTML = `
           <div style="display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-clock" style="color: #3b82f6;"></i>
             <div>
               <div style="font-size: 12px; color: #666;">שעות נותרות</div>
               <div style="font-weight: 600; color: #1a1a1a;">
-                ${this.formatHours(caseItem.hoursRemaining || 0)}
+                ${this.formatHours(hoursRemaining)}
               </div>
             </div>
           </div>
@@ -328,7 +331,7 @@
               <div>
                 <div style="font-size: 12px; color: #666;">שעות נותרות</div>
                 <div style="font-weight: 600; color: #1a1a1a;">
-                  ${this.formatHours(caseItem.hoursRemaining || 0)}
+                  ${this.formatHours(window.calculateRemainingHours ? window.calculateRemainingHours(caseItem) : (caseItem.hoursRemaining || 0))}
                 </div>
               </div>
             </div>
@@ -472,7 +475,7 @@
                 </span>
               </td>
               <td style="padding: 12px; font-weight: 600;">
-                ${(caseItem.procedureType === 'hours' || caseItem.procedureType === 'legal_procedure') ? this.formatHours(caseItem.hoursRemaining || 0) : '-'}
+                ${(caseItem.procedureType === 'hours' || caseItem.procedureType === 'legal_procedure') ? this.formatHours(window.calculateRemainingHours ? window.calculateRemainingHours(caseItem) : (caseItem.hoursRemaining || 0)) : '-'}
               </td>
               <td style="padding: 12px;">
                 <span style="
@@ -701,10 +704,14 @@
      * פורמט שעות
      */
     formatHours(hours) {
-      if (!hours) return '0 שעות';
+      if (!hours) {
+return '0 שעות';
+}
       const h = Math.floor(hours);
       const m = Math.round((hours - h) * 60);
-      if (m === 0) return `${h} שעות`;
+      if (m === 0) {
+return `${h} שעות`;
+}
       return `${h}:${m.toString().padStart(2, '0')} שעות`;
     }
 
@@ -712,7 +719,9 @@
      * ספירת שלבים שהושלמו
      */
     getCompletedStages(stages) {
-      if (!Array.isArray(stages)) return 0;
+      if (!Array.isArray(stages)) {
+return 0;
+}
       return stages.filter(s => s.completed).length;
     }
 
@@ -756,7 +765,9 @@
      * Escape HTML
      */
     escapeHtml(text) {
-      if (!text) return '';
+      if (!text) {
+return '';
+}
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
