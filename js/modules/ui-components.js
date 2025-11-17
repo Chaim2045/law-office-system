@@ -287,7 +287,8 @@ class ActionFlowManager {
    */
   static async execute(options) {
     const {
-      loadingMessage = 'מעבד...',
+      loadingMessage,
+      message, // ✅ Support both 'message' and 'loadingMessage' for NotificationMessages compatibility
       animationType = 'loading', // ✅ NEW: Animation type for Lottie
       action,
       successMessage,
@@ -300,6 +301,9 @@ class ActionFlowManager {
       closeDelay = 500,
       minLoadingDuration = 4000 // ✅ NEW: מינימום 4 שניות
     } = options;
+
+    // ✅ Support both 'message' and 'loadingMessage' for backward compatibility
+    const finalLoadingMessage = loadingMessage || message || 'מעבד...';
 
     // Validation
     if (typeof action !== 'function') {
@@ -316,9 +320,9 @@ class ActionFlowManager {
       startTime = Date.now();
 
       if (window.NotificationSystem) {
-        window.NotificationSystem.showLoading(loadingMessage, { animationType });
+        window.NotificationSystem.showLoading(finalLoadingMessage, { animationType });
       } else {
-        window.showSimpleLoading?.(loadingMessage);
+        window.showSimpleLoading?.(finalLoadingMessage);
       }
 
       // 2. Execute action
