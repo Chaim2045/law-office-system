@@ -95,6 +95,7 @@
 
   .view-tabs {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: center;
   }
 
@@ -102,6 +103,17 @@
     flex: 1;
     justify-content: center;
     font-size: var(--font-xs);
+  }
+
+  .task-filter-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .task-filter-btn {
+    min-width: 36px;
+    padding: 6px;
+    flex: 1;
   }
 
   .notification-bell {

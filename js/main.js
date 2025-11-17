@@ -805,24 +805,17 @@ return;
       this.currentTaskFilter = viewMode;
       STATE_CONFIG.setStateValue('taskFilter', viewMode); // ⚠️ Won't persist - session-only
 
-      // ✅ עדכון ה-labels (iOS toggle)
-      const activeLabel = document.getElementById('activeLabel');
-      const completedLabel = document.getElementById('completedLabel');
-      const toggleCheckbox = document.getElementById('taskViewToggle');
+      // ✅ עדכון כפתורי הסינון
+      const activeBtn = document.getElementById('activeFilterBtn');
+      const completedBtn = document.getElementById('completedFilterBtn');
 
-      if (activeLabel && completedLabel) {
+      if (activeBtn && completedBtn) {
         if (viewMode === 'active') {
-          activeLabel.classList.add('active');
-          completedLabel.classList.remove('active');
-          if (toggleCheckbox) {
-toggleCheckbox.checked = false;
-}
+          activeBtn.classList.add('active');
+          completedBtn.classList.remove('active');
         } else {
-          activeLabel.classList.remove('active');
-          completedLabel.classList.add('active');
-          if (toggleCheckbox) {
-toggleCheckbox.checked = true;
-}
+          activeBtn.classList.remove('active');
+          completedBtn.classList.add('active');
         }
       }
 
@@ -872,23 +865,20 @@ toggleCheckbox.checked = true;
    * Called during initialization to ensure UI matches localStorage state
    */
   syncToggleState() {
-    const activeLabel = document.getElementById('activeLabel');
-    const completedLabel = document.getElementById('completedLabel');
-    const toggleCheckbox = document.getElementById('taskViewToggle');
+    const activeBtn = document.getElementById('activeFilterBtn');
+    const completedBtn = document.getElementById('completedFilterBtn');
 
-    if (!activeLabel || !completedLabel || !toggleCheckbox) {
+    if (!activeBtn || !completedBtn) {
       return; // Elements not ready yet
     }
 
     // ✅ Update UI to match currentTaskFilter
     if (this.currentTaskFilter === 'completed') {
-      activeLabel.classList.remove('active');
-      completedLabel.classList.add('active');
-      toggleCheckbox.checked = true;
+      activeBtn.classList.remove('active');
+      completedBtn.classList.add('active');
     } else {
-      activeLabel.classList.add('active');
-      completedLabel.classList.remove('active');
-      toggleCheckbox.checked = false;
+      activeBtn.classList.add('active');
+      completedBtn.classList.remove('active');
     }
 
     Logger.log(`✅ Toggle state synced: ${this.currentTaskFilter}`);

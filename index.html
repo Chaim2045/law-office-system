@@ -578,31 +578,33 @@
                   <i class="fas fa-table"></i>
                   טבלה
                 </button>
-
-                <!-- Task Filter Icon Buttons -->
-                <button
-                  class="view-tab task-filter-btn active"
-                  data-filter="active"
-                  id="activeFilterBtn"
-                  onclick="manager.toggleTaskView('active')"
-                  title="משימות פעילות"
-                >
-                  <i class="fas fa-tasks"></i>
-                  <span class="task-count-badge" id="activeCountBadge">0</span>
-                </button>
-                <button
-                  class="view-tab task-filter-btn"
-                  data-filter="completed"
-                  id="completedFilterBtn"
-                  onclick="manager.toggleTaskView('completed')"
-                  title="משימות הושלמו"
-                >
-                  <i class="fas fa-check-circle"></i>
-                  <span class="task-count-badge" id="completedCountBadge">0</span>
-                </button>
               </div>
 
               <div class="search-filter-row">
+                <!-- Task Filter Icon Buttons -->
+                <div class="task-filter-buttons">
+                  <button
+                    class="task-filter-btn active"
+                    data-filter="active"
+                    id="activeFilterBtn"
+                    onclick="manager.toggleTaskView('active')"
+                    title="משימות פעילות"
+                  >
+                    <i class="fas fa-tasks"></i>
+                    <span class="task-count-badge" id="activeCountBadge">0</span>
+                  </button>
+                  <button
+                    class="task-filter-btn"
+                    data-filter="completed"
+                    id="completedFilterBtn"
+                    onclick="manager.toggleTaskView('completed')"
+                    title="משימות הושלמו"
+                  >
+                    <i class="fas fa-check-circle"></i>
+                    <span class="task-count-badge" id="completedCountBadge">0</span>
+                  </button>
+                </div>
+
                 <div class="search-container">
                   <input
                     type="text"

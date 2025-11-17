@@ -297,6 +297,7 @@ body.logged-in .main-content::before {
 /* View tabs */
 .view-tabs {
   display: flex;
+  align-items: center;
   gap: 4px;
   background: white;
   border-radius: var(--radius-md);
@@ -319,6 +320,75 @@ body.logged-in .main-content::before {
   cursor: pointer;
   transition: var(--transition-normal);
   position: relative;
+}
+
+/* Task filter buttons container - separate from view-tabs */
+.task-filter-buttons {
+  display: flex;
+  gap: 4px;
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 6px;
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Task filter buttons - icon only, minimal style */
+.task-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm);
+  min-width: 40px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  position: relative;
+}
+
+.task-filter-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+  opacity: 0;
+  transition: var(--transition-normal);
+  z-index: -1;
+}
+
+.task-filter-btn.active::before {
+  opacity: 1;
+}
+
+.task-filter-btn.active {
+  color: white;
+  font-weight: 600;
+  transform: translateY(-1px);
+}
+
+.task-filter-btn:hover:not(.active) {
+  background: var(--gray-100);
+  color: var(--primary-600);
+  transform: translateY(-1px);
+}
+
+/* Smaller badge for icon-only buttons - floating bubble style */
+.task-filter-btn .task-count-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .view-tab::before {
