@@ -205,7 +205,7 @@ body {
 }
 
 .form-label i {
-  color: var(--blue);
+  color: #64748b; /* אפור מקצועי אחיד */
   font-size: var(--text-base);
 }
 

@@ -175,30 +175,23 @@
   letter-spacing: 0.05em;
 }
 
-/* אייקונים צבעוניים ב-labels */
+/* אייקונים - צבע אחיד לפי הקשר סמנטי */
 .compact-form .form-group label i {
   font-size: 14px;
-  color: #3b82f6;
+  color: #64748b; /* אפור אחיד למקצועיות */
 }
 
+/* זמן/תקציב - כתום (סמנטי) */
 .compact-form .form-group label i.fa-clock,
 .compact-form .form-group label i.fa-hourglass,
 .compact-form .form-group label i.fa-hourglass-half {
   color: #f97316;
 }
 
-.compact-form .form-group label i.fa-map-marker-alt {
-  color: #3b82f6;
-}
-
+/* לוח שנה - ירוק (סמנטי) */
 .compact-form .form-group label i.fa-calendar,
 .compact-form .form-group label i.fa-calendar-alt {
   color: #10b981;
-}
-
-.compact-form .form-group label i.fa-align-left,
-.compact-form .form-group label i.fa-align-right {
-  color: #8b5cf6;
 }
 
 .compact-form .form-group input,
