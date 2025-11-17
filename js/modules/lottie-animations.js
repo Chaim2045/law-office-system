@@ -119,10 +119,11 @@ const LottieAnimations = {
    * Completing - סיום משימה
    * משמש: סימון משימה כהושלמה
    * צבע: ירוק #10b981
-   * משקל: ~18KB
-   * אייקון: V מעגלי עם אפקט
+   * משקל: ~8KB
+   * אייקון: V עם אנימציה חלקה
+   * עודכן: 2025-11-17 (משתמש ב-successSimple - URL הקודם קיבל 403)
    */
-  completing: 'https://assets2.lottiefiles.com/packages/lf20_uu0b3b7m.json',
+  completing: 'https://assets4.lottiefiles.com/packages/lf20_jbrw3hcz.json',
 
   // ========================================
   // Error & Warning States
@@ -277,9 +278,9 @@ const AnimationMetadata = {
     name: 'Task Complete',
     category: 'success',
     color: '#10b981',
-    size: '~18KB',
+    size: '~8KB',
     fps: 60,
-    duration: '2.5s'
+    duration: '2s'
   },
   error: {
     name: 'Error X',
