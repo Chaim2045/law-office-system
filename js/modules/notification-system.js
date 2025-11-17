@@ -322,6 +322,13 @@ return;
    */
   hideLoading() {
     if (this.loadingOverlay && this.loadingOverlay.parentElement) {
+      // ✅ Destroy Lottie animation to free memory
+      const lottieContainer = this.loadingOverlay.querySelector('#lottie-loader');
+      if (lottieContainer && window.LottieManager) {
+        // Destroy any active animations in this container
+        window.LottieManager.destroyAll();
+      }
+
       this.loadingOverlay.classList.remove('show');
 
       setTimeout(() => {

@@ -107,14 +107,28 @@ class LottieManager {
       return null;
     }
 
-    // Check cache
+    // Check cache - but destroy old animation if container changed
     const cacheKey = `${type}_${container.id || 'default'}`;
     if (this.cache.has(cacheKey)) {
-      this.stats.cacheHits++;
-      if (typeof Logger !== 'undefined') {
-        Logger.log(`📦 [LottieManager] Cache hit: ${type}`);
+      const cachedAnimation = this.cache.get(cacheKey);
+
+      // ✅ Check if cached animation's container is still in DOM
+      // If not, destroy it and create a new one
+      if (cachedAnimation && cachedAnimation.wrapper && cachedAnimation.wrapper.parentNode) {
+        this.stats.cacheHits++;
+        if (typeof Logger !== 'undefined') {
+          Logger.log(`📦 [LottieManager] Cache hit: ${type}`);
+        }
+        return cachedAnimation;
+      } else {
+        // Container was removed - clean up cache
+        if (typeof Logger !== 'undefined') {
+          Logger.log(`🔄 [LottieManager] Cache invalid (container removed), reloading: ${type}`);
+        }
+        this.cache.delete(cacheKey);
+        this.activeAnimations.delete(cacheKey);
+        // Continue to load new animation below
       }
-      return this.cache.get(cacheKey);
     }
 
     // Default options
