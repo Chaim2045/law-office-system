@@ -895,13 +895,19 @@ toggleCheckbox.checked = true;
   }
 
   /**
-   * ✅ Filter budget tasks - ensures filteredBudgetTasks is always synced with budgetTasks
-   * CRITICAL: Must always update to prevent mixing of active/completed tasks
+   * ✅ Filter budget tasks - applies currentTaskFilter to budgetTasks
+   * CRITICAL: Must always filter to prevent mixing of active/completed tasks
    */
   async filterBudgetTasks() {
-    // ✅ ALWAYS sync filteredBudgetTasks with budgetTasks
-    // This prevents completed tasks from appearing in active view and vice versa
-    this.filteredBudgetTasks = [...this.budgetTasks];
+    // ✅ Apply actual filtering based on currentTaskFilter
+    if (this.currentTaskFilter === 'completed') {
+      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status === 'הושלם');
+    } else if (this.currentTaskFilter === 'active') {
+      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status !== 'הושלם');
+    } else {
+      // 'all' - show everything
+      this.filteredBudgetTasks = [...this.budgetTasks];
+    }
     this.renderBudgetView();
   }
 

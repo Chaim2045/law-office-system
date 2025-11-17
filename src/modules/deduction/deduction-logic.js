@@ -31,7 +31,9 @@ function getActivePackage(stage) {
  * @returns {number} Total remaining hours from active packages
  */
 function calculateRemainingHours(entity) {
-  if (!entity) return 0;
+  if (!entity) {
+return 0;
+}
 
   if (!entity.packages || entity.packages.length === 0) {
     return entity.hoursRemaining || 0;
@@ -225,7 +227,8 @@ function validateTimeEntry(taskData, clientData) {
   return { valid: true };
 }
 
-module.exports = {
+// ES6 Export (for client-side use)
+export {
   getActivePackage,
   calculateRemainingHours,
   deductHoursFromPackage,
