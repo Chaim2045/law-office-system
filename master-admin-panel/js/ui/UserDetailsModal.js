@@ -984,40 +984,32 @@
 
                     <!-- Body: פרטי משימה -->
                     <div class="task-body">
-                        <!-- שם המשימה -->
-                        <div class="task-title-row">
-                            <i class="fas fa-check-square"></i>
-                            <span class="task-name">${this.escapeHtml(task.title)}</span>
-                        </div>
+                        <!-- כותרת המשימה -->
+                        <h4 class="task-title">${this.escapeHtml(task.title)}</h4>
 
-                        <!-- לקוח -->
-                        <div class="task-client">
+                        <!-- מידע על לקוח -->
+                        <div class="task-client-info">
                             <i class="fas fa-briefcase"></i>
                             <span>${this.escapeHtml(task.clientName)}</span>
                         </div>
 
                         <!-- תאריך יעד -->
-                        <div class="task-deadline">
+                        <div class="task-deadline-info ${deadlineWarning ? 'deadline-soon' : ''}">
                             <i class="fas fa-calendar-alt"></i>
-                            <span>יעד: ${deadlineText}</span>
-                            ${deadlineWarning ? `<span class="deadline-alert">${deadlineWarning}</span>` : ''}
+                            <span>${deadlineText}</span>
                         </div>
 
-                        <!-- תקציב: פשוט וקומפקטי -->
-                        <div class="task-budget-row">
-                            <span class="budget-item">
-                                <i class="fas fa-hourglass-start"></i>
-                                תקציב: ${task.estimatedHours.toFixed(1)} ש'
-                            </span>
-                            <span class="budget-item" style="color: ${progressColor};">
-                                <i class="fas fa-hourglass-half"></i>
-                                בוצע: ${task.actualHours.toFixed(1)} ש'
-                            </span>
+                        <!-- תקציב -->
+                        ${task.estimatedHours > 0 ? `
+                        <div class="task-budget-info">
+                            <span class="task-budget-label">תקציב: ${task.estimatedHours.toFixed(1)} ש'</span>
+                            <span class="task-budget-value" style="color: ${progressColor};">בוצע: ${task.actualHours.toFixed(1)} ש'</span>
                         </div>
+                        ` : ''}
 
-                        <!-- Progress bar (דק ומינימלי) -->
+                        <!-- Progress bar -->
                         <div class="task-progress-bar">
-                            <div class="progress-fill" style="width: ${Math.min(progress, 100)}%; background-color: ${progressColor};"></div>
+                            <div class="task-progress-fill" style="width: ${Math.min(progress, 100)}%;"></div>
                         </div>
                     </div>
                 </div>
