@@ -60,6 +60,7 @@ class NotificationSystem {
   constructor() {
     this.container = null;
     this.loadingOverlay = null;
+    this.currentAnimationType = null; // Track current loading animation type
     this.notifications = []; // Track active notifications
     this.init();
   }
@@ -238,6 +239,7 @@ return;
 
     // Default to 'loading' animation if not specified (backward compatibility)
     const animationType = options.animationType || 'loading';
+    this.currentAnimationType = animationType; // Store for cleanup
 
     // Remove existing loading if any
     this.hideLoading();
@@ -322,11 +324,12 @@ return;
    */
   hideLoading() {
     if (this.loadingOverlay && this.loadingOverlay.parentElement) {
-      // ✅ Destroy Lottie animation to free memory
+      // ✅ Destroy specific Lottie animation to free memory (granular cleanup)
       const lottieContainer = this.loadingOverlay.querySelector('#lottie-loader');
-      if (lottieContainer && window.LottieManager) {
-        // Destroy any active animations in this container
-        window.LottieManager.destroyAll();
+      if (lottieContainer && window.LottieManager && this.currentAnimationType) {
+        // Destroy only this specific animation (industry standard approach)
+        window.LottieManager.destroy(this.currentAnimationType, lottieContainer);
+        this.currentAnimationType = null; // Reset after cleanup
       }
 
       this.loadingOverlay.classList.remove('show');

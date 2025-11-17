@@ -299,7 +299,7 @@ class ActionFlowManager {
       closePopupOnSuccess = false,
       popupSelector = '.popup-overlay',
       closeDelay = 500,
-      minLoadingDuration = 4000 // ✅ NEW: מינימום 4 שניות
+      minLoadingDuration = 1000 // Industry standard: 1 second minimum loading duration
     } = options;
 
     // ✅ Support both 'message' and 'loadingMessage' for backward compatibility
