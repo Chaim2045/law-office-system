@@ -37,6 +37,50 @@
  * - fallback מלא לכל הפונקציות עם בדיקת קיום window.calculate*
  *
  * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - הוספת hideServiceCards option
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-18
+ * 📦 גרסה: 2.6.0 → 2.7.0
+ *
+ * ✅ שינויים:
+ * הוספתי option חדש `hideServiceCards` לפתרון בעיית כרטיסייה כפולה:
+ *
+ * 🎯 הבעיה:
+ * במצב "הוספת שירות ללקוח קיים" (case-creation-dialog), ClientCaseSelector
+ * הציג כרטיסייה של "שירות נבחר" שיצרה כפילות עם הכרטיסייה הגדולה
+ * שמציג case-creation-dialog.
+ *
+ * 💡 הפתרון:
+ * הוספתי option `hideServiceCards: true` שמסתיר את כרטיסיית "שירות נבחר":
+ *
+ * קוד:
+ *   // בשורה 163 - הוספת option
+ *   hideServiceCards: options.hideServiceCards || false
+ *
+ *   // בשורות 1269-1273 - בדיקה בפונקציה
+ *   if (this.options.hideServiceCards) {
+ *     servicesCards.innerHTML = ''; // ריקון הכרטיסייה
+ *     Logger.log('  🔇 hideServiceCards enabled - service card hidden');
+ *     return;
+ *   }
+ *
+ * שימוש:
+ *   new ClientCaseSelector('containerId', {
+ *     hideServiceCards: true,  // ✅ מסתיר כרטיסיית "שירות נבחר"
+ *     hideCaseDropdown: true   // מסתיר dropdown תיקים
+ *   });
+ *
+ * תרחיש שימוש:
+ * - case-creation-dialog (מצב "לקוח קיים") - hideServiceCards: true
+ * - task management - hideServiceCards: false (ברירת מחדל)
+ *
+ * יתרונות:
+ * ✓ אין כרטיסיות כפולות מבלבלות
+ * ✓ backward compatible - ברירת מחדל false
+ * ✓ modular - כל component בוחר את ה-UX שלו
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 (function() {

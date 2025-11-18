@@ -5,8 +5,72 @@
  * ════════════════════════════════════════════════════════════════════
  *
  * @module case-creation-dialog
- * @version 3.3.0
+ * @version 3.4.0
  * @updated 2025-01-18
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - autocomplete + liner style
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-18
+ * 📦 גרסה: 3.3.0 → 3.4.0
+ *
+ * ✅ שינויים:
+ *
+ * 1️⃣ החזרת ClientCaseSelector (autocomplete) במצב "לקוח קיים"
+ * ──────────────────────────────────────────────────────────────
+ * החלפנו בחזרה מ-dropdown פשוט ל-ClientCaseSelector עם autocomplete:
+ *
+ * HTML (שורה 252):
+ *   <div id="caseDialogClientSelector"></div>
+ *
+ * JavaScript:
+ *   - initClientSelector() (שורות 883-889)
+ *     new ClientCaseSelector('caseDialogClientSelector', {
+ *       hideServiceCards: true,  // ✅ מונע כרטיסייה כפולה
+ *       hideCaseDropdown: true
+ *     })
+ *
+ *   - setupClientSelectorListener() (שורות 894-967)
+ *     האזנה ל-EventBus: 'client:selected'
+ *
+ * למה autocomplete עדיף על dropdown?
+ *   ✓ חיפוש מהיר - הקלד 2 אותיות וקבל תוצאות
+ *   ✓ ביצועים - לא טוען את כל הלקוחות מראש
+ *   ✓ UX טוב יותר - במיוחד עם 50+ לקוחות
+ *   ✓ אחיד - אותו component בכל המערכת
+ *
+ * 2️⃣ תיקון כרטיסייה כפולה עם hideServiceCards
+ * ──────────────────────────────────────────────────────────────
+ * ClientCaseSelector הציג כרטיסייה של "שירות נבחר" + הכרטיסייה הגדולה
+ * שלנו → כפילות מבלבלת.
+ *
+ * הפתרון (שורה 886):
+ *   hideServiceCards: true  // ✅ מסתיר את "שירות נבחר"
+ *
+ * כעת רק הכרטיסייה הגדולה מוצגת (showExistingCaseInfo).
+ *
+ * 3️⃣ שינוי לסטייל liner (שורות 1082-1142)
+ * ──────────────────────────────────────────────────────────────
+ * הכרטיסייה הגדולה שונתה מסטייל "מלא" לסטייל liner מינימליסטי:
+ *
+ * לפני:
+ *   - background: linear-gradient(135deg, #f0f9ff, #e0f2fe)
+ *   - border: 2px solid #3b82f6 (מסביב)
+ *   - border-radius: 12px
+ *   - padding: 16px
+ *
+ * אחרי:
+ *   - background: #f9fafb (רקע אחיד)
+ *   - border-right: 4px solid #3b82f6 (liner בצד בלבד)
+ *   - border-radius: 6px
+ *   - padding: 12px 16px
+ *   - opacity: 0.95
+ *
+ * התוצאה:
+ *   ✓ נקי ומינימליסטי
+ *   ✓ אחיד עם שאר הכרטיסיות במערכת
+ *   ✓ פחות "צועק" מהסטייל הקודם
  *
  * ════════════════════════════════════════════════════════════════════
  * 🎯 TWO OPERATION MODES
@@ -1081,79 +1145,62 @@ return;
 
       const infoHTML = `
         <div id="existingCaseInfo" style="
-          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-          border: 2px solid #3b82f6;
-          border-radius: 12px;
-          padding: 16px;
-          margin-top: 16px;
-          margin-bottom: 16px;
-          animation: slideDown 0.3s ease-out;
+          background: #f9fafb;
+          border-right: 4px solid #3b82f6;
+          border-radius: 6px;
+          padding: 12px 16px;
+          margin-top: 12px;
+          margin-bottom: 12px;
+          opacity: 0.95;
         ">
           <!-- כותרת -->
           <div style="
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #bfdbfe;
+            justify-content: space-between;
+            margin-bottom: 10px;
           ">
-            <i class="fas fa-info-circle" style="color: #3b82f6; font-size: 18px;"></i>
-            <div>
-              <div style="font-weight: 600; color: #1e40af; font-size: 14px;">
-                תיק #${existingCase.caseNumber}
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-folder-open" style="color: #3b82f6; font-size: 14px;"></i>
+              <div>
+                <span style="font-weight: 600; color: #1f2937; font-size: 13px;">
+                  תיק #${existingCase.caseNumber}
+                </span>
+                <span style="font-size: 11px; color: #6b7280; margin-right: 8px;">
+                  ${totalServices} ${totalServices === 1 ? 'שירות' : 'שירותים'}
+                </span>
               </div>
-              <div style="font-size: 11px; color: #60a5fa; margin-top: 2px;">
-                ${totalServices} ${totalServices === 1 ? 'שירות' : 'שירותים'} • ${activeServices} פעיל${activeServices === 1 ? '' : 'ים'}
-              </div>
+            </div>
+            <div style="
+              font-size: 10px;
+              color: #6b7280;
+              background: white;
+              padding: 3px 8px;
+              border-radius: 4px;
+              font-weight: 500;
+            ">
+              <i class="fas fa-eye" style="margin-left: 4px;"></i>
+              למידע בלבד
             </div>
           </div>
 
           <!-- רשימת שירותים -->
-          <div style="margin-bottom: 12px;">
-            <div style="
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              margin-bottom: 8px;
-            ">
-              <div style="font-size: 12px; font-weight: 600; color: #1e40af;">
-                שירותים קיימים:
-              </div>
-              <div style="
-                font-size: 10px;
-                color: #6b7280;
-                background: #f3f4f6;
-                padding: 3px 8px;
-                border-radius: 4px;
-                font-weight: 500;
-              ">
-                <i class="fas fa-eye" style="margin-left: 4px;"></i>
-                למידע בלבד
-              </div>
-            </div>
+          <div style="margin-bottom: 10px;">
             ${servicesHTML}
           </div>
 
           <!-- הודעה -->
           <div style="
-            background: #fef3c7;
-            border: 1px solid #fbbf24;
-            border-radius: 6px;
-            padding: 10px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
+            background: #fffbeb;
+            border-right: 3px solid #f59e0b;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #92400e;
+            line-height: 1.5;
           ">
-            <i class="fas fa-lightbulb" style="color: #f59e0b; font-size: 16px; margin-top: 2px;"></i>
-            <div style="flex: 1;">
-              <div style="font-size: 12px; color: #92400e; font-weight: 600; margin-bottom: 4px;">
-                הוספת שירות חדש
-              </div>
-              <div style="font-size: 11px; color: #92400e;">
-                השירות החדש שתגדיר למטה יתווסף לתיק זה. השירותים המוצגים למעלה הם למידע בלבד ואינם ניתנים לעריכה.
-              </div>
-            </div>
+            <i class="fas fa-info-circle" style="margin-left: 4px; color: #f59e0b;"></i>
+            השירות החדש שתגדיר למטה יתווסף לתיק זה
           </div>
         </div>
       `;
