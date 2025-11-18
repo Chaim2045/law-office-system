@@ -1,9 +1,105 @@
 /**
+ * ════════════════════════════════════════════════════════════════════
  * Case Creation Dialog - Modern
- * דיאלוג מודרני ליצירת תיק חדש
+ * דיאלוג ליצירת תיק חדש או הוספת שירות ללקוח קיים
+ * ════════════════════════════════════════════════════════════════════
  *
  * @module case-creation-dialog
- * @version 3.0.0
+ * @version 3.2.0
+ * @updated 2025-01-18
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * 🎯 TWO OPERATION MODES
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * MODE 1: NEW CLIENT (לקוח חדש)
+ * ─────────────────────────────────
+ * Purpose: Create a brand new client + their first service
+ * Process:
+ *   1. User enters client details (name, ID, etc.)
+ *   2. User configures first service
+ *   3. Creates new document in 'clients' collection
+ *
+ * MODE 2: EXISTING CLIENT (לקוח קיים)
+ * ──────────────────────────────────────
+ * Purpose: Add an ADDITIONAL service to existing client
+ * Process:
+ *   1. User selects existing client from dropdown
+ *   2. System displays existing services (FOR INFORMATION ONLY!)
+ *   3. User configures new service to add
+ *   4. New service added to client's 'services' array
+ *
+ * ⚠️ IMPORTANT - Existing Client Mode:
+ * The services displayed are READ-ONLY information to show the user
+ * what the client already has BEFORE adding a new service.
+ * This prevents confusion and duplicate services.
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * 📦 SERVICE TYPES SUPPORTED
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * 1️⃣ HOURS PLAN (תוכנית שעות)
+ * ─────────────────────────────
+ * Type: 'hours'
+ * Parameters:
+ *   - totalHours: number (חובה)
+ * Use Case:
+ *   - Hourly retainer packages
+ *   - Pay-as-you-go legal services
+ * Example:
+ *   { type: 'hours', totalHours: 50 }
+ *
+ * 2️⃣ LEGAL PROCEDURE (הליך משפטי)
+ * ──────────────────────────────────
+ * Type: 'legal_procedure'
+ * Pricing Options:
+ *   A) Hourly (תמחור שעתי)
+ *      - pricingType: 'hourly'
+ *      - Each of 3 stages gets hour packages
+ *      - Stages: א' (filing), ב' (arguments), ג' (summary)
+ *
+ *   B) Fixed Price (מחיר קבוע)
+ *      - pricingType: 'fixed'
+ *      - One-time payment per stage
+ *      - No hour tracking
+ *
+ * Use Case:
+ *   - Court cases
+ *   - Structured legal procedures
+ * Example:
+ *   {
+ *     type: 'legal_procedure',
+ *     pricingType: 'hourly',
+ *     stages: [...]
+ *   }
+ *
+ * 3️⃣ FIXED PRICE SERVICE (שירות במחיר קבוע)
+ * ───────────────────────────────────────────
+ * Type: 'fixed'
+ * Parameters:
+ *   - price: number
+ * Use Case:
+ *   - One-time document reviews
+ *   - Fixed-fee consultations
+ * Example:
+ *   { type: 'fixed', price: 5000 }
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * 🔧 ARCHITECTURE NOTES
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * Data Model:
+ *   - Client = Case (unified model)
+ *   - Services stored in client.services[] array
+ *   - Each service can be different type
+ *
+ * Key Properties:
+ *   - this.currentMode: 'new' | 'existing'
+ *   - this.procedureType: 'hours' | 'legal_procedure' | 'fixed'
+ *   - this.pricingType: 'hourly' | 'fixed' (for legal_procedure)
+ *   - this.currentCase: existing client data (when mode='existing')
+ *
+ * ════════════════════════════════════════════════════════════════════
  */
 
 (function() {
@@ -12,7 +108,6 @@
   class CaseCreationDialog {
     constructor() {
       this.currentMode = 'new'; // 'new' או 'existing'
-      this.clientSelector = null;
       this.procedureType = 'hours';
       this.pricingType = 'hourly';
       this.currentCase = null; // ✅ תיק קיים (למצב הוספת שירות)
@@ -26,10 +121,6 @@
         // בדיקה שהמערכות מאותחלות
         if (!window.CaseNumberGenerator?.isInitialized) {
           await window.CaseNumberGenerator.initialize();
-        }
-
-        if (!window.ClientCaseSelector?.cacheInitialized) {
-          await window.ClientCaseSelector.initializeCache();
         }
 
         // הצגת loading
@@ -153,7 +244,36 @@
 
                   <!-- Existing Client Mode -->
                   <div id="existingClientMode" style="display: none;">
-                    <div id="caseDialogClientSelector"></div>
+                    <div style="margin-bottom: 16px;">
+                      <label style="
+                        display: block;
+                        margin-bottom: 8px;
+                        font-weight: 600;
+                        color: #374151;
+                        font-size: 14px;
+                      ">
+                        <i class="fas fa-user" style="margin-left: 6px; color: #3b82f6;"></i>
+                        בחר לקוח קיים
+                      </label>
+                      <select
+                        id="existingClientSelect"
+                        required
+                        style="
+                          width: 100%;
+                          padding: 12px 16px;
+                          border: 2px solid #e5e7eb;
+                          border-radius: 8px;
+                          font-size: 15px;
+                          transition: all 0.2s;
+                          background: white;
+                          cursor: pointer;
+                        "
+                        onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
+                        onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
+                      >
+                        <option value="">-- בחר לקוח --</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -712,13 +832,11 @@ return;
           caseNumberInput.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
         }
 
-        // צור selector אם לא קיים
-        if (!this.clientSelector) {
-          this.initClientSelector();
-        }
+        // ✅ טען לקוחות לדרופדאון
+        this.populateClientsDropdown();
 
-        // ✅ האזנה לאירוע בחירת לקוח
-        this.setupClientSelectorListener();
+        // ✅ האזנה לשינוי בחירה בדרופדאון
+        this.setupDropdownListener();
 
         // ✅ עדכון מצב כפתור שמור
         this.updateSubmitButton();
@@ -753,28 +871,62 @@ return;
     }
 
     /**
-     * אתחול ClientCaseSelector
+     * טעינת לקוחות פעילים לדרופדאון
      */
-    initClientSelector() {
-      this.clientSelector = new ClientCaseSelector('caseDialogClientSelector', {
-        required: false, // לא חובה כי זה רק בחירת לקוח קיים
-        hideServiceCards: true, // לא צריך שירותים כאן
-        hideCaseDropdown: true // לא צריך תיקים כאן
-      });
+    async populateClientsDropdown() {
+      const dropdown = document.getElementById('existingClientSelect');
+      if (!dropdown) {
+        Logger.log('❌ Dropdown not found');
+        return;
+      }
+
+      try {
+        // טען לקוחות פעילים מ-Firestore
+        const snapshot = await firebase.firestore()
+          .collection('clients')
+          .where('status', '==', 'active')
+          .orderBy('name', 'asc')
+          .get();
+
+        // נקה options קיימים (חוץ מה-placeholder)
+        dropdown.innerHTML = '<option value="">-- בחר לקוח --</option>';
+
+        // הוסף לקוחות
+        snapshot.forEach(doc => {
+          const client = doc.data();
+          const option = document.createElement('option');
+          option.value = doc.id;
+          option.textContent = `${client.name} (תיק #${client.caseNumber || doc.id})`;
+          dropdown.appendChild(option);
+        });
+
+        Logger.log(`✅ Loaded ${snapshot.size} clients to dropdown`);
+      } catch (error) {
+        console.error('❌ Error loading clients:', error);
+        if (window.NotificationSystem) {
+          window.NotificationSystem.error('שגיאה בטעינת לקוחות');
+        }
+      }
     }
 
     /**
-     * האזנה לבחירת לקוח מה-ClientCaseSelector
+     * האזנה לשינוי בחירה בדרופדאון
      */
-    setupClientSelectorListener() {
-      // האזנה לאירוע client:selected דרך EventBus (v2.0 naming convention)
-      window.EventBus?.on('client:selected', async (data) => {
-        Logger.log('🎯 Client selected:', data);
+    setupDropdownListener() {
+      const dropdown = document.getElementById('existingClientSelect');
+      if (!dropdown) {
+        Logger.log('❌ Dropdown not found');
+        return;
+      }
 
-        if (data.clientId) {
+      dropdown.addEventListener('change', async (e) => {
+        const clientId = e.target.value;
+        Logger.log('🎯 Client selected from dropdown:', clientId);
+
+        if (clientId) {
           try {
             // בדיקה אם ללקוח יש תיק קיים
-            const existingCase = await this.checkExistingCaseForClient(data.clientId);
+            const existingCase = await this.checkExistingCaseForClient(clientId);
 
             if (existingCase) {
               // ✅ שמירת התיק הקיים
@@ -794,7 +946,7 @@ return;
               }
 
               // הצגת כרטיס מידע על התיק והשירותים הקיימים
-              this.showExistingCaseInfo(existingCase);
+              this.displayExistingCaseInfo(existingCase);
 
               Logger.log('✅ Existing case loaded for adding service');
 
@@ -868,7 +1020,7 @@ return;
         }
       });
 
-      Logger.log('✅ Client selector listener setup');
+      Logger.log('✅ Dropdown listener setup');
     }
 
     /**
@@ -914,7 +1066,7 @@ return;
      * הצגת מידע על תיק קיים ושירותים
      * @param {Object} existingCase - התיק הקיים
      */
-    showExistingCaseInfo(existingCase) {
+    displayExistingCaseInfo(existingCase) {
       const services = existingCase.services || [];
       const totalServices = services.length;
       const activeServices = services.filter(s => s.status === 'active').length;
@@ -1071,11 +1223,8 @@ return;
           oldInfo.remove();
         }
 
-        // הוספת הכרטיס אחרי ה-selector
-        const selector = document.getElementById('caseDialogClientSelector');
-        if (selector) {
-          selector.insertAdjacentHTML('afterend', infoHTML);
-        }
+        // הוספת הכרטיס בתוך existingClientMode (אחרי הדרופדאון)
+        existingClientMode.insertAdjacentHTML('beforeend', infoHTML);
       }
 
       Logger.log('✅ Existing case info displayed');
@@ -1143,10 +1292,10 @@ return;
           name: document.getElementById('newClientName')?.value?.trim()
         };
       } else {
-        const selectedClient = this.clientSelector?.getSelectedValues();
+        // ✅ קבל מידע מה-currentCase (שנטען בבחירת הדרופדאון)
         formData.client = {
-          id: selectedClient?.clientId,
-          name: selectedClient?.clientName
+          id: this.currentCase?.id,
+          name: this.currentCase?.name
         };
       }
 
@@ -1439,11 +1588,9 @@ return;
         dialog.remove();
       }
 
-      // ניקוי selector
-      if (this.clientSelector) {
-        this.clientSelector.clear();
-        this.clientSelector = null;
-      }
+      // ניקוי מצב
+      this.currentCase = null;
+      this.currentMode = 'new';
 
       Logger.log('✅ Case creation dialog closed');
     }
