@@ -879,24 +879,27 @@
 
         /**
          * ════════════════════════════════════════════════════════════════════
-         * RENDER TASK CARD - Timesheet Style (Clean & Compact)
+         * RENDER TASK CARD - Minimalist Style (Color Only in Progress Bar)
          * ════════════════════════════════════════════════════════════════════
          *
-         * 🔧 CHANGES MADE (2025-01-17):
-         * - Adopted hours-card styling from timesheet
-         * - Cleaner, more compact layout
-         * - Reduced visual clutter (fewer colors, simpler structure)
-         * - Better readability with consistent spacing
+         * 🔧 CHANGES MADE (2025-01-17 - FINAL VERSION):
+         * - Removed ALL colors from icons and text (gray/black only)
+         * - Removed border-right accent (was unnecessary)
+         * - Added rounded status badge for quick visual identification
+         * - Restored edit and delete buttons for admin actions
+         * - Color appears ONLY in the progress bar
          *
          * 🎯 WHY THESE CHANGES:
-         * - User requested timesheet card style
-         * - Too many colors made tasks hard to read
-         * - Timesheet style is proven to be clean and professional
+         * - User feedback: "Too many colors" - distracted from content
+         * - Professional minimalist design - easier to scan
+         * - Status badge provides instant context without visual noise
+         * - Admin needs edit/delete functionality restored
          *
          * 📊 IMPACT:
-         * - More tasks visible on screen (compact)
-         * - Better visual hierarchy
-         * - Consistent with timesheet design language
+         * - Cleaner, more professional appearance
+         * - Better focus on task information
+         * - Improved usability with action buttons
+         * - Reduced cognitive load from color overuse
          * ════════════════════════════════════════════════════════════════════
          */
         renderTaskCard(task) {
@@ -922,41 +925,25 @@
             };
             const statusClass = statusMapping[task.status] || 'active';
 
-            // קביעת סטטוס ואייקון
+            // קביעת סטטוס ותג - ללא צבעי אייקון!
             const statusInfo = {
-                'active': { label: 'פעילה', color: '#3b82f6', icon: 'fa-tasks' },
-                'completed': { label: 'הושלמה', color: '#10b981', icon: 'fa-check-circle' },
-                'pending': { label: 'ממתינה', color: '#f59e0b', icon: 'fa-clock' },
-                'cancelled': { label: 'בוטלה', color: '#ef4444', icon: 'fa-times-circle' }
+                'active': { label: 'פעילה', badgeColor: '#3b82f6' },
+                'completed': { label: 'הושלמה', badgeColor: '#10b981' },
+                'pending': { label: 'ממתינה', badgeColor: '#f59e0b' },
+                'cancelled': { label: 'בוטלה', badgeColor: '#ef4444' }
             };
             const status = statusInfo[statusClass] || statusInfo['active'];
 
             // פורמט תאריך יעד (compact)
             let deadlineText = '';
-            let deadlineWarning = '';
             if (task.deadline) {
                 try {
                     const deadlineDate = new Date(task.deadline);
                     if (!isNaN(deadlineDate.getTime())) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        deadlineDate.setHours(0, 0, 0, 0);
-
-                        const diffTime = deadlineDate - today;
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
                         deadlineText = deadlineDate.toLocaleDateString('he-IL', {
                             day: 'numeric',
                             month: 'short'
                         });
-
-                        if (diffDays < 0) {
-                            deadlineWarning = `⚠️ באיחור ${Math.abs(diffDays)} ימים`;
-                        } else if (diffDays === 0) {
-                            deadlineWarning = '🔥 היום!';
-                        } else if (diffDays <= 3) {
-                            deadlineWarning = `📌 עוד ${diffDays} ימים`;
-                        }
                     }
                 } catch (e) {
                     console.warn('Invalid deadline:', task.deadline);
@@ -966,51 +953,56 @@
                 deadlineText = 'לא הוגדר';
             }
 
-            // סטטוס progress - בחירת צבע
+            // סטטוס progress - בחירת צבע (רק לבר התקדמות!)
             const progressColor = progress > 100 ? '#ef4444' : progress >= 80 ? '#f59e0b' : '#10b981';
 
             return `
                 <div class="task-card ${statusClass}-task" data-task-id="${task.id}">
-                    <!-- Header: סטטוס ו-progress -->
+                    <!-- Header: כותרת ותג סטטוס -->
                     <div class="task-header">
-                        <div class="task-type">
-                            <i class="fas ${status.icon}" style="color: ${status.color};"></i>
-                            <span class="task-type-label">${status.label}</span>
-                        </div>
-                        <div class="task-progress-compact">
-                            <span class="progress-percent" style="color: ${progressColor};">${progress}%</span>
-                        </div>
+                        <h4 class="task-title">${this.escapeHtml(task.title)}</h4>
+                        <span class="task-status-badge ${statusClass}-badge" style="background-color: ${status.badgeColor};">${status.label}</span>
                     </div>
 
                     <!-- Body: פרטי משימה -->
                     <div class="task-body">
-                        <!-- כותרת המשימה -->
-                        <h4 class="task-title">${this.escapeHtml(task.title)}</h4>
-
-                        <!-- מידע על לקוח -->
-                        <div class="task-client-info">
+                        <!-- מידע על לקוח - אייקון אפור -->
+                        <div class="task-info-row">
                             <i class="fas fa-briefcase"></i>
                             <span>${this.escapeHtml(task.clientName)}</span>
                         </div>
 
-                        <!-- תאריך יעד -->
-                        <div class="task-deadline-info ${deadlineWarning ? 'deadline-soon' : ''}">
+                        <!-- תאריך יעד - אייקון אפור -->
+                        <div class="task-info-row">
                             <i class="fas fa-calendar-alt"></i>
-                            <span>${deadlineText}</span>
+                            <span>יעד: ${deadlineText}</span>
                         </div>
 
-                        <!-- תקציב -->
+                        <!-- תקציב - אייקון אפור -->
                         ${task.estimatedHours > 0 ? `
-                        <div class="task-budget-info">
-                            <span class="task-budget-label">תקציב: ${task.estimatedHours.toFixed(1)} ש'</span>
-                            <span class="task-budget-value" style="color: ${progressColor};">בוצע: ${task.actualHours.toFixed(1)} ש'</span>
+                        <div class="task-info-row">
+                            <i class="fas fa-chart-line"></i>
+                            <span>תקציב: ${task.estimatedHours.toFixed(1)} ש' | בוצע: ${task.actualHours.toFixed(1)} ש'</span>
                         </div>
                         ` : ''}
 
-                        <!-- Progress bar -->
-                        <div class="task-progress-bar">
-                            <div class="task-progress-fill" style="width: ${Math.min(progress, 100)}%;"></div>
+                        <!-- Progress bar - הצבע היחיד בכרטיס! -->
+                        <div class="task-progress-row">
+                            <div class="task-progress-bar">
+                                <div class="task-progress-fill" style="width: ${Math.min(progress, 100)}%; background-color: ${progressColor};"></div>
+                            </div>
+                            <span class="task-progress-text">${progress}%</span>
                         </div>
+                    </div>
+
+                    <!-- Footer: כפתורי פעולה -->
+                    <div class="task-actions">
+                        <button class="btn-icon btn-edit-task" title="ערוך משימה" data-task-id="${task.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon btn-delete-task" title="מחק משימה" data-task-id="${task.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
                 </div>
             `;
