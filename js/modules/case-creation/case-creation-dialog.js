@@ -881,26 +881,40 @@ return;
       }
 
       try {
-        // טען לקוחות פעילים מ-Firestore
+        // טען לקוחות פעילים מ-Firestore (ללא מיון - מיון בצד הלקוח)
         const snapshot = await firebase.firestore()
           .collection('clients')
           .where('status', '==', 'active')
-          .orderBy('name', 'asc')
           .get();
 
         // נקה options קיימים (חוץ מה-placeholder)
         dropdown.innerHTML = '<option value="">-- בחר לקוח --</option>';
 
-        // הוסף לקוחות
+        // אסוף לקוחות למערך
+        const clients = [];
         snapshot.forEach(doc => {
           const client = doc.data();
+          clients.push({
+            id: doc.id,
+            name: client.name || client.fullName || client.clientName || 'ללא שם',
+            caseNumber: client.caseNumber || doc.id
+          });
+        });
+
+        // ✅ מיון לפי שם (תמיכה בעברית)
+        clients.sort((a, b) => {
+          return a.name.localeCompare(b.name, 'he');
+        });
+
+        // הוסף לקוחות ממוינים ל-dropdown
+        clients.forEach(client => {
           const option = document.createElement('option');
-          option.value = doc.id;
-          option.textContent = `${client.name} (תיק #${client.caseNumber || doc.id})`;
+          option.value = client.id;
+          option.textContent = `${client.name} (תיק #${client.caseNumber})`;
           dropdown.appendChild(option);
         });
 
-        Logger.log(`✅ Loaded ${snapshot.size} clients to dropdown`);
+        Logger.log(`✅ Loaded ${clients.length} clients to dropdown (sorted client-side)`);
       } catch (error) {
         console.error('❌ Error loading clients:', error);
         if (window.NotificationSystem) {
