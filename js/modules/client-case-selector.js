@@ -160,6 +160,7 @@
         showOnlyActive: options.showOnlyActive !== false, // ברירת מחדל: רק תיקים פעילים
         filterByType: options.filterByType || null, // null, 'hours', 'legal_procedure'
         onClientSelected: options.onClientSelected || null, // callback when client is selected
+        hideServiceCards: options.hideServiceCards || false, // ✅ מסתיר כרטיסיית "שירות נבחר"
         onCaseSelected: options.onCaseSelected || null, // callback when case is selected
         required: options.required !== false
       };
@@ -1263,6 +1264,13 @@ return;
       if (!servicesCards) {
 return;
 }
+
+      // ✅ אם hideServiceCards מופעל - אל תציג את הכרטיסייה
+      if (this.options.hideServiceCards) {
+        servicesCards.innerHTML = ''; // ריקון הכרטיסייה
+        Logger.log('  🔇 hideServiceCards enabled - service card hidden');
+        return;
+      }
 
       let iconClass, title, subtitle, statsHtml;
 
