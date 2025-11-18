@@ -935,18 +935,35 @@
             const status = statusInfo[statusClass] || statusInfo['active'];
 
             // פורמט תאריך יעד (compact)
+            // תמיכה ב-Firestore Timestamp, JavaScript Date, String, ו-Number
             let deadlineText = '';
             if (task.deadline) {
                 try {
-                    const deadlineDate = new Date(task.deadline);
+                    let deadlineDate;
+
+                    // בדיקה אם זה Firestore Timestamp עם מתודת toDate()
+                    if (task.deadline.toDate && typeof task.deadline.toDate === 'function') {
+                        deadlineDate = task.deadline.toDate();
+                    }
+                    // בדיקה אם זה אובייקט Timestamp עם seconds (לאחר JSON serialization)
+                    else if (task.deadline.seconds) {
+                        deadlineDate = new Date(task.deadline.seconds * 1000);
+                    }
+                    // אחרת, נסה המרה רגילה (String, Number, או Date)
+                    else {
+                        deadlineDate = new Date(task.deadline);
+                    }
+
                     if (!isNaN(deadlineDate.getTime())) {
                         deadlineText = deadlineDate.toLocaleDateString('he-IL', {
                             day: 'numeric',
                             month: 'short'
                         });
+                    } else {
+                        deadlineText = 'תאריך לא תקין';
                     }
                 } catch (e) {
-                    console.warn('Invalid deadline:', task.deadline);
+                    console.warn('Invalid deadline:', task.deadline, e);
                     deadlineText = 'תאריך לא תקין';
                 }
             } else {
