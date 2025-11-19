@@ -44,12 +44,12 @@ export async function loadTimesheetFromFirebase(employee) {
   try {
     const db = window.firebaseDB;
     if (!db) {
-      throw new Error("Firebase לא מחובר");
+      throw new Error('Firebase לא מחובר');
     }
 
     const snapshot = await db
-      .collection("timesheet_entries")
-      .where("employee", "==", employee)
+      .collection('timesheet_entries')
+      .where('employee', '==', employee)
       .get();
 
     const entries = [];
@@ -58,25 +58,30 @@ export async function loadTimesheetFromFirebase(employee) {
       const data = doc.data();
 
       // Convert Firebase Timestamps to JavaScript Date objects
+      // ✅ Use shared timestamp converter (Single Source of Truth)
+      const converted = window.DatesModule.convertTimestampFields(data, ['createdAt', 'updatedAt']);
+
       entries.push({
         id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+        ...converted
       });
     });
 
     // Sort by date (manual sorting instead of orderBy)
     entries.sort((a, b) => {
-      if (!a.date) return 1;
-      if (!b.date) return -1;
+      if (!a.date) {
+return 1;
+}
+      if (!b.date) {
+return -1;
+}
       return new Date(b.date) - new Date(a.date);
     });
 
     return entries;
   } catch (error) {
-    console.error("Firebase error:", error);
-    throw new Error("שגיאה בטעינת שעתון: " + error.message);
+    console.error('Firebase error:', error);
+    throw new Error('שגיאה בטעינת שעתון: ' + error.message);
   }
 }
 
@@ -96,7 +101,7 @@ export async function saveTimesheetToFirebase(entryData) {
 
     return result.entryId;
   } catch (error) {
-    console.error("Firebase error:", error);
+    console.error('Firebase error:', error);
     throw error;
   }
 }
@@ -108,7 +113,7 @@ export async function saveTimesheetToFirebase(entryData) {
  * @param {string} reason - Edit reason
  * @returns {Promise<Object>} Update result
  */
-export async function updateTimesheetEntryFirebase(entryId, minutes, reason = "") {
+export async function updateTimesheetEntryFirebase(entryId, minutes, reason = '') {
   try {
     // Call Firebase Function for secure validation and update
     const result = await callFunction('updateTimesheetEntry', {
@@ -123,7 +128,7 @@ export async function updateTimesheetEntryFirebase(entryId, minutes, reason = ""
 
     return result;
   } catch (error) {
-    console.error("Firebase error:", error);
+    console.error('Firebase error:', error);
     throw error;
   }
 }
@@ -154,7 +159,9 @@ export function filterTimesheetEntries(timesheetEntries, filterValue) {
   if (filterValue === 'today') {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return timesheetEntries.filter(entry => {
-      if (!entry.date) return false;
+      if (!entry.date) {
+return false;
+}
       const entryDate = new Date(entry.date);
       const entryDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
       return entryDay.getTime() === today.getTime();
@@ -163,7 +170,9 @@ export function filterTimesheetEntries(timesheetEntries, filterValue) {
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
     return timesheetEntries.filter(entry => {
-      if (!entry.date) return true;
+      if (!entry.date) {
+return true;
+}
       const entryDate = new Date(entry.date);
       return entryDate >= oneMonthAgo;
     });
@@ -194,9 +203,15 @@ export function sortTimesheetEntries(entries, sortValue) {
         // Sort by client name - Hebrew A-Z
         const nameA = (a.clientName || '').trim();
         const nameB = (b.clientName || '').trim();
-        if (!nameA && !nameB) return 0;
-        if (!nameA) return 1;
-        if (!nameB) return -1;
+        if (!nameA && !nameB) {
+return 0;
+}
+        if (!nameA) {
+return 1;
+}
+        if (!nameB) {
+return -1;
+}
         return nameA.localeCompare(nameB, 'he');
 
       case 'hours':
@@ -227,16 +242,20 @@ export function sortTimesheetTable(entries, field, direction = 'asc') {
     let valueA = a[field];
     let valueB = b[field];
 
-    if (field === "date") {
+    if (field === 'date') {
       valueA = new Date(valueA);
       valueB = new Date(valueB);
-    } else if (field === "minutes") {
+    } else if (field === 'minutes') {
       valueA = Number(valueA) || 0;
       valueB = Number(valueB) || 0;
     }
 
-    if (valueA < valueB) return direction === "asc" ? -1 : 1;
-    if (valueA > valueB) return direction === "asc" ? 1 : -1;
+    if (valueA < valueB) {
+return direction === 'asc' ? -1 : 1;
+}
+    if (valueA > valueB) {
+return direction === 'asc' ? 1 : -1;
+}
     return 0;
   });
 
@@ -258,7 +277,7 @@ export function sortTimesheetTable(entries, field, direction = 'asc') {
 export function renderTimesheetCards(entries, stats, paginationStatus, currentSort = 'recent') {
   const cardsHtml = entries
     .map((entry) => createTimesheetCard(entry))
-    .join("");
+    .join('');
 
   const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
 
@@ -335,14 +354,14 @@ export function createTimesheetCard(entry) {
 
   const safeEntry = {
     id: entry.id || entry.entryId || Date.now(),
-    clientName: entry.clientName || "",
-    action: entry.action || "",
+    clientName: entry.clientName || '',
+    action: entry.action || '',
     minutes: Number(entry.minutes) || 0,
     date: entry.date || new Date().toISOString(),
-    fileNumber: entry.fileNumber || "",
-    caseNumber: entry.caseNumber || "",
-    serviceName: entry.serviceName || "",
-    notes: entry.notes || "",
+    fileNumber: entry.fileNumber || '',
+    caseNumber: entry.caseNumber || '',
+    serviceName: entry.serviceName || '',
+    notes: entry.notes || '',
     createdAt: entry.createdAt || null,
     serviceType: entry.serviceType || null,
     parentServiceId: entry.parentServiceId || null
@@ -354,18 +373,9 @@ export function createTimesheetCard(entry) {
   const safeFileNumber = safeText(safeEntry.fileNumber);
   const safeNotes = safeText(safeEntry.notes);
 
-  // Helper functions for date formatting
-  const formatDate = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
-  const formatShort = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
-  };
+  // ✅ Use shared date formatting from DatesModule (Single Source of Truth)
+  const formatDate = window.DatesModule.formatDate;
+  const formatShort = window.DatesModule.formatShort;
 
   // 🎯 Combined info badge (case + service)
   const combinedBadge = createCombinedInfoBadge(
@@ -439,14 +449,14 @@ export function showExpandedTimesheetCard(entry) {
 
   const safeEntry = {
     id: entry.id || entry.entryId || Date.now(),
-    clientName: safeText(entry.clientName || ""),
-    action: safeText(entry.action || ""),
+    clientName: safeText(entry.clientName || ''),
+    action: safeText(entry.action || ''),
     minutes: Number(entry.minutes) || 0,
     date: entry.date || new Date().toISOString(),
-    fileNumber: safeText(entry.fileNumber || ""),
-    caseNumber: entry.caseNumber || "",
-    serviceName: entry.serviceName || "",
-    notes: safeText(entry.notes || ""),
+    fileNumber: safeText(entry.fileNumber || ''),
+    caseNumber: entry.caseNumber || '',
+    serviceName: entry.serviceName || '',
+    notes: safeText(entry.notes || ''),
     serviceType: entry.serviceType || null,
     parentServiceId: entry.parentServiceId || null
   };
@@ -547,7 +557,7 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
         <td class="timesheet-cell-date">${formatDate(entry.date)}</td>
         <td class="timesheet-cell-action">
           <div class="table-description-with-icons">
-            <span>${safeText(entry.action || "")}</span>
+            <span>${safeText(entry.action || '')}</span>
             ${combinedBadge}
           </div>
         </td>
@@ -555,10 +565,10 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
           <span class="time-badge">${Number(entry.minutes) || 0} דק'</span>
         </td>
         <td class="timesheet-cell-client">${safeText(
-          entry.clientName || ""
+          entry.clientName || ''
         )}</td>
         <td style="color: #6b7280; font-size: 13px;">${window.DatesModule.getCreationDateTableCell(entry)}</td>
-        <td>${safeText(entry.notes || "—")}</td>
+        <td>${safeText(entry.notes || '—')}</td>
         <td class="actions-column">
           <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${entryId}')" title="ערוך שעתון">
             <i class="fas fa-edit"></i>
@@ -568,7 +578,7 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
     `;
       }
     )
-    .join("");
+    .join('');
 
   const statsBar = window.StatisticsModule.createTimesheetStatsBar(stats);
 
@@ -661,12 +671,12 @@ export function createEmptyTimesheetState() {
  */
 export function createEditTimesheetDialog(entry) {
   // Prepare entry date for input field
-  let entryDateForInput = "";
+  let entryDateForInput = '';
   try {
     const dateObj = new Date(entry.date);
-    entryDateForInput = dateObj.toISOString().split("T")[0];
+    entryDateForInput = dateObj.toISOString().split('T')[0];
   } catch (error) {
-    entryDateForInput = new Date().toISOString().split("T")[0];
+    entryDateForInput = new Date().toISOString().split('T')[0];
   }
 
   return `
@@ -824,71 +834,23 @@ export function createEditTimesheetDialog(entry) {
 }
 
 /**
- * Search clients for edit dialog
+ * ✅ REFACTORED: Search clients for edit dialog (v2.0.0)
+ *
+ * Single Source of Truth: js/modules/ui/client-search.js
+ * This is now a thin wrapper around the shared ClientSearch module
+ *
  * @param {Array} clients - All clients
  * @param {string} searchTerm - Search term
  * @returns {string} HTML string for search results
  */
 export function searchClientsForEdit(clients, searchTerm) {
-  if (!searchTerm || searchTerm.length < 1) {
-    return '';
-  }
-
-  // Filter clients
-  const filteredClients = clients.filter(
-    (client) =>
-      client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.fileNumber.includes(searchTerm) ||
-      client.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
+  // ✅ Use shared client search module (Single Source of Truth)
+  return window.ClientSearch.searchClientsReturnHTML(
+    clients,
+    searchTerm,
+    'manager.selectClientForEdit',
+    { fileNumberColor: '#3b82f6' } // Blue color for timesheet
   );
-
-  if (filteredClients.length === 0) {
-    return `
-      <div style="padding: 12px; color: #6b7280; text-align: center;">
-        <i class="fas fa-search"></i> לא נמצאו לקוחות תואמים
-      </div>
-    `;
-  }
-
-  const resultsHtml = filteredClients
-    .slice(0, 8)
-    .map(
-      (client) => `
-    <div class="client-result" onclick="manager.selectClientForEdit('${
-      client.fullName
-    }', '${client.fileNumber}')"
-         style="
-           padding: 10px 12px;
-           cursor: pointer;
-           border-bottom: 1px solid #f3f4f6;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           transition: background 0.2s ease;
-         "
-         onmouseover="this.style.background='#f8fafc'"
-         onmouseout="this.style.background='white'">
-      <div>
-        <div style="font-weight: 600; color: #374151;">${safeText(
-          client.fullName
-        )}</div>
-        ${
-          client.description
-            ? `<div style="font-size: 12px; color: #6b7280;">${safeText(
-                client.description
-              )}</div>`
-            : ""
-        }
-      </div>
-      <div style="font-size: 12px; color: #3b82f6; font-weight: 500;">
-        ${client.fileNumber}
-      </div>
-    </div>
-  `
-    )
-    .join("");
-
-  return resultsHtml;
 }
 
 /* ========================================

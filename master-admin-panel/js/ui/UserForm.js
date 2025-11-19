@@ -193,7 +193,9 @@
          */
         setupFormEvents() {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             // Cancel button
             const cancelBtn = modal.querySelector('#userFormCancelBtn');
@@ -257,13 +259,19 @@
          * אכלוס טופס עם נתוני משתמש
          */
         populateForm() {
-            if (this.mode === 'create' || !this.currentUser) return;
+            if (this.mode === 'create' || !this.currentUser) {
+return;
+}
 
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             const form = modal.querySelector('#userManagementForm');
-            if (!form) return;
+            if (!form) {
+return;
+}
 
             // Populate fields
             const fields = ['displayName', 'email', 'role', 'status', 'username'];
@@ -283,11 +291,15 @@
          */
         validateField(fieldName) {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return false;
+            if (!modal) {
+return false;
+}
 
             const form = modal.querySelector('#userManagementForm');
             const input = form.querySelector(`[name="${fieldName}"]`);
-            if (!input) return false;
+            if (!input) {
+return false;
+}
 
             const value = input.value.trim();
             let error = null;
@@ -298,6 +310,8 @@
                         error = 'שם מלא הוא שדה חובה';
                     } else if (value.length < 2) {
                         error = 'שם מלא חייב להכיל לפחות 2 תווים';
+                    } else if (value.length > 100) {
+                        error = 'שם מלא ארוך מדי (מקסימום 100 תווים)';
                     }
                     break;
 
@@ -306,6 +320,8 @@
                         error = 'אימייל הוא שדה חובה';
                     } else if (!this.isValidEmail(value)) {
                         error = 'כתובת אימייל לא תקינה';
+                    } else if (value.length > 254) {
+                        error = 'כתובת אימייל ארוכה מדי (מקסימום 254 תווים)';
                     }
                     break;
 
@@ -315,6 +331,8 @@
                             error = 'סיסמה היא שדה חובה';
                         } else if (value.length < 6) {
                             error = 'סיסמה חייבת להכיל לפחות 6 תווים';
+                        } else if (value.length > 128) {
+                            error = 'סיסמה ארוכה מדי (מקסימום 128 תווים)';
                         }
                     }
                     break;
@@ -322,7 +340,7 @@
                 case 'role':
                     if (!value) {
                         error = 'תפקיד הוא שדה חובה';
-                    } else if (!['user', 'admin'].includes(value)) {
+                    } else if (!window.AdminPanelHelpers.isValidRole(value)) {
                         error = 'תפקיד לא חוקי';
                     }
                     break;
@@ -330,6 +348,8 @@
                 case 'username':
                     if (value && value.includes(' ')) {
                         error = 'שם משתמש לא יכול להכיל רווחים';
+                    } else if (value && value.length > 50) {
+                        error = 'שם משתמש ארוך מדי (מקסימום 50 תווים)';
                     }
                     break;
             }
@@ -349,7 +369,9 @@
          */
         validateForm() {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return false;
+            if (!modal) {
+return false;
+}
 
             const form = modal.querySelector('#userManagementForm');
             const inputs = form.querySelectorAll('.form-input, .form-select');
@@ -371,7 +393,9 @@
          */
         showFieldError(fieldName, errorMessage) {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             const errorElement = modal.querySelector(`[data-error="${fieldName}"]`);
             const inputElement = modal.querySelector(`[name="${fieldName}"]`);
@@ -394,7 +418,9 @@
          */
         clearFieldError(fieldName) {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             const errorElement = modal.querySelector(`[data-error="${fieldName}"]`);
             const inputElement = modal.querySelector(`[name="${fieldName}"]`);
@@ -472,7 +498,9 @@
          */
         getFormData() {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return null;
+            if (!modal) {
+return null;
+}
 
             const form = modal.querySelector('#userManagementForm');
             const formData = new FormData(form);

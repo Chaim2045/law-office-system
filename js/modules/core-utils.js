@@ -10,24 +10,24 @@
 import { calculateRemainingHours } from '../../src/modules/deduction/calculators.js';
 
 // Global state
-let currentActiveTab = "budget";
-let isScrolled = false;
+const currentActiveTab = 'budget';
+const isScrolled = false;
 
 /* === Global Listeners Registry === */
 const globalListeners = {
   documentClick: null,
   documentKeydown: null,
   windowResize: null,
-  notificationClick: null,
+  notificationClick: null
 };
 
 /* === Utility Functions === */
 
 function safeText(text) {
-  if (typeof text !== "string") {
-    return String(text || "");
+  if (typeof text !== 'string') {
+    return String(text || '');
   }
-  const div = document.createElement("div");
+  const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
@@ -65,7 +65,7 @@ window.isInWelcomeScreen = false;
 // All usages replaced with unified showNotification() system
 
 // Add CSS animations for feedback system
-const feedbackStyles = document.createElement("style");
+const feedbackStyles = document.createElement('style');
 feedbackStyles.textContent = `
   @keyframes slideInUp {
     from {
@@ -101,64 +101,30 @@ feedbackStyles.textContent = `
 document.head.appendChild(feedbackStyles);
 
 /**
- * Format date functions
- * Updated to match VanillaCalendarPicker format for consistency
+ * ✅ REFACTORED: Date formatting functions (v4.36.0)
+ *
+ * Single Source of Truth: js/modules/dates.js
+ * These are re-exported from window.DatesModule for backward compatibility
+ *
+ * Benefits:
+ * - No code duplication
+ * - Consistent Firebase Timestamp handling
+ * - Better error handling with fallbacks
+ * - One place to maintain date formatting logic
  */
-function formatDateTime(date) {
-  try {
-    const d = new Date(date);
-    if (isNaN(d.getTime())) {
-      return "תאריך לא תקין";
-    }
 
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
+// Re-export from DatesModule (loaded globally via dates.js)
+const formatDateTime = (date) => {
+  return window.DatesModule?.formatDateTime(date) || '-';
+};
 
-    return `${day}/${month}/${year} בשעה ${hours}:${minutes}`;
-  } catch (error) {
-    console.warn("formatDateTime failed", { input: date, error });
-    return "תאריך לא תקין";
-  }
-}
+const formatDate = (dateString) => {
+  return window.DatesModule?.formatDate(dateString) || '-';
+};
 
-function formatDate(dateString) {
-  try {
-    if (!dateString) return '-';
-
-    // Handle Firebase Timestamp
-    let d;
-    if (dateString.toDate && typeof dateString.toDate === 'function') {
-      d = dateString.toDate();
-    } else {
-      d = new Date(dateString);
-    }
-
-    return d.toLocaleDateString("he-IL");
-  } catch (error) {
-    console.warn("formatDate failed", { input: dateString, error });
-    return "תאריך לא תקין";
-  }
-}
-
-function formatShort(date) {
-  if (!date) return '-';
-
-  // Handle Firebase Timestamp
-  let d;
-  if (date.toDate && typeof date.toDate === 'function') {
-    d = date.toDate();
-  } else {
-    d = new Date(date);
-  }
-
-  return d.toLocaleDateString("he-IL", {
-    day: "numeric",
-    month: "short",
-  });
-}
+const formatShort = (date) => {
+  return window.DatesModule?.formatShort(date) || '-';
+};
 
 /**
  * 🎯 SINGLE SOURCE OF TRUTH - חישוב שעות נותרות מחבילות
@@ -169,9 +135,10 @@ function formatShort(date) {
  * אל תקרא ישירות מ- entity.hoursRemaining - זה נתון מיושן!
  */
 
-// Make calculateRemainingHours globally available (for non-ES6 modules)
+// Make utility functions globally available (for non-ES6 modules)
 if (typeof window !== 'undefined') {
   window.calculateRemainingHours = calculateRemainingHours;
+  window.safeText = safeText; // ✅ Make safeText globally available
 }
 
 // Exports

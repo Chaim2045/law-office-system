@@ -33,7 +33,7 @@
 
             // Cache management
             this.cache = new Map();
-            this.cacheExpiry = 5 * 60 * 1000; // 5 minutes
+            this.cacheExpiry = window.ADMIN_PANEL_CONSTANTS.CACHE.EXPIRY_MS;
             this.lastFetchTime = null;
 
             // Filters state

@@ -136,7 +136,7 @@
          */
         getPageNumbers(currentPage, totalPages) {
             const pages = [];
-            const maxVisible = 7; // Maximum page buttons to show
+            const maxVisible = window.ADMIN_PANEL_CONSTANTS.PAGINATION.MAX_VISIBLE_BUTTONS;
 
             if (totalPages <= maxVisible) {
                 // Show all pages
@@ -148,8 +148,8 @@
                 pages.push(1);
 
                 // Calculate range around current page
-                let start = Math.max(2, currentPage - 1);
-                let end = Math.min(totalPages - 1, currentPage + 1);
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
 
                 // Add ellipsis after first page if needed
                 if (start > 2) {
@@ -179,7 +179,7 @@
          */
         renderPageButton(page, currentPage) {
             if (page === '...') {
-                return `<span class="pagination-ellipsis">...</span>`;
+                return '<span class="pagination-ellipsis">...</span>';
             }
 
             const active = page === currentPage ? 'active' : '';
@@ -269,7 +269,9 @@
          * טיפול בשינוי עמוד
          */
         handlePageChange(page) {
-            if (page === this.currentData.currentPage) return;
+            if (page === this.currentData.currentPage) {
+return;
+}
 
             console.log('📄 Page changed:', page);
 

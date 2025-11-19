@@ -20,8 +20,8 @@
         constructor() {
             this.notifications = new Map(); // Track all active notifications
             this.notificationCounter = 0; // Unique ID for each notification
-            this.maxNotifications = 5; // Maximum simultaneous notifications
-            this.defaultDuration = 5000; // 5 seconds
+            this.maxNotifications = window.ADMIN_PANEL_CONSTANTS.NOTIFICATIONS.MAX_SIMULTANEOUS;
+            this.defaultDuration = window.ADMIN_PANEL_CONSTANTS.NOTIFICATIONS.DEFAULT_DURATION_MS;
             this.container = null;
 
             this.init();
@@ -186,10 +186,14 @@
          */
         animateProgress(notificationId, duration) {
             const notification = this.notifications.get(notificationId);
-            if (!notification) return;
+            if (!notification) {
+return;
+}
 
             const progressBar = notification.element.querySelector('.notification-progress-bar');
-            if (!progressBar) return;
+            if (!progressBar) {
+return;
+}
 
             // CSS animation
             progressBar.style.transition = `width ${duration}ms linear`;

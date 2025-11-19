@@ -134,11 +134,12 @@ async function loadTimesheetFromFirebase(employee) {
       const data = doc.data();
 
       // Convert Firebase Timestamps to JavaScript Date objects
+      // ✅ Use shared timestamp converter (Single Source of Truth)
+      const converted = window.DatesModule.convertTimestampFields(data, ['createdAt', 'updatedAt']);
+
       entries.push({
         id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+        ...converted
       });
     });
 

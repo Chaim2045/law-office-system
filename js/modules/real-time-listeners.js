@@ -103,15 +103,11 @@ export function startTasksListener(employee, onUpdate, onError) {
             const data = doc.data();
 
             // Convert Firebase Timestamps to JavaScript Date objects
+            // ✅ Use shared timestamp converter (Single Source of Truth)
             const taskWithFirebaseId = {
-              ...data,
+              ...window.DatesModule.convertTimestampFields(data, ['createdAt', 'updatedAt', 'completedAt', 'deadline', 'lastModifiedAt']),
               firebaseDocId: doc.id,
-              id: data.id || doc.id,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : data.createdAt),
-              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : data.updatedAt),
-              completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : (data.completedAt ? new Date(data.completedAt) : data.completedAt),
-              deadline: data.deadline?.toDate ? data.deadline.toDate() : (data.deadline ? new Date(data.deadline) : data.deadline),
-              lastModifiedAt: data.lastModifiedAt?.toDate ? data.lastModifiedAt.toDate() : (data.lastModifiedAt ? new Date(data.lastModifiedAt) : data.lastModifiedAt)
+              id: data.id || doc.id
             };
 
             tasks.push(taskWithFirebaseId);
@@ -190,11 +186,14 @@ export function startNotificationsListener(userEmail, onUpdate, onError) {
           snapshot.forEach((doc) => {
             const data = doc.data();
 
+            // ✅ Use shared timestamp converter (Single Source of Truth)
+            const converted = window.DatesModule.convertTimestampFields(data, ['createdAt', 'readAt']);
+
             const notification = {
               id: doc.id,
-              ...data,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date()),
-              readAt: data.readAt?.toDate ? data.readAt.toDate() : null
+              ...converted,
+              // Fallback to current date if createdAt is missing
+              createdAt: converted.createdAt || new Date()
             };
 
             notifications.push(notification);

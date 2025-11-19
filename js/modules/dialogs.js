@@ -28,10 +28,14 @@
  * ========================================
  */
 
-// Fallback for safeText if not available
+// ✅ REFACTORED (v5.3.0): safeText is now globally available from core-utils.js
+// Fallback kept for backward compatibility but should never trigger
 if (typeof window.safeText === 'undefined') {
+  console.warn('⚠️ safeText fallback triggered - core-utils.js may not be loaded');
   window.safeText = function(text) {
-    if (text === null || text === undefined) return '';
+    if (text === null || text === undefined) {
+return '';
+}
     return String(text)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -41,9 +45,8 @@ if (typeof window.safeText === 'undefined') {
   };
 }
 
-// ✅ REMOVED: Fallback for formatDate - now provided by CoreUtils in main.js
-// formatDate and safeText are exposed via window.CoreUtils after main.js loads
-// This file can safely use window.formatDate and window.safeText directly
+// ✅ Single Source of Truth: window.safeText and date functions from core-utils.js
+// These are exposed globally after main.js loads (which imports core-utils.js)
 
 /**
  * ========================================
@@ -65,15 +68,15 @@ if (typeof window.safeText === 'undefined') {
  * @param {string} action - הפעולה שנחסמה
  */
 function showBlockedClientDialog(clientName, action) {
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
+  const overlay = document.createElement('div');
+  overlay.className = 'popup-overlay';
 
-  const clientNameDiv = document.createElement("div");
-  clientNameDiv.className = "client-name";
+  const clientNameDiv = document.createElement('div');
+  clientNameDiv.className = 'client-name';
   clientNameDiv.textContent = clientName;
 
-  const actionBlockedDiv = document.createElement("div");
-  actionBlockedDiv.className = "action-blocked";
+  const actionBlockedDiv = document.createElement('div');
+  actionBlockedDiv.className = 'action-blocked';
   actionBlockedDiv.textContent = `לא ניתן לבצע ${action} עבור לקוח זה`;
 
   overlay.innerHTML = `
@@ -130,12 +133,12 @@ function showBlockedClientDialog(clientName, action) {
 function showAdvancedTimeDialog(taskId, manager) {
   const task = manager.budgetTasks.find((t) => t.id === taskId);
   if (!task) {
-    manager.showNotification("המשימה לא נמצאה", "error");
+    manager.showNotification('המשימה לא נמצאה', 'error');
     return;
   }
 
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
+  const overlay = document.createElement('div');
+  overlay.className = 'popup-overlay';
   overlay.innerHTML = `
     <div class="popup" style="max-width: 500px;">
       <div class="popup-header">
@@ -147,7 +150,7 @@ function showAdvancedTimeDialog(taskId, manager) {
           <div class="form-group">
             <label for="workDate">תאריך העבודה</label>
             <input type="date" id="workDate" required value="${
-              new Date().toISOString().split("T")[0]
+              new Date().toISOString().split('T')[0]
             }">
           </div>
           <div class="form-group">
@@ -214,7 +217,7 @@ function showAdvancedTimeDialog(taskId, manager) {
 function showAdjustBudgetDialog(taskId, manager) {
   const task = manager.budgetTasks.find((t) => t.id === taskId);
   if (!task) {
-    manager.showNotification("המשימה לא נמצאה", "error");
+    manager.showNotification('המשימה לא נמצאה', 'error');
     return;
   }
 
@@ -223,8 +226,8 @@ function showAdjustBudgetDialog(taskId, manager) {
   const actualMinutes = task.actualMinutes || 0;
   const overageMinutes = Math.max(0, actualMinutes - originalEstimate);
 
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
+  const overlay = document.createElement('div');
+  overlay.className = 'popup-overlay';
   overlay.innerHTML = `
     <div class="popup" style="max-width: 550px;">
       <div class="popup-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
@@ -352,9 +355,9 @@ function showAdjustBudgetDialog(taskId, manager) {
  * @param {Object} manager - מופע ה-Manager
  */
 function showTaskCompletionModal(task, manager) {
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
-  overlay.style.zIndex = "10000";
+  const overlay = document.createElement('div');
+  overlay.className = 'popup-overlay';
+  overlay.style.zIndex = '10000';
 
   // Calculate statistics
   const estimatedMinutes = task.estimatedMinutes || 0;
@@ -375,29 +378,29 @@ function showTaskCompletionModal(task, manager) {
   const wasExtended =
     task.deadlineExtensions && task.deadlineExtensions.length > 0;
 
-  let deadlineStatus = "";
-  let deadlineClass = "";
-  let deadlineIconClass = "";
-  let deadlineColor = "";
+  let deadlineStatus = '';
+  let deadlineClass = '';
+  let deadlineIconClass = '';
+  let deadlineColor = '';
 
   if (deadline) {
     const daysRemaining = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
 
     if (daysRemaining < 0) {
       deadlineStatus = `איחור של ${Math.abs(daysRemaining)} ימים`;
-      deadlineClass = "deadline-late";
-      deadlineIconClass = "fa-exclamation-triangle";
-      deadlineColor = "#ef4444";
+      deadlineClass = 'deadline-late';
+      deadlineIconClass = 'fa-exclamation-triangle';
+      deadlineColor = '#ef4444';
     } else if (daysRemaining === 0) {
-      deadlineStatus = "בדיוק בזמן!";
-      deadlineClass = "deadline-ontime";
-      deadlineIconClass = "fa-check-circle";
-      deadlineColor = "#3b82f6";
+      deadlineStatus = 'בדיוק בזמן!';
+      deadlineClass = 'deadline-ontime';
+      deadlineIconClass = 'fa-check-circle';
+      deadlineColor = '#3b82f6';
     } else {
       deadlineStatus = `${daysRemaining} ימים לפני המועד`;
-      deadlineClass = "deadline-early";
-      deadlineIconClass = "fa-flag-checkered";
-      deadlineColor = "#10b981";
+      deadlineClass = 'deadline-early';
+      deadlineIconClass = 'fa-flag-checkered';
+      deadlineColor = '#10b981';
     }
 
     if (wasExtended && originalDeadline) {
@@ -407,33 +410,33 @@ function showTaskCompletionModal(task, manager) {
       deadlineStatus += ` (הוארך ב-${extensionDays} ימים)`;
     }
   } else {
-    deadlineStatus = "ללא תאריך יעד";
-    deadlineClass = "deadline-none";
-    deadlineIconClass = "fa-calendar";
-    deadlineColor = "#9ca3af";
+    deadlineStatus = 'ללא תאריך יעד';
+    deadlineClass = 'deadline-none';
+    deadlineIconClass = 'fa-calendar';
+    deadlineColor = '#9ca3af';
   }
 
   // Time status
-  let timeStatus = "";
-  let timeClass = "";
-  let timeIconClass = "";
-  let timeColor = "";
+  let timeStatus = '';
+  let timeClass = '';
+  let timeIconClass = '';
+  let timeColor = '';
 
   if (timeDiff < 0) {
     timeStatus = `חסכת ${Math.abs(timeDiff)} דקות!`;
-    timeClass = "time-saved";
-    timeIconClass = "fa-bolt";
-    timeColor = "#10b981";
+    timeClass = 'time-saved';
+    timeIconClass = 'fa-bolt';
+    timeColor = '#10b981';
   } else if (timeDiff === 0) {
-    timeStatus = "בדיוק לפי התקציב!";
-    timeClass = "time-exact";
-    timeIconClass = "fa-check-circle";
-    timeColor = "#3b82f6";
+    timeStatus = 'בדיוק לפי התקציב!';
+    timeClass = 'time-exact';
+    timeIconClass = 'fa-check-circle';
+    timeColor = '#3b82f6';
   } else {
     timeStatus = `חרגת ב-${timeDiff} דקות`;
-    timeClass = "time-over";
-    timeIconClass = "fa-clock";
-    timeColor = "#ef4444";
+    timeClass = 'time-over';
+    timeIconClass = 'fa-clock';
+    timeColor = '#ef4444';
   }
 
   overlay.innerHTML = `
@@ -458,16 +461,16 @@ function showTaskCompletionModal(task, manager) {
         <!-- Task Info -->
         <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
           <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 18px; font-weight: 700;">
-            ${window.safeText(task.taskDescription || task.description || "")}
+            ${window.safeText(task.taskDescription || task.description || '')}
           </h3>
           <div style="color: #6b7280; font-size: 14px; display: flex; align-items: center; gap: 16px;">
             <div style="display: flex; align-items: center; gap: 6px;">
               <i class="fas fa-building" style="color: #3b82f6;"></i>
-              <span>${window.safeText(task.clientName || "")}</span>
+              <span>${window.safeText(task.clientName || '')}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
               <i class="fas fa-folder" style="color: #8b5cf6;"></i>
-              <span>${window.safeText(task.fileNumber || "")}</span>
+              <span>${window.safeText(task.fileNumber || '')}</span>
             </div>
           </div>
         </div>
@@ -502,10 +505,10 @@ function showTaskCompletionModal(task, manager) {
             </div>
             <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">תאריך יעד</div>
             <div style="font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 4px;">
-              ${deadline ? window.formatDate(deadline) : "לא הוגדר"}
+              ${deadline ? window.formatDate(deadline) : 'לא הוגדר'}
             </div>
             <div style="font-size: 12px; color: #9ca3af; margin-bottom: 12px;">
-              ${deadline ? `יצירה: ${window.formatDate(createdAt)}` : ""}
+              ${deadline ? `יצירה: ${window.formatDate(createdAt)}` : ''}
             </div>
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
               <div style="font-size: 14px; font-weight: 600; color: ${deadlineColor};">
@@ -559,10 +562,10 @@ function showTaskCompletionModal(task, manager) {
   `;
 
   // Add character counter
-  const textarea = overlay.querySelector("#completionNotes");
-  const counter = overlay.querySelector("#notesCounter");
+  const textarea = overlay.querySelector('#completionNotes');
+  const counter = overlay.querySelector('#notesCounter');
   if (textarea && counter) {
-    textarea.addEventListener("input", () => {
+    textarea.addEventListener('input', () => {
       counter.textContent = textarea.value.length;
     });
   }
@@ -581,27 +584,35 @@ function showTaskCompletionModal(task, manager) {
  * מחליף בין טופס תקציב לשעתון לפי הטאב הפעיל
  */
 function openSmartForm() {
-  const plusButton = document.getElementById("smartPlusBtn");
-  const activeTab = document.querySelector(".tab-button.active");
-  if (!activeTab) return;
+  const plusButton = document.getElementById('smartPlusBtn');
+  const activeTab = document.querySelector('.tab-button.active');
+  if (!activeTab) {
+return;
+}
 
   let currentForm;
-  if (activeTab.onclick && activeTab.onclick.toString().includes("budget")) {
-    currentForm = document.getElementById("budgetFormContainer");
+  if (activeTab.onclick && activeTab.onclick.toString().includes('budget')) {
+    currentForm = document.getElementById('budgetFormContainer');
   } else if (
     activeTab.onclick &&
-    activeTab.onclick.toString().includes("timesheet")
+    activeTab.onclick.toString().includes('timesheet')
   ) {
-    currentForm = document.getElementById("timesheetFormContainer");
+    currentForm = document.getElementById('timesheetFormContainer');
   }
 
-  if (!currentForm) return;
-  if (currentForm.classList.contains("hidden")) {
-    currentForm.classList.remove("hidden");
-    if (plusButton) plusButton.classList.add("active");
+  if (!currentForm) {
+return;
+}
+  if (currentForm.classList.contains('hidden')) {
+    currentForm.classList.remove('hidden');
+    if (plusButton) {
+plusButton.classList.add('active');
+}
   } else {
-    currentForm.classList.add("hidden");
-    if (plusButton) plusButton.classList.remove("active");
+    currentForm.classList.add('hidden');
+    if (plusButton) {
+plusButton.classList.remove('active');
+}
   }
 }
 
@@ -612,7 +623,7 @@ function openSmartForm() {
  */
 
 // Export to global scope for backward compatibility
-if (typeof window !== "undefined") {
+if (typeof window !== 'undefined') {
   window.DialogsModule = {
     // ✅ Loading functions removed - use NotificationSystem.showLoading() instead
     showBlockedClientDialog,
@@ -620,7 +631,7 @@ if (typeof window !== "undefined") {
     showAdjustBudgetDialog,  // 🆕 Phase 1
     showTaskCompletionModal,
     // ✅ Client form functions removed
-    openSmartForm,
+    openSmartForm
   };
 }
 

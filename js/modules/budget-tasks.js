@@ -90,14 +90,10 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
       const data = doc.data();
 
       // ⚡ CRITICAL: Convert Firebase Timestamps to JavaScript Date objects
+      // ✅ Use shared timestamp converter (Single Source of Truth)
       const taskWithFirebaseId = {
-        ...data,
-        firebaseDocId: doc.id, // ✅ Always save Firebase document ID
-        // Convert Timestamps and strings to Date objects for proper formatting
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : data.createdAt),
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : data.updatedAt),
-        completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : (data.completedAt ? new Date(data.completedAt) : data.completedAt),
-        deadline: data.deadline?.toDate ? data.deadline.toDate() : (data.deadline ? new Date(data.deadline) : data.deadline)
+        ...window.DatesModule.convertTimestampFields(data, ['createdAt', 'updatedAt', 'completedAt', 'deadline']),
+        firebaseDocId: doc.id // ✅ Always save Firebase document ID
       };
 
       // Only set 'id' if it doesn't exist in the data

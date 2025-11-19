@@ -12,16 +12,18 @@
  * - selectClientForEdit - בחירת לקוח לעריכה
  */
 
-import { safeText } from './core-utils.js';
-import { formatDate } from './core-utils.js';
+import { safeText , formatDate } from './core-utils.js';
+
 
 /**
  * ניקוי טופס תקציב
  * @param {Object} manager - אובייקט Manager
  */
 export function clearBudgetForm(manager) {
-  const budgetForm = document.getElementById("budgetForm");
-  if (budgetForm) budgetForm.reset();
+  const budgetForm = document.getElementById('budgetForm');
+  if (budgetForm) {
+budgetForm.reset();
+}
 }
 
 /**
@@ -29,8 +31,10 @@ export function clearBudgetForm(manager) {
  * @param {Object} manager - אובייקט Manager
  */
 export function clearTimesheetForm(manager) {
-  const timesheetForm = document.getElementById("timesheetForm");
-  if (timesheetForm) timesheetForm.reset();
+  const timesheetForm = document.getElementById('timesheetForm');
+  if (timesheetForm) {
+timesheetForm.reset();
+}
 
   // Use Flatpickr API instead of direct value assignment
   if (manager && manager.timesheetCalendar) {
@@ -48,30 +52,30 @@ export function validateBudgetTaskForm(manager) {
   const errors = [];
 
   const description = document
-    .getElementById("budgetDescription")
+    .getElementById('budgetDescription')
     ?.value?.trim();
   if (!description || description.length < 3) {
-    errors.push("תיאור המשימה חייב להכיל לפחות 3 תווים");
+    errors.push('תיאור המשימה חייב להכיל לפחות 3 תווים');
   }
 
-  const clientSelect = document.getElementById("budgetClientSelect")?.value;
+  const clientSelect = document.getElementById('budgetClientSelect')?.value;
   if (!clientSelect) {
-    errors.push("חובה לבחור לקוח");
+    errors.push('חובה לבחור לקוח');
   }
 
-  const estimatedTime = parseInt(document.getElementById("estimatedTime")?.value);
+  const estimatedTime = parseInt(document.getElementById('estimatedTime')?.value);
   if (!estimatedTime || isNaN(estimatedTime) || estimatedTime < 30) {
-    errors.push("זמן משוער חייב להיות לפחות 30 דקות (חצי שעה)");
+    errors.push('זמן משוער חייב להיות לפחות 30 דקות (חצי שעה)');
   }
 
-  const deadline = document.getElementById("budgetDeadline")?.value;
+  const deadline = document.getElementById('budgetDeadline')?.value;
   if (!deadline) {
-    errors.push("חובה להגדיר תאריך יעד");
+    errors.push('חובה להגדיר תאריך יעד');
   }
 
   return {
     isValid: errors.length === 0,
-    errors,
+    errors
   };
 }
 
@@ -83,10 +87,10 @@ export function validateBudgetTaskForm(manager) {
 export function showValidationErrors(manager, errors) {
   const errorHtml = errors
     .map((error) => `<li>${safeText(error)}</li>`)
-    .join("");
+    .join('');
   manager.showNotification(
     `❌ שגיאות בטופס:<ul style="text-align: right; margin: 10px 0;">${errorHtml}</ul>`,
-    "error"
+    'error'
   );
 }
 
@@ -103,22 +107,22 @@ export function showEditTimesheetDialog(manager, entryId) {
   );
 
   if (!entry) {
-    manager.showNotification("רשומת שעתון לא נמצאה", "error");
-    console.error("❌ רשומה לא נמצאה:", entryId);
+    manager.showNotification('רשומת שעתון לא נמצאה', 'error');
+    console.error('❌ רשומה לא נמצאה:', entryId);
     return;
   }
 
   // מכין את תאריך לפורמט input date
-  let entryDateForInput = "";
+  let entryDateForInput = '';
   try {
     const dateObj = new Date(entry.date);
-    entryDateForInput = dateObj.toISOString().split("T")[0];
+    entryDateForInput = dateObj.toISOString().split('T')[0];
   } catch (error) {
-    entryDateForInput = new Date().toISOString().split("T")[0];
+    entryDateForInput = new Date().toISOString().split('T')[0];
   }
 
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
+  const overlay = document.createElement('div');
+  overlay.className = 'popup-overlay';
 
   overlay.innerHTML = `
     <div class="popup edit-timesheet-popup" style="max-width: 600px;">
@@ -275,21 +279,21 @@ export function showEditTimesheetDialog(manager, entryId) {
 
   // הוספת עיצוב focus למקומות שנערכים
   setTimeout(() => {
-    const editInputs = overlay.querySelectorAll("input, textarea");
+    const editInputs = overlay.querySelectorAll('input, textarea');
     editInputs.forEach((input) => {
-      input.addEventListener("focus", function () {
-        this.style.borderColor = "#3b82f6";
-        this.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+      input.addEventListener('focus', function () {
+        this.style.borderColor = '#3b82f6';
+        this.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
       });
 
-      input.addEventListener("blur", function () {
-        this.style.borderColor = "#e1e5e9";
-        this.style.boxShadow = "none";
+      input.addEventListener('blur', function () {
+        this.style.borderColor = '#e1e5e9';
+        this.style.boxShadow = 'none';
       });
     });
 
     // פוקוס על שדה הזמן
-    const minutesInput = document.getElementById("editMinutes");
+    const minutesInput = document.getElementById('editMinutes');
     if (minutesInput) {
       minutesInput.select();
       minutesInput.focus();
@@ -298,79 +302,26 @@ export function showEditTimesheetDialog(manager, entryId) {
 }
 
 /**
- * חיפוש לקוחות לעריכת שעתון
+ * ✅ REFACTORED: חיפוש לקוחות לעריכת שעתון (v2.0.0)
+ *
+ * Single Source of Truth: js/modules/ui/client-search.js
+ * This is now a thin wrapper around the shared ClientSearch module
+ *
  * @param {Object} manager - אובייקט Manager
  * @param {string} searchTerm - מונח חיפוש
  */
 export function searchClientsForEdit(manager, searchTerm) {
-  const resultsContainer = document.getElementById("editClientSearchResults");
-  const hiddenInput = document.getElementById("editClientSelect");
+  const resultsContainer = document.getElementById('editClientSearchResults');
+  const hiddenInput = document.getElementById('editClientSelect');
 
-  if (!resultsContainer) return;
-
-  if (!searchTerm || searchTerm.length < 1) {
-    resultsContainer.style.display = "none";
-    return;
-  }
-
-  // סינון לקוחות
-  const filteredClients = manager.clients.filter(
-    (client) =>
-      client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.fileNumber.includes(searchTerm) ||
-      client.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
+  // ✅ Use shared client search module (Single Source of Truth)
+  window.ClientSearch.searchClientsUpdateDOM(
+    manager.clients,
+    searchTerm,
+    { resultsContainer, hiddenInput },
+    'manager.selectClientForEdit',
+    { fileNumberColor: '#9ca3af' } // Gray color for forms
   );
-
-  if (filteredClients.length === 0) {
-    resultsContainer.innerHTML = `
-      <div style="padding: 12px; color: #6b7280; text-align: center;">
-        <i class="fas fa-search"></i> לא נמצאו לקוחות תואמים
-      </div>
-    `;
-    resultsContainer.style.display = "block";
-    return;
-  }
-
-  const resultsHtml = filteredClients
-    .slice(0, 8)
-    .map(
-      (client) => `
-    <div class="client-result" onclick="manager.selectClientForEdit('${
-      client.fullName
-    }', '${client.fileNumber}')"
-         style="
-           padding: 10px 12px;
-           cursor: pointer;
-           border-bottom: 1px solid #f3f4f6;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           transition: background 0.2s ease;
-         "
-         onmouseover="this.style.background='#f8fafc'"
-         onmouseout="this.style.background='white'">
-      <div>
-        <div style="font-weight: 600; color: #374151;">${safeText(
-          client.fullName
-        )}</div>
-        ${
-          client.description
-            ? `<div style="font-size: 12px; color: #6b7280;">${safeText(
-                client.description
-              )}</div>`
-            : ""
-        }
-      </div>
-      <div style="font-size: 12px; color: #9ca3af; font-weight: 500;">${
-        client.fileNumber
-      }</div>
-    </div>
-  `
-    )
-    .join("");
-
-  resultsContainer.innerHTML = resultsHtml;
-  resultsContainer.style.display = "block";
 }
 
 /**
@@ -380,21 +331,21 @@ export function searchClientsForEdit(manager, searchTerm) {
  * @param {string} fileNumber - מספר תיק
  */
 export function selectClientForEdit(manager, clientName, fileNumber) {
-  const searchInput = document.getElementById("editClientSearch");
-  const hiddenInput = document.getElementById("editClientSelect");
-  const resultsContainer = document.getElementById("editClientSearchResults");
+  const searchInput = document.getElementById('editClientSearch');
+  const hiddenInput = document.getElementById('editClientSelect');
+  const resultsContainer = document.getElementById('editClientSearchResults');
 
   if (searchInput && hiddenInput && resultsContainer) {
     searchInput.value = clientName;
     hiddenInput.value = clientName;
-    resultsContainer.style.display = "none";
+    resultsContainer.style.display = 'none';
 
     // אנימציה קצרה להצגת הבחירה
-    searchInput.style.background = "#ecfdf5";
-    searchInput.style.borderColor = "#10b981";
+    searchInput.style.background = '#ecfdf5';
+    searchInput.style.borderColor = '#10b981';
     setTimeout(() => {
-      searchInput.style.background = "white";
-      searchInput.style.borderColor = "#e1e5e9";
+      searchInput.style.background = 'white';
+      searchInput.style.borderColor = '#e1e5e9';
     }, 500);
   }
 }
