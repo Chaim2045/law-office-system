@@ -213,7 +213,9 @@
          */
         renderStatistics(statistics) {
             const container = document.getElementById('statsContainer');
-            if (!container || !this.statsCards) return;
+            if (!container || !this.statsCards) {
+return;
+}
 
             this.statsCards.render(container, statistics);
         }
@@ -224,7 +226,9 @@
          */
         renderFilterBar() {
             const container = document.getElementById('filterContainer');
-            if (!container || !this.filterBar) return;
+            if (!container || !this.filterBar) {
+return;
+}
 
             this.filterBar.render(container);
         }
@@ -235,7 +239,9 @@
          */
         renderUsersTable() {
             const container = document.getElementById('tableContainer');
-            if (!container || !this.usersTable) return;
+            if (!container || !this.usersTable) {
+return;
+}
 
             const data = this.dataManager.getPaginatedUsers();
             this.usersTable.render(container, data.users);
@@ -247,7 +253,9 @@
          */
         renderPagination() {
             const container = document.getElementById('paginationContainer');
-            if (!container || !this.pagination) return;
+            if (!container || !this.pagination) {
+return;
+}
 
             const paginationData = this.dataManager.getPaginatedUsers().pagination;
             this.pagination.render(container, paginationData);
@@ -394,7 +402,9 @@
 
             containers.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.style.display = id === 'actionBar' ? 'flex' : 'block';
+                if (el) {
+el.style.display = id === 'actionBar' ? 'flex' : 'block';
+}
             });
         }
 
@@ -413,7 +423,9 @@
 
             containers.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.style.display = 'none';
+                if (el) {
+el.style.display = 'none';
+}
             });
         }
 
@@ -439,7 +451,7 @@
             // Check if UserForm exists
             if (!window.UserForm) {
                 console.error('❌ UserForm not loaded');
-                alert('שגיאה: טופס משתמש לא נטען');
+                window.notify.error('טופס משתמש לא נטען. אנא רענן את הדף', 'שגיאה');
                 return;
             }
 

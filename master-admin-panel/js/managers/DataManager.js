@@ -254,12 +254,16 @@
                 active: this.allUsers.filter(u => u.status === 'active').length,
                 blocked: this.allUsers.filter(u => u.status === 'blocked').length,
                 new: this.allUsers.filter(u => {
-                    if (!u.createdAt) return false;
+                    if (!u.createdAt) {
+return false;
+}
                     const createdDate = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
                     return createdDate >= thirtyDaysAgo;
                 }).length,
                 activeLastWeek: this.allUsers.filter(u => {
-                    if (!u.lastLogin) return false;
+                    if (!u.lastLogin) {
+return false;
+}
                     const lastLoginDate = u.lastLogin.toDate ? u.lastLogin.toDate() : new Date(u.lastLogin);
                     return lastLoginDate >= sevenDaysAgo;
                 }).length
@@ -445,14 +449,6 @@
         }
 
         /**
-         * Get user by email
-         * קבלת משתמש לפי אימייל
-         */
-        getUserByEmail(email) {
-            return this.allUsers.find(u => u.email === email);
-        }
-
-        /**
          * Get statistics
          * קבלת סטטיסטיקות
          */
@@ -479,7 +475,9 @@
          * בדיקה אם Cache תקף
          */
         isCacheValid() {
-            if (!this.lastFetchTime) return false;
+            if (!this.lastFetchTime) {
+return false;
+}
             const now = Date.now();
             return (now - this.lastFetchTime) < this.cacheExpiry;
         }
@@ -528,7 +526,9 @@
          * @returns {Object|null} User object or null if not found
          */
         getUserByEmail(email) {
-            if (!email) return null;
+            if (!email) {
+return null;
+}
 
             return this.allUsers.find(user => user.email === email) || null;
         }
@@ -642,7 +642,7 @@
                 const users = this.filteredUsers;
 
                 if (users.length === 0) {
-                    alert('אין משתמשים לייצוא');
+                    window.notify.warning('אין משתמשים לייצוא', 'ייצוא לקובץ');
                     return;
                 }
 
@@ -709,7 +709,7 @@
 
             } catch (error) {
                 console.error('❌ Error exporting to CSV:', error);
-                alert('שגיאה בייצוא לExcel. נסה שוב');
+                window.notify.error('שגיאה בייצוא לExcel. נסה שוב', 'שגיאה');
             }
         }
 
