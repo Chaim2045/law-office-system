@@ -381,7 +381,9 @@ this.passwordInput.value = '';
                 // Set via: run set-admin-claims.js script
                 const tokenResult = await user.getIdTokenResult();
 
-                if (tokenResult.claims.role === 'admin' || tokenResult.claims.admin === true) {
+                const isAdminRole = tokenResult.claims.role === window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN;
+                const isAdminClaim = tokenResult.claims.admin === true;
+                if (isAdminRole || isAdminClaim) {
                     console.log('✅ Admin verified (Custom Claims - SECURE):', user.email);
                     console.log('   🔐 Token-based verification (cannot be spoofed)');
                     return true;
@@ -410,7 +412,7 @@ this.passwordInput.value = '';
 
                 if (employeeDoc.exists) {
                     const employeeData = employeeDoc.data();
-                    if (employeeData.role === 'admin') {
+                    if (employeeData.role === window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN) {
                         console.warn('⚠️ Admin verified (Firestore - SLOW FALLBACK):', user.email);
                         console.warn('   🔧 Please run set-admin-claims.js for better performance');
                         return true;

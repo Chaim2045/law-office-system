@@ -251,8 +251,12 @@
 
             this.statistics = {
                 total: this.allUsers.length,
-                active: this.allUsers.filter(u => u.status === 'active').length,
-                blocked: this.allUsers.filter(u => u.status === 'blocked').length,
+                active: this.allUsers.filter(
+                    u => u.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.ACTIVE
+                ).length,
+                blocked: this.allUsers.filter(
+                    u => u.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED
+                ).length,
                 new: this.allUsers.filter(u => {
                     if (!u.createdAt) {
 return false;

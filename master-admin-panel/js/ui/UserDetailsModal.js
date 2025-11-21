@@ -409,9 +409,9 @@
                                     <i class="fas fa-edit"></i>
                                     <span>ערוך פרטים</span>
                                 </button>
-                                <button class="btn-action ${user.status === 'blocked' ? 'btn-success' : 'btn-warning'}" data-action="block">
+                                <button class="btn-action ${user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED ? 'btn-success' : 'btn-warning'}" data-action="block">
                                     <i class="fas fa-ban"></i>
-                                    <span>${user.status === 'blocked' ? 'הסר חסימה' : 'חסום משתמש'}</span>
+                                    <span>${user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED ? 'הסר חסימה' : 'חסום משתמש'}</span>
                                 </button>
                                 <button class="btn-action btn-danger" data-action="delete">
                                     <i class="fas fa-trash"></i>
@@ -476,8 +476,10 @@
 
             // חשב סטטיסטיקות מפורטות
             const totalHours = filteredHours.reduce((sum, entry) => sum + (entry.hours || 0), 0);
-            const clientHours = filteredHours.filter(e => e.clientId).reduce((sum, entry) => sum + (entry.hours || 0), 0);
-            const internalHours = filteredHours.filter(e => !e.clientId).reduce((sum, entry) => sum + (entry.hours || 0), 0);
+            const clientHours = filteredHours.filter(e => e.clientId)
+                .reduce((sum, entry) => sum + (entry.hours || 0), 0);
+            const internalHours = filteredHours.filter(e => !e.clientId)
+                .reduce((sum, entry) => sum + (entry.hours || 0), 0);
 
             // חשב אחוזים
             const clientPercentage = totalHours > 0 ? ((clientHours / totalHours) * 100).toFixed(1) : 0;
@@ -488,8 +490,10 @@
             const internalEntriesCount = filteredHours.filter(e => !e.clientId).length;
 
             // שעות חייבות vs לא חייבות
-            const billableHours = filteredHours.filter(e => e.billable).reduce((sum, entry) => sum + (entry.hours || 0), 0);
-            const nonBillableHours = filteredHours.filter(e => !e.billable).reduce((sum, entry) => sum + (entry.hours || 0), 0);
+            const billableHours = filteredHours.filter(e => e.billable)
+                .reduce((sum, entry) => sum + (entry.hours || 0), 0);
+            const nonBillableHours = filteredHours.filter(e => !e.billable)
+                .reduce((sum, entry) => sum + (entry.hours || 0), 0);
 
             // Breakdown לפי לקוחות
             const clientBreakdown = this.calculateClientBreakdown(filteredHours);
@@ -944,13 +948,11 @@
                     // בדיקה אם זה Firestore Timestamp עם מתודת toDate()
                     if (task.deadline.toDate && typeof task.deadline.toDate === 'function') {
                         deadlineDate = task.deadline.toDate();
-                    }
-                    // בדיקה אם זה אובייקט Timestamp עם seconds (לאחר JSON serialization)
-                    else if (task.deadline.seconds) {
+                    } else if (task.deadline.seconds) {
+                        // בדיקה אם זה אובייקט Timestamp עם seconds (לאחר JSON serialization)
                         deadlineDate = new Date(task.deadline.seconds * 1000);
-                    }
-                    // אחרת, נסה המרה רגילה (String, Number, או Date)
-                    else {
+                    } else {
+                        // אחרת, נסה המרה רגילה (String, Number, או Date)
                         deadlineDate = new Date(task.deadline);
                     }
 
@@ -961,6 +963,7 @@
                         });
                     } else {
                         deadlineText = 'תאריך לא תקין';
+                        console.warn('⚠️ UserDetailsModal: Invalid task deadline date');
                     }
                 } catch (e) {
                     console.warn('Invalid deadline:', task.deadline, e);
@@ -1055,14 +1058,6 @@
                 })
                 : '-';
 
-            // DEBUG - לבדיקה
-            console.log(`🔍 renderHoursCard #${entry.id}:`, {
-                clientId: entry.clientId,
-                isClientWork: !!entry.clientId,
-                taskDescription: entry.taskDescription,
-                createdTime,
-                createdBy
-            });
 
             // תאריך + שעה מלאים
             const createdAtFull = entry.createdAt

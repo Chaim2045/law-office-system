@@ -180,7 +180,9 @@
          * קבלת ראשי תיבות
          */
         getInitials(name) {
-            if (!name) return '?';
+            if (!name) {
+return '?';
+}
 
             const parts = name.split(' ');
             if (parts.length >= 2) {
@@ -235,7 +237,9 @@
          * רינדור שעות
          */
         renderHours(hours) {
-            if (!hours || hours === 0) return '-';
+            if (!hours || hours === 0) {
+return '-';
+}
             return `${hours.toFixed(1)} ש'`;
         }
 
@@ -244,7 +248,9 @@
          * רינדור תאריך
          */
         renderDate(date) {
-            if (!date) return '-';
+            if (!date) {
+return '-';
+}
 
             try {
                 const dateObj = date.toDate ? date.toDate() : new Date(date);
@@ -305,7 +311,7 @@
                         </button>
                         <button class="action-item" data-action="block" data-user-email="${user.email}">
                             <i class="fas fa-ban"></i>
-                            <span>${user.status === 'blocked' ? 'הסר חסימה' : 'חסום'}</span>
+                            <span>${user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED ? 'הסר חסימה' : 'חסום'}</span>
                         </button>
                         <button class="action-item danger" data-action="delete" data-user-email="${user.email}">
                             <i class="fas fa-trash"></i>

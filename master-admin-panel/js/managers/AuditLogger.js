@@ -221,7 +221,7 @@
                     newRole: newRole,
                     message: `שונה תפקיד משתמש ${userData.username || userEmail} מ-${oldRole} ל-${newRole}`
                 },
-                newRole === 'admin' ? 'warning' : 'info'
+                newRole === window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN ? 'warning' : 'info'
             );
         }
 

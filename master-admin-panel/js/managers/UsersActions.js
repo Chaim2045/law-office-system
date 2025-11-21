@@ -122,7 +122,7 @@
                     throw new Error('משתמש לא נמצא');
                 }
 
-                const isBlocked = user.status === 'blocked';
+                const isBlocked = user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED;
                 const action = isBlocked ? 'unblock' : 'block';
                 const actionText = isBlocked ? 'הסרת חסימה' : 'חסימה';
 
