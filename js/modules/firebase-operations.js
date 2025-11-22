@@ -4,6 +4,25 @@
  *
  * Created: 2025
  * Part of Law Office Management System
+ *
+ * @module FirebaseOperationsModule
+ * @version 1.1.0
+ * @updated 2025-01-19
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * CHANGELOG
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * v1.1.0 - 19/01/2025
+ * -------------------
+ * 🔄 Refactoring: Standardized Firebase Timestamp conversion
+ * ✅ REFACTORED: Uses DatesModule.convertTimestampFields() (lines 136-143)
+ * 📊 Impact: Eliminated 3 lines of manual timestamp handling
+ *
+ * Changes:
+ * - Replaced manual .toDate() calls with shared utility
+ * - Consistent timestamp handling across all Firebase operations
+ * - Better error handling with fallbacks
  */
 
 /* ===========================

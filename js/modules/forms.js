@@ -10,6 +10,25 @@
  * - showEditTimesheetDialog - דיאלוג עריכת שעתון
  * - searchClientsForEdit - חיפוש לקוחות לעריכה
  * - selectClientForEdit - בחירת לקוח לעריכה
+ *
+ * @module FormsModule
+ * @version 1.1.0
+ * @updated 2025-01-19
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * CHANGELOG | יומן שינויים
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * v1.1.0 - 19/01/2025
+ * -------------------
+ * 🔄 רפקטורינג: ביטול כפילות קוד
+ * ✅ REFACTORED: חיפוש לקוחות משתמש ב-ClientSearch.searchClientsUpdateDOM()
+ * 📊 השפעה: ביטול 62 שורות קוד כפול (lines 300-321)
+ *
+ * שינויים:
+ * - פונקציית searchClientsForEdit צומצמה מ-75 שורות ל-13 שורות
+ * - לוגיקת סינון ו-HTML generation מבוצעות ע"י מודול משותף
+ * - תחזוקתיות משופרת - מקום אחד לעדכון לוגיקת חיפוש
  */
 
 import { safeText , formatDate } from './core-utils.js';

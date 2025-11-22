@@ -4,6 +4,28 @@
  *
  * Created: 2025
  * Part of Law Office Management System
+ *
+ * @module CoreUtilsModule
+ * @version 1.1.0
+ * @updated 2025-01-19
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * CHANGELOG
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * v1.1.0 - 19/01/2025
+ * -------------------
+ * 🔄 Refactoring: Eliminated code duplication across modules
+ * ✅ NEW: Exported safeText to global window object (line 141)
+ * ✅ REFACTORED: Date functions now re-export from DatesModule (lines 117-127)
+ * 📊 Impact: Reduced ~80 lines of duplicate code across 8 files
+ * 🎯 Single Source of Truth for HTML escaping and date formatting
+ *
+ * Benefits:
+ * - Consistent XSS protection across entire application
+ * - Centralized date formatting logic
+ * - Easier maintenance (one place to fix bugs)
+ * - Backward compatibility maintained
  */
 
 // Import deduction system calculator (Single Source of Truth)

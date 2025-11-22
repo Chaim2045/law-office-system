@@ -15,7 +15,32 @@
  * - Single Source of Truth for client search logic
  * - Consistent filtering and display across the system
  * - Easy to maintain and update
- * - Reduced code duplication (~140 lines saved)
+ * - Reduced code duplication (~135 lines saved)
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * CHANGELOG | יומן שינויים
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * v1.0.0 - 19/01/2025 ✨ INITIAL RELEASE
+ * ----------------------------------------
+ * 🎉 NEW MODULE: מודול חדש לחיפוש לקוחות משותף
+ * ✅ CREATED: 4 פונקציות עיקריות (166 שורות)
+ *   - filterClients() - סינון לקוחות לפי מונח חיפוש
+ *   - generateClientResultsHTML() - יצירת HTML לתוצאות
+ *   - searchClientsReturnHTML() - חיפוש והחזרת HTML
+ *   - searchClientsUpdateDOM() - חיפוש ועדכון DOM ישיר
+ *
+ * 📊 השפעה:
+ * - ביטול 67 שורות מ-timesheet.js
+ * - ביטול 75 שורות מ-forms.js
+ * - סה"כ: ~135 שורות קוד כפול שנמחקו
+ *
+ * תכונות:
+ * - סינון לפי fullName, fileNumber, clientName
+ * - HTML עם hover effects מובנים
+ * - תמיכה ב-2 דפוסי שימוש (return HTML / update DOM)
+ * - אופציות להתאמה אישית (maxResults, fileNumberColor)
+ * - הגנת XSS מובנית עם window.safeText
  */
 
 (function() {
