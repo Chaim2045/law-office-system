@@ -1296,12 +1296,10 @@
             if (log.details) {
                 try {
                     const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
-                    const detailsArray = Object.entries(details)
-                        .filter(([key, val]) => val !== null && val !== undefined)
-                        .map(([key, val]) => `${key}: ${val}`);
+                    const formattedDetails = this.formatActivityDetails(details);
 
-                    if (detailsArray.length > 0) {
-                        detailsText = `<div class="activity-details">${detailsArray.slice(0, 3).join(' • ')}</div>`;
+                    if (formattedDetails.length > 0) {
+                        detailsText = `<div class="activity-details">${formattedDetails.join(' • ')}</div>`;
                     }
                 } catch (e) {
                     // Ignore JSON parse errors
@@ -1322,18 +1320,130 @@
             `;
         }
 
+        /**
+         * Format activity details to Hebrew
+         * המרת פרטי פעילות לעברית קריאה
+         */
+        formatActivityDetails(details) {
+            const detailsArray = [];
+
+            // תרגום שמות שדות לעברית
+            const fieldLabels = {
+                'clientId': 'תיק',
+                'caseNumber': 'תיק',
+                'clientName': 'שם לקוח',
+                'taskId': 'משימה',
+                'targetEmail': 'משתמש',
+                'actualMinutes': 'זמן בפועל',
+                'gapPercent': 'פער',
+                'oldDeadline': 'מועד קודם',
+                'newDeadline': 'מועד חדש',
+                'procedureType': 'סוג הליך',
+                'serviceId': 'שירות',
+                'oldData': 'נתונים קודמים',
+                'newData': 'נתונים חדשים',
+                'hours': 'שעות',
+                'billable': 'חייב',
+                'description': 'תיאור'
+            };
+
+            // תרגום ערכים מיוחדים
+            const valueTransformers = {
+                'legal_procedure': 'הליך משפטי',
+                'true': 'כן',
+                'false': 'לא'
+            };
+
+            Object.entries(details).forEach(([key, value]) => {
+                // דלג על null/undefined
+                if (value === null || value === undefined) {
+                    return;
+                }
+
+                // טפל ב-[object Object]
+                if (typeof value === 'object') {
+                    // אם זה Firestore Timestamp
+                    if (value.toDate && typeof value.toDate === 'function') {
+                        value = this.formatDate(value);
+                    } else if (value.seconds) {
+                        // Timestamp serialized
+                        value = this.formatDate(new Date(value.seconds * 1000));
+                    } else {
+                        // אובייקט אחר - דלג עליו
+                        return;
+                    }
+                }
+
+                // המר שם שדה לעברית
+                const label = fieldLabels[key] || key;
+
+                // המר ערך אם צריך
+                let displayValue = value;
+
+                // פורמט מיוחד לזמן בדקות
+                if (key === 'actualMinutes') {
+                    const hours = Math.floor(value / 60);
+                    const minutes = value % 60;
+                    displayValue = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')} שעות` : `${minutes} דקות`;
+                } else if (key === 'gapPercent') {
+                    displayValue = `${value}%`;
+                } else if (valueTransformers[value]) {
+                    displayValue = valueTransformers[value];
+                }
+
+                detailsArray.push(`${label}: ${displayValue}`);
+            });
+
+            // הגבל ל-4 פרטים
+            return detailsArray.slice(0, 4);
+        }
+
         formatActivityAction(action) {
             const actionMap = {
+                // Timesheet
                 'CREATE_TIMESHEET_ENTRY': 'רישום שעות',
+                'UPDATE_TIMESHEET_ENTRY': 'עדכון רישום שעות',
+                'DELETE_TIMESHEET_ENTRY': 'מחיקת רישום שעות',
+
+                // Tasks
                 'CREATE_TASK': 'יצירת משימה',
                 'UPDATE_TASK': 'עדכון משימה',
                 'COMPLETE_TASK': 'השלמת משימה',
+                'DELETE_TASK': 'מחיקת משימה',
+                'EXTEND_TASK_DEADLINE': 'הארכת מועד משימה',
+                'TASK_UPDATED_BY_ADMIN': 'עדכון משימה על ידי מנהל',
+
+                // Clients
                 'CREATE_CLIENT': 'יצירת לקוח',
                 'UPDATE_CLIENT': 'עדכון לקוח',
                 'DELETE_CLIENT': 'מחיקת לקוח',
+                'ADD_SERVICE_TO_CLIENT': 'הוספת שירות ללקוח',
+                'REMOVE_SERVICE_FROM_CLIENT': 'הסרת שירות מלקוח',
+
+                // User Management
                 'LOGIN': 'התחברות',
                 'LOGOUT': 'התנתקות',
-                'VIEW_USER_DETAILS': 'צפייה בפרטי משתמש'
+                'VIEW_USER_DETAILS': 'צפייה בפרטי משתמש',
+                'UPDATE_USER': 'עדכון משתמש',
+                'CREATE_USER': 'יצירת משתמש',
+                'DELETE_USER': 'מחיקת משתמש',
+                'BLOCK_USER': 'חסימת משתמש',
+                'UNBLOCK_USER': 'הסרת חסימה',
+
+                // Cases
+                'CREATE_CASE': 'יצירת תיק',
+                'UPDATE_CASE': 'עדכון תיק',
+                'DELETE_CASE': 'מחיקת תיק',
+                'CLOSE_CASE': 'סגירת תיק',
+
+                // Documents
+                'UPLOAD_DOCUMENT': 'העלאת מסמך',
+                'DELETE_DOCUMENT': 'מחיקת מסמך',
+                'DOWNLOAD_DOCUMENT': 'הורדת מסמך',
+
+                // System
+                'SYSTEM_ERROR': 'שגיאת מערכת',
+                'PERMISSION_DENIED': 'הרשאה נדחתה'
             };
 
             return actionMap[action] || action || 'פעולה';
@@ -1758,16 +1868,51 @@ return '-';
 
         getActivityIcon(action) {
             const iconMap = {
+                // Timesheet
                 'CREATE_TIMESHEET_ENTRY': 'fas fa-clock',
+                'UPDATE_TIMESHEET_ENTRY': 'fas fa-clock',
+                'DELETE_TIMESHEET_ENTRY': 'fas fa-clock',
+
+                // Tasks
                 'CREATE_TASK': 'fas fa-plus-circle',
                 'UPDATE_TASK': 'fas fa-edit',
                 'COMPLETE_TASK': 'fas fa-check-circle',
+                'DELETE_TASK': 'fas fa-trash',
+                'EXTEND_TASK_DEADLINE': 'fas fa-calendar-plus',
+                'TASK_UPDATED_BY_ADMIN': 'fas fa-user-shield',
+
+                // Clients
                 'CREATE_CLIENT': 'fas fa-user-plus',
                 'UPDATE_CLIENT': 'fas fa-user-edit',
                 'DELETE_CLIENT': 'fas fa-user-times',
+                'ADD_SERVICE_TO_CLIENT': 'fas fa-plus-square',
+                'REMOVE_SERVICE_FROM_CLIENT': 'fas fa-minus-square',
+
+                // User Management
                 'LOGIN': 'fas fa-sign-in-alt',
                 'LOGOUT': 'fas fa-sign-out-alt',
                 'VIEW_USER_DETAILS': 'fas fa-eye',
+                'UPDATE_USER': 'fas fa-user-cog',
+                'CREATE_USER': 'fas fa-user-plus',
+                'DELETE_USER': 'fas fa-user-slash',
+                'BLOCK_USER': 'fas fa-ban',
+                'UNBLOCK_USER': 'fas fa-unlock',
+
+                // Cases
+                'CREATE_CASE': 'fas fa-briefcase',
+                'UPDATE_CASE': 'fas fa-briefcase',
+                'DELETE_CASE': 'fas fa-briefcase',
+                'CLOSE_CASE': 'fas fa-check-square',
+
+                // Documents
+                'UPLOAD_DOCUMENT': 'fas fa-file-upload',
+                'DELETE_DOCUMENT': 'fas fa-file-excel',
+                'DOWNLOAD_DOCUMENT': 'fas fa-file-download',
+
+                // System
+                'SYSTEM_ERROR': 'fas fa-exclamation-triangle',
+                'PERMISSION_DENIED': 'fas fa-lock',
+
                 // Legacy support
                 'login': 'fas fa-sign-in-alt',
                 'logout': 'fas fa-sign-out-alt',
