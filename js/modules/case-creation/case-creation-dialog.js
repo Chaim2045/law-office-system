@@ -5,72 +5,114 @@
  * ════════════════════════════════════════════════════════════════════
  *
  * @module case-creation-dialog
- * @version 3.4.0
- * @updated 2025-01-18
+ * @version 5.1.0
+ * @updated 2025-01-19
  *
  * ════════════════════════════════════════════════════════════════════
- * 📝 CHANGELOG - autocomplete + liner style
+ * 📝 CHANGELOG
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-19
+ * 📦 גרסה: 5.0.0 → 5.1.0
+ *
+ * ✅ שימוש ב-Shared Service Card Renderer
+ * ──────────────────────────────────────────────────────────────
+ * - החלפת קוד כפול ב-window.renderServiceCard()
+ * - עיצוב אחיד עם ClientCaseSelector
+ * - תצוגת שירותים בגריד רספונסיבי
+ * - מניעת code duplication
+ *
+ * 🗓️ תאריך: 2025-01-18
+ * 📦 גרסה: 4.0.0 → 5.0.0
+ *
+ * ✅ שינויים מרכזיים:
+ *
+ * 1️⃣ מבנה Stepper/Wizard חדש
+ * ──────────────────────────────────────────────────────────────
+ * - ממשק רב-שלבי (Multi-step wizard)
+ * - זרימת "לקוח חדש": 3 שלבים
+ *   • שלב 1: פרטי לקוח
+ *   • שלב 2: פרטי תיק
+ *   • שלב 3: הגדרת שירות
+ * - זרימת "לקוח קיים": 2 שלבים
+ *   • שלב 1: בחירת לקוח
+ *   • שלב 2: הגדרת שירות
+ *
+ * 2️⃣ מחוון התקדמות
+ * ──────────────────────────────────────────────────────────────
+ * - נקודות עם מספרים
+ * - שלב נוכחי מודגש
+ * - שלבים שהושלמו עם V
+ *
+ * 3️⃣ ניווט חכם
+ * ──────────────────────────────────────────────────────────────
+ * - כפתורי הבא/חזור
+ * - ולידציה לפני מעבר לשלב הבא
+ * - כפתור "שמור" רק בשלב אחרון
+ *
+ * 4️⃣ ביטול גלילה
+ * ──────────────────────────────────────────────────────────────
+ * - רק שלב אחד מוצג בכל רגע
+ * - UI נקי ומאורגן
+ *
+ * יתרונות:
+ *   ✓ פחות גלילה
+ *   ✓ זרימה ברורה יותר
+ *   ✓ מיקוד טוב יותר על כל שלב
+ *   ✓ חוויית משתמש משופרת
+ *
+ * ════════════════════════════════════════════════════════════════════
+ * 📝 PREVIOUS CHANGELOG - Complete UI Redesign (Minimalist & Clean)
  * ════════════════════════════════════════════════════════════════════
  *
  * 🗓️ תאריך: 2025-01-18
- * 📦 גרסה: 3.3.0 → 3.4.0
+ * 📦 גרסה: 3.5.0 → 4.0.0
  *
- * ✅ שינויים:
+ * ✅ שינויים מרכזיים:
  *
- * 1️⃣ החזרת ClientCaseSelector (autocomplete) במצב "לקוח קיים"
+ * 1️⃣ כותרת דינמית לפי מצב
  * ──────────────────────────────────────────────────────────────
- * החלפנו בחזרה מ-dropdown פשוט ל-ClientCaseSelector עם autocomplete:
+ * - מצב "לקוח חדש": "יצירת תיק חדש"
+ * - מצב "לקוח קיים": "הוספת שירות לתיק קיים"
+ * - הסתרת סקשן "פרטי התיק" במצב "לקוח קיים"
  *
- * HTML (שורה 252):
- *   <div id="caseDialogClientSelector"></div>
- *
- * JavaScript:
- *   - initClientSelector() (שורות 883-889)
- *     new ClientCaseSelector('caseDialogClientSelector', {
- *       hideServiceCards: true,  // ✅ מונע כרטיסייה כפולה
- *       hideCaseDropdown: true
- *     })
- *
- *   - setupClientSelectorListener() (שורות 894-967)
- *     האזנה ל-EventBus: 'client:selected'
- *
- * למה autocomplete עדיף על dropdown?
- *   ✓ חיפוש מהיר - הקלד 2 אותיות וקבל תוצאות
- *   ✓ ביצועים - לא טוען את כל הלקוחות מראש
- *   ✓ UX טוב יותר - במיוחד עם 50+ לקוחות
- *   ✓ אחיד - אותו component בכל המערכת
- *
- * 2️⃣ תיקון כרטיסייה כפולה עם hideServiceCards
+ * 2️⃣ טאבים מודרניים - Underline Style
  * ──────────────────────────────────────────────────────────────
- * ClientCaseSelector הציג כרטיסייה של "שירות נבחר" + הכרטיסייה הגדולה
- * שלנו → כפילות מבלבלת.
- *
- * הפתרון (שורה 886):
- *   hideServiceCards: true  // ✅ מסתיר את "שירות נבחר"
- *
- * כעת רק הכרטיסייה הגדולה מוצגת (showExistingCaseInfo).
- *
- * 3️⃣ שינוי לסטייל liner (שורות 1082-1142)
- * ──────────────────────────────────────────────────────────────
- * הכרטיסייה הגדולה שונתה מסטייל "מלא" לסטייל liner מינימליסטי:
- *
  * לפני:
- *   - background: linear-gradient(135deg, #f0f9ff, #e0f2fe)
- *   - border: 2px solid #3b82f6 (מסביב)
- *   - border-radius: 12px
- *   - padding: 16px
+ *   - רקע אפור #f3f4f6 עם padding
+ *   - טאב פעיל: רקע לבן + shadow
+ *   - אייקונים מיותרים
  *
  * אחרי:
- *   - background: #f9fafb (רקע אחיד)
- *   - border-right: 4px solid #3b82f6 (liner בצד בלבד)
- *   - border-radius: 6px
- *   - padding: 12px 16px
- *   - opacity: 0.95
+ *   - underline פשוט בלבד
+ *   - טאב פעיל: border-bottom כחול
+ *   - ללא רקעים וצללים
  *
- * התוצאה:
- *   ✓ נקי ומינימליסטי
- *   ✓ אחיד עם שאר הכרטיסיות במערכת
- *   ✓ פחות "צועק" מהסטייל הקודם
+ * 3️⃣ צבע אחיד ומינימליסטי
+ * ──────────────────────────────────────────────────────────────
+ * - צבע יחיד: כחול #3b82f6
+ * - הסרת כל האייקונים הצבעוניים מה-labels
+ * - focus effects אחיד לכל השדות
+ *
+ * 4️⃣ Borders ו-Spacing עדינים
+ * ──────────────────────────────────────────────────────────────
+ * - border: 1px (במקום 2px)
+ * - padding: 10px 12px (במקום 12px 16px)
+ * - border-radius: 6px (במקום 8px)
+ * - dividers: קו פשוט (ללא גרדיאנט)
+ *
+ * 5️⃣ Typography נקי
+ * ──────────────────────────────────────────────────────────────
+ * - כותרות: 16px font-weight 600 (במקום 18px)
+ * - labels: font-weight 500 (במקום 600)
+ * - font-size: 14px (במקום 15px)
+ *
+ * יתרונות:
+ *   ✓ זרימה ברורה יותר למשתמש
+ *   ✓ עיצוב מודרני ונקי
+ *   ✓ ללא "רעש ויזואלי"
+ *   ✓ קריאות מעולה
+ *   ✓ נגישות טובה יותר
  *
  * ════════════════════════════════════════════════════════════════════
  * 🎯 TWO OPERATION MODES
@@ -176,6 +218,10 @@
       this.procedureType = 'hours';
       this.pricingType = 'hourly';
       this.currentCase = null; // ✅ תיק קיים (למצב הוספת שירות)
+
+      // ✅ Stepper properties
+      this.currentStep = 1;
+      this.totalSteps = 3; // 3 for new client, 2 for existing client
     }
 
     /**
@@ -216,7 +262,7 @@
     }
 
     /**
-     * בניית ה-HTML של הדיאלוג
+     * בניית ה-HTML של הדיאלוג - Stepper Version
      */
     renderDialog() {
       const dialogHTML = `
@@ -226,7 +272,7 @@
             <div class="case-dialog-header">
               <div class="case-dialog-header-content">
                 <i class="fas fa-folder-plus"></i>
-                <h2>תיק חדש</h2>
+                <h2 id="dialogTitle">יצירת תיק חדש</h2>
               </div>
               <button id="modernCaseDialog_close" class="case-dialog-close">
                 <i class="fas fa-times"></i>
@@ -241,97 +287,97 @@
                 <div id="formErrors" style="display: none;"></div>
                 <div id="formWarnings" style="display: none;"></div>
 
-                <!-- Step 1: בחירת מצב לקוח -->
-                <div class="form-section" style="margin-bottom: 32px;">
-                  <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1f2937;">
-                    <i class="fas fa-user" style="color: #3b82f6; margin-left: 8px;"></i>
-                    לקוח
-                  </h3>
-
-                  <!-- Tabs -->
+                <!-- Mode Selection (Tabs) -->
+                <div style="margin-bottom: 24px;">
                   <div style="
                     display: flex;
                     gap: 8px;
-                    background: #f3f4f6;
                     padding: 4px;
+                    background: #f3f4f6;
                     border-radius: 8px;
-                    margin-bottom: 20px;
                   ">
                     <button type="button" id="newClientModeBtn" class="mode-tab active" style="
                       flex: 1;
-                      padding: 10px 16px;
+                      padding: 10px 20px;
                       background: white;
-                      border: none;
+                      border: 1px solid #3b82f6;
                       border-radius: 6px;
                       cursor: pointer;
                       font-weight: 600;
+                      font-size: 14px;
                       color: #3b82f6;
-                      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                       transition: all 0.2s;
+                      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
                     ">
-                      <i class="fas fa-user-plus"></i> לקוח חדש
+                      לקוח חדש
                     </button>
                     <button type="button" id="existingClientModeBtn" class="mode-tab" style="
                       flex: 1;
-                      padding: 10px 16px;
+                      padding: 10px 20px;
                       background: transparent;
-                      border: none;
+                      border: 1px solid transparent;
                       border-radius: 6px;
                       cursor: pointer;
                       font-weight: 500;
+                      font-size: 14px;
                       color: #6b7280;
                       transition: all 0.2s;
                     ">
-                      <i class="fas fa-users"></i> לקוח קיים
+                      לקוח קיים
                     </button>
-                  </div>
-
-                  <!-- New Client Mode -->
-                  <div id="newClientMode">
-                    <div style="margin-bottom: 16px;">
-                      <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
-                        <i class="fas fa-id-card" style="color: #3b82f6; margin-left: 6px;"></i>
-                        שם הלקוח <span style="color: #ef4444;">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="newClientName"
-                        placeholder="שם מלא"
-                        style="
-                          width: 100%;
-                          padding: 12px 16px;
-                          border: 2px solid #e5e7eb;
-                          border-radius: 8px;
-                          font-size: 15px;
-                          transition: all 0.2s;
-                        "
-                        onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                        onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
-                      >
-                    </div>
-                  </div>
-
-                  <!-- Existing Client Mode -->
-                  <div id="existingClientMode" style="display: none;">
-                    <div id="caseDialogClientSelector"></div>
                   </div>
                 </div>
 
-                <!-- Divider -->
-                <div style="height: 1px; background: linear-gradient(to left, transparent, #e5e7eb, transparent); margin: 32px 0;"></div>
+                <!-- Stepper Indicator -->
+                <div id="stepperIndicator" style="margin-bottom: 32px;">
+                  ${this.renderStepIndicator()}
+                </div>
 
-                <!-- Step 2: פרטי תיק -->
-                <div class="form-section" style="margin-bottom: 32px;">
-                  <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1f2937;">
-                    <i class="fas fa-folder" style="color: #f59e0b; margin-left: 8px;"></i>
+                <!-- Step 1: Client Details (New Client Mode) -->
+                <div id="step1_newClient" class="wizard-step" style="display: block;">
+                  <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #1f2937;">
+                    פרטי לקוח
+                  </h3>
+                  <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                      שם הלקוח <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="newClientName"
+                      placeholder="שם מלא"
+                      style="
+                        width: 100%;
+                        padding: 10px 12px;
+                        border: 1px solid #d1d5db;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        transition: all 0.2s;
+                      "
+                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+                    >
+                  </div>
+                </div>
+
+                <!-- Step 1: Select Client (Existing Client Mode) -->
+                <div id="step1_existingClient" class="wizard-step" style="display: none;">
+                  <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #1f2937;">
+                    בחירת לקוח
+                  </h3>
+                  <div id="caseDialogClientSelector"></div>
+                </div>
+
+                <!-- Step 2: Case Details (New Client Mode only) -->
+                <div id="step2_newClient" class="wizard-step" style="display: none;">
+                  <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #1f2937;">
                     פרטי התיק
                   </h3>
 
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                     <!-- מספר תיק -->
                     <div>
-                      <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
-                        <i class="fas fa-hashtag" style="color: #f59e0b; margin-left: 6px;"></i>
+                      <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
                         מספר תיק <span style="color: #ef4444;">*</span>
                       </label>
                       <input
@@ -341,10 +387,10 @@
                         placeholder="יתווסף אוטומטית..."
                         style="
                           width: 100%;
-                          padding: 12px 16px;
-                          border: 2px solid #e5e7eb;
-                          border-radius: 8px;
-                          font-size: 15px;
+                          padding: 10px 12px;
+                          border: 1px solid #d1d5db;
+                          border-radius: 6px;
+                          font-size: 14px;
                           background: #f9fafb;
                           color: #6b7280;
                           cursor: not-allowed;
@@ -354,8 +400,7 @@
 
                     <!-- סוג הליך -->
                     <div>
-                      <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
-                        <i class="fas fa-gavel" style="color: #ef4444; margin-left: 6px;"></i>
+                      <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
                         סוג הליך <span style="color: #ef4444;">*</span>
                       </label>
                       <select
@@ -363,27 +408,26 @@
                         required
                         style="
                           width: 100%;
-                          padding: 12px 16px;
-                          border: 2px solid #e5e7eb;
-                          border-radius: 8px;
-                          font-size: 15px;
+                          padding: 10px 12px;
+                          border: 1px solid #d1d5db;
+                          border-radius: 6px;
+                          font-size: 14px;
                           background: white;
                           cursor: pointer;
                           transition: all 0.2s;
                         "
-                        onfocus="this.style.borderColor='#ef4444'; this.style.boxShadow='0 0 0 3px rgba(239,68,68,0.1)'"
-                        onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
+                        onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                        onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
                       >
-                        <option value="hours">⏱️ שעות (ללא שלבים)</option>
-                        <option value="legal_procedure">⚖️ הליך משפטי מבוסס שלבים</option>
+                        <option value="hours">שעות (ללא שלבים)</option>
+                        <option value="legal_procedure">הליך משפטי מבוסס שלבים</option>
                       </select>
                     </div>
                   </div>
 
                   <!-- כותרת תיק -->
                   <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
-                      <i class="fas fa-file-alt" style="color: #6366f1; margin-left: 6px;"></i>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
                       כותרת התיק <span style="color: #ef4444;">*</span>
                     </label>
                     <input
@@ -393,21 +437,20 @@
                       placeholder="לדוגמה: תביעה עירונית - עיריית ת״א"
                       style="
                         width: 100%;
-                        padding: 12px 16px;
-                        border: 2px solid #e5e7eb;
-                        border-radius: 8px;
-                        font-size: 15px;
+                        padding: 10px 12px;
+                        border: 1px solid #d1d5db;
+                        border-radius: 6px;
+                        font-size: 14px;
                         transition: all 0.2s;
                       "
-                      onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'"
-                      onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
+                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
                     >
                   </div>
 
                   <!-- תיאור -->
                   <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
-                      <i class="fas fa-align-right" style="color: #6b7280; margin-left: 6px;"></i>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
                       תיאור נוסף
                     </label>
                     <textarea
@@ -416,33 +459,95 @@
                       placeholder="תיאור קצר של התיק..."
                       style="
                         width: 100%;
-                        padding: 12px 16px;
-                        border: 2px solid #e5e7eb;
-                        border-radius: 8px;
-                        font-size: 15px;
+                        padding: 10px 12px;
+                        border: 1px solid #d1d5db;
+                        border-radius: 6px;
+                        font-size: 14px;
                         resize: vertical;
                         transition: all 0.2s;
                       "
-                      onfocus="this.style.borderColor='#6b7280'; this.style.boxShadow='0 0 0 3px rgba(107,114,128,0.1)'"
-                      onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
+                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
                     ></textarea>
                   </div>
                 </div>
 
-                <!-- Divider -->
-                <div style="height: 1px; background: linear-gradient(to left, transparent, #e5e7eb, transparent); margin: 32px 0;"></div>
+                <!-- Step 3: Service Configuration (New Client Mode) -->
+                <!-- Step 2: Service Configuration (Existing Client Mode) -->
+                <div id="step3_service" class="wizard-step" style="display: none;">
+                  <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #1f2937;">
+                    הגדרת שירות
+                  </h3>
 
-                <!-- Step 3: שירות -->
-                <div id="serviceSection">
-                  <!-- יוצג דינמית לפי סוג הליך -->
+                  <!-- Service Type Selector for Existing Client Mode -->
+                  <div id="serviceTypeSelector_existing" style="display: none; margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                      סוג שירות <span style="color: #ef4444;">*</span>
+                    </label>
+                    <select
+                      id="procedureType_existing"
+                      required
+                      style="
+                        width: 100%;
+                        padding: 10px 12px;
+                        border: 1px solid #d1d5db;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        background: white;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                      "
+                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+                    >
+                      <option value="hours">שעות (ללא שלבים)</option>
+                      <option value="legal_procedure">הליך משפטי מבוסס שלבים</option>
+                    </select>
+                  </div>
+
+                  <!-- Service Title for Existing Client Mode -->
+                  <div id="serviceTitleField_existing" style="display: none; margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                      שם השירות <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="serviceTitle_existing"
+                      required
+                      placeholder="לדוגמה: ייעוץ משפטי - נדל״ן"
+                      style="
+                        width: 100%;
+                        padding: 10px 12px;
+                        border: 1px solid #d1d5db;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        transition: all 0.2s;
+                      "
+                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+                    >
+                  </div>
+
+                  <div id="serviceSection">
+                    <!-- יוצג דינמית לפי סוג הליך -->
+                  </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="case-dialog-actions">
-                  <button type="button" id="modernCaseDialog_cancel" class="btn btn-secondary">
+                <!-- Navigation Buttons -->
+                <div class="case-dialog-actions" style="display: flex; justify-content: space-between; align-items: center;">
+                  <button type="button" id="prevStepBtn" class="btn btn-secondary" style="display: none;">
+                    <i class="fas fa-arrow-right" style="margin-left: 6px;"></i>
+                    חזור
+                  </button>
+                  <div style="flex: 1;"></div>
+                  <button type="button" id="modernCaseDialog_cancel" class="btn btn-secondary" style="margin-left: 8px;">
                     ביטול
                   </button>
-                  <button type="submit" class="btn btn-primary">
+                  <button type="button" id="nextStepBtn" class="btn btn-primary">
+                    הבא
+                    <i class="fas fa-arrow-left" style="margin-right: 6px;"></i>
+                  </button>
+                  <button type="submit" id="submitBtn" class="btn btn-primary" style="display: none;">
                     <i class="fas fa-save"></i>
                     שמור תיק
                   </button>
@@ -458,9 +563,333 @@
 
       // רינדור סקשן שירות (ברירת מחדל: שעות)
       this.renderServiceSection();
+    }
 
-      // ❌ הוסר: מספר תיק לא נטען אוטומטית
-      // ✅ חדש: מספר תיק ייטען רק אחרי שהמשתמש הזין שם לקוח
+    /**
+     * רינדור מחוון התקדמות (Stepper Indicator)
+     */
+    renderStepIndicator() {
+      const steps = [];
+      const totalSteps = this.totalSteps;
+
+      for (let i = 1; i <= totalSteps; i++) {
+        const isCompleted = i < this.currentStep;
+        const isCurrent = i === this.currentStep;
+        const isPending = i > this.currentStep;
+
+        let stepLabel = '';
+        if (this.currentMode === 'new') {
+          stepLabel = i === 1 ? 'לקוח' : i === 2 ? 'תיק' : 'שירות';
+        } else {
+          stepLabel = i === 1 ? 'בחירה' : 'שירות';
+        }
+
+        steps.push(`
+          <div style="display: flex; flex-direction: column; align-items: center; flex: 1; position: relative;">
+            ${i < totalSteps ? `
+              <div style="
+                position: absolute;
+                top: 16px;
+                right: 50%;
+                width: 100%;
+                height: 2px;
+                background: ${isCompleted ? '#3b82f6' : '#e5e7eb'};
+                z-index: 0;
+              "></div>
+            ` : ''}
+            <div style="
+              width: 32px;
+              height: 32px;
+              border-radius: 50%;
+              background: ${isCurrent ? '#3b82f6' : isCompleted ? '#3b82f6' : '#e5e7eb'};
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: 600;
+              font-size: 14px;
+              margin-bottom: 8px;
+              z-index: 1;
+              position: relative;
+              transition: all 0.3s;
+              ${isCurrent ? 'box-shadow: 0 0 0 4px rgba(59,130,246,0.2);' : ''}
+            ">
+              ${isCompleted ? '<i class="fas fa-check"></i>' : i}
+            </div>
+            <div style="
+              font-size: 12px;
+              color: ${isCurrent ? '#3b82f6' : isCompleted ? '#059669' : '#9ca3af'};
+              font-weight: ${isCurrent ? '600' : '500'};
+              text-align: center;
+            ">
+              ${stepLabel}
+            </div>
+          </div>
+        `);
+      }
+
+      return `
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; max-width: 400px; margin: 0 auto;">
+          ${steps.join('')}
+        </div>
+      `;
+    }
+
+    /**
+     * עדכון מחוון התקדמות
+     */
+    updateStepIndicator() {
+      const indicator = document.getElementById('stepperIndicator');
+      if (indicator) {
+        indicator.innerHTML = this.renderStepIndicator();
+      }
+    }
+
+    /**
+     * מעבר לשלב הבא (עם ולידציה)
+     */
+    async nextStep() {
+      // ולידציה של השלב הנוכחי
+      const validation = await this.validateCurrentStep();
+      if (!validation.isValid) {
+        window.CaseFormValidator?.displayErrors(validation.errors);
+        return;
+      }
+
+      // הסתרת שגיאות
+      document.getElementById('formErrors').style.display = 'none';
+
+      // מעבר לשלב הבא
+      if (this.currentStep < this.totalSteps) {
+        this.currentStep++;
+        this.updateStepVisibility();
+        this.updateStepIndicator();
+        this.updateNavigationButtons();
+
+        Logger.log(`✅ Moved to step ${this.currentStep}/${this.totalSteps}`);
+      }
+    }
+
+    /**
+     * חזרה לשלב הקודם
+     */
+    prevStep() {
+      if (this.currentStep > 1) {
+        this.currentStep--;
+        this.updateStepVisibility();
+        this.updateStepIndicator();
+        this.updateNavigationButtons();
+
+        // הסתרת שגיאות
+        document.getElementById('formErrors').style.display = 'none';
+
+        Logger.log(`✅ Moved back to step ${this.currentStep}/${this.totalSteps}`);
+      }
+    }
+
+    /**
+     * עדכון תצוגת שלבים (הצגה/הסתרה)
+     */
+    updateStepVisibility() {
+      // הסתרת כל השלבים
+      document.querySelectorAll('.wizard-step').forEach(step => {
+        step.style.display = 'none';
+      });
+
+      // הסתרת שדות ספציפיים לכל מצב
+      const serviceTypeSelector = document.getElementById('serviceTypeSelector_existing');
+      const serviceTitleField = document.getElementById('serviceTitleField_existing');
+
+      // הצגת השלב הנוכחי לפי מצב
+      if (this.currentMode === 'new') {
+        // New Client: 3 steps
+        if (this.currentStep === 1) {
+          document.getElementById('step1_newClient').style.display = 'block';
+        } else if (this.currentStep === 2) {
+          document.getElementById('step2_newClient').style.display = 'block';
+        } else if (this.currentStep === 3) {
+          document.getElementById('step3_service').style.display = 'block';
+          // הסתרת שדות של existing client
+          if (serviceTypeSelector) {
+serviceTypeSelector.style.display = 'none';
+}
+          if (serviceTitleField) {
+serviceTitleField.style.display = 'none';
+}
+        }
+      } else {
+        // Existing Client: 2 steps
+        if (this.currentStep === 1) {
+          document.getElementById('step1_existingClient').style.display = 'block';
+        } else if (this.currentStep === 2) {
+          document.getElementById('step3_service').style.display = 'block';
+          // הצגת שדות של existing client
+          if (serviceTypeSelector) {
+serviceTypeSelector.style.display = 'block';
+}
+          if (serviceTitleField) {
+serviceTitleField.style.display = 'block';
+}
+        }
+      }
+    }
+
+    /**
+     * עדכון כפתורי ניווט
+     */
+    updateNavigationButtons() {
+      const prevBtn = document.getElementById('prevStepBtn');
+      const nextBtn = document.getElementById('nextStepBtn');
+      const submitBtn = document.getElementById('submitBtn');
+
+      // כפתור "חזור" - מוצג רק אם לא בשלב ראשון
+      if (prevBtn) {
+        prevBtn.style.display = this.currentStep > 1 ? 'block' : 'none';
+      }
+
+      // כפתור "הבא" vs "שמור"
+      const isLastStep = this.currentStep === this.totalSteps;
+      if (nextBtn) {
+        nextBtn.style.display = isLastStep ? 'none' : 'inline-block';
+      }
+      if (submitBtn) {
+        submitBtn.style.display = isLastStep ? 'inline-block' : 'none';
+      }
+    }
+
+    /**
+     * ולידציה של השלב הנוכחי
+     */
+    async validateCurrentStep() {
+      const errors = [];
+
+      if (this.currentMode === 'new') {
+        // New Client Mode
+        if (this.currentStep === 1) {
+          // Step 1: Client Details
+          const clientName = document.getElementById('newClientName')?.value?.trim();
+          if (!clientName || clientName.length < 2) {
+            errors.push('אנא הזן שם לקוח תקין (לפחות 2 תווים)');
+          } else {
+            // טען מספר תיק אוטומטית לפני מעבר לשלב הבא
+            await this.loadCaseNumber();
+          }
+        } else if (this.currentStep === 2) {
+          // Step 2: Case Details
+          const caseNumber = document.getElementById('caseNumber')?.value?.trim();
+          const caseTitle = document.getElementById('caseTitle')?.value?.trim();
+
+          if (!caseNumber) {
+            errors.push('מספר תיק חסר - אנא נסה שוב');
+          }
+          if (!caseTitle || caseTitle.length < 2) {
+            errors.push('אנא הזן כותרת תיק (לפחות 2 תווים)');
+          }
+
+          // עדכן את סוג ההליך
+          this.procedureType = document.getElementById('procedureType')?.value || 'hours';
+          this.renderServiceSection(); // רינדור שירות לפי הבחירה
+        } else if (this.currentStep === 3) {
+          // Step 3: Service - validate based on procedure type
+          if (this.procedureType === 'hours') {
+            const hours = parseFloat(document.getElementById('totalHours')?.value);
+            if (!hours || hours < 0.5) {
+              errors.push('אנא הזן כמות שעות תקינה (לפחות 0.5)');
+            }
+          } else if (this.procedureType === 'legal_procedure') {
+            // Validate stages - basic check
+            const stageA_desc = document.getElementById('stageA_description')?.value?.trim();
+            const stageB_desc = document.getElementById('stageB_description')?.value?.trim();
+            const stageC_desc = document.getElementById('stageC_description')?.value?.trim();
+
+            if (!stageA_desc || !stageB_desc || !stageC_desc) {
+              errors.push('חובה למלא תיאור עבור כל 3 השלבים');
+            }
+
+            // Check hours/price based on pricing type
+            const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
+            if (pricingType === 'hourly') {
+              const stageA_hours = parseFloat(document.getElementById('stageA_hours')?.value);
+              const stageB_hours = parseFloat(document.getElementById('stageB_hours')?.value);
+              const stageC_hours = parseFloat(document.getElementById('stageC_hours')?.value);
+
+              if (!stageA_hours || !stageB_hours || !stageC_hours) {
+                errors.push('חובה למלא שעות עבור כל 3 השלבים');
+              }
+            } else {
+              const stageA_price = parseFloat(document.getElementById('stageA_fixedPrice')?.value);
+              const stageB_price = parseFloat(document.getElementById('stageB_fixedPrice')?.value);
+              const stageC_price = parseFloat(document.getElementById('stageC_fixedPrice')?.value);
+
+              if (!stageA_price || !stageB_price || !stageC_price) {
+                errors.push('חובה למלא מחיר עבור כל 3 השלבים');
+              }
+            }
+          }
+        }
+      } else {
+        // Existing Client Mode
+        if (this.currentStep === 1) {
+          // Step 1: Select Client
+          if (!this.currentCase) {
+            errors.push('אנא בחר לקוח מהרשימה');
+          }
+        } else if (this.currentStep === 2) {
+          // Step 2: Service
+          // עדכן procedureType מהשדה של existing
+          const procedureTypeSelect = document.getElementById('procedureType_existing');
+          if (procedureTypeSelect) {
+            this.procedureType = procedureTypeSelect.value;
+            this.renderServiceSection(); // רינדור שירות לפי הבחירה
+          }
+
+          const serviceTitle = document.getElementById('serviceTitle_existing')?.value?.trim();
+          if (!serviceTitle || serviceTitle.length < 2) {
+            errors.push('אנא הזן שם שירות (לפחות 2 תווים)');
+          }
+
+          // Validate based on procedure type
+          if (this.procedureType === 'hours') {
+            const hours = parseFloat(document.getElementById('totalHours')?.value);
+            if (!hours || hours < 0.5) {
+              errors.push('אנא הזן כמות שעות תקינה (לפחות 0.5)');
+            }
+          } else if (this.procedureType === 'legal_procedure') {
+            // Same validation as new client step 3
+            const stageA_desc = document.getElementById('stageA_description')?.value?.trim();
+            const stageB_desc = document.getElementById('stageB_description')?.value?.trim();
+            const stageC_desc = document.getElementById('stageC_description')?.value?.trim();
+
+            if (!stageA_desc || !stageB_desc || !stageC_desc) {
+              errors.push('חובה למלא תיאור עבור כל 3 השלבים');
+            }
+
+            const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
+            if (pricingType === 'hourly') {
+              const stageA_hours = parseFloat(document.getElementById('stageA_hours')?.value);
+              const stageB_hours = parseFloat(document.getElementById('stageB_hours')?.value);
+              const stageC_hours = parseFloat(document.getElementById('stageC_hours')?.value);
+
+              if (!stageA_hours || !stageB_hours || !stageC_hours) {
+                errors.push('חובה למלא שעות עבור כל 3 השלבים');
+              }
+            } else {
+              const stageA_price = parseFloat(document.getElementById('stageA_fixedPrice')?.value);
+              const stageB_price = parseFloat(document.getElementById('stageB_fixedPrice')?.value);
+              const stageC_price = parseFloat(document.getElementById('stageC_fixedPrice')?.value);
+
+              if (!stageA_price || !stageB_price || !stageC_price) {
+                errors.push('חובה למלא מחיר עבור כל 3 השלבים');
+              }
+            }
+          }
+        }
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors: errors
+      };
     }
 
     /**
@@ -759,26 +1188,18 @@ return;
       document.getElementById('newClientModeBtn')?.addEventListener('click', () => this.switchMode('new'));
       document.getElementById('existingClientModeBtn')?.addEventListener('click', () => this.switchMode('existing'));
 
-      // ✅ NEW: טעינת מספר תיק רק אחרי שהמשתמש הזין שם לקוח
-      const newClientNameInput = document.getElementById('newClientName');
-      if (newClientNameInput) {
-        newClientNameInput.addEventListener('input', (e) => {
-          const name = e.target.value.trim();
-          // טען מספר תיק רק אם השם ארוך מ-2 תווים
-          if (name.length >= 2 && this.currentMode === 'new') {
-            this.loadCaseNumber();
-          } else {
-            // נקה את השדה אם השם קצר מדי
-            const caseNumberInput = document.getElementById('caseNumber');
-            if (caseNumberInput) {
-              caseNumberInput.value = '';
-            }
-          }
-        });
-      }
+      // ✅ Stepper Navigation
+      document.getElementById('nextStepBtn')?.addEventListener('click', () => this.nextStep());
+      document.getElementById('prevStepBtn')?.addEventListener('click', () => this.prevStep());
 
-      // שינוי סוג הליך
+      // שינוי סוג הליך - New Client Mode
       document.getElementById('procedureType')?.addEventListener('change', (e) => {
+        this.procedureType = e.target.value;
+        this.renderServiceSection();
+      });
+
+      // שינוי סוג הליך - Existing Client Mode
+      document.getElementById('procedureType_existing')?.addEventListener('change', (e) => {
         this.procedureType = e.target.value;
         this.renderServiceSection();
       });
@@ -821,56 +1242,53 @@ return;
     switchMode(mode) {
       this.currentMode = mode;
 
-      const newMode = document.getElementById('newClientMode');
-      const existingMode = document.getElementById('existingClientMode');
+      // ✅ Reset stepper
+      this.currentStep = 1;
+      this.totalSteps = mode === 'new' ? 3 : 2;
+      this.currentCase = null; // Reset current case
+
       const newBtn = document.getElementById('newClientModeBtn');
       const existingBtn = document.getElementById('existingClientModeBtn');
+      const dialogTitle = document.getElementById('dialogTitle');
 
       if (mode === 'new') {
-        newMode.style.display = 'block';
-        existingMode.style.display = 'none';
+        // עדכון כותרת
+        if (dialogTitle) {
+dialogTitle.textContent = 'יצירת תיק חדש';
+}
+
+        // עדכון טאבים - button style
         newBtn.classList.add('active');
         existingBtn.classList.remove('active');
         newBtn.style.background = 'white';
+        newBtn.style.border = '1px solid #3b82f6';
         newBtn.style.color = '#3b82f6';
-        newBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        newBtn.style.fontWeight = '600';
+        newBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
         existingBtn.style.background = 'transparent';
+        existingBtn.style.border = '1px solid transparent';
         existingBtn.style.color = '#6b7280';
+        existingBtn.style.fontWeight = '500';
         existingBtn.style.boxShadow = 'none';
-
-        // ✅ טען מספר תיק רק אם כבר יש שם לקוח
-        const clientName = document.getElementById('newClientName')?.value?.trim();
-        if (clientName && clientName.length >= 2) {
-          setTimeout(() => this.loadCaseNumber(), 50);
-        } else {
-          // נקה את שדה מספר התיק
-          const caseNumberInput = document.getElementById('caseNumber');
-          if (caseNumberInput) {
-            caseNumberInput.value = '';
-          }
-        }
       } else {
-        newMode.style.display = 'none';
-        existingMode.style.display = 'block';
+        // עדכון כותרת
+        if (dialogTitle) {
+dialogTitle.textContent = 'הוספת שירות לתיק קיים';
+}
+
+        // עדכון טאבים - button style
         existingBtn.classList.add('active');
         newBtn.classList.remove('active');
         existingBtn.style.background = 'white';
+        existingBtn.style.border = '1px solid #3b82f6';
         existingBtn.style.color = '#3b82f6';
-        existingBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        existingBtn.style.fontWeight = '600';
+        existingBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
         newBtn.style.background = 'transparent';
+        newBtn.style.border = '1px solid transparent';
         newBtn.style.color = '#6b7280';
+        newBtn.style.fontWeight = '500';
         newBtn.style.boxShadow = 'none';
-
-        // ✅ נקה מספר תיק ונעל אותו (יטען אוטומטית לאחר בחירת לקוח)
-        const caseNumberInput = document.getElementById('caseNumber');
-        if (caseNumberInput) {
-          caseNumberInput.value = '';
-          caseNumberInput.disabled = true;
-          caseNumberInput.style.background = '#f9fafb';
-          caseNumberInput.style.color = '#9ca3af';
-          caseNumberInput.style.cursor = 'not-allowed';
-          caseNumberInput.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
-        }
 
         // צור selector אם לא קיים
         if (!this.clientSelector) {
@@ -879,38 +1297,16 @@ return;
 
         // ✅ האזנה לאירוע בחירת לקוח
         this.setupClientSelectorListener();
-
-        // ✅ עדכון מצב כפתור שמור
-        this.updateSubmitButton();
       }
+
+      // ✅ Update stepper UI
+      this.updateStepIndicator();
+      this.updateStepVisibility();
+      this.updateNavigationButtons();
+
+      Logger.log(`✅ Switched to ${mode} mode, reset to step 1/${this.totalSteps}`);
     }
 
-    /**
-     * עדכון מצב כפתור שמור (enable/disable)
-     * במצב existing - הכפתור נעול עד שבוחרים לקוח
-     */
-    updateSubmitButton() {
-      const submitBtn = document.querySelector('#modernCaseForm button[type="submit"]');
-      if (!submitBtn) {
-return;
-}
-
-      if (this.currentMode === 'existing' && !this.currentCase) {
-        // ❌ במצב existing ללא לקוח - נעל כפתור
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.5';
-        submitBtn.style.cursor = 'not-allowed';
-        submitBtn.title = 'יש לבחור לקוח לפני שמירה';
-        Logger.log('🔒 Submit button disabled - no client selected');
-      } else {
-        // ✅ מצב תקין - אפשר שמירה
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
-        submitBtn.title = '';
-        Logger.log('🔓 Submit button enabled');
-      }
-    }
 
     /**
      * אתחול ClientCaseSelector
@@ -940,42 +1336,13 @@ return;
               // ✅ שמירת התיק הקיים
               this.currentCase = existingCase;
 
-              // נעילת שדה מספר תיק (read-only)
-              const caseNumberField = document.getElementById('caseNumber');
-              if (caseNumberField) {
-                caseNumberField.value = existingCase.caseNumber;
-                caseNumberField.placeholder = '';  // ✅ הסרת placeholder
-                caseNumberField.disabled = true;
-                caseNumberField.style.background = '#ecfdf5';  // ✅ ירוק בהיר
-                caseNumberField.style.color = '#059669';        // ✅ ירוק כהה
-                caseNumberField.style.fontWeight = '600';       // ✅ הדגשה
-                caseNumberField.style.cursor = 'not-allowed';
-                caseNumberField.title = `תיק קיים #${existingCase.caseNumber} - לא ניתן לשינוי`;
-              }
-
               // הצגת כרטיס מידע על התיק והשירותים הקיימים
               this.showExistingCaseInfo(existingCase);
 
               Logger.log('✅ Existing case loaded for adding service');
-
-              // ✅ עדכון כפתור שמור (אפשר שמירה)
-              this.updateSubmitButton();
             } else {
               // ✅ ריסט אם אין תיק קיים
               this.currentCase = null;
-
-              // ריסט שדה מספר תיק למצב התחלתי
-              const caseNumberField = document.getElementById('caseNumber');
-              if (caseNumberField) {
-                caseNumberField.value = '';
-                caseNumberField.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
-                caseNumberField.disabled = true;
-                caseNumberField.style.background = '#f9fafb';
-                caseNumberField.style.color = '#9ca3af';
-                caseNumberField.style.fontWeight = 'normal';
-                caseNumberField.style.cursor = 'not-allowed';
-                caseNumberField.title = '';
-              }
 
               // הסרת כרטיס מידע אם קיים
               const existingInfo = document.getElementById('existingCaseInfo');
@@ -984,47 +1351,20 @@ return;
               }
 
               Logger.log('⚠️ No existing case found for this client');
-
-              // ✅ עדכון כפתור שמור (נעל כפתור)
-              this.updateSubmitButton();
             }
           } catch (error) {
             console.error('❌ Error loading client case:', error);
             this.currentCase = null;
-
-            // ריסט שדה מספר תיק
-            const caseNumberField = document.getElementById('caseNumber');
-            if (caseNumberField) {
-              caseNumberField.value = '';
-              caseNumberField.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
-              caseNumberField.disabled = true;
-              caseNumberField.style.background = '#f9fafb';
-              caseNumberField.style.color = '#9ca3af';
-              caseNumberField.style.fontWeight = 'normal';
-              caseNumberField.style.cursor = 'not-allowed';
-              caseNumberField.title = '';
-            }
-
-            this.updateSubmitButton();
           }
         } else {
           // ❌ אם לא נבחר לקוח (ביטול בחירה)
           this.currentCase = null;
 
-          // ריסט שדה מספר תיק
-          const caseNumberField = document.getElementById('caseNumber');
-          if (caseNumberField) {
-            caseNumberField.value = '';
-            caseNumberField.placeholder = 'יטען אוטומטית לאחר בחירת לקוח';
-            caseNumberField.disabled = true;
-            caseNumberField.style.background = '#f9fafb';
-            caseNumberField.style.color = '#9ca3af';
-            caseNumberField.style.fontWeight = 'normal';
-            caseNumberField.style.cursor = 'not-allowed';
-            caseNumberField.title = '';
+          // הסרת כרטיס מידע אם קיים
+          const existingInfo = document.getElementById('existingCaseInfo');
+          if (existingInfo) {
+            existingInfo.remove();
           }
-
-          this.updateSubmitButton();
         }
       });
 
@@ -1079,135 +1419,104 @@ return;
       const totalServices = services.length;
       const activeServices = services.filter(s => s.status === 'active').length;
 
-      // בניית רשימת שירותים
+      // בניית רשימת שירותים - שימוש ב-Shared Service Card Renderer
       let servicesHTML = '';
       if (services.length > 0) {
-        servicesHTML = services.map((service, index) => {
-          let serviceInfo = '';
-          let serviceType = '';
+        servicesHTML = `
+          <div style="
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+          ">
+            ${services.map((service) => {
+              // הכנת נתוני השלב הפעיל להליכים משפטיים
+              let serviceToRender = service;
+              if (service.type === 'legal_procedure') {
+                const currentStage = service.stages?.find(s => s.status === 'active');
+                if (currentStage) {
+                  // יצירת אובייקט שלב עם כל הנתונים הנדרשים
+                  serviceToRender = {
+                    ...currentStage,
+                    id: currentStage.id,
+                    name: currentStage.description || currentStage.name,
+                    description: currentStage.description || currentStage.name,
+                    totalHours: currentStage.hours || 0,
+                    hoursRemaining: currentStage.hoursRemaining || 0
+                  };
+                }
+              }
 
-          if (service.type === 'hours') {
-            const hours = window.calculateRemainingHours?.(service) || service.hoursRemaining || 0;
-            const totalHours = service.totalHours || 0;
-            serviceType = 'תוכנית שעות';
-            serviceInfo = `${hours.toFixed(1)}/${totalHours} שעות`;
-          } else if (service.type === 'legal_procedure') {
-            serviceType = 'הליך משפטי';
-            const currentStage = service.stages?.find(s => s.status === 'active');
-            serviceInfo = currentStage ? currentStage.name : 'הליך משפטי';
-          } else if (service.type === 'fixed') {
-            serviceType = 'מחיר קבוע';
-            serviceInfo = 'מחיר קבוע';
-          }
-
-          return `
-            <div style="
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              padding: 8px 12px;
-              background: ${service.status === 'active' ? '#f0fdf4' : '#f3f4f6'};
-              border-radius: 6px;
-              margin-bottom: 6px;
-              border-right: 3px solid ${service.status === 'active' ? '#10b981' : '#9ca3af'};
-              opacity: 0.85;
-              cursor: default;
-            ">
-              <div>
-                <div style="font-weight: 500; color: #1a1a1a; font-size: 13px;">
-                  <i class="fas fa-lock" style="font-size: 9px; color: #9ca3af; margin-left: 6px;"></i>
-                  ${serviceType || service.name || `שירות ${index + 1}`}
-                </div>
-                <div style="font-size: 11px; color: #666; margin-top: 2px;">
-                  ${serviceInfo}
-                </div>
-              </div>
-              <span style="
-                padding: 3px 8px;
-                background: ${service.status === 'active' ? '#10b981' : '#9ca3af'};
-                color: white;
-                border-radius: 4px;
-                font-size: 10px;
-                font-weight: 500;
-              ">
-                ${service.status === 'active' ? 'פעיל' : 'לא פעיל'}
-              </span>
-            </div>
-          `;
-        }).join('');
+              return window.renderServiceCard(
+                serviceToRender,
+                service.type,
+                service.pricingType || 'hourly',
+                existingCase,
+                {
+                  readOnly: true,
+                  showCaseNumber: false // לא נדרש במידע על תיק קיים
+                }
+              );
+            }).join('')}
+          </div>
+        `;
       } else {
         servicesHTML = `
-          <div style="text-align: center; padding: 12px; color: #666; font-size: 12px;">
-            אין שירותים פעילים
+          <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 13px;">
+            אין שירותים קיימים
           </div>
         `;
       }
 
       const infoHTML = `
         <div id="existingCaseInfo" style="
-          background: #f9fafb;
-          border-right: 4px solid #3b82f6;
-          border-radius: 6px;
-          padding: 12px 16px;
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 16px;
           margin-top: 12px;
-          margin-bottom: 12px;
-          opacity: 0.95;
+          margin-bottom: 16px;
         ">
           <!-- כותרת -->
           <div style="
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
+            gap: 10px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f3f4f6;
           ">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <i class="fas fa-folder-open" style="color: #3b82f6; font-size: 14px;"></i>
-              <div>
-                <span style="font-weight: 600; color: #1f2937; font-size: 13px;">
-                  תיק #${existingCase.caseNumber}
-                </span>
-                <span style="font-size: 11px; color: #6b7280; margin-right: 8px;">
-                  ${totalServices} ${totalServices === 1 ? 'שירות' : 'שירותים'}
-                </span>
+            <i class="fas fa-folder-open" style="color: #3b82f6; font-size: 16px;"></i>
+            <div>
+              <div style="font-weight: 600; color: #1f2937; font-size: 14px;">
+                תיק #${existingCase.caseNumber}
               </div>
-            </div>
-            <div style="
-              font-size: 10px;
-              color: #6b7280;
-              background: white;
-              padding: 3px 8px;
-              border-radius: 4px;
-              font-weight: 500;
-            ">
-              <i class="fas fa-eye" style="margin-left: 4px;"></i>
-              למידע בלבד
+              <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
+                ${totalServices} ${totalServices === 1 ? 'שירות קיים' : 'שירותים קיימים'}
+              </div>
             </div>
           </div>
 
           <!-- רשימת שירותים -->
-          <div style="margin-bottom: 10px;">
+          <div style="margin-bottom: 12px;">
             ${servicesHTML}
           </div>
 
-          <!-- הודעה -->
+          <!-- טקסט עדין -->
           <div style="
-            background: #fffbeb;
-            border-right: 3px solid #f59e0b;
-            border-radius: 4px;
-            padding: 8px 10px;
-            font-size: 11px;
-            color: #92400e;
-            line-height: 1.5;
+            font-size: 12px;
+            color: #9ca3af;
+            text-align: center;
+            padding-top: 8px;
+            border-top: 1px solid #f3f4f6;
           ">
-            <i class="fas fa-info-circle" style="margin-left: 4px; color: #f59e0b;"></i>
-            השירות החדש שתגדיר למטה יתווסף לתיק זה
+            השירות החדש יתווסף לתיק זה
           </div>
         </div>
       `;
 
-      // הצגת הכרטיס - נחפש את המיקום המתאים
-      const existingClientMode = document.getElementById('existingClientMode');
-      if (existingClientMode) {
+      // הצגת הכרטיס - נחפש את המיקום המתאים בתוך step1_existingClient
+      const step1ExistingClient = document.getElementById('step1_existingClient');
+      if (step1ExistingClient) {
         // הסרת כרטיס קודם אם קיים
         const oldInfo = document.getElementById('existingCaseInfo');
         if (oldInfo) {
@@ -1337,14 +1646,18 @@ return;
      */
     async handleAddServiceToCase() {
       try {
-        const procedureType = document.getElementById('procedureType').value;
+        // Get procedure type from the correct field (existing client mode)
+        const procedureType = document.getElementById('procedureType_existing')?.value || this.procedureType;
+
+        // Get service name from the correct field (existing client mode)
+        const serviceName = document.getElementById('serviceTitle_existing')?.value?.trim();
 
         // בניית נתוני השירות
         const serviceData = {
           clientId: this.currentCase.id, // 🔥 במבנה החדש: Client = Case
           serviceType: procedureType,
-          serviceName: document.getElementById('caseTitle').value.trim(),
-          description: document.getElementById('caseDescription')?.value?.trim() || ''
+          serviceName: serviceName,
+          description: '' // אין שדה תיאור במצב existing
         };
 
         if (!serviceData.serviceName) {
