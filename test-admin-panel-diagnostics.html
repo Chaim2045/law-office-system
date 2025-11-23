@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Admin Panel Diagnostics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .test-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .test-header:hover {
+            background: #eeeeee;
+        }
+
+        .test-body {
+            padding: 20px;
+            background: white;
+        }
+
+        .test-item {
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9f9f9;
+        }
+
+        .test-name {
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .test-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-running {
+            background: #cfe2ff;
+            color: #084298;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-pass {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-fail {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .actions {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+
+        .log-output .success { color: #4ec9b0; }
+        .log-output .error { color: #f48771; }
+        .log-output .warning { color: #dcdcaa; }
+        .log-output .info { color: #9cdcfe; }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .summary-card {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-card .number {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .summary-card .label {
+            font-size: 14px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .summary-total { background: #e3f2fd; color: #1565c0; }
+        .summary-pass { background: #e8f5e9; color: #2e7d32; }
+        .summary-fail { background: #ffebee; color: #c62828; }
+        .summary-warning { background: #fff8e1; color: #f57f17; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Admin Panel Diagnostics</h1>
+            <p>בדיקת תקינות ופונקציונליות מלאה של פאנל הניהול</p>
+        </div>
+
+        <div class="content">
+            <div class="actions">
+                <button class="btn" onclick="runAllTests()">▶️ הרץ את כל הבדיקות</button>
+                <button class="btn btn-secondary" onclick="runFirebaseTests()">🔥 בדיקות Firebase בלבד</button>
+                <button class="btn btn-secondary" onclick="runAuthTests()">🔐 בדיקות Authentication בלבד</button>
+                <button class="btn btn-danger" onclick="clearResults()">🗑️ נקה תוצאות</button>
+            </div>
+
+            <div class="summary" id="summary" style="display: none;">
+                <div class="summary-card summary-total">
+                    <div class="number" id="total-tests">0</div>
+                    <div class="label">בדיקות כוללות</div>
+                </div>
+                <div class="summary-card summary-pass">
+                    <div class="number" id="passed-tests">0</div>
+                    <div class="label">עבר בהצלחה ✓</div>
+                </div>
+                <div class="summary-card summary-fail">
+                    <div class="number" id="failed-tests">0</div>
+                    <div class="label">נכשל ✗</div>
+                </div>
+                <div class="summary-card summary-warning">
+                    <div class="number" id="warning-tests">0</div>
+                    <div class="label">אזהרות ⚠</div>
+                </div>
+            </div>
+
+            <!-- Firebase Tests -->
+            <div class="test-section">
+                <div class="test-header" onclick="toggleSection('firebase')">
+                    <span>🔥 בדיקות Firebase</span>
+                    <span id="firebase-summary"></span>
+                </div>
+                <div class="test-body" id="firebase-section">
+                    <div class="test-item">
+                        <span class="test-name">Firebase SDK נטען</span>
+                        <span class="test-status status-pending" id="test-firebase-sdk">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">Firebase App אותחל</span>
+                        <span class="test-status status-pending" id="test-firebase-app">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">Firebase Auth זמין</span>
+                        <span class="test-status status-pending" id="test-firebase-auth">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">Firestore זמין</span>
+                        <span class="test-status status-pending" id="test-firestore">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">Firebase Functions זמין</span>
+                        <span class="test-status status-pending" id="test-functions">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">קונפיגורציה תקינה</span>
+                        <span class="test-status status-pending" id="test-config">ממתין...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Authentication Tests -->
+            <div class="test-section">
+                <div class="test-header" onclick="toggleSection('auth')">
+                    <span>🔐 בדיקות Authentication</span>
+                    <span id="auth-summary"></span>
+                </div>
+                <div class="test-body" id="auth-section">
+                    <div class="test-item">
+                        <span class="test-name">Auth System קיים</span>
+                        <span class="test-status status-pending" id="test-auth-system">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">מצב התחברות נוכחי</span>
+                        <span class="test-status status-pending" id="test-auth-state">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">פרטי משתמש נוכחי</span>
+                        <span class="test-status status-pending" id="test-current-user">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">הרשאות Admin</span>
+                        <span class="test-status status-pending" id="test-admin-perms">ממתין...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Manager Tests -->
+            <div class="test-section">
+                <div class="test-header" onclick="toggleSection('data')">
+                    <span>📊 בדיקות Data Manager</span>
+                    <span id="data-summary"></span>
+                </div>
+                <div class="test-body" id="data-section">
+                    <div class="test-item">
+                        <span class="test-name">DataManager קיים</span>
+                        <span class="test-status status-pending" id="test-datamanager">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">חיבור ל-Firestore</span>
+                        <span class="test-status status-pending" id="test-db-connection">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">טעינת משתמשים</span>
+                        <span class="test-status status-pending" id="test-load-users">ממתין...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UI Components Tests -->
+            <div class="test-section">
+                <div class="test-header" onclick="toggleSection('ui')">
+                    <span>🎨 בדיקות UI Components</span>
+                    <span id="ui-summary"></span>
+                </div>
+                <div class="test-body" id="ui-section">
+                    <div class="test-item">
+                        <span class="test-name">DashboardUI קיים</span>
+                        <span class="test-status status-pending" id="test-dashboard-ui">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">אלמנטי DOM נטענו</span>
+                        <span class="test-status status-pending" id="test-dom-elements">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">Modals System</span>
+                        <span class="test-status status-pending" id="test-modals">ממתין...</span>
+                    </div>
+                    <div class="test-item">
+                        <span class="test-name">Notifications System</span>
+                        <span class="test-status status-pending" id="test-notifications">ממתין...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Console Output -->
+            <div class="test-section">
+                <div class="test-header">
+                    <span>📋 Console Output</span>
+                </div>
+                <div class="test-body">
+                    <div class="log-output" id="console-output">
+                        <div class="info">�� לוג הבדיקות יופיע כאן...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test Results Storage
+        const testResults = {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            warnings: 0
+        };
+
+        // Console Output
+        const consoleOutput = document.getElementById('console-output');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('he-IL');
+            const className = type;
+            const icon = {
+                'success': '✅',
+                'error': '❌',
+                'warning': '⚠️',
+                'info': '📌'
+            }[type] || '📌';
+
+            const line = document.createElement('div');
+            line.className = className;
+            line.textContent = `[${timestamp}] ${icon} ${message}`;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+            // Also log to browser console
+            console.log(`[Diagnostics] ${message}`);
+        }
+
+        function setTestStatus(testId, status, message = '') {
+            const element = document.getElementById(testId);
+            if (!element) return;
+
+            element.className = 'test-status status-' + status;
+
+            const statusText = {
+                'pending': 'ממתין...',
+                'running': 'בודק...',
+                'pass': '✓ עבר',
+                'fail': '✗ נכשל',
+                'warning': '⚠ אזהרה'
+            }[status] || status;
+
+            element.textContent = message || statusText;
+
+            // Update counters
+            if (status === 'pass') {
+                testResults.passed++;
+            } else if (status === 'fail') {
+                testResults.failed++;
+            } else if (status === 'warning') {
+                testResults.warnings++;
+            }
+
+            updateSummary();
+        }
+
+        function updateSummary() {
+            document.getElementById('summary').style.display = 'grid';
+            document.getElementById('total-tests').textContent = testResults.total;
+            document.getElementById('passed-tests').textContent = testResults.passed;
+            document.getElementById('failed-tests').textContent = testResults.failed;
+            document.getElementById('warning-tests').textContent = testResults.warnings;
+        }
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId + '-section');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        async function runFirebaseTests() {
+            log('🔥 מתחיל בדיקות Firebase...', 'info');
+            testResults.total += 6;
+
+            // Test 1: Firebase SDK
+            setTestStatus('test-firebase-sdk', 'running');
+            await sleep(300);
+            if (typeof firebase !== 'undefined') {
+                setTestStatus('test-firebase-sdk', 'pass');
+                log('Firebase SDK נטען בהצלחה', 'success');
+            } else {
+                setTestStatus('test-firebase-sdk', 'fail');
+                log('Firebase SDK לא נמצא!', 'error');
+                return false;
+            }
+
+            // Test 2: Firebase App
+            setTestStatus('test-firebase-app', 'running');
+            await sleep(300);
+            if (firebase.apps && firebase.apps.length > 0) {
+                setTestStatus('test-firebase-app', 'pass', `✓ ${firebase.apps.length} apps`);
+                log(`Firebase Apps: ${firebase.apps.map(a => a.name).join(', ')}`, 'success');
+            } else {
+                setTestStatus('test-firebase-app', 'fail');
+                log('Firebase App לא אותחל!', 'error');
+                return false;
+            }
+
+            // Test 3: Firebase Auth
+            setTestStatus('test-firebase-auth', 'running');
+            await sleep(300);
+            if (window.firebaseAuth) {
+                setTestStatus('test-firebase-auth', 'pass');
+                log('Firebase Auth זמין', 'success');
+            } else {
+                setTestStatus('test-firebase-auth', 'fail');
+                log('Firebase Auth לא זמין!', 'error');
+            }
+
+            // Test 4: Firestore
+            setTestStatus('test-firestore', 'running');
+            await sleep(300);
+            if (window.firebaseDB) {
+                setTestStatus('test-firestore', 'pass');
+                log('Firestore זמין', 'success');
+
+                // Try to read a document
+                try {
+                    const testDoc = await window.firebaseDB.collection('employees').limit(1).get();
+                    log(`Firestore: נמצאו ${testDoc.size} מסמכים בקולקציית employees`, 'info');
+                } catch (error) {
+                    log(`שגיאה בקריאת Firestore: ${error.message}`, 'warning');
+                }
+            } else {
+                setTestStatus('test-firestore', 'fail');
+                log('Firestore לא זמין!', 'error');
+            }
+
+            // Test 5: Functions
+            setTestStatus('test-functions', 'running');
+            await sleep(300);
+            if (window.firebaseFunctions) {
+                setTestStatus('test-functions', 'pass');
+                log('Firebase Functions זמין', 'success');
+            } else {
+                setTestStatus('test-functions', 'warning');
+                log('Firebase Functions לא זמין', 'warning');
+            }
+
+            // Test 6: Config
+            setTestStatus('test-config', 'running');
+            await sleep(300);
+            const app = firebase.apps[0];
+            if (app && app.options) {
+                const config = app.options;
+                if (config.projectId && config.apiKey) {
+                    setTestStatus('test-config', 'pass');
+                    log(`Project ID: ${config.projectId}`, 'success');
+                    log(`Auth Domain: ${config.authDomain}`, 'info');
+                } else {
+                    setTestStatus('test-config', 'fail');
+                    log('קונפיגורציה לא תקינה!', 'error');
+                }
+            }
+
+            log('🔥 בדיקות Firebase הושלמו', 'success');
+            return true;
+        }
+
+        async function runAuthTests() {
+            log('🔐 מתחיל בדיקות Authentication...', 'info');
+            testResults.total += 4;
+
+            // Test 1: AuthSystem exists
+            setTestStatus('test-auth-system', 'running');
+            await sleep(300);
+            if (window.AuthSystem) {
+                setTestStatus('test-auth-system', 'pass');
+                log('AuthSystem נטען בהצלחה', 'success');
+            } else {
+                setTestStatus('test-auth-system', 'fail');
+                log('AuthSystem לא נמצא!', 'error');
+                return false;
+            }
+
+            // Test 2: Auth State
+            setTestStatus('test-auth-state', 'running');
+            await sleep(300);
+            if (window.firebaseAuth) {
+                const user = window.firebaseAuth.currentUser;
+                if (user) {
+                    setTestStatus('test-auth-state', 'pass', '✓ מחובר');
+                    log(`משתמש מחובר: ${user.email}`, 'success');
+                } else {
+                    setTestStatus('test-auth-state', 'warning', '⚠ לא מחובר');
+                    log('אין משתמש מחובר', 'warning');
+                }
+            }
+
+            // Test 3: Current User Details
+            setTestStatus('test-current-user', 'running');
+            await sleep(300);
+            const currentUser = window.firebaseAuth?.currentUser;
+            if (currentUser) {
+                setTestStatus('test-current-user', 'pass');
+                log(`Email: ${currentUser.email}`, 'info');
+                log(`UID: ${currentUser.uid}`, 'info');
+                log(`Display Name: ${currentUser.displayName || 'לא מוגדר'}`, 'info');
+
+                // Get token
+                try {
+                    const token = await currentUser.getIdTokenResult();
+                    log(`Custom Claims: ${JSON.stringify(token.claims)}`, 'info');
+                } catch (error) {
+                    log(`שגיאה בקבלת token: ${error.message}`, 'warning');
+                }
+            } else {
+                setTestStatus('test-current-user', 'warning', '⚠ לא מחובר');
+                log('אין משתמש מחובר - דלג על בדיקה', 'warning');
+            }
+
+            // Test 4: Admin Permissions
+            setTestStatus('test-admin-perms', 'running');
+            await sleep(300);
+            if (window.AuthSystem && currentUser) {
+                const isAdmin = window.AuthSystem.isCurrentUserAdmin();
+                if (isAdmin) {
+                    setTestStatus('test-admin-perms', 'pass', '✓ Admin');
+                    log('המשתמש הוא Admin', 'success');
+                } else {
+                    setTestStatus('test-admin-perms', 'fail', '✗ לא Admin');
+                    log('המשתמש אינו Admin!', 'error');
+                }
+            } else {
+                setTestStatus('test-admin-perms', 'warning', '⚠ לא מחובר');
+                log('לא ניתן לבדוק הרשאות - אין משתמש מחובר', 'warning');
+            }
+
+            log('🔐 בדיקות Authentication הושלמו', 'success');
+            return true;
+        }
+
+        async function runDataTests() {
+            log('📊 מתחיל בדיקות Data Manager...', 'info');
+            testResults.total += 3;
+
+            // Test 1: DataManager exists
+            setTestStatus('test-datamanager', 'running');
+            await sleep(300);
+            if (window.DataManager) {
+                setTestStatus('test-datamanager', 'pass');
+                log('DataManager נטען בהצלחה', 'success');
+            } else {
+                setTestStatus('test-datamanager', 'fail');
+                log('DataManager לא נמצא!', 'error');
+                return false;
+            }
+
+            // Test 2: DB Connection
+            setTestStatus('test-db-connection', 'running');
+            await sleep(300);
+            if (window.DataManager.db) {
+                setTestStatus('test-db-connection', 'pass');
+                log('חיבור ל-Firestore תקין', 'success');
+            } else {
+                setTestStatus('test-db-connection', 'fail');
+                log('אין חיבור ל-Firestore!', 'error');
+                return false;
+            }
+
+            // Test 3: Load Users
+            setTestStatus('test-load-users', 'running');
+            await sleep(300);
+            try {
+                const users = await window.firebaseDB.collection('employees').get();
+                setTestStatus('test-load-users', 'pass', `✓ ${users.size} משתמשים`);
+                log(`נמצאו ${users.size} משתמשים במערכת`, 'success');
+
+                // Log first 3 users
+                let count = 0;
+                users.forEach(doc => {
+                    if (count < 3) {
+                        const data = doc.data();
+                        log(`  - ${data.email || doc.id} (${data.role || 'לא מוגדר'})`, 'info');
+                        count++;
+                    }
+                });
+            } catch (error) {
+                setTestStatus('test-load-users', 'fail');
+                log(`שגיאה בטעינת משתמשים: ${error.message}`, 'error');
+            }
+
+            log('📊 בדיקות Data Manager הושלמו', 'success');
+            return true;
+        }
+
+        async function runUITests() {
+            log('🎨 מתחיל בדיקות UI Components...', 'info');
+            testResults.total += 4;
+
+            // Test 1: DashboardUI
+            setTestStatus('test-dashboard-ui', 'running');
+            await sleep(300);
+            if (window.DashboardUI) {
+                setTestStatus('test-dashboard-ui', 'pass');
+                log('DashboardUI נטען בהצלחה', 'success');
+            } else {
+                setTestStatus('test-dashboard-ui', 'fail');
+                log('DashboardUI לא נמצא!', 'error');
+            }
+
+            // Test 2: DOM Elements
+            setTestStatus('test-dom-elements', 'running');
+            await sleep(300);
+            const requiredElements = [
+                'loginScreen',
+                'dashboardScreen',
+                'loginForm',
+                'emailInput',
+                'passwordInput'
+            ];
+
+            let missingElements = [];
+            requiredElements.forEach(id => {
+                if (!document.getElementById(id)) {
+                    missingElements.push(id);
+                }
+            });
+
+            if (missingElements.length === 0) {
+                setTestStatus('test-dom-elements', 'pass', `✓ ${requiredElements.length} אלמנטים`);
+                log('כל אלמנטי ה-DOM הנדרשים קיימים', 'success');
+            } else {
+                setTestStatus('test-dom-elements', 'fail', `✗ חסרים ${missingElements.length}`);
+                log(`אלמנטים חסרים: ${missingElements.join(', ')}`, 'error');
+            }
+
+            // Test 3: Modals
+            setTestStatus('test-modals', 'running');
+            await sleep(300);
+            if (window.Modals) {
+                setTestStatus('test-modals', 'pass');
+                log('Modals System זמין', 'success');
+            } else {
+                setTestStatus('test-modals', 'warning');
+                log('Modals System לא זמין', 'warning');
+            }
+
+            // Test 4: Notifications
+            setTestStatus('test-notifications', 'running');
+            await sleep(300);
+            if (window.Notifications) {
+                setTestStatus('test-notifications', 'pass');
+                log('Notifications System זמין', 'success');
+            } else {
+                setTestStatus('test-notifications', 'warning');
+                log('Notifications System לא זמין', 'warning');
+            }
+
+            log('🎨 בדיקות UI Components הושלמו', 'success');
+            return true;
+        }
+
+        async function runAllTests() {
+            clearResults();
+            log('🚀 מתחיל בדיקה מלאה של המערכת...', 'info');
+            log('═'.repeat(50), 'info');
+
+            await runFirebaseTests();
+            log('═'.repeat(50), 'info');
+
+            await runAuthTests();
+            log('═'.repeat(50), 'info');
+
+            await runDataTests();
+            log('═'.repeat(50), 'info');
+
+            await runUITests();
+            log('═'.repeat(50), 'info');
+
+            // Final Summary
+            log(`✅ בדיקות שעברו: ${testResults.passed}`, 'success');
+            log(`❌ בדיקות שנכשלו: ${testResults.failed}`, testResults.failed > 0 ? 'error' : 'info');
+            log(`⚠️  אזהרות: ${testResults.warnings}`, testResults.warnings > 0 ? 'warning' : 'info');
+            log('═'.repeat(50), 'info');
+
+            if (testResults.failed === 0) {
+                log('🎉 כל הבדיקות עברו בהצלחה!', 'success');
+            } else {
+                log('⚠️  יש בעיות שדורשות תשומת לב', 'warning');
+            }
+        }
+
+        function clearResults() {
+            testResults.total = 0;
+            testResults.passed = 0;
+            testResults.failed = 0;
+            testResults.warnings = 0;
+
+            consoleOutput.innerHTML = '<div class="info">📝 לוג הבדיקות יופיע כאן...</div>';
+
+            // Reset all test statuses
+            document.querySelectorAll('.test-status').forEach(el => {
+                el.className = 'test-status status-pending';
+                el.textContent = 'ממתין...';
+            });
+
+            updateSummary();
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Auto-collapse sections on load
+        window.addEventListener('DOMContentLoaded', () => {
+            log('📋 Diagnostics Tool מוכן לשימוש', 'info');
+            log('לחץ על "הרץ את כל הבדיקות" כדי להתחיל', 'info');
+        });
+    </script>
+</body>
+</html>

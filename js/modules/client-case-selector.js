@@ -10,6 +10,56 @@
  * 3. בוחר תיק → מתמלאים השדות הנסתרים
  *
  * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - Refactoring מושלם: שימוש ב-Shared Service Card Renderer
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-19
+ * 📦 גרסה: 2.8.0 → 3.0.0
+ *
+ * ✅ Refactoring מושלם - Single Source of Truth:
+ * מחקתי לחלוטין את createServiceCard() ועברתי להשתמש ב-window.renderServiceCard()
+ *
+ * 💪 יתרונות:
+ * ✓ מקור יחיד לרינדור כרטיסים - אפס code duplication
+ * ✓ שינוי בעיצוב במקום אחד משתקף בכל המערכת
+ * ✓ פחות באגים - אפשר לתקן פעם אחת
+ * ✓ ביצועים טובים יותר - פחות קוד, פחות memory
+ * ✓ תחזוקה קלה יותר - maintainability++
+ *
+ * 🔄 שינויים:
+ * - הסרת createServiceCard() לחלוטין (שורה 1048)
+ * - עדכון כל הקריאות להשתמש ב-window.renderServiceCard()
+ * - העברת onClick handlers בצורה נכונה
+ *
+ * ✅ Backward Compatible: עובד עם כל סוגי התיקים והשירותים
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - תיקון hideServiceCards להסתרה מלאה
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-19
+ * 📦 גרסה: 2.7.0 → 2.8.0
+ *
+ * ✅ תיקון:
+ * hideServiceCards עכשיו מסתיר גם את renderServiceCards() ולא רק showSelectedServiceOnly()
+ *
+ * 🐛 הבעיה שתוקנה:
+ * כאשר hideServiceCards: true, הכרטיסים עדיין הופיעו דרך renderServiceCards(),
+ * מה שיצר כפילות בממשק.
+ *
+ * 💡 הפתרון:
+ * הוספתי בדיקה ב-renderServiceCards() (שורה 884-890):
+ *   if (this.options.hideServiceCards) {
+ *     servicesGroup.style.display = 'none';
+ *     servicesCards.innerHTML = '';
+ *     return;
+ *   }
+ *
+ * ✓ עכשיו hideServiceCards עובד בצורה עקבית בכל המקומות
+ * ✓ מונע כפילות של כרטיסי שירותים
+ * ✓ עומד בעומסים - פחות רינדור = ביצועים טובים יותר
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  * 📝 CHANGELOG - תיקון חישוב progress bar בכרטיסיות שירותים
  * ═══════════════════════════════════════════════════════════════════════════
  *
@@ -881,6 +931,14 @@ return;
         return;
       }
 
+      // ✅ אם hideServiceCards מופעל - הסתר את כל קבוצת השירותים
+      if (this.options.hideServiceCards) {
+        servicesGroup.style.display = 'none';
+        servicesCards.innerHTML = '';
+        Logger.log('🔇 hideServiceCards enabled - all service cards hidden');
+        return;
+      }
+
       // בדיקה אם יש שירותים
       const services = caseItem.services || [];
       const stages = caseItem.stages || []; // LEGACY support
@@ -918,7 +976,9 @@ return;
           hoursRemaining: caseItem.hoursRemaining || 0,
           status: 'active'
         };
-        cardsHtml = this.createServiceCard(legacyService, 'hours', caseItem.pricingType, caseItem);
+        cardsHtml = window.renderServiceCard(legacyService, 'hours', caseItem.pricingType, caseItem, {
+          onClick: `window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(caseItem.id)}', 'hours')`
+        });
       } else {
         // ✅ NEW ARCHITECTURE: מעבר על כל השירותים
         services.forEach(service => {
@@ -928,7 +988,9 @@ return;
 
           if (service.type === 'hours') {
             // תוכנית שעות רגילה
-            cardsHtml += this.createServiceCard(service, 'hours', 'hourly', caseItem);
+            cardsHtml += window.renderServiceCard(service, 'hours', 'hourly', caseItem, {
+              onClick: `window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(service.id)}', 'hours')`
+            });
           } else if (service.type === 'legal_procedure') {
             // ✅ FIX: הליך משפטי - הצג כרטיסייה לכל שלב פעיל
             const serviceStages = service.stages || [];
@@ -944,11 +1006,14 @@ return;
             // הצג את כל השלבים הפעילים
             serviceStages.forEach(stage => {
               if (stage.status === 'active') {
-                cardsHtml += this.createServiceCard(
+                cardsHtml += window.renderServiceCard(
                   stage,
                   'legal_procedure',
                   service.pricingType || 'hourly',
-                  caseItem
+                  caseItem,
+                  {
+                    onClick: `window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(stage.id)}', 'legal_procedure')`
+                  }
                 );
               }
             });
@@ -961,11 +1026,14 @@ return;
 
           stages.forEach(stage => {
             if (stage.status === 'active') {
-              cardsHtml += this.createServiceCard(
+              cardsHtml += window.renderServiceCard(
                 stage,
                 'legal_procedure',
                 caseItem.pricingType || 'hourly',
-                caseItem
+                caseItem,
+                {
+                  onClick: `window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(stage.id)}', 'legal_procedure')`
+                }
               );
             }
           });
@@ -1001,209 +1069,7 @@ return;
       }
     }
 
-    /**
-     * יצירת כרטיס שירות בודד
-     */
-    createServiceCard(service, type, pricingType = 'hourly', caseItem = null) {
-      const serviceId = service.id;
-      let iconClass, title, subtitle, statsHtml;
-
-      if (type === 'hours') {
-        // תוכנית שעות - חישוב מחבילות (Single Source of Truth)
-        iconClass = 'fa-briefcase';
-        title = 'תוכנית שעות';
-        subtitle = service.name;
-
-        // ✅ Calculate from packages (Single Source of Truth)
-        const totalHours = window.calculateTotalHours ? window.calculateTotalHours(service) : (service.totalHours || 90);
-        const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(service) : 0;
-        const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(service) : 0;
-        const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
-
-        statsHtml = `
-          <div style="margin-top: 12px;">
-            <!-- Progress Bar -->
-            <div style="
-              background: #f1f5f9;
-              height: 5px;
-              border-radius: 2.5px;
-              overflow: hidden;
-              margin-bottom: 10px;
-            ">
-              <div style="
-                width: ${progressPercent}%;
-                height: 100%;
-                background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-                transition: width 0.3s ease;
-              "></div>
-            </div>
-
-            <!-- Stats Row -->
-            <div style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              font-size: 12px;
-            ">
-              <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
-                <i class="fas fa-clock" style="font-size: 11px;"></i>
-                <span>${hoursRemaining.toFixed(1)} שעות</span>
-              </div>
-              <div style="color: #64748b; font-size: 11px;">
-                ${progressPercent}% בשימוש
-              </div>
-            </div>
-          </div>
-        `;
-      } else if (type === 'legal_procedure') {
-        // הליך משפטי
-        iconClass = 'fa-balance-scale';
-        const stageName = service.id === 'stage_a' ? "שלב א'" :
-                         service.id === 'stage_b' ? "שלב ב'" :
-                         service.id === 'stage_c' ? "שלב ג'" : service.name;
-        title = `הליך משפטי - ${stageName}`;
-        subtitle = service.description || service.name;
-
-        if (pricingType === 'hourly') {
-          // ✅ Calculate from packages (Single Source of Truth)
-          const totalHours = window.calculateTotalHours ? window.calculateTotalHours(service) : (service.totalHours || 0);
-          const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(service) : 0;
-          const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(service) : 0;
-          const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
-
-          statsHtml = `
-            <div style="margin-top: 12px;">
-              <div style="
-                background: #f1f5f9;
-                height: 5px;
-                border-radius: 2.5px;
-                overflow: hidden;
-                margin-bottom: 10px;
-              ">
-                <div style="
-                  width: ${progressPercent}%;
-                  height: 100%;
-                  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-                "></div>
-              </div>
-              <div style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 12px;
-              ">
-                <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
-                  <i class="fas fa-clock" style="font-size: 11px;"></i>
-                  <span>${hoursRemaining.toFixed(1)} שעות</span>
-                </div>
-                <div style="color: #64748b; font-size: 11px;">
-                  ${progressPercent}% בשימוש
-                </div>
-              </div>
-            </div>
-          `;
-        } else {
-          statsHtml = `
-            <div style="margin-top: 12px;">
-              <div style="
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                padding: 8px 10px;
-                background: #f0fdf4;
-                border-radius: 6px;
-                border: 1px solid #86efac;
-              ">
-                <i class="fas fa-check-circle" style="color: #22c55e; font-size: 12px;"></i>
-                <span style="color: #166534; font-weight: 500; font-size: 12px;">מחיר פיקס</span>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      // מספר תיק - עיצוב מודרני
-      const caseNumberBadge = caseItem && caseItem.caseNumber ? `
-        <div style="
-          position: absolute;
-          top: 12px;
-          left: 12px;
-          padding: 5px 10px;
-          background: #f8fafc;
-          border: 1px solid #93c5fd;
-          border-radius: 5px;
-          font-size: 10px;
-          font-weight: 600;
-          color: #3b82f6;
-          letter-spacing: 0.3px;
-        ">
-          #${this.escapeHtml(caseItem.caseNumber)}
-        </div>
-      ` : '';
-
-      return `
-        <div
-          class="service-card"
-          data-service-id="${this.escapeHtml(serviceId)}"
-          data-service-type="${type}"
-          onclick="window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(serviceId)}', '${type}')"
-          style="
-            padding: 15px;
-            padding-top: 40px;
-            background: white;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          "
-          onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 8px 24px rgba(59, 130, 246, 0.12)'; this.style.transform='translateY(-4px)';"
-          onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 3px rgba(0, 0, 0, 0.05)'; this.style.transform='translateY(0)';"
-        >
-          ${caseNumberBadge}
-
-          <!-- Icon & Title -->
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-            <div style="
-              width: 36px;
-              height: 36px;
-              background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-              border-radius: 8px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              flex-shrink: 0;
-            ">
-              <i class="fas ${iconClass}" style="color: white; font-size: 16px;"></i>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 600; color: #0f172a; font-size: 14px; line-height: 1.3;">
-                ${this.escapeHtml(title)}
-              </div>
-            </div>
-          </div>
-
-          <!-- Subtitle -->
-          <div style="
-            color: #64748b;
-            font-size: 12px;
-            line-height: 1.5;
-            margin-bottom: 3px;
-            min-height: 32px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          ">
-            ${this.escapeHtml(subtitle)}
-          </div>
-
-          <!-- Stats/Progress -->
-          ${statsHtml}
-        </div>
-      `;
-    }
+    // ✅ REMOVED: createServiceCard() - now using shared window.renderServiceCard()
 
     /**
      * בחירת שירות

@@ -73,7 +73,19 @@
       "Bash(firebase functions:log:*)",
       "Bash(npm run lint:*)",
       "Bash(firebase projects:list:*)",
-      "Bash(gcloud functions describe:*)"
+      "Bash(gcloud functions describe:*)",
+      "Bash(firebase firestore:get:*)",
+      "Bash(npm run:*)",
+      "Bash(npx netlify:*)",
+      "Bash(2)",
+      "Bash(npx netlify deploy:*)",
+      "Bash(firebase hosting:sites:list:*)",
+      "Bash(where:*)",
+      "Bash(netlify status:*)",
+      "Bash(netlify deploy:*)",
+      "Bash(netlify link:*)",
+      "Bash(netlify unlink:*)",
+      "Bash(netlify api purgeCache:*)"
     ],
     "deny": [],
     "ask": []

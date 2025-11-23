@@ -1124,11 +1124,11 @@
 
 /* Row Types - Client vs Internal */
 .hours-table-row.row-client {
-  border-right: 4px solid var(--green);
+  border-right: 4px solid var(--blue);
 }
 
 .hours-table-row.row-internal {
-  border-right: 4px solid var(--orange);
+  border-right: 4px solid var(--gray-400);
 }
 
 /* Table Cell Specific Styles */
@@ -1205,21 +1205,21 @@
 }
 
 .client-badge {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--green-dark);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--blue-dark);
 }
 
 .client-badge i {
-  color: var(--green);
+  color: var(--blue);
 }
 
 .internal-badge {
-  background: rgba(251, 146, 60, 0.1);
-  color: var(--orange-dark);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--gray-700);
 }
 
 .internal-badge i {
-  color: var(--orange);
+  color: var(--gray-500);
 }
 
 .billable-badge {
@@ -1233,12 +1233,12 @@
 }
 
 .billable-badge.billable-yes {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--green-dark);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--blue-dark);
 }
 
 .billable-badge.billable-yes i {
-  color: var(--green);
+  color: var(--blue);
 }
 
 .billable-badge.billable-no {

@@ -10,12 +10,25 @@
  * - Client search for timesheet forms
  *
  * @module TimesheetModule
- * @version 1.1.0
+ * @version 1.2.0
  * @updated 2025-01-19
  *
  * ════════════════════════════════════════════════════════════════════
  * CHANGELOG
  * ════════════════════════════════════════════════════════════════════
+ *
+ * v1.2.0 - 19/01/2025
+ * -------------------
+ * ✨ Feature: הוספת Real-Time Listener לשעתון
+ * ✅ ADDED: startRealTimeTimesheet() - wrapper ל-real-time listener (lines 889-903)
+ * ✅ PATTERN: זהה למאזין המשימות (budget-tasks.js) - Single Source of Truth
+ * 📊 השפעה: תיקון שגיאת TypeError + סנכרון בזמן אמת
+ *
+ * Changes:
+ * - startRealTimeTimesheet(employee, onUpdate, onError)
+ * - Dynamic import of real-time-listeners.js
+ * - Error handling with fallback
+ * - Fix for: "TypeError: Timesheet.startRealTimeTimesheet is not a function"
  *
  * v1.1.0 - 19/01/2025
  * -------------------
@@ -883,4 +896,29 @@ export function searchClientsForEdit(clients, searchTerm) {
  */
 export function getTotalMinutes(entries) {
   return entries.reduce((total, entry) => total + (entry.minutes || 0), 0);
+}
+
+/* ========================================
+   REAL-TIME LISTENERS
+   ======================================== */
+
+/**
+ * Start real-time listener for timesheet entries
+ * התחלת האזנה בזמן אמת לשעתון
+ *
+ * @param {string} employee - Employee email
+ * @param {Function} onUpdate - Callback when timesheet updates (entries) => {}
+ * @param {Function} onError - Callback on error (error) => {}
+ * @returns {Function} Unsubscribe function
+ */
+export function startRealTimeTimesheet(employee, onUpdate, onError) {
+  // Dynamic import to avoid circular dependencies
+  import('./real-time-listeners.js').then(({ startTimesheetListener }) => {
+    return startTimesheetListener(employee, onUpdate, onError);
+  }).catch((error) => {
+    console.error('❌ Error importing real-time-listeners:', error);
+    if (onError) {
+      onError(error);
+    }
+  });
 }

@@ -3,18 +3,32 @@
  * מערכת מאזינים בזמן אמת ל-Firestore
  *
  * Created: 6/11/2025
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 19/01/2025
  *
  * תכונות:
  * ✅ Real-time tasks listener
  * ✅ Real-time notifications listener
+ * ✅ Real-time timesheet listener
  * ✅ Auto-cleanup on disconnect
  * ✅ Performance optimization
  *
  * ════════════════════════════════════════════════════════════════════
  * CHANGELOG | יומן שינויים
  * ════════════════════════════════════════════════════════════════════
+ *
+ * v1.2.0 - 19/01/2025
+ * -------------------
+ * ✨ Feature: הוספת Real-Time Listener לשעתון
+ * ✅ ADDED: startTimesheetListener() - מאזין בזמן אמת לשעתון (lines 246-308)
+ * ✅ PATTERN: זהה למאזין המשימות - Single Source of Truth
+ * 📊 השפעה: תיקון שגיאת TypeError + חווית משתמש משופרת
+ *
+ * שינויים:
+ * - startTimesheetListener(employee, onUpdate, onError)
+ * - שימוש ב-DatesModule.convertTimestampFields() לtimestamps
+ * - רישום ב-listenerManager למניעת memory leaks
+ * - לוגים מפורטים לעדכונים בזמן אמת
  *
  * v1.1.0 - 19/01/2025
  * -------------------
@@ -243,6 +257,82 @@ export function startNotificationsListener(userEmail, onUpdate, onError) {
 }
 
 /**
+ * Start listening to timesheet entries in real-time
+ * התחלת האזנה לשעתון בזמן אמת
+ *
+ * @param {string} employee - Email of employee
+ * @param {Function} onUpdate - Callback when timesheet updates
+ * @param {Function} onError - Callback on error
+ * @returns {Function} Unsubscribe function
+ */
+export function startTimesheetListener(employee, onUpdate, onError) {
+  try {
+    const db = window.firebaseDB;
+    if (!db) {
+      throw new Error('Firebase לא מחובר');
+    }
+
+    console.log(`🕐 Starting real-time timesheet listener for: ${employee}`);
+
+    const unsubscribe = db
+      .collection('timesheet_entries')
+      .where('employee', '==', employee)
+      .limit(50)
+      .onSnapshot(
+        (snapshot) => {
+          console.log(`📡 Timesheet update received: ${snapshot.docs.length} entries`);
+
+          const entries = [];
+
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added' || change.type === 'modified') {
+              console.log(`  ${change.type === 'added' ? '➕' : '✏️'} Entry ${change.doc.id}`);
+            }
+            if (change.type === 'removed') {
+              console.log(`  ➖ Entry ${change.doc.id} removed`);
+            }
+          });
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+
+            // Convert Firebase Timestamps to JavaScript Date objects
+            // ✅ Use shared timestamp converter (Single Source of Truth)
+            const entry = {
+              ...window.DatesModule.convertTimestampFields(data, ['createdAt', 'updatedAt']),
+              id: doc.id
+            };
+
+            entries.push(entry);
+          });
+
+          // Call update callback
+          if (onUpdate) {
+            onUpdate(entries);
+          }
+        },
+        (error) => {
+          console.error('❌ Timesheet listener error:', error);
+          if (onError) {
+            onError(error);
+          }
+        }
+      );
+
+    // Register listener for cleanup
+    listenerManager.register('timesheet', unsubscribe);
+
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Error starting timesheet listener:', error);
+    if (onError) {
+      onError(error);
+    }
+    return () => {}; // Return noop function
+  }
+}
+
+/**
  * Stop all real-time listeners
  * עצירת כל המאזינים
  */
@@ -253,7 +343,7 @@ export function stopAllListeners() {
 
 /**
  * Stop specific listener
- * @param {string} name - Listener name ('tasks' or 'notifications')
+ * @param {string} name - Listener name ('tasks', 'notifications', or 'timesheet')
  */
 export function stopListener(name) {
   listenerManager.unregister(name);
