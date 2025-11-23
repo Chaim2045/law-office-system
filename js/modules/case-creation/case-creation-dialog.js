@@ -5,12 +5,32 @@
  * ════════════════════════════════════════════════════════════════════
  *
  * @module case-creation-dialog
- * @version 5.1.0
+ * @version 5.2.0
  * @updated 2025-01-19
  *
  * ════════════════════════════════════════════════════════════════════
  * 📝 CHANGELOG
  * ════════════════════════════════════════════════════════════════════
+ *
+ * v5.2.0 - 19/01/2025 🐛 BUG FIX + ✨ FEATURE
+ * ----------------------------------------
+ * 🐛 FIX: תיקון שגיאת HTML5 validation - "invalid form control is not focusable"
+ *   - הסרת `required` attributes מ-4 שדות (lines 408, 435, 487, 513)
+ *   - הסיבה: Stepper מסתיר שדות עם display:none, ודפדפן לא יכול לפקוס עליהם
+ *   - הפתרון: שימוש ב-custom validation ב-validateCurrentStep() בלבד
+ *
+ * ✨ FEATURE: Lottie animations למשוב ויזואלי בvalidation
+ *   - הוספת container למשוב Lottie (line 332)
+ *   - שדרוג nextStep() עם 3 אנימציות:
+ *     • "processing" - בזמן בדיקת validation
+ *     • "error" - כשיש שגיאות
+ *     • "successSimple" - כשהvalidation עבר בהצלחה
+ *   - הוספת delay() utility function (line 718)
+ *
+ * 📊 השפעה:
+ *   - ✅ תיקון bug קריטי שמנע שליחת טפסים
+ *   - ✅ חווית משתמש משופרת עם משוב ויזואלי
+ *   - ✅ עמידות בעומס - Lottie נטען מcache אחרי פעם ראשונה
  *
  * 🗓️ תאריך: 2025-01-19
  * 📦 גרסה: 5.0.0 → 5.1.0
@@ -328,6 +348,14 @@
                   </div>
                 </div>
 
+                <!-- Lottie Validation Feedback -->
+                <div id="validationFeedback" style="
+                  width: 80px;
+                  height: 80px;
+                  margin: 0 auto 16px auto;
+                  display: none;
+                "></div>
+
                 <!-- Stepper Indicator -->
                 <div id="stepperIndicator" style="margin-bottom: 32px;">
                   ${this.renderStepIndicator()}
@@ -405,7 +433,6 @@
                       </label>
                       <select
                         id="procedureType"
-                        required
                         style="
                           width: 100%;
                           padding: 10px 12px;
@@ -433,7 +460,6 @@
                     <input
                       type="text"
                       id="caseTitle"
-                      required
                       placeholder="לדוגמה: תביעה עירונית - עיריית ת״א"
                       style="
                         width: 100%;
@@ -486,7 +512,6 @@
                     </label>
                     <select
                       id="procedureType_existing"
-                      required
                       style="
                         width: 100%;
                         padding: 10px 12px;
@@ -513,7 +538,6 @@
                     <input
                       type="text"
                       id="serviceTitle_existing"
-                      required
                       placeholder="לדוגמה: ייעוץ משפטי - נדל״ן"
                       style="
                         width: 100%;
@@ -646,14 +670,50 @@
     }
 
     /**
-     * מעבר לשלב הבא (עם ולידציה)
+     * מעבר לשלב הבא (עם ולידציה + Lottie feedback)
      */
     async nextStep() {
+      const feedbackContainer = document.getElementById('validationFeedback');
+
+      // הצג Lottie "בודק..."
+      if (feedbackContainer && window.LottieManager) {
+        feedbackContainer.style.display = 'block';
+        await window.LottieManager.load('processing', feedbackContainer, {
+          loop: true,
+          autoplay: true
+        });
+      }
+
       // ולידציה של השלב הנוכחי
       const validation = await this.validateCurrentStep();
+
       if (!validation.isValid) {
+        // שגיאה - הצג Lottie error
+        if (feedbackContainer && window.LottieManager) {
+          await window.LottieManager.load('error', feedbackContainer, {
+            loop: false,
+            autoplay: true
+          });
+
+          // המתן לסיום אנימציה
+          await this.delay(800);
+          feedbackContainer.style.display = 'none';
+        }
+
         window.CaseFormValidator?.displayErrors(validation.errors);
         return;
+      }
+
+      // הצלחה - הצג Lottie success
+      if (feedbackContainer && window.LottieManager) {
+        await window.LottieManager.load('successSimple', feedbackContainer, {
+          loop: false,
+          autoplay: true
+        });
+
+        // המתן לסיום אנימציה
+        await this.delay(500);
+        feedbackContainer.style.display = 'none';
       }
 
       // הסתרת שגיאות
@@ -668,6 +728,15 @@
 
         Logger.log(`✅ Moved to step ${this.currentStep}/${this.totalSteps}`);
       }
+    }
+
+    /**
+     * Delay utility function
+     * @param {number} ms - Milliseconds to wait
+     * @returns {Promise}
+     */
+    delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
