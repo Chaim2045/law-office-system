@@ -169,7 +169,9 @@
             const getUserDetailsFunction = window.firebaseFunctions.httpsCallable('getUserFullDetails');
 
             const result = await getUserDetailsFunction({
-                email: this.currentUser.email
+                email: this.currentUser.email,
+                month: this.selectedMonth,  // ✅ שליחת חודש נבחר
+                year: this.selectedYear     // ✅ שליחת שנה נבחרת
             });
 
             // Parse the response structure from Cloud Function
@@ -188,7 +190,8 @@
                 clientsCount: responseData.stats?.totalClients || 0,
                 tasksCount: responseData.stats?.activeTasks || 0,
                 hoursThisWeek: responseData.stats?.hoursThisWeek || 0,
-                hoursThisMonth: responseData.stats?.hoursThisMonth || 0
+                hoursThisMonth: responseData.stats?.hoursThisMonth || 0,
+                hoursPreFiltered: true  // ✅ סימון שהנתונים כבר מסוננים מהשרת
             };
         }
 
@@ -259,14 +262,20 @@
                     .get()
                     .catch(() => ({ docs: [] })),
 
-                // Get recent timesheet entries (last 3 months)
-                db.collection('timesheet')
-                    .where('employeeEmail', '==', userEmail)
-                    .where('date', '>=', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))
-                    .orderBy('date', 'desc')
-                    .limit(100)
-                    .get()
-                    .catch(() => ({ docs: [] })),
+                // Get timesheet entries for selected month/year
+                (() => {
+                    // ✅ סינון לפי חודש ושנה נבחרים
+                    const startOfMonth = new Date(this.selectedYear, this.selectedMonth - 1, 1);
+                    const endOfMonth = new Date(this.selectedYear, this.selectedMonth, 0, 23, 59, 59);
+
+                    return db.collection('timesheet')
+                        .where('employeeEmail', '==', userEmail)
+                        .where('date', '>=', startOfMonth)
+                        .where('date', '<=', endOfMonth)
+                        .orderBy('date', 'desc')
+                        .get()
+                        .catch(() => ({ docs: [] }));
+                })(),
 
                 // Get user's activity logs (last 100 entries)
                 db.collection('activityLogs')
@@ -338,7 +347,8 @@
                 clientsCount,
                 tasksCount,
                 hoursThisWeek: hoursThisWeekCalc,
-                hoursThisMonth: hoursThisMonthCalc
+                hoursThisMonth: hoursThisMonthCalc,
+                hoursPreFiltered: true  // ✅ סימון שהנתונים כבר מסוננים מ-Firestore
             };
 
             console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs`);
@@ -1742,34 +1752,69 @@ return;
                     hoursTab.style.pointerEvents = 'none';
                 }
 
-                // Call Cloud Function with month/year parameters
-                const getUserDetailsFunction = window.firebaseFunctions.httpsCallable('getUserFullDetails');
+                try {
+                    // ✅ Try Cloud Function first
+                    const getUserDetailsFunction = window.firebaseFunctions.httpsCallable('getUserFullDetails');
 
-                const result = await getUserDetailsFunction({
-                    email: this.currentUser.email,
-                    month: this.selectedMonth,
-                    year: this.selectedYear
-                });
+                    const result = await getUserDetailsFunction({
+                        email: this.currentUser.email,
+                        month: this.selectedMonth,
+                        year: this.selectedYear
+                    });
 
-                // Parse the response
-                const responseData = result.data;
+                    // Parse the response
+                    const responseData = result.data;
 
-                // Update only timesheet/hours data (keep other data unchanged)
-                this.userData.timesheet = responseData.timesheet || [];
-                this.userData.hours = responseData.timesheet || [];
-                this.userData.stats.hoursThisWeek = responseData.stats?.hoursThisWeek || 0;
-                this.userData.stats.hoursThisMonth = responseData.stats?.hoursThisMonth || 0;
+                    // Update only timesheet/hours data (keep other data unchanged)
+                    this.userData.timesheet = responseData.timesheet || [];
+                    this.userData.hours = responseData.timesheet || [];
+                    this.userData.stats.hoursThisWeek = responseData.stats?.hoursThisWeek || 0;
+                    this.userData.stats.hoursThisMonth = responseData.stats?.hoursThisMonth || 0;
+                    this.userData.hoursPreFiltered = true;  // ✅ מסמן שמסונן מהשרת
+
+                    console.log(`✅ Hours loaded from Cloud Function for ${this.selectedMonth}/${this.selectedYear}`);
+
+                } catch (cloudError) {
+                    // ✅ Fallback to Firestore if Cloud Function fails
+                    console.log('⚡ Cloud Function failed, loading hours from Firestore...');
+
+                    const db = window.firebaseDB;
+                    const userEmail = this.currentUser.email;
+
+                    // Calculate date range for selected month
+                    const startOfMonth = new Date(this.selectedYear, this.selectedMonth - 1, 1);
+                    const endOfMonth = new Date(this.selectedYear, this.selectedMonth, 0, 23, 59, 59);
+
+                    // Load timesheet from Firestore
+                    const timesheetSnapshot = await db.collection('timesheet')
+                        .where('employeeEmail', '==', userEmail)
+                        .where('date', '>=', startOfMonth)
+                        .where('date', '<=', endOfMonth)
+                        .orderBy('date', 'desc')
+                        .get();
+
+                    const timesheet = timesheetSnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+
+                    // Update only timesheet/hours data
+                    this.userData.timesheet = timesheet;
+                    this.userData.hours = timesheet;
+                    this.userData.hoursPreFiltered = true;  // ✅ מסמן שמסונן מ-Firestore
+
+                    console.log(`✅ Hours loaded from Firestore for ${this.selectedMonth}/${this.selectedYear} (${timesheet.length} entries)`);
+                }
 
                 // Refresh the tab
                 this.switchTab('hours');
-
-                console.log(`✅ Hours loaded for ${this.selectedMonth}/${this.selectedYear}`);
 
             } catch (error) {
                 console.error('❌ Error loading hours:', error);
                 window.notify.error('שגיאה בטעינת שעות');
 
-                // Remove loading indicator
+            } finally {
+                // ✅ Always remove loading indicator
                 const hoursTab = document.querySelector('.tab-panel.tab-hours');
                 if (hoursTab) {
                     hoursTab.style.opacity = '1';
@@ -1982,9 +2027,9 @@ return '-';
         filterAndSortHours(hours) {
             let filtered = [...hours];
 
-            // סינון לפי חודש (מבורר החדש)
+            // ✅ סינון לפי חודש רק אם הנתונים לא מסוננים מראש מהשרת
             // Note: selectedMonth is now a number (1-12), selectedYear is a number
-            if (this.selectedMonth && this.selectedYear) {
+            if (!this.userData?.hoursPreFiltered && this.selectedMonth && this.selectedYear) {
                 filtered = filtered.filter(entry => {
                     const entryDate = new Date(entry.date);
                     return entryDate.getFullYear() === this.selectedYear &&

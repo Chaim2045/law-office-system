@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════════╗
+    ║              👥 Master Admin Panel - ניהול לקוחות                    ║
+    ╠═══════════════════════════════════════════════════════════════════════╣
+    ║  ניהול מקצועי של לקוחות המערכת והפקת דוחות                          ║
+    ║  גישה למנהלי מערכת בלבד                                              ║
+    ║                                                                       ║
+    ║  📚 קרא את WORK_PLAN.md לפני עריכה!                                 ║
+    ╚═══════════════════════════════════════════════════════════════════════╝
+
+    מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ
+    נוצר: 23/11/2025
+    גרסה: 1.0.0
+    Phase: 5 - Clients Management
+    -->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Master Admin Panel - ניהול לקוחות">
+    <title>👥 ניהול לקוחות | Master Admin Panel</title>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System (standalone copy) ===== -->
+    <link rel="stylesheet" href="css/design-system.css">
+
+    <!-- ===== Master Admin Panel Styles ===== -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/clients.css">
+</head>
+
+<body class="admin-page">
+    <!-- ===== Navigation Bar ===== -->
+    <div id="navigationContainer"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="admin-main">
+        <div class="admin-content">
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="page-header-content">
+                    <div class="page-title-section">
+                        <h1 class="page-title">
+                            <i class="fas fa-users"></i>
+                            ניהול לקוחות
+                        </h1>
+                        <p class="page-subtitle">מעקב וניהול מלא של לקוחות המערכת והפקת דוחות</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn-primary" id="refreshClientsBtn">
+                            <i class="fas fa-sync"></i>
+                            <span>רענן</span>
+                        </button>
+                        <button class="btn-secondary" id="exportClientsBtn">
+                            <i class="fas fa-download"></i>
+                            <span>ייצוא Excel</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="clientsStatsContainer">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">סה"כ לקוחות</div>
+                        <div class="stat-value" id="totalClientsStat">-</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">לקוחות פעילים</div>
+                        <div class="stat-value" id="activeClientsStat">-</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">לקוחות חסומים</div>
+                        <div class="stat-value" id="blockedClientsStat">-</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">לקוחות קריטיים</div>
+                        <div class="stat-value" id="criticalClientsStat">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-section" id="clientsFilterContainer">
+                <div class="filter-bar">
+                    <!-- Search -->
+                    <div class="filter-item filter-search">
+                        <i class="fas fa-search"></i>
+                        <input
+                            type="text"
+                            id="searchInput"
+                            placeholder="חפש לקוח (שם, תיק, ת.ז.)..."
+                            class="search-input"
+                        >
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="filter-item">
+                        <label for="statusFilter">
+                            <i class="fas fa-filter"></i>
+                            סטטוס
+                        </label>
+                        <select id="statusFilter" class="filter-select">
+                            <option value="all">הכל</option>
+                            <option value="active">פעיל</option>
+                            <option value="inactive">לא פעיל</option>
+                            <option value="blocked">חסום</option>
+                            <option value="critical">קריטי</option>
+                        </select>
+                    </div>
+
+                    <!-- Type Filter -->
+                    <div class="filter-item">
+                        <label for="typeFilter">
+                            <i class="fas fa-tag"></i>
+                            סוג
+                        </label>
+                        <select id="typeFilter" class="filter-select">
+                            <option value="all">הכל</option>
+                            <option value="hours">שעות</option>
+                            <option value="fixed">קבוע</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort -->
+                    <div class="filter-item">
+                        <label for="sortSelect">
+                            <i class="fas fa-sort"></i>
+                            מיון
+                        </label>
+                        <select id="sortSelect" class="filter-select">
+                            <option value="name">שם (א-ת)</option>
+                            <option value="caseNumber">מספר תיק</option>
+                            <option value="hoursRemaining">שעות נותרות</option>
+                            <option value="lastActivity">פעילות אחרונה</option>
+                            <option value="createdAt">תאריך יצירה</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clients Table -->
+            <div class="table-section" id="clientsTableContainer">
+                <div class="table-wrapper">
+                    <table class="data-table" id="clientsTable">
+                        <thead>
+                            <tr>
+                                <th>שם הלקוח</th>
+                                <th>מספר תיק</th>
+                                <th>סוג</th>
+                                <th>שעות נותרות</th>
+                                <th>סטטוס</th>
+                                <th>צוות מוקצה</th>
+                                <th>פעילות אחרונה</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTableBody">
+                            <!-- Data will be populated by JavaScript -->
+                            <tr>
+                                <td colspan="8" class="loading-row">
+                                    <div class="table-loading">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        <span>טוען נתונים...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-section" id="clientsPaginationContainer">
+                <!-- Pagination will be rendered here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== Client Report Modal ===== -->
+    <div id="clientReportModal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-file-alt"></i>
+                    הפקת דוח ללקוח
+                </h2>
+                <button class="modal-close" id="closeReportModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Client Info -->
+                <div class="report-client-info">
+                    <h3 id="reportClientName">-</h3>
+                    <p id="reportClientDetails">-</p>
+                </div>
+
+                <!-- Report Form -->
+                <form id="reportForm" class="report-form">
+                    <!-- Date Range -->
+                    <div class="form-section">
+                        <h4>
+                            <i class="fas fa-calendar-alt"></i>
+                            בחר תקופה
+                        </h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reportStartDate">מתאריך</label>
+                                <input type="date" id="reportStartDate" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reportEndDate">עד תאריך</label>
+                                <input type="date" id="reportEndDate" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="quick-dates">
+                            <button type="button" class="btn-quick-date" data-range="thisMonth">החודש</button>
+                            <button type="button" class="btn-quick-date" data-range="lastMonth">חודש שעבר</button>
+                            <button type="button" class="btn-quick-date" data-range="last3Months">3 חודשים</button>
+                            <button type="button" class="btn-quick-date" data-range="thisYear">השנה</button>
+                            <button type="button" class="btn-quick-date" data-range="all">מההתחלה</button>
+                        </div>
+                    </div>
+
+                    <!-- Service Filter (Optional) -->
+                    <div class="form-section">
+                        <h4>
+                            <i class="fas fa-briefcase"></i>
+                            שירות (אופציונלי)
+                        </h4>
+                        <div class="form-group">
+                            <select id="reportServiceFilter" class="form-input">
+                                <option value="all">כל השירותים</option>
+                                <!-- Services will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Report Type -->
+                    <div class="form-section">
+                        <h4>
+                            <i class="fas fa-file-invoice"></i>
+                            סוג דוח
+                        </h4>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="reportType" value="full" checked>
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">דוח מפורט - שעות + משימות + פירוט מלא</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="reportType" value="hours">
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">דוח שעות בלבד</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="reportType" value="tasks">
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">דוח משימות בלבד</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="reportType" value="financial">
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">דוח פיננסי - עלויות</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Format -->
+                    <div class="form-section">
+                        <h4>
+                            <i class="fas fa-file-download"></i>
+                            פורמט
+                        </h4>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="reportFormat" value="pdf" checked>
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">PDF להדפסה</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="reportFormat" value="html">
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">HTML לצפייה</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="reportFormat" value="excel">
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">Excel לעריכה</span>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="cancelReportBtn">
+                    <i class="fas fa-times"></i>
+                    ביטול
+                </button>
+                <button type="button" class="btn-primary" id="generateReportBtn">
+                    <i class="fas fa-file-alt"></i>
+                    הפק דוח
+                </button>
+                <button type="button" class="btn-primary" id="emailReportBtn">
+                    <i class="fas fa-envelope"></i>
+                    הפק ושלח במייל
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js?v=20251123v1"></script>
+    <script src="js/core/auth.js?v=20251123v1"></script>
+    <script src="js/core/constants.js?v=20251123v1"></script>
+
+    <!-- ===== Navigation Component ===== -->
+    <script src="js/ui/Navigation.js?v=20251123v1"></script>
+
+    <!-- ===== Clients Management Scripts ===== -->
+    <script src="js/managers/ClientsDataManager.js?v=20251123v1"></script>
+    <script src="js/ui/ClientsTable.js?v=20251123v1"></script>
+    <script src="js/ui/ClientReportModal.js?v=20251123v1"></script>
+    <script src="js/managers/ReportGenerator.js?v=20251123v1"></script>
+
+    <!-- ===== Shared Components ===== -->
+    <script src="js/ui/Notifications.js?v=20251123v1"></script>
+
+    <!-- ===== Initialization Script ===== -->
+    <script>
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Clients Management Page - Loading...');
+
+            // Check authentication
+            if (!window.firebaseAuth) {
+                console.error('❌ Firebase Auth not loaded');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Wait for auth state
+            window.firebaseAuth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    console.log('🔒 User not authenticated, redirecting...');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                console.log('✅ User authenticated:', user.email);
+
+                // Initialize Navigation
+                if (window.Navigation) {
+                    window.Navigation.init('clients');
+                }
+
+                // Initialize Clients Data Manager
+                if (window.ClientsDataManager) {
+                    await window.ClientsDataManager.init();
+                } else {
+                    console.error('❌ ClientsDataManager not loaded');
+                }
+
+                // Initialize Clients Table
+                if (window.ClientsTable) {
+                    await window.ClientsTable.init();
+                } else {
+                    console.error('❌ ClientsTable not loaded');
+                }
+
+                // Initialize Report Modal
+                if (window.ClientReportModal) {
+                    window.ClientReportModal.init();
+                } else {
+                    console.error('❌ ClientReportModal not loaded');
+                }
+
+                console.log('✅ Clients Management Page - Ready');
+            });
+
+            // Refresh button
+            document.getElementById('refreshClientsBtn')?.addEventListener('click', async () => {
+                console.log('🔄 Refreshing clients data...');
+                if (window.ClientsDataManager) {
+                    await window.ClientsDataManager.refresh();
+                }
+            });
+
+            // Export button
+            document.getElementById('exportClientsBtn')?.addEventListener('click', () => {
+                console.log('📥 Exporting clients to Excel...');
+                if (window.ClientsTable) {
+                    window.ClientsTable.exportToExcel();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

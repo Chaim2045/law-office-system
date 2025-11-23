@@ -1,0 +1,465 @@
+/**
+ * Clients Table Component
+ * קומפוננטת טבלת לקוחות
+ *
+ * נוצר: 23/11/2025
+ * גרסה: 1.0.0
+ * Phase: 5 - Clients Management
+ *
+ * תפקיד: הצגת טבלת לקוחות עם פילטרים וחיפוש
+ */
+
+(function() {
+    'use strict';
+
+    /**
+     * ClientsTable Class
+     * טבלת לקוחות
+     */
+    class ClientsTable {
+        constructor() {
+            this.dataManager = null;
+            this.tableBody = null;
+
+            // DOM Elements
+            this.searchInput = null;
+            this.statusFilter = null;
+            this.typeFilter = null;
+            this.sortSelect = null;
+
+            this.isInitialized = false;
+        }
+
+        /**
+         * Initialize Table
+         * אתחול הטבלה
+         */
+        async init() {
+            try {
+                console.log('🎨 ClientsTable: Initializing...');
+
+                // Wait for Data Manager
+                if (!window.ClientsDataManager) {
+                    console.error('❌ ClientsDataManager not found');
+                    return false;
+                }
+
+                this.dataManager = window.ClientsDataManager;
+
+                // Get DOM elements
+                this.getDOMElements();
+
+                // Setup event listeners
+                this.setupEventListeners();
+
+                // Initial render
+                this.render();
+
+                this.isInitialized = true;
+
+                console.log('✅ ClientsTable: Initialized successfully');
+
+                return true;
+
+            } catch (error) {
+                console.error('❌ ClientsTable: Initialization error:', error);
+                return false;
+            }
+        }
+
+        /**
+         * Get DOM elements
+         * קבלת אלמנטים מה-DOM
+         */
+        getDOMElements() {
+            this.tableBody = document.getElementById('clientsTableBody');
+            this.searchInput = document.getElementById('searchInput');
+            this.statusFilter = document.getElementById('statusFilter');
+            this.typeFilter = document.getElementById('typeFilter');
+            this.sortSelect = document.getElementById('sortSelect');
+        }
+
+        /**
+         * Setup event listeners
+         * הגדרת מאזיני אירועים
+         */
+        setupEventListeners() {
+            // Search input
+            if (this.searchInput) {
+                this.searchInput.addEventListener('input', (e) => {
+                    this.dataManager.setSearch(e.target.value);
+                });
+            }
+
+            // Status filter
+            if (this.statusFilter) {
+                this.statusFilter.addEventListener('change', (e) => {
+                    this.dataManager.setStatusFilter(e.target.value);
+                });
+            }
+
+            // Type filter
+            if (this.typeFilter) {
+                this.typeFilter.addEventListener('change', (e) => {
+                    this.dataManager.setTypeFilter(e.target.value);
+                });
+            }
+
+            // Sort
+            if (this.sortSelect) {
+                this.sortSelect.addEventListener('change', (e) => {
+                    this.dataManager.setSort(e.target.value);
+                });
+            }
+
+            // Listen to data updates
+            window.addEventListener('clients:updated', (e) => {
+                this.render(e.detail);
+            });
+        }
+
+        /**
+         * Render table
+         * רינדור הטבלה
+         */
+        render(data) {
+            if (!this.tableBody) return;
+
+            const paginatedData = data || this.dataManager.getPaginatedClients();
+            const clients = paginatedData.clients;
+
+            if (!clients || clients.length === 0) {
+                this.renderEmptyState();
+                return;
+            }
+
+            this.tableBody.innerHTML = clients.map(client => this.renderClientRow(client)).join('');
+
+            // Attach event listeners to action buttons
+            this.attachRowEventListeners();
+        }
+
+        /**
+         * Render client row
+         * רינדור שורה של לקוח
+         */
+        renderClientRow(client) {
+            const statusBadge = this.getStatusBadge(client);
+            const typeBadge = this.getTypeBadge(client);
+            const hoursDisplay = this.getHoursDisplay(client);
+            const teamMembers = this.getTeamMembers(client);
+            const lastActivity = this.formatDate(client.lastActivity);
+
+            return `
+                <tr data-client-id="${client.id}">
+                    <td>
+                        <div class="client-name">
+                            <strong>${this.escapeHtml(client.fullName)}</strong>
+                        </div>
+                    </td>
+                    <td>${this.escapeHtml(client.caseNumber || '-')}</td>
+                    <td>${typeBadge}</td>
+                    <td>${hoursDisplay}</td>
+                    <td>${statusBadge}</td>
+                    <td>${teamMembers}</td>
+                    <td>${lastActivity}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn-action btn-action-primary" data-action="report" data-client-id="${client.id}">
+                                <i class="fas fa-file-alt"></i>
+                                <span>הפק דוח</span>
+                            </button>
+                            <button class="btn-action btn-action-secondary" data-action="details" data-client-id="${client.id}">
+                                <i class="fas fa-eye"></i>
+                                <span>פרטים</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        /**
+         * Get status badge
+         * קבלת תג סטטוס
+         */
+        getStatusBadge(client) {
+            let statusClass = 'active';
+            let statusText = 'פעיל';
+            let icon = 'fa-check-circle';
+
+            if (client.isBlocked) {
+                statusClass = 'blocked';
+                statusText = 'חסום';
+                icon = 'fa-ban';
+            } else if (client.isCritical) {
+                statusClass = 'critical';
+                statusText = 'קריטי';
+                icon = 'fa-exclamation-triangle';
+            } else if (client.status === 'inactive') {
+                statusClass = 'inactive';
+                statusText = 'לא פעיל';
+                icon = 'fa-pause-circle';
+            }
+
+            return `
+                <span class="status-badge ${statusClass}">
+                    <i class="fas ${icon}"></i>
+                    ${statusText}
+                </span>
+            `;
+        }
+
+        /**
+         * Get type badge
+         * קבלת תג סוג
+         */
+        getTypeBadge(client) {
+            const typeText = client.type === 'hours' ? 'שעות' : 'קבוע';
+            const icon = client.type === 'hours' ? 'fa-clock' : 'fa-file-invoice-dollar';
+
+            return `
+                <span class="type-badge">
+                    <i class="fas ${icon}"></i>
+                    ${typeText}
+                </span>
+            `;
+        }
+
+        /**
+         * Get hours display
+         * קבלת תצוגת שעות
+         */
+        getHoursDisplay(client) {
+            if (client.type !== 'hours') {
+                return '<span>-</span>';
+            }
+
+            const totalHours = client.totalHours || 0;
+            const remaining = client.hoursRemaining || 0;
+            const percentage = totalHours > 0 ? (remaining / totalHours) * 100 : 0;
+
+            let progressClass = '';
+            if (client.isBlocked) {
+                progressClass = 'blocked';
+            } else if (client.isCritical) {
+                progressClass = 'critical';
+            }
+
+            return `
+                <div class="hours-display">
+                    <div class="hours-value">${remaining.toFixed(1)} / ${totalHours}</div>
+                    <div class="hours-progress">
+                        <div class="hours-progress-bar ${progressClass}" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Get team members
+         * קבלת חברי צוות
+         */
+        getTeamMembers(client) {
+            if (!client.assignedTo || client.assignedTo.length === 0) {
+                return '<span>-</span>';
+            }
+
+            const members = client.assignedTo.slice(0, 3); // Show max 3
+            const remaining = client.assignedTo.length - 3;
+
+            const membersHtml = members.map(email => {
+                const name = this.dataManager.getEmployeeName(email);
+                return `<span class="team-member">${this.escapeHtml(name)}</span>`;
+            }).join('');
+
+            const remainingHtml = remaining > 0 ? `<span class="team-member">+${remaining}</span>` : '';
+
+            return `<div class="team-members">${membersHtml}${remainingHtml}</div>`;
+        }
+
+        /**
+         * Format date
+         * עיצוב תאריך
+         */
+        formatDate(timestamp) {
+            if (!timestamp) return '-';
+
+            let date;
+            if (timestamp.toDate) {
+                date = timestamp.toDate();
+            } else if (timestamp instanceof Date) {
+                date = timestamp;
+            } else {
+                date = new Date(timestamp);
+            }
+
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            if (days === 0) {
+                return 'היום';
+            } else if (days === 1) {
+                return 'אתמול';
+            } else if (days < 7) {
+                return `לפני ${days} ימים`;
+            } else {
+                return date.toLocaleDateString('he-IL');
+            }
+        }
+
+        /**
+         * Render empty state
+         * רינדור מצב ריק
+         */
+        renderEmptyState() {
+            this.tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <i class="fas fa-users"></i>
+                            <h3>לא נמצאו לקוחות</h3>
+                            <p>נסה לשנות את הפילטרים או את החיפוש</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        /**
+         * Attach row event listeners
+         * צרף מאזיני אירועים לשורות
+         */
+        attachRowEventListeners() {
+            // Report buttons
+            const reportButtons = document.querySelectorAll('[data-action="report"]');
+            reportButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const clientId = btn.getAttribute('data-client-id');
+                    this.handleReportClick(clientId);
+                });
+            });
+
+            // Details buttons
+            const detailsButtons = document.querySelectorAll('[data-action="details"]');
+            detailsButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const clientId = btn.getAttribute('data-client-id');
+                    this.handleDetailsClick(clientId);
+                });
+            });
+        }
+
+        /**
+         * Handle report click
+         * טיפול בלחיצה על הפקת דוח
+         */
+        handleReportClick(clientId) {
+            console.log('📄 Opening report modal for client:', clientId);
+
+            if (window.ClientReportModal) {
+                window.ClientReportModal.open(clientId);
+            } else {
+                console.error('❌ ClientReportModal not loaded');
+                if (window.notify) {
+                    window.notify.error('מערכת הדוחות לא נטענה', 'שגיאה');
+                }
+            }
+        }
+
+        /**
+         * Handle details click
+         * טיפול בלחיצה על פרטים
+         */
+        handleDetailsClick(clientId) {
+            console.log('👁️ Opening details for client:', clientId);
+
+            const client = this.dataManager.getClientById(clientId);
+            if (!client) {
+                console.error('❌ Client not found:', clientId);
+                return;
+            }
+
+            // For now, just show an alert with basic info
+            // TODO: Create a proper ClientDetailsModal
+            alert(`
+פרטי לקוח:
+שם: ${client.fullName}
+מספר תיק: ${client.caseNumber || '-'}
+סוג: ${client.type === 'hours' ? 'שעות' : 'קבוע'}
+${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''}
+סטטוס: ${client.status}
+            `.trim());
+        }
+
+        /**
+         * Export to Excel
+         * ייצוא לאקסל
+         */
+        exportToExcel() {
+            console.log('📥 Exporting clients to Excel...');
+
+            const clients = this.dataManager.filteredClients;
+
+            if (!clients || clients.length === 0) {
+                if (window.notify) {
+                    window.notify.error('אין נתונים לייצוא', 'שגיאה');
+                }
+                return;
+            }
+
+            // Convert to CSV
+            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'סטטוס', 'צוות', 'פעילות אחרונה'];
+            const rows = clients.map(client => [
+                client.fullName,
+                client.caseNumber || '',
+                client.type === 'hours' ? 'שעות' : 'קבוע',
+                client.type === 'hours' ? client.hoursRemaining || 0 : '-',
+                client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
+                client.assignedTo ? client.assignedTo.join(', ') : '',
+                this.formatDate(client.lastActivity)
+            ]);
+
+            let csv = headers.join(',') + '\n';
+            csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+            // Add BOM for Hebrew support
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `clients_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+
+            if (window.notify) {
+                window.notify.success('הקובץ הורד בהצלחה', 'ייצוא הצליח');
+            }
+        }
+
+        /**
+         * Escape HTML
+         * הימנעות מ-HTML injection
+         */
+        escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    }
+
+    // Create global instance
+    const clientsTable = new ClientsTable();
+
+    // Make available globally
+    window.ClientsTable = clientsTable;
+
+    // Export for ES6 modules (if needed)
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = clientsTable;
+    }
+
+})();
