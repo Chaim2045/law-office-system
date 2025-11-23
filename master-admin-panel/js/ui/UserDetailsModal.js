@@ -1044,43 +1044,35 @@
 
             return `
                 <div style="background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; border-right: 3px solid ${borderColor}; margin-bottom: 12px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'" data-entry-id="${entry.id}">
-                    <!-- שורה עליונה -->
-                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: ${entry.notes || taskDesc ? '12px' : '0'};">
-                        <!-- תאריך + שעות -->
-                        <div style="display: flex; align-items: center; gap: 12px; flex: 0 0 auto;">
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <i class="fas fa-calendar" style="color: #6b7280; font-size: 14px;"></i>
-                                <span style="font-weight: 600; color: #1f2937; font-size: 14px;">${formattedDate}</span>
-                            </div>
-                            <div style="width: 1px; height: 20px; background: #e5e7eb;"></div>
-                            <div style="display: flex; align-items: center; gap: 6px; background: ${borderColor}15; padding: 4px 10px; border-radius: 6px;">
-                                <i class="fas fa-clock" style="color: ${iconColor}; font-size: 13px;"></i>
-                                <span style="font-weight: 700; color: ${iconColor}; font-size: 15px;">${entry.hours.toFixed(2)}</span>
-                                <span style="color: #6b7280; font-size: 13px;">ש'</span>
-                            </div>
+
+                    <!-- שורה 1: תאריך, שעות, חיוב, פעולות -->
+                    <div style="display: grid; grid-template-columns: auto auto 1fr auto auto; gap: 16px; align-items: center; margin-bottom: 12px;">
+                        <!-- תאריך -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-calendar" style="color: #6b7280; font-size: 13px;"></i>
+                            <span style="font-weight: 600; color: #1f2937; font-size: 14px; white-space: nowrap;">${formattedDate}</span>
                         </div>
 
-                        <!-- לקוח -->
-                        <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;">
-                            <span style="color: #6b7280; font-size: 13px; font-weight: 500; white-space: nowrap;">לקוח:</span>
-                            <div style="display: inline-flex; align-items: center; gap: 6px; background: ${borderColor}10; padding: 4px 12px; border-radius: 6px; max-width: 100%; min-width: 0;">
-                                <i class="${iconClass}" style="color: ${iconColor}; font-size: 13px;"></i>
-                                <span style="font-weight: 600; color: #1f2937; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(clientName)}">${this.escapeHtml(clientName)}</span>
-                            </div>
+                        <!-- שעות -->
+                        <div style="display: flex; align-items: center; gap: 6px; background: ${borderColor}15; padding: 6px 12px; border-radius: 6px;">
+                            <i class="fas fa-clock" style="color: ${iconColor}; font-size: 13px;"></i>
+                            <span style="font-weight: 700; color: ${iconColor}; font-size: 15px;">${entry.hours.toFixed(2)}</span>
+                            <span style="color: #6b7280; font-size: 13px;">ש'</span>
                         </div>
+
+                        <!-- ספייסר -->
+                        <div></div>
 
                         <!-- חיוב -->
                         ${entry.billable !== undefined ? `
-                        <div style="flex: 0 0 auto;">
-                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: ${entry.billable ? '#eff6ff' : '#f9fafb'}; color: ${entry.billable ? '#3b82f6' : '#6b7280'}; font-size: 12px; font-weight: 600;">
-                                <i class="fas fa-${entry.billable ? 'check' : 'times'}-circle"></i>
-                                ${entry.billable ? 'חויב' : 'לא חויב'}
-                            </span>
-                        </div>
-                        ` : ''}
+                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: ${entry.billable ? '#eff6ff' : '#f9fafb'}; color: ${entry.billable ? '#3b82f6' : '#6b7280'}; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                            <i class="fas fa-${entry.billable ? 'check' : 'times'}-circle"></i>
+                            ${entry.billable ? 'חויב' : 'לא חויב'}
+                        </span>
+                        ` : '<div></div>'}
 
                         <!-- פעולות -->
-                        <div style="flex: 0 0 auto; display: flex; gap: 6px;">
+                        <div style="display: flex; gap: 6px;">
                             <button class="btn-table-action btn-edit-hour" data-entry-id="${entry.id}" title="ערוך" style="padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
                                 <i class="fas fa-edit" style="color: #6b7280;"></i>
                             </button>
@@ -1090,19 +1082,34 @@
                         </div>
                     </div>
 
-                    <!-- שורה תחתונה - משימה + הערות -->
+                    <!-- שורה 2: לקוח -->
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: ${borderColor}08; border-radius: 6px; margin-bottom: ${taskDesc || entry.notes ? '12px' : '0'};">
+                        <span style="color: #6b7280; font-size: 13px; font-weight: 600; white-space: nowrap;">לקוח:</span>
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                            <i class="${iconClass}" style="color: ${iconColor}; font-size: 14px;"></i>
+                            <span style="font-weight: 600; color: #1f2937; font-size: 14px;" title="${this.escapeHtml(clientName)}">${this.escapeHtml(clientName)}</span>
+                        </div>
+                    </div>
+
+                    <!-- שורה 3: משימה + הערות -->
                     ${taskDesc || entry.notes ? `
-                    <div style="display: flex; gap: 16px; padding-top: 12px; border-top: 1px solid #f3f4f6;">
+                    <div style="display: grid; grid-template-columns: ${taskDesc && entry.notes ? '1fr 1fr' : '1fr'}; gap: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
                         ${taskDesc ? `
-                        <div style="flex: 1; min-width: 0; display: flex; align-items: start; gap: 8px;">
-                            <i class="fas fa-tasks" style="color: #9ca3af; font-size: 13px; margin-top: 2px;"></i>
-                            <span style="color: #6b7280; font-size: 13px; line-height: 1.5;" title="${this.escapeHtml(entry.taskDescription || '')}">${this.escapeHtml(taskDesc)}</span>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <i class="fas fa-tasks" style="color: #9ca3af; font-size: 12px; margin-top: 3px;"></i>
+                            <div>
+                                <div style="font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 3px;">משימה</div>
+                                <span style="color: #4b5563; font-size: 13px; line-height: 1.5;" title="${this.escapeHtml(entry.taskDescription || '')}">${this.escapeHtml(taskDesc)}</span>
+                            </div>
                         </div>
                         ` : ''}
                         ${entry.notes ? `
-                        <div style="flex: 1; min-width: 0; display: flex; align-items: start; gap: 8px;">
-                            <i class="fas fa-sticky-note" style="color: #9ca3af; font-size: 13px; margin-top: 2px;"></i>
-                            <span style="color: #6b7280; font-size: 13px; line-height: 1.5; font-style: italic;" title="${this.escapeHtml(entry.notes)}">${this.escapeHtml(entry.notes.length > 60 ? entry.notes.substring(0, 60) + '...' : entry.notes)}</span>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <i class="fas fa-sticky-note" style="color: #9ca3af; font-size: 12px; margin-top: 3px;"></i>
+                            <div>
+                                <div style="font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 3px;">הערה</div>
+                                <span style="color: #4b5563; font-size: 13px; line-height: 1.5; font-style: italic;" title="${this.escapeHtml(entry.notes)}">${this.escapeHtml(entry.notes.length > 60 ? entry.notes.substring(0, 60) + '...' : entry.notes)}</span>
+                            </div>
                         </div>
                         ` : ''}
                     </div>
