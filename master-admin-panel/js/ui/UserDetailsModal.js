@@ -1062,8 +1062,11 @@
 
                         <!-- לקוח -->
                         <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;">
-                            <i class="${iconClass}" style="color: ${iconColor}; font-size: 14px;"></i>
-                            <span style="font-weight: 600; color: #1f2937; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(clientName)}">${this.escapeHtml(clientName)}</span>
+                            <span style="color: #6b7280; font-size: 13px; font-weight: 500; white-space: nowrap;">לקוח:</span>
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: ${borderColor}10; padding: 4px 12px; border-radius: 6px; max-width: 100%; min-width: 0;">
+                                <i class="${iconClass}" style="color: ${iconColor}; font-size: 13px;"></i>
+                                <span style="font-weight: 600; color: #1f2937; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(clientName)}">${this.escapeHtml(clientName)}</span>
+                            </div>
                         </div>
 
                         <!-- חיוב -->
