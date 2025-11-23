@@ -202,20 +202,28 @@
 
             // First, try to get user from DataManager (already loaded with stats)
             let userData = null;
+            let allUsers = null;
+
+            // DataManager stores users in 'allUsers' property, accessible via getAllUsers()
+            if (window.DataManager && typeof window.DataManager.getAllUsers === 'function') {
+                allUsers = window.DataManager.getAllUsers();
+            }
+
             console.log('🔍 Checking DataManager:', {
                 exists: !!window.DataManager,
-                hasUsers: !!(window.DataManager && window.DataManager.users),
-                usersCount: window.DataManager?.users?.length || 0
+                hasGetAllUsers: !!(window.DataManager && typeof window.DataManager.getAllUsers === 'function'),
+                usersCount: allUsers?.length || 0
             });
 
-            if (window.DataManager && window.DataManager.users) {
-                userData = window.DataManager.users.find(u => u.email === userEmail);
+            if (allUsers && allUsers.length > 0) {
+                userData = allUsers.find(u => u.email === userEmail);
                 console.log('📊 Found user in DataManager:', userData ? 'Yes' : 'No');
                 if (userData) {
                     console.log('📊 User stats from DataManager:', {
                         clientsCount: userData.clientsCount,
                         tasksCount: userData.tasksCount,
-                        hoursThisMonth: userData.hoursThisMonth
+                        hoursThisMonth: userData.hoursThisMonth,
+                        hoursThisWeek: userData.hoursThisWeek
                     });
                 }
             } else {
