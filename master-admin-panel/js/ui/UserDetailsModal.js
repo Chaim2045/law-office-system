@@ -788,13 +788,88 @@
                 return this.renderEmptyState('fas fa-history', 'אין פעילות', 'אין רישומי פעילות למשתמש זה');
             }
 
+            // סנן פעולות לא רלוונטיות (צפיות)
+            const filteredActivity = activity.filter(log =>
+                log.action !== 'VIEW_USER_DETAILS'
+            );
+
+            // קטגוריזציה
+            const categories = this.categorizeActivity(filteredActivity);
+
+            if (filteredActivity.length === 0) {
+                return this.renderEmptyState('fas fa-history', 'אין פעילות משמעותית', 'המשתמש לא ביצע פעולות משמעותיות עדיין');
+            }
+
             return `
                 <div class="tab-panel tab-activity">
-                    <div class="activity-timeline">
-                        ${activity.map(log => this.renderActivityLog(log)).join('')}
+                    <!-- Activity Stats -->
+                    <div class="activity-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                        ${this.renderActivityStats(categories)}
                     </div>
+
+                    <!-- Activity Timeline -->
+                    <div class="activity-timeline">
+                        ${filteredActivity.map(log => this.renderActivityLog(log)).join('')}
+                    </div>
+
+                    ${filteredActivity.length < activity.length ? `
+                        <div style="text-align: center; margin-top: 16px; padding: 12px; background: #f3f4f6; border-radius: 8px; color: #6b7280; font-size: 13px;">
+                            <i class="fas fa-info-circle" style="margin-left: 6px;"></i>
+                            הוסתרו ${activity.length - filteredActivity.length} צפיות בפרטי משתמש
+                        </div>
+                    ` : ''}
                 </div>
             `;
+        }
+
+        /**
+         * Categorize activity logs
+         * קטגוריזציה של פעילויות
+         */
+        categorizeActivity(activity) {
+            return {
+                tasks: activity.filter(log =>
+                    ['CREATE_TASK', 'UPDATE_TASK', 'COMPLETE_TASK', 'DELETE_TASK',
+                     'EXTEND_TASK_DEADLINE', 'TASK_UPDATED_BY_ADMIN'].includes(log.action)
+                ).length,
+                clients: activity.filter(log =>
+                    ['CREATE_CLIENT', 'UPDATE_CLIENT', 'DELETE_CLIENT',
+                     'ADD_SERVICE_TO_CLIENT', 'REMOVE_SERVICE_FROM_CLIENT'].includes(log.action)
+                ).length,
+                hours: activity.filter(log =>
+                    ['CREATE_TIMESHEET_ENTRY', 'UPDATE_TIMESHEET_ENTRY',
+                     'DELETE_TIMESHEET_ENTRY'].includes(log.action)
+                ).length,
+                system: activity.filter(log =>
+                    ['LOGIN', 'LOGOUT', 'UPDATE_USER', 'CREATE_USER',
+                     'DELETE_USER', 'BLOCK_USER', 'UNBLOCK_USER'].includes(log.action)
+                ).length
+            };
+        }
+
+        /**
+         * Render activity stats
+         * רינדור סטטיסטיקות פעילות
+         */
+        renderActivityStats(categories) {
+            const stats = [
+                { label: 'משימות', count: categories.tasks, icon: 'fa-tasks' },
+                { label: 'לקוחות', count: categories.clients, icon: 'fa-users' },
+                { label: 'שעות', count: categories.hours, icon: 'fa-clock' },
+                { label: 'מערכת', count: categories.system, icon: 'fa-cog' }
+            ];
+
+            const primaryColor = '#1877f2'; // Facebook blue
+
+            return stats.filter(s => s.count > 0).map(stat => `
+                <div style="background: white; padding: 12px; border-radius: 8px; border-right: 3px solid ${primaryColor}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <i class="fas ${stat.icon}" style="color: ${primaryColor}; font-size: 14px;"></i>
+                        <span style="font-size: 12px; color: #6b7280; font-weight: 600;">${stat.label}</span>
+                    </div>
+                    <div style="font-size: 24px; font-weight: 700; color: #1f2937;">${stat.count}</div>
+                </div>
+            `).join('');
         }
 
         /**
@@ -1326,15 +1401,17 @@
          */
         formatActivityDetails(details) {
             const detailsArray = [];
+            const seenLabels = new Set(); // למניעת כפילויות
 
             // תרגום שמות שדות לעברית
             const fieldLabels = {
                 'clientId': 'תיק',
                 'caseNumber': 'תיק',
-                'clientName': 'שם לקוח',
+                'clientName': 'לקוח',
                 'taskId': 'משימה',
                 'targetEmail': 'משתמש',
                 'actualMinutes': 'זמן בפועל',
+                'estimatedHours': 'זמן משוער',
                 'gapPercent': 'פער',
                 'oldDeadline': 'מועד קודם',
                 'newDeadline': 'מועד חדש',
@@ -1344,8 +1421,13 @@
                 'newData': 'נתונים חדשים',
                 'hours': 'שעות',
                 'billable': 'חייב',
-                'description': 'תיאור'
+                'description': 'תיאור',
+                'taskDescription': 'תיאור המשימה',
+                'deadline': 'מועד יעד'
             };
+
+            // שדות שרוצים לדלג עליהם
+            const skipFields = ['oldData', 'newData', 'taskId'];
 
             // תרגום ערכים מיוחדים
             const valueTransformers = {
@@ -1354,7 +1436,36 @@
                 'false': 'לא'
             };
 
-            Object.entries(details).forEach(([key, value]) => {
+            // סדר עדיפות להצגת שדות
+            const priorityOrder = [
+                'clientName', 'caseNumber', 'clientId',
+                'taskDescription', 'estimatedHours',
+                'actualMinutes', 'gapPercent',
+                'newDeadline', 'procedureType'
+            ];
+
+            // מיין לפי סדר עדיפות
+            const sortedEntries = Object.entries(details).sort((a, b) => {
+                const indexA = priorityOrder.indexOf(a[0]);
+                const indexB = priorityOrder.indexOf(b[0]);
+                if (indexA === -1 && indexB === -1) {
+return 0;
+}
+                if (indexA === -1) {
+return 1;
+}
+                if (indexB === -1) {
+return -1;
+}
+                return indexA - indexB;
+            });
+
+            sortedEntries.forEach(([key, value]) => {
+                // דלג על שדות מסוימים
+                if (skipFields.includes(key)) {
+                    return;
+                }
+
                 // דלג על null/undefined
                 if (value === null || value === undefined) {
                     return;
@@ -1377,14 +1488,24 @@
                 // המר שם שדה לעברית
                 const label = fieldLabels[key] || key;
 
+                // מניעת כפילויות - אם כבר הצגנו "תיק", אל תציג שוב
+                if (seenLabels.has(label)) {
+                    return;
+                }
+                seenLabels.add(label);
+
                 // המר ערך אם צריך
                 let displayValue = value;
 
-                // פורמט מיוחד לזמן בדקות
+                // פורמטים מיוחדים
                 if (key === 'actualMinutes') {
                     const hours = Math.floor(value / 60);
                     const minutes = value % 60;
-                    displayValue = hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')} שעות` : `${minutes} דקות`;
+                    displayValue = hours > 0
+                        ? `${hours}:${minutes.toString().padStart(2, '0')} שעות`
+                        : `${minutes} דקות`;
+                } else if (key === 'estimatedHours') {
+                    displayValue = `${value} שעות`;
                 } else if (key === 'gapPercent') {
                     displayValue = `${value}%`;
                 } else if (valueTransformers[value]) {
@@ -1394,8 +1515,8 @@
                 detailsArray.push(`${label}: ${displayValue}`);
             });
 
-            // הגבל ל-4 פרטים
-            return detailsArray.slice(0, 4);
+            // הגבל ל-3 פרטים החשובים ביותר
+            return detailsArray.slice(0, 3);
         }
 
         formatActivityAction(action) {
