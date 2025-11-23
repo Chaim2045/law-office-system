@@ -142,30 +142,8 @@
 
     <!-- ===== Dashboard Screen (Hidden by default) ===== -->
     <div id="dashboardScreen" class="dashboard-container" style="display: none;">
-        <!-- Header -->
-        <header class="dashboard-header">
-            <div class="header-left">
-                <h1 class="header-title">
-                    <i class="fas fa-shield-halved"></i>
-                    Master Admin Panel
-                </h1>
-            </div>
-            <div class="header-right">
-                <div class="admin-info" id="adminInfo">
-                    <div class="admin-avatar">
-                        <i class="fas fa-user-shield"></i>
-                    </div>
-                    <div class="admin-details">
-                        <span class="admin-name" id="adminName">Admin</span>
-                        <span class="admin-role">מנהל מערכת</span>
-                    </div>
-                </div>
-                <button class="btn-logout" id="logoutButton">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>יציאה</span>
-                </button>
-            </div>
-        </header>
+        <!-- Navigation Bar -->
+        <div id="navigationContainer"></div>
 
         <!-- Main Content -->
         <main class="dashboard-main">
@@ -187,6 +165,9 @@
     <script src="js/core/firebase.js?v=20251123v6"></script>
     <script src="js/core/auth.js?v=20251123v6"></script>
     <script src="js/core/constants.js?v=20251123v6"></script>
+
+    <!-- ===== Navigation Component ===== -->
+    <script src="js/ui/Navigation.js?v=20251123v1"></script>
 
     <!-- ===== Phase 2: Data & UI Components ===== -->
     <script src="js/managers/DataManager.js?v=20251123v6"></script>
@@ -221,6 +202,14 @@
             window.addEventListener('dashboard:ready', async () => {
                 console.log('📊 Initializing Dashboard UI...');
 
+                // Initialize Navigation
+                if (window.Navigation) {
+                    window.Navigation.init('users');
+                } else {
+                    console.error('❌ Navigation not loaded');
+                }
+
+                // Initialize Dashboard UI
                 if (window.DashboardUI) {
                     await window.DashboardUI.init();
                 } else {
