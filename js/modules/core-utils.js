@@ -6,12 +6,36 @@
  * Part of Law Office Management System
  *
  * @module CoreUtilsModule
- * @version 1.1.0
- * @updated 2025-01-19
+ * @version 1.2.0
+ * @updated 2025-01-23
  *
  * ════════════════════════════════════════════════════════════════════
  * CHANGELOG
  * ════════════════════════════════════════════════════════════════════
+ *
+ * v1.2.0 - 23/01/2025 (November 23, 2025)
+ * ----------------------------------------
+ * 🐛 BUG FIX: Progress bar not updating after time logging
+ *
+ * Problem: Service card progress bars showed 0% even after logging hours
+ * Root Cause: calculateTotalHours() and calculateHoursUsed() were not exported to window
+ *
+ * Changes:
+ * - Line 32-36: Added calculateTotalHours and calculateHoursUsed to imports
+ * - Line 167-168: Added both functions to window global object
+ * - Line 185-186: Added both functions to module exports
+ *
+ * Impact:
+ * - ✅ Progress bars now show correct percentage
+ * - ✅ Hours used display correctly in service cards
+ * - ✅ Real-time updates work properly
+ * - ✅ Fixes js/modules/service-card-renderer.js (lines 70-72, 121-123)
+ *
+ * Files affected:
+ * - js/modules/service-card-renderer.js (uses window.calculateTotalHours/calculateHoursUsed)
+ * - js/modules/client-case-selector.js (uses window.calculateTotalHours/calculateHoursUsed)
+ *
+ * Performance: No impact - functions already existed, just exposed to window
  *
  * v1.1.0 - 19/01/2025
  * -------------------
@@ -28,8 +52,12 @@
  * - Backward compatibility maintained
  */
 
-// Import deduction system calculator (Single Source of Truth)
-import { calculateRemainingHours } from '../../src/modules/deduction/calculators.js';
+// Import deduction system calculators (Single Source of Truth)
+import {
+  calculateRemainingHours,
+  calculateTotalHours,
+  calculateHoursUsed
+} from '../../src/modules/deduction/calculators.js';
 
 // Global state
 const currentActiveTab = 'budget';
@@ -160,6 +188,8 @@ const formatShort = (date) => {
 // Make utility functions globally available (for non-ES6 modules)
 if (typeof window !== 'undefined') {
   window.calculateRemainingHours = calculateRemainingHours;
+  window.calculateTotalHours = calculateTotalHours;
+  window.calculateHoursUsed = calculateHoursUsed;
   window.safeText = safeText; // ✅ Make safeText globally available
 }
 
@@ -175,5 +205,7 @@ export {
   formatDateTime,
   formatDate,
   formatShort,
-  calculateRemainingHours // ✅ NEW: Global hours calculation function
+  calculateRemainingHours,
+  calculateTotalHours,
+  calculateHoursUsed
 };
