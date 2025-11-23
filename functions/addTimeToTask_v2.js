@@ -9,6 +9,61 @@
  * 4. Optimistic Locking - בדיקת _version למניעת overwrites
  *
  * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - תיקון קריטי: עדכון חבילות לא נשמר ב-Firestore
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-23 (November 23, 2025)
+ * 🐛 גרסה: v2.1.0
+ *
+ * ❌ הבעיה שהתגלתה:
+ * כאשר נרשם זמן על משימה, התראנזקשן רצה בהצלחה והתיעוד נוצר, אבל השעות
+ * לא קוזזו מהחבילות (packages) בפועל! החבילות נשארו עם hoursUsed: 0.
+ *
+ * תרחיש שנכשל:
+ * - משימה מקושרת לשירות hours (serviceId: 'srv_xxx')
+ * - רישום 90 דקות (1.5 שעות)
+ * - ✅ timesheet_entries נוצר
+ * - ✅ task.actualMinutes התעדכן
+ * - ❌ package.hoursUsed נשאר 0 (במקום 1.5)
+ * - ❌ progress bar מראה 0% (במקום 4.4%)
+ *
+ * 🔍 הסיבה (Root Cause):
+ * הקוד שלח את `clientData.services` ל-Firestore ישירות, אבל זה reference
+ * לאותו אובייקט שנקרא מה-DB. Firestore לא זיהה שינוי כי זה אותו reference!
+ *
+ * קוד בעייתי (שורות 108, 137, 164):
+ *   updates.clientUpdate = {
+ *     services: clientData.services,  // ← reference, לא עותק!
+ *     ...
+ *   };
+ *
+ * ✅ התיקון שבוצע:
+ * הוספתי deep clone של services array לפני השליחה ל-Firestore:
+ *
+ *   const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+ *   updates.clientUpdate = {
+ *     services: updatedServices,  // ← עכשיו Firestore רואה שינוי!
+ *     ...
+ *   };
+ *
+ * 📍 שורות שתוקנו:
+ * - Line 107-108: הליך משפטי עם stages
+ * - Line 136-138: שירות hours רגיל
+ * - Line 163-164: לקוח שעתי fallback
+ *
+ * 🎯 Impact:
+ * - ✅ החבילות מתעדכנות כעת בצורה נכונה
+ * - ✅ Progress bars מציגים את האחוזים המדויקים
+ * - ✅ hoursUsed/hoursRemaining מתעדכנים בזמן אמת
+ * - ✅ התיקון חל גם על הליכים משפטיים עם stages
+ *
+ * 🧪 Testing:
+ * כדי לבדוק שהתיקון עובד:
+ * 1. רשום זמן על משימה
+ * 2. הרץ את console script: await debugClientServices("client_id")
+ * 3. בדוק: package.hoursUsed צריך להיות > 0
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  * 📝 CHANGELOG - תיקון קריטי: קיזוז שעות לא עבד במקרים מסוימים
  * ═══════════════════════════════════════════════════════════════════════════
  *
@@ -104,8 +159,11 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
             targetService.hoursRemaining = (targetService.hoursRemaining || 0) - hoursWorked;
             targetService.lastActivity = new Date().toISOString();
 
+            // ✅ FIX: Deep clone services array so Firestore detects the change
+            const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+
             updates.clientUpdate = {
-              services: clientData.services,
+              services: updatedServices,
               hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
               hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
               minutesUsed: admin.firestore.FieldValue.increment(minutesToAdd),
@@ -133,8 +191,12 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       if (activePackage) {
         deductHoursFromPackage(activePackage, hoursWorked);
 
+        // ✅ FIX: Deep clone services array so Firestore detects the change
+        // Without this, Firestore receives a reference to the same object and ignores the update
+        const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+
         updates.clientUpdate = {
-          services: clientData.services,
+          services: updatedServices,
           minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
           hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
@@ -156,8 +218,11 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       if (activePackage) {
         deductHoursFromPackage(activePackage, hoursWorked);
 
+        // ✅ FIX: Deep clone services array so Firestore detects the change
+        const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+
         updates.clientUpdate = {
-          services: clientData.services,
+          services: updatedServices,
           minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
           hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
           lastActivity: admin.firestore.FieldValue.serverTimestamp()

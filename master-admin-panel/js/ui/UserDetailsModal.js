@@ -576,259 +576,112 @@
             const clientBreakdown = this.calculateClientBreakdown(filteredHours);
 
             return `
-                <div class="tab-panel tab-hours" style="padding: 24px;">
+                <div class="tab-panel tab-hours" style="padding: 20px;">
 
-                    <!-- כרטיסי סיכום -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px;">
-                        <!-- כרטיס סה"כ -->
-                        <div style="background: #3b82f6; padding: 24px; border-radius: 12px; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                            <div style="font-size: 14px; opacity: 0.95; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                                <i class="fas fa-chart-pie"></i>
-                                <span>סה"כ שעות</span>
+                    <!-- סיכום מהיר -->
+                    <div style="background: white; padding: 16px 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-clock" style="color: #3b82f6;"></i>
+                                <span style="font-weight: 700; font-size: 18px; color: #1f2937;">${totalHours.toFixed(1)}</span>
+                                <span style="color: #6b7280; font-size: 14px;">שעות</span>
                             </div>
-                            <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px;">${totalHours.toFixed(2)}</div>
-                            <div style="font-size: 13px; opacity: 0.9;">
-                                <i class="fas fa-file-alt" style="margin-left: 4px;"></i>
-                                ${filteredHours.length} רשומות
+                            <div style="width: 1px; height: 24px; background: #e5e7eb;"></div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-briefcase" style="color: #3b82f6; font-size: 14px;"></i>
+                                <span style="font-weight: 600; color: #1f2937;">${clientHours.toFixed(1)}</span>
+                                <span style="color: #6b7280; font-size: 13px;">(${clientPercentage}%)</span>
                             </div>
-                        </div>
-
-                        <!-- כרטיס שעות לקוחות -->
-                        <div style="background: white; padding: 24px; border-radius: 12px; border: 2px solid #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                            <div style="font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; color: #3b82f6; font-weight: 600;">
-                                <i class="fas fa-briefcase"></i>
-                                <span>עבודה ללקוחות</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-building" style="color: #94a3b8; font-size: 14px;"></i>
+                                <span style="font-weight: 600; color: #1f2937;">${internalHours.toFixed(1)}</span>
+                                <span style="color: #6b7280; font-size: 13px;">(${internalPercentage}%)</span>
                             </div>
-                            <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #1f2937;">${clientHours.toFixed(2)}</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #6b7280;">
-                                <span>
-                                    <i class="fas fa-percentage" style="margin-left: 4px;"></i>
-                                    ${clientPercentage}% מסה"כ
-                                </span>
-                                <span>
-                                    <i class="fas fa-list" style="margin-left: 4px;"></i>
-                                    ${clientEntriesCount} רשומות
-                                </span>
+                            ${billableHours > 0 ? `
+                            <div style="width: 1px; height: 24px; background: #e5e7eb;"></div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-check-circle" style="color: #3b82f6; font-size: 14px;"></i>
+                                <span style="font-weight: 600; color: #1f2937;">${billableHours.toFixed(1)}</span>
+                                <span style="color: #6b7280; font-size: 13px;">חויב</span>
                             </div>
-                        </div>
-
-                        <!-- כרטיס פעילות פנימית -->
-                        <div style="background: white; padding: 24px; border-radius: 12px; border: 2px solid #94a3b8; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                            <div style="font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; color: #64748b; font-weight: 600;">
-                                <i class="fas fa-building"></i>
-                                <span>פעילות פנימית</span>
-                            </div>
-                            <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #1f2937;">${internalHours.toFixed(2)}</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #6b7280;">
-                                <span>
-                                    <i class="fas fa-percentage" style="margin-left: 4px;"></i>
-                                    ${internalPercentage}% מסה"כ
-                                </span>
-                                <span>
-                                    <i class="fas fa-list" style="margin-left: 4px;"></i>
-                                    ${internalEntriesCount} רשומות
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- גרף התפלגות שעות -->
-                    ${totalHours > 0 ? `
-                    <div style="background: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
-                        <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-chart-bar" style="color: #3b82f6;"></i>
-                            התפלגות שעות - לקוח vs פנימי
-                        </h3>
-                        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
-                            <div style="flex: 1; background: #f3f4f6; border-radius: 12px; height: 40px; overflow: hidden; display: flex;">
-                                ${clientHours > 0 ? `
-                                <div style="width: ${clientPercentage}%; background: #3b82f6; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; transition: all 0.3s ease;" title="שעות לקוחות: ${clientHours.toFixed(2)}">
-                                    ${parseFloat(clientPercentage) > 15 ? `<i class="fas fa-briefcase" style="margin-left: 6px;"></i> ${clientPercentage}%` : ''}
-                                </div>
-                                ` : ''}
-                                ${internalHours > 0 ? `
-                                <div style="width: ${internalPercentage}%; background: #94a3b8; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; transition: all 0.3s ease;" title="פעילות פנימית: ${internalHours.toFixed(2)}">
-                                    ${parseFloat(internalPercentage) > 15 ? `<i class="fas fa-building" style="margin-left: 6px;"></i> ${internalPercentage}%` : ''}
-                                </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #eff6ff; border-radius: 8px; border-right: 4px solid #3b82f6;">
-                                <div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div>
-                                <div style="flex: 1;">
-                                    <div style="font-size: 13px; color: #1e40af; font-weight: 600;">עבודה ללקוחות</div>
-                                    <div style="font-size: 12px; color: #3b82f6; margin-top: 2px;">${clientHours.toFixed(2)} שעות (${clientPercentage}%)</div>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; border-right: 4px solid #94a3b8;">
-                                <div style="width: 12px; height: 12px; border-radius: 50%; background: #94a3b8;"></div>
-                                <div style="flex: 1;">
-                                    <div style="font-size: 13px; color: #475569; font-weight: 600;">פעילות פנימית</div>
-                                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">${internalHours.toFixed(2)} שעות (${internalPercentage}%)</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    ` : ''}
-
-                    <!-- Breakdown לפי לקוחות -->
-                    ${clientBreakdown.length > 0 ? `
-                    <div style="background: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
-                        <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-users" style="color: #10b981;"></i>
-                            פירוט שעות לפי לקוחות
-                        </h3>
-                        <div style="display: grid; gap: 12px;">
-                            ${clientBreakdown.slice(0, 5).map((client, index) => `
-                                <div style="display: flex; align-items: center; gap: 12px; padding: 14px; background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); border-radius: 8px; border-right: 4px solid ${this.getClientColor(index)}; transition: all 0.2s ease; cursor: pointer;" onmouseover="this.style.background='linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.background='linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)'; this.style.boxShadow='none'">
-                                    <div style="flex: 0 0 40px; height: 40px; border-radius: 8px; background: ${this.getClientColor(index)}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">
-                                        ${index + 1}
-                                    </div>
-                                    <div style="flex: 1; min-width: 0;">
-                                        <div style="font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                            <i class="fas fa-user-tie" style="color: ${this.getClientColor(index)}; font-size: 12px;"></i>
-                                            ${this.escapeHtml(client.name)}
-                                        </div>
-                                        <div style="font-size: 12px; color: #6b7280;">
-                                            <i class="fas fa-list" style="margin-left: 4px;"></i>
-                                            ${client.count} רשומות
-                                        </div>
-                                    </div>
-                                    <div style="flex: 0 0 auto; text-align: left;">
-                                        <div style="font-size: 20px; font-weight: 700; color: #1f2937;">${client.hours.toFixed(2)}</div>
-                                        <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">שעות</div>
-                                    </div>
-                                    <div style="flex: 0 0 60px; text-align: center;">
-                                        <div style="font-size: 16px; font-weight: 700; color: ${this.getClientColor(index)};">${client.percentage}%</div>
-                                        <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">מהלקוחות</div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                            ${clientBreakdown.length > 5 ? `
-                                <div style="padding: 12px; text-align: center; color: #6b7280; font-size: 13px; font-weight: 600;">
-                                    <i class="fas fa-ellipsis-h" style="margin-left: 6px;"></i>
-                                    ועוד ${clientBreakdown.length - 5} לקוחות נוספים
-                                </div>
                             ` : ''}
-                        </div>
-                    </div>
-                    ` : ''}
-
-                    <!-- סטטיסטיקות חיוב -->
-                    ${totalHours > 0 ? `
-                    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h3 style="margin: 0 0 16px 0; font-size: 15px; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-dollar-sign" style="color: #3b82f6;"></i>
-                            סטטיסטיקות חיוב
-                        </h3>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                            <div style="background: #eff6ff; padding: 16px; border-radius: 8px; border-right: 4px solid #3b82f6;">
-                                <div style="font-size: 13px; color: #1e40af; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-check-circle"></i>
-                                    חויב ללקוח
-                                </div>
-                                <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">${billableHours.toFixed(2)}</div>
-                                <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
-                                    ${totalHours > 0 ? ((billableHours / totalHours) * 100).toFixed(1) : 0}% מסה"כ שעות
-                                </div>
-                            </div>
-                            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-right: 4px solid #94a3b8;">
-                                <div style="font-size: 13px; color: #475569; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-times-circle"></i>
-                                    לא חויב
-                                </div>
-                                <div style="font-size: 24px; font-weight: 700; color: #64748b;">${nonBillableHours.toFixed(2)}</div>
-                                <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
-                                    ${totalHours > 0 ? ((nonBillableHours / totalHours) * 100).toFixed(1) : 0}% מסה"כ שעות
-                                </div>
+                            <div style="margin-right: auto; display: flex; align-items: center; gap: 8px; color: #6b7280; font-size: 13px;">
+                                <i class="fas fa-list"></i>
+                                <span>${filteredHours.length} רשומות</span>
                             </div>
                         </div>
                     </div>
-                    ` : ''}
 
-                    <!-- בורר חודש ושנה -->
-                    <div style="background: #3b82f6; padding: 20px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="display: flex; align-items: center; gap: 16px;">
-                            <div style="flex: 0 0 auto;">
-                                <i class="fas fa-calendar-alt" style="font-size: 24px; color: white;"></i>
-                            </div>
-                            <div style="flex: 1; display: flex; gap: 12px; align-items: center;">
-                                <label style="color: white; font-weight: 600; font-size: 14px;">תקופה:</label>
-                                <select id="monthSelector" style="padding: 10px 14px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; color: #1f2937; cursor: pointer;">
-                                    <option value="1" ${this.selectedMonth === 1 ? 'selected' : ''}>ינואר</option>
-                                    <option value="2" ${this.selectedMonth === 2 ? 'selected' : ''}>פברואר</option>
-                                    <option value="3" ${this.selectedMonth === 3 ? 'selected' : ''}>מרץ</option>
-                                    <option value="4" ${this.selectedMonth === 4 ? 'selected' : ''}>אפריל</option>
-                                    <option value="5" ${this.selectedMonth === 5 ? 'selected' : ''}>מאי</option>
-                                    <option value="6" ${this.selectedMonth === 6 ? 'selected' : ''}>יוני</option>
-                                    <option value="7" ${this.selectedMonth === 7 ? 'selected' : ''}>יולי</option>
-                                    <option value="8" ${this.selectedMonth === 8 ? 'selected' : ''}>אוגוסט</option>
-                                    <option value="9" ${this.selectedMonth === 9 ? 'selected' : ''}>ספטמבר</option>
-                                    <option value="10" ${this.selectedMonth === 10 ? 'selected' : ''}>אוקטובר</option>
-                                    <option value="11" ${this.selectedMonth === 11 ? 'selected' : ''}>נובמבר</option>
-                                    <option value="12" ${this.selectedMonth === 12 ? 'selected' : ''}>דצמבר</option>
-                                </select>
-                                <select id="yearSelector" style="padding: 10px 14px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; color: #1f2937; cursor: pointer;">
-                                    ${this.renderYearOptions()}
-                                </select>
-                            </div>
-                            <div style="flex: 0 0 auto; display: flex; gap: 8px;">
-                                <button id="prevMonthBtn" style="padding: 10px 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    <!-- בורר תקופה + פילטרים -->
+                    <div style="background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: end;">
+                            <!-- תקופה -->
+                            <div style="display: flex; gap: 8px; align-items: end;">
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">חודש</label>
+                                    <select id="monthSelector" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; min-width: 120px;">
+                                        <option value="1" ${this.selectedMonth === 1 ? 'selected' : ''}>ינואר</option>
+                                        <option value="2" ${this.selectedMonth === 2 ? 'selected' : ''}>פברואר</option>
+                                        <option value="3" ${this.selectedMonth === 3 ? 'selected' : ''}>מרץ</option>
+                                        <option value="4" ${this.selectedMonth === 4 ? 'selected' : ''}>אפריל</option>
+                                        <option value="5" ${this.selectedMonth === 5 ? 'selected' : ''}>מאי</option>
+                                        <option value="6" ${this.selectedMonth === 6 ? 'selected' : ''}>יוני</option>
+                                        <option value="7" ${this.selectedMonth === 7 ? 'selected' : ''}>יולי</option>
+                                        <option value="8" ${this.selectedMonth === 8 ? 'selected' : ''}>אוגוסט</option>
+                                        <option value="9" ${this.selectedMonth === 9 ? 'selected' : ''}>ספטמבר</option>
+                                        <option value="10" ${this.selectedMonth === 10 ? 'selected' : ''}>אוקטובר</option>
+                                        <option value="11" ${this.selectedMonth === 11 ? 'selected' : ''}>נובמבר</option>
+                                        <option value="12" ${this.selectedMonth === 12 ? 'selected' : ''}>דצמבר</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">שנה</label>
+                                    <select id="yearSelector" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; min-width: 100px;">
+                                        ${this.renderYearOptions()}
+                                    </select>
+                                </div>
+                                <button id="prevMonthBtn" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='white'" title="חודש קודם">
                                     <i class="fas fa-chevron-right"></i>
-                                    <span>חודש קודם</span>
                                 </button>
-                                <button id="nextMonthBtn" style="padding: 10px 16px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                                    <span>חודש הבא</span>
+                                <button id="nextMonthBtn" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='white'" title="חודש הבא">
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- כפתורי תצוגה -->
-                    <div style="display: flex; gap: 12px; margin-bottom: 24px;">
-                        <button class="view-toggle-btn ${this.hoursViewMode === 'table' ? 'active' : ''}" data-view="table" style="padding: 12px 24px; border-radius: 8px; border: 2px solid ${this.hoursViewMode === 'table' ? '#3b82f6' : '#e5e7eb'}; background: ${this.hoursViewMode === 'table' ? '#3b82f6' : 'white'}; color: ${this.hoursViewMode === 'table' ? 'white' : '#6b7280'}; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-table"></i>
-                            <span>טבלה</span>
-                        </button>
-                        <button class="view-toggle-btn ${this.hoursViewMode === 'cards' ? 'active' : ''}" data-view="cards" style="padding: 12px 24px; border-radius: 8px; border: 2px solid ${this.hoursViewMode === 'cards' ? '#3b82f6' : '#e5e7eb'}; background: ${this.hoursViewMode === 'cards' ? '#3b82f6' : 'white'}; color: ${this.hoursViewMode === 'cards' ? 'white' : '#6b7280'}; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-th-large"></i>
-                            <span>כרטיסים</span>
-                        </button>
-                    </div>
+                            <!-- פילטרים -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">סוג</label>
+                                    <select id="typeFilter" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white;">
+                                        <option value="all">הכל</option>
+                                        <option value="client">לקוחות</option>
+                                        <option value="internal">פנימי</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">חיוב</label>
+                                    <select id="billableFilter" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white;">
+                                        <option value="all">הכל</option>
+                                        <option value="yes">חויב</option>
+                                        <option value="no">לא חויב</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">חיפוש</label>
+                                    <input type="text" id="searchFilter" placeholder="חפש..." style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                                </div>
+                            </div>
 
-                    <!-- פילטרים בסיסיים -->
-                    <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #e5e7eb;">
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                            <div>
-                                <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px;">
-                                    <i class="fas fa-filter" style="margin-left: 6px; color: #3b82f6;"></i>
-                                    סוג:
-                                </label>
-                                <select id="typeFilter" class="filter-select" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white;">
-                                    <option value="all">הכל</option>
-                                    <option value="client">שעות לקוח</option>
-                                    <option value="internal">פעילות פנימית</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px;">
-                                    <i class="fas fa-dollar-sign" style="margin-left: 6px; color: #3b82f6;"></i>
-                                    חיוב:
-                                </label>
-                                <select id="billableFilter" class="filter-select" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white;">
-                                    <option value="all">הכל</option>
-                                    <option value="yes">חויב</option>
-                                    <option value="no">לא חויב</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px;">
-                                    <i class="fas fa-search" style="margin-left: 6px; color: #3b82f6;"></i>
-                                    חיפוש:
-                                </label>
-                                <input type="text" id="searchFilter" placeholder="חיפוש..." style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            <!-- תצוגה -->
+                            <div style="display: flex; gap: 8px;">
+                                <button class="view-toggle-btn ${this.hoursViewMode === 'table' ? 'active' : ''}" data-view="table" style="padding: 8px 16px; border-radius: 6px; border: 1px solid ${this.hoursViewMode === 'table' ? '#3b82f6' : '#d1d5db'}; background: ${this.hoursViewMode === 'table' ? '#3b82f6' : 'white'}; color: ${this.hoursViewMode === 'table' ? 'white' : '#6b7280'}; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px;">
+                                    <i class="fas fa-table"></i>
+                                    <span>טבלה</span>
+                                </button>
+                                <button class="view-toggle-btn ${this.hoursViewMode === 'cards' ? 'active' : ''}" data-view="cards" style="padding: 8px 16px; border-radius: 6px; border: 1px solid ${this.hoursViewMode === 'cards' ? '#3b82f6' : '#d1d5db'}; background: ${this.hoursViewMode === 'cards' ? '#3b82f6' : 'white'}; color: ${this.hoursViewMode === 'cards' ? 'white' : '#6b7280'}; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px;">
+                                    <i class="fas fa-th-large"></i>
+                                    <span>כרטיסים</span>
+                                </button>
                             </div>
                         </div>
                     </div>
