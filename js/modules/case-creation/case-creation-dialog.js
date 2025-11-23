@@ -5,12 +5,36 @@
  * ════════════════════════════════════════════════════════════════════
  *
  * @module case-creation-dialog
- * @version 5.2.0
+ * @version 5.3.0
  * @updated 2025-01-19
  *
  * ════════════════════════════════════════════════════════════════════
  * 📝 CHANGELOG
  * ════════════════════════════════════════════════════════════════════
+ *
+ * v5.3.0 - 19/01/2025 🐛 BUG FIX - Toast errors behind overlay
+ * ----------------------------------------
+ * 🐛 FIX: Toast notifications מוצגים מאחורי overlay ולא נראים
+ *   - הסרת כל ה-toast errors מ-handleAddServiceToCase
+ *   - החלפה ב-inline validation errors עם displayErrors()
+ *   - הוספת פוקוס אוטומטי על השדה הראשון עם שגיאה
+ *   - הדגשה ויזואלית של שדות עם שגיאות (border אדום)
+ *
+ * ✨ NEW: 3 פונקציות עזר חדשות (lines 1713-1816)
+ *   - validateServiceData() - validation מקיף עם field IDs
+ *   - focusOnFirstError() - פוקוס + scroll לשדה הבעייתי
+ *   - clearErrorHighlights() - ניקוי הדגשות מכל השדות
+ *
+ * 🎯 השפעה:
+ *   - ✅ משתמש רואה את השגיאות בתוך הדיאלוג
+ *   - ✅ פוקוס אוטומטי על השדה שחסר מידע
+ *   - ✅ הדגשה ויזואלית ברורה של השדות הבעייתיים
+ *   - ✅ UX משופר משמעותית
+ *
+ * 📊 טיפול בתרחיש המדווח:
+ *   - משתמש הוסיף שירות תוכנית שעות ללקוח עם הליך משפטי
+ *   - לא מילא תיאור → לא ראה את ה-toast
+ *   - עכשיו: רואה שגיאה "חסר תיאור" + הדגשה אדומה + פוקוס
  *
  * v5.2.0 - 19/01/2025 🐛 BUG FIX + ✨ FEATURE
  * ----------------------------------------
@@ -1711,10 +1735,119 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
     }
 
     /**
+     * ✨ NEW: Validate service data for adding service to existing case
+     * @param {Object} serviceData - Service data to validate
+     * @param {string} procedureType - Procedure type (hours/legal_procedure)
+     * @returns {Object} { isValid, errors, fieldIds }
+     */
+    validateServiceData(serviceData, procedureType) {
+      const errors = [];
+      const fieldIds = []; // IDs of fields with errors for focusing
+
+      // Validate service name
+      if (!serviceData.serviceName || serviceData.serviceName.trim().length === 0) {
+        errors.push('אנא הזן שם שירות');
+        fieldIds.push('serviceTitle_existing');
+      }
+
+      // Validate hours service
+      if (procedureType === 'hours') {
+        const totalHours = serviceData.hours;
+        if (!totalHours || totalHours < 0.5) {
+          errors.push('אנא הזן כמות שעות תקינה (לפחות 0.5)');
+          fieldIds.push('totalHours');
+        }
+      }
+
+      // Validate legal procedure
+      if (procedureType === 'legal_procedure' && serviceData.stages) {
+        const stageNames = ['א', 'ב', 'ג'];
+        const stageKeys = ['A', 'B', 'C'];
+
+        serviceData.stages.forEach((stage, i) => {
+          // Validate description
+          if (!stage.description || stage.description.trim().length < 2) {
+            errors.push(`שלב ${stageNames[i]}: חובה להזין תיאור (לפחות 2 תווים)`);
+            fieldIds.push(`stage${stageKeys[i]}_description`);
+          }
+
+          // Validate hours for hourly pricing
+          if (serviceData.pricingType === 'hourly') {
+            if (!stage.hours || stage.hours <= 0) {
+              errors.push(`שלב ${stageNames[i]}: חובה להזין כמות שעות תקינה`);
+              fieldIds.push(`stage${stageKeys[i]}_hours`);
+            }
+          }
+
+          // Validate price for fixed pricing
+          if (serviceData.pricingType === 'fixed') {
+            if (!stage.fixedPrice || stage.fixedPrice <= 0) {
+              errors.push(`שלב ${stageNames[i]}: חובה להזין מחיר תקין`);
+              fieldIds.push(`stage${stageKeys[i]}_fixedPrice`);
+            }
+          }
+        });
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        fieldIds
+      };
+    }
+
+    /**
+     * ✨ NEW: Focus on first error field and highlight it
+     * @param {Array<string>} fieldIds - Array of field IDs with errors
+     */
+    focusOnFirstError(fieldIds) {
+      if (!fieldIds || fieldIds.length === 0) {
+        return;
+      }
+
+      // Clear previous highlights
+      this.clearErrorHighlights();
+
+      // Highlight all error fields
+      fieldIds.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+          field.style.borderColor = '#ef4444';
+          field.style.borderWidth = '2px';
+          field.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+        }
+      });
+
+      // Focus on first field
+      const firstField = document.getElementById(fieldIds[0]);
+      if (firstField) {
+        firstField.focus();
+        firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    /**
+     * ✨ NEW: Clear error highlights from all fields
+     */
+    clearErrorHighlights() {
+      // Get all input and select fields in the dialog
+      const fields = document.querySelectorAll('#modernCaseDialog input, #modernCaseDialog select, #modernCaseDialog textarea');
+      fields.forEach(field => {
+        field.style.borderColor = '';
+        field.style.borderWidth = '';
+        field.style.boxShadow = '';
+      });
+    }
+
+    /**
      * הוספת שירות לתיק קיים
      */
     async handleAddServiceToCase() {
       try {
+        // Clear previous errors
+        document.getElementById('formErrors').style.display = 'none';
+        this.clearErrorHighlights();
+
         // Get procedure type from the correct field (existing client mode)
         const procedureType = document.getElementById('procedureType_existing')?.value || this.procedureType;
 
@@ -1729,26 +1862,9 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
           description: '' // אין שדה תיאור במצב existing
         };
 
-        if (!serviceData.serviceName) {
-          if (window.NotificationSystem) {
-            window.NotificationSystem.error('אנא הזן שם שירות');
-          } else {
-            alert('אנא הזן שם שירות');
-          }
-          return;
-        }
-
         // שדות ספציפיים לסוג הליך
         if (procedureType === 'hours') {
           const totalHours = parseFloat(document.getElementById('totalHours').value);
-          if (!totalHours || totalHours < 1) {
-            if (window.NotificationSystem) {
-              window.NotificationSystem.error('אנא הזן כמות שעות תקינה');
-            } else {
-              alert('אנא הזן כמות שעות תקינה');
-            }
-            return;
-          }
           serviceData.hours = totalHours;
 
         } else if (procedureType === 'legal_procedure') {
@@ -1762,38 +1878,21 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
             { ...this.collectStageData('C'), id: 'stage_c' }
           ];
 
-          // ולידציה בסיסית
-          for (let i = 0; i < stages.length; i++) {
-            const stage = stages[i];
-            if (!stage.description || stage.description.trim().length < 2) {
-              if (window.NotificationSystem) {
-                window.NotificationSystem.error(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין תיאור`);
-              } else {
-                alert(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין תיאור`);
-              }
-              return;
-            }
-
-            if (pricingType === 'hourly' && (!stage.hours || stage.hours <= 0)) {
-              if (window.NotificationSystem) {
-                window.NotificationSystem.error(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין כמות שעות תקינה`);
-              } else {
-                alert(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין כמות שעות תקינה`);
-              }
-              return;
-            }
-
-            if (pricingType === 'fixed' && (!stage.fixedPrice || stage.fixedPrice <= 0)) {
-              if (window.NotificationSystem) {
-                window.NotificationSystem.error(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין מחיר תקין`);
-              } else {
-                alert(`שלב ${['א', 'ב', 'ג'][i]}: חובה להזין מחיר תקין`);
-              }
-              return;
-            }
-          }
-
           serviceData.stages = stages;
+        }
+
+        // ✨ NEW: Comprehensive validation with inline errors
+        const validation = this.validateServiceData(serviceData, procedureType);
+
+        if (!validation.isValid) {
+          // Display errors in the dialog
+          window.CaseFormValidator?.displayErrors(validation.errors);
+
+          // Focus on first error field with visual highlight
+          this.focusOnFirstError(validation.fieldIds);
+
+          Logger.log('❌ Validation failed:', validation.errors);
+          return;
         }
 
         Logger.log('📝 Adding service to case:', serviceData);
