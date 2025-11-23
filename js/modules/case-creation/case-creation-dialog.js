@@ -5,12 +5,35 @@
  * ════════════════════════════════════════════════════════════════════
  *
  * @module case-creation-dialog
- * @version 5.3.0
- * @updated 2025-01-19
+ * @version 5.3.1
+ * @updated 2025-01-23
  *
  * ════════════════════════════════════════════════════════════════════
  * 📝 CHANGELOG
  * ════════════════════════════════════════════════════════════════════
+ *
+ * v5.3.1 - 23/01/2025 🐛 BUG FIX - Duplicate services display
+ * ----------------------------------------
+ * 🐛 FIX: שירותים מוצגים פעמיים בעת הוספת שירות ללקוח קיים
+ *   - תוקן: EventBus listener נרשם מספר פעמים (קו 1420-1422)
+ *   - תוקן: הוספת הסרת listener קודם למניעת כפילויות
+ *   - תוקן: הסתרה מפורשת של ClientCaseSelector's servicesGroup (קו 1440-1445)
+ *
+ * 🎯 הבעיה שתוקנה:
+ *   - כל פעם שמשתמש החליף בין "לקוח חדש" ל"לקוח קיים", נוסף listener חדש
+ *   - כתוצאה מכך, showExistingCaseInfo() נקרא מספר פעמים
+ *   - גם ClientCaseSelector הציג את השירותים (למרות hideServiceCards: true)
+ *
+ * ✅ הפתרון:
+ *   - this.clientSelectedListener שמור כ-instance variable
+ *   - קריאה ל-EventBus.off() לפני הרשמה מחדש
+ *   - הסרה מפורשת של servicesCards DOM element לאחר showExistingCaseInfo
+ *
+ * 📊 קבצים שהשתנו:
+ *   - lines 1420-1422: הוספת הסרת listener קודם
+ *   - lines 1425-1467: המרת listener לפונקציה שמורה
+ *   - lines 1470: רישום ה-listener עם EventBus
+ *   - lines 1440-1445: הסתרה מפורשת של servicesGroup
  *
  * v5.3.0 - 19/01/2025 🐛 BUG FIX - Toast errors behind overlay
  * ----------------------------------------
@@ -1416,8 +1439,13 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
      * האזנה לבחירת לקוח מה-ClientCaseSelector
      */
     setupClientSelectorListener() {
+      // ✅ הסרת listener קודם למניעת כפילויות
+      if (this.clientSelectedListener) {
+        window.EventBus?.off('client:selected', this.clientSelectedListener);
+      }
+
       // האזנה לאירוע client:selected דרך EventBus (v2.0 naming convention)
-      window.EventBus?.on('client:selected', async (data) => {
+      this.clientSelectedListener = async (data) => {
         Logger.log('🎯 Client selected:', data);
 
         if (data.clientId) {
@@ -1431,6 +1459,13 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
 
               // הצגת כרטיס מידע על התיק והשירותים הקיימים
               this.showExistingCaseInfo(existingCase);
+
+              // ✅ הסתרה מפורשת של servicesGroup של ClientCaseSelector (למניעת כפילות)
+              const servicesGroup = document.getElementById('caseDialogClientSelector_servicesGroup');
+              if (servicesGroup) {
+                servicesGroup.style.display = 'none';
+                servicesGroup.querySelector('#caseDialogClientSelector_servicesCards')?.remove();
+              }
 
               Logger.log('✅ Existing case loaded for adding service');
             } else {
@@ -1459,9 +1494,12 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
             existingInfo.remove();
           }
         }
-      });
+      };
 
-      Logger.log('✅ Client selector listener setup');
+      // רישום ה-listener
+      window.EventBus?.on('client:selected', this.clientSelectedListener);
+
+      Logger.log('✅ Client selector listener setup (deduplicated)');
     }
 
     /**
