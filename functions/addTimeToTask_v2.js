@@ -9,11 +9,67 @@
  * 4. Optimistic Locking - בדיקת _version למניעת overwrites
  *
  * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - Architectural Upgrade: Immutable Data Patterns
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-23 (November 23, 2025)
+ * 🏗️ גרסה: v2.1.0 → v2.2.0
+ *
+ * 🎯 שדרוג ארכיטקטוני: הסרת Deep Clone Workarounds + מעבר ל-Immutable Patterns
+ *
+ * ❌ הבעיה עם הגרסה הקודמת (v2.1.0):
+ * השתמשנו ב-deep clone workaround כדי לאלץ את Firestore לזהות שינויים:
+ *   const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+ *
+ * זה עבד, אבל:
+ * 1. **Performance overhead:** JSON serialization יקר
+ * 2. **Not scalable:** צריך לזכור להוסיף בכל מקום
+ * 3. **Code duplication:** 3 מקומות עם אותו workaround
+ * 4. **Not industry standard:** Tactical fix, לא strategic
+ *
+ * ✅ הפתרון - Immutable Patterns:
+ * במקום deep clone, יוצרים אובייקטים חדשים עם spread operator:
+ *
+ * קודם (v2.1.0):
+ *   deductHoursFromPackage(pkg, hours);  // Mutates in-place
+ *   const updatedServices = JSON.parse(JSON.stringify(services));  // Workaround!
+ *
+ * עכשיו (v2.2.0):
+ *   const updatedPackage = deductHoursFromPackage(pkg, hours);  // Returns new
+ *   const updatedServices = services.map(s => ...);  // Immutable map
+ *
+ * 🔄 אינטגרציה עם deduction-logic.js v3.0.0:
+ * הקובץ הזה משתמש בפונקציות ששודרגו ל-immutable ב-deduction-logic.js:
+ * - deductHoursFromPackage() עכשיו מחזיר אובייקט חדש
+ * - אנחנו משתמשים ב-map() ליצירת מערכים חדשים
+ *
+ * 📍 שינויים שבוצעו:
+ * - Line 150: deductHoursFromPackage() → capture return value
+ * - Line 163-166: Removed deep clone, use immutable map for services
+ * - Line 192: deductHoursFromPackage() → capture return value
+ * - Line 196-199: Removed deep clone, use immutable map for services
+ * - Line 219: deductHoursFromPackage() → capture return value
+ * - Line 222-225: Removed deep clone, use immutable map for services
+ * - Line 248: deductHoursFromPackage() → capture return value
+ * - Line 250-253: Use immutable map for stages
+ *
+ * יתרונות:
+ * - ✅ אין צורך ב-JSON.parse(JSON.stringify()) workarounds
+ * - ✅ Firestore מזהה שינויים אוטומטית (reference חדש)
+ * - ✅ Better performance (no JSON serialization)
+ * - ✅ Industry standard (React, Redux, modern frameworks)
+ * - ✅ Easier to maintain and scale
+ *
+ * 🎯 Backward Compatibility:
+ * ה-API לא השתנה - אותה חתימה, אותה התנהגות
+ * רק העבודה הפנימית שונתה ל-immutable
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  * 📝 CHANGELOG - תיקון קריטי: עדכון חבילות לא נשמר ב-Firestore
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * 🗓️ תאריך: 2025-01-23 (November 23, 2025)
- * 🐛 גרסה: v2.1.0
+ * 🐛 גרסה: v2.0.0 → v2.1.0 (REPLACED BY v2.2.0)
  *
  * ❌ הבעיה שהתגלתה:
  * כאשר נרשם זמן על משימה, התראנזקשן רצה בהצלחה והתיעוד נוצר, אבל השעות
@@ -147,20 +203,42 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           const activePackage = getActivePackage(currentStage);
 
           if (activePackage) {
-            deductHoursFromPackage(activePackage, hoursWorked);
+            // ✅ v2.2.0 - Immutable: Get new package object
+            const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-            stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
-            stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
-            stages[currentStageIndex].minutesUsed = (currentStage.minutesUsed || 0) + minutesToAdd;
-            stages[currentStageIndex].minutesRemaining = (currentStage.minutesRemaining || 0) - minutesToAdd;
+            // ✅ Immutable: Update packages array in stage
+            const updatedStagePackages = currentStage.packages.map(pkg =>
+              pkg.id === updatedPackage.id ? updatedPackage : pkg
+            );
 
-            targetService.stages = stages;
-            targetService.hoursUsed = (targetService.hoursUsed || 0) + hoursWorked;
-            targetService.hoursRemaining = (targetService.hoursRemaining || 0) - hoursWorked;
-            targetService.lastActivity = new Date().toISOString();
+            // ✅ Immutable: Create new stage with updated packages
+            const updatedStage = {
+              ...currentStage,
+              packages: updatedStagePackages,
+              hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
+              hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked,
+              minutesUsed: (currentStage.minutesUsed || 0) + minutesToAdd,
+              minutesRemaining: (currentStage.minutesRemaining || 0) - minutesToAdd
+            };
 
-            // ✅ FIX: Deep clone services array so Firestore detects the change
-            const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+            // ✅ Immutable: Update stages array
+            const updatedStages = stages.map((stage, index) =>
+              index === currentStageIndex ? updatedStage : stage
+            );
+
+            // ✅ Immutable: Create new service with updated stages
+            const updatedService = {
+              ...targetService,
+              stages: updatedStages,
+              hoursUsed: (targetService.hoursUsed || 0) + hoursWorked,
+              hoursRemaining: (targetService.hoursRemaining || 0) - hoursWorked,
+              lastActivity: new Date().toISOString()
+            };
+
+            // ✅ v2.2.0 - Immutable: Update services array (NO MORE DEEP CLONE!)
+            const updatedServices = clientData.services.map(s =>
+              s.id === updatedService.id ? updatedService : s
+            );
 
             updates.clientUpdate = {
               services: updatedServices,
@@ -171,7 +249,7 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
               lastActivity: admin.firestore.FieldValue.serverTimestamp()
             };
 
-            updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} בשירות ${targetService.name}`);
+            updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} בשירות ${updatedService.name}`);
           } else {
             updates.logs.push(`⚠️ ${currentStage.name} - אין חבילה פעילה`);
           }
@@ -189,11 +267,27 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(service);
 
       if (activePackage) {
-        deductHoursFromPackage(activePackage, hoursWorked);
+        // ✅ v2.2.0 - Immutable: Get new package object
+        const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-        // ✅ FIX: Deep clone services array so Firestore detects the change
-        // Without this, Firestore receives a reference to the same object and ignores the update
-        const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+        // ✅ Immutable: Update packages array in service
+        const updatedServicePackages = service.packages.map(pkg =>
+          pkg.id === updatedPackage.id ? updatedPackage : pkg
+        );
+
+        // ✅ Immutable: Create new service with updated packages
+        const updatedService = {
+          ...service,
+          packages: updatedServicePackages,
+          hoursUsed: (service.hoursUsed || 0) + hoursWorked,
+          hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
+          lastActivity: new Date().toISOString()
+        };
+
+        // ✅ v2.2.0 - Immutable: Update services array (NO MORE DEEP CLONE!)
+        const updatedServices = clientData.services.map(s =>
+          s.id === updatedService.id ? updatedService : s
+        );
 
         updates.clientUpdate = {
           services: updatedServices,
@@ -202,7 +296,7 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
 
-        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id}`);
+        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${updatedPackage.id} של שירות ${updatedService.name || updatedService.id}`);
       } else {
         updates.logs.push(`⚠️ שירות ${service.name || service.id} - אין חבילה פעילה`);
       }
@@ -216,10 +310,27 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(service);
 
       if (activePackage) {
-        deductHoursFromPackage(activePackage, hoursWorked);
+        // ✅ v2.2.0 - Immutable: Get new package object
+        const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-        // ✅ FIX: Deep clone services array so Firestore detects the change
-        const updatedServices = JSON.parse(JSON.stringify(clientData.services));
+        // ✅ Immutable: Update packages array in service
+        const updatedServicePackages = service.packages.map(pkg =>
+          pkg.id === updatedPackage.id ? updatedPackage : pkg
+        );
+
+        // ✅ Immutable: Create new service with updated packages
+        const updatedService = {
+          ...service,
+          packages: updatedServicePackages,
+          hoursUsed: (service.hoursUsed || 0) + hoursWorked,
+          hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
+          lastActivity: new Date().toISOString()
+        };
+
+        // ✅ v2.2.0 - Immutable: Update services array (NO MORE DEEP CLONE!)
+        const updatedServices = clientData.services.map(s =>
+          s.id === updatedService.id ? updatedService : s
+        );
 
         updates.clientUpdate = {
           services: updatedServices,
@@ -228,7 +339,7 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
 
-        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id}`);
+        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${updatedPackage.id} של שירות ${updatedService.name || updatedService.id}`);
       } else {
         updates.logs.push(`⚠️ שירות ${service.name || service.id} - אין חבילה פעילה`);
       }
@@ -245,19 +356,35 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(currentStage);
 
       if (activePackage) {
-        deductHoursFromPackage(activePackage, hoursWorked);
+        // ✅ v2.2.0 - Immutable: Get new package object
+        const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-        stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
-        stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
+        // ✅ Immutable: Update packages array in stage
+        const updatedStagePackages = currentStage.packages.map(pkg =>
+          pkg.id === updatedPackage.id ? updatedPackage : pkg
+        );
+
+        // ✅ Immutable: Create new stage with updated packages
+        const updatedStage = {
+          ...currentStage,
+          packages: updatedStagePackages,
+          hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
+          hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked
+        };
+
+        // ✅ Immutable: Update stages array
+        const updatedStages = stages.map((stage, index) =>
+          index === currentStageIndex ? updatedStage : stage
+        );
 
         updates.clientUpdate = {
-          stages: stages,
+          stages: updatedStages,
           hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
           minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
 
-        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}`);
+        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${updatedStage.name}`);
       }
     }
   }

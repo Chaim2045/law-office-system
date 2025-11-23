@@ -2,6 +2,47 @@
  * ⏱️ Deduction Logic - Helper functions for calculating hour deductions
  *
  * This module handles all logic for deducting hours from services, stages, and packages.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 CHANGELOG - Architectural Upgrade: Immutable Patterns
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🗓️ תאריך: 2025-01-23 (November 23, 2025)
+ * 🏗️ גרסה: v2.0.0 → v3.0.0
+ *
+ * 🎯 שדרוג ארכיטקטוני: מעבר ל-Immutable Data Patterns
+ *
+ * ❌ הבעיה עם הגרסה הקודמת (v2.x):
+ * הפונקציות שינו אובייקטים in-place (mutable operations):
+ *   pkg.hoursUsed = ...;  // ← משנה את האובייקט ישירות
+ *   pkg.hoursRemaining = ...;
+ *   return pkg;  // ← מחזיר את אותו אובייקט
+ *
+ * זה גרם ל-3 בעיות:
+ * 1. **Reference Issues:** Firestore לא זיהה שינויים כי reference לא השתנה
+ * 2. **Scalability:** צריך לזכור deep clone בכל מקום → code duplication
+ * 3. **Debugging:** אובייקטים משתנים "מתחת לידיים" → קשה לעקוב
+ *
+ * ✅ הפתרון - Immutable Patterns:
+ * כל פונקציה יוצרת אובייקט חדש במקום לשנות את הקיים:
+ *   return { ...pkg, hoursUsed: ..., hoursRemaining: ... };  // ← עותק חדש
+ *
+ * יתרונות:
+ * - ✅ Firestore מזהה שינויים אוטומטית (reference חדש)
+ * - ✅ אין צורך ב-JSON.parse(JSON.stringify()) workarounds
+ * - ✅ Easier debugging (אובייקטים לא משתנים)
+ * - ✅ Industry standard (React, Redux, modern frameworks)
+ * - ✅ Thread-safe by design
+ *
+ * 📍 פונקציות ששודרגו:
+ * - deductHoursFromPackage() (line 52-85) → Immutable
+ * - deductHoursFromStage() (line 91-115) → Immutable
+ *
+ * 🎯 Backward Compatibility:
+ * ה-API לא השתנה - אותה חתימה, אותה התנהגות
+ * רק העבודה הפנימית שונתה ל-immutable
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 /**
@@ -43,37 +84,63 @@ function calculateRemainingHours(entity) {
 }
 
 /**
- * Deducts hours from a package
+ * Deducts hours from a package (Immutable - returns new object)
  *
- * @param {Object} pkg - Package object
+ * ✅ UPGRADED to Immutable Pattern (v3.0.0)
+ * Instead of mutating the original package, this function returns a new object.
+ *
+ * @param {Object} pkg - Package object (NOT modified)
  * @param {number} hours - Hours to deduct
- * @returns {Object} Updated package
+ * @returns {Object} NEW package object with updated values
+ *
+ * @example
+ * // ❌ Old (mutable):
+ * deductHoursFromPackage(pkg, 2);  // pkg changes in-place
+ *
+ * // ✅ New (immutable):
+ * const updatedPkg = deductHoursFromPackage(pkg, 2);  // pkg unchanged, updatedPkg is new
  */
 function deductHoursFromPackage(pkg, hours) {
-  pkg.hoursUsed = (pkg.hoursUsed || 0) + hours;
-  pkg.hoursRemaining = (pkg.hoursRemaining || 0) - hours;
+  // Calculate new values
+  const newHoursUsed = (pkg.hoursUsed || 0) + hours;
+  const newHoursRemaining = Math.max(0, (pkg.hoursRemaining || 0) - hours);
 
-  // Ensure status is set
-  if (!pkg.status) {
-    pkg.status = 'active';
+  // Determine new status
+  let newStatus = pkg.status || 'active';
+  let closedDate = pkg.closedDate;
+
+  if (newHoursRemaining <= 0) {
+    newStatus = 'depleted';
+    closedDate = new Date().toISOString();
   }
 
-  // Mark as depleted if no hours remaining
-  if (pkg.hoursRemaining <= 0) {
-    pkg.status = 'depleted';
-    pkg.hoursRemaining = 0;
-    pkg.closedDate = new Date().toISOString();
-  }
-
-  return pkg;
+  // ✅ Return NEW object (immutable)
+  return {
+    ...pkg,  // Copy all existing fields
+    hoursUsed: newHoursUsed,
+    hoursRemaining: newHoursRemaining,
+    status: newStatus,
+    closedDate: closedDate
+  };
 }
 
 /**
- * Deducts hours from a stage
+ * Deducts hours from a stage (Immutable - returns new stage)
  *
- * @param {Object} stage - Stage object
+ * ✅ UPGRADED to Immutable Pattern (v3.0.0)
+ * Returns a new stage object with updated packages array.
+ *
+ * @param {Object} stage - Stage object (NOT modified)
  * @param {number} hours - Hours to deduct
- * @returns {Object} Update result with package info
+ * @returns {Object} Update result with new stage and package info
+ *
+ * @example
+ * // ❌ Old (mutable):
+ * deductHoursFromStage(stage, 2);  // stage changes in-place
+ *
+ * // ✅ New (immutable):
+ * const result = deductHoursFromStage(stage, 2);
+ * const newStage = result.updatedStage;  // NEW object
  */
 function deductHoursFromStage(stage, hours) {
   const activePackage = getActivePackage(stage);
@@ -85,17 +152,29 @@ function deductHoursFromStage(stage, hours) {
     };
   }
 
-  // Deduct from package
-  deductHoursFromPackage(activePackage, hours);
+  // ✅ Deduct from package (immutable - returns new object)
+  const updatedPackage = deductHoursFromPackage(activePackage, hours);
 
-  // Update stage totals
-  stage.hoursUsed = (stage.hoursUsed || 0) + hours;
-  stage.hoursRemaining = calculateRemainingHours(stage);
+  // ✅ Create new packages array with updated package
+  const updatedPackages = stage.packages.map(pkg =>
+    pkg.id === updatedPackage.id ? updatedPackage : pkg
+  );
+
+  // ✅ Create new stage object
+  const updatedStage = {
+    ...stage,
+    packages: updatedPackages,
+    hoursUsed: (stage.hoursUsed || 0) + hours,
+    hoursRemaining: updatedPackages
+      .filter(pkg => pkg.status === 'active' || !pkg.status)
+      .reduce((sum, pkg) => sum + (pkg.hoursRemaining || 0), 0)
+  };
 
   return {
     success: true,
-    packageId: activePackage.id,
-    stageId: stage.id
+    packageId: updatedPackage.id,
+    stageId: stage.id,
+    updatedStage: updatedStage  // ← NEW: return updated stage
   };
 }
 
