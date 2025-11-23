@@ -92,10 +92,10 @@
             try {
                 console.log('📥 Loading full user data...');
 
-                // Try to load from Cloud Function with timeout
+                // Try to load from Cloud Function with shorter timeout for better UX
                 const cloudFunctionPromise = this.loadFromCloudFunction();
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('timeout')), 2000) // 2 second timeout
+                    setTimeout(() => reject(new Error('timeout')), 500) // 500ms timeout - fast fallback
                 );
 
                 try {
@@ -193,8 +193,11 @@
             const userDoc = await db.collection('employees').doc(userEmail).get();
             const userData = userDoc.exists ? userDoc.data() : this.currentUser;
 
+            // Get userId for activity logs query
+            const userId = userData.uid || this.currentUser.uid || this.currentUser.id;
+
             // Load related data in parallel for speed
-            const [clientsSnapshot, tasksSnapshot, timesheetSnapshot] = await Promise.all([
+            const [clientsSnapshot, tasksSnapshot, timesheetSnapshot, activitySnapshot] = await Promise.all([
                 // Get user's clients (limit to recent 50)
                 db.collection('cases')
                     .where('assignedTo', 'array-contains', userEmail)
@@ -218,6 +221,14 @@
                     .orderBy('date', 'desc')
                     .limit(100)
                     .get()
+                    .catch(() => ({ docs: [] })),
+
+                // Get user's activity logs (last 100 entries)
+                db.collection('activityLogs')
+                    .where('userId', '==', userId)
+                    .orderBy('timestamp', 'desc')
+                    .limit(100)
+                    .get()
                     .catch(() => ({ docs: [] }))
             ]);
 
@@ -235,6 +246,12 @@
 
             // Process timesheet
             const timesheet = timesheetSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Process activity logs
+            const activity = activitySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
@@ -261,7 +278,7 @@
                 tasks,
                 timesheet,
                 hours: timesheet,
-                activity: [],
+                activity,
                 stats: {
                     totalClients: clients.length,
                     activeTasks: tasks.length,
@@ -273,6 +290,8 @@
                 hoursThisWeek,
                 hoursThisMonth
             };
+
+            console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs`);
         }
 
         /**
