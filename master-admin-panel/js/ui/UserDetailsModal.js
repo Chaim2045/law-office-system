@@ -61,8 +61,10 @@
                 content: this.renderLoadingState(),
                 footer: this.renderFooter(),
                 size: 'xlarge',
-                onOpen: () => {
-                    this.loadFullUserData();
+                onOpen: async () => {
+                    console.log('🚀 onOpen: Starting to load user data...');
+                    await this.loadFullUserData();
+                    console.log('✅ onOpen: Finished loading user data');
                 }
             });
 
@@ -110,7 +112,16 @@
                 }
 
                 // Update modal content with full data
+                console.log('🔄 Updating modal content with loaded data:', {
+                    clients: this.userData?.clients?.length || 0,
+                    tasks: this.userData?.tasks?.length || 0,
+                    activity: this.userData?.activity?.length || 0,
+                    clientsCount: this.userData?.clientsCount,
+                    tasksCount: this.userData?.tasksCount
+                });
+
                 window.ModalManager.updateContent(this.modalId, this.renderContent());
+                console.log('✅ Modal content updated');
 
                 // Setup events after content is rendered
                 this.setupEvents();
@@ -377,6 +388,13 @@
          */
         renderGeneralTab() {
             const user = this.userData || this.currentUser;
+
+            console.log('📊 renderGeneralTab - Stats:', {
+                clientsCount: user.clientsCount,
+                tasksCount: user.tasksCount,
+                hoursThisMonth: user.hoursThisMonth,
+                hasUserData: !!this.userData
+            });
 
             return `
                 <div class="tab-panel tab-general">
