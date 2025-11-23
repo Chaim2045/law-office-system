@@ -1019,122 +1019,91 @@
         }
 
         renderHoursCard(entry) {
-            // זיהוי סוג הפעילות - רק לפי clientId!
-            const isClientWork = !!entry.clientId; // אם יש clientId - זה לקוח
-            const cardType = isClientWork ? 'client-work' : 'internal-work';
+            // זיהוי סוג הפעילות
+            const isClientWork = !!entry.clientId;
             const iconClass = isClientWork ? 'fas fa-briefcase' : 'fas fa-building';
-            const typeLabel = isClientWork ? 'עבודה ללקוח' : 'פעילות פנימית';
+            const borderColor = isClientWork ? '#3b82f6' : '#94a3b8';
+            const iconColor = isClientWork ? '#3b82f6' : '#64748b';
 
-            // עיצוב תאריך
+            // תאריך
             const date = new Date(entry.date);
             const formattedDate = date.toLocaleDateString('he-IL', {
-                weekday: 'short',
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
             });
 
-            // יום בשבוע
-            const dayOfWeek = entry.dayOfWeek || date.toLocaleDateString('he-IL', { weekday: 'short' });
+            // לקוח או פעילות פנימית
+            const clientName = entry.clientName || 'פעילות פנימית';
 
-            // מי רשם - הצגת שם מלא (מגיע מה-backend)
-            const createdBy = entry.createdByName || entry.createdBy || entry.employee || 'לא ידוע';
-
-            // שעת יצירה (בלבד)
-            const createdTime = entry.createdAt
-                ? new Date(entry.createdAt).toLocaleTimeString('he-IL', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })
-                : '-';
-
-
-            // תאריך + שעה מלאים
-            const createdAtFull = entry.createdAt
-                ? new Date(entry.createdAt).toLocaleString('he-IL', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })
-                : '-';
+            // משימה (מקוצר)
+            let taskDesc = entry.taskDescription || '';
+            if (taskDesc.length > 50) {
+                taskDesc = taskDesc.substring(0, 50) + '...';
+            }
 
             return `
-                <div class="hours-card ${cardType}" data-entry-id="${entry.id}" style="border-right: 4px solid ${isClientWork ? '#3b82f6' : '#94a3b8'};">
-                    <div class="hours-header">
-                        <div class="hours-type">
-                            <i class="${iconClass}" style="color: ${isClientWork ? '#3b82f6' : '#64748b'};"></i>
-                            <span class="hours-type-label" style="font-weight: 700; color: ${isClientWork ? '#3b82f6' : '#64748b'};">${typeLabel}</span>
-                        </div>
-                        <div class="hours-value">
-                            <i class="fas fa-clock"></i>
-                            <span>${entry.hours.toFixed(2)} ש'</span>
-                        </div>
-                    </div>
-
-                    <div class="hours-body">
-                        <!-- תאריך + שעה -->
-                        <div class="hours-date">
-                            <i class="fas fa-calendar"></i>
-                            <span>${formattedDate} (${dayOfWeek}) בשעה ${createdTime}</span>
+                <div style="background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; border-right: 3px solid ${borderColor}; margin-bottom: 12px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'" data-entry-id="${entry.id}">
+                    <!-- שורה עליונה -->
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: ${entry.notes || taskDesc ? '12px' : '0'};">
+                        <!-- תאריך + שעות -->
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 0 0 auto;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-calendar" style="color: #6b7280; font-size: 14px;"></i>
+                                <span style="font-weight: 600; color: #1f2937; font-size: 14px;">${formattedDate}</span>
+                            </div>
+                            <div style="width: 1px; height: 20px; background: #e5e7eb;"></div>
+                            <div style="display: flex; align-items: center; gap: 6px; background: ${borderColor}15; padding: 4px 10px; border-radius: 6px;">
+                                <i class="fas fa-clock" style="color: ${iconColor}; font-size: 13px;"></i>
+                                <span style="font-weight: 700; color: ${iconColor}; font-size: 15px;">${entry.hours.toFixed(2)}</span>
+                                <span style="color: #6b7280; font-size: 13px;">ש'</span>
+                            </div>
                         </div>
 
                         <!-- לקוח -->
-                        ${isClientWork ? `
-                            <div class="hours-client">
-                                <i class="fas fa-user"></i>
-                                <span>לקוח: ${this.escapeHtml(entry.clientName)}</span>
-                            </div>
-                        ` : ''}
+                        <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="${iconClass}" style="color: ${iconColor}; font-size: 14px;"></i>
+                            <span style="font-weight: 600; color: #1f2937; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(clientName)}">${this.escapeHtml(clientName)}</span>
+                        </div>
 
-                        <!-- משימה -->
-                        ${entry.taskDescription ? `
-                            <div class="hours-task">
-                                <i class="fas fa-tasks"></i>
-                                <span><strong>משימה:</strong> ${this.escapeHtml(entry.taskDescription)}</span>
-                            </div>
-                        ` : ''}
-
-                        <!-- סטטוס חיוב -->
+                        <!-- חיוב -->
                         ${entry.billable !== undefined ? `
-                            <div class="hours-meta">
-                                <span class="hours-billable ${entry.billable ? 'yes' : 'no'}" style="padding: 6px 12px; font-weight: 600;">
-                                    <i class="fas ${entry.billable ? 'fa-check-circle' : 'fa-times-circle'}"></i>
-                                    ${entry.billable ? '💵 חויב ללקוח' : '🏢 פעילות פנימית'}
-                                </span>
-                                ${entry.invoiced ? '<span class="hours-invoiced"><i class="fas fa-file-invoice"></i>חויב</span>' : ''}
-                            </div>
+                        <div style="flex: 0 0 auto;">
+                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: ${entry.billable ? '#eff6ff' : '#f9fafb'}; color: ${entry.billable ? '#3b82f6' : '#6b7280'}; font-size: 12px; font-weight: 600;">
+                                <i class="fas fa-${entry.billable ? 'check' : 'times'}-circle"></i>
+                                ${entry.billable ? 'חויב' : 'לא חויב'}
+                            </span>
+                        </div>
                         ` : ''}
 
-                        <!-- הערות -->
-                        ${entry.notes ? `
-                            <div class="hours-notes">
-                                <i class="fas fa-sticky-note"></i>
-                                <span>${this.escapeHtml(entry.notes)}</span>
-                            </div>
-                        ` : ''}
-
-                        <div class="hours-footer">
-                            <div class="hours-meta-info">
-                                <span class="meta-item">
-                                    <i class="fas fa-user-circle"></i>
-                                    נרשם ע"י: ${this.escapeHtml(createdBy)}
-                                </span>
-                                <span class="meta-item">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    ${createdAtFull}
-                                </span>
-                            </div>
-                            <div class="hours-actions">
-                                <button class="btn-table-action btn-edit-hour" data-entry-id="${entry.id}" title="ערוך">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn-table-action btn-delete-hour" data-entry-id="${entry.id}" title="מחק">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
+                        <!-- פעולות -->
+                        <div style="flex: 0 0 auto; display: flex; gap: 6px;">
+                            <button class="btn-table-action btn-edit-hour" data-entry-id="${entry.id}" title="ערוך" style="padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
+                                <i class="fas fa-edit" style="color: #6b7280;"></i>
+                            </button>
+                            <button class="btn-table-action btn-delete-hour" data-entry-id="${entry.id}" title="מחק" style="padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fecaca'" onmouseout="this.style.background='white'; this.style.borderColor='#e5e7eb'">
+                                <i class="fas fa-trash" style="color: #6b7280;"></i>
+                            </button>
                         </div>
                     </div>
+
+                    <!-- שורה תחתונה - משימה + הערות -->
+                    ${taskDesc || entry.notes ? `
+                    <div style="display: flex; gap: 16px; padding-top: 12px; border-top: 1px solid #f3f4f6;">
+                        ${taskDesc ? `
+                        <div style="flex: 1; min-width: 0; display: flex; align-items: start; gap: 8px;">
+                            <i class="fas fa-tasks" style="color: #9ca3af; font-size: 13px; margin-top: 2px;"></i>
+                            <span style="color: #6b7280; font-size: 13px; line-height: 1.5;" title="${this.escapeHtml(entry.taskDescription || '')}">${this.escapeHtml(taskDesc)}</span>
+                        </div>
+                        ` : ''}
+                        ${entry.notes ? `
+                        <div style="flex: 1; min-width: 0; display: flex; align-items: start; gap: 8px;">
+                            <i class="fas fa-sticky-note" style="color: #9ca3af; font-size: 13px; margin-top: 2px;"></i>
+                            <span style="color: #6b7280; font-size: 13px; line-height: 1.5; font-style: italic;" title="${this.escapeHtml(entry.notes)}">${this.escapeHtml(entry.notes.length > 60 ? entry.notes.substring(0, 60) + '...' : entry.notes)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                 </div>
             `;
         }
