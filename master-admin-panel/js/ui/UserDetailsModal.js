@@ -200,9 +200,18 @@
             const db = window.firebaseDB;
             const userEmail = this.currentUser.email;
 
-            // Load user data from employees collection
-            const userDoc = await db.collection('employees').doc(userEmail).get();
-            const userData = userDoc.exists ? userDoc.data() : this.currentUser;
+            // First, try to get user from DataManager (already loaded with stats)
+            let userData = null;
+            if (window.DataManager && window.DataManager.users) {
+                userData = window.DataManager.users.find(u => u.email === userEmail);
+                console.log('📊 Found user in DataManager:', userData ? 'Yes' : 'No');
+            }
+
+            // If not found in DataManager, try employees collection
+            if (!userData) {
+                const userDoc = await db.collection('employees').doc(userEmail).get();
+                userData = userDoc.exists ? userDoc.data() : this.currentUser;
+            }
 
             // Get userId for activity logs query
             const userId = userData.uid || this.currentUser.uid || this.currentUser.id;
@@ -280,7 +289,12 @@
                 .filter(entry => new Date(entry.date.toDate?.() || entry.date) >= startOfMonth)
                 .reduce((sum, entry) => sum + (entry.hours || 0), 0);
 
-            // Set user data
+            // Set user data - use counts from DataManager if available, otherwise calculate
+            const clientsCount = userData.clientsCount ?? clients.length;
+            const tasksCount = userData.tasksCount ?? tasks.length;
+            const hoursThisMonthCalc = userData.hoursThisMonth ?? hoursThisMonth;
+            const hoursThisWeekCalc = userData.hoursThisWeek ?? hoursThisWeek;
+
             this.userData = {
                 ...userData,
                 email: userEmail,
@@ -291,18 +305,19 @@
                 hours: timesheet,
                 activity,
                 stats: {
-                    totalClients: clients.length,
-                    activeTasks: tasks.length,
-                    hoursThisWeek,
-                    hoursThisMonth
+                    totalClients: clientsCount,
+                    activeTasks: tasksCount,
+                    hoursThisWeek: hoursThisWeekCalc,
+                    hoursThisMonth: hoursThisMonthCalc
                 },
-                clientsCount: clients.length,
-                tasksCount: tasks.length,
-                hoursThisWeek,
-                hoursThisMonth
+                clientsCount,
+                tasksCount,
+                hoursThisWeek: hoursThisWeekCalc,
+                hoursThisMonth: hoursThisMonthCalc
             };
 
             console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs`);
+            console.log(`✅ Stats from DataManager: clientsCount=${clientsCount}, tasksCount=${tasksCount}, hoursThisMonth=${hoursThisMonthCalc}`);
         }
 
         /**
