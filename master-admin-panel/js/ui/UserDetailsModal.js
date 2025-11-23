@@ -202,15 +202,32 @@
 
             // First, try to get user from DataManager (already loaded with stats)
             let userData = null;
+            console.log('🔍 Checking DataManager:', {
+                exists: !!window.DataManager,
+                hasUsers: !!(window.DataManager && window.DataManager.users),
+                usersCount: window.DataManager?.users?.length || 0
+            });
+
             if (window.DataManager && window.DataManager.users) {
                 userData = window.DataManager.users.find(u => u.email === userEmail);
                 console.log('📊 Found user in DataManager:', userData ? 'Yes' : 'No');
+                if (userData) {
+                    console.log('📊 User stats from DataManager:', {
+                        clientsCount: userData.clientsCount,
+                        tasksCount: userData.tasksCount,
+                        hoursThisMonth: userData.hoursThisMonth
+                    });
+                }
+            } else {
+                console.log('⚠️ DataManager not available or no users loaded');
             }
 
             // If not found in DataManager, try employees collection
             if (!userData) {
+                console.log('🔍 Loading user from employees collection...');
                 const userDoc = await db.collection('employees').doc(userEmail).get();
                 userData = userDoc.exists ? userDoc.data() : this.currentUser;
+                console.log('📊 User from employees:', userDoc.exists ? 'Found' : 'Not found, using currentUser');
             }
 
             // Get userId for activity logs query
