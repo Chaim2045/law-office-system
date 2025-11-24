@@ -205,6 +205,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>דוח פעילות ללקוח - ${client.fullName}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -228,10 +229,27 @@
         }
 
         .header {
-            text-align: center;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
             border-bottom: 3px solid #1877F2;
             padding-bottom: 20px;
             margin-bottom: 30px;
+        }
+
+        .header-logo {
+            flex-shrink: 0;
+        }
+
+        .law-office-logo {
+            max-width: 120px;
+            max-height: 80px;
+            object-fit: contain;
+        }
+
+        .header-content {
+            flex: 1;
+            text-align: center;
         }
 
         .header h1 {
@@ -257,6 +275,14 @@
             border-right: 4px solid #1877F2;
             padding-right: 10px;
             margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: #1877F2;
+            font-size: 16px;
         }
 
         .info-grid {
@@ -378,6 +404,11 @@
                 box-shadow: none;
                 padding: 20px;
             }
+
+            .law-office-logo {
+                max-width: 100px;
+                max-height: 60px;
+            }
         }
     </style>
 </head>
@@ -385,13 +416,19 @@
     <div class="report-container">
         <!-- Header -->
         <div class="header">
-            <h1>משרד עו"ד גיא הרשקוביץ</h1>
-            <h2>דוח פעילות לקוח</h2>
+            <div class="header-logo" style="display: none;">
+                <!-- Logo placeholder - add your logo at /assets/logo.png -->
+                <img src="/assets/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="law-office-logo" onerror="this.parentElement.style.display='none'">
+            </div>
+            <div class="header-content">
+                <h1>משרד עו"ד גיא הרשקוביץ</h1>
+                <h2>דוח פעילות לקוח</h2>
+            </div>
         </div>
 
         <!-- Client Info -->
         <div class="section">
-            <h3 class="section-title">📋 פרטי התיק</h3>
+            <h3 class="section-title"><i class="fas fa-folder-open"></i> פרטי התיק</h3>
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">שם הלקוח</span>
@@ -415,7 +452,7 @@
         <!-- Hours Info (if applicable) -->
         ${client.type === 'hours' ? `
         <div class="section">
-            <h3 class="section-title">💰 מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
+            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
             <div class="info-grid">
                 ${this.renderServiceInfo(client, formData)}
             </div>
@@ -424,7 +461,7 @@
 
         <!-- Activity Summary -->
         <div class="section">
-            <h3 class="section-title">📊 סיכום פעילות בתקופה זו</h3>
+            <h3 class="section-title"><i class="fas fa-chart-bar"></i> סיכום פעילות בתקופה זו</h3>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">סה"כ שעות</div>
@@ -444,7 +481,7 @@
         <!-- By Employee -->
         ${stats.byEmployee.length > 0 ? `
         <div class="section">
-            <h3 class="section-title">📑 פירוט שעות לפי חבר צוות</h3>
+            <h3 class="section-title"><i class="fas fa-users"></i> פירוט שעות לפי חבר צוות</h3>
             <table>
                 <thead>
                     <tr>
@@ -469,7 +506,7 @@
         <!-- Timesheet Entries -->
         ${formData.reportType === 'full' || formData.reportType === 'hours' ? `
         <div class="section">
-            <h3 class="section-title">📋 פירוט מלא של הפעילות</h3>
+            <h3 class="section-title"><i class="fas fa-list-alt"></i> פירוט מלא של הפעילות</h3>
             ${timesheetEntries.length > 0 ? `
             <table>
                 <thead>
@@ -492,7 +529,7 @@
         <!-- Budget Tasks -->
         ${formData.reportType === 'full' || formData.reportType === 'tasks' ? `
         <div class="section">
-            <h3 class="section-title">✅ משימות</h3>
+            <h3 class="section-title"><i class="fas fa-tasks"></i> משימות</h3>
             ${budgetTasks.length > 0 ? `
             <table>
                 <thead>
@@ -523,7 +560,7 @@
         <!-- By Service -->
         ${stats.byService.length > 0 ? `
         <div class="section">
-            <h3 class="section-title">📦 פירוט לפי שירות/חבילה</h3>
+            <h3 class="section-title"><i class="fas fa-box"></i> פירוט לפי שירות</h3>
             <table>
                 <thead>
                     <tr>
@@ -609,8 +646,7 @@
                 <div class="info-item">
                     <span class="info-label">שעות נותרות</span>
                     <span class="info-value ${isCritical ? 'critical' : isBlocked ? 'danger' : 'success'}">
-                        ${serviceRemainingHours.toFixed(1)} שעות
-                        ${isBlocked ? '⚠️ (חסום)' : isCritical ? '⚠️ (קריטי)' : ''}
+                        ${isBlocked ? '<i class="fas fa-exclamation-circle"></i> ' : isCritical ? '<i class="fas fa-exclamation-triangle"></i> ' : ''}${serviceRemainingHours.toFixed(1)} שעות
                     </span>
                 </div>
             `;
