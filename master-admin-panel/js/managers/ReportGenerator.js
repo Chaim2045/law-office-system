@@ -229,37 +229,35 @@
         }
 
         .header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            border-bottom: 3px solid #1877F2;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            text-align: center;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #e5e7eb;
         }
 
         .header-logo {
-            flex-shrink: 0;
+            text-align: right;
+            margin-bottom: 10px;
         }
 
         .law-office-logo {
-            max-width: 120px;
-            max-height: 80px;
+            max-width: 100px;
+            max-height: 60px;
             object-fit: contain;
         }
 
         .header-content {
-            flex: 1;
-            text-align: center;
+            margin-top: 5px;
         }
 
         .header h1 {
-            font-size: 24px;
+            font-size: 22px;
             color: #1877F2;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .header h2 {
-            font-size: 18px;
+            font-size: 16px;
             color: #6b7280;
             font-weight: normal;
         }
@@ -312,29 +310,32 @@
         }
 
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #1877F2 0%, #0A66C2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+            padding: 8px 15px;
+            border-radius: 6px;
             text-align: center;
+            min-width: 120px;
         }
 
         .stat-label {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 5px;
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 3px;
         }
 
         .stat-value {
-            font-size: 28px;
-            font-weight: bold;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1877F2;
         }
 
         table {
@@ -470,10 +471,6 @@
                     <div class="stat-label">מספר רשומות</div>
                     <div class="stat-value">${stats.entriesCount}</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">משימות הושלמו</div>
-                    <div class="stat-value">${stats.tasksStats.completed}</div>
-                </div>
             </div>
         </div>
 
@@ -525,37 +522,6 @@
                 </tbody>
             </table>
             ` : '<p>אין רשומות שעתון בתקופה זו</p>'}
-        </div>
-        ` : ''}
-
-        <!-- Budget Tasks -->
-        ${formData.reportType === 'full' || formData.reportType === 'tasks' ? `
-        <div class="section">
-            <h3 class="section-title"><i class="fas fa-tasks"></i> משימות</h3>
-            ${budgetTasks.length > 0 ? `
-            <table>
-                <thead>
-                    <tr>
-                        <th>שם המשימה</th>
-                        <th>סטטוס</th>
-                        <th>זמן מתוכנן</th>
-                        <th>זמן בפועל</th>
-                        <th>תאריך יעד</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${budgetTasks.map(task => `
-                        <tr>
-                            <td>${task.taskName || task.title || '-'}</td>
-                            <td>${this.getTaskStatusText(task.status)}</td>
-                            <td>${task.estimatedHours || 0} שעות</td>
-                            <td class="highlight">${this.formatMinutes(task.actualMinutes || 0)}</td>
-                            <td>${task.deadline ? this.formatDate(task.deadline) : '-'}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            ` : '<p>אין משימות בתקופה זו</p>'}
         </div>
         ` : ''}
 
