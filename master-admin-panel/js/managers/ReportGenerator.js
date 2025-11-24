@@ -157,7 +157,7 @@
                 total: budgetTasks.length,
                 completed: budgetTasks.filter(t => t.status === 'completed').length,
                 inProgress: budgetTasks.filter(t => t.status === 'in-progress').length,
-                pending: budgetTasks.filter(t => t.status === 'pending').length,
+                pending: budgetTasks.filter(t => t.status === 'pending').length
             };
 
             return {
@@ -510,11 +510,14 @@
             <table>
                 <thead>
                     <tr>
-                        <th>תאריך רישום</th>
+                        <th>תאריך</th>
+                        <th>תיאור פעולה</th>
                         <th>צוות משפטי</th>
-                        <th>תיאור העבודה</th>
-                        <th>זמן לקח</th>
-                        ${client.type === 'hours' ? '<th>יתרה נותרת</th>' : ''}
+                        <th>דקות</th>
+                        ${client.type === 'hours' ? '<th>דקות מצטבר</th>' : ''}
+                        ${client.type === 'hours' ? '<th>דקות נותרות</th>' : ''}
+                        ${client.type === 'hours' ? '<th>שעות נותרות</th>' : ''}
+                        <th>הערות</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -671,46 +674,47 @@
             });
 
             // Calculate initial balance based on selected service
-            let initialBalance = 0;
-            let serviceTotalHours = 0;
+            let serviceTotalMinutes = 0;
 
             if (client.type === 'hours') {
                 if (formData.service === 'all') {
                     // If "all services" selected, sum up all service hours
                     if (client.services && client.services.length > 0) {
-                        serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+                        const totalHours = client.services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+                        serviceTotalMinutes = totalHours * 60;
                     } else {
-                        serviceTotalHours = client.totalHours || 0;
+                        serviceTotalMinutes = (client.totalHours || 0) * 60;
                     }
                 } else {
                     // Find the specific service
                     const selectedService = client.services?.find(s => s.serviceName === formData.service);
                     if (selectedService) {
-                        serviceTotalHours = selectedService.totalHours || 0;
+                        serviceTotalMinutes = (selectedService.totalHours || 0) * 60;
                     } else {
                         // Fallback: if service not found, use client's total hours
                         console.warn(`⚠️ Service "${formData.service}" not found for balance calculation. Using fallback.`);
-                        serviceTotalHours = client.totalHours || 0;
+                        serviceTotalMinutes = (client.totalHours || 0) * 60;
                     }
                 }
-                initialBalance = serviceTotalHours;
             }
 
-            let currentBalance = initialBalance;
+            let accumulatedMinutes = 0;
 
             return sortedEntries.map(entry => {
-                const hoursUsed = (entry.minutes || 0) / 60;
+                const minutes = entry.minutes || 0;
 
-                // Calculate balance AFTER this entry
-                if (client.type === 'hours') {
-                    currentBalance -= hoursUsed;
-                }
+                // Calculate accumulated minutes
+                accumulatedMinutes += minutes;
+
+                // Calculate remaining minutes and hours
+                const remainingMinutes = serviceTotalMinutes - accumulatedMinutes;
+                const remainingHours = remainingMinutes / 60;
 
                 let balanceClass = '';
                 if (client.type === 'hours') {
-                    if (currentBalance <= 0) {
+                    if (remainingMinutes <= 0) {
                         balanceClass = 'danger';
-                    } else if (currentBalance < serviceTotalHours * 0.2) {
+                    } else if (remainingMinutes < serviceTotalMinutes * 0.2) {
                         balanceClass = 'critical';
                     } else {
                         balanceClass = 'success';
@@ -720,10 +724,13 @@
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
                         <td>${entry.description || '-'}</td>
-                        <td class="highlight">${this.formatMinutes(entry.minutes)}</td>
-                        ${client.type === 'hours' ? `<td class="${balanceClass}">${currentBalance.toFixed(2)} שעות</td>` : ''}
+                        <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
+                        <td class="highlight">${minutes}</td>
+                        ${client.type === 'hours' ? `<td>${accumulatedMinutes}</td>` : ''}
+                        ${client.type === 'hours' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
+                        ${client.type === 'hours' ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
+                        <td>${entry.notes || '-'}</td>
                     </tr>
                 `;
             });
@@ -819,7 +826,9 @@
          * Helper: Format date
          */
         formatDate(date) {
-            if (!date) return '-';
+            if (!date) {
+return '-';
+}
 
             let d;
             if (date.toDate) {
@@ -839,7 +848,9 @@
          * Helper: Format date and time
          */
         formatDateTime(date) {
-            if (!date) return '-';
+            if (!date) {
+return '-';
+}
 
             let d;
             if (date.toDate) {
@@ -857,7 +868,9 @@
          * Helper: Format minutes to hours:minutes
          */
         formatMinutes(minutes) {
-            if (!minutes) return '0:00';
+            if (!minutes) {
+return '0:00';
+}
 
             const hours = Math.floor(minutes / 60);
             const mins = minutes % 60;
