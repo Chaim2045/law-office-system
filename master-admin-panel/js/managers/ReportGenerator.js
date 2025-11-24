@@ -468,21 +468,6 @@
         </div>
         ` : ''}
 
-        <!-- Activity Summary -->
-        <div class="section">
-            <h3 class="section-title"><i class="fas fa-chart-bar"></i> סיכום פעילות בתקופה זו</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">סה"כ שעות</div>
-                    <div class="stat-value">${stats.totalHours}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">מספר רשומות</div>
-                    <div class="stat-value">${stats.entriesCount}</div>
-                </div>
-            </div>
-        </div>
-
         <!-- By Employee -->
         ${stats.byEmployee.length > 0 ? `
         <div class="section">
