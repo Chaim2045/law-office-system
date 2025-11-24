@@ -311,31 +311,40 @@
 
         .stats-grid {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 20px;
+            margin-bottom: 20px;
             justify-content: center;
         }
 
         .stat-card {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
+            background: linear-gradient(145deg, #ffffff 0%, #f9fafb 100%);
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             color: #1f2937;
-            padding: 8px 15px;
-            border-radius: 6px;
+            padding: 16px 24px;
+            border-radius: 12px;
             text-align: center;
-            min-width: 120px;
+            min-width: 140px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(24, 119, 242, 0.12);
         }
 
         .stat-label {
-            font-size: 11px;
+            font-size: 13px;
             color: #6b7280;
-            margin-bottom: 3px;
+            margin-bottom: 6px;
+            font-weight: 500;
         }
 
         .stat-value {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 24px;
+            font-weight: 700;
             color: #1877F2;
+            letter-spacing: -0.5px;
         }
 
         table {
@@ -477,11 +486,11 @@
         <!-- By Employee -->
         ${stats.byEmployee.length > 0 ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-users"></i> פירוט שעות לפי חבר צוות</h3>
+            <h3 class="section-title"><i class="fas fa-users"></i> פירוט שעות לפי צוות משפטי</h3>
             <table>
                 <thead>
                     <tr>
-                        <th>חבר צוות</th>
+                        <th>צוות משפטי</th>
                         <th>שעות</th>
                         <th>רשומות</th>
                     </tr>
