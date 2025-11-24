@@ -690,7 +690,7 @@
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.description || '-'}</td>
+                        <td>${entry.taskDescription || entry.description || '-'}</td>
                         <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
                         <td class="highlight">${minutes}</td>
                         ${client.type === 'hours' ? `<td>${accumulatedMinutes}</td>` : ''}
