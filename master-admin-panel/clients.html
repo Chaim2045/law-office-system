@@ -39,6 +39,40 @@
     <link rel="stylesheet" href="css/main.css?v=20251124v2">
     <link rel="stylesheet" href="css/components.css?v=20251124v2">
     <link rel="stylesheet" href="css/clients.css?v=20251124v1">
+
+    <!-- ===== Override Styles (Cache Fix) ===== -->
+    <style>
+        /* Fix cursor on select dropdown */
+        select.form-input {
+            cursor: pointer !important;
+        }
+
+        /* Reduce spacing - immediate effect */
+        .admin-main {
+            padding: 8px 24px 16px !important;
+        }
+
+        .page-header {
+            padding: 16px !important;
+            margin-bottom: 12px !important;
+        }
+
+        .admin-content > * + * {
+            margin-top: 12px !important;
+        }
+
+        .stats-grid {
+            margin-bottom: 16px !important;
+        }
+
+        .filter-section {
+            margin-bottom: 12px !important;
+        }
+
+        .table-section {
+            margin-bottom: 12px !important;
+        }
+    </style>
 </head>
 
 <body class="admin-page">
