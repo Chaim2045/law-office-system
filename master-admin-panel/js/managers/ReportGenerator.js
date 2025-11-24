@@ -415,27 +415,9 @@
         <!-- Hours Info (if applicable) -->
         ${client.type === 'hours' ? `
         <div class="section">
-            <h3 class="section-title">💰 מידע על חבילת השעות</h3>
+            <h3 class="section-title">💰 מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
             <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">שעות שנרכשו</span>
-                    <span class="info-value">${client.totalHours || 0} שעות</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">תאריך רכישה</span>
-                    <span class="info-value">${client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-'}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">שעות שנוצלו עד כה</span>
-                    <span class="info-value">${((client.totalHours || 0) - (client.hoursRemaining || 0)).toFixed(1)} שעות</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">שעות נותרות</span>
-                    <span class="info-value ${client.isCritical ? 'critical' : client.isBlocked ? 'danger' : 'success'}">
-                        ${client.hoursRemaining || 0} שעות
-                        ${client.isBlocked ? '⚠️ (חסום)' : client.isCritical ? '⚠️ (קריטי)' : ''}
-                    </span>
-                </div>
+                ${this.renderServiceInfo(client, formData)}
             </div>
         </div>
         ` : ''}
@@ -500,7 +482,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    ${this.renderTimesheetRows(timesheetEntries, client).join('')}
+                    ${this.renderTimesheetRows(timesheetEntries, client, formData).join('')}
                 </tbody>
             </table>
             ` : '<p>אין רשומות שעתון בתקופה זו</p>'}
@@ -575,10 +557,70 @@
         }
 
         /**
+         * Render service info section
+         * רינדור מידע על השירות
+         */
+        renderServiceInfo(client, formData) {
+            let serviceTotalHours = 0;
+            let serviceUsedHours = 0;
+            let serviceRemainingHours = 0;
+            let purchaseDate = '-';
+
+            if (formData.service === 'all') {
+                // Sum all services
+                if (client.services && client.services.length > 0) {
+                    serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+                    serviceUsedHours = client.services.reduce((sum, s) => sum + ((s.totalHours || 0) - (s.hoursRemaining || 0)), 0);
+                    serviceRemainingHours = client.services.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+                } else {
+                    serviceTotalHours = client.totalHours || 0;
+                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
+                    serviceRemainingHours = client.hoursRemaining || 0;
+                }
+                purchaseDate = client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-';
+            } else {
+                // Find specific service
+                const selectedService = client.services?.find(s => s.serviceName === formData.service);
+                if (selectedService) {
+                    serviceTotalHours = selectedService.totalHours || 0;
+                    serviceUsedHours = (selectedService.totalHours || 0) - (selectedService.hoursRemaining || 0);
+                    serviceRemainingHours = selectedService.hoursRemaining || 0;
+                    purchaseDate = selectedService.purchasedAt ? this.formatDate(selectedService.purchasedAt.toDate()) : '-';
+                }
+            }
+
+            const usagePercentage = serviceTotalHours > 0 ? ((serviceUsedHours / serviceTotalHours) * 100).toFixed(1) : 0;
+            const isCritical = serviceRemainingHours < serviceTotalHours * 0.2;
+            const isBlocked = serviceRemainingHours <= 0;
+
+            return `
+                <div class="info-item">
+                    <span class="info-label">שעות שנרכשו</span>
+                    <span class="info-value">${serviceTotalHours.toFixed(1)} שעות</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">תאריך רכישה</span>
+                    <span class="info-value">${purchaseDate}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">שעות שנוצלו (${usagePercentage}%)</span>
+                    <span class="info-value">${serviceUsedHours.toFixed(1)} שעות</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">שעות נותרות</span>
+                    <span class="info-value ${isCritical ? 'critical' : isBlocked ? 'danger' : 'success'}">
+                        ${serviceRemainingHours.toFixed(1)} שעות
+                        ${isBlocked ? '⚠️ (חסום)' : isCritical ? '⚠️ (קריטי)' : ''}
+                    </span>
+                </div>
+            `;
+        }
+
+        /**
          * Render timesheet rows with running balance
          * רינדור שורות שעתון עם יתרה רצה
          */
-        renderTimesheetRows(timesheetEntries, client) {
+        renderTimesheetRows(timesheetEntries, client, formData) {
             // Sort entries by date (oldest first)
             const sortedEntries = [...timesheetEntries].sort((a, b) => {
                 const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
@@ -586,8 +628,27 @@
                 return dateA - dateB;
             });
 
-            // Track running balance if it's an hours-based client
-            let currentBalance = client.type === 'hours' ? (client.totalHours || 0) : 0;
+            // Calculate initial balance based on selected service
+            let initialBalance = 0;
+            let serviceTotalHours = 0;
+
+            if (client.type === 'hours') {
+                if (formData.service === 'all') {
+                    // If "all services" selected, sum up all service hours
+                    if (client.services && client.services.length > 0) {
+                        serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+                    } else {
+                        serviceTotalHours = client.totalHours || 0;
+                    }
+                } else {
+                    // Find the specific service
+                    const selectedService = client.services?.find(s => s.serviceName === formData.service);
+                    serviceTotalHours = selectedService?.totalHours || 0;
+                }
+                initialBalance = serviceTotalHours;
+            }
+
+            let currentBalance = initialBalance;
 
             return sortedEntries.map(entry => {
                 const hoursUsed = (entry.minutes || 0) / 60;
@@ -601,7 +662,7 @@
                 if (client.type === 'hours') {
                     if (currentBalance <= 0) {
                         balanceClass = 'danger';
-                    } else if (currentBalance < (client.totalHours || 0) * 0.2) {
+                    } else if (currentBalance < serviceTotalHours * 0.2) {
                         balanceClass = 'critical';
                     } else {
                         balanceClass = 'success';
