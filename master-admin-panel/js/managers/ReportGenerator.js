@@ -623,6 +623,13 @@
                     serviceUsedHours = (selectedService.totalHours || 0) - (selectedService.hoursRemaining || 0);
                     serviceRemainingHours = selectedService.hoursRemaining || 0;
                     purchaseDate = selectedService.purchasedAt ? this.formatDate(selectedService.purchasedAt.toDate()) : '-';
+                } else {
+                    // Fallback: if service not found, use client's total hours
+                    console.warn(`⚠️ Service "${formData.service}" not found in client.services. Using fallback.`);
+                    serviceTotalHours = client.totalHours || 0;
+                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
+                    serviceRemainingHours = client.hoursRemaining || 0;
+                    purchaseDate = client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-';
                 }
             }
 
@@ -679,7 +686,13 @@
                 } else {
                     // Find the specific service
                     const selectedService = client.services?.find(s => s.serviceName === formData.service);
-                    serviceTotalHours = selectedService?.totalHours || 0;
+                    if (selectedService) {
+                        serviceTotalHours = selectedService.totalHours || 0;
+                    } else {
+                        // Fallback: if service not found, use client's total hours
+                        console.warn(`⚠️ Service "${formData.service}" not found for balance calculation. Using fallback.`);
+                        serviceTotalHours = client.totalHours || 0;
+                    }
                 }
                 initialBalance = serviceTotalHours;
             }
