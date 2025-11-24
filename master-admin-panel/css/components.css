@@ -1330,6 +1330,12 @@
   outline: none;
 }
 
+/* Select elements should have pointer cursor */
+select.form-input,
+.form-select {
+  cursor: pointer;
+}
+
 .form-input:hover,
 .form-select:hover {
   border-color: var(--gray-300);
