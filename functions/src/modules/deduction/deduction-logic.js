@@ -107,21 +107,22 @@ function deductHoursFromPackage(pkg, hours) {
 
   // Determine new status
   let newStatus = pkg.status || 'active';
-  let closedDate = pkg.closedDate;
 
-  if (newHoursRemaining <= 0) {
-    newStatus = 'depleted';
-    closedDate = new Date().toISOString();
-  }
-
-  // ✅ Return NEW object (immutable)
-  return {
+  // ✅ Build updated package object
+  const updatedPackage = {
     ...pkg,  // Copy all existing fields
     hoursUsed: newHoursUsed,
     hoursRemaining: newHoursRemaining,
-    status: newStatus,
-    closedDate: closedDate
+    status: newStatus
   };
+
+  // ✅ Only add closedDate if package is depleted (avoid undefined in Firestore)
+  if (newHoursRemaining <= 0) {
+    updatedPackage.status = 'depleted';
+    updatedPackage.closedDate = new Date().toISOString();
+  }
+
+  return updatedPackage;
 }
 
 /**
