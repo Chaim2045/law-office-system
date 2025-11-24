@@ -363,6 +363,11 @@
             font-weight: 600;
         }
 
+        .danger {
+            color: #dc2626;
+            font-weight: 600;
+        }
+
         @media print {
             body {
                 background: white;
@@ -487,23 +492,15 @@
             <table>
                 <thead>
                     <tr>
-                        <th>תאריך</th>
-                        <th>חבר צוות</th>
-                        <th>שירות</th>
-                        <th>זמן</th>
-                        <th>תיאור</th>
+                        <th>תאריך רישום</th>
+                        <th>צוות משפטי</th>
+                        <th>תיאור העבודה</th>
+                        <th>זמן לקח</th>
+                        ${client.type === 'hours' ? '<th>יתרה נותרת</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
-                    ${timesheetEntries.map(entry => `
-                        <tr>
-                            <td>${this.formatDate(entry.date)}</td>
-                            <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
-                            <td>${entry.serviceName || entry.service || '-'}</td>
-                            <td class="highlight">${this.formatMinutes(entry.minutes)}</td>
-                            <td>${entry.description || '-'}</td>
-                        </tr>
-                    `).join('')}
+                    ${this.renderTimesheetRows(timesheetEntries, client).join('')}
                 </tbody>
             </table>
             ` : '<p>אין רשומות שעתון בתקופה זו</p>'}
@@ -575,6 +572,52 @@
 </body>
 </html>
             `;
+        }
+
+        /**
+         * Render timesheet rows with running balance
+         * רינדור שורות שעתון עם יתרה רצה
+         */
+        renderTimesheetRows(timesheetEntries, client) {
+            // Sort entries by date (oldest first)
+            const sortedEntries = [...timesheetEntries].sort((a, b) => {
+                const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+                const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+                return dateA - dateB;
+            });
+
+            // Track running balance if it's an hours-based client
+            let currentBalance = client.type === 'hours' ? (client.totalHours || 0) : 0;
+
+            return sortedEntries.map(entry => {
+                const hoursUsed = (entry.minutes || 0) / 60;
+
+                // Calculate balance AFTER this entry
+                if (client.type === 'hours') {
+                    currentBalance -= hoursUsed;
+                }
+
+                let balanceClass = '';
+                if (client.type === 'hours') {
+                    if (currentBalance <= 0) {
+                        balanceClass = 'danger';
+                    } else if (currentBalance < (client.totalHours || 0) * 0.2) {
+                        balanceClass = 'critical';
+                    } else {
+                        balanceClass = 'success';
+                    }
+                }
+
+                return `
+                    <tr>
+                        <td>${this.formatDate(entry.date)}</td>
+                        <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
+                        <td>${entry.description || '-'}</td>
+                        <td class="highlight">${this.formatMinutes(entry.minutes)}</td>
+                        ${client.type === 'hours' ? `<td class="${balanceClass}">${currentBalance.toFixed(2)} שעות</td>` : ''}
+                    </tr>
+                `;
+            });
         }
 
         /**

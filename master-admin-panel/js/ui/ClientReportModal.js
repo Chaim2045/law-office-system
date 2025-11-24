@@ -221,17 +221,37 @@
             // Clear existing options (except "all")
             this.serviceFilter.innerHTML = '<option value="all">כל השירותים</option>';
 
-            if (!client.services || client.services.length === 0) {
-                return;
+            const servicesSet = new Set();
+
+            // Add services from client.services array
+            if (client.services && client.services.length > 0) {
+                client.services.forEach(service => {
+                    if (service.serviceName) {
+                        servicesSet.add(service.serviceName);
+                    }
+                });
             }
 
-            // Add services
-            client.services.forEach(service => {
+            // Also get services from timesheet entries for this client
+            if (window.ClientsDataManager) {
+                const timesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
+                timesheetEntries.forEach(entry => {
+                    const serviceName = entry.serviceName || entry.service;
+                    if (serviceName && serviceName !== '-' && serviceName !== 'לא מוגדר') {
+                        servicesSet.add(serviceName);
+                    }
+                });
+            }
+
+            // Add unique services to dropdown
+            Array.from(servicesSet).sort().forEach(serviceName => {
                 const option = document.createElement('option');
-                option.value = service.id || service.serviceName;
-                option.textContent = service.serviceName;
+                option.value = serviceName;
+                option.textContent = serviceName;
                 this.serviceFilter.appendChild(option);
             });
+
+            console.log(`📦 Found ${servicesSet.size} services for client ${client.fullName}`);
         }
 
         /**
