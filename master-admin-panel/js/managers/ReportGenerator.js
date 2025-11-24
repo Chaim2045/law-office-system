@@ -416,8 +416,7 @@
     <div class="report-container">
         <!-- Header -->
         <div class="header">
-            <div class="header-logo" style="display: none;">
-                <!-- Logo placeholder - add your logo at /assets/logo.png -->
+            <div class="header-logo">
                 <img src="/assets/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="law-office-logo" onerror="this.parentElement.style.display='none'">
             </div>
             <div class="header-content">
