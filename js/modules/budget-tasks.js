@@ -504,7 +504,10 @@ export function getCompletedTasksCount(budgetTasks) {
  * @param {number} daysUntilDeadline - Days until deadline
  * @returns {string} SVG Rings HTML
  */
-function renderSVGRingsSection(task, progress, actualHours, estimatedHours, originalEstimate, wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline) {
+function renderSVGRingsSection(
+  task, progress, actualHours, estimatedHours, originalEstimate,
+  wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline
+) {
   if (!window.SVGRings) {
 return '';
 }
@@ -521,7 +524,7 @@ return '';
   // Budget Ring Config
   const budgetRingConfig = {
     progress, // ✅ No 100% cap - shows 150%+ for overage
-    color: isOverOriginal ? 'red' : progress >= 85 ? 'orange' : 'green',
+    color: 'blue', // כחול אחיד לכל המצבים
     icon: 'fas fa-clock',
     label: 'תקציב זמן',
     value: `${actualHours}ש / ${estimatedHours}ש`,
@@ -539,7 +542,7 @@ return '';
   const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
   const deadlineRingConfig = {
     progress: deadlineProgress,
-    color: isDeadlineOverdue ? 'red' : deadlineProgress >= 85 ? 'orange' : 'blue',
+    color: 'blue', // כחול אחיד לכל המצבים
     icon: 'fas fa-calendar-alt',
     label: 'תאריך יעד',
     value: isDeadlineOverdue
@@ -635,11 +638,29 @@ export function createTaskCard(task, options = {}) {
     </span>
   ` : '';
 
-  // 🎯 Combined info badge (case + service)
+  // 🎯 Combined info badge (case + service + stage)
+  // Extract stage info from serviceId (stage_a -> א, stage_b -> ב, stage_c -> ג)
+  let stageInfo = '';
+  if (safeTask.serviceType === 'legal_procedure' && safeTask.serviceId) {
+    const stageMap = {
+      'stage_a': 'א\'',
+      'stage_b': 'ב\'',
+      'stage_c': 'ג\''
+    };
+    stageInfo = stageMap[safeTask.serviceId] || '';
+
+    // Debug: log for checking
+    console.log('🔍 Legal procedure stage:', {
+      serviceId: safeTask.serviceId,
+      stageInfo: stageInfo
+    });
+  }
+
   const combinedBadge = createCombinedInfoBadge(
     safeTask.caseNumber,
     safeTask.serviceName,
-    safeTask.serviceType
+    safeTask.serviceType,
+    stageInfo
   );
 
   const badgesRow = combinedBadge ? `
@@ -702,11 +723,23 @@ export function createTableRow(task, options = {}) {
   const isCompleted = safeTask.status === 'הושלם';
   const statusDisplay = createStatusBadge(safeTask.status);
 
-  // 🎯 Combined info badge for table view (same as card view)
+  // 🎯 Combined info badge for table view (same as card view) + stage
+  // Extract stage info from serviceId (stage_a -> א, stage_b -> ב, stage_c -> ג)
+  let stageInfo = '';
+  if (safeTask.serviceType === 'legal_procedure' && safeTask.serviceId) {
+    const stageMap = {
+      'stage_a': 'א\'',
+      'stage_b': 'ב\'',
+      'stage_c': 'ג\''
+    };
+    stageInfo = stageMap[safeTask.serviceId] || '';
+  }
+
   const combinedBadge = createCombinedInfoBadge(
     safeTask.caseNumber,
     safeTask.serviceName,
-    safeTask.serviceType
+    safeTask.serviceType,
+    stageInfo
   );
 
   // 🎨 Create progress bar for time progress column

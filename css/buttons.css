@@ -194,12 +194,12 @@
 
 @keyframes plusButtonPulse {
   0%, 100% {
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25),
-                0 0 0 0 rgba(16, 185, 129, 0);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25),
+                0 0 0 0 rgba(59, 130, 246, 0);
   }
   50% {
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25),
-                0 0 0 6px rgba(16, 185, 129, 0.08);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25),
+                0 0 0 6px rgba(59, 130, 246, 0.08);
   }
 }
 
@@ -212,7 +212,7 @@
   height: 56px;
   z-index: var(--z-sticky);
 
-  background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   border: none;
   border-radius: 50%;
   color: white;
@@ -229,8 +229,8 @@
   justify-content: center;
 
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25),
-              0 0 0 0 rgba(16, 185, 129, 0);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25),
+              0 0 0 0 rgba(59, 130, 246, 0);
   animation: plusButtonPulse 3s ease-in-out infinite;
 }
 
@@ -240,10 +240,10 @@
 }
 
 .plus-button-top:hover {
-  background: linear-gradient(135deg, var(--green-dark) 0%, #047857 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: scale(1.05) translateY(-1px);
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35),
-              0 0 0 4px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35),
+              0 0 0 4px rgba(59, 130, 246, 0.1);
   animation: none;
 }
 
@@ -252,9 +252,9 @@
 }
 
 .plus-button-top:active {
-  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
 }
 
 .plus-button-top.active {

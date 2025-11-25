@@ -397,16 +397,16 @@
 .progress-high {
   background: linear-gradient(
     90deg,
-    #ef4444 0%,
-    #dc2626 100%
-  ); /* אדום - אזהרה! */
+    #3b82f6 0%,
+    #2563eb 100%
+  ); /* כחול אחיד */
 }
 .progress-complete {
   background: linear-gradient(
     90deg,
-    #ef4444 0%,
-    #b91c1c 100%
-  ); /* אדום כהה - חרגת! */
+    #2563eb 0%,
+    #1d4ed8 100%
+  ); /* כחול כהה */
 }
 
 /* אפקט ברק על הבר */

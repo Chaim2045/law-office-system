@@ -1632,19 +1632,19 @@
 }
 
 .table-progress-fill.progress-low {
-  background: linear-gradient(90deg, #10b981, #059669);
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
 
 .table-progress-fill.progress-medium {
-  background: linear-gradient(90deg, #f59e0b, #d97706);
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
 
 .table-progress-fill.progress-high {
-  background: linear-gradient(90deg, #ef4444, #dc2626);
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
 
 .table-progress-fill.progress-complete {
-  background: linear-gradient(90deg, #dc2626, #991b1b);
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
 }
 
 
@@ -1835,9 +1835,9 @@
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
-  background: #ffffff;
-  border: 1px solid var(--gray-300);
-  color: var(--gray-700);
+  background: #3b82f6;
+  border: 1px solid #2563eb;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1848,8 +1848,8 @@
 }
 
 .linear-expand-btn:hover {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
+  background: #2563eb;
+  border-color: #1d4ed8;
   transform: translateY(-1px);
 }
 
@@ -1980,19 +1980,19 @@
 
 /* צבעים לפי אחוז */
 .progress-low {
-  background: linear-gradient(90deg, var(--green), var(--green-dark));
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
 
 .progress-medium {
-  background: linear-gradient(90deg, var(--orange), var(--orange-dark));
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
 
 .progress-high {
-  background: linear-gradient(90deg, var(--red), var(--red-dark));
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
 }
 
 .progress-complete {
-  background: var(--red-dark);
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
 }
 
 
