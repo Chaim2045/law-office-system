@@ -199,41 +199,40 @@
   letter-spacing: -0.5px;
 }
 
-/* Planned Card - כחול */
+/* Planned Card - מינימליסטי */
 .metric-planned {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 1.5px solid #93c5fd;
-  color: #1e40af;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
 }
 
 .metric-planned .metric-icon {
-  background: #3b82f6;
-  color: #fff;
+  background: #f3f4f6;
+  color: #3b82f6;
 }
 
-/* Actual Card - סגול/כתום */
+/* Actual Card - מינימליסטי */
 .metric-actual {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 1.5px solid #fcd34d;
-  color: #92400e;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
 }
 
 .metric-actual .metric-icon {
-  background: #f59e0b;
-  color: #fff;
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
-/* Overage Card - אדום */
+/* Overage Card - מינימליסטי עם נגיעת אזהרה */
 .metric-overage {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border: 1.5px solid #fca5a5;
-  color: #991b1b;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
 }
 
 .metric-overage .metric-icon {
-  background: #ef4444;
-  color: #fff;
-  animation: pulse 2s ease-in-out infinite;
+  background: #fef3f2;
+  color: #ef4444;
 }
 
 @keyframes pulse {

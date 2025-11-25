@@ -313,7 +313,7 @@ body.logged-in .main-content::before {
   padding: var(--space-sm) var(--space-md);
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-size: var(--font-sm);
   font-weight: 500;
   color: var(--gray-600);
@@ -342,7 +342,7 @@ body.logged-in .main-content::before {
   min-width: 40px;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-size: var(--font-sm);
   color: var(--gray-600);
   cursor: pointer;
@@ -354,7 +354,7 @@ body.logged-in .main-content::before {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
   opacity: 0;
   transition: var(--transition-normal);
