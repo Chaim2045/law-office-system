@@ -269,7 +269,7 @@ function createBudgetStatsBar(stats, currentFilter = 'all') {
       ${stats.urgent > 0 ? `
       <div class="stat-compact stat-urgent">
         <div class="stat-icon">
-          <i class="far fa-circle-exclamation"></i>
+          <i class="fas fa-exclamation-triangle"></i>
         </div>
         <div class="stat-content">
           <div class="stat-label">דחופות</div>
