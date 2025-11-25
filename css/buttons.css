@@ -208,8 +208,8 @@
   position: fixed;
   top: var(--space-5);
   left: var(--space-10);
-  width: 70px;
-  height: 70px;
+  width: 64px;
+  height: 64px;
   z-index: var(--z-sticky);
 
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -217,7 +217,7 @@
   border-radius: 50%;
   color: white;
 
-  font-size: 28px;
+  font-size: 26px;
   font-weight: var(--font-bold);
   font-family: inherit;
 
@@ -235,7 +235,7 @@
 }
 
 .plus-button-top i {
-  font-size: 28px;
+  font-size: 26px;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
