@@ -443,6 +443,17 @@ export function calculateSimpleProgress(task) {
 }
 
 /**
+ * Get color based on progress percentage
+ * @param {number} progress - Progress percentage
+ * @returns {string} Color name ('blue', 'orange', or 'red')
+ */
+export function getProgressColor(progress) {
+  if (progress >= 100) return 'red';
+  if (progress >= 85) return 'orange';
+  return 'blue';
+}
+
+/**
  * Get progress status text in Hebrew
  * @param {number} progress - Progress percentage
  * @returns {string} Status text
@@ -524,7 +535,7 @@ return '';
   // Budget Ring Config
   const budgetRingConfig = {
     progress, // ✅ No 100% cap - shows 150%+ for overage
-    color: progress >= 100 ? 'red' : progress >= 85 ? 'orange' : 'blue', // כחול רגיל, כתום באזהרה, אדום בחריגה
+    color: getProgressColor(progress), // שימוש בפונקציה המשותפת
     icon: 'fas fa-clock',
     label: 'תקציב זמן',
     value: `${actualHours}ש / ${estimatedHours}ש`,
@@ -542,7 +553,7 @@ return '';
   const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
   const deadlineRingConfig = {
     progress: deadlineProgress,
-    color: isDeadlineOverdue ? 'red' : deadlineProgress >= 85 ? 'orange' : 'blue', // כחול רגיל, כתום באזהרה, אדום באיחור
+    color: isDeadlineOverdue ? 'red' : getProgressColor(deadlineProgress), // שימוש בפונקציה המשותפת
     icon: 'fas fa-calendar-alt',
     label: 'תאריך יעד',
     value: isDeadlineOverdue
@@ -639,28 +650,12 @@ export function createTaskCard(task, options = {}) {
   ` : '';
 
   // 🎯 Combined info badge (case + service + stage)
-  // Extract stage info from serviceId (stage_a -> א, stage_b -> ב, stage_c -> ג)
-  let stageInfo = '';
-  if (safeTask.serviceType === 'legal_procedure' && safeTask.serviceId) {
-    const stageMap = {
-      'stage_a': 'א\'',
-      'stage_b': 'ב\'',
-      'stage_c': 'ג\''
-    };
-    stageInfo = stageMap[safeTask.serviceId] || '';
-
-    // Debug: log for checking
-    console.log('🔍 Legal procedure stage:', {
-      serviceId: safeTask.serviceId,
-      stageInfo: stageInfo
-    });
-  }
-
+  // Pass serviceId directly - mapping will be done in the popup
   const combinedBadge = createCombinedInfoBadge(
     safeTask.caseNumber,
     safeTask.serviceName,
     safeTask.serviceType,
-    stageInfo
+    safeTask.serviceId || ''
   );
 
   const badgesRow = combinedBadge ? `
@@ -724,22 +719,12 @@ export function createTableRow(task, options = {}) {
   const statusDisplay = createStatusBadge(safeTask.status);
 
   // 🎯 Combined info badge for table view (same as card view) + stage
-  // Extract stage info from serviceId (stage_a -> א, stage_b -> ב, stage_c -> ג)
-  let stageInfo = '';
-  if (safeTask.serviceType === 'legal_procedure' && safeTask.serviceId) {
-    const stageMap = {
-      'stage_a': 'א\'',
-      'stage_b': 'ב\'',
-      'stage_c': 'ג\''
-    };
-    stageInfo = stageMap[safeTask.serviceId] || '';
-  }
-
+  // Pass serviceId directly - mapping will be done in the popup
   const combinedBadge = createCombinedInfoBadge(
     safeTask.caseNumber,
     safeTask.serviceName,
     safeTask.serviceType,
-    stageInfo
+    safeTask.serviceId || ''
   );
 
   // 🎨 Create progress bar for time progress column
