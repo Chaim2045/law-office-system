@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════════╗
+    ║         Microsoft Fluent Design - Client Management System            ║
+    ╠═══════════════════════════════════════════════════════════════════════╣
+    ║  Enterprise-grade client management with Fluent Design System         ║
+    ║  Following Microsoft's design standards                               ║
+    ╚═══════════════════════════════════════════════════════════════════════╝
+    -->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Client Management - Microsoft Fluent Design">
+    <title>ניהול לקוחות | Fluent Design System</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- Fluent UI Web Components -->
+    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Microsoft Segoe UI Font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    </style>
+
+    <!-- Fluent Design Styles -->
+    <link rel="stylesheet" href="css/fluent-design.css?v=20251125">
+
+    <!-- Core Styles -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css?v=20251125">
+</head>
+
+<body class="fluent-body">
+    <!-- Navigation Bar with Fluent Design -->
+    <div id="navigationContainer"></div>
+
+    <!-- Main Content Area -->
+    <div class="fluent-container">
+        <!-- Command Bar (Microsoft Style) -->
+        <div class="fluent-command-bar">
+            <div class="command-bar-primary">
+                <button class="fluent-command-button fluent-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>לקוח חדש</span>
+                </button>
+                <button class="fluent-command-button" id="refreshCommand">
+                    <i class="fas fa-sync"></i>
+                    <span>רענן</span>
+                </button>
+                <div class="command-separator"></div>
+                <button class="fluent-command-button" id="bulkEditCommand">
+                    <i class="fas fa-edit"></i>
+                    <span>עריכה מרובה</span>
+                </button>
+                <button class="fluent-command-button" id="bulkDeleteCommand" disabled>
+                    <i class="fas fa-trash"></i>
+                    <span>מחק נבחרים</span>
+                </button>
+            </div>
+
+            <div class="command-bar-secondary">
+                <div class="fluent-search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text"
+                           id="fluentSearchInput"
+                           class="fluent-search-input"
+                           placeholder="חיפוש לקוחות..."
+                           autocomplete="off">
+                    <button class="search-clear" id="clearSearchBtn" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <button class="fluent-command-button">
+                    <i class="fas fa-filter"></i>
+                    <span>סינון</span>
+                </button>
+                <button class="fluent-command-button">
+                    <i class="fas fa-download"></i>
+                    <span>ייצוא</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Page Header with Breadcrumb -->
+        <div class="fluent-page-header">
+            <nav class="fluent-breadcrumb">
+                <a href="dashboard.html">ראשי</a>
+                <i class="fas fa-chevron-left"></i>
+                <span class="current">ניהול לקוחות</span>
+            </nav>
+            <h1 class="fluent-title">ניהול לקוחות</h1>
+            <p class="fluent-subtitle">ניהול מקצועי של לקוחות המערכת עם יכולות מתקדמות</p>
+        </div>
+
+        <!-- KPI Cards with Fluent Design -->
+        <div class="fluent-kpi-grid">
+            <div class="fluent-kpi-card" data-color="blue">
+                <div class="kpi-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="totalClientsKPI">0</div>
+                    <div class="kpi-label">סה"כ לקוחות</div>
+                    <div class="kpi-trend positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>12% החודש</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fluent-kpi-card" data-color="green">
+                <div class="kpi-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="activeClientsKPI">0</div>
+                    <div class="kpi-label">לקוחות פעילים</div>
+                    <div class="kpi-trend positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>5% השבוע</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fluent-kpi-card" data-color="orange">
+                <div class="kpi-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="hoursUsedKPI">0</div>
+                    <div class="kpi-label">שעות בשימוש</div>
+                    <div class="kpi-trend neutral">
+                        <i class="fas fa-minus"></i>
+                        <span>ללא שינוי</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fluent-kpi-card" data-color="purple">
+                <div class="kpi-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="avgHoursKPI">0</div>
+                    <div class="kpi-label">ממוצע שעות</div>
+                    <div class="kpi-trend negative">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>3% החודש</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Filter Panel (Collapsible) -->
+        <div class="fluent-filter-panel" id="filterPanel" style="display: none;">
+            <div class="filter-panel-header">
+                <h3>סינון מתקדם</h3>
+                <button class="filter-close" id="closeFilterBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="filter-panel-body">
+                <div class="filter-group">
+                    <label>סטטוס</label>
+                    <div class="filter-chips">
+                        <label class="fluent-chip">
+                            <input type="checkbox" name="status" value="active" checked>
+                            <span>פעיל</span>
+                        </label>
+                        <label class="fluent-chip">
+                            <input type="checkbox" name="status" value="inactive">
+                            <span>לא פעיל</span>
+                        </label>
+                        <label class="fluent-chip">
+                            <input type="checkbox" name="status" value="blocked">
+                            <span>חסום</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label>סוג שירות</label>
+                    <div class="filter-chips">
+                        <label class="fluent-chip">
+                            <input type="checkbox" name="service" value="hours">
+                            <span>חבילת שעות</span>
+                        </label>
+                        <label class="fluent-chip">
+                            <input type="checkbox" name="service" value="legal">
+                            <span>הליך משפטי</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label>טווח תאריכים</label>
+                    <div class="date-range">
+                        <input type="date" class="fluent-input" placeholder="מתאריך">
+                        <span>-</span>
+                        <input type="date" class="fluent-input" placeholder="עד תאריך">
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="fluent-button-secondary">נקה הכל</button>
+                    <button class="fluent-button-primary">החל סינון</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Grid with Fluent Design -->
+        <div class="fluent-data-grid-container">
+            <div class="data-grid-header">
+                <div class="selection-info">
+                    <span id="selectedCount">0</span> נבחרו
+                </div>
+                <div class="grid-actions">
+                    <button class="grid-action-button" title="תצוגת טבלה">
+                        <i class="fas fa-table"></i>
+                    </button>
+                    <button class="grid-action-button" title="תצוגת כרטיסים">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button class="grid-action-button" title="הגדרות עמודות">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="fluent-data-grid">
+                <table class="fluent-table" id="clientsDataGrid">
+                    <thead class="sticky-header">
+                        <tr>
+                            <th class="checkbox-column">
+                                <label class="fluent-checkbox">
+                                    <input type="checkbox" id="selectAllCheckbox">
+                                    <span class="checkbox-mark"></span>
+                                </label>
+                            </th>
+                            <th class="sortable" data-sort="name">
+                                <div class="header-content">
+                                    <span>שם הלקוח</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </div>
+                            </th>
+                            <th class="sortable" data-sort="caseNumber">
+                                <div class="header-content">
+                                    <span>מספר תיק</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </div>
+                            </th>
+                            <th class="sortable" data-sort="type">
+                                <div class="header-content">
+                                    <span>סוג שירות</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </div>
+                            </th>
+                            <th class="sortable" data-sort="hours">
+                                <div class="header-content">
+                                    <span>שעות</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </div>
+                            </th>
+                            <th class="sortable" data-sort="status">
+                                <div class="header-content">
+                                    <span>סטטוס</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </div>
+                            </th>
+                            <th class="sortable" data-sort="team">
+                                <div class="header-content">
+                                    <span>צוות</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </div>
+                            </th>
+                            <th class="sortable" data-sort="lastActivity">
+                                <div class="header-content">
+                                    <span>פעילות אחרונה</span>
+                                    <i class="fas fa-sort sort-icon"></i>
+                                </div>
+                            </th>
+                            <th class="actions-column">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientsTableBody">
+                        <!-- Table rows will be populated here -->
+                        <tr class="loading-state">
+                            <td colspan="9">
+                                <div class="fluent-loading">
+                                    <div class="loading-dots">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                    <p>טוען נתונים...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="fluent-pagination">
+                <div class="page-size">
+                    <label>שורות בעמוד:</label>
+                    <select class="fluent-select" id="pageSizeSelect">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="page-info">
+                    <span id="pageInfo">1-25 מתוך 150</span>
+                </div>
+                <div class="page-controls">
+                    <button class="page-button" id="firstPageBtn" title="עמוד ראשון">
+                        <i class="fas fa-angle-double-right"></i>
+                    </button>
+                    <button class="page-button" id="prevPageBtn" title="עמוד קודם">
+                        <i class="fas fa-angle-right"></i>
+                    </button>
+                    <div class="page-numbers" id="pageNumbers">
+                        <!-- Page numbers will be generated here -->
+                    </div>
+                    <button class="page-button" id="nextPageBtn" title="עמוד הבא">
+                        <i class="fas fa-angle-left"></i>
+                    </button>
+                    <button class="page-button" id="lastPageBtn" title="עמוד אחרון">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="fluent-context-menu" id="contextMenu" style="display: none;">
+        <button class="context-menu-item">
+            <i class="fas fa-eye"></i>
+            <span>הצג פרטים</span>
+        </button>
+        <button class="context-menu-item">
+            <i class="fas fa-edit"></i>
+            <span>ערוך</span>
+        </button>
+        <button class="context-menu-item">
+            <i class="fas fa-file-alt"></i>
+            <span>הפק דוח</span>
+        </button>
+        <div class="context-menu-separator"></div>
+        <button class="context-menu-item">
+            <i class="fas fa-copy"></i>
+            <span>שכפל</span>
+        </button>
+        <button class="context-menu-item danger">
+            <i class="fas fa-trash"></i>
+            <span>מחק</span>
+        </button>
+    </div>
+
+    <!-- Quick Actions Panel (Slide-in) -->
+    <div class="fluent-quick-actions" id="quickActionsPanel" style="display: none;">
+        <div class="quick-actions-header">
+            <h3>פעולות מהירות</h3>
+            <button class="close-button" id="closeQuickActionsBtn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="quick-actions-body">
+            <div class="client-summary">
+                <h4 id="quickClientName">-</h4>
+                <p id="quickClientInfo">-</p>
+            </div>
+            <div class="action-buttons">
+                <button class="fluent-action-button">
+                    <i class="fas fa-phone"></i>
+                    <span>התקשר</span>
+                </button>
+                <button class="fluent-action-button">
+                    <i class="fas fa-envelope"></i>
+                    <span>שלח מייל</span>
+                </button>
+                <button class="fluent-action-button">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>קבע פגישה</span>
+                </button>
+                <button class="fluent-action-button">
+                    <i class="fas fa-file-invoice"></i>
+                    <span>צור חשבונית</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="fluentLoadingOverlay" class="fluent-loading-overlay" style="display: none;">
+        <div class="fluent-spinner">
+            <div class="spinner-ring"></div>
+        </div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="js/core/firebase.js?v=20251125"></script>
+    <script src="js/core/auth.js?v=20251125"></script>
+    <script src="js/core/constants.js?v=20251125"></script>
+
+    <!-- Navigation Component -->
+    <script src="js/ui/Navigation.js?v=20251125"></script>
+
+    <!-- Fluent Design Components -->
+    <script src="js/fluent/FluentDataGrid.js?v=20251125"></script>
+    <script src="js/fluent/FluentClientsManager.js?v=20251125"></script>
+
+    <!-- Shared Components -->
+    <script src="js/ui/Notifications.js?v=20251125"></script>
+
+    <!-- Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Fluent Design Client Management - Initializing...');
+
+            // Check authentication
+            if (!window.firebaseAuth) {
+                console.error('❌ Firebase Auth not loaded');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Wait for auth state
+            window.firebaseAuth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    console.log('🔒 User not authenticated, redirecting...');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                console.log('✅ User authenticated:', user.email);
+
+                // Initialize Navigation
+                if (window.Navigation) {
+                    window.Navigation.init('clients');
+                }
+
+                // Initialize Fluent Clients Manager
+                if (window.FluentClientsManager) {
+                    await window.FluentClientsManager.init();
+                } else {
+                    console.error('❌ FluentClientsManager not loaded');
+                }
+
+                console.log('✅ Fluent Design Client Management - Ready');
+            });
+        });
+    </script>
+</body>
+</html>
