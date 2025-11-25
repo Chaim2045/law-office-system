@@ -26,19 +26,19 @@
   max-width: fit-content;
 }
 
-/* ===== Microsoft Fluent Design Style ===== */
+/* ===== Clean Compact Style ===== */
 .stat-compact {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 10px 16px;
-  display: flex;
+  padding: 8px 12px;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
+  justify-content: center;
+  gap: 8px;
   transition: all 0.2s ease;
-  min-width: 110px;
-  height: 48px;
+  min-width: auto;
+  height: 42px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   position: relative;
 }
@@ -50,50 +50,51 @@
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
-/* ===== Icon Style - Microsoft Fluent ===== */
+/* ===== Small Icon Style ===== */
 .stat-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: #f9fafb;
   color: #6b7280;
-  font-size: 12px;
+  font-size: 10px;
   flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
 .stat-compact:hover .stat-icon {
-  background: #e5e7eb;
-  transform: scale(1.05);
+  background: #f3f4f6;
 }
 
-/* ===== Content Style - Vertical Layout ===== */
+/* ===== Inline Content Style ===== */
 .stat-content {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  flex: 1;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
+  flex-shrink: 0;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 400;
-  color: #6b7280;
-  line-height: 1.2;
+  color: #9ca3af;
+  line-height: 1;
   white-space: nowrap;
+  order: 2;
 }
 
 .stat-value {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.3px;
   color: #111827;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: 1;
+  order: 1;
 }
 
 /* ===== Stat Color Variants ===== */
@@ -165,27 +166,26 @@
 /* טאבלטים */
 @media (max-width: 1024px) {
   .stats-badge {
-    gap: 10px;
+    gap: 8px;
   }
 
   .stat-compact {
-    padding: 8px 14px;
-    min-width: 100px;
-    height: 44px;
+    padding: 7px 11px;
+    height: 40px;
   }
 
   .stat-icon {
-    width: 22px;
-    height: 22px;
-    font-size: 11px;
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
   }
 
   .stat-value {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .stat-label {
-    font-size: 10px;
+    font-size: 9px;
   }
 }
 
@@ -215,24 +215,23 @@
   }
 
   .stat-compact {
-    padding: 7px 12px;
-    min-width: 90px;
-    height: 40px;
-    gap: 8px;
+    padding: 6px 10px;
+    height: 38px;
+    gap: 6px;
   }
 
   .stat-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 10px;
+    width: 15px;
+    height: 15px;
+    font-size: 8px;
   }
 
   .stat-value {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .stat-label {
-    font-size: 9px;
+    font-size: 8px;
   }
 }
 
