@@ -413,6 +413,16 @@
         </div>
     </div>
 
+    <!-- Client Report Modal (Hidden - for compatibility) -->
+    <div id="clientReportModal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 class="modal-title">הפקת דוח</h2>
+            </div>
+            <div class="modal-body"></div>
+        </div>
+    </div>
+
     <!-- Core Scripts -->
     <script src="js/core/firebase.js?v=20251125"></script>
     <script src="js/core/auth.js?v=20251125"></script>
@@ -420,6 +430,11 @@
 
     <!-- Navigation Component -->
     <script src="js/ui/Navigation.js?v=20251125"></script>
+
+    <!-- Data Managers (Required for Fluent Components) -->
+    <script src="js/managers/ClientsDataManager.js?v=20251125"></script>
+    <script src="js/ui/ClientReportModal.js?v=20251125"></script>
+    <script src="js/managers/ReportGenerator.js?v=20251125"></script>
 
     <!-- Fluent Design Components -->
     <script src="js/fluent/FluentDataGrid.js?v=20251125"></script>
