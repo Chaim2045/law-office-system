@@ -149,7 +149,7 @@
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: 24px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -207,8 +207,8 @@
 }
 
 .metric-planned .metric-icon {
-  background: #f3f4f6;
-  color: #3b82f6;
+  background: #f9fafb;
+  color: #6b7280;
 }
 
 /* Actual Card - מינימליסטי */
@@ -219,11 +219,11 @@
 }
 
 .metric-actual .metric-icon {
-  background: #f3f4f6;
+  background: #f9fafb;
   color: #6b7280;
 }
 
-/* Overage Card - מינימליסטי עם נגיעת אזהרה */
+/* Overage Card - מינימליסטי */
 .metric-overage {
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -231,8 +231,8 @@
 }
 
 .metric-overage .metric-icon {
-  background: #fef3f2;
-  color: #ef4444;
+  background: #f9fafb;
+  color: #6b7280;
 }
 
 @keyframes pulse {
@@ -382,7 +382,7 @@
   margin-top: 8px;
   color: #fff;
   border: none;
-  border-radius: 16px; /* יותר מעוגל */
+  border-radius: 20px; /* יותר מעוגל */
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
