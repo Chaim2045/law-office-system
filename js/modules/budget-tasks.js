@@ -524,7 +524,7 @@ return '';
   // Budget Ring Config
   const budgetRingConfig = {
     progress, // ✅ No 100% cap - shows 150%+ for overage
-    color: 'blue', // כחול אחיד לכל המצבים
+    color: progress >= 100 ? 'red' : progress >= 85 ? 'orange' : 'blue', // כחול רגיל, כתום באזהרה, אדום בחריגה
     icon: 'fas fa-clock',
     label: 'תקציב זמן',
     value: `${actualHours}ש / ${estimatedHours}ש`,
@@ -542,7 +542,7 @@ return '';
   const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
   const deadlineRingConfig = {
     progress: deadlineProgress,
-    color: 'blue', // כחול אחיד לכל המצבים
+    color: isDeadlineOverdue ? 'red' : deadlineProgress >= 85 ? 'orange' : 'blue', // כחול רגיל, כתום באזהרה, אדום באיחור
     icon: 'fas fa-calendar-alt',
     label: 'תאריך יעד',
     value: isDeadlineOverdue

@@ -208,8 +208,8 @@
   position: fixed;
   top: var(--space-5);
   left: var(--space-10);
-  width: 56px;
-  height: 56px;
+  width: 70px;
+  height: 70px;
   z-index: var(--z-sticky);
 
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -217,7 +217,7 @@
   border-radius: 50%;
   color: white;
 
-  font-size: var(--text-2xl);
+  font-size: 28px;
   font-weight: var(--font-bold);
   font-family: inherit;
 
@@ -235,7 +235,7 @@
 }
 
 .plus-button-top i {
-  font-size: var(--text-2xl);
+  font-size: 28px;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -259,15 +259,15 @@
 
 .plus-button-top.active {
   transform: rotate(135deg);
-  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   animation: none;
 }
 
 .plus-button-top.active:hover {
-  background: linear-gradient(135deg, var(--orange-dark) 0%, #c2410c 100%);
+  background: linear-gradient(135deg, #1e40af 0%, #4338ca 100%);
   transform: rotate(135deg) scale(1.05) translateY(-1px);
-  box-shadow: 0 4px 16px rgba(251, 146, 60, 0.35),
-              0 0 0 4px rgba(251, 146, 60, 0.1);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35),
+              0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
 /* Tooltip לכפתור פלוס */
