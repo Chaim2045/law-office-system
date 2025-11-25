@@ -366,6 +366,12 @@ function calculateTimesheetStatistics(entries) {
   const smartGoals = calculateSmartGoals(stats.monthHours, now);
   Object.assign(stats, smartGoals);
 
+  // עיגול כל הערכים למספרים שלמים לתצוגה קומפקטית
+  stats.monthHours = Math.round(stats.monthHours);
+  stats.hoursRemaining = Math.round(stats.hoursRemaining);
+  stats.todayHours = Math.round(stats.todayHours);
+  stats.weekHours = Math.round(stats.weekHours);
+
   return stats;
 }
 
