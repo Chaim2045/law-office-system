@@ -1835,9 +1835,9 @@
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
-  background: #3b82f6;
-  border: 1px solid #2563eb;
-  color: white;
+  background: #ffffff;
+  border: 1px solid var(--gray-300);
+  color: var(--gray-700);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1848,8 +1848,8 @@
 }
 
 .linear-expand-btn:hover {
-  background: #2563eb;
-  border-color: #1d4ed8;
+  background: var(--gray-50);
+  border-color: var(--gray-400);
   transform: translateY(-1px);
 }
 
