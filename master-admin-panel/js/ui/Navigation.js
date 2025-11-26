@@ -50,7 +50,7 @@ return;
             const navItems = [
                 { id: 'monitoring', label: '🔥 דשבורד ניטור', icon: 'fa-chart-line', href: 'monitoring-dashboard.html', isNew: true },
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
-                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' }
+                { id: 'clients', label: '✨ ניהול לקוחות', icon: 'fa-briefcase', href: 'clients-fluent.html', isFluent: true }
             ];
 
             this.container.innerHTML = `
@@ -66,6 +66,7 @@ return;
                                     <i class="fas ${item.icon}"></i>
                                     <span>${item.label}</span>
                                     ${item.isNew ? '<span class="badge-new">חדש!</span>' : ''}
+                                    ${item.isFluent ? '<span class="badge-fluent">Fluent</span>' : ''}
                                 </a>
                             </li>
                         `).join('')}
@@ -197,6 +198,20 @@ return;
                         transform: scale(1.1);
                         opacity: 0.8;
                     }
+                }
+
+                .badge-fluent {
+                    display: inline-block;
+                    padding: 2px 8px;
+                    background: linear-gradient(135deg, #0078d4, #40e0d0);
+                    color: white;
+                    font-size: 0.625rem;
+                    font-weight: 700;
+                    border-radius: 10px;
+                    margin-right: 0.5rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    box-shadow: 0 2px 4px rgba(0, 120, 212, 0.3);
                 }
 
                 @media (max-width: 768px) {
