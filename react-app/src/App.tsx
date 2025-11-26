@@ -13,6 +13,7 @@ import { ClientsProvider } from '@context/ClientsContext';
 import { LegalProceduresProvider } from '@context/LegalProceduresContext';
 import { ReportsProvider } from '@context/ReportsContext';
 import { AIProvider } from '@context/AIContext';
+import { AdminProvider } from '@contexts/AdminContext';
 import { MainLayout } from '@components/layout';
 import { Spinner } from '@components/common';
 import { ChatBot } from '@components/ai';
@@ -24,6 +25,12 @@ import { Cases } from '@pages/Cases';
 import { LegalProcedures } from '@pages/LegalProcedures';
 import { Reports } from '@pages/Reports';
 import { Settings } from '@pages/Settings';
+
+// Admin imports
+import { AdminLayout } from '@components/admin/AdminLayout';
+import { AdminDashboard } from '@pages/admin/AdminDashboard';
+import { AdminUsers } from '@pages/admin/AdminUsers';
+
 import 'react-toastify/dist/ReactToastify.css';
 
 // Protected Route Component
@@ -72,13 +79,14 @@ const App: React.FC = () => {
   return (
     <Router>
       <AuthProvider>
-        <NotificationProvider>
-          <ClientsProvider>
-            <LegalProceduresProvider>
-              <BudgetTasksProvider>
-                <TimesheetProvider>
-                  <ReportsProvider>
-                    <AIProvider>
+        <AdminProvider>
+          <NotificationProvider>
+            <ClientsProvider>
+              <LegalProceduresProvider>
+                <BudgetTasksProvider>
+                  <TimesheetProvider>
+                    <ReportsProvider>
+                      <AIProvider>
                       {/* Toast Notifications */}
             <ToastContainer
               position="top-left"
