@@ -15,7 +15,26 @@
 [context.production.environment]
   NODE_VERSION = "18"
 
-# SPA routing - all routes to index.html
+# Specific HTML files should be served directly
+[[redirects]]
+  from = "/clients-fluent.html"
+  to = "/clients-fluent.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/monitoring-dashboard.html"
+  to = "/monitoring-dashboard.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/clients.html"
+  to = "/clients.html"
+  status = 200
+  force = true
+
+# Default SPA routing for everything else
 [[redirects]]
   from = "/*"
   to = "/index.html"
