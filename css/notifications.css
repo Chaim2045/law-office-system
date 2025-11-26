@@ -165,7 +165,7 @@
 .notification-message {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: inherit;  /* תוקן: משתמש ב-inherit כדי לרשת את הצבע מההורה */
   line-height: 1.5;
   overflow-wrap: break-word;
   direction: rtl;

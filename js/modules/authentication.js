@@ -9,7 +9,6 @@
  */
 
 import { updateUserDisplay, updateSidebarUser } from './ui-components.js';
-import { loginMethods } from './security/sms-auth.js';
 
 /**
  * Authentication methods for LawOfficeManager

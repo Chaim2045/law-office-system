@@ -5,6 +5,7 @@
 import React from 'react';
 import { useAuth } from '@hooks/useAuth';
 import { Button } from '@components/common';
+import { NavLink } from 'react-router-dom';
 import './Header.css';
 
 interface HeaderProps {
@@ -32,6 +33,28 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <h1>מערכת ניהול מתקדמת</h1>
             <p>משרד עו"ד גיא הרשקוביץ</p>
           </div>
+        </div>
+
+        {/* טאבים מרכזיים עם פינות מעוגלות */}
+        <div className="header-tabs">
+          <NavLink
+            to="/budget"
+            className={({ isActive }) =>
+              `header-tab ${isActive ? 'header-tab-active' : ''}`
+            }
+          >
+            <i className="fas fa-tasks"></i>
+            <span>תקצוב</span>
+          </NavLink>
+          <NavLink
+            to="/timesheet"
+            className={({ isActive }) =>
+              `header-tab ${isActive ? 'header-tab-active' : ''}`
+            }
+          >
+            <i className="fas fa-clock"></i>
+            <span>שעתון</span>
+          </NavLink>
         </div>
 
         <div className="header-right">

@@ -35,16 +35,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: 'תיקים',
     },
     {
-      to: '/budget',
-      icon: 'fas fa-tasks',
-      label: 'משימות',
-    },
-    {
-      to: '/timesheet',
-      icon: 'fas fa-clock',
-      label: 'שעתון',
-    },
-    {
       to: '/procedures',
       icon: 'fas fa-gavel',
       label: 'הליכים',
