@@ -275,9 +275,10 @@ function escapeHtml(text) {
  * @param {string} caseNumber - Case number to display
  * @param {string} serviceName - Service name to display
  * @param {string} serviceType - Service type ('legal_procedure' or other)
+ * @param {string} serviceId - Service ID (e.g., 'stage_a', 'stage_b', 'stage_c')
  * @returns {string} HTML string for combined badge
  */
-export function createCombinedInfoBadge(caseNumber, serviceName, serviceType) {
+export function createCombinedInfoBadge(caseNumber, serviceName, serviceType, serviceId = '') {
   if (!caseNumber && !serviceName) {
     return '';
   }
@@ -293,7 +294,7 @@ export function createCombinedInfoBadge(caseNumber, serviceName, serviceType) {
   const caseIcon = '<i class="fas fa-folder"></i>';
 
   return `
-    <div class="combined-info-badge" onclick="event.stopPropagation(); window.TimesheetConstants.showCombinedInfoPopup('${escapeHtml(caseNumber)}', '${escapeHtml(serviceName)}', '${serviceType}')">
+    <div class="combined-info-badge" onclick="event.stopPropagation(); window.TimesheetConstants.showCombinedInfoPopup('${escapeHtml(caseNumber)}', '${escapeHtml(serviceName)}', '${serviceType}', '${escapeHtml(serviceId)}')">
       ${caseNumber ? caseIcon : ''}
       ${serviceName ? serviceIcon : ''}
     </div>
@@ -301,19 +302,37 @@ export function createCombinedInfoBadge(caseNumber, serviceName, serviceType) {
 }
 
 /**
- * Show popup with combined case and service info
+ * Show popup with combined case and service info - Linear Style
  * @param {string} caseNumber - Case number
  * @param {string} serviceName - Service name
  * @param {string} serviceType - Service type
+ * @param {string} serviceId - Service ID (e.g., 'stage_a', 'stage_b', 'stage_c')
  */
-export function showCombinedInfoPopup(caseNumber, serviceName, serviceType) {
+export function showCombinedInfoPopup(caseNumber, serviceName, serviceType, serviceId = '') {
+  // Map serviceId to Hebrew stage
+  let stageInfo = '';
+  if (serviceType === 'legal_procedure' && serviceId) {
+    const stageMap = {
+      'stage_a': 'א\'',
+      'stage_b': 'ב\'',
+      'stage_c': 'ג\''
+    };
+    stageInfo = stageMap[serviceId] || '';
+  }
+
+  // Debug logging
+  console.log('🎯 showCombinedInfoPopup called with:', {
+    caseNumber, serviceName, serviceType, serviceId,
+    mappedStage: stageInfo
+  });
+
   // Remove existing popup if any
   const existingPopup = document.querySelector('.info-popup');
   if (existingPopup) {
     existingPopup.remove();
   }
 
-  // Determine service icon and label
+  // Determine service icon and label (professional icons only)
   const serviceIcon = (serviceType === 'legal_procedure')
     ? '<i class="fas fa-balance-scale"></i>'
     : '<i class="fas fa-briefcase"></i>';
@@ -322,33 +341,162 @@ export function showCombinedInfoPopup(caseNumber, serviceName, serviceType) {
     ? 'הליך משפטי'
     : 'שירות';
 
-  // Create popup HTML
+  // Create popup HTML with Linear-style minimal design
   const popupHtml = `
-    <div class="info-popup combined-popup">
-      <div class="info-popup-content">
-        <div class="info-popup-header">
-          <i class="fas fa-info-circle"></i>
-          <span>פרטי משימה</span>
+    <div class="info-popup combined-popup" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    ">
+      <div class="info-popup-content" style="
+        background: white;
+        border-radius: 12px;
+        width: 360px;
+        max-width: 90vw;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        transform: scale(0.95);
+        transition: transform 0.2s ease;
+      ">
+        <!-- Header - Linear Style -->
+        <div class="info-popup-header" style="
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          padding: 20px 24px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: white;
+        ">
+          <i class="fas fa-info-circle" style="font-size: 18px; opacity: 0.9;"></i>
+          <span style="font-size: 16px; font-weight: 600;">פרטי משימה</span>
         </div>
-        <div class="info-popup-body">
+
+        <!-- Body - Minimal Info Rows -->
+        <div class="info-popup-body" style="
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        ">
           ${caseNumber ? `
-          <div class="info-row">
-            <i class="fas fa-folder"></i>
-            <span class="info-label">תיק:</span>
-            <strong>${escapeHtml(caseNumber)}</strong>
+          <div class="info-row" style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          ">
+            <i class="fas fa-folder" style="
+              color: #64748b;
+              font-size: 16px;
+              width: 20px;
+              text-align: center;
+            "></i>
+            <span style="
+              color: #64748b;
+              font-size: 13px;
+              font-weight: 500;
+              min-width: 60px;
+            ">תיק:</span>
+            <strong style="
+              color: #1e293b;
+              font-size: 14px;
+              font-weight: 600;
+              flex: 1;
+            ">${escapeHtml(caseNumber)}</strong>
           </div>
           ` : ''}
           ${serviceName ? `
-          <div class="info-row">
-            ${serviceIcon}
-            <span class="info-label">${serviceLabel}:</span>
-            <strong>${escapeHtml(serviceName)}</strong>
+          <div class="info-row" style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border: 1px solid #bae6fd;
+          ">
+            ${serviceIcon.replace('>', ' style="color: #3b82f6; font-size: 16px; width: 20px; text-align: center;">')}
+            <span style="
+              color: #0369a1;
+              font-size: 13px;
+              font-weight: 500;
+              min-width: 60px;
+            ">${serviceLabel}:</span>
+            <strong style="
+              color: #0c4a6e;
+              font-size: 14px;
+              font-weight: 600;
+              flex: 1;
+            ">${escapeHtml(serviceName)}</strong>
+          </div>
+          ` : ''}
+          ${stageInfo && serviceType === 'legal_procedure' ? `
+          <div class="info-row" style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: #faf5ff;
+            border-radius: 8px;
+            border: 1px solid #e9d5ff;
+          ">
+            <i class="fas fa-layer-group" style="
+              color: #9333ea;
+              font-size: 16px;
+              width: 20px;
+              text-align: center;
+            "></i>
+            <span style="
+              color: #7e22ce;
+              font-size: 13px;
+              font-weight: 500;
+              min-width: 60px;
+            ">שלב:</span>
+            <strong style="
+              color: #6b21a8;
+              font-size: 14px;
+              font-weight: 600;
+              flex: 1;
+            ">שלב ${escapeHtml(stageInfo)}</strong>
           </div>
           ` : ''}
         </div>
-        <div class="info-popup-footer">
-          <button onclick="window.TimesheetConstants.closeInfoPopup()">
-            <i class="fas fa-times"></i>
+
+        <!-- Footer - Single Close Button -->
+        <div class="info-popup-footer" style="
+          padding: 16px 24px 20px;
+          display: flex;
+          justify-content: flex-end;
+          border-top: 1px solid #f1f5f9;
+        ">
+          <button onclick="window.TimesheetConstants.closeInfoPopup()" style="
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+          " onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'">
+            <i class="fas fa-times" style="font-size: 12px;"></i>
             סגור
           </button>
         </div>
@@ -363,7 +511,11 @@ export function showCombinedInfoPopup(caseNumber, serviceName, serviceType) {
   setTimeout(() => {
     const popup = document.querySelector('.info-popup');
     if (popup) {
-      popup.classList.add('active');
+      popup.style.opacity = '1';
+      const content = popup.querySelector('.info-popup-content');
+      if (content) {
+        content.style.transform = 'scale(1)';
+      }
     }
   }, 10);
 
@@ -379,13 +531,20 @@ export function showCombinedInfoPopup(caseNumber, serviceName, serviceType) {
 }
 
 /**
- * Close info popup
+ * Close info popup with smooth animation
  */
 export function closeInfoPopup() {
   const popup = document.querySelector('.info-popup');
   if (popup) {
-    popup.classList.remove('active');
-    setTimeout(() => popup.remove(), 300);
+    // Fade out animation
+    popup.style.opacity = '0';
+    const content = popup.querySelector('.info-popup-content');
+    if (content) {
+      content.style.transform = 'scale(0.95)';
+    }
+
+    // Remove after animation completes
+    setTimeout(() => popup.remove(), 200);
   }
 }
 

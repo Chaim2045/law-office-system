@@ -85,7 +85,15 @@
       "Bash(netlify deploy:*)",
       "Bash(netlify link:*)",
       "Bash(netlify unlink:*)",
-      "Bash(netlify api purgeCache:*)"
+      "Bash(netlify api purgeCache:*)",
+      "Bash(git reset:*)",
+      "Bash(npx firebase:*)",
+      "Bash(netlify sites:list:*)",
+      "Bash(netlify api:*)",
+      "Bash(start https://admin--gh-law-office-system.netlify.app)",
+      "Bash(tree:*)",
+      "Bash(start https://admin-gh-law-office-system.netlify.app)",
+      "Bash(netlify deploy:list:*)"
     ],
     "deny": [],
     "ask": []

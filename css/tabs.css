@@ -125,17 +125,17 @@
   color: #3b82f6;
 }
 
-/* שעתון - כתום 🧡 */
+/* שעתון - כחול 💙 */
 #timesheetTabButton.active::before {
-  background: linear-gradient(135deg, #f97316, #ea580c);
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
 #timesheetTabButton.active::after {
-  background: #f97316;
+  background: #3b82f6;
 }
 
 #timesheetTabButton:hover:not(.active) i {
-  color: #f97316;
+  color: #3b82f6;
 }
 
 /* ===== Tab Content ===== */

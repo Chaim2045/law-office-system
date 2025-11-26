@@ -128,7 +128,7 @@
     <link rel="stylesheet" href="css/cards.css?v=1.0.14" />
     <link rel="stylesheet" href="css/combobox.css?v=1.0.0" />
     <link rel="stylesheet" href="css/style-hitech-addon.css?v=1.0.2" />
-    <link rel="stylesheet" href="css/tabs.css?v=2.1.2" />
+    <link rel="stylesheet" href="css/tabs.css?v=3.0.0" />
     <link rel="stylesheet" href="css/statistics.css?v=8.0.0" />
     <link rel="stylesheet" href="css/sort.css?v=2.3.0" />
     <link rel="stylesheet" href="css/reports.css" />
@@ -295,10 +295,10 @@
       <!-- ===== אזור תוכן ראשי ===== -->
       <!-- MAIN CONTENT AREA -->
       <main class="main-content">
-        <!-- ===== אזור כניסה למערכת ===== -->
-        <!-- LOGIN SECTION -->
+        <!-- ===== אזור כניסה למערכת משופר - תמיכה בסיסמה ו-SMS ===== -->
+        <!-- ENHANCED LOGIN SECTION -->
         <div class="login-wrapper" id="loginSection">
-          <!-- Logo - Outside the card -->
+          <!-- Logo -->
           <div class="login-logo">
             <img src="images/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="logo-image" />
             <h1>משרד עו"ד גיא הרשקוביץ</h1>
@@ -308,50 +308,163 @@
           <!-- Login Card -->
           <div class="login-card">
             <h3>כניסה למערכת</h3>
-            <form id="loginForm">
-              <div class="form-group">
-                <label for="email">אימייל</label>
-                <input
-                  type="email"
-                  id="email"
-                  placeholder="your@email.com"
-                  autocomplete="email"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <label for="password">סיסמה</label>
-                <input
-                  type="password"
-                  id="password"
-                  placeholder="הזן סיסמה"
-                  autocomplete="current-password"
-                  required
-                />
-              </div>
-              <div class="error-message hidden" id="errorMessage">
-                אימייל או סיסמה שגויים
-              </div>
-              <br />
-              <button type="submit" class="btn">
-                <i class="fas fa-sign-in-alt"></i>
-                כניסה
+
+            <!-- Auth Method Selector -->
+            <div class="auth-method-selector">
+              <button type="button" class="auth-method-btn active" data-method="password" onclick="window.manager?.switchAuthMethod?.('password') || Auth.switchAuthMethod('password')">
+                <span class="method-icon">🔑</span>
+                <span class="method-name">סיסמה</span>
+              </button>
+              <button type="button" class="auth-method-btn" data-method="sms" onclick="window.manager?.switchAuthMethod?.('sms') || Auth.switchAuthMethod('sms')">
+                <span class="method-icon">📱</span>
+                <span class="method-name">SMS</span>
+              </button>
+            </div>
+
+            <!-- Password Login Section -->
+            <div class="password-input-section active">
+              <form id="loginForm">
+                <div class="form-group">
+                  <label for="email">אימייל</label>
+                  <input
+                    type="email"
+                    id="email"
+                    placeholder="your@email.com"
+                    autocomplete="email"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="password">סיסמה</label>
+                  <input
+                    type="password"
+                    id="password"
+                    placeholder="הזן סיסמה"
+                    autocomplete="current-password"
+                    required
+                  />
+                </div>
+                <div class="error-message hidden" id="errorMessage">
+                  אימייל או סיסמה שגויים
+                </div>
+                <br />
+                <button type="submit" class="btn">
+                  <i class="fas fa-sign-in-alt"></i>
+                  כניסה
+                </button>
+
+                <!-- Forgot Password Link -->
+                <div class="forgot-password-link">
+                  <a href="#" onclick="showForgotPassword(); return false;">
+                    <i class="fas fa-key"></i>
+                    שכחתי סיסמה
+                  </a>
+                </div>
+              </form>
+            </div>
+
+            <!-- SMS Login Section - Phone Input -->
+            <div class="phone-input-section">
+              <form id="smsLoginForm" onsubmit="event.preventDefault(); (window.manager?.handleSMSLogin?.() || Auth.handleSMSLogin())">
+                <div class="form-group">
+                  <label for="phoneNumber">מספר טלפון</label>
+                  <div class="phone-input-wrapper">
+                    <select class="country-code-select" id="countryCode">
+                      <option value="+972" selected>+972 🇮🇱</option>
+                      <option value="+1">+1 🇺🇸</option>
+                      <option value="+44">+44 🇬🇧</option>
+                    </select>
+                    <input
+                      type="tel"
+                      id="phoneNumber"
+                      class="phone-input"
+                      placeholder="50-123-4567"
+                      pattern="[0-9]{2,3}-?[0-9]{3}-?[0-9]{4}"
+                      autocomplete="tel"
+                      required
+                    />
+                  </div>
+                  <div class="phone-helper-text">
+                    <i class="fas fa-info-circle helper-icon"></i>
+                    <span>הזן את מספר הטלפון הרשום במערכת</span>
+                  </div>
+                </div>
+
+                <div class="error-message hidden" id="smsErrorMessage">
+                  מספר טלפון לא תקין או לא רשום
+                </div>
+
+                <button type="submit" id="sendOTPBtn" class="send-otp-btn">
+                  <span class="btn-icon">📤</span>
+                  שלח קוד אימות ב-SMS
+                </button>
+
+                <!-- Alternative Login Method -->
+                <div class="method-switch-container">
+                  <div class="method-switch-text">יש לך סיסמה?</div>
+                  <a href="#" class="method-switch-link" onclick="window.manager?.switchAuthMethod?.('password') || Auth.switchAuthMethod('password'); return false;">
+                    התחבר עם סיסמה
+                  </a>
+                </div>
+              </form>
+            </div>
+
+            <!-- SMS Login Section - OTP Verification -->
+            <div class="otp-input-section">
+              <!-- Back Button -->
+              <button type="button" class="back-to-phone-btn" onclick="window.manager?.switchAuthMethod?.('sms') || Auth.switchAuthMethod('sms')">
+                <span class="back-icon">→</span>
+                חזור
               </button>
 
-              <!-- Forgot Password Link -->
-              <div class="forgot-password-link">
-                <a href="#" onclick="showForgotPassword(); return false;">
-                  <i class="fas fa-key"></i>
-                  שכחתי סיסמה
-                </a>
+              <div class="otp-header">
+                <h4 class="otp-title">הזן קוד אימות</h4>
+                <p class="otp-subtitle">
+                  שלחנו קוד בן 6 ספרות למספר
+                  <span class="otp-phone-display">***-***-4567</span>
+                </p>
               </div>
-            </form>
+
+              <form id="otpForm" onsubmit="event.preventDefault(); (window.manager?.verifyOTP?.() || Auth.verifyOTP())">
+                <!-- OTP Input Boxes -->
+                <div class="otp-inputs-container">
+                  <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required />
+                  <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required />
+                  <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required />
+                  <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required />
+                  <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required />
+                  <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required />
+                </div>
+
+                <!-- Timer and Resend -->
+                <div class="otp-timer-container">
+                  <div class="otp-timer">
+                    הקוד בתוקף עוד: <span class="otp-timer-countdown">5:00</span>
+                  </div>
+                  <button type="button" class="resend-otp-btn" disabled onclick="window.manager?.methods?.sms?.handler?.resendOTP?.()">
+                    שלח קוד חדש
+                  </button>
+                </div>
+
+                <div class="error-message hidden" id="otpErrorMessage">
+                  קוד שגוי או פג תוקף
+                </div>
+
+                <button type="submit" id="verifyOTPBtn" class="verify-otp-btn">
+                  <i class="fas fa-check"></i>
+                  אמת קוד
+                </button>
+              </form>
+            </div>
           </div>
 
           <!-- Login Footer -->
           <div class="login-footer">
             <p>© 2025 כל הזכויות שמורות למשרד עורכי דין גיא הרשקוביץ וחיים פרץ</p>
           </div>
+
+          <!-- Hidden reCAPTCHA container for Firebase Phone Auth -->
+          <div id="recaptcha-container"></div>
         </div>
 
         <!-- ===== מסך שחזור סיסמה ===== -->

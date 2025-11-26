@@ -1,12 +1,15 @@
 /**
  * Authentication Module
  * Handles user login, logout, and session management
+ * Supports multiple authentication methods: Password, SMS OTP
  *
  * Created: 2025
+ * Updated: 2025-11-25 - Added SMS authentication
  * Part of Law Office Management System
  */
 
 import { updateUserDisplay, updateSidebarUser } from './ui-components.js';
+import { loginMethods } from './security/sms-auth.js';
 
 /**
  * Authentication methods for LawOfficeManager
@@ -146,6 +149,11 @@ async function handleLogin() {
 
     // Clear flag - welcome screen is done
     window.isInWelcomeScreen = false;
+
+    // Initialize security modules after successful login
+    if (this.initSecurityModules) {
+      this.initSecurityModules();
+    }
 
     // Show app after everything loaded
     this.showApp();
@@ -519,6 +527,259 @@ async function handleForgotPassword(event) {
   }
 }
 
+/**
+ * Initialize authentication methods
+ */
+async function initializeAuthMethods() {
+  try {
+    await loginMethods.initialize();
+    console.log('✅ Login methods initialized');
+  } catch (error) {
+    console.error('Failed to initialize login methods:', error);
+  }
+}
+
+/**
+ * Switch between authentication methods
+ */
+function switchAuthMethod(method) {
+  const passwordSection = document.querySelector('.password-input-section');
+  const phoneSection = document.querySelector('.phone-input-section');
+  const otpSection = document.querySelector('.otp-input-section');
+
+  // Hide all sections
+  if (passwordSection) passwordSection.classList.remove('active');
+  if (phoneSection) phoneSection.classList.remove('active');
+  if (otpSection) otpSection.classList.remove('active');
+
+  // Update method buttons
+  document.querySelectorAll('.auth-method-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  // Show selected section
+  if (method === 'password') {
+    if (passwordSection) passwordSection.classList.add('active');
+  } else if (method === 'sms') {
+    if (phoneSection) phoneSection.classList.add('active');
+  }
+
+  // Mark button as active
+  const activeBtn = document.querySelector(`.auth-method-btn[data-method="${method}"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  loginMethods.switchMethod(method);
+}
+
+/**
+ * Handle SMS login flow
+ */
+async function handleSMSLogin() {
+  const phoneInput = document.getElementById('phoneNumber');
+  const errorMessage = document.getElementById('smsErrorMessage');
+
+  if (!phoneInput || !phoneInput.value) {
+    if (errorMessage) {
+      errorMessage.textContent = 'אנא הזן מספר טלפון';
+      errorMessage.classList.remove('hidden');
+    }
+    return;
+  }
+
+  try {
+    // Show loading state
+    const sendBtn = document.getElementById('sendOTPBtn');
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.classList.add('loading');
+    }
+
+    // Send OTP
+    await loginMethods.methods.sms.handler.sendOTP(phoneInput.value);
+
+    // Show OTP input section
+    const phoneSection = document.querySelector('.phone-input-section');
+    const otpSection = document.querySelector('.otp-input-section');
+
+    if (phoneSection) phoneSection.classList.remove('active');
+    if (otpSection) {
+      otpSection.classList.add('active');
+
+      // Display masked phone number
+      const phoneDisplay = document.querySelector('.otp-phone-display');
+      if (phoneDisplay) {
+        phoneDisplay.textContent = loginMethods.methods.sms.handler
+          .constructor.formatForDisplay(phoneInput.value);
+      }
+
+      // Focus first OTP input
+      const firstOTPInput = document.querySelector('.otp-input');
+      if (firstOTPInput) firstOTPInput.focus();
+
+      // Start countdown timer
+      startOTPTimer();
+    }
+
+  } catch (error) {
+    console.error('SMS login error:', error);
+
+    if (errorMessage) {
+      errorMessage.textContent = error.message || 'שגיאה בשליחת SMS';
+      errorMessage.classList.remove('hidden');
+    }
+  } finally {
+    const sendBtn = document.getElementById('sendOTPBtn');
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.classList.remove('loading');
+    }
+  }
+}
+
+/**
+ * Verify OTP code
+ */
+async function verifyOTP() {
+  const otpInputs = document.querySelectorAll('.otp-input');
+  const errorMessage = document.getElementById('otpErrorMessage');
+
+  // Collect OTP from inputs
+  let otp = '';
+  otpInputs.forEach(input => {
+    otp += input.value;
+  });
+
+  if (otp.length !== 6) {
+    if (errorMessage) {
+      errorMessage.textContent = 'אנא הזן קוד בן 6 ספרות';
+      errorMessage.classList.remove('hidden');
+    }
+    return;
+  }
+
+  try {
+    // Show loading state
+    const verifyBtn = document.getElementById('verifyOTPBtn');
+    if (verifyBtn) {
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'מאמת...';
+    }
+
+    // Verify OTP
+    const result = await loginMethods.methods.sms.handler.verifyOTP(otp);
+
+    // Set current user
+    this.currentUser = result.employeeData.email;
+    this.currentUsername = result.employeeData.username || result.employeeData.name;
+
+    updateUserDisplay(this.currentUsername);
+
+    // Continue with normal login flow
+    await this.showWelcomeScreen();
+    await this.loadData();
+
+    // Initialize security modules
+    if (this.initSecurityModules) {
+      this.initSecurityModules();
+    }
+
+    await this.waitForWelcomeMinimumTime();
+    window.isInWelcomeScreen = false;
+    this.showApp();
+
+  } catch (error) {
+    console.error('OTP verification error:', error);
+
+    // Add shake animation to inputs
+    otpInputs.forEach(input => {
+      input.classList.add('error');
+      setTimeout(() => input.classList.remove('error'), 500);
+    });
+
+    if (errorMessage) {
+      errorMessage.textContent = error.message || 'קוד שגוי';
+      errorMessage.classList.remove('hidden');
+    }
+  } finally {
+    const verifyBtn = document.getElementById('verifyOTPBtn');
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = 'אמת קוד';
+    }
+  }
+}
+
+/**
+ * Start OTP countdown timer
+ */
+function startOTPTimer() {
+  let seconds = 300; // 5 minutes
+  const timerElement = document.querySelector('.otp-timer-countdown');
+  const resendBtn = document.querySelector('.resend-otp-btn');
+
+  if (resendBtn) resendBtn.disabled = true;
+
+  const interval = setInterval(() => {
+    seconds--;
+
+    if (timerElement) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      timerElement.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    if (seconds <= 0) {
+      clearInterval(interval);
+      if (timerElement) timerElement.textContent = 'פג תוקף';
+      if (resendBtn) resendBtn.disabled = false;
+    }
+  }, 1000);
+
+  return interval;
+}
+
+/**
+ * Handle OTP input auto-advance
+ */
+function setupOTPInputs() {
+  const otpInputs = document.querySelectorAll('.otp-input');
+
+  otpInputs.forEach((input, index) => {
+    // Auto-advance to next input
+    input.addEventListener('input', (e) => {
+      if (e.target.value.length === 1 && index < otpInputs.length - 1) {
+        otpInputs[index + 1].focus();
+      }
+
+      // Auto-submit when all filled
+      if (index === otpInputs.length - 1) {
+        let allFilled = true;
+        otpInputs.forEach(inp => {
+          if (!inp.value) allFilled = false;
+        });
+
+        if (allFilled) {
+          verifyOTP.call(window.manager);
+        }
+      }
+    });
+
+    // Handle backspace
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && index > 0) {
+        otpInputs[index - 1].focus();
+      }
+    });
+
+    // Allow only numbers
+    input.addEventListener('keypress', (e) => {
+      if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+      }
+    });
+  });
+}
+
 // Exports
 export {
   showLogin,
@@ -529,6 +790,11 @@ export {
   showApp,
   logout,
   confirmLogout,
-  showForgotPassword,      // ← חדש
-  handleForgotPassword     // ← חדש
+  showForgotPassword,
+  handleForgotPassword,
+  initializeAuthMethods,    // ← חדש
+  switchAuthMethod,         // ← חדש
+  handleSMSLogin,           // ← חדש
+  verifyOTP,                // ← חדש
+  setupOTPInputs            // ← חדש
 };

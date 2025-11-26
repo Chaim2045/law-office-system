@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>🎯 דשבורד ניטור עובדים | Master Admin Panel</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/monitoring-dashboard.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-title">
+                <i class="fas fa-chart-line"></i>
+                <h1>דשבורד ניטור עובדים</h1>
+                <span class="live-indicator">
+                    <span class="pulse"></span>
+                    LIVE
+                </span>
+            </div>
+
+            <div class="header-actions">
+                <button class="btn-refresh" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                    רענון
+                </button>
+                <button class="btn-settings" id="settingsBtn">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="btn-logout" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    יציאה
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-main">
+        <!-- Section 1: Employee Status Overview -->
+        <section class="dashboard-section employee-status-section">
+            <div class="section-header">
+                <h2><i class="fas fa-users"></i> סטטוס עובדים</h2>
+                <div class="filter-controls">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="all">כל העובדים</option>
+                        <option value="online">מחוברים</option>
+                        <option value="working">עובדים כעת</option>
+                        <option value="idle">לא פעילים</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="employee-grid" id="employeeGrid">
+                <!-- Employee cards will be dynamically inserted here -->
+            </div>
+        </section>
+
+        <!-- Section 2: Real-time Activity Monitor -->
+        <section class="dashboard-section activity-monitor-section">
+            <div class="section-header">
+                <h2><i class="fas fa-pulse"></i> פעילות בזמן אמת</h2>
+                <span class="activity-counter" id="activityCounter">0 פעילויות היום</span>
+            </div>
+
+            <div class="activity-timeline" id="activityTimeline">
+                <!-- Activity items will be dynamically inserted here -->
+            </div>
+        </section>
+
+        <!-- Section 3: Alerts & Anomalies -->
+        <section class="dashboard-section alerts-section">
+            <div class="section-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> התראות וחריגות</h2>
+                <div class="alert-badges">
+                    <span class="badge badge-danger" id="criticalCount">0</span>
+                    <span class="badge badge-warning" id="warningCount">0</span>
+                    <span class="badge badge-info" id="infoCount">0</span>
+                </div>
+            </div>
+
+            <div class="alerts-container" id="alertsContainer">
+                <!-- Alert items will be dynamically inserted here -->
+            </div>
+        </section>
+
+        <!-- Section 4: Tasks & Deadlines Overview -->
+        <section class="dashboard-section tasks-overview-section">
+            <div class="section-header">
+                <h2><i class="fas fa-tasks"></i> משימות ודדליינים</h2>
+                <button class="btn-view-all" id="viewAllTasksBtn">
+                    הצג הכל
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+            </div>
+
+            <div class="tasks-summary" id="tasksSummary">
+                <div class="summary-card">
+                    <div class="summary-icon pending">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="pendingTasks">0</div>
+                        <div class="summary-label">ממתינות</div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon in-progress">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="inProgressTasks">0</div>
+                        <div class="summary-label">בביצוע</div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon overdue">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="overdueTasks">0</div>
+                        <div class="summary-label">באיחור</div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon completed">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="completedTasks">0</div>
+                        <div class="summary-label">הושלמו היום</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="upcoming-deadlines" id="upcomingDeadlines">
+                <h3>דדליינים קרובים</h3>
+                <div class="deadlines-list">
+                    <!-- Deadline items will be dynamically inserted here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Client Status Overview -->
+        <section class="dashboard-section clients-overview-section">
+            <div class="section-header">
+                <h2><i class="fas fa-briefcase"></i> סטטוס לקוחות</h2>
+                <div class="view-toggle">
+                    <button class="toggle-btn active" data-view="grid">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="toggle-btn" data-view="list">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="clients-stats" id="clientsStats">
+                <div class="stat-card">
+                    <div class="stat-value" id="activeClients">0</div>
+                    <div class="stat-label">לקוחות פעילים</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="criticalCases">0</div>
+                    <div class="stat-label">תיקים קריטיים</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="pendingActions">0</div>
+                    <div class="stat-label">פעולות ממתינות</div>
+                </div>
+            </div>
+
+            <div class="clients-grid" id="clientsGrid">
+                <!-- Client cards will be dynamically inserted here -->
+            </div>
+        </section>
+
+        <!-- Section 6: Performance Metrics -->
+        <section class="dashboard-section performance-section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-bar"></i> מדדי ביצוע</h2>
+                <select id="performancePeriod" class="period-select">
+                    <option value="today">היום</option>
+                    <option value="week">השבוע</option>
+                    <option value="month">החודש</option>
+                </select>
+            </div>
+
+            <div class="performance-grid" id="performanceGrid">
+                <!-- Performance charts will be dynamically inserted here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Floating Action Button for Quick Actions -->
+    <div class="fab-container">
+        <button class="fab-main" id="fabMain">
+            <i class="fas fa-plus"></i>
+        </button>
+        <div class="fab-menu" id="fabMenu">
+            <button class="fab-option" data-action="add-task">
+                <i class="fas fa-tasks"></i>
+                <span>משימה חדשה</span>
+            </button>
+            <button class="fab-option" data-action="send-alert">
+                <i class="fas fa-bell"></i>
+                <span>שלח התראה</span>
+            </button>
+            <button class="fab-option" data-action="generate-report">
+                <i class="fas fa-file-alt"></i>
+                <span>הפק דוח</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Employee Detail Modal -->
+    <div class="modal" id="employeeDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">פרטי עובד</h3>
+                <button class="modal-close" data-close-modal>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="employeeDetailContent">
+                <!-- Employee details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Detail Modal -->
+    <div class="modal" id="alertDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">פרטי התראה</h3>
+                <button class="modal-close" data-close-modal>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="alertDetailContent">
+                <!-- Alert details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config/firebase-config.js"></script>
+    <script src="js/monitoring/monitoring-dashboard.js" type="module"></script>
+</body>
+</html>

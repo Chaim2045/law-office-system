@@ -2,7 +2,7 @@
 # Law Office Management System - Netlify Configuration (Main App)
 # ════════════════════════════════════════════════════════════════
 # Production URL: https://gh-law-office-system.netlify.app
-# Admin Panel URL: https://admin--gh-law-office-system.netlify.app
+# Admin Panel URL: https://admin-gh-law-office-system.netlify.app
 # Firebase Backend: law-office-system-e4801.web.app
 # ════════════════════════════════════════════════════════════════
 
@@ -19,7 +19,7 @@
 # Block access to admin panel from main site
 [[redirects]]
   from = "/master-admin-panel/*"
-  to = "https://admin--gh-law-office-system.netlify.app/:splat"
+  to = "https://admin-gh-law-office-system.netlify.app/:splat"
   status = 301
   force = true
 

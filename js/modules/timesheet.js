@@ -409,11 +409,13 @@ export function createTimesheetCard(entry) {
   const formatDate = window.DatesModule.formatDate;
   const formatShort = window.DatesModule.formatShort;
 
-  // 🎯 Combined info badge (case + service)
+  // 🎯 Combined info badge (case + service + stage)
+  // Pass serviceId directly - mapping will be done in the popup
   const combinedBadge = createCombinedInfoBadge(
     safeEntry.caseNumber,
     safeEntry.serviceName,
-    safeEntry.serviceType
+    safeEntry.serviceType,
+    safeEntry.serviceId || ''
   );
 
   const badgesRow = combinedBadge ? `
@@ -575,11 +577,13 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
           return '';
         }
 
-        // 🎯 Combined info badge (case + service)
+        // 🎯 Combined info badge (case + service + stage)
+        // Pass serviceId directly - mapping will be done in the popup
         const combinedBadge = createCombinedInfoBadge(
           entry.caseNumber,
           entry.serviceName,
-          entry.serviceType
+          entry.serviceType,
+          entry.serviceId || ''
         );
 
         const entryId = entry.id || entry.entryId || Date.now();

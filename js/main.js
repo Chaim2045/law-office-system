@@ -55,6 +55,11 @@ import { ActionFlowManager } from './modules/ui-components.js';
 // Debug Tools (Development Only)
 import * as DebugTools from './modules/debug-tools.js';
 
+// Security Modules (Idle Timeout & Session Management)
+import { IdleTimeoutManager } from './modules/security/idle-timeout.js';
+import { securityUI } from './modules/security/security-ui.js';
+import SECURITY_CONFIG from './config/security-config.js';
+
 
 /* ========================================
    MAIN APPLICATION CLASS
@@ -132,6 +137,10 @@ class LawOfficeManager {
     this.integrationManager = window.IntegrationManagerModule
       ? window.IntegrationManagerModule.create()
       : null;
+
+    // Security Modules (initialized after login)
+    this.idleTimeout = null;
+    this.sessionManager = null; // Future implementation
 
     Logger.log('✅ LawOfficeManager initialized');
   }
@@ -337,7 +346,155 @@ class LawOfficeManager {
   }
 
   logout() {
+    // Stop idle timeout monitoring before logout
+    if (this.idleTimeout) {
+      this.idleTimeout.stop();
+    }
     Auth.logout();
+  }
+
+  // SMS Authentication methods
+  switchAuthMethod(method) {
+    Auth.switchAuthMethod.call(this, method);
+  }
+
+  async handleSMSLogin() {
+    await Auth.handleSMSLogin.call(this);
+  }
+
+  async verifyOTP() {
+    await Auth.verifyOTP.call(this);
+  }
+
+  /* ========================================
+     SECURITY MODULES INTEGRATION
+     ======================================== */
+
+  /**
+   * Initialize security modules after successful login
+   * @private
+   */
+  initSecurityModules() {
+    try {
+      // Check if idle timeout is enabled in configuration
+      if (SECURITY_CONFIG.isFeatureEnabled('ENABLE_IDLE_TIMEOUT')) {
+        // Get configuration
+        const idleConfig = SECURITY_CONFIG.getIdleTimeoutConfig();
+
+        // Create idle timeout manager
+        this.idleTimeout = new IdleTimeoutManager({
+          ...idleConfig,
+          // Inject callbacks for UI and logout
+          onWarning: (data) => this.handleIdleWarning(data),
+          onLogout: (data) => this.handleIdleLogout(data),
+          onActivity: () => this.handleUserActivity(),
+          onCountdown: (remaining) => this.handleCountdownUpdate(remaining),
+          debug: idleConfig.debug || false
+        });
+
+        // Initialize and start monitoring
+        this.idleTimeout.init();
+
+        Logger.log('✅ Security modules initialized');
+      } else {
+        Logger.log('ℹ️ Idle timeout is disabled in configuration');
+      }
+
+      // Future: Initialize session management if enabled
+      if (SECURITY_CONFIG.isFeatureEnabled('ENABLE_SESSION_MANAGEMENT')) {
+        // this.sessionManager = new SessionManager(...);
+        Logger.log('ℹ️ Session management will be implemented in phase 2');
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize security modules:', error);
+      // Don't fail the app if security modules fail
+    }
+  }
+
+  /**
+   * Handle idle warning - show warning modal
+   * @private
+   */
+  handleIdleWarning(data) {
+    Logger.log('⚠️ Showing idle timeout warning');
+
+    // Show warning modal using SecurityUI
+    this.warningModal = securityUI.showIdleWarningModal({
+      countdown: data.countdown,
+      onContinue: () => {
+        Logger.log('✅ User chose to continue working');
+        this.idleTimeout.handleContinue();
+        // Show success notification
+        if (window.NotificationSystem) {
+          window.NotificationSystem.success('הטיימר אופס - אתה יכול להמשיך לעבוד', 3000);
+        }
+      },
+      onLogout: () => {
+        Logger.log('User chose to logout');
+        this.performIdleLogout();
+      },
+      onCountdownUpdate: (remaining) => {
+        // Update countdown display if needed
+      }
+    });
+  }
+
+  /**
+   * Handle idle logout - auto logout due to inactivity
+   * @private
+   */
+  handleIdleLogout(data) {
+    Logger.log('🚪 Auto-logout due to inactivity');
+
+    // Remove warning modal if exists
+    if (this.warningModal) {
+      this.warningModal.close();
+      this.warningModal = null;
+    }
+
+    // Perform logout
+    this.performIdleLogout();
+  }
+
+  /**
+   * Perform the actual logout for idle timeout
+   * @private
+   */
+  performIdleLogout() {
+    // Show logout notification
+    securityUI.showAutoLogoutNotification({
+      message: 'נותקת מהמערכת עקב חוסר פעילות',
+      subMessage: 'נא להתחבר מחדש כדי להמשיך',
+      duration: 5000
+    });
+
+    // Use system notification if available
+    if (window.NotificationSystem) {
+      window.NotificationSystem.warning('נותקת מהמערכת עקב חוסר פעילות', 5000);
+    }
+
+    // Perform actual logout after short delay
+    setTimeout(() => {
+      window.confirmLogout();
+    }, 1500);
+  }
+
+  /**
+   * Handle user activity detection
+   * @private
+   */
+  handleUserActivity() {
+    // Optional: Update UI to show activity detected
+    // This is called frequently, so keep it lightweight
+  }
+
+  /**
+   * Handle countdown update
+   * @private
+   */
+  handleCountdownUpdate(remaining) {
+    // Optional: Update countdown in UI
+    // The modal handles this internally
   }
 
   /* ========================================
