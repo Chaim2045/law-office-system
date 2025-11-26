@@ -61,40 +61,59 @@ body {
 }
 
 /* ========================================
-   Dashboard Header
+   Quick Actions Bar
    ======================================== */
-.dashboard-header {
+.quick-actions-bar {
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
     position: sticky;
-    top: 0;
-    z-index: 100;
+    top: 60px; /* Account for navigation bar */
+    z-index: 90; /* Below navigation */
     box-shadow: var(--shadow-sm);
+    padding: 0.75rem 2rem;
 }
 
-.header-container {
+.actions-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 2rem;
     max-width: 1920px;
     margin: 0 auto;
 }
 
-.header-title {
+.live-status {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
 
-.header-title h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
+.last-update {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }
 
-.header-title i {
-    font-size: 1.5rem;
-    color: var(--primary-color);
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-action {
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+}
+
+.btn-action:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
 }
 
 /* Live Indicator */
@@ -130,33 +149,12 @@ body {
     }
 }
 
-.header-actions {
-    display: flex;
-    gap: 0.75rem;
-}
-
-.header-actions button {
-    padding: 0.5rem 1rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-}
-
-.header-actions button:hover {
-    background: var(--bg-tertiary);
-}
-
-.btn-refresh i {
+/* Refresh button animation */
+.btn-action i.fa-sync-alt {
     transition: transform var(--transition-normal);
 }
 
-.btn-refresh:active i {
+.btn-action:active i.fa-sync-alt {
     transform: rotate(360deg);
 }
 

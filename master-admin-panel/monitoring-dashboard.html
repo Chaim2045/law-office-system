@@ -21,33 +21,36 @@
 </head>
 
 <body>
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <div class="header-title">
-                <i class="fas fa-chart-line"></i>
-                <h1>דשבורד ניטור עובדים</h1>
+    <!-- Navigation Bar -->
+    <div id="navigationContainer"></div>
+
+    <!-- Quick Actions Bar -->
+    <div class="quick-actions-bar">
+        <div class="actions-container">
+            <div class="live-status">
                 <span class="live-indicator">
                     <span class="pulse"></span>
                     LIVE
                 </span>
+                <span class="last-update">עדכון אחרון: <span id="lastUpdateTime">כעת</span></span>
             </div>
 
-            <div class="header-actions">
-                <button class="btn-refresh" id="refreshBtn">
+            <div class="action-buttons">
+                <button class="btn-action" id="refreshBtn">
                     <i class="fas fa-sync-alt"></i>
                     רענון
                 </button>
-                <button class="btn-settings" id="settingsBtn">
-                    <i class="fas fa-cog"></i>
+                <button class="btn-action" id="filterBtn">
+                    <i class="fas fa-filter"></i>
+                    סינון
                 </button>
-                <button class="btn-logout" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    יציאה
+                <button class="btn-action" id="exportBtn">
+                    <i class="fas fa-download"></i>
+                    ייצוא
                 </button>
             </div>
         </div>
-    </header>
+    </div>
 
     <!-- Main Dashboard Grid -->
     <main class="dashboard-main">
@@ -265,6 +268,19 @@
     <script src="js/core/firebase.js"></script>
     <script src="js/core/auth.js"></script>
     <script src="js/config/firebase-config.js"></script>
+
+    <!-- Navigation -->
+    <script src="js/ui/Navigation.js"></script>
+
+    <!-- Initialize Navigation -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Navigation
+            if (window.Navigation) {
+                window.Navigation.init('monitoring');
+            }
+        });
+    </script>
 
     <!-- Monitoring Dashboard -->
     <script src="js/monitoring/monitoring-dashboard.js" type="module"></script>

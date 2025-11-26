@@ -147,8 +147,9 @@ class MonitoringDashboard {
 
             // Actions
             refreshBtn: document.getElementById('refreshBtn'),
-            settingsBtn: document.getElementById('settingsBtn'),
-            logoutBtn: document.getElementById('logoutBtn')
+            filterBtn: document.getElementById('filterBtn'),
+            exportBtn: document.getElementById('exportBtn'),
+            lastUpdateTime: document.getElementById('lastUpdateTime')
         };
     }
 
@@ -216,9 +217,14 @@ class MonitoringDashboard {
             });
         });
 
-        // Logout
-        this.elements.logoutBtn?.addEventListener('click', () => {
-            this.logout();
+        // Filter Button
+        this.elements.filterBtn?.addEventListener('click', () => {
+            this.toggleFilters();
+        });
+
+        // Export Button
+        this.elements.exportBtn?.addEventListener('click', () => {
+            this.exportData();
         });
     }
 
@@ -721,6 +727,21 @@ class MonitoringDashboard {
     refresh() {
         console.log('Refreshing dashboard...');
         this.loadInitialData();
+
+        // Update last refresh time
+        if (this.elements.lastUpdateTime) {
+            this.elements.lastUpdateTime.textContent = 'כעת';
+        }
+    }
+
+    toggleFilters() {
+        console.log('Toggling filters...');
+        // Implement filter panel toggle
+    }
+
+    exportData() {
+        console.log('Exporting data...');
+        // Implement data export functionality
     }
 
     filterEmployees(filter) {
