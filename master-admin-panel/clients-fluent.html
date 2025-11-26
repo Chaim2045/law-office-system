@@ -433,6 +433,7 @@
 
     <!-- Data Managers (Required for Fluent Components) -->
     <script src="js/managers/ClientsDataManager.js?v=20251125"></script>
+    <script src="js/ui/ClientsTable.js?v=20251125"></script>
     <script src="js/ui/ClientReportModal.js?v=20251125"></script>
     <script src="js/managers/ReportGenerator.js?v=20251125"></script>
 
@@ -470,11 +471,32 @@
                     window.Navigation.init('clients');
                 }
 
-                // Initialize Fluent Clients Manager
+                // Initialize Clients Data Manager
+                if (window.ClientsDataManager) {
+                    await window.ClientsDataManager.init();
+                } else {
+                    console.error('❌ ClientsDataManager not loaded');
+                }
+
+                // Initialize Clients Table - This is critical for displaying data!
+                if (window.ClientsTable) {
+                    await window.ClientsTable.init();
+                } else {
+                    console.error('❌ ClientsTable not loaded');
+                }
+
+                // Initialize Report Modal
+                if (window.ClientReportModal) {
+                    window.ClientReportModal.init();
+                } else {
+                    console.error('❌ ClientReportModal not loaded');
+                }
+
+                // Initialize Fluent Clients Manager (for Fluent-specific features)
                 if (window.FluentClientsManager) {
                     await window.FluentClientsManager.init();
                 } else {
-                    console.error('❌ FluentClientsManager not loaded');
+                    console.log('⚠️ FluentClientsManager not loaded (optional)');
                 }
 
                 console.log('✅ Fluent Design Client Management - Ready');

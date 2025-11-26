@@ -24,44 +24,66 @@
 const EMPLOYEE_PHONE_MAPPING = [
   // עורכי דין ראשיים
   {
-    email: 'guy@law.co.il',
-    name: 'גיא הרשקוביץ',
-    phone: '+972501234567',  // 📱 החלף למספר האמיתי
+    email: 'guy@ghlawoffice.co.il',
+    name: 'גיא',
+    phone: '+972542400403',  // ✅ מספר אמיתי
     role: 'partner'
   },
   {
-    email: 'haim@law.co.il',
-    name: 'חיים פרץ',
-    phone: '+972521234567',  // 📱 החלף למספר האמיתי
+    email: 'haim@ghlawoffice.co.il',
+    name: 'חיים',
+    phone: '+972549539238',  // ✅ מספר אמיתי
     role: 'partner'
   },
 
   // עובדים נוספים
   {
-    email: 'sarah@law.co.il',
-    name: 'שרה כהן',
-    phone: '+972531234567',  // 📱 החלף למספר האמיתי
+    email: 'ishai.swiss@gmail.com',
+    name: 'ישי',
+    phone: '',  // ❌ לא סופק מספר
     role: 'employee'
   },
   {
-    email: 'david@law.co.il',
-    name: 'דוד לוי',
-    phone: '+972541234567',  // 📱 החלף למספר האמיתי
+    email: 'marva@ghlawoffice.co.il',
+    name: 'מרווה',
+    phone: '+972523923173',  // ✅ מספר אמיתי
     role: 'employee'
   },
   {
-    email: 'rachel@law.co.il',
-    name: 'רחל ישראלי',
-    phone: '+972551234567',  // 📱 החלף למספר האמיתי
-    role: 'secretary'
+    email: 'miri@ghlawoffice.co.il',
+    name: 'מירי',
+    phone: '+972506470007',  // ✅ מספר אמיתי
+    role: 'employee'
   },
-
-  // מנהל מערכת
   {
-    email: 'admin@law.co.il',
-    name: 'מנהל מערכת',
-    phone: '+972501234500',  // 📱 החלף למספר האמיתי
-    role: 'admin'
+    email: 'raad@ghlawoffice.co.il',
+    name: 'ראיד',
+    phone: '+972509247629',  // ✅ מספר אמיתי
+    role: 'employee'
+  },
+  {
+    email: 'roi@ghlawoffice.co.il',
+    name: 'רועי',
+    phone: '+972508807935',  // ✅ מספר אמיתי
+    role: 'employee'
+  },
+  {
+    email: 'shahar@ghlawoffice.co.il',
+    name: 'שחר',
+    phone: '+972523777295',  // ✅ מספר אמיתי
+    role: 'employee'
+  },
+  {
+    email: 'uri@ghlawoffice.co.il',
+    name: 'אורי',
+    phone: '+972525014146',  // ✅ מספר אמיתי
+    role: 'employee'
+  },
+  {
+    email: 'uzi@ghlawoffice.co.il',
+    name: 'עוזי',
+    phone: '+972523433379',  // ✅ מספר אמיתי
+    role: 'employee'
   }
 ];
 
@@ -158,7 +180,7 @@ async function addPhoneNumbersToEmployees() {
     try {
       await batch.commit();
       console.log('━'.repeat(50));
-      console.log(`✅ העדכון הושלם בהצלחה!`);
+      console.log('✅ העדכון הושלם בהצלחה!');
       console.log(`   📊 נוספו: ${successCount} מספרים`);
       console.log(`   ⚠️  שגיאות: ${errorCount}`);
     } catch (error) {
@@ -185,7 +207,9 @@ function displaySummary(results) {
 
   // קיבוץ לפי סטטוס
   const grouped = results.reduce((acc, item) => {
-    if (!acc[item.status]) acc[item.status] = [];
+    if (!acc[item.status]) {
+acc[item.status] = [];
+}
     acc[item.status].push(item);
     return acc;
   }, {});
@@ -252,7 +276,7 @@ async function verifyPhoneNumbers() {
   const withPhone = employees.filter(e => e.phone);
   const withoutPhone = employees.filter(e => !e.phone);
 
-  console.log(`📊 סטטיסטיקה:`);
+  console.log('📊 סטטיסטיקה:');
   console.log(`   • סה"כ עובדים: ${employees.length}`);
   console.log(`   • עם מספר טלפון: ${withPhone.length}`);
   console.log(`   • ללא מספר טלפון: ${withoutPhone.length}`);
@@ -296,7 +320,7 @@ async function updateSingleEmployeePhone(email, phone) {
     return true;
 
   } catch (error) {
-    console.error(`❌ שגיאה בעדכון:`, error);
+    console.error('❌ שגיאה בעדכון:', error);
     return false;
   }
 }
@@ -319,7 +343,7 @@ async function removeEmployeePhone(email) {
     return true;
 
   } catch (error) {
-    console.error(`❌ שגיאה במחיקה:`, error);
+    console.error('❌ שגיאה במחיקה:', error);
     return false;
   }
 }

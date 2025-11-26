@@ -78,10 +78,9 @@ service cloud.firestore {
 
     // ==================== Collections ====================
 
-    // 🔒 Employees: ADMIN-ONLY ACCESS (SECURITY ENHANCEMENT)
-    // Changed from: All authenticated users
-    // Changed to: Admins only
-    // Reason: Employee data contains sensitive info (salary, personal details)
+    // 🚨 TEMPORARY RULES FOR PHONE UPDATE - RESTORE AFTER USE!
+    // Temporarily allowing phone field updates for all authenticated users
+    // Original rules saved in firestore.rules.backup
     match /employees/{employeeId} {
       // Read: Admins can read all, users can read only their own profile
       allow read: if isAdmin() ||
@@ -89,11 +88,10 @@ service cloud.firestore {
 
       allow create, delete: if false; // Only through Cloud Functions
 
-      // Allow users to update ONLY their lastLogin and loginCount
+      // TEMPORARY: Allow authenticated users to update phone-related fields
       allow update: if isAuthenticated() &&
-                       employeeId == request.auth.token.email &&
                        request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['lastLogin', 'loginCount']);
+                         .hasOnly(['phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt', 'lastLogin', 'loginCount']);
     }
 
     // 🔒 Clients: ADMIN-ONLY ACCESS (SECURITY ENHANCEMENT)

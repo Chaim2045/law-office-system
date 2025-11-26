@@ -93,7 +93,8 @@
       "Bash(start https://admin--gh-law-office-system.netlify.app)",
       "Bash(tree:*)",
       "Bash(start https://admin-gh-law-office-system.netlify.app)",
-      "Bash(netlify deploy:list:*)"
+      "Bash(netlify deploy:list:*)",
+      "Bash(ls \"c:\\Users\\haim\\law-office-system\\master-admin-panel\\js\\scripts\"\" 2>&1 || echo \"Directory not found \")"
     ],
     "deny": [],
     "ask": []
