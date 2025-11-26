@@ -43,13 +43,14 @@
          * רינדור ניווט
          */
         render() {
-            if (!this.container) return;
+            if (!this.container) {
+return;
+}
 
             const navItems = [
+                { id: 'monitoring', label: '🔥 דשבורד ניטור', icon: 'fa-chart-line', href: 'monitoring-dashboard.html', isNew: true },
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
-                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
-                { id: 'tasks', label: 'ניהול משימות', icon: 'fa-tasks', href: 'tasks.html' },
-                { id: 'timesheet', label: 'ניהול שעות', icon: 'fa-clock', href: 'timesheet.html' },
+                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' }
             ];
 
             this.container.innerHTML = `
@@ -64,6 +65,7 @@
                                 <a href="${item.href}" class="nav-link">
                                     <i class="fas ${item.icon}"></i>
                                     <span>${item.label}</span>
+                                    ${item.isNew ? '<span class="badge-new">חדש!</span>' : ''}
                                 </a>
                             </li>
                         `).join('')}
@@ -89,7 +91,9 @@
          * הזרקת סגנונות
          */
         injectStyles() {
-            if (document.getElementById('navigationStyles')) return;
+            if (document.getElementById('navigationStyles')) {
+return;
+}
 
             const style = document.createElement('style');
             style.id = 'navigationStyles';
@@ -172,6 +176,29 @@
                     background: rgba(255, 255, 255, 0.2);
                 }
 
+                .badge-new {
+                    display: inline-block;
+                    padding: 2px 6px;
+                    background: #ff4444;
+                    color: white;
+                    font-size: 0.625rem;
+                    font-weight: 600;
+                    border-radius: 10px;
+                    margin-right: 0.5rem;
+                    animation: pulse-badge 2s infinite;
+                }
+
+                @keyframes pulse-badge {
+                    0%, 100% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                    50% {
+                        transform: scale(1.1);
+                        opacity: 0.8;
+                    }
+                }
+
                 @media (max-width: 768px) {
                     .admin-navigation {
                         flex-direction: column;
@@ -200,7 +227,9 @@
          */
         setupLogout() {
             const logoutBtn = document.getElementById('navLogoutBtn');
-            if (!logoutBtn) return;
+            if (!logoutBtn) {
+return;
+}
 
             logoutBtn.addEventListener('click', async () => {
                 if (!window.firebaseAuth) {
