@@ -43,14 +43,13 @@
          * רינדור ניווט
          */
         render() {
-            if (!this.container) {
-return;
-}
+            if (!this.container) return;
 
             const navItems = [
-                { id: 'monitoring', label: '🔥 דשבורד ניטור', icon: 'fa-chart-line', href: 'monitoring-dashboard.html', isNew: true },
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
-                { id: 'clients', label: '✨ ניהול לקוחות', icon: 'fa-briefcase', href: 'clients-fluent.html', isFluent: true }
+                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
+                { id: 'tasks', label: 'ניהול משימות', icon: 'fa-tasks', href: 'tasks.html' },
+                { id: 'timesheet', label: 'ניהול שעות', icon: 'fa-clock', href: 'timesheet.html' },
             ];
 
             this.container.innerHTML = `
@@ -65,8 +64,6 @@ return;
                                 <a href="${item.href}" class="nav-link">
                                     <i class="fas ${item.icon}"></i>
                                     <span>${item.label}</span>
-                                    ${item.isNew ? '<span class="badge-new">חדש!</span>' : ''}
-                                    ${item.isFluent ? '<span class="badge-fluent">Fluent</span>' : ''}
                                 </a>
                             </li>
                         `).join('')}
@@ -92,9 +89,7 @@ return;
          * הזרקת סגנונות
          */
         injectStyles() {
-            if (document.getElementById('navigationStyles')) {
-return;
-}
+            if (document.getElementById('navigationStyles')) return;
 
             const style = document.createElement('style');
             style.id = 'navigationStyles';
@@ -177,43 +172,6 @@ return;
                     background: rgba(255, 255, 255, 0.2);
                 }
 
-                .badge-new {
-                    display: inline-block;
-                    padding: 2px 6px;
-                    background: #ff4444;
-                    color: white;
-                    font-size: 0.625rem;
-                    font-weight: 600;
-                    border-radius: 10px;
-                    margin-right: 0.5rem;
-                    animation: pulse-badge 2s infinite;
-                }
-
-                @keyframes pulse-badge {
-                    0%, 100% {
-                        transform: scale(1);
-                        opacity: 1;
-                    }
-                    50% {
-                        transform: scale(1.1);
-                        opacity: 0.8;
-                    }
-                }
-
-                .badge-fluent {
-                    display: inline-block;
-                    padding: 2px 8px;
-                    background: linear-gradient(135deg, #0078d4, #40e0d0);
-                    color: white;
-                    font-size: 0.625rem;
-                    font-weight: 700;
-                    border-radius: 10px;
-                    margin-right: 0.5rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    box-shadow: 0 2px 4px rgba(0, 120, 212, 0.3);
-                }
-
                 @media (max-width: 768px) {
                     .admin-navigation {
                         flex-direction: column;
@@ -242,9 +200,7 @@ return;
          */
         setupLogout() {
             const logoutBtn = document.getElementById('navLogoutBtn');
-            if (!logoutBtn) {
-return;
-}
+            if (!logoutBtn) return;
 
             logoutBtn.addEventListener('click', async () => {
                 if (!window.firebaseAuth) {

@@ -1,7 +1,7 @@
 # ════════════════════════════════════════════════════════════════
 # Master Admin Panel - Netlify Configuration
 # ════════════════════════════════════════════════════════════════
-# Production URL: https://admin-gh-law-office-system.netlify.app
+# Production URL: https://admin--gh-law-office-system.netlify.app
 # Main App URL: https://gh-law-office-system.netlify.app
 # Firebase Backend: law-office-system-e4801.web.app
 # ════════════════════════════════════════════════════════════════
@@ -15,26 +15,7 @@
 [context.production.environment]
   NODE_VERSION = "18"
 
-# Specific HTML files should be served directly
-[[redirects]]
-  from = "/clients-fluent.html"
-  to = "/clients-fluent.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/monitoring-dashboard.html"
-  to = "/monitoring-dashboard.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/clients.html"
-  to = "/clients.html"
-  status = 200
-  force = true
-
-# Default SPA routing for everything else
+# SPA routing - all routes to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"

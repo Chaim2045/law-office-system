@@ -157,7 +157,7 @@
                 total: budgetTasks.length,
                 completed: budgetTasks.filter(t => t.status === 'completed').length,
                 inProgress: budgetTasks.filter(t => t.status === 'in-progress').length,
-                pending: budgetTasks.filter(t => t.status === 'pending').length
+                pending: budgetTasks.filter(t => t.status === 'pending').length,
             };
 
             return {
@@ -205,7 +205,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>דוח פעילות ללקוח - ${client.fullName}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -230,34 +229,19 @@
 
         .header {
             text-align: center;
-            padding-bottom: 15px;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .header-logo {
-            text-align: right;
-            margin-bottom: 10px;
-        }
-
-        .law-office-logo {
-            max-width: 100px;
-            max-height: 60px;
-            object-fit: contain;
-        }
-
-        .header-content {
-            margin-top: 5px;
+            border-bottom: 3px solid #1877F2;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
         }
 
         .header h1 {
-            font-size: 22px;
+            font-size: 24px;
             color: #1877F2;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
 
         .header h2 {
-            font-size: 16px;
+            font-size: 18px;
             color: #6b7280;
             font-weight: normal;
         }
@@ -273,14 +257,6 @@
             border-right: 4px solid #1877F2;
             padding-right: 10px;
             margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title i {
-            color: #1877F2;
-            font-size: 16px;
         }
 
         .info-grid {
@@ -310,41 +286,29 @@
         }
 
         .stats-grid {
-            display: flex;
-            gap: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
             margin-bottom: 20px;
-            justify-content: center;
         }
 
         .stat-card {
-            background: linear-gradient(145deg, #ffffff 0%, #f9fafb 100%);
-            border: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            color: #1f2937;
-            padding: 16px 24px;
-            border-radius: 12px;
+            background: linear-gradient(135deg, #1877F2 0%, #0A66C2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
             text-align: center;
-            min-width: 140px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(24, 119, 242, 0.12);
         }
 
         .stat-label {
-            font-size: 13px;
-            color: #6b7280;
-            margin-bottom: 6px;
-            font-weight: 500;
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
         }
 
         .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1877F2;
-            letter-spacing: -0.5px;
+            font-size: 28px;
+            font-weight: bold;
         }
 
         table {
@@ -414,11 +378,6 @@
                 box-shadow: none;
                 padding: 20px;
             }
-
-            .law-office-logo {
-                max-width: 100px;
-                max-height: 60px;
-            }
         }
     </style>
 </head>
@@ -426,18 +385,13 @@
     <div class="report-container">
         <!-- Header -->
         <div class="header">
-            <div class="header-logo">
-                <img src="/assets/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="law-office-logo" onerror="this.parentElement.style.display='none'">
-            </div>
-            <div class="header-content">
-                <h1>משרד עו"ד גיא הרשקוביץ</h1>
-                <h2>דוח פעילות לקוח</h2>
-            </div>
+            <h1>משרד עו"ד גיא הרשקוביץ</h1>
+            <h2>דוח פעילות לקוח</h2>
         </div>
 
         <!-- Client Info -->
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-folder-open"></i> פרטי התיק</h3>
+            <h3 class="section-title">📋 פרטי התיק</h3>
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">שם הלקוח</span>
@@ -461,21 +415,40 @@
         <!-- Hours Info (if applicable) -->
         ${client.type === 'hours' ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
+            <h3 class="section-title">💰 מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
             <div class="info-grid">
                 ${this.renderServiceInfo(client, formData)}
             </div>
         </div>
         ` : ''}
 
+        <!-- Activity Summary -->
+        <div class="section">
+            <h3 class="section-title">📊 סיכום פעילות בתקופה זו</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">סה"כ שעות</div>
+                    <div class="stat-value">${stats.totalHours}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">מספר רשומות</div>
+                    <div class="stat-value">${stats.entriesCount}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">משימות הושלמו</div>
+                    <div class="stat-value">${stats.tasksStats.completed}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- By Employee -->
         ${stats.byEmployee.length > 0 ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-users"></i> פירוט שעות לפי צוות משפטי</h3>
+            <h3 class="section-title">📑 פירוט שעות לפי חבר צוות</h3>
             <table>
                 <thead>
                     <tr>
-                        <th>צוות משפטי</th>
+                        <th>חבר צוות</th>
                         <th>שעות</th>
                         <th>רשומות</th>
                     </tr>
@@ -496,19 +469,16 @@
         <!-- Timesheet Entries -->
         ${formData.reportType === 'full' || formData.reportType === 'hours' ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-list-alt"></i> פירוט מלא של הפעילות</h3>
+            <h3 class="section-title">📋 פירוט מלא של הפעילות</h3>
             ${timesheetEntries.length > 0 ? `
             <table>
                 <thead>
                     <tr>
-                        <th>תאריך</th>
-                        <th>תיאור פעולה</th>
+                        <th>תאריך רישום</th>
                         <th>צוות משפטי</th>
-                        <th>דקות</th>
-                        ${client.type === 'hours' ? '<th>דקות מצטבר</th>' : ''}
-                        ${client.type === 'hours' ? '<th>דקות נותרות</th>' : ''}
-                        ${client.type === 'hours' ? '<th>שעות נותרות</th>' : ''}
-                        <th>הערות</th>
+                        <th>תיאור העבודה</th>
+                        <th>זמן לקח</th>
+                        ${client.type === 'hours' ? '<th>יתרה נותרת</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -519,10 +489,41 @@
         </div>
         ` : ''}
 
+        <!-- Budget Tasks -->
+        ${formData.reportType === 'full' || formData.reportType === 'tasks' ? `
+        <div class="section">
+            <h3 class="section-title">✅ משימות</h3>
+            ${budgetTasks.length > 0 ? `
+            <table>
+                <thead>
+                    <tr>
+                        <th>שם המשימה</th>
+                        <th>סטטוס</th>
+                        <th>זמן מתוכנן</th>
+                        <th>זמן בפועל</th>
+                        <th>תאריך יעד</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${budgetTasks.map(task => `
+                        <tr>
+                            <td>${task.taskName || task.title || '-'}</td>
+                            <td>${this.getTaskStatusText(task.status)}</td>
+                            <td>${task.estimatedHours || 0} שעות</td>
+                            <td class="highlight">${this.formatMinutes(task.actualMinutes || 0)}</td>
+                            <td>${task.deadline ? this.formatDate(task.deadline) : '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ` : '<p>אין משימות בתקופה זו</p>'}
+        </div>
+        ` : ''}
+
         <!-- By Service -->
         ${stats.byService.length > 0 ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-box"></i> פירוט לפי שירות</h3>
+            <h3 class="section-title">📦 פירוט לפי שירות/חבילה</h3>
             <table>
                 <thead>
                     <tr>
@@ -585,13 +586,6 @@
                     serviceUsedHours = (selectedService.totalHours || 0) - (selectedService.hoursRemaining || 0);
                     serviceRemainingHours = selectedService.hoursRemaining || 0;
                     purchaseDate = selectedService.purchasedAt ? this.formatDate(selectedService.purchasedAt.toDate()) : '-';
-                } else {
-                    // Fallback: if service not found, use client's total hours
-                    console.warn(`⚠️ Service "${formData.service}" not found in client.services. Using fallback.`);
-                    serviceTotalHours = client.totalHours || 0;
-                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
-                    serviceRemainingHours = client.hoursRemaining || 0;
-                    purchaseDate = client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-';
                 }
             }
 
@@ -615,7 +609,8 @@
                 <div class="info-item">
                     <span class="info-label">שעות נותרות</span>
                     <span class="info-value ${isCritical ? 'critical' : isBlocked ? 'danger' : 'success'}">
-                        ${isBlocked ? '<i class="fas fa-exclamation-circle"></i> ' : isCritical ? '<i class="fas fa-exclamation-triangle"></i> ' : ''}${serviceRemainingHours.toFixed(1)} שעות
+                        ${serviceRemainingHours.toFixed(1)} שעות
+                        ${isBlocked ? '⚠️ (חסום)' : isCritical ? '⚠️ (קריטי)' : ''}
                     </span>
                 </div>
             `;
@@ -634,47 +629,40 @@
             });
 
             // Calculate initial balance based on selected service
-            let serviceTotalMinutes = 0;
+            let initialBalance = 0;
+            let serviceTotalHours = 0;
 
             if (client.type === 'hours') {
                 if (formData.service === 'all') {
                     // If "all services" selected, sum up all service hours
                     if (client.services && client.services.length > 0) {
-                        const totalHours = client.services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-                        serviceTotalMinutes = totalHours * 60;
+                        serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
                     } else {
-                        serviceTotalMinutes = (client.totalHours || 0) * 60;
+                        serviceTotalHours = client.totalHours || 0;
                     }
                 } else {
                     // Find the specific service
                     const selectedService = client.services?.find(s => s.serviceName === formData.service);
-                    if (selectedService) {
-                        serviceTotalMinutes = (selectedService.totalHours || 0) * 60;
-                    } else {
-                        // Fallback: if service not found, use client's total hours
-                        console.warn(`⚠️ Service "${formData.service}" not found for balance calculation. Using fallback.`);
-                        serviceTotalMinutes = (client.totalHours || 0) * 60;
-                    }
+                    serviceTotalHours = selectedService?.totalHours || 0;
                 }
+                initialBalance = serviceTotalHours;
             }
 
-            let accumulatedMinutes = 0;
+            let currentBalance = initialBalance;
 
             return sortedEntries.map(entry => {
-                const minutes = entry.minutes || 0;
+                const hoursUsed = (entry.minutes || 0) / 60;
 
-                // Calculate accumulated minutes
-                accumulatedMinutes += minutes;
-
-                // Calculate remaining minutes and hours
-                const remainingMinutes = serviceTotalMinutes - accumulatedMinutes;
-                const remainingHours = remainingMinutes / 60;
+                // Calculate balance AFTER this entry
+                if (client.type === 'hours') {
+                    currentBalance -= hoursUsed;
+                }
 
                 let balanceClass = '';
                 if (client.type === 'hours') {
-                    if (remainingMinutes <= 0) {
+                    if (currentBalance <= 0) {
                         balanceClass = 'danger';
-                    } else if (remainingMinutes < serviceTotalMinutes * 0.2) {
+                    } else if (currentBalance < serviceTotalHours * 0.2) {
                         balanceClass = 'critical';
                     } else {
                         balanceClass = 'success';
@@ -684,13 +672,10 @@
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.taskDescription || entry.description || '-'}</td>
                         <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
-                        <td class="highlight">${minutes}</td>
-                        ${client.type === 'hours' ? `<td>${accumulatedMinutes}</td>` : ''}
-                        ${client.type === 'hours' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
-                        ${client.type === 'hours' ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
-                        <td>${entry.notes || '-'}</td>
+                        <td>${entry.description || '-'}</td>
+                        <td class="highlight">${this.formatMinutes(entry.minutes)}</td>
+                        ${client.type === 'hours' ? `<td class="${balanceClass}">${currentBalance.toFixed(2)} שעות</td>` : ''}
                     </tr>
                 `;
             });
@@ -786,9 +771,7 @@
          * Helper: Format date
          */
         formatDate(date) {
-            if (!date) {
-return '-';
-}
+            if (!date) return '-';
 
             let d;
             if (date.toDate) {
@@ -808,9 +791,7 @@ return '-';
          * Helper: Format date and time
          */
         formatDateTime(date) {
-            if (!date) {
-return '-';
-}
+            if (!date) return '-';
 
             let d;
             if (date.toDate) {
@@ -828,9 +809,7 @@ return '-';
          * Helper: Format minutes to hours:minutes
          */
         formatMinutes(minutes) {
-            if (!minutes) {
-return '0:00';
-}
+            if (!minutes) return '0:00';
 
             const hours = Math.floor(minutes / 60);
             const mins = minutes % 60;

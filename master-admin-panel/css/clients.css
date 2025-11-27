@@ -22,19 +22,19 @@
 
 /* ===== Layout & Spacing ===== */
 .admin-content > * + * {
-    margin-top: 0.75rem; /* 12px spacing between sections */
+    margin-top: 1.5rem; /* 24px spacing between sections */
 }
 
 .stats-grid {
-    margin-bottom: 1rem; /* 16px */
+    margin-bottom: 2rem; /* 32px */
 }
 
 .filter-section {
-    margin-bottom: 0.75rem; /* 12px */
+    margin-bottom: 1.5rem; /* 24px */
 }
 
 .table-section {
-    margin-bottom: 0.75rem; /* 12px */
+    margin-bottom: 1.5rem; /* 24px */
 }
 
 .pagination-section {
@@ -375,10 +375,6 @@
     border-radius: 6px;
     font-size: 0.875rem;
     transition: all 0.2s;
-}
-
-select.form-input {
-    cursor: pointer;
 }
 
 .form-input:focus {
