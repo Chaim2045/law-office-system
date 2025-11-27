@@ -16,10 +16,7 @@
 
 /* ===== Container ===== */
 .main-tabs-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 16px auto 24px;
+  display: none; /* הסתרת הטאבים הישנים - עברנו לטאבים בסרגל העליון */
 }
 
 .main-tabs {

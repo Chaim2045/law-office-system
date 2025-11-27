@@ -15,43 +15,157 @@
   right: 0;
   background: white;
   border-bottom: 1px solid #e5e7eb;
-  padding: 14px 24px;
+  padding: 16px 24px;
   z-index: 1001;
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  height: 60px;
+  height: 68px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Wrapper לכפתורי ניווט - ממרכז אותם */
+.top-nav-buttons-wrapper {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* כפתורי ניווט מרכזיים - תקצוב ושעתון */
+.top-nav-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 50px;
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.top-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-radius: 50px;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.top-nav-btn i {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.top-nav-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.top-nav-btn:active {
+  transform: scale(0.98);
+}
+
+.top-nav-btn.active {
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+}
+
+/* רספונסיבי - מובייל */
+@media screen and (max-width: 768px) {
+  .top-user-bar {
+    padding: 10px 16px;
+    height: 58px;
+  }
+
+  .top-nav-buttons {
+    gap: 6px;
+  }
+
+  .top-nav-btn {
+    padding: 7px 16px;
+    font-size: 12px;
+  }
+
+  .top-nav-btn i {
+    font-size: 13px;
+  }
+
+  .user-dropdown-top {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .top-nav-btn span {
+    display: none; /* הסתרת הטקסט במסכים קטנים */
+  }
+
+  .top-nav-btn {
+    padding: 9px;
+    min-width: 38px;
+    justify-content: center;
+  }
+
+  .top-nav-btn i {
+    margin: 0;
+  }
+
+  .user-dropdown-top span {
+    display: none;
+  }
+
+  .user-dropdown-top {
+    padding: 9px 12px;
+    min-width: 38px;
+    justify-content: center;
+  }
+
+  .user-dropdown-top i {
+    margin: 0;
+  }
 }
 
 .user-dropdown-top {
   background: #f8fafc;
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 50px; /* פינות מעוגלות לחלוטין */
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
   position: absolute;
-  right: 200px;
+  right: calc(88px + 12px); /* ממש אחרי הסיידבר משמאל */
 }
 
 .user-dropdown-top:hover {
   background: white;
-  border-color: #3b82f6;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.15);
+  border-color: #cbd5e1;
+  color: #1e293b;
 }
 
 .user-dropdown-top i {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 10px;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+
+.user-dropdown-top:hover i {
+  transform: rotate(180deg);
 }
 
 /* SIDEBAR - Modern 2025 UI */
