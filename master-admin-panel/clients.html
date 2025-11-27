@@ -258,18 +258,31 @@
                         </div>
                     </div>
 
-                    <!-- Service Filter (Optional) -->
+                    <!-- Service Selection - REQUIRED -->
                     <div class="form-section">
                         <h4>
                             <i class="fas fa-briefcase"></i>
-                            שירות (אופציונלי)
+                            בחר שירות <span style="color: #ef4444;">*</span>
                         </h4>
-                        <div class="form-group">
-                            <select id="reportServiceFilter" class="form-input">
-                                <option value="all">כל השירותים</option>
-                                <!-- Services will be populated dynamically -->
-                            </select>
+
+                        <!-- Service Cards Container -->
+                        <div id="reportServiceCards" style="
+                            display: grid;
+                            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                            gap: 0.75rem;
+                            margin-top: 1rem;
+                            max-width: 900px;
+                        ">
+                            <!-- Service cards will be populated dynamically -->
                         </div>
+
+                        <!-- Hidden input to store selected service -->
+                        <input type="hidden" id="reportSelectedService" name="selectedService" value="">
+
+                        <small style="color: #6b7280; margin-top: 0.75rem; display: block;">
+                            <i class="fas fa-info-circle"></i>
+                            לחץ על השירות הרצוי כדי לבחור אותו
+                        </small>
                     </div>
 
                     <!-- Report Type -->
