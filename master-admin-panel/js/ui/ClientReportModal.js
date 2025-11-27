@@ -75,11 +75,13 @@
         getDOMElements() {
             this.modal = document.getElementById('clientReportModal');
             this.reportClientName = document.getElementById('reportClientName');
-            this.reportClientDetails = document.getElementById('reportClientDetails');
+            this.reportClientRegistrationDate = document.getElementById('reportClientRegistrationDate');
+            this.reportClientCaseNumber = document.getElementById('reportClientCaseNumber');
             this.reportForm = document.getElementById('reportForm');
             this.startDateInput = document.getElementById('reportStartDate');
             this.endDateInput = document.getElementById('reportEndDate');
-            this.serviceFilter = document.getElementById('reportServiceFilter');
+            this.serviceCardsContainer = document.getElementById('reportServiceCards');
+            this.selectedServiceInput = document.getElementById('reportSelectedService');
         }
 
         /**
@@ -158,8 +160,8 @@
             // Update client info
             this.updateClientInfo(client);
 
-            // Populate services dropdown
-            this.populateServicesDropdown(client);
+            // Populate service cards
+            this.populateServiceCards(client);
 
             // Set default date range (this month)
             this.setQuickDateRange('thisMonth');
@@ -196,62 +198,606 @@
          * עדכון מידע לקוח
          */
         updateClientInfo(client) {
+            // Debug log to see what we're getting
+            console.log('📋 Client data received:', {
+                fullName: client.fullName,
+                caseNumber: client.caseNumber,
+                createdAt: client.createdAt,
+                registrationDate: client.registrationDate
+            });
+
             if (this.reportClientName) {
                 this.reportClientName.textContent = client.fullName;
             }
 
-            if (this.reportClientDetails) {
-                let details = `מספר תיק: ${client.caseNumber || '-'}`;
-
-                if (client.type === 'hours') {
-                    details += ` | שעות נותרות: ${client.hoursRemaining || 0} מתוך ${client.totalHours || 0}`;
+            // Registration date
+            if (this.reportClientRegistrationDate) {
+                let registrationDate = '-';
+                if (client.createdAt) {
+                    try {
+                        // Handle Firebase timestamp
+                        const date = client.createdAt.toDate ? client.createdAt.toDate() :
+                                   client.createdAt.seconds ? new Date(client.createdAt.seconds * 1000) :
+                                   new Date(client.createdAt);
+                        registrationDate = date.toLocaleDateString('he-IL');
+                    } catch (err) {
+                        console.error('Error parsing createdAt:', err);
+                    }
+                } else if (client.registrationDate) {
+                    try {
+                        const date = new Date(client.registrationDate);
+                        registrationDate = date.toLocaleDateString('he-IL');
+                    } catch (err) {
+                        console.error('Error parsing registrationDate:', err);
+                    }
                 }
+                this.reportClientRegistrationDate.textContent = registrationDate;
+            }
 
-                this.reportClientDetails.textContent = details;
+            // Case number
+            if (this.reportClientCaseNumber) {
+                this.reportClientCaseNumber.textContent = client.caseNumber || '-';
             }
         }
 
         /**
-         * Populate services dropdown
-         * מילוי רשימת שירותים
+         * Populate services as cards
+         * מילוי כרטיסיות שירותים
          */
-        populateServicesDropdown(client) {
-            if (!this.serviceFilter) return;
+        async populateServiceCards(client) {
+            if (!this.serviceCardsContainer) return;
 
-            // Clear existing options (except "all")
-            this.serviceFilter.innerHTML = '<option value="all">כל השירותים</option>';
+            // Clear existing cards
+            this.serviceCardsContainer.innerHTML = '';
+            this.selectedServiceInput.value = '';
 
-            const servicesSet = new Set();
+            const servicesMap = new Map(); // Map to store service info
 
-            // Add services from client.services array
-            if (client.services && client.services.length > 0) {
-                client.services.forEach(service => {
-                    if (service.serviceName) {
-                        servicesSet.add(service.serviceName);
+            console.log('🔍 Analyzing client data:', {
+                clientName: client.fullName,
+                services: client.services,
+                type: client.type,
+                procedureType: client.procedureType,
+                hourlyPackage: client.hourlyPackage,
+                legalProcedure: client.legalProcedure,
+                stages: client.stages,
+                allClientData: client
+            });
+
+            // Check if this is a legal procedure client
+            const isLegalProcedure = client.procedureType === 'legal_procedure' ||
+                                    client.type === 'legal_procedure' ||
+                                    client.legalProcedure;
+
+            // Check for legal procedure stages in various possible locations
+            if (isLegalProcedure) {
+                // Check for stages in various formats
+                const possibleStages = ['stage_a', 'stage_b', 'stage_c', 'stageA', 'stageB', 'stageC', 'שלב_א', 'שלב_ב', 'שלב_ג'];
+
+                possibleStages.forEach(stageName => {
+                    // Check in client.stages
+                    if (client.stages && client.stages[stageName]) {
+                        const stageData = client.stages[stageName];
+                        const displayName = this.getStageName(stageName);
+                        const totalHours = stageData.hours || stageData.totalHours || stageData.allocatedHours || 0;
+
+                        servicesMap.set(displayName, {
+                            displayName: displayName,
+                            totalHours: totalHours,
+                            remainingHours: 0,
+                            usedHours: 0,
+                            type: 'legal_procedure',
+                            stage: stageName,
+                            status: stageData.status || 'active'
+                        });
+
+                        console.log(`📋 Found stage ${stageName} with ${totalHours} hours`);
+                    }
+
+                    // Check in client object directly
+                    if (client[stageName]) {
+                        const stageData = client[stageName];
+                        const displayName = this.getStageName(stageName);
+                        const totalHours = typeof stageData === 'object' ?
+                            (stageData.hours || stageData.totalHours || stageData.allocatedHours || 0) :
+                            (typeof stageData === 'number' ? stageData : 0);
+
+                        if (totalHours > 0 && !servicesMap.has(displayName)) {
+                            servicesMap.set(displayName, {
+                                displayName: displayName,
+                                totalHours: totalHours,
+                                remainingHours: 0,
+                                usedHours: 0,
+                                type: 'legal_procedure',
+                                stage: stageName,
+                                status: 'active'
+                            });
+
+                            console.log(`📋 Found stage ${stageName} directly with ${totalHours} hours`);
+                        }
                     }
                 });
             }
 
-            // Also get services from timesheet entries for this client
+            // Check for hour packages directly in client data
+            if (client.hourlyPackage) {
+                const packageData = client.hourlyPackage;
+                const packageName = packageData.name || 'תוכנית שעות';
+                const totalHours = packageData.hours || packageData.totalHours || packageData.allocatedHours || 0;
+
+                if (totalHours > 0) {
+                    servicesMap.set(packageName, {
+                        displayName: packageName,
+                        totalHours: totalHours,
+                        remainingHours: 0,
+                        usedHours: 0,
+                        type: 'hours',
+                        stage: null,
+                        status: packageData.status || 'active'
+                    });
+
+                    console.log(`📦 Found hour package ${packageName} with ${totalHours} hours`);
+                }
+            }
+
+            // Add services from client.services array
+            if (client.services && client.services.length > 0) {
+                client.services.forEach(service => {
+                    // Determine the service key and display name
+                    let serviceKey = '';
+                    let displayName = '';
+                    let serviceType = 'hours'; // default
+                    let stage = null;
+
+                    if (service.serviceName) {
+                        serviceKey = service.serviceName;
+                        displayName = service.serviceName;
+                        serviceType = 'hours';
+                    } else if (service.name) {
+                        serviceKey = service.name;
+                        displayName = service.name;
+                        serviceType = service.type || 'hours';
+                    }
+
+                    // Check if this is a legal procedure stage
+                    if (service.stage || service.stageName) {
+                        stage = service.stage || service.stageName;
+                        displayName = this.getStageName(stage);
+                        serviceType = 'legal_procedure';
+                        serviceKey = displayName; // Use stage name as key
+                    }
+
+                    if (!serviceKey) return; // Skip if no valid key
+
+                    // Calculate hours for this service/stage
+                    let usedMinutes = 0;
+                    let totalHours = 0;
+
+                    // Get total hours based on type with extensive checking
+                    if (serviceType === 'legal_procedure' && stage) {
+                        // For legal procedures, check all possible hour fields
+                        totalHours = service.hours ||
+                                   service.totalHours ||
+                                   service.stageHours ||
+                                   service.maxHours ||
+                                   service.allocatedHours ||
+                                   service.budgetHours || 0;
+
+                        console.log(`📊 Legal procedure stage ${stage}:`, {
+                            hours: service.hours,
+                            totalHours: service.totalHours,
+                            stageHours: service.stageHours,
+                            maxHours: service.maxHours,
+                            allocatedHours: service.allocatedHours,
+                            budgetHours: service.budgetHours,
+                            finalTotal: totalHours
+                        });
+                    } else {
+                        // For regular hour packages
+                        totalHours = service.hours ||
+                                   service.totalHours ||
+                                   service.packageHours ||
+                                   service.allocatedHours || 0;
+
+                        console.log(`📦 Hour package ${displayName}:`, {
+                            hours: service.hours,
+                            totalHours: service.totalHours,
+                            packageHours: service.packageHours,
+                            allocatedHours: service.allocatedHours,
+                            finalTotal: totalHours
+                        });
+                    }
+
+                    // Calculate used hours from timesheet entries
+                    if (window.ClientsDataManager) {
+                        const timesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
+
+                        console.log(`⏱️ Timesheet entries for ${client.fullName}:`, timesheetEntries);
+
+                        timesheetEntries.forEach(entry => {
+                            const entryService = entry.serviceName || entry.service || entry.stage;
+                            // החשוב: minutes הוא השדה העיקרי במערכת שלכם!
+                            const entryDuration = entry.minutes || entry.duration || entry.hours || 0;
+
+                            console.log(`  Checking entry:`, {
+                                service: entryService,
+                                duration: entryDuration,
+                                stage: entry.stage,
+                                comparing_with: {
+                                    serviceKey: serviceKey,
+                                    displayName: displayName,
+                                    stage: stage
+                                }
+                            });
+
+                            // Match by service name or stage
+                            if ((serviceType === 'legal_procedure' && entry.stage === stage) ||
+                                (entryService === serviceKey) ||
+                                (entryService === displayName)) {
+                                // Handle different duration formats
+                                if (typeof entryDuration === 'number') {
+                                    usedMinutes += entryDuration;
+                                } else if (entry.hours) {
+                                    usedMinutes += (entry.hours * 60);
+                                }
+                                console.log(`    ✅ Matched! Added ${entryDuration} minutes. Total: ${usedMinutes}`);
+                            }
+                        });
+                    }
+
+                    const usedHours = (usedMinutes / 60).toFixed(1);
+                    const remainingHours = Math.max(0, totalHours - parseFloat(usedHours)).toFixed(1);
+
+                    servicesMap.set(serviceKey, {
+                        displayName: displayName,
+                        totalHours: totalHours,
+                        remainingHours: remainingHours,
+                        usedHours: usedHours,
+                        type: serviceType,
+                        stage: stage,
+                        status: service.status || 'active'
+                    });
+                });
+            }
+
+            // Also check timesheet entries for services not in the services array
             if (window.ClientsDataManager) {
                 const timesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
                 timesheetEntries.forEach(entry => {
                     const serviceName = entry.serviceName || entry.service;
                     if (serviceName && serviceName !== '-' && serviceName !== 'לא מוגדר') {
-                        servicesSet.add(serviceName);
+                        // If not already in map, add it with unknown total hours
+                        if (!servicesMap.has(serviceName)) {
+                            // Calculate used hours for this service
+                            let usedMinutes = 0;
+                            timesheetEntries.forEach(e => {
+                                const entryService = e.serviceName || e.service;
+                                if (entryService === serviceName) {
+                                    usedMinutes += (e.minutes || e.duration || 0);
+                                }
+                            });
+                            const usedHours = (usedMinutes / 60).toFixed(1);
+
+                            servicesMap.set(serviceName, {
+                                totalHours: 0, // Unknown total
+                                remainingHours: 0,
+                                usedHours: usedHours
+                            });
+                        }
                     }
                 });
             }
 
-            // Add unique services to dropdown
-            Array.from(servicesSet).sort().forEach(serviceName => {
-                const option = document.createElement('option');
-                option.value = serviceName;
-                option.textContent = serviceName;
-                this.serviceFilter.appendChild(option);
+            // Recalculate hours for all services after collection
+            if (servicesMap.size > 0) {
+                let allTimesheetEntries = [];
+
+                // Try different methods to get timesheet entries
+                if (window.ClientsDataManager && window.ClientsDataManager.getClientTimesheetEntries) {
+                    allTimesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
+                    console.log(`🔄 Got entries from ClientsDataManager.getClientTimesheetEntries`);
+                } else if (window.ClientsDataManager && window.ClientsDataManager.timesheetEntries) {
+                    // Fallback: filter timesheet entries manually
+                    allTimesheetEntries = window.ClientsDataManager.timesheetEntries.filter(entry =>
+                        entry.clientName === client.fullName
+                    );
+                    console.log(`🔄 Got entries from ClientsDataManager.timesheetEntries`);
+                } else if (client.timesheetEntries) {
+                    // Fallback: check if client object has timesheet entries
+                    allTimesheetEntries = client.timesheetEntries;
+                    console.log(`🔄 Got entries from client.timesheetEntries`);
+                }
+
+                console.log(`🔄 Recalculating hours for all services. Total timesheet entries: ${allTimesheetEntries.length}`);
+
+                // Log first few entries to understand structure
+                if (allTimesheetEntries.length > 0) {
+                    console.log('📝 Sample timesheet entries:', allTimesheetEntries.slice(0, 3));
+                }
+
+                servicesMap.forEach((serviceInfo, serviceKey) => {
+                    let totalUsedMinutes = 0;
+
+                    allTimesheetEntries.forEach(entry => {
+                        const entryService = entry.serviceName || entry.service || entry.stage;
+                        const entryDuration = entry.minutes || entry.duration || entry.hours || 0;
+
+                        // Check if this entry matches this service
+                        if (entryService === serviceKey ||
+                            entryService === serviceInfo.displayName ||
+                            (serviceInfo.stage && entry.stage === serviceInfo.stage)) {
+
+                            if (typeof entryDuration === 'number') {
+                                totalUsedMinutes += entryDuration;
+                            } else if (entry.hours) {
+                                totalUsedMinutes += (entry.hours * 60);
+                            }
+                        }
+                    });
+
+                    const recalcUsedHours = (totalUsedMinutes / 60).toFixed(1);
+                    const recalcRemainingHours = Math.max(0, serviceInfo.totalHours - parseFloat(recalcUsedHours)).toFixed(1);
+
+                    // Update the service info
+                    serviceInfo.usedHours = recalcUsedHours;
+                    serviceInfo.remainingHours = recalcRemainingHours;
+
+                    console.log(`📊 Service: ${serviceKey}`, {
+                        totalHours: serviceInfo.totalHours,
+                        usedHours: recalcUsedHours,
+                        remainingHours: recalcRemainingHours,
+                        totalMinutes: totalUsedMinutes
+                    });
+                });
+            }
+
+            // Create service cards with proper info
+            Array.from(servicesMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([serviceKey, serviceInfo], index) => {
+                const card = this.createServiceCard(serviceInfo, index);
+                this.serviceCardsContainer.appendChild(card);
             });
 
-            console.log(`📦 Found ${servicesSet.size} services for client ${client.fullName}`);
+            console.log(`📦 Found ${servicesMap.size} services for client ${client.fullName}`);
+        }
+
+        /**
+         * Get stage display name
+         * קבלת שם תצוגה לשלב
+         */
+        getStageName(stage) {
+            const stageNames = {
+                'stage_a': "הליך משפטי - שלב א'",
+                'stage_b': "הליך משפטי - שלב ב'",
+                'stage_c': "הליך משפטי - שלב ג'",
+                'stageA': "הליך משפטי - שלב א'",
+                'stageB': "הליך משפטי - שלב ב'",
+                'stageC': "הליך משפטי - שלב ג'",
+                'a': "הליך משפטי - שלב א'",
+                'b': "הליך משפטי - שלב ב'",
+                'c': "הליך משפטי - שלב ג'"
+            };
+            return stageNames[stage] || stage || "הליך משפטי";
+        }
+
+        /**
+         * Create service card with security
+         * יצירת כרטיס שירות מאובטח
+         */
+        createServiceCard(serviceInfo, index) {
+            const card = document.createElement('div');
+
+            // Security: Use data attributes instead of inline onclick
+            card.dataset.serviceName = serviceInfo.displayName;
+            card.dataset.serviceIndex = index;
+            card.dataset.serviceType = serviceInfo.type;
+
+            // Calculate progress percentage
+            const progressPercent = serviceInfo.totalHours > 0
+                ? Math.round((parseFloat(serviceInfo.usedHours) / serviceInfo.totalHours) * 100)
+                : 0;
+
+            // Minimalist design - subtle grays with single accent
+            let statusColor = '#64748b'; // Neutral gray
+            let iconClass = 'fas fa-briefcase'; // Default icon
+            let progressColor = '#e2e8f0'; // Light gray for progress
+
+            if (serviceInfo.type === 'legal_procedure') {
+                iconClass = 'fas fa-balance-scale'; // Legal icon
+                statusColor = '#475569'; // Darker gray for legal procedures
+            }
+
+            // Use blue as default with color accents for critical states
+            if (serviceInfo.totalHours > 0) {
+                if (progressPercent >= 90) {
+                    progressColor = '#ef4444'; // Red for critical
+                    statusColor = '#dc2626'; // Red text
+                } else if (progressPercent >= 75) {
+                    progressColor = '#f97316'; // Orange for warning
+                    statusColor = '#ea580c'; // Orange text
+                } else {
+                    progressColor = '#3b82f6'; // Blue - default color
+                }
+            } else {
+                // For services without total hours, use light blue
+                progressColor = '#60a5fa';
+            }
+
+            card.style.cssText = `
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                padding: 0.75rem;
+                background: white;
+                cursor: pointer;
+                transition: all 0.15s ease;
+                position: relative;
+                min-height: 100px;
+            `;
+
+            // Create card content with textContent for security
+            const cardInner = document.createElement('div');
+
+            // Service name header
+            const header = document.createElement('div');
+            header.style.cssText = 'margin-bottom: 0.5rem; display: flex; align-items: center;';
+
+            const icon = document.createElement('i');
+            icon.className = iconClass;
+            icon.style.cssText = `color: ${statusColor}; margin-left: 0.4rem; font-size: 0.9rem;`;
+
+            const title = document.createElement('h5');
+            title.textContent = serviceInfo.displayName; // Security: textContent prevents XSS
+            title.style.cssText = 'font-weight: 600; font-size: 0.85rem; margin: 0; display: inline-block;';
+
+            header.appendChild(icon);
+            header.appendChild(title);
+
+            // Progress bar
+            const progressContainer = document.createElement('div');
+            progressContainer.style.cssText = `
+                background: #f1f5f9;
+                height: 6px;
+                border-radius: 3px;
+                overflow: hidden;
+                margin: 0.6rem 0;
+            `;
+
+            const progressBar = document.createElement('div');
+            progressBar.style.cssText = `
+                height: 100%;
+                background: ${progressColor};
+                width: ${progressPercent}%;
+                transition: width 0.3s ease;
+            `;
+            progressContainer.appendChild(progressBar);
+
+            // Hours info
+            const infoContainer = document.createElement('div');
+            infoContainer.style.cssText = 'display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;';
+
+            const hoursLeft = document.createElement('div');
+            hoursLeft.style.cssText = `color: ${statusColor}; font-weight: 600; font-size: 0.75rem;`;
+
+            const clockIcon = document.createElement('i');
+            clockIcon.className = 'fas fa-clock';
+            clockIcon.style.cssText = 'margin-left: 0.2rem; font-size: 0.65rem;';
+
+            const hoursText = document.createElement('span');
+            if (serviceInfo.type === 'legal_procedure') {
+                // For legal procedures, show stage-specific hours
+                if (serviceInfo.totalHours > 0) {
+                    hoursText.textContent = `${serviceInfo.remainingHours} מתוך ${serviceInfo.totalHours} שעות בשלב`;
+                } else {
+                    hoursText.textContent = `${serviceInfo.usedHours} שעות בשימוש בשלב`;
+                }
+            } else {
+                // For regular hour packages
+                if (serviceInfo.totalHours > 0) {
+                    hoursText.textContent = `${serviceInfo.remainingHours} מתוך ${serviceInfo.totalHours} שעות`;
+                } else {
+                    hoursText.textContent = `${serviceInfo.usedHours} שעות בשימוש`;
+                }
+            }
+
+            hoursLeft.appendChild(clockIcon);
+            hoursLeft.appendChild(hoursText);
+
+            const percentText = document.createElement('div');
+            percentText.style.cssText = 'color: #64748b; font-size: 0.65rem;';
+            percentText.textContent = serviceInfo.totalHours > 0 ? `${progressPercent}%` : '';
+
+            infoContainer.appendChild(hoursLeft);
+            if (serviceInfo.totalHours > 0) {
+                infoContainer.appendChild(percentText);
+            }
+
+            // Selected indicator - minimal checkmark
+            const selectedBadge = document.createElement('div');
+            selectedBadge.className = 'selected-badge';
+            selectedBadge.style.cssText = `
+                position: absolute;
+                top: 0.4rem;
+                left: 0.4rem;
+                background: #3b82f6;
+                color: white;
+                border-radius: 3px;
+                width: 16px;
+                height: 16px;
+                display: none;
+                align-items: center;
+                justify-content: center;
+            `;
+            selectedBadge.innerHTML = '<i class="fas fa-check" style="font-size: 0.5rem;"></i>';
+
+            // Assemble card
+            cardInner.appendChild(header);
+            cardInner.appendChild(progressContainer);
+            cardInner.appendChild(infoContainer);
+            card.appendChild(cardInner);
+            card.appendChild(selectedBadge);
+
+            // Add secure click handler
+            card.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.selectServiceCard(card, serviceInfo.displayName);
+            });
+
+            // Add subtle hover effect
+            card.addEventListener('mouseenter', () => {
+                if (!card.classList.contains('selected')) {
+                    card.style.borderColor = '#cbd5e1';
+                    card.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+                }
+            });
+
+            card.addEventListener('mouseleave', () => {
+                if (!card.classList.contains('selected')) {
+                    card.style.borderColor = '#e2e8f0';
+                    card.style.boxShadow = 'none';
+                }
+            });
+
+            return card;
+        }
+
+        /**
+         * Select service card
+         * בחירת כרטיס שירות
+         */
+        selectServiceCard(card, serviceName) {
+            // Remove selection from all cards
+            const allCards = this.serviceCardsContainer.querySelectorAll('div[data-service-name]');
+            allCards.forEach(c => {
+                c.classList.remove('selected');
+                c.style.borderColor = '#e5e7eb';
+                c.style.backgroundColor = 'white';
+                const badge = c.querySelector('.selected-badge');
+                if (badge) badge.style.display = 'none';
+            });
+
+            // Mark this card as selected with subtle styling
+            card.classList.add('selected');
+            card.style.borderColor = '#94a3b8';
+            card.style.backgroundColor = '#f8fafc';
+            const badge = card.querySelector('.selected-badge');
+            if (badge) badge.style.display = 'flex';
+
+            // Update hidden input with sanitized value
+            this.selectedServiceInput.value = this.sanitizeInput(serviceName);
+
+            console.log('✅ Selected service:', serviceName);
+        }
+
+        /**
+         * Sanitize input to prevent XSS
+         * ניקוי קלט למניעת XSS
+         */
+        sanitizeInput(input) {
+            if (!input) return '';
+            return input.toString()
+                .replace(/[<>]/g, '') // Remove angle brackets
+                .replace(/javascript:/gi, '') // Remove javascript: protocol
+                .replace(/on\w+=/gi, '') // Remove event handlers
+                .trim();
         }
 
         /**
@@ -321,7 +867,8 @@
          * קבלת נתוני הטופס
          */
         getFormData() {
-            const reportType = document.querySelector('input[name="reportType"]:checked')?.value || 'full';
+            // Report type is always 'hours' in the new design
+            const reportType = document.querySelector('input[name="reportType"]')?.value || 'hours';
             const reportFormat = document.querySelector('input[name="reportFormat"]:checked')?.value || 'pdf';
 
             return {
@@ -329,7 +876,7 @@
                 clientName: this.currentClient.fullName,
                 startDate: this.startDateInput?.value,
                 endDate: this.endDateInput?.value,
-                service: this.serviceFilter?.value || 'all',
+                service: this.selectedServiceInput?.value || '',
                 reportType,
                 reportFormat
             };
@@ -340,6 +887,16 @@
          * אימות טופס
          */
         validateForm(formData) {
+            // Check if service is selected (required in new design)
+            if (!formData.service || formData.service === '') {
+                if (window.notify) {
+                    window.notify.error('נא לבחור שירות', 'שגיאה');
+                } else {
+                    alert('נא לבחור שירות');
+                }
+                return false;
+            }
+
             if (!formData.startDate || !formData.endDate) {
                 if (window.notify) {
                     window.notify.error('נא לבחור תקופה', 'שגיאה');

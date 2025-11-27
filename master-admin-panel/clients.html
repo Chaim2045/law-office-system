@@ -216,8 +216,8 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2 class="modal-title">
-                    <i class="fas fa-file-alt"></i>
-                    הפקת דוח ללקוח
+                    <i class="fas fa-clock"></i>
+                    הפקת דוח שעות ללקוח
                 </h2>
                 <button class="modal-close" id="closeReportModal">
                     <i class="fas fa-times"></i>
@@ -225,10 +225,21 @@
             </div>
 
             <div class="modal-body">
-                <!-- Client Info -->
+                <!-- Simplified Client Info -->
                 <div class="report-client-info">
-                    <h3 id="reportClientName">-</h3>
-                    <p id="reportClientDetails">-</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 id="reportClientName" style="margin: 0;">-</h3>
+                        <div style="display: flex; gap: 1.5rem; font-size: 0.9rem; color: #6b7280;">
+                            <span>
+                                <i class="fas fa-calendar"></i>
+                                <strong>נרשם:</strong> <span id="reportClientRegistrationDate">-</span>
+                            </span>
+                            <span>
+                                <i class="fas fa-folder"></i>
+                                <strong>תיק:</strong> <span id="reportClientCaseNumber">-</span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Report Form -->
@@ -258,55 +269,41 @@
                         </div>
                     </div>
 
-                    <!-- Service Filter (Optional) -->
+                    <!-- Service Selection - REQUIRED -->
                     <div class="form-section">
                         <h4>
                             <i class="fas fa-briefcase"></i>
-                            שירות (אופציונלי)
+                            בחר שירות <span style="color: #ef4444;">*</span>
                         </h4>
-                        <div class="form-group">
-                            <select id="reportServiceFilter" class="form-input">
-                                <option value="all">כל השירותים</option>
-                                <!-- Services will be populated dynamically -->
-                            </select>
+
+                        <!-- Service Cards Container -->
+                        <div id="reportServiceCards" style="
+                            display: grid;
+                            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                            gap: 0.75rem;
+                            margin-top: 1rem;
+                            max-width: 900px;
+                        ">
+                            <!-- Service cards will be populated dynamically -->
                         </div>
+
+                        <!-- Hidden input to store selected service -->
+                        <input type="hidden" id="reportSelectedService" name="selectedService" value="">
+
+                        <small style="color: #6b7280; margin-top: 0.75rem; display: block;">
+                            <i class="fas fa-info-circle"></i>
+                            לחץ על השירות הרצוי כדי לבחור אותו
+                        </small>
                     </div>
 
-                    <!-- Report Type -->
-                    <div class="form-section">
-                        <h4>
-                            <i class="fas fa-file-invoice"></i>
-                            סוג דוח
-                        </h4>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="reportType" value="full" checked>
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">דוח מפורט - שעות + משימות + פירוט מלא</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="reportType" value="hours">
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">דוח שעות בלבד</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="reportType" value="tasks">
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">דוח משימות בלבד</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="reportType" value="financial">
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">דוח פיננסי - עלויות</span>
-                            </label>
-                        </div>
-                    </div>
+                    <!-- Hidden Report Type - Always Hours -->
+                    <input type="hidden" name="reportType" value="hours">
 
                     <!-- Format -->
                     <div class="form-section">
                         <h4>
                             <i class="fas fa-file-download"></i>
-                            פורמט
+                            פורמט הדוח
                         </h4>
                         <div class="radio-group">
                             <label class="radio-label">
@@ -335,8 +332,8 @@
                     ביטול
                 </button>
                 <button type="button" class="btn-primary" id="generateReportBtn">
-                    <i class="fas fa-file-alt"></i>
-                    הפק דוח
+                    <i class="fas fa-clock"></i>
+                    הפק דוח שעות
                 </button>
                 <button type="button" class="btn-primary" id="emailReportBtn">
                     <i class="fas fa-envelope"></i>
@@ -365,8 +362,8 @@
     <!-- ===== Clients Management Scripts ===== -->
     <script src="js/managers/ClientsDataManager.js?v=20251123v1"></script>
     <script src="js/ui/ClientsTable.js?v=20251123v1"></script>
-    <script src="js/ui/ClientReportModal.js?v=20251124v1"></script>
-    <script src="js/managers/ReportGenerator.js?v=20251124v2"></script>
+    <script src="js/ui/ClientReportModal.js?v=20251127v1"></script>
+    <script src="js/managers/ReportGenerator.js?v=20251127v2"></script>
 
     <!-- ===== Shared Components ===== -->
     <script src="js/ui/Notifications.js?v=20251123v1"></script>

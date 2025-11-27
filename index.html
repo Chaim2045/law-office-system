@@ -1120,6 +1120,13 @@
     <script src="js/modules/lottie-animations.js?v=1.0.0"></script>
     <script src="js/modules/lottie-manager.js?v=1.0.0"></script>
 
+    <!-- ===== 🎯 NEW: Unified UI System - Step 1: Load Components ===== -->
+    <!-- Feature Flags - Controls whether to use new or legacy system -->
+    <script src="shared/config/feature-flags.js"></script>
+    <!-- Unified Loading Overlay -->
+    <link rel="stylesheet" href="shared/ui/styles/loading.css">
+    <script src="shared/ui/loading/LoadingOverlay.js"></script>
+
     <!-- ===== Notification Messages Library ===== -->
     <!-- Context-aware messages for all notifications -->
     <script src="js/modules/notification-messages.js?v=1.0.0"></script>
@@ -1127,6 +1134,10 @@
     <!-- ===== NEW: Modern Notification System ===== -->
     <!-- MUST BE LOADED FIRST - Before all other scripts -->
     <script src="js/modules/notification-system.js?v=1.0.1"></script>
+
+    <!-- ===== 🎯 NEW: Unified UI System - Step 2: Compatibility Wrapper ===== -->
+    <!-- MUST load AFTER NotificationSystem to wrap it properly -->
+    <script src="shared/compatibility/loading-wrapper.js"></script>
 
     <!-- ===== NEW: Modals Manager System ===== -->
     <!-- Centralized modal management -->

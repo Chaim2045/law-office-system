@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified UI System - Demo</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .demo-container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .status {
+      background: #f0f4f8;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 30px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-label {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .status-value {
+      color: #333;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    .status-value.enabled {
+      color: #10b981;
+      font-weight: bold;
+    }
+
+    .status-value.disabled {
+      color: #ef4444;
+      font-weight: bold;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-info {
+      background: #8b5cf6;
+      color: white;
+    }
+
+    .section-title {
+      color: #666;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .console-output {
+      background: #1e293b;
+      color: #10b981;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .warning-box {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+
+    .warning-box h3 {
+      color: #f59e0b;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .warning-box p {
+      color: #92400e;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .warning-box code {
+      background: rgba(0, 0, 0, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+
+  <!-- Lottie (for animations) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+
+  <!-- Lottie Animations Config (from your project) -->
+  <script src="../js/modules/lottie-animations.js"></script>
+
+  <!-- Unified UI System -->
+  <link rel="stylesheet" href="ui/styles/loading.css">
+  <script src="config/feature-flags.js"></script>
+  <script src="ui/loading/LoadingOverlay.js"></script>
+  <script src="compatibility/loading-wrapper.js"></script>
+</head>
+<body>
+
+<div class="demo-container">
+  <h1>🎯 Unified UI System</h1>
+  <p class="subtitle">Demo & Testing Page</p>
+
+  <!-- Status -->
+  <div class="status">
+    <div class="status-item">
+      <span class="status-label">Feature Flag:</span>
+      <span class="status-value" id="featureFlagStatus">Loading...</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">Lottie Available:</span>
+      <span class="status-value" id="lottieStatus">Loading...</span>
+    </div>
+    <div class="status-item">
+      <span class="status-label">System:</span>
+      <span class="status-value" id="systemStatus">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Basic Controls -->
+  <div class="section-title">בדיקות בסיסיות</div>
+  <div class="controls">
+    <button class="btn btn-primary" onclick="testBasicLoading()">
+      טעינה בסיסית
+    </button>
+    <button class="btn btn-success" onclick="testSavingAnimation()">
+      אנימציית שמירה
+    </button>
+    <button class="btn btn-info" onclick="testUploadingAnimation()">
+      אנימציית העלאה
+    </button>
+    <button class="btn btn-warning" onclick="testWithTimeout()">
+      עם Timeout (3s)
+    </button>
+  </div>
+
+  <!-- Advanced Controls -->
+  <div class="section-title">בדיקות מתקדמות</div>
+  <div class="controls">
+    <button class="btn btn-primary" onclick="testUpdateMessage()">
+      עדכון הודעה
+    </button>
+    <button class="btn btn-success" onclick="testLongRunning()">
+      פעולה ארוכה (10s)
+    </button>
+    <button class="btn btn-danger" onclick="testDirectHide()">
+      הסתרה מיידית
+    </button>
+    <button class="btn btn-info" onclick="testSequence()">
+      רצף פעולות
+    </button>
+  </div>
+
+  <!-- Legacy API Test -->
+  <div class="section-title">בדיקת תאימות לאחור</div>
+  <div class="controls">
+    <button class="btn btn-primary" onclick="testLegacyAPI()">
+      Legacy API Test
+    </button>
+    <button class="btn btn-warning" onclick="testRollback()">
+      Test Rollback
+    </button>
+  </div>
+
+  <!-- Console Output -->
+  <div class="section-title">Console Output</div>
+  <div class="console-output" id="consoleOutput">
+    Waiting for tests...
+  </div>
+
+  <!-- Warning Box -->
+  <div class="warning-box">
+    <h3>⚠️ שים לב</h3>
+    <p>
+      המערכת כרגע במצב: <code>USE_SHARED_LOADING = false</code><br>
+      כדי להפעיל את המערכת החדשה, שנה ב-<code>shared/config/feature-flags.js</code> ל-<code>true</code>
+    </p>
+  </div>
+</div>
+
+<script>
+  // ========================================
+  // Console Logger
+  // ========================================
+
+  const consoleOutput = document.getElementById('consoleOutput');
+  let logs = [];
+
+  function log(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const prefix = {
+      info: '✅',
+      error: '❌',
+      warning: '⚠️',
+      debug: '🔍'
+    }[type] || '📝';
+
+    const logMessage = `[${timestamp}] ${prefix} ${message}`;
+    logs.push(logMessage);
+
+    // Keep only last 20 logs
+    if (logs.length > 20) {
+      logs.shift();
+    }
+
+    consoleOutput.textContent = logs.join('\n');
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+    // Also log to real console
+    console.log(logMessage);
+  }
+
+  // ========================================
+  // Status Update
+  // ========================================
+
+  function updateStatus() {
+    const featureEnabled = window.SHARED_UI_CONFIG?.USE_SHARED_LOADING || false;
+    const hasLottie = typeof window.lottie !== 'undefined';
+
+    document.getElementById('featureFlagStatus').textContent = featureEnabled ? 'ENABLED' : 'DISABLED';
+    document.getElementById('featureFlagStatus').className = featureEnabled ? 'status-value enabled' : 'status-value disabled';
+
+    document.getElementById('lottieStatus').textContent = hasLottie ? 'YES' : 'NO';
+    document.getElementById('lottieStatus').className = hasLottie ? 'status-value enabled' : 'status-value disabled';
+
+    const systemType = featureEnabled ? 'New (Unified)' : 'Legacy (Old)';
+    document.getElementById('systemStatus').textContent = systemType;
+  }
+
+  // ========================================
+  // Test Functions
+  // ========================================
+
+  function testBasicLoading() {
+    log('Testing basic loading...');
+    window.showLoading('טוען נתונים...');
+
+    setTimeout(() => {
+      window.hideLoading();
+      log('Basic loading test complete!');
+    }, 2000);
+  }
+
+  function testSavingAnimation() {
+    log('Testing saving animation...');
+    window.showLoading('שומר נתונים...', { animationType: 'saving' });
+
+    setTimeout(() => {
+      window.hideLoading();
+      log('Saving animation test complete!');
+    }, 3000);
+  }
+
+  function testUploadingAnimation() {
+    log('Testing uploading animation...');
+    window.showLoading('מעלה קבצים...', { animationType: 'uploading' });
+
+    setTimeout(() => {
+      window.hideLoading();
+      log('Uploading animation test complete!');
+    }, 3000);
+  }
+
+  function testWithTimeout() {
+    log('Testing with auto-timeout (3s)...');
+    window.showLoading('פעולה עם timeout...', {
+      timeout: 3000,
+      onTimeout: () => {
+        log('Timeout reached! Auto-hiding...', 'warning');
+      }
+    });
+  }
+
+  function testUpdateMessage() {
+    log('Testing message update...');
+    window.showLoading('מתחיל...');
+
+    setTimeout(() => {
+      window.updateLoadingMessage('בתהליך...');
+      log('Message updated to: בתהליך...');
+    }, 1500);
+
+    setTimeout(() => {
+      window.updateLoadingMessage('כמעט סיימנו...');
+      log('Message updated to: כמעט סיימנו...');
+    }, 3000);
+
+    setTimeout(() => {
+      window.hideLoading();
+      log('Message update test complete!');
+    }, 4500);
+  }
+
+  function testLongRunning() {
+    log('Testing long-running operation (10s)...');
+    window.showLoading('פעולה ארוכה בתהליך...', {
+      animationType: 'processing'
+    });
+
+    setTimeout(() => {
+      window.hideLoading();
+      log('Long-running test complete!');
+    }, 10000);
+  }
+
+  function testDirectHide() {
+    log('Testing direct hide...');
+    window.hideLoading();
+    log('Hide called (should do nothing if not visible)');
+  }
+
+  function testSequence() {
+    log('Testing sequence of operations...');
+
+    // Step 1
+    window.showLoading('שלב 1 - טוען...', { animationType: 'loading' });
+
+    setTimeout(() => {
+      log('Step 1 complete');
+      window.hideLoading();
+
+      // Step 2
+      setTimeout(() => {
+        window.showLoading('שלב 2 - שומר...', { animationType: 'saving' });
+
+        setTimeout(() => {
+          log('Step 2 complete');
+          window.hideLoading();
+
+          // Step 3
+          setTimeout(() => {
+            window.showLoading('שלב 3 - מסנכרן...', { animationType: 'syncing' });
+
+            setTimeout(() => {
+              log('Step 3 complete');
+              window.hideLoading();
+              log('Sequence test complete!', 'info');
+            }, 2000);
+          }, 500);
+        }, 2000);
+      }, 500);
+    }, 2000);
+  }
+
+  function testLegacyAPI() {
+    log('Testing legacy API compatibility...');
+
+    // Test old global API
+    window.showLoading('Testing legacy API...');
+
+    setTimeout(() => {
+      window.hideLoading();
+      log('Legacy API test complete!');
+    }, 2000);
+  }
+
+  function testRollback() {
+    log('Testing rollback to legacy system...', 'warning');
+
+    if (typeof window.rollbackToLegacyLoading === 'function') {
+      window.rollbackToLegacyLoading();
+      log('Rollback executed! Reload page to see changes.', 'warning');
+    } else {
+      log('Rollback function not available (feature disabled)', 'error');
+    }
+  }
+
+  // ========================================
+  // Initialize
+  // ========================================
+
+  window.addEventListener('DOMContentLoaded', () => {
+    updateStatus();
+    log('Demo page loaded');
+    log(`Feature Flag: ${window.SHARED_UI_CONFIG?.USE_SHARED_LOADING ? 'ENABLED' : 'DISABLED'}`);
+    log(`Lottie: ${typeof window.lottie !== 'undefined' ? 'Available' : 'Not available'}`);
+    log('Ready for testing!');
+  });
+</script>
+
+</body>
+</html>
