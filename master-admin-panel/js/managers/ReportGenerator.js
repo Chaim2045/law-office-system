@@ -427,7 +427,7 @@
         <!-- Header -->
         <div class="header">
             <div class="header-logo">
-                <img src="/assets/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="law-office-logo" onerror="this.parentElement.style.display='none'">
+                <img src="assets/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="law-office-logo" onerror="this.parentElement.style.display='none'">
             </div>
             <div class="header-content">
                 <h1>משרד עו"ד גיא הרשקוביץ</h1>
