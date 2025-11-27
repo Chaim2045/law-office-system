@@ -1120,6 +1120,15 @@
     <script src="js/modules/lottie-animations.js?v=1.0.0"></script>
     <script src="js/modules/lottie-manager.js?v=1.0.0"></script>
 
+    <!-- ===== 🎯 NEW: Unified UI System (Feature Flag Controlled) ===== -->
+    <!-- Feature Flags - Controls whether to use new or legacy system -->
+    <script src="shared/config/feature-flags.js"></script>
+    <!-- Unified Loading Overlay -->
+    <link rel="stylesheet" href="shared/ui/styles/loading.css">
+    <script src="shared/ui/loading/LoadingOverlay.js"></script>
+    <!-- Compatibility Wrapper - Maintains backward compatibility -->
+    <script src="shared/compatibility/loading-wrapper.js"></script>
+
     <!-- ===== Notification Messages Library ===== -->
     <!-- Context-aware messages for all notifications -->
     <script src="js/modules/notification-messages.js?v=1.0.0"></script>
