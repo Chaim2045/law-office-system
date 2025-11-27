@@ -1,0 +1,362 @@
+/**
+ * ========================================
+ * Unified Loading Overlay Styles
+ * ========================================
+ *
+ * CSS מאוחד עבור מערכת הטעינה
+ * ✅ ללא מסגרת לבנה סביב הטקסט! (פתרון הבעיה המקורית)
+ *
+ * @version 1.0.0
+ * @date 2025-01-27
+ *
+ * ========================================
+ * עיצוב:
+ * ========================================
+ *
+ * - רקע כהה עם blur
+ * - Lottie / CSS spinner במרכז
+ * - טקסט בלבן מתחת
+ * - ❌ ללא מסגרת/קופסה לבנה!
+ * - ❌ ללא padding מיותר
+ * - ❌ ללא shadow
+ */
+
+/* ========================================
+   Overlay Container
+   ======================================== */
+
+.unified-loading-overlay {
+  /* Positioning */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Styling */
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+
+  /* Stack order */
+  z-index: 99999;
+
+  /* Animation */
+  animation: unified-overlay-fadein 0.2s ease-out;
+}
+
+@keyframes unified-overlay-fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ========================================
+   Content Container
+   ======================================== */
+
+.unified-loading-content {
+  /* Layout */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 24px !important;
+
+  /* ✅ ללא מסגרת לבנה! */
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+
+  /* Animation */
+  animation: unified-content-scalein 0.3s ease-out;
+}
+
+@keyframes unified-content-scalein {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ========================================
+   Spinner Container
+   ======================================== */
+
+.unified-loading-spinner {
+  /* Size */
+  width: 120px;
+  height: 120px;
+
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* ✅ ללא רקע או מסגרת! */
+  background: transparent;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+}
+
+/* ========================================
+   Lottie Container
+   ======================================== */
+
+#unified-lottie-container {
+  width: 100%;
+  height: 100%;
+}
+
+#unified-lottie-container svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ========================================
+   CSS Fallback Spinner
+   ======================================== */
+
+.unified-css-spinner {
+  /* Size */
+  width: 60px;
+  height: 60px;
+
+  /* Border styling */
+  border: 4px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+
+  /* Animation */
+  animation: unified-spin 1s linear infinite;
+}
+
+@keyframes unified-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   Loading Message Text
+   ======================================== */
+
+.unified-loading-message {
+  /* Typography */
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+
+  /* Max width for long messages */
+  max-width: 300px;
+
+  /* ✅ ללא מסגרת סביב הטקסט! */
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+
+  /* Subtle animation */
+  animation: unified-text-fadein 0.4s ease-out 0.1s both;
+}
+
+@keyframes unified-text-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+/* Mobile devices */
+@media (max-width: 640px) {
+  .unified-loading-spinner {
+    width: 100px;
+    height: 100px;
+  }
+
+  .unified-css-spinner {
+    width: 50px;
+    height: 50px;
+    border-width: 3px;
+  }
+
+  .unified-loading-message {
+    font-size: 14px;
+    max-width: 250px;
+  }
+
+  .unified-loading-content {
+    gap: 20px !important;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 375px) {
+  .unified-loading-spinner {
+    width: 80px;
+    height: 80px;
+  }
+
+  .unified-css-spinner {
+    width: 40px;
+    height: 40px;
+  }
+
+  .unified-loading-message {
+    font-size: 13px;
+    max-width: 220px;
+  }
+
+  .unified-loading-content {
+    gap: 16px !important;
+  }
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .unified-loading-overlay,
+  .unified-loading-content,
+  .unified-loading-message {
+    animation: none;
+  }
+
+  .unified-css-spinner {
+    animation: unified-spin 2s linear infinite; /* Slower spin */
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .unified-loading-overlay {
+    background: rgba(0, 0, 0, 0.8);
+  }
+
+  .unified-loading-message {
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .unified-css-spinner {
+    border-color: rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+  }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+  .unified-loading-overlay {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   RTL Support (for Hebrew text)
+   ======================================== */
+
+[dir="rtl"] .unified-loading-content {
+  /* Hebrew text alignment already centered, no changes needed */
+}
+
+/* ========================================
+   Dark Mode Support (if needed in future)
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  .unified-loading-overlay {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .unified-loading-message {
+    color: #f0f0f0;
+  }
+}
+
+/* ========================================
+   Legacy Overrides
+   ======================================== */
+
+/**
+ * These rules ensure the new styles take precedence
+ * over any old .loading-spinner or .loading-text styles
+ */
+
+.unified-loading-overlay .unified-loading-spinner,
+.unified-loading-overlay .unified-loading-message {
+  /* Force transparent background - no white frame! */
+  background: transparent !important;
+  background-color: transparent !important;
+
+  /* Force no padding */
+  padding: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+
+  /* Force no border */
+  border: none !important;
+  border-width: 0 !important;
+
+  /* Force no shadow */
+  box-shadow: none !important;
+
+  /* Force no border radius on text */
+  border-radius: 0 !important;
+}
+
+/* ========================================
+   Debugging (remove in production)
+   ======================================== */
+
+/*
+.unified-loading-overlay {
+  outline: 2px solid red;
+}
+
+.unified-loading-content {
+  outline: 2px solid blue;
+}
+
+.unified-loading-spinner {
+  outline: 2px solid green;
+}
+
+.unified-loading-message {
+  outline: 2px solid yellow;
+}
+*/
