@@ -40,7 +40,7 @@
      * מערכת טעינה מאוחדת
      * ברירת מחדל: false (בטוח!)
      */
-    USE_SHARED_LOADING: false,
+    USE_SHARED_LOADING: true,  // ✅ מופעל לבדיקה!
 
     /**
      * Notifications System
