@@ -183,8 +183,9 @@
                         </label>
                         <select id="role" name="role" class="form-select" required>
                             <option value="">בחר תפקיד</option>
-                            <option value="user">משתמש</option>
-                            <option value="admin">מנהל</option>
+                            <option value="employee">עובד</option>
+                            <option value="lawyer">עורך דין</option>
+                            <option value="admin">מנהל מערכת</option>
                         </select>
                         <div class="form-error" data-error="role"></div>
                         <small class="form-hint">מנהלים יכולים לגשת לפאנל הניהול</small>
