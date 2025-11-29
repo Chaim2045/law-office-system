@@ -20,6 +20,17 @@
         constructor() {
             this.searchTimeout = null;
             this.searchDelay = 300; // 300ms debounce
+            this.listenersSetup = false; // Track if listeners were setup
+        }
+
+        /**
+         * Check if current page is employees page
+         * בדיקה האם העמוד הנוכחי הוא עמוד עובדים
+         */
+        isEmployeesPage() {
+            // Check if we're on index.html (employees page)
+            const path = window.location.pathname;
+            return path.includes('index.html') || path.endsWith('/master-admin-panel/') || path.endsWith('/master-admin-panel');
         }
 
         /**
@@ -84,11 +95,13 @@
                             <span>ייצוא לExcel</span>
                         </button>
 
-                        <!-- Add User Button -->
-                        <button class="btn-filter btn-primary" id="addUserButton" title="הוספת משתמש חדש">
+                        <!-- Add User Button (only on index.html - employees page) -->
+                        ${this.isEmployeesPage() ? `
+                        <button class="btn-filter btn-primary" id="addUserButton" title="הוספת עובד חדש">
                             <i class="fas fa-user-plus"></i>
-                            <span>הוסף משתמש</span>
+                            <span>הוסף עובד</span>
                         </button>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -106,6 +119,13 @@
          * הגדרת מאזיני אירועים
          */
         setupEvents() {
+            // Prevent duplicate setup
+            if (this.listenersSetup) {
+                console.log('⚠️ FilterBar: Listeners already setup, skipping');
+                return;
+            }
+
+            console.log('🔧 FilterBar: Setting up event listeners');
             // Search input
             const searchInput = document.getElementById('searchInput');
             if (searchInput) {
@@ -165,10 +185,9 @@
                 });
             }
 
-            // Add user button - prevent duplicate listeners
+            // Add user button (only on employees page)
             const addUserButton = document.getElementById('addUserButton');
-            if (addUserButton && !addUserButton.dataset.listenerAdded) {
-                addUserButton.dataset.listenerAdded = 'true';
+            if (addUserButton) {
                 addUserButton.addEventListener('click', () => {
                     console.log('🔵 [FilterBar] Add User button clicked');
                     if (window.UsersActionsManager) {
@@ -178,6 +197,10 @@
                     }
                 });
             }
+
+            // Mark listeners as setup
+            this.listenersSetup = true;
+            console.log('✅ FilterBar: Event listeners setup complete');
         }
 
         /**
