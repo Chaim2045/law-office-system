@@ -556,43 +556,64 @@ return;
             }
 
             // ════════════════════════════════════════════════════════════════
-            // 🎯 UX ENHANCEMENT: "All Services" Only for Hour Packages
+            // 🎯 LEGAL PROCEDURE REPORT FIX: Auto-Select Active Stage Only
             // ════════════════════════════════════════════════════════════════
             //
-            // PROBLEM:
-            // - For legal procedures with multiple stages (שלב א', שלב ב', etc.),
-            //   showing "all services" sums ALL stage hours together
-            // - Example: Stage A (100h) + Stage B (120h) + Stage C (80h) = 300h total
-            // - This is confusing - user wants to see ONE stage at a time
+            // BUSINESS REQUIREMENT:
+            // - Client pays per stage (שלב א', שלב ב', etc.) as they progress
+            // - Report should show ONLY the currently active stage hours
+            // - NOT the sum of all stages (confusing and incorrect)
             //
-            // SOLUTION:
-            // - Only add "all services" option for non-legal-procedure clients
-            // - For hour package clients: "all services" is useful
-            // - For legal procedure clients: force selection of specific stage
+            // TECHNICAL APPROACH:
+            // - For legal procedures: Show ONLY stages with status='active'
+            // - For hour packages: Show all services + "כל השירותים" option
+            //
+            // DATA MODEL:
+            // - Each stage has: { status: 'active' | 'completed' | 'pending' }
+            // - Only ONE stage should be 'active' at a time
+            // - Reference: ClientManagementModal.js:356 uses same pattern
             //
             // IMPLEMENTATION:
-            // - Check if client is legal procedure (!isLegalProcedure)
-            // - Only then add "כל השירותים" option to servicesMap
-            // - Legal procedure clients will only see individual stage cards
+            // 1. If legal procedure: Filter to show ONLY active stages
+            // 2. If hour package: Show all + "כל השירותים" option
             //
-            // IMPACT:
-            // - Better UX: Clear, unambiguous service selection
-            // - Prevents confusion: No summed hours for multi-stage procedures
-            // - Maintains utility: Hour package clients keep "all" option
+            // WHY THIS APPROACH:
+            // - Principle of Least Surprise: User sees what they're paying for NOW
+            // - Data Integrity: Prevents summing unrelated stage budgets
+            // - User requested: "רק בשלב א ולא סהכ" (only stage A, not total)
             // ════════════════════════════════════════════════════════════════
 
-            // Add "All Services" option ONLY for non-legal-procedure clients
-            if (!isLegalProcedure && servicesMap.size > 1) {
-                servicesMap.set('כל השירותים', {
-                    displayName: 'כל השירותים',
-                    totalHours: 0, // Will be calculated in report
-                    remainingHours: 0,
-                    usedHours: 0,
-                    type: 'all',
-                    stage: null,
-                    status: 'active'
-                });
-                console.log('📋 Added "All Services" option for hour package client');
+            if (isLegalProcedure) {
+                // For legal procedures: Keep ONLY the active stage
+                const activeStages = Array.from(servicesMap.entries()).filter(([key, service]) =>
+                    service.status === 'active'
+                );
+
+                if (activeStages.length > 0) {
+                    // Clear map and add only active stages
+                    servicesMap.clear();
+                    activeStages.forEach(([key, service]) => {
+                        servicesMap.set(key, service);
+                    });
+                    console.log(`🎯 Legal procedure: Showing ${activeStages.length} active stage(s) only`);
+                } else {
+                    // Fallback: No active stage found, show all (shouldn't happen in production)
+                    console.warn('⚠️ No active stage found for legal procedure client. Showing all stages as fallback.');
+                }
+            } else {
+                // For hour package clients: Add "All Services" option
+                if (servicesMap.size > 1) {
+                    servicesMap.set('כל השירותים', {
+                        displayName: 'כל השירותים',
+                        totalHours: 0, // Will be calculated in report
+                        remainingHours: 0,
+                        usedHours: 0,
+                        type: 'all',
+                        stage: null,
+                        status: 'active'
+                    });
+                    console.log('📋 Hour package: Added "All Services" option');
+                }
             }
 
             // Create service cards with proper info

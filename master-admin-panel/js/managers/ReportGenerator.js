@@ -590,22 +590,9 @@
             let serviceRemainingHours = 0;
             let purchaseDate = '-';
 
-            // Check if client is legal procedure
-            const isLegalProcedure = client.procedureType === 'legal_procedure' ||
-                                    client.type === 'legal_procedure' ||
-                                    client.legalProcedure;
-
+            // Handle "all services" option (hour packages only)
             if (formData.service === 'all' || formData.service === 'כל השירותים') {
-                // 🚨 GUARD: Prevent "all services" for legal procedures
-                if (isLegalProcedure) {
-                    console.warn('⚠️ "All services" not allowed for legal procedure clients. Defaulting to first service.');
-                    // Default to first available service instead
-                    if (client.services && client.services.length > 0) {
-                        formData.service = client.services[0].name || client.services[0].displayName;
-                    }
-                }
-
-                // Sum all services (only for hour package clients now)
+                // Sum all services
                 if (client.services && client.services.length > 0) {
                     serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
                     serviceUsedHours = client.services.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
