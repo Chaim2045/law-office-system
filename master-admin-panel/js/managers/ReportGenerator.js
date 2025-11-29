@@ -605,14 +605,15 @@
             } else {
                 // ═══ ENHANCED SERVICE MATCHING ═══
                 // Try multiple field combinations to find the service
+                // 🔍 CRITICAL: Check 'name' FIRST as it's the PRIMARY field in services array!
                 const selectedService = client.services?.find(s => {
-                    // Check serviceName (original)
-                    if (s.serviceName === formData.service) {
+                    // Check name FIRST (this is the primary field!)
+                    if (s.name === formData.service) {
 return true;
 }
 
-                    // Check name (common alternative)
-                    if (s.name === formData.service) {
+                    // Check serviceName (alternative)
+                    if (s.serviceName === formData.service) {
 return true;
 }
 
