@@ -5732,4 +5732,33 @@ exports.updateMetricsOnTaskChange = functions.firestore
 // const { nuclearCleanup } = require('./admin/nuclear-cleanup');
 // exports.nuclearCleanup = nuclearCleanup;
 
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics)');
+// ═══════════════════════════════════════════════════════════════════════
+// 🔐 SET ADMIN CLAIMS - One-Time Setup Function
+// ═══════════════════════════════════════════════════════════════════════
+exports.setAdminClaims = functions.https.onRequest(async (req, res) => {
+  const adminEmails = [
+    'haim@ghlawoffice.co.il',
+    'guy@ghlawoffice.co.il'
+  ];
+
+  const results = [];
+
+  for (const email of adminEmails) {
+    try {
+      const user = await auth.getUserByEmail(email);
+      await auth.setCustomUserClaims(user.uid, { role: 'admin' });
+      results.push(`✅ Set admin claims for: ${email}`);
+      console.log(`✅ Set admin claims for: ${email}`);
+    } catch (error) {
+      results.push(`❌ Error setting claims for ${email}: ${error.message}`);
+      console.error(`❌ Error setting claims for ${email}:`, error);
+    }
+  }
+
+  res.json({
+    success: true,
+    results: results
+  });
+});
+
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims)');

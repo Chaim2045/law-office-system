@@ -83,8 +83,12 @@ service cloud.firestore {
     // Original rules saved in firestore.rules.backup
     match /employees/{employeeId} {
       // Read: Admins can read all, users can read only their own profile
+      // ✅ ENHANCED: Allow users to query by authUID (for login flow)
       allow read: if isAdmin() ||
-                     (isAuthenticated() && employeeId == request.auth.token.email);
+                     (isAuthenticated() && (
+                       employeeId == request.auth.token.email ||
+                       resource.data.authUID == request.auth.uid
+                     ));
 
       allow create, delete: if false; // Only through Cloud Functions
 
@@ -94,13 +98,12 @@ service cloud.firestore {
                          .hasOnly(['phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt', 'lastLogin', 'loginCount']);
     }
 
-    // 🔒 Clients: ADMIN-ONLY ACCESS (SECURITY ENHANCEMENT)
-    // Changed from: All authenticated users
-    // Changed to: Admins only
-    // Reason: Client data contains sensitive personal information
+    // ✅ Clients: READ for all authenticated, WRITE for admins only
+    // Reason: Users need to see clients list to assign tasks
+    // Security: Only admins can create/update/delete clients
     match /clients/{clientId} {
-      allow read: if isAdmin();
-      allow write: if false; // Only through Cloud Functions
+      allow read: if isAuthenticated(); // ✅ All authenticated users can read
+      allow write: if isAdmin(); // ✅ Only admins can create/update/delete
     }
 
     // 🔒 Cases: ADMIN-ONLY ACCESS (SECURITY ENHANCEMENT)
