@@ -245,7 +245,9 @@
          * מילוי כרטיסיות שירותים
          */
         async populateServiceCards(client) {
-            if (!this.serviceCardsContainer) return;
+            if (!this.serviceCardsContainer) {
+return;
+}
 
             // Clear existing cards
             this.serviceCardsContainer.innerHTML = '';
@@ -367,7 +369,9 @@
                         serviceKey = displayName; // Use stage name as key
                     }
 
-                    if (!serviceKey) return; // Skip if no valid key
+                    if (!serviceKey) {
+return;
+} // Skip if no valid key
 
                     // Calculate hours for this service/stage
                     let usedMinutes = 0;
@@ -419,7 +423,7 @@
                             // החשוב: minutes הוא השדה העיקרי במערכת שלכם!
                             const entryDuration = entry.minutes || entry.duration || entry.hours || 0;
 
-                            console.log(`  Checking entry:`, {
+                            console.log('  Checking entry:', {
                                 service: entryService,
                                 duration: entryDuration,
                                 stage: entry.stage,
@@ -495,17 +499,17 @@
                 // Try different methods to get timesheet entries
                 if (window.ClientsDataManager && window.ClientsDataManager.getClientTimesheetEntries) {
                     allTimesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
-                    console.log(`🔄 Got entries from ClientsDataManager.getClientTimesheetEntries`);
+                    console.log('🔄 Got entries from ClientsDataManager.getClientTimesheetEntries');
                 } else if (window.ClientsDataManager && window.ClientsDataManager.timesheetEntries) {
                     // Fallback: filter timesheet entries manually
                     allTimesheetEntries = window.ClientsDataManager.timesheetEntries.filter(entry =>
                         entry.clientName === client.fullName
                     );
-                    console.log(`🔄 Got entries from ClientsDataManager.timesheetEntries`);
+                    console.log('🔄 Got entries from ClientsDataManager.timesheetEntries');
                 } else if (client.timesheetEntries) {
                     // Fallback: check if client object has timesheet entries
                     allTimesheetEntries = client.timesheetEntries;
-                    console.log(`🔄 Got entries from client.timesheetEntries`);
+                    console.log('🔄 Got entries from client.timesheetEntries');
                 }
 
                 console.log(`🔄 Recalculating hours for all services. Total timesheet entries: ${allTimesheetEntries.length}`);
@@ -551,6 +555,46 @@
                 });
             }
 
+            // ════════════════════════════════════════════════════════════════
+            // 🎯 UX ENHANCEMENT: "All Services" Only for Hour Packages
+            // ════════════════════════════════════════════════════════════════
+            //
+            // PROBLEM:
+            // - For legal procedures with multiple stages (שלב א', שלב ב', etc.),
+            //   showing "all services" sums ALL stage hours together
+            // - Example: Stage A (100h) + Stage B (120h) + Stage C (80h) = 300h total
+            // - This is confusing - user wants to see ONE stage at a time
+            //
+            // SOLUTION:
+            // - Only add "all services" option for non-legal-procedure clients
+            // - For hour package clients: "all services" is useful
+            // - For legal procedure clients: force selection of specific stage
+            //
+            // IMPLEMENTATION:
+            // - Check if client is legal procedure (!isLegalProcedure)
+            // - Only then add "כל השירותים" option to servicesMap
+            // - Legal procedure clients will only see individual stage cards
+            //
+            // IMPACT:
+            // - Better UX: Clear, unambiguous service selection
+            // - Prevents confusion: No summed hours for multi-stage procedures
+            // - Maintains utility: Hour package clients keep "all" option
+            // ════════════════════════════════════════════════════════════════
+
+            // Add "All Services" option ONLY for non-legal-procedure clients
+            if (!isLegalProcedure && servicesMap.size > 1) {
+                servicesMap.set('כל השירותים', {
+                    displayName: 'כל השירותים',
+                    totalHours: 0, // Will be calculated in report
+                    remainingHours: 0,
+                    usedHours: 0,
+                    type: 'all',
+                    stage: null,
+                    status: 'active'
+                });
+                console.log('📋 Added "All Services" option for hour package client');
+            }
+
             // Create service cards with proper info
             Array.from(servicesMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([serviceKey, serviceInfo], index) => {
                 const card = this.createServiceCard(serviceInfo, index);
@@ -576,7 +620,7 @@
                 'b': "הליך משפטי - שלב ב'",
                 'c': "הליך משפטי - שלב ג'"
             };
-            return stageNames[stage] || stage || "הליך משפטי";
+            return stageNames[stage] || stage || 'הליך משפטי';
         }
 
         /**
@@ -771,7 +815,9 @@
                 c.style.borderColor = '#e5e7eb';
                 c.style.backgroundColor = 'white';
                 const badge = c.querySelector('.selected-badge');
-                if (badge) badge.style.display = 'none';
+                if (badge) {
+badge.style.display = 'none';
+}
             });
 
             // Mark this card as selected with subtle styling
@@ -779,7 +825,9 @@
             card.style.borderColor = '#94a3b8';
             card.style.backgroundColor = '#f8fafc';
             const badge = card.querySelector('.selected-badge');
-            if (badge) badge.style.display = 'flex';
+            if (badge) {
+badge.style.display = 'flex';
+}
 
             // Update hidden input with sanitized value
             this.selectedServiceInput.value = this.sanitizeInput(serviceName);
@@ -792,7 +840,9 @@
          * ניקוי קלט למניעת XSS
          */
         sanitizeInput(input) {
-            if (!input) return '';
+            if (!input) {
+return '';
+}
             return input.toString()
                 .replace(/[<>]/g, '') // Remove angle brackets
                 .replace(/javascript:/gi, '') // Remove javascript: protocol

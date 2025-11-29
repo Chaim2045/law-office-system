@@ -590,8 +590,22 @@
             let serviceRemainingHours = 0;
             let purchaseDate = '-';
 
-            if (formData.service === 'all') {
-                // Sum all services
+            // Check if client is legal procedure
+            const isLegalProcedure = client.procedureType === 'legal_procedure' ||
+                                    client.type === 'legal_procedure' ||
+                                    client.legalProcedure;
+
+            if (formData.service === 'all' || formData.service === 'כל השירותים') {
+                // 🚨 GUARD: Prevent "all services" for legal procedures
+                if (isLegalProcedure) {
+                    console.warn('⚠️ "All services" not allowed for legal procedure clients. Defaulting to first service.');
+                    // Default to first available service instead
+                    if (client.services && client.services.length > 0) {
+                        formData.service = client.services[0].name || client.services[0].displayName;
+                    }
+                }
+
+                // Sum all services (only for hour package clients now)
                 if (client.services && client.services.length > 0) {
                     serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
                     serviceUsedHours = client.services.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
@@ -602,7 +616,9 @@
                     serviceRemainingHours = client.hoursRemaining || 0;
                 }
                 purchaseDate = client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-';
-            } else {
+            }
+
+            if (formData.service !== 'all' && formData.service !== 'כל השירותים') {
                 // ═══ ENHANCED SERVICE MATCHING ═══
                 // Try multiple field combinations to find the service
                 // 🔍 CRITICAL: Check 'name' FIRST as it's the PRIMARY field in services array!
