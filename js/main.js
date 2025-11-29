@@ -56,7 +56,6 @@ import { ActionFlowManager } from './modules/ui-components.js';
 import * as DebugTools from './modules/debug-tools.js';
 
 
-
 /* ========================================
    MAIN APPLICATION CLASS
    ======================================== */
@@ -193,14 +192,15 @@ class LawOfficeManager {
         return;
       }
 
-      const snapshot = await window.firebaseDB
+      // ✅ OPTIMIZATION: Direct get instead of query (faster, cheaper)
+      // user.email is available immediately after Firebase Auth sign-in
+      const doc = await window.firebaseDB
         .collection('employees')
-        .where('authUID', '==', user.uid)
-        .limit(1)
+        .doc(user.email)  // Direct document access
         .get();
 
-      if (!snapshot.empty) {
-        const employee = snapshot.docs[0].data();
+      if (doc.exists) {
+        const employee = doc.data();
         this.currentUser = employee.email; // ✅ EMAIL for queries
         this.currentUsername = employee.username || employee.name; // Username for display
 
@@ -562,7 +562,7 @@ return false;
 
           // Re-filter and render
           this.filterTimesheetEntries();
-          this.renderTimesheet();
+          this.renderTimesheetView(); // ✅ Fixed: was renderTimesheet()
         },
         (error) => {
           console.error('❌ Timesheet listener error:', error);

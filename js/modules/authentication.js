@@ -77,19 +77,19 @@ async function handleLogin() {
     const userCredential = await firebase.auth()
       .signInWithEmailAndPassword(email, password);
 
+    const userEmail = userCredential.user.email;
     const uid = userCredential.user.uid;
 
-    // מצא את ה-employee לפי authUID
-    const snapshot = await window.firebaseDB.collection('employees')
-      .where('authUID', '==', uid)
-      .limit(1)
+    // ✅ OPTIMIZATION: Direct get instead of query (faster, cheaper)
+    // userCredential.user.email is available immediately after sign-in
+    const employeeDoc = await window.firebaseDB.collection('employees')
+      .doc(userEmail)  // Direct document access
       .get();
 
-    if (snapshot.empty) {
+    if (!employeeDoc.exists) {
       throw new Error('משתמש לא נמצא במערכת');
     }
 
-    const employeeDoc = snapshot.docs[0];
     const employee = employeeDoc.data();
 
     // ✅ שמור את המשתמש הנוכחי - email לשאילתות, username לתצוגה, uid לזיהוי
@@ -393,6 +393,11 @@ interfaceElements.classList.add('hidden');
     await window.PresenceSystem.disconnect();
   }
 
+  // 🔌 Cleanup realtime listeners to prevent permission errors
+  if (window.CaseNumberGenerator) {
+    window.CaseNumberGenerator.cleanup();
+  }
+
   // התנתק מ-Firebase Auth
   await firebase.auth().signOut();
 
@@ -547,9 +552,15 @@ function switchAuthMethod(method) {
   const otpSection = document.querySelector('.otp-input-section');
 
   // Hide all sections
-  if (passwordSection) passwordSection.classList.remove('active');
-  if (phoneSection) phoneSection.classList.remove('active');
-  if (otpSection) otpSection.classList.remove('active');
+  if (passwordSection) {
+passwordSection.classList.remove('active');
+}
+  if (phoneSection) {
+phoneSection.classList.remove('active');
+}
+  if (otpSection) {
+otpSection.classList.remove('active');
+}
 
   // Update method buttons
   document.querySelectorAll('.auth-method-btn').forEach(btn => {
@@ -558,14 +569,20 @@ function switchAuthMethod(method) {
 
   // Show selected section
   if (method === 'password') {
-    if (passwordSection) passwordSection.classList.add('active');
+    if (passwordSection) {
+passwordSection.classList.add('active');
+}
   } else if (method === 'sms') {
-    if (phoneSection) phoneSection.classList.add('active');
+    if (phoneSection) {
+phoneSection.classList.add('active');
+}
   }
 
   // Mark button as active
   const activeBtn = document.querySelector(`.auth-method-btn[data-method="${method}"]`);
-  if (activeBtn) activeBtn.classList.add('active');
+  if (activeBtn) {
+activeBtn.classList.add('active');
+}
 
   loginMethods.switchMethod(method);
 }
@@ -600,7 +617,9 @@ async function handleSMSLogin() {
     const phoneSection = document.querySelector('.phone-input-section');
     const otpSection = document.querySelector('.otp-input-section');
 
-    if (phoneSection) phoneSection.classList.remove('active');
+    if (phoneSection) {
+phoneSection.classList.remove('active');
+}
     if (otpSection) {
       otpSection.classList.add('active');
 
@@ -613,7 +632,9 @@ async function handleSMSLogin() {
 
       // Focus first OTP input
       const firstOTPInput = document.querySelector('.otp-input');
-      if (firstOTPInput) firstOTPInput.focus();
+      if (firstOTPInput) {
+firstOTPInput.focus();
+}
 
       // Start countdown timer
       startOTPTimer();
@@ -716,7 +737,9 @@ function startOTPTimer() {
   const timerElement = document.querySelector('.otp-timer-countdown');
   const resendBtn = document.querySelector('.resend-otp-btn');
 
-  if (resendBtn) resendBtn.disabled = true;
+  if (resendBtn) {
+resendBtn.disabled = true;
+}
 
   const interval = setInterval(() => {
     seconds--;
@@ -729,8 +752,12 @@ function startOTPTimer() {
 
     if (seconds <= 0) {
       clearInterval(interval);
-      if (timerElement) timerElement.textContent = 'פג תוקף';
-      if (resendBtn) resendBtn.disabled = false;
+      if (timerElement) {
+timerElement.textContent = 'פג תוקף';
+}
+      if (resendBtn) {
+resendBtn.disabled = false;
+}
     }
   }, 1000);
 
@@ -754,7 +781,9 @@ function setupOTPInputs() {
       if (index === otpInputs.length - 1) {
         let allFilled = true;
         otpInputs.forEach(inp => {
-          if (!inp.value) allFilled = false;
+          if (!inp.value) {
+allFilled = false;
+}
         });
 
         if (allFilled) {

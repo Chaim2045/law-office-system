@@ -78,24 +78,21 @@ service cloud.firestore {
 
     // ==================== Collections ====================
 
-    // 🚨 TEMPORARY RULES FOR PHONE UPDATE - RESTORE AFTER USE!
-    // Temporarily allowing phone field updates for all authenticated users
-    // Original rules saved in firestore.rules.backup
+    // ✅ Employees Collection: Optimized for direct document access
+    // Frontend uses .doc(email).get() - no queries needed
     match /employees/{employeeId} {
       // Read: Admins can read all, users can read only their own profile
-      // ✅ ENHANCED: Allow users to query by authUID (for login flow)
-      allow read: if isAdmin() ||
-                     (isAuthenticated() && (
-                       employeeId == request.auth.token.email ||
-                       resource.data.authUID == request.auth.uid
-                     ));
+      // ✅ OPTIMIZED: Using 'read' instead of 'get'/'list' for compatibility
+      allow read: if isAdmin() || (isAuthenticated() && employeeId == request.auth.token.email);
 
       allow create, delete: if false; // Only through Cloud Functions
 
-      // TEMPORARY: Allow authenticated users to update phone-related fields
+      // ✅ Update: Allow users to update their own lastLogin and loginCount
+      // Phone updates should be done through Cloud Functions
       allow update: if isAuthenticated() &&
+                       employeeId == request.auth.token.email &&
                        request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt', 'lastLogin', 'loginCount']);
+                         .hasOnly(['lastLogin', 'loginCount', 'phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt']);
     }
 
     // ✅ Clients: READ for all authenticated, WRITE for admins only

@@ -14,7 +14,10 @@ async function setAdminClaims() {
   for (const email of adminEmails) {
     try {
       const user = await admin.auth().getUserByEmail(email);
-      await admin.auth().setCustomUserClaims(user.uid, { role: 'admin' });
+      await admin.auth().setCustomUserClaims(user.uid, {
+        role: 'admin',
+        email: email  // ✅ Add email to Custom Claims for Cloud Functions
+      });
       console.log(`✅ Set admin claims for: ${email}`);
     } catch (error) {
       console.error(`❌ Error setting claims for ${email}:`, error.message);
