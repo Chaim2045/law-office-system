@@ -188,14 +188,19 @@
             // Add user button (only on employees page)
             const addUserButton = document.getElementById('addUserButton');
             if (addUserButton) {
-                addUserButton.addEventListener('click', () => {
+                // Remove any existing listeners by cloning the button
+                const newButton = addUserButton.cloneNode(true);
+                addUserButton.parentNode.replaceChild(newButton, addUserButton);
+
+                // Add single click listener
+                newButton.addEventListener('click', () => {
                     console.log('🔵 [FilterBar] Add User button clicked');
                     if (window.UsersActionsManager) {
                         window.UsersActionsManager.addNewUser();
                     } else {
                         console.error('❌ UsersActionsManager not available');
                     }
-                });
+                }, { once: false });
             }
 
             // Mark listeners as setup

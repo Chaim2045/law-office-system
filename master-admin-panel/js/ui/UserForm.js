@@ -22,6 +22,7 @@
             this.mode = 'create'; // 'create' or 'edit'
             this.modalId = null;
             this.validationErrors = {};
+            this.isOpening = false; // Prevent duplicate opens
         }
 
         /**
@@ -34,6 +35,32 @@
             console.log('🟠 [UserForm] open() called', { user: user ? user.email : 'new', mode: user ? 'edit' : 'create' });
             console.trace('📍 Call stack trace');
 
+            // Prevent duplicate opens
+            if (this.isOpening) {
+                console.warn('⚠️ [UserForm] Already opening, ignoring duplicate call');
+                return;
+            }
+
+            // Check if modal already open
+            if (this.modalId && window.ModalManager && window.ModalManager.getElement(this.modalId)) {
+                console.warn('⚠️ [UserForm] Modal already open, ignoring duplicate call');
+                return;
+            }
+
+            this.isOpening = true;
+
+            try {
+                await this._openInternal(user);
+            } finally {
+                this.isOpening = false;
+            }
+        }
+
+        /**
+         * Internal open implementation
+         * מימוש פנימי לפתיחה
+         */
+        async _openInternal(user) {
             // Check authentication
             if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
                 window.notify.error('יש להתחבר מחדש למערכת', 'שגיאת אימות');
