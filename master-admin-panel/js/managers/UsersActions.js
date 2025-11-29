@@ -335,6 +335,14 @@
          */
         addNewUser() {
             try {
+                console.log('🟢 [UsersActions] addNewUser() called');
+                console.trace('📍 Call stack trace');
+
+                // Check if UserForm exists
+                if (!window.UserForm) {
+                    throw new Error('UserForm לא נטען');
+                }
+
                 // Open UserForm in create mode
                 window.UserForm.open(null);
 

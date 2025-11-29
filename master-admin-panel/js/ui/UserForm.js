@@ -30,7 +30,35 @@
          *
          * @param {Object} user - User data (null for new user)
          */
-        open(user = null) {
+        async open(user = null) {
+            console.log('🟠 [UserForm] open() called', { user: user ? user.email : 'new', mode: user ? 'edit' : 'create' });
+            console.trace('📍 Call stack trace');
+
+            // Check authentication
+            if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
+                window.notify.error('יש להתחבר מחדש למערכת', 'שגיאת אימות');
+                console.error('❌ User not authenticated');
+                return;
+            }
+
+            // Check admin role (from custom claims)
+            try {
+                const idTokenResult = await window.firebaseAuth.currentUser.getIdTokenResult();
+                const userRole = idTokenResult.claims.role;
+
+                if (userRole !== 'admin') {
+                    window.notify.error('רק מנהלי מערכת יכולים להוסיף או לערוך משתמשים', 'אין הרשאה');
+                    console.error('❌ User is not admin. Role:', userRole);
+                    return;
+                }
+
+                console.log('✅ Admin permissions verified');
+            } catch (error) {
+                console.error('❌ Error checking permissions:', error);
+                window.notify.error('שגיאה בבדיקת הרשאות', 'שגיאה');
+                return;
+            }
+
             this.currentUser = user;
             this.mode = user ? 'edit' : 'create';
             this.validationErrors = {};
@@ -48,7 +76,7 @@
                 }
             });
 
-            console.log(`✅ UserForm opened in ${this.mode} mode`);
+            console.log(`✅ UserForm opened in ${this.mode} mode with modal ID: ${this.modalId}`);
         }
 
         /**
@@ -453,6 +481,16 @@ return;
             // Get form data
             const formData = this.getFormData();
 
+            // Get save button and disable it
+            const modal = window.ModalManager.getElement(this.modalId);
+            const saveBtn = modal ? modal.querySelector('#userFormSaveBtn') : null;
+            const originalBtnHTML = saveBtn ? saveBtn.innerHTML : '';
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>שומר...</span>';
+            }
+
             // Show loading notification
             const loadingId = window.notify.loading(
                 this.mode === 'create' ? 'יוצר משתמש חדש...' : 'שומר שינויים...'
@@ -487,8 +525,25 @@ return;
                 // Hide loading
                 window.notify.hide(loadingId);
 
-                // Show error
-                window.notify.error(error.message || 'אירעה שגיאה בביצוע הפעולה');
+                // Re-enable button
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalBtnHTML;
+                }
+
+                // Show detailed error
+                let errorMsg = 'אירעה שגיאה בביצוע הפעולה';
+                if (error.code === 'permission-denied') {
+                    errorMsg = 'אין לך הרשאות לבצע פעולה זו. פנה למנהל מערכת.';
+                } else if (error.code === 'already-exists') {
+                    errorMsg = 'משתמש עם כתובת מייל זו כבר קיים במערכת';
+                } else if (error.code === 'unauthenticated') {
+                    errorMsg = 'יש להתחבר מחדש למערכת';
+                } else if (error.message) {
+                    errorMsg = error.message;
+                }
+
+                window.notify.error(errorMsg, 'שגיאה');
             }
         }
 
@@ -524,14 +579,23 @@ return null;
                 // Call Cloud Function to create user
                 const createUserFunction = window.firebaseFunctions.httpsCallable('createUser');
 
-                const result = await createUserFunction({
-                    email: userData.email,
-                    password: userData.password,
-                    displayName: userData.displayName,
-                    username: userData.username || userData.email.split('@')[0],
-                    role: userData.role,
-                    phone: userData.phone || ''
+                // Create timeout promise (30 seconds)
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('פעולה נכשלה - זמן קצוב. החיבור לשרת איטי מדי.')), 30000);
                 });
+
+                // Race between function call and timeout
+                const result = await Promise.race([
+                    createUserFunction({
+                        email: userData.email,
+                        password: userData.password,
+                        displayName: userData.displayName,
+                        username: userData.username || userData.email.split('@')[0],
+                        role: userData.role,
+                        phone: userData.phone || ''
+                    }),
+                    timeoutPromise
+                ]);
 
                 console.log('✅ User created successfully:', result.data);
 
@@ -560,6 +624,9 @@ return null;
                     errorMessage = 'אין לך הרשאות לבצע פעולה זו';
                 } else if (error.code === 'unauthenticated') {
                     errorMessage = 'יש להתחבר מחדש למערכת';
+                } else if (error.message && (error.message.includes('timeout') || error.message.includes('קצוב'))) {
+                    // Timeout error - keep original message
+                    errorMessage = error.message;
                 }
 
                 throw new Error(errorMessage);

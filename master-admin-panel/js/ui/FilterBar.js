@@ -165,12 +165,16 @@
                 });
             }
 
-            // Add user button
+            // Add user button - prevent duplicate listeners
             const addUserButton = document.getElementById('addUserButton');
-            if (addUserButton) {
+            if (addUserButton && !addUserButton.dataset.listenerAdded) {
+                addUserButton.dataset.listenerAdded = 'true';
                 addUserButton.addEventListener('click', () => {
+                    console.log('🔵 [FilterBar] Add User button clicked');
                     if (window.UsersActionsManager) {
                         window.UsersActionsManager.addNewUser();
+                    } else {
+                        console.error('❌ UsersActionsManager not available');
                     }
                 });
             }
