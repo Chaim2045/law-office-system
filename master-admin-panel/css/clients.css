@@ -229,6 +229,29 @@
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+    /* Custom Scrollbar - Minimal & Clean */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(24, 119, 242, 0.15) transparent; /* Firefox */
+}
+
+/* Webkit Browsers (Chrome, Safari, Edge) */
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: rgba(24, 119, 242, 0.15);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(24, 119, 242, 0.3);
 }
 
 .modal-header {
@@ -773,4 +796,604 @@ select.form-input {
         max-width: 100%;
         margin: 0.5rem;
     }
+}
+
+/* ===== Client Management Modal ===== */
+.modal-large {
+    max-width: 550px;
+}
+
+.management-client-header {
+    background: white;
+    border-bottom: 3px solid var(--primary-blue);
+    padding: 1.25rem 0 1rem 0;
+    margin-bottom: 1.5rem;
+}
+
+.management-client-name {
+    font-size: 1.375rem;
+    font-weight: 600;
+    margin-bottom: 0.625rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--text-primary);
+}
+
+.management-client-name i {
+    color: var(--primary-blue);
+    font-size: 1.25rem;
+}
+
+.management-client-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.management-client-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.management-client-meta-item i {
+    color: var(--primary-blue);
+    font-size: 0.875rem;
+}
+
+.management-section {
+    margin-bottom: 1.75rem;
+}
+
+.management-section-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.management-section-title i {
+    color: var(--primary-blue);
+    font-size: 1rem;
+}
+
+/* Services List */
+.management-services-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.management-service-card {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--primary-blue);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.management-service-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-left-width: 4px;
+}
+
+.management-service-card.expanded {
+    border-left-width: 4px;
+    box-shadow: 0 2px 12px rgba(24, 119, 242, 0.1);
+}
+
+.management-service-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.625rem 0.875rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.management-service-header:hover {
+    background: rgba(24, 119, 242, 0.02);
+}
+
+.management-service-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.management-service-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.management-service-toggle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    transition: transform 0.2s;
+}
+
+.management-service-card.expanded .management-service-toggle {
+    transform: rotate(180deg);
+}
+
+.management-service-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.management-service-card.expanded .management-service-body {
+    max-height: 1000px;
+    transition: max-height 0.4s ease-in;
+}
+
+.management-service-content {
+    padding: 0.625rem 0.875rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.management-service-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(24, 119, 242, 0.08);
+    color: var(--primary-blue);
+    border: 1px solid rgba(24, 119, 242, 0.2);
+}
+
+.management-service-badge.hours {
+    background: rgba(24, 119, 242, 0.08);
+    color: var(--primary-blue);
+    border-color: rgba(24, 119, 242, 0.2);
+}
+
+.management-service-badge.legal {
+    background: rgba(24, 119, 242, 0.08);
+    color: var(--primary-blue);
+    border-color: rgba(24, 119, 242, 0.2);
+}
+
+.management-service-badge.fixed {
+    background: rgba(24, 119, 242, 0.08);
+    color: var(--primary-blue);
+    border-color: rgba(24, 119, 242, 0.2);
+}
+
+.management-service-info {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+}
+
+.management-service-info-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+}
+
+.management-service-info-label {
+    color: var(--text-secondary);
+}
+
+.management-service-info-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.management-service-info-value.critical {
+    color: var(--warning-yellow);
+}
+
+.management-service-info-value.blocked {
+    color: var(--danger-red);
+}
+
+.management-service-info-value.success {
+    color: var(--success-green);
+}
+
+/* Stages (for legal procedures) - Horizontal Timeline */
+.management-stages {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.management-stages-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Timeline Container */
+.management-stages-timeline {
+    position: relative;
+    padding: 0.5rem 0;
+}
+
+/* Progress Bar Background */
+.management-stages-progress {
+    position: absolute;
+    top: 1.5rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--border-color);
+    z-index: 0;
+}
+
+/* Progress Bar Fill */
+.management-stages-progress-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    transition: width 0.3s ease;
+}
+
+/* Stages List - Horizontal */
+.management-stages-list {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+}
+
+/* Individual Stage */
+.management-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+    position: relative;
+}
+
+.management-stage-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    background: white;
+    border: 2px solid var(--border-color);
+    transition: all 0.2s;
+    z-index: 2;
+}
+
+.management-stage.completed .management-stage-icon {
+    background: var(--success-green);
+    border-color: var(--success-green);
+    color: white;
+}
+
+.management-stage.active .management-stage-icon {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: white;
+    box-shadow: 0 0 0 4px rgba(24, 119, 242, 0.1);
+}
+
+.management-stage.pending .management-stage-icon {
+    background: white;
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.management-stage-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    text-align: center;
+}
+
+.management-stage-name {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    max-width: 80px;
+    line-height: 1.2;
+}
+
+.management-stage.completed .management-stage-name {
+    color: var(--text-secondary);
+}
+
+.management-stage.active .management-stage-name {
+    color: var(--primary-blue);
+    font-weight: 600;
+}
+
+.management-stage-hours {
+    font-size: 0.625rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.management-stage.active .management-stage-hours {
+    color: var(--primary-blue);
+}
+
+/* ===== Hours Service Progress Bar ===== */
+.management-hours-progress {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.management-hours-progress-title {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.management-hours-progress-title i {
+    font-size: 0.6875rem;
+    color: var(--primary-blue);
+}
+
+.management-hours-progress-bar {
+    position: relative;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.management-hours-progress-fill {
+    height: 100%;
+    transition: width 0.4s ease, background 0.3s ease;
+    border-radius: 3px;
+}
+
+.management-hours-progress-fill.success {
+    background: var(--success-green);
+}
+
+.management-hours-progress-fill.warning {
+    background: var(--warning-yellow);
+}
+
+.management-hours-progress-fill.critical {
+    background: var(--danger-red);
+}
+
+.management-hours-progress-fill.blocked {
+    background: var(--text-secondary);
+}
+
+.management-hours-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.management-hours-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+}
+
+.management-hours-stat-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.management-hours-stat-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.management-hours-stat-value.success {
+    color: var(--success-green);
+}
+
+.management-hours-stat-value.warning {
+    color: var(--warning-yellow);
+}
+
+.management-hours-stat-value.critical {
+    color: var(--danger-red);
+}
+
+.management-hours-stat-value.blocked {
+    color: var(--text-secondary);
+}
+
+.management-hours-percentage {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-right: auto;
+}
+
+/* Service Actions */
+.management-service-actions {
+    display: flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(229, 231, 235, 0.7);
+}
+
+.management-service-action-btn {
+    padding: 0.375rem 0.875rem;
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    background: white;
+    color: var(--text-primary);
+}
+
+.management-service-action-btn i {
+    font-size: 0.75rem;
+}
+
+.management-service-action-btn:hover {
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+    background: rgba(24, 119, 242, 0.02);
+}
+
+.management-service-action-btn.primary {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+.management-service-action-btn.primary:hover {
+    background: var(--primary-blue-dark);
+}
+
+.management-service-action-btn.secondary {
+    background: white;
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.management-service-action-btn.secondary:hover {
+    background: rgba(24, 119, 242, 0.05);
+}
+
+.management-service-action-btn.danger {
+    background: white;
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.management-service-action-btn.danger:hover {
+    color: var(--danger-red);
+    border-color: var(--danger-red);
+}
+
+/* Quick Actions - 2 Column Grid Minimalist */
+.management-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.management-action-btn {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.625rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    text-align: center;
+}
+
+.management-action-btn:hover {
+    border-color: var(--primary-blue);
+    background: rgba(24, 119, 242, 0.02);
+}
+
+.management-action-btn i {
+    font-size: 1.125rem;
+    color: var(--primary-blue);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(24, 119, 242, 0.08);
+    flex-shrink: 0;
+}
+
+.management-action-btn span {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.management-action-btn.danger:hover {
+    border-color: var(--danger-red);
+    background: rgba(220, 38, 38, 0.02);
+}
+
+.management-action-btn.danger i {
+    color: var(--text-secondary);
+    background: rgba(107, 114, 128, 0.08);
+}
+
+.management-action-btn.danger:hover i {
+    color: var(--danger-red);
+    background: rgba(220, 38, 38, 0.08);
+}
+
+/* Empty State */
+.management-empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-secondary);
+}
+
+.management-empty-state i {
+    font-size: 3rem;
+    color: var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.management-empty-state h4 {
+    font-size: 1.125rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.management-empty-state p {
+    font-size: 0.875rem;
 }

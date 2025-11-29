@@ -38,7 +38,7 @@
     <!-- ===== Master Admin Panel Styles ===== -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/clients.css">
+    <link rel="stylesheet" href="css/clients.css?v=20251127-HOURS-COMPACT">
 </head>
 
 <body class="admin-page">
@@ -343,6 +343,139 @@
         </div>
     </div>
 
+    <!-- ===== Client Management Modal ===== -->
+    <div id="clientManagementModal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-cog"></i>
+                    ניהול לקוח
+                </h2>
+                <button class="modal-close" id="closeManagementModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Client Info Header -->
+                <div id="managementClientInfo" class="management-client-header">
+                    <!-- Will be populated by JS -->
+                </div>
+
+                <!-- Active Services -->
+                <div class="management-section">
+                    <h3 class="management-section-title">
+                        <i class="fas fa-briefcase"></i>
+                        שירותים פעילים
+                    </h3>
+                    <div id="managementServicesList" class="management-services-list">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="management-section">
+                    <h3 class="management-section-title">
+                        <i class="fas fa-lightning-bolt"></i>
+                        פעולות מהירות
+                    </h3>
+                    <div class="management-actions-grid">
+                        <button class="management-action-btn" data-action="add-service">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>הוסף שירות חדש</span>
+                        </button>
+                        <button class="management-action-btn" data-action="renew-hours">
+                            <i class="fas fa-redo"></i>
+                            <span>חדש חבילת שעות</span>
+                        </button>
+                        <button class="management-action-btn" data-action="change-status">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span>שנה סטטוס</span>
+                        </button>
+                        <button class="management-action-btn danger" data-action="close-case">
+                            <i class="fas fa-archive"></i>
+                            <span>סגור תיק</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Add Service Modal ===== -->
+    <div id="addServiceModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-plus-circle"></i>
+                    הוסף שירות חדש
+                </h2>
+                <button class="modal-close" id="closeAddServiceModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Service Type Selection -->
+                <div class="form-group">
+                    <label for="serviceType">סוג שירות</label>
+                    <select id="serviceType" class="form-control">
+                        <option value="">בחר סוג שירות...</option>
+                        <option value="hours">שירות שעתי</option>
+                        <option value="legal_procedure">הליך משפטי</option>
+                        <option value="fixed">שירות קבוע</option>
+                    </select>
+                </div>
+
+                <!-- Service Name -->
+                <div class="form-group">
+                    <label for="serviceName">שם השירות</label>
+                    <input type="text" id="serviceName" class="form-control" placeholder="לדוגמה: ייעוץ משפטי">
+                </div>
+
+                <!-- Hours Service Fields -->
+                <div id="hoursServiceFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="totalHours">סה״כ שעות</label>
+                        <input type="number" id="totalHours" class="form-control" min="0" step="0.5" placeholder="0">
+                    </div>
+                </div>
+
+                <!-- Legal Procedure Fields -->
+                <div id="legalProcedureFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="procedureName">סוג ההליך</label>
+                        <input type="text" id="procedureName" class="form-control" placeholder="לדוגמה: תביעה אזרחית">
+                    </div>
+                    <div class="form-group">
+                        <label for="stagesInput">שלבים (מופרדים בפסיק)</label>
+                        <textarea id="stagesInput" class="form-control" rows="3" placeholder="לדוגמה: הגשת תביעה, כתב הגנה, דיון הוכחות, פסק דין"></textarea>
+                    </div>
+                </div>
+
+                <!-- Fixed Service Fields -->
+                <div id="fixedServiceFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="serviceDescription">תיאור השירות</label>
+                        <textarea id="serviceDescription" class="form-control" rows="2" placeholder="תיאור קצר של השירות"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="fixedPrice">מחיר קבוע (₪)</label>
+                        <input type="number" id="fixedPrice" class="form-control" min="0" step="100" placeholder="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelAddService">ביטול</button>
+                <button type="button" class="btn btn-primary" id="saveNewService">
+                    <i class="fas fa-check"></i>
+                    הוסף שירות
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== Loading Overlay ===== -->
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="loading-spinner">
@@ -361,7 +494,8 @@
 
     <!-- ===== Clients Management Scripts ===== -->
     <script src="js/managers/ClientsDataManager.js?v=20251123v1"></script>
-    <script src="js/ui/ClientsTable.js?v=20251123v1"></script>
+    <script src="js/ui/ClientsTable.js?v=20251127v2"></script>
+    <script src="js/ui/ClientManagementModal.js?v=20251127-FINAL">
     <script src="js/ui/ClientReportModal.js?v=20251127v1"></script>
     <script src="js/managers/ReportGenerator.js?v=20251127v2"></script>
 
@@ -415,6 +549,13 @@
                     window.ClientReportModal.init();
                 } else {
                     console.error('❌ ClientReportModal not loaded');
+                }
+
+                // Initialize Management Modal
+                if (window.ClientManagementModal) {
+                    window.ClientManagementModal.init();
+                } else {
+                    console.error('❌ ClientManagementModal not loaded');
                 }
 
                 console.log('✅ Clients Management Page - Ready');

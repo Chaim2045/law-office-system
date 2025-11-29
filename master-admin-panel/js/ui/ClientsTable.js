@@ -165,13 +165,13 @@
                     <td>${lastActivity}</td>
                     <td>
                         <div class="table-actions">
-                            <button class="btn-action btn-action-primary" data-action="report" data-client-id="${client.id}">
-                                <i class="fas fa-file-alt"></i>
-                                <span>הפק דוח</span>
+                            <button class="btn-action btn-action-primary" data-action="manage" data-client-id="${client.id}">
+                                <i class="fas fa-cog"></i>
+                                <span>ניהול</span>
                             </button>
-                            <button class="btn-action btn-action-secondary" data-action="details" data-client-id="${client.id}">
-                                <i class="fas fa-eye"></i>
-                                <span>פרטים</span>
+                            <button class="btn-action btn-action-secondary" data-action="report" data-client-id="${client.id}">
+                                <i class="fas fa-file-alt"></i>
+                                <span>דוח</span>
                             </button>
                         </div>
                     </td>
@@ -332,6 +332,16 @@
          * צרף מאזיני אירועים לשורות
          */
         attachRowEventListeners() {
+            // Manage buttons
+            const manageButtons = document.querySelectorAll('[data-action="manage"]');
+            manageButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const clientId = btn.getAttribute('data-client-id');
+                    this.handleManageClick(clientId);
+                });
+            });
+
             // Report buttons
             const reportButtons = document.querySelectorAll('[data-action="report"]');
             reportButtons.forEach(btn => {
@@ -341,16 +351,34 @@
                     this.handleReportClick(clientId);
                 });
             });
+        }
 
-            // Details buttons
-            const detailsButtons = document.querySelectorAll('[data-action="details"]');
-            detailsButtons.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const clientId = btn.getAttribute('data-client-id');
-                    this.handleDetailsClick(clientId);
-                });
-            });
+        /**
+         * Handle manage click
+         * טיפול בלחיצה על ניהול לקוח
+         */
+        handleManageClick(clientId) {
+            console.log('⚙️ Opening management modal for client:', clientId);
+
+            // Get client data
+            const client = this.dataManager.getClientById(clientId);
+            if (!client) {
+                console.error('❌ Client not found:', clientId);
+                if (window.notify) {
+                    window.notify.error('לקוח לא נמצא', 'שגיאה');
+                }
+                return;
+            }
+
+            // Open management modal
+            if (window.ClientManagementModal) {
+                window.ClientManagementModal.open(client, this.dataManager);
+            } else {
+                console.error('❌ ClientManagementModal not loaded');
+                if (window.notify) {
+                    window.notify.error('מערכת הניהול לא נטענה', 'שגיאה');
+                }
+            }
         }
 
         /**

@@ -62,8 +62,12 @@
                 // Load all data
                 await this.loadAllData();
 
+                // ✅ Setup real-time listeners for automatic updates
+                this.setupRealtimeListeners();
+
                 console.log('✅ ClientsDataManager: Initialized successfully');
                 console.log(`📊 Loaded ${this.clients.length} clients`);
+                console.log('👂 Real-time listeners active');
 
                 return { success: true };
 
