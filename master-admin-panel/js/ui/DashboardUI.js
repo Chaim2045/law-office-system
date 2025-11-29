@@ -110,13 +110,10 @@
                         <!-- Statistics Cards -->
                         <div id="statsContainer" class="stats-container" style="display: none;"></div>
 
-                        <!-- Action Bar with Add User Button -->
+                        <!-- Action Bar -->
                         <div id="actionBar" class="action-bar" style="display: none;">
                             <h2 class="section-title">ניהול עובדים</h2>
-                            <button class="btn-primary btn-add-user" id="addUserButton">
-                                <i class="fas fa-user-plus"></i>
-                                <span>הוסף עובד חדש</span>
-                            </button>
+                            <!-- Add User button moved to FilterBar to avoid duplicate IDs -->
                         </div>
 
                         <!-- Filter Bar -->
@@ -147,11 +144,7 @@
                 retryButton.addEventListener('click', () => this.handleRetry());
             }
 
-            // Add User button
-            const addUserButton = document.getElementById('addUserButton');
-            if (addUserButton) {
-                addUserButton.addEventListener('click', () => this.handleAddUser());
-            }
+            // Add User button removed - now handled by FilterBar to avoid duplicate IDs
 
             // Listen to filter changes
             window.addEventListener('filter:changed', (e) => this.handleFilterChange(e.detail));
@@ -445,18 +438,18 @@ el.style.display = 'none';
          * Handle add user
          * טיפול בהוספת משתמש חדש
          */
+        /**
+         * @deprecated This method is no longer used.
+         * Add User button moved to FilterBar to avoid duplicate ID conflicts.
+         * FilterBar now handles the "Add Employee" button and calls UsersActionsManager.addNewUser()
+         */
         handleAddUser() {
-            console.log('➕ Opening Add User form...');
+            console.warn('⚠️ DashboardUI.handleAddUser() is deprecated. Use FilterBar button instead.');
 
-            // Check if UserForm exists
-            if (!window.UserForm) {
-                console.error('❌ UserForm not loaded');
-                window.notify.error('טופס משתמש לא נטען. אנא רענן את הדף', 'שגיאה');
-                return;
+            // Fallback: redirect to UsersActionsManager
+            if (window.UsersActionsManager) {
+                window.UsersActionsManager.addNewUser();
             }
-
-            // Open user form in create mode
-            window.UserForm.open(null);
         }
 
         /**
