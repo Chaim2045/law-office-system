@@ -122,6 +122,64 @@
         }
 
         /**
+         * Calculate remaining hours from services array
+         * חישוב שעות נותרות מתוך מערך השירותים
+         */
+        calculateRemainingHoursFromServices(client) {
+            if (!client.services || client.services.length === 0) {
+                return client.hoursRemaining || 0;
+            }
+
+            let totalRemaining = 0;
+
+            client.services.forEach(service => {
+                // Check if this is a legal procedure with stages
+                if (service.type === 'legal_procedure' && service.stages && Array.isArray(service.stages)) {
+                    // For legal procedures: sum only ACTIVE stages
+                    service.stages.forEach(stage => {
+                        if (stage.status === 'active') {
+                            totalRemaining += (stage.hoursRemaining || 0);
+                        }
+                    });
+                } else {
+                    // For regular services: add their hoursRemaining
+                    totalRemaining += (service.hoursRemaining || 0);
+                }
+            });
+
+            return totalRemaining;
+        }
+
+        /**
+         * Calculate total hours from services array
+         * חישוב סך השעות מתוך מערך השירותים
+         */
+        calculateTotalHoursFromServices(client) {
+            if (!client.services || client.services.length === 0) {
+                return client.totalHours || 0;
+            }
+
+            let totalHours = 0;
+
+            client.services.forEach(service => {
+                // Check if this is a legal procedure with stages
+                if (service.type === 'legal_procedure' && service.stages && Array.isArray(service.stages)) {
+                    // For legal procedures: sum only ACTIVE stages
+                    service.stages.forEach(stage => {
+                        if (stage.status === 'active') {
+                            totalHours += (stage.totalHours || 0);
+                        }
+                    });
+                } else {
+                    // For regular services: add their totalHours
+                    totalHours += (service.totalHours || service.hours || 0);
+                }
+            });
+
+            return totalHours;
+        }
+
+        /**
          * Load clients from Firestore
          * טעינת לקוחות
          */
@@ -131,23 +189,30 @@
 
                 const snapshot = await this.db.collection('clients').get();
 
-                this.clients = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    // Ensure we have the correct field names
-                    fullName: doc.data().fullName || doc.data().clientName || '',
-                    caseNumber: doc.data().caseNumber || '',
-                    type: doc.data().type || 'hours',
-                    totalHours: doc.data().totalHours || 0,
-                    hoursRemaining: doc.data().hoursRemaining || 0,
-                    isBlocked: doc.data().isBlocked || false,
-                    isCritical: doc.data().isCritical || false,
-                    status: doc.data().status || 'active',
-                    assignedTo: doc.data().assignedTo || [],
-                    services: doc.data().services || [],
-                    createdAt: doc.data().createdAt,
-                    lastActivity: doc.data().lastActivity || doc.data().lastModifiedAt,
-                }));
+                this.clients = snapshot.docs.map(doc => {
+                    const clientData = doc.data();
+                    const client = {
+                        id: doc.id,
+                        ...clientData,
+                        // Ensure we have the correct field names
+                        fullName: clientData.fullName || clientData.clientName || '',
+                        caseNumber: clientData.caseNumber || '',
+                        type: clientData.type || 'hours',
+                        isBlocked: clientData.isBlocked || false,
+                        isCritical: clientData.isCritical || false,
+                        status: clientData.status || 'active',
+                        assignedTo: clientData.assignedTo || [],
+                        services: clientData.services || [],
+                        createdAt: clientData.createdAt,
+                        lastActivity: clientData.lastActivity || clientData.lastModifiedAt
+                    };
+
+                    // Calculate hours dynamically from services
+                    client.totalHours = this.calculateTotalHoursFromServices(client);
+                    client.hoursRemaining = this.calculateRemainingHoursFromServices(client);
+
+                    return client;
+                });
 
                 console.log(`✅ Loaded ${this.clients.length} clients`);
 
@@ -173,7 +238,7 @@
                     id: doc.id,
                     email: doc.data().email,
                     username: doc.data().username || doc.data().name || '',
-                    role: doc.data().role || 'employee',
+                    role: doc.data().role || 'employee'
                 }));
 
                 console.log(`✅ Loaded ${this.employees.length} employees`);
@@ -202,7 +267,7 @@
 
                 this.timesheetEntries = snapshot.docs.map(doc => ({
                     id: doc.id,
-                    ...doc.data(),
+                    ...doc.data()
                 }));
 
                 console.log(`✅ Loaded ${this.timesheetEntries.length} timesheet entries`);
@@ -229,7 +294,7 @@
 
                 this.budgetTasks = snapshot.docs.map(doc => ({
                     id: doc.id,
-                    ...doc.data(),
+                    ...doc.data()
                 }));
 
                 console.log(`✅ Loaded ${this.budgetTasks.length} budget tasks`);
@@ -251,7 +316,7 @@
                 total: this.clients.length,
                 active: this.clients.filter(c => c.status === 'active').length,
                 blocked: this.clients.filter(c => c.isBlocked === true).length,
-                critical: this.clients.filter(c => c.isCritical === true && !c.isBlocked).length,
+                critical: this.clients.filter(c => c.isCritical === true && !c.isBlocked).length
             };
 
             // Update stats cards
@@ -365,7 +430,7 @@
                     totalItems: this.filteredClients.length,
                     itemsPerPage: this.itemsPerPage,
                     startIndex: start + 1,
-                    endIndex: Math.min(end, this.filteredClients.length),
+                    endIndex: Math.min(end, this.filteredClients.length)
                 }
             };
         }
