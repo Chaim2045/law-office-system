@@ -190,6 +190,31 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    // ✅ Messages: Admin-to-user messaging system
+    // Create: Only admins can send messages
+    // Read: Users can read messages sent to them OR broadcast messages
+    // Update: Users can update read status (metadata fields only)
+    match /messages/{messageId} {
+      // Admins can create messages
+      allow create: if isAdmin();
+
+      // Users can read their own messages OR broadcast messages
+      allow read: if isAuthenticated() && (
+        resource.data.to.uid == request.auth.uid ||
+        resource.data.toAll == true ||
+        (resource.data.toRoles != null && request.auth.token.role in resource.data.toRoles)
+      );
+
+      // Users can update only the 'metadata' field (read status)
+      allow update: if isAuthenticated() &&
+                    resource.data.to.uid == request.auth.uid &&
+                    request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['metadata']);
+
+      // Only admins can delete messages
+      allow delete: if isAdmin();
+    }
+
     // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;
