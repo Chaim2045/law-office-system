@@ -30,7 +30,9 @@ export class ClientValidation {
     }
 
     for (const client of this.manager.clients) {
-      if (!client) continue;
+      if (!client) {
+continue;
+}
 
       if (client.isBlocked) {
         this.blockedClients.add(client.fullName);
@@ -39,8 +41,8 @@ export class ClientValidation {
           hoursRemaining: client.hoursRemaining || 0
         });
       } else if (
-        client.type === "hours" &&
-        typeof client.hoursRemaining === "number" &&
+        client.type === 'hours' &&
+        typeof client.hoursRemaining === 'number' &&
         client.hoursRemaining <= 5 &&
         client.hoursRemaining > 0
       ) {
@@ -52,59 +54,7 @@ export class ClientValidation {
       }
     }
 
-    this.updateClientSelects();
     this.updateNotificationBell();
-  }
-
-  updateClientSelects() {
-    const selects = ["budgetClientSelect", "timesheetClientSelect"];
-
-    selects.forEach((selectId) => {
-      const select = document.getElementById(selectId);
-      if (!select) return;
-
-      const fragment = document.createDocumentFragment();
-
-      const defaultOption = document.createElement("option");
-      defaultOption.value = "";
-      defaultOption.textContent = "בחר לקוח...";
-      fragment.appendChild(defaultOption);
-
-      if (!this.manager.clients) return;
-
-      this.manager.clients.forEach((client) => {
-        if (!client) return;
-
-        const option = document.createElement("option");
-        option.value = client.fullName;
-
-        if (this.blockedClients.has(client.fullName)) {
-          option.textContent = `🚫 ${client.fullName} - נגמרו השעות`;
-          option.disabled = true;
-          option.className = "blocked-client";
-        } else {
-          let displayText = client.fullName;
-          if (
-            client.type === "hours" &&
-            typeof client.hoursRemaining === "number"
-          ) {
-            const hoursText =
-              client.hoursRemaining <= 5
-                ? `🚨 ${client.hoursRemaining.toFixed(1)} שע' נותרות`
-                : `${client.hoursRemaining.toFixed(1)} שע' נותרות`;
-            displayText += ` (${hoursText})`;
-          } else if (client.type === "fixed") {
-            displayText += " (פיקס)";
-          }
-          option.textContent = displayText;
-        }
-
-        fragment.appendChild(option);
-      });
-
-      select.innerHTML = "";
-      select.appendChild(fragment);
-    });
   }
 
   updateNotificationBell() {
@@ -114,7 +64,7 @@ export class ClientValidation {
     const urgentTasks = (this.manager.budgetTasks || []).filter(
       (task) =>
         task &&
-        task.status !== "הושלם" &&
+        task.status !== 'הושלם' &&
         task.deadline &&
         task.description &&
         new Date(task.deadline) <= oneDayFromNow
@@ -130,7 +80,7 @@ export class ClientValidation {
     }
   }
 
-  validateClientSelection(clientName, action = "רישום") {
+  validateClientSelection(clientName, action = 'רישום') {
     if (this.blockedClients.has(clientName)) {
       this.showBlockedClientDialog(clientName, action);
       return false;
@@ -139,15 +89,15 @@ export class ClientValidation {
   }
 
   showBlockedClientDialog(clientName, action) {
-    const overlay = document.createElement("div");
-    overlay.className = "popup-overlay";
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
 
-    const clientNameDiv = document.createElement("div");
-    clientNameDiv.className = "client-name";
+    const clientNameDiv = document.createElement('div');
+    clientNameDiv.className = 'client-name';
     clientNameDiv.textContent = clientName;
 
-    const actionBlockedDiv = document.createElement("div");
-    actionBlockedDiv.className = "action-blocked";
+    const actionBlockedDiv = document.createElement('div');
+    actionBlockedDiv.className = 'action-blocked';
     actionBlockedDiv.textContent = `לא ניתן לבצע ${action} עבור לקוח זה`;
 
     overlay.innerHTML = `

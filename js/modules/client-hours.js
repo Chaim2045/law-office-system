@@ -14,25 +14,27 @@
 async function calculateClientHoursAccurate(clientName) {
   try {
     const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
+    if (!db) {
+throw new Error('Firebase לא מחובר');
+}
 
 
     // Get client data
     const clientsSnapshot = await db
-      .collection("clients")
-      .where("fullName", "==", clientName)
+      .collection('clients')
+      .where('fullName', '==', clientName)
       .get();
 
     if (clientsSnapshot.empty) {
-      throw new Error("לקוח לא נמצא");
+      throw new Error('לקוח לא נמצא');
     }
 
     const client = clientsSnapshot.docs[0].data();
 
     // Get all timesheet entries for this client (from ALL users)
     const timesheetSnapshot = await db
-      .collection("timesheet_entries")
-      .where("clientName", "==", clientName)
+      .collection('timesheet_entries')
+      .where('clientName', '==', clientName)
       .get();
 
     let totalMinutesUsed = 0;
@@ -41,7 +43,7 @@ async function calculateClientHoursAccurate(clientName) {
     timesheetSnapshot.forEach((doc) => {
       const entry = doc.data();
       const minutes = entry.minutes || 0;
-      const lawyer = entry.employee || entry.lawyer || "לא ידוע";
+      const lawyer = entry.employee || entry.lawyer || 'לא ידוע';
 
       totalMinutesUsed += minutes;
 
@@ -61,16 +63,16 @@ async function calculateClientHoursAccurate(clientName) {
     const remainingHours = remainingMinutes / 60;
 
     // Determine status
-    let status = "פעיל";
+    let status = 'פעיל';
     let isBlocked = false;
     let isCritical = false;
 
-    if (client.type === "hours") {
+    if (client.type === 'hours') {
       if (remainingMinutes <= 0) {
-        status = "חסום - נגמרו השעות";
+        status = 'חסום - נגמרו השעות';
         isBlocked = true;
       } else if (remainingHours <= 5) {
-        status = "קריטי - מעט שעות";
+        status = 'קריטי - מעט שעות';
         isCritical = true;
       }
     }
@@ -88,13 +90,13 @@ async function calculateClientHoursAccurate(clientName) {
       entriesCount: timesheetSnapshot.size,
       entriesByLawyer,
       uniqueLawyers: Object.keys(entriesByLawyer),
-      lastCalculated: new Date(),
+      lastCalculated: new Date()
     };
 
 
     return result;
   } catch (error) {
-    console.error("שגיאה בחישוב שעות:", error);
+    console.error('שגיאה בחישוב שעות:', error);
     throw error;
   }
 }
@@ -105,26 +107,28 @@ async function calculateClientHoursAccurate(clientName) {
 async function updateClientHoursImmediately(clientName, minutesUsed) {
   try {
     const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
+    if (!db) {
+throw new Error('Firebase לא מחובר');
+}
 
 
     // Find the client
     const clientsSnapshot = await db
-      .collection("clients")
-      .where("fullName", "==", clientName)
+      .collection('clients')
+      .where('fullName', '==', clientName)
       .get();
 
     if (clientsSnapshot.empty) {
       console.warn(`⚠️ לקוח ${clientName} לא נמצא - לא ניתן לעדכן שעות`);
-      return { success: false, message: "לקוח לא נמצא" };
+      return { success: false, message: 'לקוח לא נמצא' };
     }
 
     const clientDoc = clientsSnapshot.docs[0];
     const clientData = clientDoc.data();
 
     // Only for hours-based clients
-    if (clientData.type !== "hours") {
-      return { success: true, message: "לקוח פיקס - לא נדרש עדכון" };
+    if (clientData.type !== 'hours') {
+      return { success: true, message: 'לקוח פיקס - לא נדרש עדכון' };
     }
 
     // Recalculate using accurate function
@@ -138,7 +142,7 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
       lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
       totalMinutesUsed: hoursData.totalMinutesUsed,
       isBlocked: hoursData.isBlocked,
-      isCritical: hoursData.isCritical,
+      isCritical: hoursData.isCritical
     });
 
 
@@ -176,11 +180,11 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
       newHoursRemaining: hoursData.remainingHours,
       newMinutesRemaining: hoursData.remainingMinutes,
       isBlocked: hoursData.isBlocked,
-      isCritical: hoursData.isCritical,
+      isCritical: hoursData.isCritical
     };
   } catch (error) {
-    console.error("❌ שגיאה בעדכון שעות לקוח:", error);
-    throw new Error("שגיאה בעדכון שעות: " + error.message);
+    console.error('❌ שגיאה בעדכון שעות לקוח:', error);
+    throw new Error('שגיאה בעדכון שעות: ' + error.message);
   }
 }
 
@@ -207,7 +211,9 @@ class ClientValidation {
     }
 
     for (const client of this.manager.clients) {
-      if (!client) continue;
+      if (!client) {
+continue;
+}
 
       if (client.isBlocked) {
         this.blockedClients.add(client.fullName);
@@ -216,8 +222,8 @@ class ClientValidation {
           hoursRemaining: window.calculateRemainingHours(client)
         });
       } else if (
-        client.type === "hours" &&
-        typeof client.hoursRemaining === "number"
+        client.type === 'hours' &&
+        typeof client.hoursRemaining === 'number'
       ) {
         const hours = window.calculateRemainingHours(client);
         if (hours <= 5 && hours > 0) {
@@ -230,60 +236,7 @@ class ClientValidation {
       }
     }
 
-    this.updateClientSelects();
     this.updateNotificationBell();
-  }
-
-  updateClientSelects() {
-    const selects = ["budgetClientSelect", "timesheetClientSelect"];
-
-    selects.forEach((selectId) => {
-      const select = document.getElementById(selectId);
-      if (!select) return;
-
-      const fragment = document.createDocumentFragment();
-
-      const defaultOption = document.createElement("option");
-      defaultOption.value = "";
-      defaultOption.textContent = "בחר לקוח...";
-      fragment.appendChild(defaultOption);
-
-      if (!this.manager.clients) return;
-
-      this.manager.clients.forEach((client) => {
-        if (!client) return;
-
-        const option = document.createElement("option");
-        option.value = client.fullName;
-
-        if (this.blockedClients.has(client.fullName)) {
-          option.textContent = `🚫 ${client.fullName} - נגמרו השעות`;
-          option.disabled = true;
-          option.className = "blocked-client";
-        } else {
-          let displayText = client.fullName;
-          if (
-            client.type === "hours" &&
-            typeof client.hoursRemaining === "number"
-          ) {
-            const hoursRemaining = window.calculateRemainingHours(client);
-            const hoursText =
-              hoursRemaining <= 5
-                ? `🚨 ${hoursRemaining.toFixed(1)} שע' נותרות`
-                : `${hoursRemaining.toFixed(1)} שע' נותרות`;
-            displayText += ` (${hoursText})`;
-          } else if (client.type === "fixed") {
-            displayText += " (פיקס)";
-          }
-          option.textContent = displayText;
-        }
-
-        fragment.appendChild(option);
-      });
-
-      select.innerHTML = "";
-      select.appendChild(fragment);
-    });
   }
 
   updateNotificationBell() {
@@ -293,7 +246,7 @@ class ClientValidation {
     const urgentTasks = (this.manager.budgetTasks || []).filter(
       (task) =>
         task &&
-        task.status !== "הושלם" &&
+        task.status !== 'הושלם' &&
         task.deadline &&
         task.description &&
         new Date(task.deadline) <= oneDayFromNow
@@ -306,7 +259,7 @@ class ClientValidation {
     );
   }
 
-  validateClientSelection(clientName, action = "רישום") {
+  validateClientSelection(clientName, action = 'רישום') {
     if (this.blockedClients.has(clientName)) {
       this.showBlockedClientDialog(clientName, action);
       return false;
@@ -315,15 +268,15 @@ class ClientValidation {
   }
 
   showBlockedClientDialog(clientName, action) {
-    const overlay = document.createElement("div");
-    overlay.className = "popup-overlay";
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
 
-    const clientNameDiv = document.createElement("div");
-    clientNameDiv.className = "client-name";
+    const clientNameDiv = document.createElement('div');
+    clientNameDiv.className = 'client-name';
     clientNameDiv.textContent = clientName;
 
-    const actionBlockedDiv = document.createElement("div");
-    actionBlockedDiv.className = "action-blocked";
+    const actionBlockedDiv = document.createElement('div');
+    actionBlockedDiv.className = 'action-blocked';
     actionBlockedDiv.textContent = `לא ניתן לבצע ${action} עבור לקוח זה`;
 
     overlay.innerHTML = `
