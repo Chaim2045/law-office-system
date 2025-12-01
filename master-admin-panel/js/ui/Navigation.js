@@ -69,6 +69,10 @@
                         `).join('')}
                     </ul>
                     <div class="nav-user">
+                        <button class="btn-send-message" id="navSendMessageBtn" title="שלח הודעה לעובדים">
+                            <i class="fas fa-envelope"></i>
+                            <span>שלח הודעה</span>
+                        </button>
                         <button class="btn-logout" id="navLogoutBtn">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>יציאה</span>
@@ -82,6 +86,9 @@
 
             // Setup logout
             this.setupLogout();
+
+            // Setup send message button
+            this.setupSendMessage();
         }
 
         /**
@@ -154,6 +161,25 @@
                     gap: 1rem;
                 }
 
+                .btn-send-message {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem 1.25rem;
+                    background: rgba(255, 255, 255, 0.15);
+                    color: white;
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    font-size: 0.875rem;
+                }
+
+                .btn-send-message:hover {
+                    background: rgba(255, 255, 255, 0.25);
+                    transform: translateY(-1px);
+                }
+
                 .btn-logout {
                     display: flex;
                     align-items: center;
@@ -215,6 +241,26 @@
                 } catch (error) {
                     console.error('❌ Error signing out:', error);
                 }
+            });
+        }
+
+        /**
+         * Setup send message button
+         * הגדרת כפתור שליחת הודעה
+         */
+        setupSendMessage() {
+            const sendMessageBtn = document.getElementById('navSendMessageBtn');
+            if (!sendMessageBtn) return;
+
+            sendMessageBtn.addEventListener('click', () => {
+                if (!window.messageComposer) {
+                    console.error('❌ MessageComposer not initialized');
+                    alert('מערכת ההודעות לא זמינה כרגע');
+                    return;
+                }
+
+                console.log('📧 Opening message composer from navigation');
+                window.messageComposer.showComposeDialog();
             });
         }
     }

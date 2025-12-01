@@ -459,7 +459,7 @@
         </div>
 
         <!-- Hours Info (if applicable) -->
-        ${client.type === 'hours' ? `
+        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' || formData.service ? `
         <div class="section">
             <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
             <div class="info-grid">
@@ -505,9 +505,9 @@
                         <th>תיאור פעולה</th>
                         <th>צוות משפטי</th>
                         <th>דקות</th>
-                        ${client.type === 'hours' ? '<th>דקות מצטבר</th>' : ''}
-                        ${client.type === 'hours' ? '<th>דקות נותרות</th>' : ''}
-                        ${client.type === 'hours' ? '<th>שעות נותרות</th>' : ''}
+                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות מצטבר</th>' : ''}
+                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות נותרות</th>' : ''}
+                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>שעות נותרות</th>' : ''}
                         <th>הערות</th>
                     </tr>
                 </thead>
@@ -743,7 +743,7 @@ return true;
             // ═══ ENHANCED SERVICE MATCHING (same as renderServiceInfo) ═══
             let serviceTotalMinutes = 0;
 
-            if (client.type === 'hours') {
+            if (client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') {
                 if (formData.service === 'all') {
                     // If "all services" selected, sum up all service hours
                     if (client.services && client.services.length > 0) {
@@ -810,7 +810,7 @@ return true;
                 const remainingHours = remainingMinutes / 60;
 
                 let balanceClass = '';
-                if (client.type === 'hours') {
+                if (client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') {
                     if (remainingMinutes <= 0) {
                         balanceClass = 'danger';
                     } else if (remainingMinutes < serviceTotalMinutes * 0.2) {
@@ -826,9 +826,9 @@ return true;
                         <td>${entry.taskDescription || entry.description || '-'}</td>
                         <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
                         <td class="highlight">${minutes}</td>
-                        ${client.type === 'hours' ? `<td>${accumulatedMinutes}</td>` : ''}
-                        ${client.type === 'hours' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
-                        ${client.type === 'hours' ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
+                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td>${accumulatedMinutes}</td>` : ''}
+                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
+                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
                         <td>${entry.notes || '-'}</td>
                     </tr>
                 `;

@@ -821,11 +821,14 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       const serviceId = `srv_${Date.now()}`;
       const packageId = `pkg_${Date.now()}`;
 
+      // ✅ שם שירות דינמי - אם לא נשלח, יצור מספר אוטומטי
+      const serviceName = data.serviceName || `תוכנית שעות #${clientData.totalServices + 1}`;
+
       clientData.services = [
         {
           id: serviceId,
           type: 'hours',
-          name: data.serviceName || 'תוכנית שעות ראשית',
+          name: serviceName,
           description: data.description || '',
           status: 'active',
           createdAt: now,

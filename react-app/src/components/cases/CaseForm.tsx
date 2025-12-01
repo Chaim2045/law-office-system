@@ -298,9 +298,12 @@ export const CaseForm: React.FC<CaseFormProps> = ({
               type="text"
               value={formData.serviceName || ''}
               onChange={(e) => handleChange('serviceName', e.target.value)}
-              placeholder="תוכנית שעות ראשית"
+              placeholder="לדוגמה: ייעוץ שוטף, ליטיגציה, הליך פלילי"
               disabled={loading}
             />
+            <small style={{ display: 'block', marginTop: '4px', color: '#6b7280', fontSize: '12px' }}>
+              אם תשאיר ריק, המערכת תיצור שם אוטומטי: "תוכנית שעות #1"
+            </small>
           </div>
 
           <div className="form-group">

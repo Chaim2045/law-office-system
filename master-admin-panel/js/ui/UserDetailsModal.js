@@ -1480,6 +1480,10 @@ return -1;
          */
         renderFooter() {
             return `
+                <button class="btn btn-primary" id="userDetailsSendMessageBtn">
+                    <i class="fas fa-envelope"></i>
+                    <span>שלח הודעה</span>
+                </button>
                 <button class="btn btn-secondary" id="userDetailsCloseBtn">
                     <i class="fas fa-times"></i>
                     <span>סגור</span>
@@ -1502,6 +1506,14 @@ return;
             if (closeBtn) {
                 closeBtn.addEventListener('click', () => {
                     this.close();
+                });
+            }
+
+            // Send Message button
+            const sendMessageBtn = modal.querySelector('#userDetailsSendMessageBtn');
+            if (sendMessageBtn) {
+                sendMessageBtn.addEventListener('click', () => {
+                    this.openMessageComposer();
                 });
             }
 
@@ -3095,6 +3107,57 @@ return;
             this.activeTab = 'general';
 
             console.log('✅ UserDetailsModal closed');
+        }
+
+        /**
+         * Open message composer for this user
+         * פתיחת מלחין הודעות עבור משתמש זה
+         */
+        openMessageComposer() {
+            if (!this.currentUser) {
+                console.error('❌ No user selected for messaging');
+                return;
+            }
+
+            // Check if MessageComposer is available
+            if (!window.messageComposer) {
+                console.error('❌ MessageComposer not initialized');
+                alert('מערכת ההודעות לא זמינה כרגע');
+                return;
+            }
+
+            console.log(`📧 Opening message composer for: ${this.currentUser.email}`);
+
+            // Show the composer dialog
+            window.messageComposer.showComposeDialog();
+
+            // After dialog is created, pre-populate with user data
+            setTimeout(() => {
+                const recipientTypeSelect = document.querySelector('#messageRecipientType');
+                const specificRecipientSelect = document.querySelector('#specificRecipient');
+                const recipientSelector = document.querySelector('#recipientSelector');
+
+                if (recipientTypeSelect && specificRecipientSelect && recipientSelector) {
+                    // Set to "user" mode
+                    recipientTypeSelect.value = 'user';
+
+                    // Trigger change event to show user selector
+                    const changeEvent = new Event('change');
+                    recipientTypeSelect.dispatchEvent(changeEvent);
+
+                    // Wait for options to populate, then select current user
+                    setTimeout(() => {
+                        const userOption = Array.from(specificRecipientSelect.options).find(
+                            option => option.value === this.currentUser.uid ||
+                                      option.value === this.currentUser.email
+                        );
+
+                        if (userOption) {
+                            specificRecipientSelect.value = userOption.value;
+                        }
+                    }, 100);
+                }
+            }, 100);
         }
     }
 

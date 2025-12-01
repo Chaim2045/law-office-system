@@ -1775,6 +1775,18 @@ return;
 const manager = new LawOfficeManager();
 window.manager = manager;
 
+// ✅ Cleanup on page unload - prevent memory leaks and Firebase quota waste
+window.addEventListener('beforeunload', () => {
+  console.log('🧹 Page unloading - cleaning up resources');
+  manager.cleanup();
+});
+
+// ✅ Fallback for iOS Safari (doesn't support beforeunload reliably)
+window.addEventListener('pagehide', () => {
+  console.log('🧹 Page hiding - cleaning up resources');
+  manager.cleanup();
+});
+
 // Expose notification systems globally
 window.notificationBell = manager.notificationBell;
 // window.notificationSystem already exists from notification-system.js (global instance)
