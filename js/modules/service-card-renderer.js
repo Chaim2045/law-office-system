@@ -44,6 +44,84 @@ return '';
   };
 
   /**
+   * ═══════════════════════════════════════════════════════════════════
+   * CALCULATION FUNCTIONS (copied from src/modules/deduction/calculators.js)
+   * ═══════════════════════════════════════════════════════════════════
+   * These functions MUST be available before service cards render.
+   * They are copied here to ensure they're loaded synchronously.
+   */
+
+  /**
+   * Calculate remaining hours from packages
+   */
+  function calculateRemainingHours(entity) {
+    if (!entity) {
+return 0;
+}
+
+    // Support for legal_procedure with stages
+    if (entity.type === 'legal_procedure' && entity.stages && Array.isArray(entity.stages)) {
+      return entity.stages
+        .filter(stage => stage.status === 'active' || stage.status === 'pending')
+        .reduce((sum, stage) => {
+          if (stage.packages && Array.isArray(stage.packages) && stage.packages.length > 0) {
+            const stageHours = stage.packages
+              .filter(pkg => pkg.status === 'active' || pkg.status === 'pending' || !pkg.status)
+              .reduce((pkgSum, pkg) => pkgSum + (pkg.hoursRemaining || 0), 0);
+            return sum + stageHours;
+          }
+          return sum + (stage.hoursRemaining || 0);
+        }, 0);
+    }
+
+    // Regular service with packages
+    if (entity.packages && Array.isArray(entity.packages) && entity.packages.length > 0) {
+      return entity.packages
+        .filter(pkg => pkg.status === 'active' || !pkg.status)
+        .reduce((sum, pkg) => sum + (pkg.hoursRemaining || 0), 0);
+    }
+
+    return entity.hoursRemaining || 0;
+  }
+
+  /**
+   * Calculate total hours from packages
+   */
+  function calculateTotalHours(entity) {
+    if (!entity) {
+return 0;
+}
+    if (!entity.packages || entity.packages.length === 0) {
+      return entity.totalHours || 0;
+    }
+    return entity.packages.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
+  }
+
+  /**
+   * Calculate hours used from packages
+   */
+  function calculateHoursUsed(entity) {
+    if (!entity) {
+return 0;
+}
+    if (!entity.packages || entity.packages.length === 0) {
+      return entity.hoursUsed || 0;
+    }
+    return entity.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
+  }
+
+  // Export to window for backward compatibility
+  if (!window.calculateRemainingHours) {
+window.calculateRemainingHours = calculateRemainingHours;
+}
+  if (!window.calculateTotalHours) {
+window.calculateTotalHours = calculateTotalHours;
+}
+  if (!window.calculateHoursUsed) {
+window.calculateHoursUsed = calculateHoursUsed;
+}
+
+  /**
    * רינדור כרטיס שירות בודד
    * @param {Object} service - נתוני השירות/שלב
    * @param {string} type - סוג השירות ('hours' | 'legal_procedure')
