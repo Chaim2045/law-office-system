@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/clients.css?v=20251127-HOURS-COMPACT">
+    <link rel="stylesheet" href="css/messaging.css?v=1">
 </head>
 
 <body class="admin-page">
@@ -74,7 +75,7 @@
             <!-- Stats Cards -->
             <div class="stats-grid" id="clientsStatsContainer">
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-content">
@@ -84,7 +85,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
                         <i class="fas fa-check-circle"></i>
                     </div>
                     <div class="stat-content">
@@ -94,7 +95,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
                         <i class="fas fa-ban"></i>
                     </div>
                     <div class="stat-content">
@@ -104,7 +105,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <div class="stat-content">
@@ -495,12 +496,20 @@
     <!-- ===== Clients Management Scripts ===== -->
     <script src="js/managers/ClientsDataManager.js?v=20251123v1"></script>
     <script src="js/managers/ReportGenerator.js?v=20251127v2"></script>
+    <script src="js/managers/MessagingManager.js?v=1"></script>
     <script src="js/ui/ClientReportModal.js?v=20251127v1"></script>
     <script src="js/ui/ClientManagementModal.js?v=20251127-FINAL"></script>
     <script src="js/ui/ClientsTable.js?v=20251127v2"></script>
 
     <!-- ===== Shared Components ===== -->
     <script src="js/ui/Notifications.js?v=20251123v1"></script>
+    <script src="js/ui/MessageComposer.js?v=1"></script>
+
+    <!-- ===== Simple Client Dialog (no dependencies) ===== -->
+    <script src="js/ui/SimpleClientDialog.js?v=1"></script>
+
+    <!-- ===== Floating Action Button ===== -->
+    <script src="js/ui/FloatingActionButton.js?v=1"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>
@@ -556,6 +565,32 @@
                     window.ClientManagementModal.init();
                 } else {
                     console.error('❌ ClientManagementModal not loaded');
+                }
+
+                // Initialize Messaging Manager
+                if (window.MessagingManager) {
+                    window.messagingManager = new window.MessagingManager();
+                    await window.messagingManager.init();
+                    console.log('✅ MessagingManager initialized');
+                } else {
+                    console.warn('⚠️ MessagingManager not loaded');
+                }
+
+                // Initialize Message Composer
+                if (window.MessageComposer) {
+                    window.messageComposer = new window.MessageComposer();
+                    await window.messageComposer.init();
+                    console.log('✅ MessageComposer initialized');
+                } else {
+                    console.warn('⚠️ MessageComposer not loaded');
+                }
+
+                // Initialize Floating Action Button
+                if (window.FloatingActionButton) {
+                    window.FloatingActionButton.init('clients');
+                    console.log('✅ FAB initialized for clients page');
+                } else {
+                    console.warn('⚠️ FloatingActionButton not loaded');
                 }
 
                 console.log('✅ Clients Management Page - Ready');

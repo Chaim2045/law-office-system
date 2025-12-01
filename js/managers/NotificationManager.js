@@ -233,9 +233,13 @@ export class NotificationManager {
                 <div class="toast-message-body">${safeText(message.content?.body || '')}</div>
             </div>
             <div class="toast-actions">
-                <button class="toast-btn toast-btn-primary" onclick="window.notificationManager.markAsReadAndDismiss('${message.id}');">
+                <button class="toast-btn toast-btn-primary" onclick="window.notificationManager.openChatReply('${message.id}', '${message.from.uid}', '${senderName.replace(/'/g, "\\'")}')">
+                    <i class="fas fa-reply"></i>
+                    השב
+                </button>
+                <button class="toast-btn" onclick="window.notificationManager.markAsReadAndDismiss('${message.id}');">
                     <i class="fas fa-check"></i>
-                    קראתי - סגור
+                    קראתי
                 </button>
             </div>
         `;
@@ -490,6 +494,29 @@ export class NotificationManager {
         this.messages = [];
         this.unreadCount = 0;
         this.updateNotificationBell();
+    }
+
+    /**
+     * פתח חלון צ'אט כדי להשיב למנהל
+     * @param {string} messageId - ID של ההודעה המקורית
+     * @param {string} adminUid - UID של המנהל
+     * @param {string} adminName - שם המנהל
+     */
+    async openChatReply(messageId, adminUid, adminName) {
+        console.log('💬 Opening chat to reply to admin:', adminUid, adminName);
+
+        // Mark message as read
+        await this.markAsReadAndDismiss(messageId);
+
+        // Check if EmployeeChatUI is available
+        if (!window.employeeChatUI) {
+            console.error('❌ EmployeeChatUI לא זמין');
+            alert('מערכת הצ\'אט לא זמינה כרגע');
+            return;
+        }
+
+        // Open chat window
+        window.employeeChatUI.openChat(adminUid, adminName);
     }
 }
 

@@ -1179,13 +1179,24 @@
                     return s;
                 });
 
-                await clientRef.update({
+                // ✅ FIX BUG #1: Update currentStage field
+                const updateData = {
                     services: updatedServices,
                     updatedAt: new Date().toISOString()
-                });
+                };
+
+                // If this client has a currentStage field (legal_procedure), update it
+                if (this.currentClient.procedureType === 'legal_procedure' || this.currentClient.type === 'legal_procedure') {
+                    updateData.currentStage = nextStage.id;
+                }
+
+                await clientRef.update(updateData);
 
                 // Update local data
                 this.currentClient.services = updatedServices;
+                if (updateData.currentStage) {
+                    this.currentClient.currentStage = updateData.currentStage;
+                }
 
                 // Re-render services
                 this.renderServices();

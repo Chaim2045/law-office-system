@@ -1,0 +1,13 @@
+{
+  "deletedAt": "2025-12-01T12:29:47.653Z",
+  "stats": {
+    "clients": 8,
+    "cases": 7,
+    "timesheet_entries": 84,
+    "budget_tasks": 41,
+    "activityLogs": 6,
+    "notifications": 0,
+    "task_completion_alerts": 3,
+    "total": 149
+  }
+}

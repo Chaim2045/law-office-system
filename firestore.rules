@@ -215,6 +215,91 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ✅ Conversations: Two-way chat system (WhatsApp-style)
+    // Purpose: Chat conversations between admin and employees
+    // Structure: conversations/{conversationId}/messages/{messageId}
+    match /conversations/{conversationId} {
+      // Helper: Check if user is a participant in this conversation
+      function isParticipant() {
+        return request.auth.uid in resource.data.participants;
+      }
+
+      // Helper: Check if user is a participant for CREATE (no resource yet)
+      function willBeParticipant() {
+        return request.auth.uid in request.resource.data.participants;
+      }
+
+      // Read: Users can read conversations they're part of (or if conversation doesn't exist yet)
+      // Allow read even if conversation doesn't exist (resource == null) to enable first message
+      allow read: if isAuthenticated() && (
+        !exists(/databases/$(database)/documents/conversations/$(conversationId)) ||
+        isParticipant()
+      );
+
+      // Create: Users can create conversations if they're a participant
+      allow create: if isAuthenticated() && willBeParticipant();
+
+      // Update: Users can update conversation metadata (lastMessage, unreadCount, etc.)
+      // Allow update if conversation exists and user is participant, OR if conversation doesn't exist yet
+      allow update: if isAuthenticated() && (
+        (exists(/databases/$(database)/documents/conversations/$(conversationId)) && isParticipant()) ||
+        !exists(/databases/$(database)/documents/conversations/$(conversationId))
+      );
+
+      // Delete: Only admins can delete conversations
+      allow delete: if isAdmin();
+
+      // ✅ Messages subcollection
+      match /messages/{messageId} {
+        // Helper: Get conversation data
+        function getConversation() {
+          return get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+        }
+
+        // Helper: Check if user is participant in parent conversation
+        function isConversationParticipant() {
+          let conv = getConversation();
+          return conv != null && request.auth.uid in conv.participants;
+        }
+
+        // Helper: Check if conversation ID contains user's UID (for conversations that don't exist yet)
+        function conversationIdContainsUser() {
+          return conversationId.matches('.*' + request.auth.uid + '.*');
+        }
+
+        // Read: Users can read messages from conversations they're in
+        // Allow if conversation exists and user is participant, OR if conversation doesn't exist but ID contains user UID
+        allow read: if isAuthenticated() && (
+          (exists(/databases/$(database)/documents/conversations/$(conversationId)) && isConversationParticipant()) ||
+          (!exists(/databases/$(database)/documents/conversations/$(conversationId)) && conversationIdContainsUser())
+        );
+
+        // Create: Users can send messages in conversations they're part of
+        // AND the message 'from' must be their own UID
+        // Allow if conversation exists and user is participant, OR if conversation doesn't exist but ID contains user UID
+        allow create: if isAuthenticated() &&
+                         request.resource.data.from.uid == request.auth.uid && (
+                           (exists(/databases/$(database)/documents/conversations/$(conversationId)) && isConversationParticipant()) ||
+                           (!exists(/databases/$(database)/documents/conversations/$(conversationId)) && conversationIdContainsUser())
+                         );
+
+        // Update: Users can update their own messages OR mark received messages as read
+        allow update: if isAuthenticated() && (
+          // Can update own message
+          (resource.data.from.uid == request.auth.uid) ||
+          // Can mark messages TO me as read
+          (resource.data.to.uid == request.auth.uid &&
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['isRead', 'readAt']))
+        );
+
+        // Delete: Sender can delete their own message OR admin can delete any
+        allow delete: if isAuthenticated() && (
+          resource.data.from.uid == request.auth.uid || isAdmin()
+        );
+      }
+    }
+
     // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;

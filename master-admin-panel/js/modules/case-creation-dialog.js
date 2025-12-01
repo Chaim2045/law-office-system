@@ -2065,6 +2065,8 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
     buildFirebaseData(formData) {
       const data = {
         clientName: formData.client.name,
+        phone: formData.client.phone || '',
+        email: formData.client.email || '',
         caseNumber: formData.case.caseNumber,
         caseTitle: formData.case.title,
         description: formData.case.description || '',

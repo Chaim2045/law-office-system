@@ -684,21 +684,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // Validation - שדות אופציונליים
-    if (data.phone && !isValidIsraeliPhone(data.phone)) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'מספר טלפון לא תקין. יש להזין מספר ישראלי תקין'
-      );
-    }
-
-    if (data.email && !isValidEmail(data.email)) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'כתובת אימייל לא תקינה'
-      );
-    }
-
+    // Validation - סוג הליך
     if (!data.procedureType || !['hours', 'fixed', 'legal_procedure'].includes(data.procedureType)) {
       throw new functions.https.HttpsError(
         'invalid-argument',
@@ -791,8 +777,6 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       caseNumber: caseNumber,  // מספר תיק (גם Document ID)
       clientName: sanitizeString(data.clientName.trim()),
       fullName: sanitizeString(data.clientName.trim()), // ✅ גם fullName ל-backward compatibility
-      phone: data.phone ? sanitizeString(data.phone.trim()) : '',
-      email: data.email ? sanitizeString(data.email.trim()) : '',
 
       // ✅ מידע משפטי - כותרת התיק
       caseTitle: data.caseTitle ? sanitizeString(data.caseTitle.trim()) : '',

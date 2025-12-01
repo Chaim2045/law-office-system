@@ -6,6 +6,11 @@ law-office-firebase/
 *-firebase-adminsdk-*.json
 serviceAccountKey.json
 service-account*.json
+firebase-admin-key.json
+
+# Claude AI data cache
+.claude/firestore-data/*.json
+.claude/firestore-data/*.txt
 
 # Backup files
 *.backup

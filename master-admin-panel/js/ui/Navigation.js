@@ -48,27 +48,31 @@
             const navItems = [
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
                 { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
-                { id: 'tasks', label: 'ניהול משימות', icon: 'fa-tasks', href: 'tasks.html' },
-                { id: 'timesheet', label: 'ניהול שעות', icon: 'fa-clock', href: 'timesheet.html' },
             ];
 
             this.container.innerHTML = `
                 <nav class="admin-navigation">
                     <div class="nav-brand">
-                        <i class="fas fa-shield-halved"></i>
-                        <span>Admin Panel</span>
+                        <div class="brand-logo-wrapper">
+                            <img src="assets/logo.png" alt="Logo" class="brand-logo" />
+                            <span class="brand-subtitle">Admin Panel</span>
+                        </div>
                     </div>
-                    <ul class="nav-menu">
-                        ${navItems.map(item => `
-                            <li class="nav-item ${item.id === this.currentPage ? 'active' : ''}">
-                                <a href="${item.href}" class="nav-link">
+                    <div class="nav-tabs-wrapper">
+                        <div class="nav-tabs">
+                            ${navItems.map(item => `
+                                <a href="${item.href}" class="nav-tab ${item.id === this.currentPage ? 'active' : ''}">
                                     <i class="fas ${item.icon}"></i>
                                     <span>${item.label}</span>
                                 </a>
-                            </li>
-                        `).join('')}
-                    </ul>
+                            `).join('')}
+                        </div>
+                    </div>
                     <div class="nav-user">
+                        <button class="btn-chat" id="navChatBtn" title="צ'אטים עם עובדים">
+                            <i class="fas fa-comments"></i>
+                            <span>צ'אטים</span>
+                        </button>
                         <button class="btn-send-message" id="navSendMessageBtn" title="שלח הודעה לעובדים">
                             <i class="fas fa-envelope"></i>
                             <span>שלח הודעה</span>
@@ -89,6 +93,9 @@
 
             // Setup send message button
             this.setupSendMessage();
+
+            // Setup chat button
+            this.setupChatButton();
         }
 
         /**
@@ -102,117 +109,196 @@
             style.id = 'navigationStyles';
             style.textContent = `
                 .admin-navigation {
-                    background: linear-gradient(135deg, #1877F2 0%, #0A66C2 100%);
-                    padding: 1rem 2rem;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border-bottom: 1px solid #e5e7eb;
+                    padding: 18px 24px;
+                    z-index: 1001;
                     display: flex;
+                    justify-content: flex-start;
                     align-items: center;
-                    gap: 2rem;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    height: 76px;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
                 }
 
                 .nav-brand {
+                    position: absolute;
+                    right: 24px;
+                }
+
+                .brand-logo-wrapper {
                     display: flex;
+                    flex-direction: column;
                     align-items: center;
-                    gap: 0.75rem;
-                    color: white;
+                    gap: 4px;
+                }
+
+                .brand-logo {
+                    height: 40px;
+                    width: auto;
+                    object-fit: contain;
+                }
+
+                .brand-subtitle {
+                    font-size: 0.625rem;
                     font-weight: 600;
-                    font-size: 1.25rem;
+                    color: #64748b;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
 
-                .nav-menu {
+                .nav-tabs-wrapper {
+                    position: absolute;
+                    left: 50%;
+                    transform: translateX(-50%);
+                }
+
+                .nav-tabs {
                     display: flex;
-                    gap: 0.5rem;
-                    list-style: none;
-                    margin: 0;
-                    padding: 0;
-                    flex: 1;
+                    gap: 8px;
+                    align-items: center;
+                    background: #f1f5f9;
+                    border-radius: 50px;
+                    padding: 6px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                    border: 1px solid #e2e8f0;
                 }
 
-                .nav-item {
-                    margin: 0;
-                }
-
-                .nav-link {
+                .nav-tab {
                     display: flex;
                     align-items: center;
-                    gap: 0.5rem;
-                    padding: 0.75rem 1.25rem;
-                    color: rgba(255, 255, 255, 0.8);
+                    gap: 8px;
+                    padding: 12px 24px;
+                    background: transparent;
+                    border: none;
+                    border-radius: 50px;
+                    color: #1e293b;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.25s ease;
+                    white-space: nowrap;
                     text-decoration: none;
-                    border-radius: 8px;
-                    transition: all 0.2s;
-                    font-size: 0.875rem;
                 }
 
-                .nav-link:hover {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: white;
+                .nav-tab i {
+                    font-size: 16px;
+                    transition: transform 0.2s ease;
                 }
 
-                .nav-item.active .nav-link {
-                    background: rgba(255, 255, 255, 0.2);
+                .nav-tab:hover:not(.active) {
+                    background: rgba(255, 255, 255, 0.5);
+                }
+
+                .nav-tab:active {
+                    transform: scale(0.98);
+                }
+
+                .nav-tab.active {
+                    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
                     color: white;
-                    font-weight: 600;
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
                 }
 
                 .nav-user {
                     display: flex;
                     align-items: center;
-                    gap: 1rem;
+                    gap: 0.75rem;
+                    position: absolute;
+                    left: 24px;
                 }
 
-                .btn-send-message {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    padding: 0.75rem 1.25rem;
-                    background: rgba(255, 255, 255, 0.15);
-                    color: white;
-                    border: 1px solid rgba(255, 255, 255, 0.3);
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    font-size: 0.875rem;
-                }
-
-                .btn-send-message:hover {
-                    background: rgba(255, 255, 255, 0.25);
-                    transform: translateY(-1px);
-                }
-
+                .btn-chat,
+                .btn-send-message,
                 .btn-logout {
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
-                    padding: 0.75rem 1.25rem;
-                    background: rgba(255, 255, 255, 0.1);
-                    color: white;
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    border-radius: 8px;
+                    padding: 0.625rem 1rem;
+                    background: #f8fafc;
+                    color: #475569;
+                    border: 1.5px solid #e2e8f0;
+                    border-radius: 50px;
                     cursor: pointer;
                     transition: all 0.2s;
-                    font-size: 0.875rem;
+                    font-size: 0.813rem;
+                    font-weight: 500;
+                }
+
+                .btn-chat:hover {
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    border-color: #10b981;
+                    color: white;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+                }
+
+                .btn-send-message:hover {
+                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                    border-color: #3b82f6;
+                    color: white;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
                 }
 
                 .btn-logout:hover {
-                    background: rgba(255, 255, 255, 0.2);
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    border-color: #ef4444;
+                    color: white;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+                }
+
+                .btn-chat i,
+                .btn-send-message i,
+                .btn-logout i {
+                    font-size: 14px;
+                }
+
+                /* Add margin to main content */
+                body {
+                    padding-top: 76px;
                 }
 
                 @media (max-width: 768px) {
                     .admin-navigation {
-                        flex-direction: column;
-                        padding: 1rem;
-                        gap: 1rem;
+                        padding: 10px 16px;
+                        height: 58px;
                     }
 
-                    .nav-menu {
-                        flex-direction: column;
-                        width: 100%;
+                    body {
+                        padding-top: 58px;
                     }
 
-                    .nav-link {
-                        width: 100%;
-                        justify-content: center;
+                    .brand-logo {
+                        height: 32px;
+                    }
+
+                    .brand-subtitle {
+                        font-size: 0.5rem;
+                    }
+
+                    .nav-tabs {
+                        gap: 6px;
+                    }
+
+                    .nav-tab {
+                        padding: 7px 16px;
+                        font-size: 12px;
+                    }
+
+                    .nav-tab i {
+                        font-size: 13px;
+                    }
+
+                    .btn-chat,
+                    .btn-send-message,
+                    .btn-logout {
+                        padding: 7px 14px;
+                        font-size: 12px;
                     }
                 }
             `;
@@ -261,6 +347,26 @@
 
                 console.log('📧 Opening message composer from navigation');
                 window.messageComposer.showComposeDialog();
+            });
+        }
+
+        /**
+         * Setup chat button
+         * הגדרת כפתור צ'אט
+         */
+        setupChatButton() {
+            const chatBtn = document.getElementById('navChatBtn');
+            if (!chatBtn) return;
+
+            chatBtn.addEventListener('click', () => {
+                if (!window.adminChatUI) {
+                    console.error('❌ AdminChatUI not initialized');
+                    alert('מערכת הצ\'אט לא זמינה כרגע');
+                    return;
+                }
+
+                console.log('💬 Opening chat conversations list');
+                window.adminChatUI.openConversationsList();
             });
         }
     }

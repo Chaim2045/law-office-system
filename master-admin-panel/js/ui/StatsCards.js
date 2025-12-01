@@ -31,14 +31,14 @@
                     title: 'משתמשים פעילים',
                     subtitle: '7 ימים אחרונים',
                     icon: 'fa-user-check',
-                    color: 'green',
+                    color: 'blue',
                     getValue: (stats) => stats.activeLastWeek || stats.active || 0
                 },
                 {
                     id: 'blocked',
                     title: 'משתמשים חסומים',
                     icon: 'fa-user-slash',
-                    color: 'red',
+                    color: 'blue',
                     getValue: (stats) => stats.blocked || 0
                 },
                 {
@@ -46,7 +46,7 @@
                     title: 'משתמשים חדשים',
                     subtitle: '30 ימים אחרונים',
                     icon: 'fa-user-plus',
-                    color: 'orange',
+                    color: 'blue',
                     getValue: (stats) => stats.new || 0
                 }
             ];
