@@ -747,7 +747,7 @@
           feedbackContainer.style.display = 'none';
         }
 
-        window.CaseFormValidator?.displayErrors(validation.errors);
+        this.displayErrors(validation.errors);
         return;
       }
 
@@ -1674,7 +1674,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
 
       // 🛡️ Defensive Check: אם במצב existing אבל לא נבחר לקוח - שגיאה!
       if (this.currentMode === 'existing' && !this.currentCase) {
-        window.CaseFormValidator.displayErrors(['חובה לבחור לקוח מהרשימה לפני הוספת שירות']);
+        this.displayErrors(['חובה לבחור לקוח מהרשימה לפני הוספת שירות']);
         Logger.log('❌ Validation failed: No client selected in existing mode');
         return;
       }
@@ -1693,16 +1693,18 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
       // איסוף נתונים
       const formData = this.collectFormData();
 
-      // ולידציה
-      const validation = window.CaseFormValidator.validateCaseForm(formData);
-
-      if (!validation.isValid) {
-        window.CaseFormValidator.displayErrors(validation.errors);
-        return;
+      // ולידציה פשוטה
+      const errors = [];
+      if (!formData.client || !formData.client.name || formData.client.name.length < 2) {
+        errors.push('אנא הזן שם לקוח (לפחות 2 תווים)');
+      }
+      if (!formData.case || !formData.case.title || formData.case.title.length < 2) {
+        errors.push('אנא הזן כותרת תיק (לפחות 2 תווים)');
       }
 
-      if (validation.warnings.length > 0) {
-        window.CaseFormValidator.displayWarnings(validation.warnings);
+      if (errors.length > 0) {
+        this.displayErrors(errors);
+        return;
       }
 
       // המשך לשמירה...
@@ -1924,7 +1926,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
 
         if (!validation.isValid) {
           // Display errors in the dialog
-          window.CaseFormValidator?.displayErrors(validation.errors);
+          this.displayErrors(validation.errors);
 
           // Focus on first error field with visual highlight
           this.focusOnFirstError(validation.fieldIds);
@@ -2090,6 +2092,22 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
       }
 
       return data;
+    }
+
+    /**
+     * הצגת שגיאות
+     */
+    displayErrors(errors) {
+      const errorsDiv = document.getElementById('formErrors');
+      if (!errorsDiv) return;
+
+      errorsDiv.innerHTML = errors.map(error => `
+        <div class="error-item">
+          <i class="fas fa-exclamation-circle"></i>
+          ${error}
+        </div>
+      `).join('');
+      errorsDiv.style.display = 'block';
     }
 
     /**

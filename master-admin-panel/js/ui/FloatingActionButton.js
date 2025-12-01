@@ -178,12 +178,12 @@
          * פתיחת חלון הוספת לקוח
          */
         openAddClientModal() {
-            // Check if SimpleClientDialog is available
-            if (window.SimpleClientDialog) {
-                console.log('📝 Opening Simple Client Dialog...');
-                new window.SimpleClientDialog().open();
+            // Check if CaseCreationDialog is available
+            if (window.CaseCreationDialog) {
+                console.log('📝 Opening Case Creation Dialog...');
+                new window.CaseCreationDialog().open();
             } else {
-                console.error('❌ SimpleClientDialog not found');
+                console.error('❌ CaseCreationDialog not found');
                 alert('מערכת הוספת לקוחות לא זמינה');
             }
         }
