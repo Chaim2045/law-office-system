@@ -454,28 +454,40 @@
   cursor: not-allowed;
 }
 
-/* Primary button */
+/* Primary button - Blue with rounded corners */
 .btn-primary {
-  background: #0f172a;
+  background: #3b82f6 !important;
   color: white;
-  border-color: #0f172a;
+  border: none;
+  border-radius: 25px !important;
+  padding: 8px 16px !important;
+  font-size: 12.5px !important;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2) !important;
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #1e293b;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+  background: #2563eb !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.3) !important;
 }
 
-/* Secondary button */
+/* Secondary button - Blue Pastel with rounded corners */
 .btn-secondary {
-  background: white;
-  color: #64748b;
-  border-color: #d1d5db;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #3b82f6;
+  border: 1px solid #bfdbfe;
+  border-radius: 25px;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.08);
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .btn-secondary:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #93c5fd;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
 }
 
 /* ==========================================================================
