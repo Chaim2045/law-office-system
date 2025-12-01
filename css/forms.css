@@ -241,8 +241,6 @@
 }
 
 .compact-form .btn {
-  padding: 10px 20px;
-  font-size: 14px;
   transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -250,6 +248,12 @@
 .compact-form .btn-primary,
 .compact-form .btn-secondary {
   border-radius: 25px;
+}
+
+/* Blue icons in buttons */
+.compact-form .btn-primary i,
+.compact-form .btn-secondary i {
+  color: inherit;
 }
 
 /* Less rounded for other buttons */
