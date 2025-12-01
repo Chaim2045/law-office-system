@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>🔬 בדיקת רינדור כרטיסי שירות</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .result {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .warning { background: #fff3cd; color: #856404; }
+    .info { background: #d1ecf1; color: #0c5460; }
+  </style>
+</head>
+<body>
+  <h1>🔬 בדיקת רינדור כרטיסי שירות</h1>
+  <div id="results"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyANzVKzbRKCBMyUUy6HpBrUoG16u3G2jtU",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "529995732555",
+      appId: "1:529995732555:web:aa7f1b24ef7f52e12f7876",
+      measurementId: "G-PBLLPMHCZQ"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const resultsDiv = document.getElementById('results');
+
+    function addResult(html) {
+      resultsDiv.innerHTML += html;
+    }
+
+    async function runDiagnostics() {
+      addResult(`<div class="test-section"><h2>📋 בדיקה 1: טעינת פונקציות חישוב</h2>`);
+
+      // Check if calculation functions are loaded
+      const functionsToCheck = [
+        'calculateHoursUsed',
+        'calculateTotalHours',
+        'calculateRemainingHours'
+      ];
+
+      functionsToCheck.forEach(funcName => {
+        const exists = typeof window[funcName] === 'function';
+        addResult(`<div class="result ${exists ? 'success' : 'error'}">
+          ${exists ? '✅' : '❌'} ${funcName}: ${exists ? 'קיימת' : 'לא נמצאה'}
+        </div>`);
+      });
+
+      addResult(`</div>`);
+
+      // Load the functions if they don't exist
+      if (typeof window.calculateHoursUsed !== 'function') {
+        addResult(`<div class="test-section"><h2>⚠️ טוען פונקציות חישוב...</h2></div>`);
+
+        // Load service-card-renderer.js
+        const script = document.createElement('script');
+        script.src = '/js/modules/service-card-renderer.js?t=' + Date.now();
+        document.head.appendChild(script);
+
+        await new Promise(resolve => {
+          script.onload = () => {
+            addResult(`<div class="result success">✅ service-card-renderer.js נטען בהצלחה</div>`);
+            resolve();
+          };
+          script.onerror = () => {
+            addResult(`<div class="result error">❌ שגיאה בטעינת service-card-renderer.js</div>`);
+            resolve();
+          };
+        });
+      }
+
+      // Test 2: Load client data
+      addResult(`<div class="test-section"><h2>📋 בדיקה 2: טעינת נתוני לקוח 2025001</h2>`);
+
+      try {
+        const clientDoc = await db.collection('clients').doc('2025001').get();
+
+        if (!clientDoc.exists) {
+          addResult(`<div class="result error">❌ לקוח לא נמצא</div></div>`);
+          return;
+        }
+
+        const clientData = clientDoc.data();
+        const service = clientData.services[0];
+        const stageC = service.stages.find(s => s.id === 'stage_c');
+
+        addResult(`<div class="result success">✅ לקוח נמצא: ${clientData.fullName}</div>`);
+        addResult(`<div class="result info">📊 Service ID: ${service.id}</div>`);
+        addResult(`<div class="result info">📊 Stage C Status: ${stageC.status}</div>`);
+
+        // Test 3: Calculate hours manually
+        addResult(`</div><div class="test-section"><h2>📋 בדיקה 3: חישוב שעות ידני</h2>`);
+
+        const manualHoursUsed = stageC.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
+        const manualTotalHours = stageC.packages.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
+
+        addResult(`<div class="result info">🔢 Manual Hours Used: ${manualHoursUsed.toFixed(2)}</div>`);
+        addResult(`<div class="result info">🔢 Manual Total Hours: ${manualTotalHours.toFixed(2)}</div>`);
+
+        // Test 4: Use window functions
+        addResult(`</div><div class="test-section"><h2>📋 בדיקה 4: שימוש בפונקציות window</h2>`);
+
+        const funcHoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(stageC) : null;
+        const funcTotalHours = window.calculateTotalHours ? window.calculateTotalHours(stageC) : null;
+
+        if (funcHoursUsed !== null) {
+          addResult(`<div class="result ${funcHoursUsed === manualHoursUsed ? 'success' : 'warning'}">
+            ✅ calculateHoursUsed(stageC) = ${funcHoursUsed.toFixed(2)}
+          </div>`);
+        } else {
+          addResult(`<div class="result error">❌ calculateHoursUsed לא קיימת</div>`);
+        }
+
+        if (funcTotalHours !== null) {
+          addResult(`<div class="result ${funcTotalHours === manualTotalHours ? 'success' : 'warning'}">
+            ✅ calculateTotalHours(stageC) = ${funcTotalHours.toFixed(2)}
+          </div>`);
+        } else {
+          addResult(`<div class="result error">❌ calculateTotalHours לא קיימת</div>`);
+        }
+
+        // Test 5: Render the card
+        addResult(`</div><div class="test-section"><h2>📋 בדיקה 5: רינדור כרטיס</h2>`);
+
+        if (typeof window.renderServiceCard === 'function') {
+          const cardHtml = window.renderServiceCard(
+            stageC,
+            'legal_procedure',
+            service.pricingType || 'hourly',
+            { id: '2025001', fullName: clientData.fullName },
+            { procedureName: service.name || service.displayName }
+          );
+
+          addResult(`<div class="result success">✅ renderServiceCard הצליח</div>`);
+          addResult(`<div class="result info"><h3>HTML שנוצר:</h3><pre>${cardHtml.substring(0, 500)}...</pre></div>`);
+
+          // Check if the HTML contains the expected hours
+          const contains148 = cardHtml.includes('14.8') || cardHtml.includes('14.83');
+          const contains22 = cardHtml.includes('22.0') || cardHtml.includes('22');
+          const contains0 = cardHtml.includes('0.0') || cardHtml.includes('>0<');
+
+          addResult(`<div class="result ${contains148 ? 'success' : 'warning'}">
+            ${contains148 ? '✅' : '⚠️'} HTML מכיל 14.8 שעות: ${contains148}
+          </div>`);
+          addResult(`<div class="result ${contains22 ? 'success' : 'warning'}">
+            ${contains22 ? '✅' : '⚠️'} HTML מכיל 22 שעות: ${contains22}
+          </div>`);
+          addResult(`<div class="result ${!contains0 ? 'success' : 'error'}">
+            ${!contains0 ? '✅' : '❌'} HTML לא מכיל 0.0: ${!contains0}
+          </div>`);
+
+          // Display the actual card
+          addResult(`<h3>תצוגה חיה של הכרטיס:</h3>${cardHtml}`);
+        } else {
+          addResult(`<div class="result error">❌ renderServiceCard לא קיימת</div>`);
+        }
+
+        addResult(`</div>`);
+
+      } catch (error) {
+        addResult(`<div class="result error">❌ שגיאה: ${error.message}</div></div>`);
+        console.error(error);
+      }
+
+      // Test 6: Check timing of card render
+      addResult(`<div class="test-section"><h2>📋 בדיקה 6: בדיקת timing של רינדור</h2>`);
+      addResult(`<div class="result warning">⚠️ הכרטיס עשוי להירנדר לפני שהנתונים נטענים מ-Firebase</div>`);
+      addResult(`<div class="result info">💡 פתרון: לוודא ש-renderServiceCard נקרא רק אחרי שה-Real-Time Listener מספק נתונים</div>`);
+      addResult(`</div>`);
+    }
+
+    // Run diagnostics after page loads
+    runDiagnostics();
+  </script>
+</body>
+</html>

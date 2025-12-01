@@ -204,6 +204,17 @@ window.calculateHoursUsed = calculateHoursUsed;
         const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(service) : 0;
         const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
 
+        // 🔍 DEBUG: Log calculation results
+        console.log(`🔍 renderServiceCard (${type}) for ${service.id}:`, {
+          serviceId: service.id,
+          totalHours,
+          hoursUsed,
+          hoursRemaining,
+          progressPercent,
+          packages: service.packages,
+          hasCalculateFn: !!window.calculateHoursUsed
+        });
+
         statsHtml = `
           <div style="margin-top: 12px;">
             <div style="
