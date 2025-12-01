@@ -345,6 +345,65 @@ return;
             // Add services from client.services array
             if (client.services && client.services.length > 0) {
                 client.services.forEach(service => {
+                    // ✅ NEW ARCHITECTURE: Check if this is a legal procedure with stages array
+                    if (service.type === 'legal_procedure' && service.stages && Array.isArray(service.stages)) {
+                        // Legal procedure with multiple stages
+                        service.stages.forEach(stage => {
+                            // Only show active stages (or completed if needed)
+                            if (stage.status === 'active' || stage.status === 'completed') {
+                                const displayName = this.getStageName(stage.id);
+                                const totalHours = stage.totalHours || stage.hours || 0;
+                                const isCurrentStage = client.currentStage === stage.id;
+
+                                // ✅ Calculate used hours from timesheet entries
+                                let usedMinutes = 0;
+                                if (window.ClientsDataManager) {
+                                    const timesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
+                                    timesheetEntries.forEach(entry => {
+                                        // Match by stage ID or stage name
+                                        const entryStage = entry.serviceId || entry.stageName;
+                                        const entryDuration = entry.minutes || entry.duration || entry.hours || 0;
+
+                                        if (entryStage === stage.id || entryStage === displayName) {
+                                            if (typeof entryDuration === 'number') {
+                                                usedMinutes += entryDuration;
+                                            } else if (entry.hours) {
+                                                usedMinutes += (entry.hours * 60);
+                                            }
+                                        }
+                                    });
+                                }
+
+                                const usedHours = (usedMinutes / 60).toFixed(1);
+                                const remainingHours = Math.max(0, totalHours - parseFloat(usedHours)).toFixed(1);
+
+                                servicesMap.set(stage.id, {
+                                    displayName: displayName,
+                                    totalHours: totalHours,
+                                    remainingHours: remainingHours,
+                                    usedHours: usedHours,
+                                    type: 'legal_procedure',
+                                    stage: stage.id,
+                                    status: stage.status,
+                                    isCurrentStage: isCurrentStage,
+                                    serviceName: service.name,
+                                    serviceId: service.id
+                                });
+
+                                console.log(`📋 Legal procedure stage ${stage.id}:`, {
+                                    name: displayName,
+                                    totalHours: totalHours,
+                                    usedHours: usedHours,
+                                    remainingHours: remainingHours,
+                                    status: stage.status,
+                                    isCurrentStage: isCurrentStage
+                                });
+                            }
+                        });
+                        return; // Skip old logic for this service
+                    }
+
+                    // ✅ OLD ARCHITECTURE FALLBACK: Support old format
                     // Determine the service key and display name
                     let serviceKey = '';
                     let displayName = '';
@@ -361,7 +420,7 @@ return;
                         serviceType = service.type || 'hours';
                     }
 
-                    // Check if this is a legal procedure stage
+                    // Check if this is a legal procedure stage (OLD FORMAT)
                     if (service.stage || service.stageName) {
                         stage = service.stage || service.stageName;
                         displayName = this.getStageName(stage);
@@ -435,7 +494,7 @@ return;
                             });
 
                             // Match by service name or stage
-                            if ((serviceType === 'legal_procedure' && entry.stage === stage) ||
+                            if ((serviceType === 'legal_procedure' && entry.serviceId === stage) ||
                                 (entryService === serviceKey) ||
                                 (entryService === displayName)) {
                                 // Handle different duration formats
@@ -529,7 +588,7 @@ return;
                         // Check if this entry matches this service
                         if (entryService === serviceKey ||
                             entryService === serviceInfo.displayName ||
-                            (serviceInfo.stage && entry.stage === serviceInfo.stage)) {
+                            (serviceInfo.stage && entry.serviceId === serviceInfo.stage)) {
 
                             if (typeof entryDuration === 'number') {
                                 totalUsedMinutes += entryDuration;
@@ -665,10 +724,18 @@ return;
             let statusColor = '#64748b'; // Neutral gray
             let iconClass = 'fas fa-briefcase'; // Default icon
             let progressColor = '#e2e8f0'; // Light gray for progress
+            let borderColor = '#e2e8f0'; // Default border
+            let currentStageBadge = ''; // Badge for current stage
 
             if (serviceInfo.type === 'legal_procedure') {
                 iconClass = 'fas fa-balance-scale'; // Legal icon
                 statusColor = '#475569'; // Darker gray for legal procedures
+
+                // ✅ Highlight current stage
+                if (serviceInfo.isCurrentStage) {
+                    borderColor = '#3b82f6'; // Blue border for current stage
+                    currentStageBadge = '<span style="position: absolute; top: 0.5rem; right: 0.5rem; background: #3b82f6; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;">שלב נוכחי</span>';
+                }
             }
 
             // Use blue as default with color accents for critical states
@@ -688,7 +755,7 @@ return;
             }
 
             card.style.cssText = `
-                border: 1px solid #e2e8f0;
+                border: 2px solid ${borderColor};
                 border-radius: 6px;
                 padding: 0.75rem;
                 background: white;
@@ -696,6 +763,7 @@ return;
                 transition: all 0.15s ease;
                 position: relative;
                 min-height: 100px;
+                ${serviceInfo.isCurrentStage ? 'box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);' : ''}
             `;
 
             // Create card content with textContent for security
@@ -703,7 +771,10 @@ return;
 
             // Service name header
             const header = document.createElement('div');
-            header.style.cssText = 'margin-bottom: 0.5rem; display: flex; align-items: center;';
+            header.style.cssText = 'margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;';
+
+            const leftSide = document.createElement('div');
+            leftSide.style.cssText = 'display: flex; align-items: center;';
 
             const icon = document.createElement('i');
             icon.className = iconClass;
@@ -713,8 +784,17 @@ return;
             title.textContent = serviceInfo.displayName; // Security: textContent prevents XSS
             title.style.cssText = 'font-weight: 600; font-size: 0.85rem; margin: 0; display: inline-block;';
 
-            header.appendChild(icon);
-            header.appendChild(title);
+            leftSide.appendChild(icon);
+            leftSide.appendChild(title);
+            header.appendChild(leftSide);
+
+            // ✅ Add current stage badge
+            if (serviceInfo.isCurrentStage) {
+                const badge = document.createElement('span');
+                badge.textContent = 'שלב נוכחי';
+                badge.style.cssText = 'background: #3b82f6; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;';
+                header.appendChild(badge);
+            }
 
             // Progress bar
             const progressContainer = document.createElement('div');

@@ -2482,15 +2482,15 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
             }
           }
           // ✅ NEW: הליך משפטי כשירות (Architecture v2.0)
-          else if (taskData.serviceType === 'legal_procedure' && taskData.parentServiceId) {
-            console.log(`🆕 [v2.0] הליך משפטי כשירות - parentServiceId: ${taskData.parentServiceId}, stageId: ${taskData.serviceId}`);
+          else if (data.serviceType === 'legal_procedure' && data.parentServiceId) {
+            console.log(`🆕 [v2.0] הליך משפטי כשירות - parentServiceId: ${data.parentServiceId}, stageId: ${data.serviceId}`);
 
             // מציאת השירות בתוך services array
-            const service = clientData.services?.find(s => s.id === taskData.parentServiceId);
+            const service = clientData.services?.find(s => s.id === data.parentServiceId);
 
             if (service && service.type === 'legal_procedure') {
               // מציאת השלב בתוך השירות
-              const targetStageId = taskData.serviceId || service.currentStage || 'stage_a';
+              const targetStageId = data.serviceId || service.currentStage || 'stage_a';
               const stages = service.stages || [];
               const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
 

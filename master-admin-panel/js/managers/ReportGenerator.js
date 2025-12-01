@@ -677,11 +677,34 @@ return true;
                     // Try to calculate from timesheet entries for this specific service
                     if (this.dataManager) {
                         const timesheetEntries = this.dataManager.getClientTimesheetEntries(client.fullName);
-                        const serviceEntries = timesheetEntries.filter(entry =>
-                            entry.serviceName === formData.service ||
-                            entry.service === formData.service ||
-                            entry.stage === formData.service
-                        );
+                        const serviceEntries = timesheetEntries.filter(entry => {
+                            // Match by service name
+                            if (entry.serviceName === formData.service) {
+return true;
+}
+                            if (entry.service === formData.service) {
+return true;
+}
+
+                            // Match by serviceId (for legal procedures: "stage_a", "stage_b", etc.)
+                            if (entry.serviceId === formData.service) {
+return true;
+}
+
+                            // Match by stage display name (for legal procedures: "שלב א", "שלב ב", etc.)
+                            if (entry.serviceId && formData.service) {
+                                const stageMapping = {
+                                    'stage_a': 'שלב א',
+                                    'stage_b': 'שלב ב',
+                                    'stage_c': 'שלב ג'
+                                };
+                                if (stageMapping[entry.serviceId] === formData.service) {
+return true;
+}
+                            }
+
+                            return false;
+                        });
 
                         if (serviceEntries.length > 0) {
                             const totalMinutes = serviceEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
