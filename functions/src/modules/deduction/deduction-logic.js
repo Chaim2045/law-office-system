@@ -50,14 +50,24 @@
  *
  * @param {Object} stage - Stage object with packages array
  * @returns {Object|null} Active package or null if not found
+ *
+ * 🔥 FIX (2025-12-01): במבנה החדש של Legal Procedure v2.0,
+ * כאשר stage.status === 'active', החבילה הראשונה צריכה להיות active
+ * גם אם package.status === 'pending' (זה מצב תקין!)
  */
 function getActivePackage(stage) {
   if (!stage || !stage.packages || stage.packages.length === 0) {
     return null;
   }
 
+  // 🔥 FIX: אם השלב הוא active, קח את החבילה הראשונה עם שעות
+  // זה פותר את הבאג שבו stage_b.status='active' אבל package.status='pending'
+  if (stage.status === 'active' || stage.status === 'completed') {
+    return stage.packages.find(pkg => (pkg.hoursRemaining || 0) > 0) || null;
+  }
+
+  // Backward compatibility: packages ישנים ללא stage.status
   // Find first package with status 'active' (or no status) and hoursRemaining > 0
-  // Backward compatibility: packages without status are considered active
   return stage.packages.find(pkg => {
     const isActive = !pkg.status || pkg.status === 'active';
     const hasHours = (pkg.hoursRemaining || 0) > 0;
