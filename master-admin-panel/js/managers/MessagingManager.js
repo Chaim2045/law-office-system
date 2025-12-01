@@ -64,6 +64,10 @@
          */
         async sendMessageToUser(userId, messageData) {
             try {
+                console.log('📤 MessagingManager: Starting to send message...');
+                console.log('👤 Target userId:', userId);
+                console.log('📋 Message data:', messageData);
+
                 if (!this.MESSAGING_ENABLED) {
                     throw new Error('מערכת ההודעות כבויה');
                 }
@@ -100,9 +104,15 @@
                     action: messageData.action || null // אופציונלי - כפתור פעולה
                 };
 
+                console.log('📦 Final message object being sent to Firestore:', JSON.stringify(message, null, 2));
+                console.log('🎯 to.uid:', message.to.uid);
+                console.log('📊 priority:', message.content.priority);
+                console.log('🏷️ type:', message.content.type);
+
                 const docRef = await this.db.collection('messages').add(message);
 
                 console.log('✅ הודעה נשלחה בהצלחה:', docRef.id);
+                console.log('📍 Document saved to: messages/' + docRef.id);
 
                 return {
                     success: true,
@@ -122,6 +132,9 @@
          */
         async broadcastMessage(messageData) {
             try {
+                console.log('📢 MessagingManager: Starting to broadcast message...');
+                console.log('📋 Message data:', messageData);
+
                 if (!this.MESSAGING_ENABLED) {
                     throw new Error('מערכת ההודעות כבויה');
                 }
@@ -152,9 +165,15 @@
                     action: messageData.action || null
                 };
 
+                console.log('📦 Final broadcast message object:', JSON.stringify(message, null, 2));
+                console.log('🌐 toAll:', message.toAll);
+                console.log('📊 priority:', message.content.priority);
+                console.log('🏷️ type:', message.content.type);
+
                 const docRef = await this.db.collection('messages').add(message);
 
                 console.log('📢 הודעה שודרה לכולם:', docRef.id);
+                console.log('📍 Document saved to: messages/' + docRef.id);
 
                 return {
                     success: true,
