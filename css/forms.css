@@ -76,7 +76,7 @@
 /* Blue icons in form labels */
 .form-group label i,
 .compact-form label i {
-  color: #3b82f6;
+  color: #3b82f6 !important;
   margin-left: 6px;
 }
 
