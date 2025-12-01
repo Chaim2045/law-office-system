@@ -5,6 +5,11 @@
    ========================================================================== */
 
 .btn {
+  background: linear-gradient(
+    135deg,
+    var(--blue) 0%,
+    var(--blue-dark) 100%
+  );
   color: white;
   border: none;
   padding: var(--space-3) var(--space-4);
@@ -110,27 +115,27 @@
 
 /* Primary Button - Blue with rounded corners */
 .btn-primary {
-  background: #3b82f6;
+  background: #3b82f6 !important;
   color: white;
   border: none;
-  border-radius: 25px;
-  padding: 9px 18px;
-  font-size: 13px;
+  border-radius: 25px !important;
+  padding: 9px 18px !important;
+  font-size: 13px !important;
   font-weight: 500;
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2) !important;
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .btn-primary:hover {
-  background: #2563eb;
+  background: #2563eb !important;
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.3) !important;
 }
 
 .btn-primary:active {
-  background: #1d4ed8;
+  background: #1d4ed8 !important;
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15) !important;
 }
 
 .btn-primary i {
