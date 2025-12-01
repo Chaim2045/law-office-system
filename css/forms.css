@@ -73,6 +73,13 @@
   font-size: var(--font-sm);
 }
 
+/* Blue icons in form labels */
+.form-group label i,
+.compact-form label i {
+  color: #3b82f6;
+  margin-left: 6px;
+}
+
 .form-group input,
 .form-group textarea,
 .form-group select {
