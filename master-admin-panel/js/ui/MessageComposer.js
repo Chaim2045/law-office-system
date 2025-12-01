@@ -286,6 +286,17 @@
                 return;
             }
 
+            // Check if MessagingManager is available
+            if (!this.messagingManager && !window.messagingManager) {
+                this.showError('מערכת ההודעות לא זמינה כרגע. נא לרענן את הדף.');
+                return;
+            }
+
+            // Update reference if it was initialized after this component
+            if (!this.messagingManager) {
+                this.messagingManager = window.messagingManager;
+            }
+
             const messageData = {
                 title,
                 body,

@@ -337,12 +337,28 @@
     // Make available globally
     window.MessagingManager = MessagingManager;
 
-    // Auto-initialize if admin
+    // Auto-initialize when user is authenticated
+    function initializeMessagingSystem() {
+        if (!window.messagingManager) {
+            window.messagingManager = new MessagingManager();
+            window.messagingManager.init().then(success => {
+                if (success) {
+                    console.log('✅ Messaging system ready');
+                }
+            });
+        }
+    }
+
+    // Try to initialize immediately if already authenticated
     if (window.firebaseAuth && window.firebaseAuth.currentUser) {
-        window.messagingManager = new MessagingManager();
-        window.messagingManager.init().then(success => {
-            if (success) {
-                console.log('✅ Messaging system ready');
+        initializeMessagingSystem();
+    }
+
+    // Listen for auth state changes
+    if (window.firebaseAuth) {
+        window.firebaseAuth.onAuthStateChanged((user) => {
+            if (user) {
+                initializeMessagingSystem();
             }
         });
     }
