@@ -241,10 +241,22 @@
 }
 
 .compact-form .btn {
-  padding: 8px 16px;
-  font-size: 13px;
-  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
   transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Keep rounded corners for primary and secondary buttons */
+.compact-form .btn-primary,
+.compact-form .btn-secondary {
+  border-radius: 25px;
+}
+
+/* Less rounded for other buttons */
+.compact-form .btn-success,
+.compact-form .btn-warning,
+.compact-form .btn-danger {
+  border-radius: 8px;
 }
 
 /* אופטימיזציה מיוחדת לחיפוש לקוחות בטופס קומפקטי */
