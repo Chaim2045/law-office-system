@@ -35,6 +35,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <!-- Load service-card-renderer BEFORE running diagnostics -->
+  <script src="/js/modules/service-card-renderer.js"></script>
+
   <script>
     // Firebase configuration
     const firebaseConfig = {
@@ -49,6 +53,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
     const resultsDiv = document.getElementById('results');
 
     function addResult(html) {
@@ -56,6 +61,15 @@
     }
 
     async function runDiagnostics() {
+      // First, try to sign in anonymously
+      addResult(`<div class="test-section"><h2>🔐 בדיקה 0: אימות Firebase</h2>`);
+      try {
+        await auth.signInAnonymously();
+        addResult(`<div class="result success">✅ אימות אנונימי הצליח</div></div>`);
+      } catch (error) {
+        addResult(`<div class="result warning">⚠️ אימות אנונימי נכשל: ${error.message}</div>`);
+        addResult(`<div class="result info">💡 ממשיך בלי אימות - ייתכנו שגיאות הרשאות</div></div>`);
+      }
       addResult(`<div class="test-section"><h2>📋 בדיקה 1: טעינת פונקציות חישוב</h2>`);
 
       // Check if calculation functions are loaded
@@ -73,27 +87,6 @@
       });
 
       addResult(`</div>`);
-
-      // Load the functions if they don't exist
-      if (typeof window.calculateHoursUsed !== 'function') {
-        addResult(`<div class="test-section"><h2>⚠️ טוען פונקציות חישוב...</h2></div>`);
-
-        // Load service-card-renderer.js
-        const script = document.createElement('script');
-        script.src = '/js/modules/service-card-renderer.js?t=' + Date.now();
-        document.head.appendChild(script);
-
-        await new Promise(resolve => {
-          script.onload = () => {
-            addResult(`<div class="result success">✅ service-card-renderer.js נטען בהצלחה</div>`);
-            resolve();
-          };
-          script.onerror = () => {
-            addResult(`<div class="result error">❌ שגיאה בטעינת service-card-renderer.js</div>`);
-            resolve();
-          };
-        });
-      }
 
       // Test 2: Load client data
       addResult(`<div class="test-section"><h2>📋 בדיקה 2: טעינת נתוני לקוח 2025001</h2>`);
