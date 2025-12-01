@@ -375,7 +375,7 @@ return;
                                 }
 
                                 const usedHours = (usedMinutes / 60).toFixed(1);
-                                const remainingHours = Math.max(0, totalHours - parseFloat(usedHours)).toFixed(1);
+                                const remainingHours = (totalHours - parseFloat(usedHours)).toFixed(1); // 🔥 Allow negative for overage
 
                                 servicesMap.set(stage.id, {
                                     displayName: displayName,
@@ -509,7 +509,7 @@ return;
                     }
 
                     const usedHours = (usedMinutes / 60).toFixed(1);
-                    const remainingHours = Math.max(0, totalHours - parseFloat(usedHours)).toFixed(1);
+                    const remainingHours = (totalHours - parseFloat(usedHours)).toFixed(1); // 🔥 Allow negative for overage
 
                     servicesMap.set(serviceKey, {
                         displayName: displayName,
@@ -827,20 +827,28 @@ return;
             clockIcon.style.cssText = 'margin-left: 0.2rem; font-size: 0.65rem;';
 
             const hoursText = document.createElement('span');
+            const hasOverage = parseFloat(serviceInfo.usedHours) > parseFloat(serviceInfo.totalHours);
+            const overageText = hasOverage ? ' ⚠️ חריגה' : '';
+
             if (serviceInfo.type === 'legal_procedure') {
                 // For legal procedures, show stage-specific hours
                 if (serviceInfo.totalHours > 0) {
-                    hoursText.textContent = `${serviceInfo.remainingHours} מתוך ${serviceInfo.totalHours} שעות בשלב`;
+                    hoursText.textContent = `${serviceInfo.usedHours} מתוך ${serviceInfo.totalHours} שעות בשלב${overageText}`;
                 } else {
                     hoursText.textContent = `${serviceInfo.usedHours} שעות בשימוש בשלב`;
                 }
             } else {
                 // For regular hour packages
                 if (serviceInfo.totalHours > 0) {
-                    hoursText.textContent = `${serviceInfo.remainingHours} מתוך ${serviceInfo.totalHours} שעות`;
+                    hoursText.textContent = `${serviceInfo.usedHours} מתוך ${serviceInfo.totalHours} שעות${overageText}`;
                 } else {
                     hoursText.textContent = `${serviceInfo.usedHours} שעות בשימוש`;
                 }
+            }
+
+            // 🔥 Change color if overage
+            if (hasOverage) {
+                hoursLeft.style.color = '#ef4444'; // Red
             }
 
             hoursLeft.appendChild(clockIcon);

@@ -177,10 +177,10 @@ window.calculateHoursUsed = calculateHoursUsed;
           ">
             <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
               <i class="fas fa-clock" style="font-size: 11px;"></i>
-              <span>${hoursRemaining.toFixed(1)} שעות</span>
+              <span>${hoursUsed.toFixed(1)} מתוך ${totalHours.toFixed(1)} שעות</span>
             </div>
-            <div style="color: #64748b; font-size: 11px;">
-              ${progressPercent}% בשימוש
+            <div style="color: ${hoursUsed > totalHours ? '#ef4444' : '#64748b'}; font-size: 11px; font-weight: ${hoursUsed > totalHours ? '600' : 'normal'};">
+              ${progressPercent}% ${hoursUsed > totalHours ? '⚠️ חריגה' : 'בשימוש'}
             </div>
           </div>
         </div>
@@ -227,10 +227,10 @@ window.calculateHoursUsed = calculateHoursUsed;
             ">
               <div style="display: flex; align-items: center; gap: 5px; color: #3b82f6; font-weight: 600;">
                 <i class="fas fa-clock" style="font-size: 11px;"></i>
-                <span>${hoursRemaining.toFixed(1)} שעות</span>
+                <span>${hoursUsed.toFixed(1)} מתוך ${totalHours.toFixed(1)} שעות</span>
               </div>
-              <div style="color: #64748b; font-size: 11px;">
-                ${progressPercent}% בשימוש
+              <div style="color: ${hoursUsed > totalHours ? '#ef4444' : '#64748b'}; font-size: 11px; font-weight: ${hoursUsed > totalHours ? '600' : 'normal'};">
+                ${progressPercent}% ${hoursUsed > totalHours ? '⚠️ חריגה' : 'בשימוש'}
               </div>
             </div>
           </div>
