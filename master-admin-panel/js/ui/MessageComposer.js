@@ -46,8 +46,14 @@
                 this.employees = [];
                 snapshot.forEach(doc => {
                     const employee = doc.data();
+
+                    // CRITICAL FIX: Use authUID (Firebase Auth UID) instead of doc.id (email)
+                    const authUID = employee.authUID || employee.uid || doc.id;
+
+                    console.log(`📋 Employee loaded: ${employee.name} - Email: ${doc.id} - AuthUID: ${authUID}`);
+
                     this.employees.push({
-                        uid: doc.id,
+                        uid: authUID,  // This MUST be Firebase Auth UID, not email!
                         email: employee.email || doc.id,
                         name: employee.name || employee.username || 'לא ידוע',
                         role: employee.role || 'employee'
