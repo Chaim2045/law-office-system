@@ -297,12 +297,16 @@
                 this.messagingManager = window.messagingManager;
             }
 
+            // Get current user's display name
+            const currentUser = window.firebaseAuth?.currentUser;
+            const fromName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'מנהל המערכת';
+
             const messageData = {
                 title,
                 body,
                 type: messageType,
                 priority,
-                fromName: 'מנהל המערכת'
+                fromName: fromName
             };
 
             try {

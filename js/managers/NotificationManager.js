@@ -128,25 +128,33 @@ export class NotificationManager {
      */
     addToNotificationBell(message) {
         if (!window.notificationBell) {
+            console.warn('⚠️ notificationBell not available');
             return;
         }
 
-        const iconMap = {
-            info: 'fas fa-info-circle',
-            alert: 'fas fa-bell',
-            warning: 'fas fa-exclamation-triangle',
-            urgent: 'fas fa-exclamation-circle'
+        // Map message types to notification bell types
+        const typeMap = {
+            info: 'info',
+            alert: 'critical',
+            warning: 'critical',
+            urgent: 'urgent'
         };
 
-        const type = message.content?.type || 'info';
+        const type = typeMap[message.content?.type] || 'info';
         const isUrgent = message.content?.priority === 'urgent' || message.content?.priority === 'high';
+
+        // Get sender name (from.name instead of generic "מנהל המערכת")
+        const senderName = message.from?.name || 'מנהל המערכת';
+        const title = `💬 ${senderName}: ${message.content?.title || 'הודעה חדשה'}`;
 
         window.notificationBell.addNotification(
             type,
-            message.content?.title || 'הודעה חדשה',
+            title,
             message.content?.body || '',
             isUrgent
         );
+
+        console.log('✅ הודעה נוספה לפעמון התראות:', title);
     }
 
     /**
@@ -156,6 +164,7 @@ export class NotificationManager {
     showToastNotification(message) {
         const toast = document.createElement('div');
         toast.className = 'toast-notification message-toast';
+        toast.id = `toast-${message.id}`;
 
         const priorityIcons = {
             low: 'fas fa-info-circle',
@@ -175,20 +184,24 @@ export class NotificationManager {
         const icon = priorityIcons[priority];
         const color = priorityColors[priority];
 
+        // Get sender name (e.g., "גיא שלח הודעה")
+        const senderName = message.from?.name || 'מנהל המערכת';
+        const senderMessage = `${senderName} שלח הודעה`;
+
         toast.innerHTML = `
             <div class="toast-header" style="background: ${color};">
                 <i class="${icon}"></i>
-                <strong>${safeText(message.content?.title || 'הודעה חדשה')}</strong>
-                <button class="toast-close" onclick="this.closest('.toast-notification').remove()">×</button>
+                <strong>${safeText(senderMessage)}</strong>
+                <button class="toast-close" onclick="window.notificationManager.dismissToast('${message.id}')">×</button>
             </div>
             <div class="toast-body">
-                ${safeText(message.content?.body || '')}
+                <div class="toast-message-title">${safeText(message.content?.title || '')}</div>
+                <div class="toast-message-body">${safeText(message.content?.body || '')}</div>
             </div>
-            ${message.from?.name ? `<div class="toast-from">מאת: ${safeText(message.from.name)}</div>` : ''}
             <div class="toast-actions">
-                <button class="toast-btn" onclick="window.notificationManager.markAsRead('${message.id}'); this.closest('.toast-notification').remove();">
+                <button class="toast-btn toast-btn-primary" onclick="window.notificationManager.markAsReadAndDismiss('${message.id}');">
                     <i class="fas fa-check"></i>
-                    סמן כנקרא
+                    קראתי - סגור
                 </button>
             </div>
         `;
@@ -198,13 +211,33 @@ export class NotificationManager {
         // Animation
         setTimeout(() => toast.classList.add('show'), 10);
 
-        // Auto-remove after 10 seconds
-        setTimeout(() => {
-            if (document.body.contains(toast)) {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }
-        }, 10000);
+        // NO AUTO-REMOVE - stays until user clicks "קראתי - סגור"
+        console.log(`📌 Toast notification displayed (stays until read): ${senderMessage}`);
+    }
+
+    /**
+     * סמן כנקרא וסגור Toast
+     * @param {string} messageId - ID של ההודעה
+     */
+    async markAsReadAndDismiss(messageId) {
+        await this.markAsRead(messageId);
+        this.dismissToast(messageId);
+    }
+
+    /**
+     * סגור Toast ללא סימון כנקרא
+     * @param {string} messageId - ID של ההודעה
+     */
+    dismissToast(messageId) {
+        const toast = document.getElementById(`toast-${messageId}`);
+        if (toast) {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }
     }
 
     /**

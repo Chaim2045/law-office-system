@@ -80,6 +80,19 @@
     line-height: 1.5;
 }
 
+.toast-notification .toast-message-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: #1a1a1a;
+}
+
+.toast-notification .toast-message-body {
+    font-size: 0.9rem;
+    color: #4a4a4a;
+    white-space: pre-wrap;
+}
+
 .toast-notification .toast-from {
     padding: 0 1.25rem 0.5rem;
     color: #666;
@@ -111,6 +124,15 @@
 .toast-notification .toast-btn:hover {
     background: #0A66C2;
     transform: translateY(-1px);
+}
+
+.toast-notification .toast-btn-primary {
+    background: #10b981;
+    font-weight: 600;
+}
+
+.toast-notification .toast-btn-primary:hover {
+    background: #059669;
 }
 
 /* ===== Message Priority Colors ===== */
