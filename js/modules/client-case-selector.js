@@ -264,6 +264,7 @@
       this.selectedCase = null;
       this.selectedService = null;
       this.clientCases = [];
+      this.clientListener = null; // 🔥 Real-Time Firestore listener
 
       // ✅ Register this instance globally for onclick handlers
       window.clientCaseSelectorInstances = window.clientCaseSelectorInstances || {};
@@ -684,40 +685,64 @@ return false;
 
         // ✅ במבנה החדש: Client = Case (one-to-one)
         // חיפוש לפי clientId (document ID) במקום לפי clientName
-        Logger.log(`  🔍 Querying client by ID: ${clientId}...`);
-        const clientDoc = await db.collection('clients').doc(clientId).get();
+        Logger.log(`  🔍 Setting up Real-Time listener for client: ${clientId}...`);
 
-        let clientCases = [];
-        if (clientDoc.exists) {
-          const data = clientDoc.data();
-          clientCases.push({
-            id: clientDoc.id, // במבנה החדש: document ID = caseNumber
-            ...data
-          });
+        // 🔥 Real-Time Listener - עדכון אוטומטי בכל שינוי
+        if (this.clientListener) {
+          this.clientListener(); // ניתוק listener קודם אם קיים
         }
 
-        Logger.log(`  📊 Found ${clientCases.length} client/case in Firebase`);
+        this.clientListener = db.collection('clients').doc(clientId).onSnapshot(
+          (clientDoc) => {
+            Logger.log(`  🔄 Real-Time update received for client: ${clientId}`);
 
-        // סינון לפי סטטוס (אם נדרש)
-        if (this.options.showOnlyActive) {
-          const beforeFilter = clientCases.length;
-          clientCases = clientCases.filter(c => c.status === 'active');
-          Logger.log(`  🔍 Filtered by status: ${beforeFilter} → ${clientCases.length} (active only)`);
-        }
+            let clientCases = [];
+            if (clientDoc.exists) {
+              const data = clientDoc.data();
+              clientCases.push({
+                id: clientDoc.id, // במבנה החדש: document ID = caseNumber
+                ...data
+              });
+            }
 
-        // סינון לפי סוג (אם נדרש)
-        if (this.options.filterByType) {
-          const beforeFilter = clientCases.length;
-          clientCases = clientCases.filter(c => c.procedureType === this.options.filterByType);
-          Logger.log(`  🔍 Filtered by type: ${beforeFilter} → ${clientCases.length} (${this.options.filterByType} only)`);
-        }
+            Logger.log(`  📊 Found ${clientCases.length} client/case in Firebase`);
 
-        this.clientCases = clientCases;
-        Logger.log(`  ✅ Final cases count: ${clientCases.length}`);
+            // סינון לפי סטטוס (אם נדרש)
+            if (this.options.showOnlyActive) {
+              const beforeFilter = clientCases.length;
+              clientCases = clientCases.filter(c => c.status === 'active');
+              Logger.log(`  🔍 Filtered by status: ${beforeFilter} → ${clientCases.length} (active only)`);
+            }
 
-        // בניית dropdown של תיקים
-        Logger.log('  🎨 Rendering case dropdown...');
-        this.renderCaseDropdown();
+            // סינון לפי סוג (אם נדרש)
+            if (this.options.filterByType) {
+              const beforeFilter = clientCases.length;
+              clientCases = clientCases.filter(c => c.procedureType === this.options.filterByType);
+              Logger.log(`  🔍 Filtered by type: ${beforeFilter} → ${clientCases.length} (${this.options.filterByType} only)`);
+            }
+
+            this.clientCases = clientCases;
+            Logger.log(`  ✅ Final cases count: ${clientCases.length}`);
+
+            // בניית dropdown של תיקים
+            Logger.log('  🎨 Rendering case dropdown...');
+            this.renderCaseDropdown();
+
+            // אם יש תיק נבחר, עדכן אותו
+            if (this.selectedCase && clientCases.length > 0) {
+              const updatedCase = clientCases.find(c => c.id === this.selectedCase.id);
+              if (updatedCase) {
+                Logger.log('  🔄 Updating selected case with fresh data...');
+                this.selectedCase = updatedCase;
+                this.renderServiceCards(updatedCase);
+              }
+            }
+          },
+          (error) => {
+            console.error('❌ Real-Time listener error:', error);
+            alert('שגיאה בטעינת תיקים של הלקוח: ' + error.message);
+          }
+        );
 
       } catch (error) {
         console.error('❌ שגיאה בטעינת תיקים של הלקוח:', error);
@@ -1012,7 +1037,8 @@ return;
                   service.pricingType || 'hourly',
                   caseItem,
                   {
-                    onClick: `window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(stage.id)}', 'legal_procedure')`
+                    onClick: `window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(stage.id)}', 'legal_procedure')`,
+                    procedureName: service.name || service.displayName // 🔥 הוספת שם ההליך המשפטי
                   }
                 );
               }
@@ -1598,6 +1624,18 @@ input.value = '';
         "'": '&#039;'
       };
       return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * 🔥 Cleanup - ניתוק Real-Time Listener
+     * יש לקרוא לפונקציה זו כשהמשתמש מתנתק או סוגר את העמוד
+     */
+    destroy() {
+      if (this.clientListener) {
+        Logger.log(`🔥 Detaching Real-Time listener for ${this.containerId}...`);
+        this.clientListener(); // ניתוק ה-listener
+        this.clientListener = null;
+      }
     }
   }
 

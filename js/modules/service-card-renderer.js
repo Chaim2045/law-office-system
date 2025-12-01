@@ -191,7 +191,10 @@ window.calculateHoursUsed = calculateHoursUsed;
       const stageName = service.id === 'stage_a' ? "שלב א'" :
                        service.id === 'stage_b' ? "שלב ב'" :
                        service.id === 'stage_c' ? "שלב ג'" : service.name;
-      title = `הליך משפטי - ${stageName}`;
+
+      // 🔥 FIX: הצג שם ההליך המשפטי + שם השלב
+      const procedureName = options.procedureName || 'הליך משפטי';
+      title = `${procedureName} - ${stageName}`;
       subtitle = service.description || service.name;
 
       if (pricingType === 'hourly') {
