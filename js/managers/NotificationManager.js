@@ -44,31 +44,56 @@ export class NotificationManager {
             this.auth = window.firebaseAuth || firebase.auth();
             this.currentUser = userId;
 
+            console.log('🔍 NotificationManager: Starting to listen for userId:', userId);
+
             if (!this.db || !userId) {
                 throw new Error('Firebase או userId לא זמינים');
             }
 
             // Listen for messages to this specific user
+            console.log('📡 Setting up listener for personal messages (to.uid ==', userId + ')');
             this.listener = this.db.collection('messages')
                 .where('to.uid', '==', userId)
                 .orderBy('metadata.createdAt', 'desc')
                 .onSnapshot((snapshot) => {
+                    console.log('📬 Personal messages snapshot received. Size:', snapshot.size);
+
                     snapshot.docChanges().forEach((change) => {
+                        console.log('📝 Document change detected:', change.type, 'ID:', change.doc.id);
+
                         if (change.type === 'added') {
                             const message = { id: change.doc.id, ...change.doc.data() };
+                            console.log('✉️ New personal message:', message);
                             this.handleNewMessage(message);
                         }
                     });
 
                     this.updateMessagesList(snapshot);
+                }, (error) => {
+                    console.error('❌ Error in personal messages listener:', error);
                 });
 
             // Also listen for broadcast messages
+            console.log('📡 Setting up listener for broadcast messages (toAll == true)');
             this.broadcastListener = this.db.collection('messages')
                 .where('toAll', '==', true)
                 .orderBy('metadata.createdAt', 'desc')
                 .onSnapshot((snapshot) => {
+                    console.log('📢 Broadcast messages snapshot received. Size:', snapshot.size);
+
+                    snapshot.docChanges().forEach((change) => {
+                        console.log('📝 Broadcast change detected:', change.type, 'ID:', change.doc.id);
+
+                        if (change.type === 'added') {
+                            const message = { id: change.doc.id, ...change.doc.data() };
+                            console.log('📣 New broadcast message:', message);
+                            this.handleNewMessage(message);
+                        }
+                    });
+
                     this.updateMessagesList(snapshot);
+                }, (error) => {
+                    console.error('❌ Error in broadcast messages listener:', error);
                 });
 
             console.log('✅ NotificationManager: Started listening for messages');
@@ -103,13 +128,21 @@ export class NotificationManager {
      */
     handleNewMessage(message) {
         console.log('📨 הודעה חדשה התקבלה:', message);
+        console.log('📊 Message priority:', message.content?.priority);
+        console.log('🎯 Message type:', message.content?.type);
 
         // Update unread count
         this.updateUnreadCount();
 
         // Show toast notification for urgent/high priority messages
-        if (message.content?.priority === 'urgent' || message.content?.priority === 'high') {
+        const priority = message.content?.priority;
+        console.log('🔔 Checking if should show toast. Priority:', priority);
+
+        if (priority === 'urgent' || priority === 'high') {
+            console.log('✅ Showing toast notification for priority:', priority);
             this.showToastNotification(message);
+        } else {
+            console.log('ℹ️ Not showing toast (priority is', priority + ', only showing for urgent/high)');
         }
 
         // Play notification sound (optional)
@@ -119,6 +152,7 @@ export class NotificationManager {
         this.updateNotificationBell();
 
         // Add to notification bell system
+        console.log('🔔 Adding to notification bell...');
         this.addToNotificationBell(message);
     }
 
@@ -463,16 +497,60 @@ export class NotificationManager {
 window.NotificationManager = NotificationManager;
 
 // Auto-initialize when user logs in
-if (typeof firebase !== 'undefined' && firebase.auth) {
-    firebase.auth().onAuthStateChanged((user) => {
-        if (user && !window.notificationManager) {
-            window.notificationManager = new NotificationManager();
-            window.notificationManager.startListening(user.uid);
-        } else if (!user && window.notificationManager) {
-            window.notificationManager.stopListening();
-            window.notificationManager = null;
+async function initializeNotificationManager() {
+    try {
+        console.log('🔍 Attempting to initialize NotificationManager...');
+
+        // Wait for Firebase to be available
+        if (typeof firebase === 'undefined') {
+            console.warn('⚠️ Firebase not loaded yet, waiting...');
+            setTimeout(initializeNotificationManager, 500);
+            return;
         }
-    });
+
+        if (!firebase.auth) {
+            console.warn('⚠️ Firebase Auth not available yet, waiting...');
+            setTimeout(initializeNotificationManager, 500);
+            return;
+        }
+
+        const auth = firebase.auth();
+
+        // Check if already authenticated
+        const currentUser = auth.currentUser;
+        if (currentUser && !window.notificationManager) {
+            console.log('✅ User already authenticated, initializing NotificationManager...');
+            window.notificationManager = new NotificationManager();
+            await window.notificationManager.startListening(currentUser.uid);
+        }
+
+        // Listen for future auth changes
+        auth.onAuthStateChanged(async (user) => {
+            console.log('🔐 Auth state changed:', user ? `User: ${user.uid}` : 'No user');
+
+            if (user && !window.notificationManager) {
+                console.log('✅ User logged in, initializing NotificationManager...');
+                window.notificationManager = new NotificationManager();
+                await window.notificationManager.startListening(user.uid);
+            } else if (!user && window.notificationManager) {
+                console.log('🚪 User logged out, stopping NotificationManager...');
+                window.notificationManager.stopListening();
+                window.notificationManager = null;
+            }
+        });
+
+        console.log('✅ NotificationManager auto-initialization setup complete');
+
+    } catch (error) {
+        console.error('❌ Error initializing NotificationManager:', error);
+    }
+}
+
+// Start initialization
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeNotificationManager);
+} else {
+    initializeNotificationManager();
 }
 
 export default NotificationManager;
