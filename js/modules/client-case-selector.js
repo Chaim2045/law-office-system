@@ -14,7 +14,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * 🗓️ תאריך: 2025-01-19
- * 📦 גרסה: 2.8.0 → 3.0.0
+ * 📦 גרסה: 2.8.0 → 3.1.0 (Real-Time Listener Fixed)
  *
  * ✅ Refactoring מושלם - Single Source of Truth:
  * מחקתי לחלוטין את createServiceCard() ועברתי להשתמש ב-window.renderServiceCard()
@@ -135,6 +135,9 @@
 
 (function() {
   'use strict';
+
+  // 🔥 VERSION CHECK - Real-Time Listener
+  console.log('%c🔥 Client-Case-Selector v3.1.0 - Real-Time Listener Active', 'background: #00ff00; color: #000; font-size: 16px; font-weight: bold; padding: 5px;');
 
   class ClientCaseSelector {
     // 🎯 Global Cache + Real-time Sync
@@ -694,6 +697,7 @@ return false;
 
         this.clientListener = db.collection('clients').doc(clientId).onSnapshot(
           (clientDoc) => {
+            console.log('%c🔄 REAL-TIME UPDATE - Client data changed!', 'background: #ff9900; color: #fff; font-size: 14px; font-weight: bold; padding: 3px;');
             Logger.log(`  🔄 Real-Time update received for client: ${clientId}`);
 
             let clientCases = [];
