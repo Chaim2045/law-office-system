@@ -1977,7 +1977,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         }
 
         // 🚀 קריאה ל-Firebase Cloud Function
-        const addService = window.firebaseFunctions.httpsCallable('addServiceToClient');
+        const addService = firebase.functions().httpsCallable('addServiceToClient');
         const result = await addService(serviceData);
 
         // הסתרת loading
@@ -2052,7 +2052,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         }
 
         // קריאה ל-Firebase Function
-        const createClient = window.firebaseFunctions.httpsCallable('createClient');
+        const createClient = firebase.functions().httpsCallable('createClient');
         const result = await createClient(this.buildFirebaseData(formData));
 
         // הסתרת loading
