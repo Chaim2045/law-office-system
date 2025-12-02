@@ -219,53 +219,59 @@
 
 /* ===== Modal Styling ===== */
 /*
- * Professional Modal Implementation
- * ================================
+ * Full-Screen Overlay Modal Implementation
+ * =========================================
+ * Professional approach - Modal covers EVERYTHING including navigation bar
+ *
  * Key Features:
- * 1. align-items: flex-start - Prevents top content from being cut off
- * 2. overflow-y: auto - Allows scrolling when content is tall
- * 3. Safe top margin (50px) - Keeps content visible below nav bar
- * 4. Responsive design - Adjusts for mobile
- * 5. Smooth scrolling - iOS-optimized
+ * 1. z-index: 9999 - Above ALL content (nav bar is z-index: 100)
+ * 2. Full-screen overlay - Covers entire viewport from edge to edge
+ * 3. Backdrop blur - Professional glassmorphism effect
+ * 4. Centered content - Modal content centered with safe scrolling
+ * 5. Responsive - Works on all screen sizes
  */
 .modal {
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
+    z-index: 9999;
+    padding: 2rem;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    backdrop-filter: blur(2px);
 }
 
 /*
  * Modal Content Container
  * =======================
- * margin: 80px auto 50px - Safe space: 80px top (nav bar ~70-75px + buffer), 50px bottom
- * max-height: calc(100vh - 130px) - Viewport minus top (80px) and bottom (50px) margins
- * overflow-y: auto - Scrollable when content exceeds max-height
+ * Centered content box that floats above the blurred overlay
  *
- * WHY 80px TOP MARGIN:
- * - Navigation bar height: ~70-75px (padding: 16px * 2 + logo ~40px)
- * - Buffer space: 5-10px for visual breathing room
- * - Total: 80px ensures content never hides behind nav
+ * Design:
+ * - max-height: 90vh - Never taller than 90% of viewport (allows safe scrolling)
+ * - margin: auto - Centered by flexbox parent
+ * - overflow-y: auto - Internal scrolling when content is tall
+ * - box-shadow: Elevated card effect
+ * - border-radius: Modern rounded corners
  */
 .modal-content {
     background: white;
     border-radius: 16px;
     max-width: 600px;
     width: 100%;
-    max-height: calc(100vh - 130px);
-    margin: 80px auto 50px;
+    max-height: 90vh;
+    margin: auto;
     overflow-y: auto;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    position: relative;
 
     /* Custom Scrollbar - Minimal & Clean */
     scrollbar-width: thin; /* Firefox */
@@ -831,9 +837,13 @@ select.form-input {
         justify-content: center;
     }
 
+    .modal {
+        padding: 1rem;
+    }
+
     .modal-content {
         max-width: 100%;
-        margin: 0.5rem;
+        max-height: 95vh;
     }
 }
 
