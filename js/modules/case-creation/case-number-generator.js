@@ -21,7 +21,7 @@
      * @returns {boolean}
      */
     isAuthenticated() {
-      return firebase.auth().currentUser !== null;
+      return window.firebaseAuth && window.firebaseAuth.currentUser !== null;
     }
 
     /**
@@ -110,7 +110,7 @@ return false;
       // Retry Loop
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-          const snapshot = await firebase.firestore()
+          const snapshot = await window.firebaseDB
             .collection('clients')
             .orderBy('caseNumber', 'desc')
             .limit(1)
@@ -175,7 +175,7 @@ return false;
       }
 
       // מאזין רק ליצירת לקוחות חדשים
-      this.updateListener = firebase.firestore()
+      this.updateListener = window.firebaseDB
         .collection('clients')
         .orderBy('createdAt', 'desc')
         .limit(1)
@@ -394,7 +394,7 @@ return false;
       });
 
       try {
-        const doc = await firebase.firestore()
+        const doc = await window.firebaseDB
           .collection('clients')
           .doc(caseNumber.toString())
           .get();

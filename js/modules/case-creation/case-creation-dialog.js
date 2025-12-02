@@ -606,12 +606,12 @@
 
                 <!-- Navigation Buttons -->
                 <div class="case-dialog-actions" style="display: flex; justify-content: space-between; align-items: center;">
-                  <button type="button" id="prevStepBtn" class="btn btn-secondary" style="display: none;">
+                  <button type="button" id="prevStepBtn" class="btn btn-primary" style="display: none;">
                     <i class="fas fa-arrow-right" style="margin-left: 6px;"></i>
                     חזור
                   </button>
                   <div style="flex: 1;"></div>
-                  <button type="button" id="modernCaseDialog_cancel" class="btn btn-secondary" style="margin-left: 8px;">
+                  <button type="button" id="modernCaseDialog_cancel" class="btn btn-primary" style="margin-left: 8px;">
                     ביטול
                   </button>
                   <button type="button" id="nextStepBtn" class="btn btn-primary">
@@ -747,7 +747,7 @@
           feedbackContainer.style.display = 'none';
         }
 
-        window.CaseFormValidator?.displayErrors(validation.errors);
+        this.displayErrors(validation.errors);
         return;
       }
 
@@ -846,6 +846,9 @@ serviceTypeSelector.style.display = 'block';
           if (serviceTitleField) {
 serviceTitleField.style.display = 'block';
 }
+
+          // ✅ העברת כרטיס המידע של תיק קיים לשלב 2
+          this.moveExistingCaseInfoToStep3();
         }
       }
     }
@@ -1512,7 +1515,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         Logger.log(`🔍 Checking existing case for client: ${clientId}`);
 
         // ✅ במבנה החדש: כל client הוא case
-        const clientDoc = await firebase.firestore()
+        const clientDoc = await window.firebaseDB
           .collection('clients')
           .doc(clientId)
           .get();
@@ -1665,6 +1668,37 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
     }
 
     /**
+     * העברת כרטיס המידע של תיק קיים לשלב 3
+     * קוראת כשעוברים משלב 1 לשלב 2 במצב "לקוח קיים"
+     */
+    moveExistingCaseInfoToStep3() {
+      // מצא את הכרטיס
+      const existingCaseInfo = document.getElementById('existingCaseInfo');
+      if (!existingCaseInfo) {
+        Logger.log('⚠️ existingCaseInfo not found, nothing to move');
+        return;
+      }
+
+      // מצא את step3_service
+      const step3Service = document.getElementById('step3_service');
+      if (!step3Service) {
+        Logger.log('❌ step3_service not found');
+        return;
+      }
+
+      // בדוק אם הכרטיס כבר נמצא ב-step3
+      const alreadyInStep3 = step3Service.contains(existingCaseInfo);
+      if (alreadyInStep3) {
+        Logger.log('✅ existingCaseInfo already in step3');
+        return;
+      }
+
+      // העבר את הכרטיס לתחילת step3_service
+      step3Service.insertBefore(existingCaseInfo, step3Service.firstChild);
+      Logger.log('✅ Moved existingCaseInfo to step3');
+    }
+
+    /**
      * טיפול בשליחת טופס
      */
     async handleSubmit() {
@@ -1674,7 +1708,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
 
       // 🛡️ Defensive Check: אם במצב existing אבל לא נבחר לקוח - שגיאה!
       if (this.currentMode === 'existing' && !this.currentCase) {
-        window.CaseFormValidator.displayErrors(['חובה לבחור לקוח מהרשימה לפני הוספת שירות']);
+        this.displayErrors(['חובה לבחור לקוח מהרשימה לפני הוספת שירות']);
         Logger.log('❌ Validation failed: No client selected in existing mode');
         return;
       }
@@ -1693,16 +1727,18 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
       // איסוף נתונים
       const formData = this.collectFormData();
 
-      // ולידציה
-      const validation = window.CaseFormValidator.validateCaseForm(formData);
-
-      if (!validation.isValid) {
-        window.CaseFormValidator.displayErrors(validation.errors);
-        return;
+      // ולידציה פשוטה
+      const errors = [];
+      if (!formData.client || !formData.client.name || formData.client.name.length < 2) {
+        errors.push('אנא הזן שם לקוח (לפחות 2 תווים)');
+      }
+      if (!formData.case || !formData.case.title || formData.case.title.length < 2) {
+        errors.push('אנא הזן כותרת תיק (לפחות 2 תווים)');
       }
 
-      if (validation.warnings.length > 0) {
-        window.CaseFormValidator.displayWarnings(validation.warnings);
+      if (errors.length > 0) {
+        this.displayErrors(errors);
+        return;
       }
 
       // המשך לשמירה...
@@ -1924,7 +1960,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
 
         if (!validation.isValid) {
           // Display errors in the dialog
-          window.CaseFormValidator?.displayErrors(validation.errors);
+          this.displayErrors(validation.errors);
 
           // Focus on first error field with visual highlight
           this.focusOnFirstError(validation.fieldIds);
@@ -1941,7 +1977,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         }
 
         // 🚀 קריאה ל-Firebase Cloud Function
-        const addService = firebase.functions().httpsCallable('addServiceToClient');
+        const addService = window.firebaseFunctions.httpsCallable('addServiceToClient');
         const result = await addService(serviceData);
 
         // הסתרת loading
@@ -2016,7 +2052,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         }
 
         // קריאה ל-Firebase Function
-        const createClient = firebase.functions().httpsCallable('createClient');
+        const createClient = window.firebaseFunctions.httpsCallable('createClient');
         const result = await createClient(this.buildFirebaseData(formData));
 
         // הסתרת loading
@@ -2065,6 +2101,8 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
     buildFirebaseData(formData) {
       const data = {
         clientName: formData.client.name,
+        phone: formData.client.phone || '',
+        email: formData.client.email || '',
         caseNumber: formData.case.caseNumber,
         caseTitle: formData.case.title,
         description: formData.case.description || '',
@@ -2088,6 +2126,24 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
       }
 
       return data;
+    }
+
+    /**
+     * הצגת שגיאות
+     */
+    displayErrors(errors) {
+      const errorsDiv = document.getElementById('formErrors');
+      if (!errorsDiv) {
+return;
+}
+
+      errorsDiv.innerHTML = errors.map(error => `
+        <div class="error-item">
+          <i class="fas fa-exclamation-circle"></i>
+          ${error}
+        </div>
+      `).join('');
+      errorsDiv.style.display = 'block';
     }
 
     /**
