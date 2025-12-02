@@ -515,6 +515,8 @@ select.form-input {
 
 .btn-action-primary:hover {
     background: var(--primary-blue-dark);
+    color: white;
+    transform: translateY(-1px);
 }
 
 .btn-action-secondary {
