@@ -218,6 +218,16 @@
 }
 
 /* ===== Modal Styling ===== */
+/*
+ * Professional Modal Implementation
+ * ================================
+ * Key Features:
+ * 1. align-items: flex-start - Prevents top content from being cut off
+ * 2. overflow-y: auto - Allows scrolling when content is tall
+ * 3. Safe top margin (50px) - Keeps content visible below nav bar
+ * 4. Responsive design - Adjusts for mobile
+ * 5. Smooth scrolling - iOS-optimized
+ */
 .modal {
     position: fixed;
     top: 0;
@@ -226,18 +236,29 @@
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     z-index: 1000;
     padding: 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    backdrop-filter: blur(2px);
 }
 
+/*
+ * Modal Content Container
+ * =======================
+ * margin: 50px auto - Creates safe top/bottom space (prevents nav bar overlap)
+ * max-height: calc(100vh - 100px) - Ensures content fits in viewport
+ * overflow-y: auto - Scrollable when content exceeds max-height
+ */
 .modal-content {
     background: white;
     border-radius: 16px;
     max-width: 600px;
     width: 100%;
-    max-height: 90vh;
+    max-height: calc(100vh - 100px);
+    margin: 50px auto;
     overflow-y: auto;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
