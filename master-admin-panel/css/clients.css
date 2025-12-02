@@ -248,17 +248,22 @@
 /*
  * Modal Content Container
  * =======================
- * margin: 50px auto - Creates safe top/bottom space (prevents nav bar overlap)
- * max-height: calc(100vh - 100px) - Ensures content fits in viewport
+ * margin: 80px auto 50px - Safe space: 80px top (nav bar ~70-75px + buffer), 50px bottom
+ * max-height: calc(100vh - 130px) - Viewport minus top (80px) and bottom (50px) margins
  * overflow-y: auto - Scrollable when content exceeds max-height
+ *
+ * WHY 80px TOP MARGIN:
+ * - Navigation bar height: ~70-75px (padding: 16px * 2 + logo ~40px)
+ * - Buffer space: 5-10px for visual breathing room
+ * - Total: 80px ensures content never hides behind nav
  */
 .modal-content {
     background: white;
     border-radius: 16px;
     max-width: 600px;
     width: 100%;
-    max-height: calc(100vh - 100px);
-    margin: 50px auto;
+    max-height: calc(100vh - 130px);
+    margin: 80px auto 50px;
     overflow-y: auto;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
