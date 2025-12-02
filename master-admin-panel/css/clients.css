@@ -357,11 +357,12 @@
 .quick-dates {
     display: flex;
     gap: 0.5rem;
-    margin-top: 0.35rem; /* קרוב יותר לבחר תקופה */
+    margin-top: 0.25rem; /* קרוב עוד יותר לבחר תקופה */
     margin-bottom: 1rem; /* מרווח לפני קו המפריד */
     padding-bottom: 1rem; /* ריפוד פנימי */
     border-bottom: 1px solid #e5e7eb; /* קו מפריד */
     flex-wrap: wrap;
+    justify-content: center; /* מרכוז כפתורים */
 }
 
 .btn-quick-date {

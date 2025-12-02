@@ -1048,6 +1048,24 @@ return '';
         validateForm(formData) {
             // Check if service is selected (required in new design)
             if (!formData.service || formData.service === '') {
+                // גלול לקטע השירותים והדגש אותו
+                if (this.serviceCardsContainer) {
+                    this.serviceCardsContainer.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+
+                    // הדגש זמנית את הקטע
+                    this.serviceCardsContainer.style.outline = '2px solid #ef4444';
+                    this.serviceCardsContainer.style.outlineOffset = '4px';
+                    this.serviceCardsContainer.style.borderRadius = '8px';
+
+                    setTimeout(() => {
+                        this.serviceCardsContainer.style.outline = '';
+                        this.serviceCardsContainer.style.outlineOffset = '';
+                    }, 2000);
+                }
+
                 if (window.notify) {
                     window.notify.error('נא לבחור שירות', 'שגיאה');
                 } else {
@@ -1057,6 +1075,14 @@ return '';
             }
 
             if (!formData.startDate || !formData.endDate) {
+                // גלול לקטע התאריכים
+                if (this.startDateInput) {
+                    this.startDateInput.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
+
                 if (window.notify) {
                     window.notify.error('נא לבחור תקופה', 'שגיאה');
                 } else {
@@ -1069,6 +1095,14 @@ return '';
             const end = new Date(formData.endDate);
 
             if (start > end) {
+                // גלול לקטע התאריכים
+                if (this.startDateInput) {
+                    this.startDateInput.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
+
                 if (window.notify) {
                     window.notify.error('תאריך התחלה חייב להיות לפני תאריך סיום', 'שגיאה');
                 } else {
