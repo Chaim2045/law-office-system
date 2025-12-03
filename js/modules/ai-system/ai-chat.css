@@ -52,15 +52,20 @@
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Floating Button (כפתור צף)
+   Floating Button (כפתור צף) - Bubble Pop Style
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.ai-float-btn {
+/* Wrapper להחזקת הכפתור והבועה */
+.ai-float-wrapper {
   position: fixed;
   bottom: 30px;
   left: 30px;
+  z-index: 9998;
+}
 
-  /* כפתור עגול - רק אייקון בברירת מחדל */
+/* הכפתור עצמו - נשאר במקום תמיד */
+.ai-float-btn {
+  position: relative;
   width: 60px;
   height: 60px;
 
@@ -86,25 +91,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  overflow: visible; /* Changed from hidden to visible for badge */
+  overflow: visible;
 
-  /* כשיוצאים - מהיר! */
   transition:
-    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    gap 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     background 0.3s ease,
-    transform 0.3s ease,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
     box-shadow 0.3s ease;
-  z-index: 9998;
 
   /* אנימציית pulse עדינה כשהכפתור במנוחה */
-  animation: gentlePulse 3s ease-in-out infinite;
+  animation: gentle-pulse 3s ease-in-out infinite;
 }
 
-@keyframes gentlePulse {
+@keyframes gentle-pulse {
   0%, 100% {
     box-shadow:
       0 4px 14px rgba(59, 130, 246, 0.4),
@@ -121,102 +119,147 @@
   }
 }
 
-.ai-float-btn:hover {
-  /* מתרחב ימינה - בצורה חלקה */
-  width: auto;
-  min-width: 60px;
-  padding: 0 24px 0 20px;
-  gap: 12px;
-  border-radius: 60px;
-
+/* Hover על הכפתור - רק אפקטים עדינים */
+.ai-float-wrapper:hover .ai-float-btn {
   /* גרדיאנט כהה יותר בהובר */
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 
-  transform: translateY(-3px);
+  /* קופץ קלות למעלה */
+  transform: translateY(-4px) scale(1.05);
 
   /* צללים מודגשים + זוהר כחול */
   box-shadow:
-    0 8px 24px rgba(37, 99, 235, 0.5),
-    0 4px 12px rgba(29, 78, 216, 0.35),
-    0 0 0 4px rgba(59, 130, 246, 0.1),
+    0 8px 28px rgba(37, 99, 235, 0.55),
+    0 4px 14px rgba(29, 78, 216, 0.4),
+    0 0 0 4px rgba(59, 130, 246, 0.15),
     inset 0 -2px 4px rgba(0, 0, 0, 0.15),
     inset 0 1px 2px rgba(255, 255, 255, 0.25);
-
-  /* כשנכנסים - מהיר ותגובתי, חלק ונעים */
-  transition:
-    width 0.5s cubic-bezier(0.33, 1, 0.68, 1),
-    padding 0.5s cubic-bezier(0.33, 1, 0.68, 1),
-    gap 0.5s cubic-bezier(0.33, 1, 0.68, 1),
-    border-radius 0.5s cubic-bezier(0.33, 1, 0.68, 1),
-    background 0.3s ease-out,
-    transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
-    box-shadow 0.3s cubic-bezier(0.33, 1, 0.68, 1);
 
   /* עוצר את ה-pulse בהובר */
   animation: none;
 }
 
 .ai-float-btn:active {
-  transform: translateY(-1px) scale(0.97);
+  transform: translateY(-2px) scale(1.02);
   transition: all 0.1s ease;
 }
 
 .ai-float-btn i {
   font-size: 22px;
-  flex-shrink: 0;
-  /* כשיוצאים - מהיר מאוד! */
-  transition: transform 0.15s ease-out;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.ai-float-btn:hover i {
-  transform: rotate(15deg) scale(1.05);
-  /* כשנכנסים - מהיר ומסונכרן */
-  transition: transform 0.5s cubic-bezier(0.33, 1, 0.68, 1);
+.ai-float-wrapper:hover .ai-float-btn i {
+  transform: rotate(15deg) scale(1.1);
 }
 
-.ai-float-btn-text {
-  white-space: nowrap;
-  max-width: 0;
+/* ═══════════════════════════════════════════════════════════════════════════
+   Bubble Label - תווית שצצה מעל הכפתור
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-bubble-label {
+  position: absolute;
+  bottom: 75px; /* מעל הכפתור */
+  left: 50%;
+  transform: translateX(-50%) translateY(10px) scale(0.8);
+
+  /* מצב התחלתי - מוסתר */
   opacity: 0;
-  font-size: 15px;
+  visibility: hidden;
+  pointer-events: none;
+
+  /* תיבת הבועה */
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 12px;
+  white-space: nowrap;
+
+  /* צל עמוק וחד */
+  box-shadow:
+    0 8px 24px rgba(30, 64, 175, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2);
+
+  /* מעבר חלק */
+  transition:
+    opacity 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s,
+    visibility 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s;
+
+  z-index: 9999;
+}
+
+/* הטקסט בתוך הבועה */
+.ai-bubble-text {
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.3px;
-  /* כשיוצאים - ממש מהיר! נעלם מיידית */
-  transition:
-    max-width 0.08s ease-out,
-    opacity 0.06s ease-out;
+  letter-spacing: -0.2px;
+  display: block;
+  line-height: 1.3;
 }
 
-.ai-float-btn:hover .ai-float-btn-text {
-  max-width: 180px;
+/* החץ של הבועה (משולש מטה) */
+.ai-bubble-arrow {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #1e3a8a;
+
+  /* צל עדין לחץ */
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+}
+
+/* הצגת הבועה בהובר */
+.ai-float-wrapper:hover .ai-bubble-label {
   opacity: 1;
-  /* כשנכנסים - מסונכרן עם הכפתור ב-0.5s */
+  visibility: visible;
+  transform: translateX(-50%) translateY(0) scale(1);
+
+  /* מעבר בכניסה - bounce קל */
   transition:
-    max-width 0.5s cubic-bezier(0.33, 1, 0.68, 1),
-    opacity 0.5s cubic-bezier(0.33, 1, 0.68, 1) 0.05s;
+    opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    visibility 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* אנימציית Wiggle עדינה לבועה */
+  animation: bubble-wiggle 2s ease-in-out 0.4s infinite;
 }
 
-/* Mobile: כפתור עגול בלבד (ללא hover) */
+/* אנימציית Wiggle עדינה לבועה */
+@keyframes bubble-wiggle {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateX(-50%) translateY(-2px) rotate(1deg);
+  }
+  75% {
+    transform: translateX(-50%) translateY(-2px) rotate(-1deg);
+  }
+}
+
+/* Mobile: גם בועה קטנה יותר */
 @media (max-width: 768px) {
-  .ai-float-btn {
-    width: 60px;
-    height: 60px;
+  .ai-bubble-label {
+    bottom: 70px;
+    padding: 8px 14px;
   }
 
-  .ai-float-btn:hover {
-    width: 60px;
-    padding: 0;
-    gap: 0;
-    border-radius: 50%;
-    transform: translateY(-2px);
+  .ai-bubble-text {
+    font-size: 13px;
   }
 
-  .ai-float-btn:hover i {
-    transform: none;
-  }
-
-  .ai-float-btn-text {
-    display: none !important;
+  .ai-bubble-arrow {
+    border-left-width: 6px;
+    border-right-width: 6px;
+    border-top-width: 6px;
+    bottom: -5px;
   }
 }
 
@@ -354,14 +397,14 @@
   padding: 0 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   border: 2px solid var(--ai-primary);
-  animation: notificationPulse 2s ease-in-out infinite;
+  animation: notification-pulse 2s ease-in-out infinite;
 }
 
 .ai-notification-badge:not(:empty) {
   display: flex;
 }
 
-@keyframes notificationPulse {
+@keyframes notification-pulse {
   0%, 100% {
     transform: scale(1);
   }
@@ -411,10 +454,10 @@
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  animation: messageSlideIn 0.25s ease;
+  animation: message-slide-in 0.25s ease;
 }
 
-@keyframes messageSlideIn {
+@keyframes message-slide-in {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -526,7 +569,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--ai-primary);
-  animation: typingBounce 1.4s infinite;
+  animation: typing-bounce 1.4s infinite;
 }
 
 .ai-typing-indicator span:nth-child(2) {
@@ -537,7 +580,7 @@
   animation-delay: 0.4s;
 }
 
-@keyframes typingBounce {
+@keyframes typing-bounce {
   0%, 60%, 100% {
     transform: translateY(0);
   }
@@ -680,7 +723,7 @@
   padding: 0 5px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   border: 2px solid white;
-  animation: badgePulse 2s ease-in-out infinite;
+  animation: badge-pulse 2s ease-in-out infinite;
   z-index: 9999; /* גבוה מהכפתור */
   pointer-events: none; /* לא חוסם לחיצה על הכפתור */
 }
@@ -689,7 +732,7 @@
   display: flex;
 }
 
-@keyframes badgePulse {
+@keyframes badge-pulse {
   0%, 100% {
     transform: scale(1);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -702,10 +745,10 @@
 
 /* Attention animation for button when has notifications */
 .ai-float-btn.has-notifications {
-  animation: gentlePulse 3s ease-in-out infinite, attentionShake 4s ease-in-out infinite;
+  animation: gentle-pulse 3s ease-in-out infinite, attention-shake 4s ease-in-out infinite;
 }
 
-@keyframes attentionShake {
+@keyframes attention-shake {
   0%, 90%, 100% {
     transform: translateY(0) rotate(0deg);
   }
@@ -843,10 +886,10 @@
   border-radius: var(--ai-radius-md);
   padding: 14px 40px 14px 14px;
   transition: var(--ai-transition);
-  animation: notificationSlideIn 0.3s ease;
+  animation: notification-slide-in 0.3s ease;
 }
 
-@keyframes notificationSlideIn {
+@keyframes notification-slide-in {
   from {
     opacity: 0;
     transform: translateX(-10px);

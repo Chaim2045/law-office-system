@@ -123,12 +123,18 @@ class AIChatUI {
   </div>
 </div>
 
-<!-- Floating Button -->
-<button class="ai-float-btn" id="aiFloatBtn" onclick="window.aiChat.toggle()">
-  <i class="fas fa-robot"></i>
-  <span class="ai-float-btn-text">שאל את המומחה</span>
-  <span class="ai-float-notification-badge" id="aiFloatNotificationBadge"></span>
-</button>
+<!-- Floating Button with Bubble Pop Label -->
+<div class="ai-float-wrapper">
+  <button class="ai-float-btn" id="aiFloatBtn" onclick="window.aiChat.toggle()">
+    <i class="fas fa-robot"></i>
+    <span class="ai-float-notification-badge" id="aiFloatNotificationBadge"></span>
+  </button>
+  <!-- Bubble Pop Label (appears above on hover) -->
+  <div class="ai-bubble-label">
+    <span class="ai-bubble-text">שאל את המומחה</span>
+    <div class="ai-bubble-arrow"></div>
+  </div>
+</div>
     `;
 
     // הוספה ל-DOM
@@ -142,7 +148,9 @@ class AIChatUI {
   _attachEventListeners() {
     const input = document.getElementById('aiChatInput');
 
-    if (!input) return;
+    if (!input) {
+return;
+}
 
     // Enter לשליחה
     input.addEventListener('keydown', (e) => {
@@ -166,7 +174,9 @@ class AIChatUI {
     const container = document.getElementById('aiChatContainer');
     const floatBtn = document.getElementById('aiFloatBtn');
 
-    if (!container) return;
+    if (!container) {
+return;
+}
 
     container.classList.remove('hidden');
     floatBtn?.classList.add('hidden');
@@ -189,7 +199,9 @@ class AIChatUI {
     const container = document.getElementById('aiChatContainer');
     const floatBtn = document.getElementById('aiFloatBtn');
 
-    if (!container) return;
+    if (!container) {
+return;
+}
 
     container.classList.add('hidden');
     floatBtn?.classList.remove('hidden');
@@ -219,7 +231,9 @@ class AIChatUI {
       const input = document.getElementById('aiChatInput');
       const userMessage = message || input?.value?.trim();
 
-      if (!userMessage) return;
+      if (!userMessage) {
+return;
+}
 
       // בדיקת API Key
       if (!this.config.apiKey || this.config.apiKey === 'YOUR_API_KEY_HERE') {
@@ -274,7 +288,9 @@ class AIChatUI {
 
       // הסר typing indicator
       const typing = document.querySelector('.ai-message-typing');
-      if (typing) typing.remove();
+      if (typing) {
+typing.remove();
+}
 
       // הצג שגיאה
       this.addErrorMessage(error.message || this.config.errorMessages.unknownError);
@@ -293,7 +309,9 @@ class AIChatUI {
    */
   addUserMessage(text) {
     const messagesContainer = document.getElementById('aiChatMessages');
-    if (!messagesContainer) return;
+    if (!messagesContainer) {
+return;
+}
 
     const messageId = `msg-${this.messageIdCounter++}`;
 
@@ -317,7 +335,9 @@ class AIChatUI {
    */
   addAIMessage(text) {
     const messagesContainer = document.getElementById('aiChatMessages');
-    if (!messagesContainer) return;
+    if (!messagesContainer) {
+return;
+}
 
     const messageId = `msg-${this.messageIdCounter++}`;
 
@@ -341,7 +361,9 @@ class AIChatUI {
    */
   addTypingIndicator() {
     const messagesContainer = document.getElementById('aiChatMessages');
-    if (!messagesContainer) return null;
+    if (!messagesContainer) {
+return null;
+}
 
     const messageId = `msg-typing-${this.messageIdCounter++}`;
 
@@ -369,7 +391,9 @@ class AIChatUI {
    */
   addErrorMessage(text) {
     const messagesContainer = document.getElementById('aiChatMessages');
-    if (!messagesContainer) return;
+    if (!messagesContainer) {
+return;
+}
 
     const messageId = `msg-${this.messageIdCounter++}`;
 
@@ -394,7 +418,9 @@ class AIChatUI {
    */
   _createAIMessagePlaceholder() {
     const messagesContainer = document.getElementById('aiChatMessages');
-    if (!messagesContainer) return null;
+    if (!messagesContainer) {
+return null;
+}
 
     const messageId = `msg-${this.messageIdCounter++}`;
 
@@ -415,7 +441,9 @@ class AIChatUI {
    */
   _appendToAIMessage(messageId, text) {
     const contentEl = document.getElementById(`${messageId}-content`);
-    if (!contentEl) return;
+    if (!contentEl) {
+return;
+}
 
     contentEl.textContent += text;
     this._scrollToBottom();
@@ -427,7 +455,9 @@ class AIChatUI {
    */
   _removeMessage(messageId) {
     const message = document.getElementById(messageId);
-    if (message) message.remove();
+    if (message) {
+message.remove();
+}
   }
 
   /**
@@ -435,7 +465,9 @@ class AIChatUI {
    */
   clearConversation() {
     const messagesContainer = document.getElementById('aiChatMessages');
-    if (!messagesContainer) return;
+    if (!messagesContainer) {
+return;
+}
 
     // מחיקת כל ההודעות מלבד ה-welcome
     const messages = messagesContainer.querySelectorAll('.ai-message:not(.ai-message-welcome)');
@@ -481,7 +513,9 @@ class AIChatUI {
    */
   _scrollToBottom() {
     const messagesContainer = document.getElementById('aiChatMessages');
-    if (!messagesContainer) return;
+    if (!messagesContainer) {
+return;
+}
 
     setTimeout(() => {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -493,7 +527,9 @@ class AIChatUI {
    * @private
    */
   _formatAIResponse(text) {
-    if (!text) return '';
+    if (!text) {
+return '';
+}
 
     // Escape HTML
     text = this._escapeHTML(text);
@@ -524,7 +560,9 @@ class AIChatUI {
   _saveHistory() {
     try {
       const messagesContainer = document.getElementById('aiChatMessages');
-      if (!messagesContainer) return;
+      if (!messagesContainer) {
+return;
+}
 
       const messages = [];
       const messageElements = messagesContainer.querySelectorAll('.ai-message:not(.ai-message-welcome):not(.ai-message-typing)');
@@ -561,7 +599,9 @@ class AIChatUI {
       const key = `ai_ui_history_${userId}`;
       const saved = localStorage.getItem(key);
 
-      if (!saved) return;
+      if (!saved) {
+return;
+}
 
       const messages = JSON.parse(saved);
 
@@ -630,12 +670,16 @@ class AIChatUI {
         floatBadge.textContent = count;
         floatBadge.style.display = 'flex';
         // Add attention class to button
-        if (floatBtn) floatBtn.classList.add('has-notifications');
+        if (floatBtn) {
+floatBtn.classList.add('has-notifications');
+}
       } else {
         floatBadge.textContent = '';
         floatBadge.style.display = 'none';
         // Remove attention class
-        if (floatBtn) floatBtn.classList.remove('has-notifications');
+        if (floatBtn) {
+floatBtn.classList.remove('has-notifications');
+}
       }
     }
   }
@@ -674,11 +718,17 @@ class AIChatUI {
     const notifContainer = document.getElementById('aiNotificationsContainer');
 
     // הצג את הצ'אט
-    if (messagesContainer) messagesContainer.style.display = 'flex';
-    if (inputContainer) inputContainer.style.display = 'flex';
+    if (messagesContainer) {
+messagesContainer.style.display = 'flex';
+}
+    if (inputContainer) {
+inputContainer.style.display = 'flex';
+}
 
     // הסתר את ההתראות
-    if (notifContainer) notifContainer.style.display = 'none';
+    if (notifContainer) {
+notifContainer.style.display = 'none';
+}
   }
 
   /**
@@ -689,11 +739,15 @@ class AIChatUI {
     const messagesContainer = document.getElementById('aiChatMessages');
     const inputContainer = document.querySelector('.ai-chat-input-container');
 
-    if (!messagesContainer) return;
+    if (!messagesContainer) {
+return;
+}
 
     // הסתר את הצ'אט וה-input
     messagesContainer.style.display = 'none';
-    if (inputContainer) inputContainer.style.display = 'none';
+    if (inputContainer) {
+inputContainer.style.display = 'none';
+}
 
     // בדוק אם כבר יש notifications container
     let notifContainer = document.getElementById('aiNotificationsContainer');
@@ -751,7 +805,9 @@ class AIChatUI {
     notifications.forEach(notification => {
       const notifEl = document.createElement('div');
       notifEl.className = `ai-notification-item ai-notification-${notification.type || 'info'}`;
-      if (notification.urgent) notifEl.classList.add('ai-notification-urgent');
+      if (notification.urgent) {
+notifEl.classList.add('ai-notification-urgent');
+}
 
       // Icon mapping
       const iconMap = {
