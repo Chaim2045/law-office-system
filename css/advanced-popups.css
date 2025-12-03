@@ -2019,36 +2019,35 @@
   padding: 8px 4px;
 }
 
-/* ===== Modern Gradient Buttons - כחול-סגול מקצועי ===== */
+/* ===== Ghost Buttons - כחול-סגול אחיד ===== */
 
 .action-btn {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
-  border: none;
-  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
   cursor: pointer;
   margin: 0 3px;
   font-size: 14px;
-  color: white;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #5b21b6;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
   padding: 0;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
 }
 
 .action-btn:hover {
-  background: linear-gradient(135deg, #6366f1 0%, #60a5fa 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  color: #4f46e5;
+  border-color: rgba(79, 70, 229, 0.2);
+  transform: translateY(-1px);
 }
 
 .action-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
 }
 
 /* Action Badge - מספר קונטקסטואלי (+20%, +3d) */
@@ -2068,7 +2067,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-/* כל הכפתורים משתמשים באותו גרדיאנט כחול-סגול */
+/* כל הכפתורים משתמשים באותו צבע כחול-סגול */
 .time-btn,
 .extend-btn,
 .history-btn,
@@ -2076,7 +2075,7 @@
   /* הירושה מ-action-btn מספיקה - עיצוב אחיד לכולם */
 }
 
-/* כפתור עריכה (טבלת שעתון) - משתמש באותו גרדיאנט כחול-סגול */
+/* כפתור עריכה (טבלת שעתון) - משתמש באותו צבע כחול-סגול */
 .edit-btn {
   /* הירושה מ-action-btn מספיקה */
 }
@@ -2084,15 +2083,18 @@
 /* Critical State - כפתור אדום בחריגה */
 .action-btn.budget-critical,
 .action-btn.deadline-critical {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
 .action-btn.budget-critical:hover,
 .action-btn.deadline-critical:hover {
-  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border-color: #ef4444;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
 }
 
 /* הוסף את הקוד הזה לקובץ style.css הקיים שלך */
