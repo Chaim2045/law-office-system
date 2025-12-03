@@ -2019,35 +2019,36 @@
   padding: 8px 4px;
 }
 
-/* ===== Ultra-Minimal Ghost Buttons - Smart Contextual Style ===== */
+/* ===== Modern Gradient Buttons - כחול-סגול מקצועי ===== */
 
 .action-btn {
   width: 32px;
   height: 32px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
   margin: 0 3px;
   font-size: 14px;
-  color: var(--gray-400);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
   padding: 0;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
 }
 
 .action-btn:hover {
-  background: var(--gray-100);
-  color: var(--gray-700);
-  border-color: var(--gray-200);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #6366f1 0%, #60a5fa 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
 }
 
 .action-btn:active {
   transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
 }
 
 /* Action Badge - מספר קונטקסטואלי (+20%, +3d) */
@@ -2055,7 +2056,7 @@
   position: absolute;
   top: -6px;
   right: -8px;
-  background: var(--red);
+  background: #ef4444;
   color: white;
   font-size: 10px;
   font-weight: 700;
@@ -2067,76 +2068,31 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-/* כפתור הוסף זמן - כחול עדין */
-.time-btn {
-  color: #60a5fa;
-}
-
-.time-btn:hover {
-  background: #eff6ff;
-  color: #3b82f6;
-  border-color: #bfdbfe;
-}
-
-/* כפתור האריך יעד - כתום עדין */
-.extend-btn {
-  color: #fb923c;
-}
-
-.extend-btn:hover {
-  background: #fff7ed;
-  color: #f97316;
-  border-color: #fed7aa;
-}
-
-/* כפתור היסטוריה - אפור */
-.history-btn {
-  color: var(--gray-400);
-}
-
-.history-btn:hover {
-  background: var(--gray-100);
-  color: var(--gray-600);
-  border-color: var(--gray-300);
-}
-
-/* כפתור סיים משימה - ירוק עדין */
+/* כל הכפתורים משתמשים באותו גרדיאנט כחול-סגול */
+.time-btn,
+.extend-btn,
+.history-btn,
 .complete-btn {
-  color: #4ade80;
+  /* הירושה מ-action-btn מספיקה - עיצוב אחיד לכולם */
 }
 
-.complete-btn:hover {
-  background: #f0fdf4;
-  color: #22c55e;
-  border-color: #bbf7d0;
-}
-
-/* כפתור עריכה (טבלת שעתון) - כחול עדין */
+/* כפתור עריכה (טבלת שעתון) - משתמש באותו גרדיאנט כחול-סגול */
 .edit-btn {
-  color: #60a5fa;
-}
-
-.edit-btn:hover {
-  background: #eff6ff;
-  color: #3b82f6;
-  border-color: #bfdbfe;
+  /* הירושה מ-action-btn מספיקה */
 }
 
 /* Critical State - כפתור אדום בחריגה */
 .action-btn.budget-critical,
 .action-btn.deadline-critical {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.25);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .action-btn.budget-critical:hover,
 .action-btn.deadline-critical:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
-  border-color: #ef4444;
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 /* הוסף את הקוד הזה לקובץ style.css הקיים שלך */
