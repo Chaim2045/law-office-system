@@ -220,12 +220,12 @@
                 }
 
                 // Initialize Alert Communication System
-                if (window.AlertCommunicationManager && window.firebaseDB && window.dataManager) {
+                if (window.AlertCommunicationManager && window.firebaseDB && window.DataManager) {
                     try {
                         const adminUser = window.firebaseAuth.currentUser;
                         window.alertCommManager = new window.AlertCommunicationManager(
                             window.firebaseDB,
-                            window.dataManager,
+                            window.DataManager,
                             window.alertEngine || null
                         );
                         await window.alertCommManager.init(adminUser);
