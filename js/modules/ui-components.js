@@ -282,7 +282,7 @@ class ActionFlowManager {
    * @param {boolean} options.closePopupOnSuccess - Auto-close popup on success (default: false)
    * @param {string} options.popupSelector - Popup selector to close (default: '.popup-overlay')
    * @param {number} options.closeDelay - Delay before closing popup in ms (default: 500)
-   * @param {number} options.minLoadingDuration - Minimum loading duration in ms (default: 3000)
+   * @param {number} options.minLoadingDuration - Minimum loading duration in ms (default: 200)
    * @returns {Promise<{success: boolean, data?: any, error?: Error}>}
    */
   static async execute(options) {
@@ -299,7 +299,7 @@ class ActionFlowManager {
       closePopupOnSuccess = false,
       popupSelector = '.popup-overlay',
       closeDelay = 500,
-      minLoadingDuration = 1000 // Industry standard: 1 second minimum loading duration
+      minLoadingDuration = 200 // Reduced from 1000ms - fast UX without minimum wait
     } = options;
 
     // ✅ Support both 'message' and 'loadingMessage' for backward compatibility

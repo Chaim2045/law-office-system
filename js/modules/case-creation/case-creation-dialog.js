@@ -306,6 +306,7 @@
         }
 
         // הצגת loading
+        const startTime = Date.now();
         if (window.NotificationSystem) {
           window.NotificationSystem.showLoading('טוען...');
         }
@@ -313,6 +314,13 @@
         // בניית ועקירת הדיאלוג
         this.renderDialog();
         this.attachEventListeners();
+
+        // המתנה מינימלית של 200ms כדי שהמשתמש יראה את הלוטי
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = 200 - elapsedTime;
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
 
         // הסתרת loading
         if (window.NotificationSystem) {
@@ -1972,6 +1980,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         Logger.log('📝 Adding service to case:', serviceData);
 
         // הצגת loading
+        const startTime = Date.now();
         if (window.NotificationSystem) {
           window.NotificationSystem.showLoading('מוסיף שירות...');
         }
@@ -1979,6 +1988,13 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         // 🚀 קריאה ל-Firebase Cloud Function
         const addService = firebase.functions().httpsCallable('addServiceToClient');
         const result = await addService(serviceData);
+
+        // המתנה מינימלית של 200ms כדי שהמשתמש יראה את הלוטי
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = 200 - elapsedTime;
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
 
         // הסתרת loading
         if (window.NotificationSystem) {
@@ -2047,6 +2063,7 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
     async saveCase(formData) {
       try {
         // הצגת loading
+        const startTime = Date.now();
         if (window.NotificationSystem) {
           window.NotificationSystem.showLoading('שומר תיק...');
         }
@@ -2054,6 +2071,13 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         // קריאה ל-Firebase Function
         const createClient = firebase.functions().httpsCallable('createClient');
         const result = await createClient(this.buildFirebaseData(formData));
+
+        // המתנה מינימלית של 200ms כדי שהמשתמש יראה את הלוטי
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = 200 - elapsedTime;
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
 
         // הסתרת loading
         if (window.NotificationSystem) {
