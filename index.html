@@ -129,14 +129,10 @@
     <link rel="stylesheet" href="css/combobox.css?v=1.0.0" />
     <link rel="stylesheet" href="css/style-hitech-addon.css?v=1.0.2" />
     <link rel="stylesheet" href="css/tabs.css?v=3.0.0" />
-    <link rel="stylesheet" href="css/messaging.css?v=3" />
-    <link rel="stylesheet" href="css/chat.css?v=3.0.0" />
     <link rel="stylesheet" href="css/statistics.css?v=8.0.0" />
     <link rel="stylesheet" href="css/sort.css?v=2.3.0" />
     <link rel="stylesheet" href="css/reports.css" />
     <link rel="stylesheet" href="css/pagination.css?v=1.0.0" />
-    <!-- New Notification System CSS -->
-    <link rel="stylesheet" href="css/notifications.css?v=1.0.1" />
     <!-- Utility Classes - כלי עזר -->
     <link rel="stylesheet" href="css/utilities.css?v=1.2.7" />
     <!-- Smart Combo Selector - בורר תיאורים חכם -->
@@ -149,6 +145,9 @@
 
     <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
     <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=2.0.0">
+
+    <!-- ===== USER ALERTS SYSTEM ===== -->
+    <link rel="stylesheet" href="css/user-alerts.css?v=1.0.0">
 
     <!-- ===== SECURITY MODALS STYLES ===== -->
 
@@ -465,16 +464,6 @@
               </div>
             </div>
 
-            <!-- Notification Bell - מוסתר, מועבר לבוט החכם -->
-            <button
-              class="notification-bell"
-              id="notificationBell"
-              onclick="toggleNotifications()"
-              style="display: none;"
-            >
-              <i class="fas fa-bell"></i>
-              <span class="notification-count hidden" id="notificationCount">0</span>
-            </button>
           </div>
 
           <!-- ===== כפתור פלוס חכם ===== -->
@@ -1131,11 +1120,6 @@
 
     <!-- ===== Notification Messages Library ===== -->
     <!-- Context-aware messages for all notifications -->
-    <script src="js/modules/notification-messages.js?v=1.0.0"></script>
-
-    <!-- ===== NEW: Modern Notification System ===== -->
-    <!-- MUST BE LOADED FIRST - Before all other scripts -->
-    <script src="js/modules/notification-system.js?v=1.0.1"></script>
 
     <!-- ===== 🎯 NEW: Unified UI System - Step 2: Compatibility Wrapper ===== -->
     <!-- MUST load AFTER NotificationSystem to wrap it properly -->
@@ -1194,12 +1178,6 @@
     <!-- popover-positioning.js removed - file does not exist -->
 
     <!-- ===== Messaging System ===== -->
-    <script type="module" src="js/managers/NotificationManager.js?v=1"></script>
-
-    <!-- ===== Two-Way Chat System (WhatsApp-style) ===== -->
-    <script src="js/managers/ChatManager.js?v=3.0.0"></script>
-    <script src="js/ui/EmployeeChatUI.js?v=3.0.0"></script>
-
     <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
     <!-- Modern modular architecture with ActionFlowManager + Smart Descriptions -->
     <script type="module" src="js/main.js?v=5.1.8"></script>
@@ -1248,6 +1226,9 @@
     <script src="js/modules/ai-system/ai-context-builder.js?v=2.0.0"></script>
     <script src="js/modules/ai-system/ai-chat-ui.js?v=2.0.0"></script>
 
+    <!-- ===== USER ALERTS SYSTEM ===== -->
+    <script src="js/managers/UserAlertsPanel.js?v=1.0.0"></script>
+    <script src="js/init-user-alerts.js?v=1.0.0"></script>
 
     <!-- OLD: Legacy FAQ Bot (backup) -->
     <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=3.0.0"></script> -->

@@ -40,9 +40,6 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/user-details.css?v=20251201v1">
-    <link rel="stylesheet" href="css/messaging.css?v=2">
-    <link rel="stylesheet" href="css/messaging-modals.css?v=1.0.0">
-    <link rel="stylesheet" href="../css/chat.css?v=5.0.0">
 </head>
 
 <body class="login-page">
@@ -188,24 +185,8 @@
     <script src="js/ui/UserDetailsModal.js?v=20251201v2"></script>
     <script src="js/managers/UsersActions.js?v=20251123v6"></script>
 
-    <!-- ===== Messaging System ===== -->
-    <script src="js/managers/MessagingManager.js?v=1"></script>
-    <script src="js/ui/MessageComposer.js?v=1"></script>
-
-    <!-- ===== Two-Way Chat System (WhatsApp-style) ===== -->
-    <script src="../js/managers/ChatManager.js?v=5.0.0"></script>
-    <script src="js/ui/AdminChatUI.js?v=5.0.0"></script>
-
-    <!-- ===== Messaging Center System (New) ===== -->
-    <script src="js/managers/ContextMessageManager.js?v=20251204v3"></script>
-    <script src="js/managers/ThreadManager.js?v=20251204v3"></script>
-    <script src="js/ui/MessageViewerModal.js?v=20251204"></script>
-    <script src="js/ui/ThreadViewerModal.js?v=20251204"></script>
-    <script src="js/ui/MessagingCenterUI.js?v=20251204"></script>
-    <script src="js/ui/MessagingTabUI.js?v=20251204"></script>
-
-    <!-- ===== Floating Action Button ===== -->
-    <script src="js/ui/FloatingActionButton.js?v=1"></script>
+    <!-- ===== Alert Communication System ===== -->
+    <script src="js/managers/AlertCommunicationManager.js?v=1.0.0"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>
@@ -238,25 +219,22 @@
                     console.error('❌ DashboardUI not loaded');
                 }
 
-                // Initialize Messaging Tab UI
-                if (window.MessagingTabUI) {
-                    const dashboardContent = document.getElementById('dashboardContent');
-                    if (dashboardContent) {
-                        window.MessagingTabUI.init(dashboardContent);
-                        console.log('✅ MessagingTabUI initialized successfully');
-                    } else {
-                        console.error('❌ dashboardContent element not found');
+                // Initialize Alert Communication System
+                if (window.AlertCommunicationManager && window.firebaseDB && window.dataManager) {
+                    try {
+                        const adminUser = window.firebaseAuth.currentUser;
+                        window.alertCommManager = new window.AlertCommunicationManager(
+                            window.firebaseDB,
+                            window.dataManager,
+                            window.alertEngine || null
+                        );
+                        await window.alertCommManager.init(adminUser);
+                        console.log('✅ Alert Communication Manager initialized');
+                    } catch (error) {
+                        console.error('❌ Failed to initialize Alert Communication Manager:', error);
                     }
                 } else {
-                    console.error('❌ MessagingTabUI not loaded - check script order');
-                }
-
-                // Initialize Floating Action Button
-                if (window.FloatingActionButton) {
-                    window.FloatingActionButton.init('users');
-                    console.log('✅ FAB initialized for users page');
-                } else {
-                    console.warn('⚠️ FloatingActionButton not loaded');
+                    console.warn('⚠️ Alert Communication Manager not available or dependencies missing');
                 }
             });
 

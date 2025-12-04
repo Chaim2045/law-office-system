@@ -389,7 +389,6 @@
                         ${this.renderTabButton('tasks', 'fas fa-tasks', 'משימות')}
                         ${this.renderTabButton('hours', 'fas fa-clock', 'שעות')}
                         ${this.renderTabButton('activity', 'fas fa-history', 'פעילות')}
-                        ${this.renderTabButton('chat', 'fas fa-comments', 'צ\'אט')}
                     </div>
 
                     <!-- Tab Content -->
@@ -430,8 +429,6 @@
                     return this.renderHoursTab();
                 case 'activity':
                     return this.renderActivityTab();
-                case 'chat':
-                    return this.renderChatTab();
                 default:
                     return '<p>טאב לא נמצא</p>';
             }
@@ -752,85 +749,6 @@
             `;
         }
 
-        /**
-         * Render Chat Tab
-         * רינדור טאב צ'אט
-         */
-        renderChatTab() {
-            if (!this.userData || !this.userData.uid) {
-                return this.renderEmptyState('fas fa-comments', 'שגיאה', 'לא ניתן לטעון צ\'אט ללא פרטי משתמש');
-            }
-
-            const employeeUid = this.userData.uid;
-            const employeeName = this.userData.displayName || this.userData.email?.split('@')[0] || 'עובד';
-
-            return `
-                <div class="tab-panel tab-chat">
-                    <!-- Chat Header -->
-                    <div class="chat-tab-header" style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div class="user-avatar-circle" style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: 600; font-size: 18px;">
-                                ${employeeName.substring(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                                <div style="font-weight: 600; font-size: 16px; color: #1f2937;">${employeeName}</div>
-                                <div style="font-size: 13px; color: #6b7280;">שיחה עם ${employeeName}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Chat Messages Container -->
-                    <div class="chat-messages-container" id="chatMessagesTab" style="
-                        background-color: #e5ddd5;
-                        background-image:
-                            url('data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 200 200\\" opacity=\\"0.05\\"><text x=\\"50%\\" y=\\"50%\\" text-anchor=\\"middle\\" dominant-baseline=\\"middle\\" font-size=\\"80\\" font-family=\\"Arial\\" fill=\\"%23000\\">⚖️</text></svg>'),
-                            repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0, 0, 0, 0.02) 10px, rgba(0, 0, 0, 0.02) 20px);
-                        background-position: center center, 0 0;
-                        background-size: 200px 200px, auto;
-                        min-height: 400px;
-                        max-height: 500px;
-                        overflow-y: auto;
-                        padding: 20px;
-                        border-radius: 8px;
-                        margin-bottom: 16px;
-                    ">
-                        <div class="chat-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6b7280;">
-                            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">💬</div>
-                            <div style="font-size: 16px; font-weight: 500;">טוען הודעות...</div>
-                        </div>
-                    </div>
-
-                    <!-- Chat Input Area -->
-                    <div class="chat-input-area" style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; gap: 8px; align-items: flex-end;">
-                        <div class="chat-input-wrapper" style="flex: 1; background: #f3f4f6; border-radius: 24px; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
-                            <textarea
-                                id="chatInputTab"
-                                class="chat-input"
-                                placeholder="כתוב הודעה..."
-                                rows="1"
-                                style="flex: 1; border: none; background: transparent; resize: none; outline: none; font-family: inherit; font-size: 14px; max-height: 100px;"
-                            ></textarea>
-                        </div>
-                        <button class="chat-send-btn" id="sendMessageBtnTab" style="
-                            width: 44px;
-                            height: 44px;
-                            border-radius: 50%;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            border: none;
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            transition: transform 0.2s;
-                            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-                        " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
 
         /**
          * Categorize activity logs
@@ -1795,35 +1713,6 @@ return;
                 });
             });
 
-            // Chat tab - Send message button
-            const sendMessageBtnTab = modal.querySelector('#sendMessageBtnTab');
-            if (sendMessageBtnTab) {
-                sendMessageBtnTab.addEventListener('click', () => {
-                    this.sendChatMessage();
-                });
-            }
-
-            // Chat tab - Input enter key
-            const chatInputTab = modal.querySelector('#chatInputTab');
-            if (chatInputTab) {
-                chatInputTab.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        this.sendChatMessage();
-                    }
-                });
-
-                // Auto-resize textarea
-                chatInputTab.addEventListener('input', () => {
-                    chatInputTab.style.height = 'auto';
-                    chatInputTab.style.height = Math.min(chatInputTab.scrollHeight, 100) + 'px';
-                });
-            }
-
-            // Initialize chat if on chat tab
-            if (this.activeTab === 'chat') {
-                this.initializeChatTab();
-            }
         }
 
         /**
@@ -1842,295 +1731,6 @@ return;
             console.log(`✅ Switched to tab: ${tabId}`);
         }
 
-        /**
-         * Initialize Chat Tab
-         * אתחול טאב הצ'אט
-         */
-        async initializeChatTab() {
-            try {
-                console.log('💬 Initializing chat tab');
-
-                if (!window.chatManager) {
-                    console.warn('⚠️ ChatManager not available yet, waiting...');
-                    await this.waitForChatManager();
-                }
-
-                if (!window.chatManager) {
-                    console.error('❌ ChatManager still not available');
-                    return;
-                }
-
-                // Load conversation history
-                await this.loadChatHistory();
-
-                // Start listening for new messages
-                this.startChatListener();
-
-            } catch (error) {
-                console.error('❌ שגיאה באתחול צ\'אט:', error);
-            }
-        }
-
-        /**
-         * Wait for ChatManager to be ready
-         */
-        async waitForChatManager(maxAttempts = 20) {
-            for (let i = 0; i < maxAttempts; i++) {
-                if (window.chatManager) {
-                    console.log('✅ ChatManager זמין');
-                    return true;
-                }
-                console.log(`⏳ ממתין ל-ChatManager... ניסיון ${i + 1}/${maxAttempts}`);
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            console.error('❌ ChatManager לא זמין אחרי המתנה');
-            return false;
-        }
-
-        /**
-         * Load chat history
-         */
-        async loadChatHistory() {
-            try {
-                const employeeUid = this.userData.uid;
-                const messages = await window.chatManager.getConversationHistory(employeeUid, 50);
-
-                const container = document.querySelector('#chatMessagesTab');
-                if (!container) return;
-
-                // Clear loading state
-                container.innerHTML = '';
-
-                if (messages.length === 0) {
-                    container.innerHTML = `
-                        <div class="chat-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6b7280;">
-                            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">💬</div>
-                            <div style="font-size: 16px; font-weight: 500;">אין הודעות עדיין</div>
-                            <div style="font-size: 13px; color: #9ca3af; margin-top: 8px;">התחל שיחה חדשה</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Display messages
-                messages.forEach(msg => this.displayChatMessage(msg, false));
-
-                // Scroll to bottom
-                this.scrollChatToBottom(false);
-
-            } catch (error) {
-                console.error('❌ שגיאה בטעינת היסטוריית צ\'אט:', error);
-            }
-        }
-
-        /**
-         * Start listening for new messages
-         */
-        startChatListener() {
-            if (!window.chatManager || !this.userData?.uid) return;
-
-            // Stop existing listener
-            if (this.chatListener) {
-                this.chatListener();
-                this.chatListener = null;
-            }
-
-            const employeeUid = this.userData.uid;
-
-            this.chatListener = window.chatManager.listenToConversation(
-                employeeUid,
-                (message) => {
-                    console.log('📨 New chat message received:', message.id);
-                    this.displayChatMessage(message, true);
-                }
-            );
-
-            console.log('👂 Started listening to chat messages');
-        }
-
-        /**
-         * Display a chat message
-         */
-        displayChatMessage(message, isNew = false) {
-            const container = document.querySelector('#chatMessagesTab');
-            if (!container) return;
-
-            // Remove empty state if exists
-            const emptyState = container.querySelector('.chat-empty-state');
-            if (emptyState) {
-                emptyState.remove();
-            }
-
-            // Check if message already exists (prevent duplicates)
-            if (document.querySelector(`[data-message-id="${message.id}"]`)) {
-                return;
-            }
-
-            // Determine if incoming or outgoing
-            const currentUserUid = window.firebaseAuth?.currentUser?.uid;
-            const isOutgoing = message.from.uid === currentUserUid;
-            const direction = isOutgoing ? 'outgoing' : 'incoming';
-
-            // Format time
-            const timestamp = message.createdAt?.toDate ? message.createdAt.toDate() : new Date();
-            const timeStr = this.formatChatTime(timestamp);
-
-            // Check if we need a date divider
-            this.addChatDateDivider(container, timestamp);
-
-            // Create message element
-            const messageEl = document.createElement('div');
-            messageEl.className = `chat-message ${direction}`;
-            messageEl.setAttribute('data-message-id', message.id);
-            messageEl.setAttribute('data-timestamp', timestamp.getTime());
-
-            const bubbleStyle = isOutgoing
-                ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-right: auto; margin-left: 50px;'
-                : 'background: white; color: #1f2937; margin-left: auto; margin-right: 50px;';
-
-            messageEl.innerHTML = `
-                <div class="chat-bubble" style="${bubbleStyle} padding: 8px 12px; border-radius: 12px; max-width: 70%; word-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 8px;">
-                    <div class="chat-bubble-text" style="font-size: 14px; line-height: 1.4; white-space: pre-wrap;">${this.escapeHtml(message.text)}</div>
-                    <div class="chat-bubble-meta" style="display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; opacity: 0.7;">
-                        <span class="chat-bubble-time">${timeStr}</span>
-                        ${isOutgoing ? `
-                            <span class="chat-bubble-status">
-                                <i class="fas fa-check-double ${message.isRead ? 'read' : ''}" style="${message.isRead ? 'color: #4ade80;' : ''}"></i>
-                            </span>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-
-            container.appendChild(messageEl);
-
-            // Scroll to bottom (smooth for new messages)
-            this.scrollChatToBottom(isNew);
-        }
-
-        /**
-         * Add date divider if needed
-         */
-        addChatDateDivider(container, messageDate) {
-            const lastMessage = container.querySelector('.chat-message:last-of-type');
-
-            let shouldAddDivider = false;
-
-            if (!lastMessage) {
-                shouldAddDivider = true;
-            } else {
-                const lastMessageTimestamp = parseInt(lastMessage.getAttribute('data-timestamp'));
-                const lastMessageDate = new Date(lastMessageTimestamp);
-
-                if (lastMessageDate.toDateString() !== messageDate.toDateString()) {
-                    shouldAddDivider = true;
-                }
-            }
-
-            if (shouldAddDivider) {
-                const divider = document.createElement('div');
-                divider.className = 'chat-date-divider';
-                divider.style.cssText = 'text-align: center; margin: 1.5rem 0 1rem;';
-                divider.innerHTML = `
-                    <div class="chat-date-label" style="display: inline-block; background: rgba(0, 0, 0, 0.1); padding: 6px 12px; border-radius: 12px; font-size: 12px; color: #4b5563; font-weight: 500;">
-                        ${this.formatChatDate(messageDate)}
-                    </div>
-                `;
-                container.appendChild(divider);
-            }
-        }
-
-        /**
-         * Format date for chat dividers
-         */
-        formatChatDate(date) {
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            if (date.toDateString() === today.toDateString()) {
-                return 'היום';
-            } else if (date.toDateString() === yesterday.toDateString()) {
-                return 'אתמול';
-            } else {
-                return date.toLocaleDateString('he-IL', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                });
-            }
-        }
-
-        /**
-         * Format time for chat messages
-         */
-        formatChatTime(date) {
-            return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        /**
-         * Send chat message
-         */
-        async sendChatMessage() {
-            const input = document.querySelector('#chatInputTab');
-            const sendBtn = document.querySelector('#sendMessageBtnTab');
-
-            if (!input || !sendBtn) return;
-
-            const text = input.value.trim();
-            if (!text) return;
-
-            try {
-                sendBtn.disabled = true;
-                input.disabled = true;
-
-                const employeeUid = this.userData.uid;
-                const employeeName = this.userData.displayName || this.userData.email?.split('@')[0] || 'עובד';
-
-                const result = await window.chatManager.sendChatMessage(
-                    employeeUid,
-                    text,
-                    {
-                        recipientName: employeeName,
-                        recipientRole: 'employee',
-                        fromRole: 'admin'
-                    }
-                );
-
-                console.log('✅ Message sent:', result.messageId);
-
-                // Clear input
-                input.value = '';
-                input.style.height = 'auto';
-
-                // Focus input
-                input.focus();
-
-            } catch (error) {
-                console.error('❌ שגיאה בשליחת הודעה:', error);
-                alert('שגיאה בשליחת ההודעה: ' + (error.message || 'שגיאה לא ידועה'));
-            } finally {
-                sendBtn.disabled = false;
-                input.disabled = false;
-            }
-        }
-
-        /**
-         * Scroll chat to bottom
-         */
-        scrollChatToBottom(smooth = true) {
-            const container = document.querySelector('#chatMessagesTab');
-            if (!container) return;
-
-            if (smooth) {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior: 'smooth'
-                });
-            } else {
-                container.scrollTop = container.scrollHeight;
-            }
-        }
 
         /**
          * Navigate between months (prev/next)
@@ -3502,12 +3102,6 @@ return;
          * סגירת המודאל
          */
         close() {
-            // Stop chat listener if active
-            if (this.chatListener) {
-                this.chatListener();
-                this.chatListener = null;
-                console.log('🛑 Stopped chat listener');
-            }
 
             if (this.modalId) {
                 window.ModalManager.close(this.modalId);
@@ -3531,45 +3125,32 @@ return;
                 return;
             }
 
-            // Check if MessageComposer is available
-            if (!window.messageComposer) {
-                console.error('❌ MessageComposer not initialized');
+            // Check if AlertCommunicationManager is available
+            if (!window.alertCommManager) {
+                console.error('❌ AlertCommunicationManager not initialized');
                 alert('מערכת ההודעות לא זמינה כרגע');
                 return;
             }
 
             console.log(`📧 Opening message composer for: ${this.currentUser.email}`);
 
-            // Show the composer dialog
-            window.messageComposer.showComposeDialog();
+            // Show simple prompt dialog
+            const message = prompt(`שלח הודעה ל-${this.currentUser.displayName || this.currentUser.email}:`);
 
-            // After dialog is created, pre-populate with user data
-            setTimeout(() => {
-                const recipientTypeSelect = document.querySelector('#messageRecipientType');
-                const specificRecipientSelect = document.querySelector('#specificRecipient');
-                const recipientSelector = document.querySelector('#recipientSelector');
+            if (!message || message.trim() === '') {
+                return;
+            }
 
-                if (recipientTypeSelect && specificRecipientSelect && recipientSelector) {
-                    // Set to "user" mode
-                    recipientTypeSelect.value = 'user';
+            // Send message using AlertCommunicationManager
+            window.alertCommManager.sendMessage(this.currentUser.email, message.trim())
+                .then(() => {
+                    console.log('✅ Message sent successfully');
+                })
+                .catch((error) => {
+                    console.error('❌ Failed to send message:', error);
+                    alert('שגיאה בשליחת ההודעה. נסה שוב.');
+                });
 
-                    // Trigger change event to show user selector
-                    const changeEvent = new Event('change');
-                    recipientTypeSelect.dispatchEvent(changeEvent);
-
-                    // Wait for options to populate, then select current user
-                    setTimeout(() => {
-                        const userOption = Array.from(specificRecipientSelect.options).find(
-                            option => option.value === this.currentUser.uid ||
-                                      option.value === this.currentUser.email
-                        );
-
-                        if (userOption) {
-                            specificRecipientSelect.value = userOption.value;
-                        }
-                    }, 100);
-                }
-            }, 100);
         }
     }
 

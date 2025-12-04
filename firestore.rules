@@ -215,6 +215,29 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ✅ User Messages: Simple alert-based communication system
+    // Purpose: Admin sends alerts/messages to users, users can respond
+    // Simpler than conversations - single message + single response
+    match /user_messages/{messageId} {
+      // Create: Only admins can create messages
+      allow create: if isAdmin();
+
+      // Read: Users can read messages sent to them, admins can read all
+      allow read: if isAuthenticated() && (
+        resource.data.to == request.auth.token.email ||
+        isAdmin()
+      );
+
+      // Update: Users can only update their own messages (response fields only)
+      allow update: if isAuthenticated() &&
+                       resource.data.to == request.auth.token.email &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['response', 'status', 'respondedAt']);
+
+      // Delete: Only admins can delete messages
+      allow delete: if isAdmin();
+    }
+
     // ✅ Conversations: Two-way chat system (WhatsApp-style)
     // Purpose: Chat conversations between admin and employees
     // Structure: conversations/{conversationId}/messages/{messageId}
