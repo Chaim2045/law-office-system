@@ -227,13 +227,17 @@
     // Create global instance
     window.ContextMessageManager = ContextMessageManager;
 
-    // Auto-initialize
-    if (typeof window !== 'undefined') {
-        const manager = new ContextMessageManager();
-        manager.init().then(success => {
-            if (success) {
-                window.contextMessageManager = manager;
-                console.log('✅ ContextMessageManager ready');
+    // Auto-initialize when auth is ready
+    if (typeof window !== 'undefined' && window.firebaseAuth) {
+        window.firebaseAuth.onAuthStateChanged((user) => {
+            if (user && !window.contextMessageManager) {
+                const manager = new ContextMessageManager();
+                manager.init().then(success => {
+                    if (success) {
+                        window.contextMessageManager = manager;
+                        console.log('✅ ContextMessageManager ready');
+                    }
+                });
             }
         });
     }

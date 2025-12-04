@@ -286,13 +286,17 @@
     // Create global instance
     window.ThreadManager = ThreadManager;
 
-    // Auto-initialize
-    if (typeof window !== 'undefined') {
-        const manager = new ThreadManager();
-        manager.init().then(success => {
-            if (success) {
-                window.threadManager = manager;
-                console.log('✅ ThreadManager ready');
+    // Auto-initialize when auth is ready
+    if (typeof window !== 'undefined' && window.firebaseAuth) {
+        window.firebaseAuth.onAuthStateChanged((user) => {
+            if (user && !window.threadManager) {
+                const manager = new ThreadManager();
+                manager.init().then(success => {
+                    if (success) {
+                        window.threadManager = manager;
+                        console.log('✅ ThreadManager ready');
+                    }
+                });
             }
         });
     }
