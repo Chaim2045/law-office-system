@@ -56,83 +56,52 @@
          */
         createUI() {
             // Check if already exists
-            if (document.getElementById('userAlertsContainer')) {
+            if (document.getElementById('alertsDropdown')) {
                 console.log('⚠️ UserAlertsPanel: UI already exists');
                 return;
             }
 
-            // Find header or create container
-            const header = document.querySelector('header') || document.querySelector('.header');
+            // Create dropdown and append to body (will be positioned near chat bell button)
+            const dropdown = document.createElement('div');
+            dropdown.className = 'alerts-dropdown';
+            dropdown.id = 'alertsDropdown';
+            dropdown.style.display = 'none';
+            dropdown.style.position = 'fixed'; // Fixed positioning
+            dropdown.style.zIndex = '10001'; // Above chat window
 
-            if (!header) {
-                console.warn('⚠️ UserAlertsPanel: No header found, creating standalone container');
-                // Create standalone container at top-right
-                const container = document.createElement('div');
-                container.id = 'userAlertsContainer';
-                container.style.position = 'fixed';
-                container.style.top = '20px';
-                container.style.right = '20px';
-                container.style.zIndex = '9999';
-                document.body.appendChild(container);
-                this.container = container;
-            } else {
-                // Insert into header
-                const container = document.createElement('div');
-                container.id = 'userAlertsContainer';
-                container.className = 'user-alerts-container';
-
-                // Try to insert before user profile or at the end
-                const userProfile = header.querySelector('.user-profile') || header.querySelector('.header-right');
-                if (userProfile) {
-                    userProfile.parentNode.insertBefore(container, userProfile);
-                } else {
-                    header.appendChild(container);
-                }
-
-                this.container = container;
-            }
-
-            // Create HTML structure
-            this.container.innerHTML = `
-                <div class="alerts-bell-wrapper">
-                    <button class="alerts-bell" id="alertsBellBtn" title="התראות">
+            dropdown.innerHTML = `
+                <div class="alerts-dropdown-header">
+                    <h3>
                         <i class="fas fa-bell"></i>
-                        <span class="alerts-badge" id="alertsBadge" style="display: none;">0</span>
+                        התראות (<span id="alertsCount">0</span>)
+                    </h3>
+                    <button class="mark-all-read-btn" id="markAllReadBtn" title="סמן הכל כנקרא">
+                        <i class="fas fa-check-double"></i>
                     </button>
+                </div>
 
-                    <!-- Dropdown Panel -->
-                    <div class="alerts-dropdown" id="alertsDropdown" style="display: none;">
-                        <div class="alerts-dropdown-header">
-                            <h3>
-                                <i class="fas fa-bell"></i>
-                                התראות (<span id="alertsCount">0</span>)
-                            </h3>
-                            <button class="mark-all-read-btn" id="markAllReadBtn" title="סמן הכל כנקרא">
-                                <i class="fas fa-check-double"></i>
-                            </button>
-                        </div>
-
-                        <div class="alerts-dropdown-body" id="alertsDropdownBody">
-                            <div class="alerts-empty">
-                                <i class="fas fa-inbox"></i>
-                                <p>אין התראות חדשות</p>
-                            </div>
-                        </div>
-
-                        <div class="alerts-dropdown-footer">
-                            <a href="#" id="viewAllAlertsLink">
-                                <i class="fas fa-history"></i>
-                                צפה בכל ההתראות
-                            </a>
-                        </div>
+                <div class="alerts-dropdown-body" id="alertsDropdownBody">
+                    <div class="alerts-empty">
+                        <i class="fas fa-inbox"></i>
+                        <p>אין התראות חדשות</p>
                     </div>
                 </div>
+
+                <div class="alerts-dropdown-footer">
+                    <a href="#" id="viewAllAlertsLink">
+                        <i class="fas fa-history"></i>
+                        צפה בכל ההתראות
+                    </a>
+                </div>
             `;
+
+            document.body.appendChild(dropdown);
+            this.container = dropdown;
 
             // Setup event listeners
             this.setupEventListeners();
 
-            console.log('✅ UserAlertsPanel: UI created');
+            console.log('✅ UserAlertsPanel: UI created (dropdown only)');
         }
 
         /**
@@ -140,15 +109,6 @@
          * הגדרת מאזיני אירועים
          */
         setupEventListeners() {
-            // Bell button - toggle dropdown
-            const bellBtn = document.getElementById('alertsBellBtn');
-            if (bellBtn) {
-                bellBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.toggleDropdown();
-                });
-            }
-
             // Mark all as read
             const markAllBtn = document.getElementById('markAllReadBtn');
             if (markAllBtn) {
@@ -160,7 +120,7 @@
             // Close dropdown when clicking outside
             document.addEventListener('click', (e) => {
                 const dropdown = document.getElementById('alertsDropdown');
-                const bellBtn = document.getElementById('alertsBellBtn');
+                const bellBtn = document.getElementById('aiNotificationsBtn');
 
                 if (dropdown && bellBtn) {
                     if (!dropdown.contains(e.target) && !bellBtn.contains(e.target)) {
@@ -178,9 +138,31 @@
          */
         toggleDropdown() {
             const dropdown = document.getElementById('alertsDropdown');
-            if (dropdown) {
-                const isVisible = dropdown.style.display !== 'none';
-                dropdown.style.display = isVisible ? 'none' : 'block';
+            const bellButton = document.getElementById('aiNotificationsBtn');
+
+            if (!dropdown) {
+                console.error('Dropdown not found');
+                return;
+            }
+
+            const isVisible = dropdown.style.display !== 'none';
+
+            if (isVisible) {
+                // Close dropdown
+                dropdown.style.display = 'none';
+            } else {
+                // Open dropdown - position it below the bell button
+                if (bellButton) {
+                    const rect = bellButton.getBoundingClientRect();
+                    dropdown.style.top = (rect.bottom + 8) + 'px';
+                    dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+                } else {
+                    // Fallback: position at top-right
+                    dropdown.style.top = '80px';
+                    dropdown.style.right = '20px';
+                }
+
+                dropdown.style.display = 'block';
             }
         }
 
@@ -238,7 +220,9 @@
             const body = document.getElementById('alertsDropdownBody');
             const countSpan = document.getElementById('alertsCount');
 
-            if (!body) return;
+            if (!body) {
+return;
+}
 
             if (docs.length === 0) {
                 body.innerHTML = `
@@ -247,12 +231,16 @@
                         <p>אין התראות חדשות</p>
                     </div>
                 `;
-                if (countSpan) countSpan.textContent = '0';
+                if (countSpan) {
+countSpan.textContent = '0';
+}
                 return;
             }
 
             // Update count
-            if (countSpan) countSpan.textContent = docs.length;
+            if (countSpan) {
+countSpan.textContent = docs.length;
+}
 
             // Render messages
             const messagesHTML = docs.map(doc => {
@@ -297,10 +285,18 @@
         updateBadge(count) {
             this.unreadCount = count;
 
+            // Update standalone badge (if exists)
             const badge = document.getElementById('alertsBadge');
             if (badge) {
                 badge.textContent = count;
                 badge.style.display = count > 0 ? 'block' : 'none';
+            }
+
+            // Update AI Chat window badge
+            const aiChatBadge = document.getElementById('aiNotificationBadge');
+            if (aiChatBadge) {
+                aiChatBadge.textContent = count;
+                aiChatBadge.style.display = count > 0 ? 'inline-block' : 'none';
             }
         }
 
@@ -309,7 +305,9 @@
          * הצגת התראה על הודעה חדשה
          */
         showNewMessageNotification(msg) {
-            if (!window.notify) return;
+            if (!window.notify) {
+return;
+}
 
             window.notify.show({
                 type: 'info',
@@ -418,7 +416,9 @@
             // Focus textarea
             setTimeout(() => {
                 const textarea = document.getElementById('responseText');
-                if (textarea) textarea.focus();
+                if (textarea) {
+textarea.focus();
+}
             }, 100);
 
             // Close on overlay click
@@ -522,7 +522,9 @@
          * סימון כל ההודעות כנקראו
          */
         async markAllAsRead() {
-            if (!this.currentUser) return;
+            if (!this.currentUser) {
+return;
+}
 
             try {
                 const snapshot = await this.db.collection('user_messages')
@@ -553,7 +555,9 @@
          * Utility: Format timestamp
          */
         formatTime(timestamp) {
-            if (!timestamp) return '';
+            if (!timestamp) {
+return '';
+}
 
             try {
                 const date = timestamp.toDate();
@@ -594,8 +598,12 @@
          * Utility: Truncate text
          */
         truncate(text, maxLength) {
-            if (!text) return '';
-            if (text.length <= maxLength) return text;
+            if (!text) {
+return '';
+}
+            if (text.length <= maxLength) {
+return text;
+}
             return text.substring(0, maxLength) + '...';
         }
 

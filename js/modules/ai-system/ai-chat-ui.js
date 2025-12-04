@@ -75,7 +75,7 @@ class AIChatUI {
         <span>עוזר AI חכם</span>
       </div>
       <div class="ai-chat-actions">
-        <button class="ai-header-btn ai-notifications-btn" id="aiNotificationsBtn" onclick="window.aiChat.openNotifications()" title="התראות">
+        <button class="ai-header-btn ai-notifications-btn" id="aiNotificationsBtn" onclick="if(window.userAlertsPanel) window.userAlertsPanel.toggleDropdown(); else console.warn('UserAlertsPanel not ready');" title="התראות מנהל">
           <i class="fas fa-bell"></i>
           <span class="ai-notification-badge" id="aiNotificationBadge"></span>
         </button>
