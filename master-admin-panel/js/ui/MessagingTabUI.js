@@ -21,25 +21,18 @@
          */
         init(containerElement) {
             this.container = containerElement;
-
-            // Listen for tab changes
-            window.addEventListener('admin-tab-change', (e) => {
-                if (e.detail.tabId === 'messages') {
-                    this.show();
-                } else {
-                    this.hide();
-                }
-            });
         }
 
         /**
          * Show messaging tab
          * הצג טאב הודעות
+         * @param {string} initialTab - 'inbox' or 'threads'
          */
-        show() {
-            if (this.isActive) {
-return;
-}
+        show(initialTab = 'inbox') {
+            if (!this.container) {
+                console.error('❌ MessagingTabUI not initialized');
+                return;
+            }
 
             this.isActive = true;
 
@@ -65,10 +58,10 @@ return;
                 messagingContainer.style.display = 'block';
             }
 
-            // Initialize MessagingCenterUI
+            // Initialize MessagingCenterUI with initial tab
             if (window.MessagingCenterUI) {
                 setTimeout(() => {
-                    window.MessagingCenterUI.init();
+                    window.MessagingCenterUI.init(initialTab);
                 }, 100);
             } else {
                 console.error('❌ MessagingCenterUI not loaded');

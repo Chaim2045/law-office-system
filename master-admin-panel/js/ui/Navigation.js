@@ -49,8 +49,7 @@ return;
 
             const navItems = [
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
-                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
-                { id: 'messages', label: 'הודעות', icon: 'fa-envelope', href: '#', isTab: true }
+                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' }
             ];
 
             this.container.innerHTML = `
@@ -106,9 +105,6 @@ return;
 
             // Setup chat button
             this.setupChatButton();
-
-            // Setup tab switching
-            this.setupTabSwitching();
         }
 
         /**
@@ -357,12 +353,13 @@ return;
 }
 
             sendMessageBtn.addEventListener('click', () => {
-                if (!window.messageComposer) {
-                    console.error('❌ MessageComposer not initialized');
+                if (!window.MessagingTabUI) {
+                    console.error('❌ MessagingTabUI not initialized');
                     return;
                 }
 
-                window.messageComposer.showComposeDialog();
+                // Show messaging tab with Inbox view
+                window.MessagingTabUI.show('inbox');
             });
         }
 
@@ -377,37 +374,16 @@ return;
 }
 
             chatBtn.addEventListener('click', () => {
-                if (!window.adminChatUI) {
-                    console.error('❌ AdminChatUI not initialized');
+                if (!window.MessagingTabUI) {
+                    console.error('❌ MessagingTabUI not initialized');
                     return;
                 }
 
-                window.adminChatUI.openConversationsList();
+                // Show messaging tab with Threads view
+                window.MessagingTabUI.show('threads');
             });
         }
 
-        /**
-         * Setup tab switching
-         * הגדרת מעבר בין טאבים
-         */
-        setupTabSwitching() {
-            const tabButtons = this.container.querySelectorAll('.nav-tab[data-tab]');
-
-            tabButtons.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const tabId = btn.getAttribute('data-tab');
-
-                    // Update active state
-                    tabButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-
-                    // Dispatch tab change event
-                    window.dispatchEvent(new CustomEvent('admin-tab-change', {
-                        detail: { tabId }
-                    }));
-                });
-            });
-        }
     }
 
     // Create global instance

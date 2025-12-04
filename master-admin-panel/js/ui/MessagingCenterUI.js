@@ -26,8 +26,9 @@
 
         /**
          * Initialize Messaging Center
+         * @param {string} initialView - 'inbox' or 'threads'
          */
-        async init() {
+        async init(initialView = 'inbox') {
             try {
                 // Initialization started
 
@@ -36,6 +37,9 @@
                     console.error('❌ Messaging center container not found');
                     return;
                 }
+
+                // Set initial view
+                this.currentView = initialView;
 
                 // Load data
                 await this.loadData();
