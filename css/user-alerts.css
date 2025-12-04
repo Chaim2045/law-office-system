@@ -1,0 +1,617 @@
+/**
+ * User Alerts System - CSS
+ * מערכת התראות משתמש - עיצוב
+ *
+ * נוצר: 2025-12-04
+ * גרסה: 1.0.0
+ */
+
+/* ============================================
+   Bell Icon + Badge
+   ============================================ */
+
+.user-alerts-container {
+    position: relative;
+    display: inline-block;
+    margin-left: 20px;
+}
+
+.alerts-bell-wrapper {
+    position: relative;
+}
+
+.alerts-bell {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    color: #64748b;
+    cursor: pointer;
+    position: relative;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alerts-bell:hover {
+    color: #3b82f6;
+    background: #f1f5f9;
+    transform: scale(1.05);
+}
+
+.alerts-bell:active {
+    transform: scale(0.95);
+}
+
+/* Badge */
+.alerts-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    animation: pulse-badge 2s infinite;
+    border: 2px solid white;
+}
+
+@keyframes pulse-badge {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+    }
+}
+
+/* ============================================
+   Dropdown Panel
+   ============================================ */
+
+.alerts-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 420px;
+    max-height: 600px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
+                0 10px 30px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e5e7eb;
+    animation: dropdown-appear 0.2s ease-out;
+}
+
+@keyframes dropdown-appear {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header */
+.alerts-dropdown-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.alerts-dropdown-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.alerts-dropdown-header h3 i {
+    color: #3b82f6;
+    font-size: 18px;
+}
+
+.mark-all-read-btn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.mark-all-read-btn:hover {
+    background: #e5e7eb;
+    color: #3b82f6;
+}
+
+/* Body */
+.alerts-dropdown-body {
+    overflow-y: auto;
+    max-height: 480px;
+    flex: 1;
+}
+
+.alerts-dropdown-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.alerts-dropdown-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.alerts-dropdown-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.alerts-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Empty State */
+.alerts-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: #94a3b8;
+}
+
+.alerts-empty i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.alerts-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Alert Item */
+.alert-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+}
+
+.alert-item:hover {
+    background: #f9fafb;
+}
+
+.alert-item:last-child {
+    border-bottom: none;
+}
+
+.alert-item.unread {
+    background: linear-gradient(90deg, #eff6ff 0%, #ffffff 100%);
+    border-right: 4px solid #3b82f6;
+}
+
+.alert-item.unread .alert-sender strong {
+    color: #3b82f6;
+}
+
+.alert-item.unread::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: #3b82f6;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+/* Alert Header */
+.alert-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.alert-sender {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.alert-sender i {
+    color: #f59e0b;
+    font-size: 16px;
+}
+
+.alert-sender strong {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.alert-time {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+/* Alert Body */
+.alert-body {
+    margin-bottom: 12px;
+}
+
+.alert-body p {
+    margin: 0;
+    font-size: 14px;
+    color: #475569;
+    line-height: 1.6;
+}
+
+/* Alert Actions */
+.alert-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.alert-actions button {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+}
+
+.btn-respond {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    flex: 1;
+}
+
+.btn-respond:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-dismiss {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.btn-dismiss:hover {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+/* Footer */
+.alerts-dropdown-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #e5e7eb;
+    background: #f8fafc;
+    text-align: center;
+}
+
+.alerts-dropdown-footer a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.alerts-dropdown-footer a:hover {
+    color: #2563eb;
+    gap: 8px;
+}
+
+/* ============================================
+   Response Modal
+   ============================================ */
+
+.response-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.response-modal.show {
+    opacity: 1;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 550px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.response-modal.show .modal-content {
+    transform: scale(1);
+}
+
+/* Modal Header */
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 18px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    background: #e5e7eb;
+    color: #1e293b;
+}
+
+/* Modal Body */
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.original-message {
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border-right: 4px solid #3b82f6;
+    margin-bottom: 20px;
+}
+
+.message-label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.original-message p {
+    margin: 0;
+    font-size: 14px;
+    color: #1e293b;
+    line-height: 1.6;
+}
+
+.response-form label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 8px;
+}
+
+.response-form textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: all 0.2s;
+    direction: rtl;
+}
+
+.response-form textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Quick Responses */
+.quick-responses {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.quick-response {
+    padding: 6px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-response:hover {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* Modal Footer */
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: #f8fafc;
+}
+
+.modal-footer .btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #475569;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+
+@media (max-width: 768px) {
+    .alerts-dropdown {
+        width: calc(100vw - 32px);
+        max-width: 400px;
+        right: -100px;
+    }
+
+    .modal-content {
+        width: calc(100vw - 32px);
+        max-height: calc(100vh - 32px);
+    }
+
+    .user-alerts-container {
+        margin-left: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .alerts-dropdown {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 16px 16px 0 0;
+        max-height: 80vh;
+    }
+
+    .quick-responses {
+        flex-direction: column;
+    }
+
+    .quick-response {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   RTL Support
+   ============================================ */
+
+html[dir="rtl"] .alerts-dropdown {
+    left: 0;
+    right: auto;
+}
+
+html[dir="rtl"] .alert-item.unread {
+    border-right: none;
+    border-left: 4px solid #3b82f6;
+}
+
+html[dir="rtl"] .alert-item.unread::before {
+    right: auto;
+    left: 8px;
+}
+
+html[dir="rtl"] .original-message {
+    border-right: none;
+    border-left: 4px solid #3b82f6;
+}
