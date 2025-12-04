@@ -160,8 +160,8 @@
 .ai-bubble-label {
   position: absolute;
   bottom: 75px; /* מעל הכפתור */
-  left: 50%;
-  transform: translateX(-50%) translateY(10px) scale(0.8);
+  left: 0; /* מיושר משמאל עם הכפתור */
+  transform: translateY(10px) scale(0.8);
 
   /* מצב התחלתי - מוסתר */
   opacity: 0;
@@ -203,8 +203,7 @@
 .ai-bubble-arrow {
   position: absolute;
   bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 20px; /* מיושר משמאל כדי להצביע לכיוון הכפתור */
   width: 0;
   height: 0;
   border-left: 8px solid transparent;
@@ -219,7 +218,7 @@
 .ai-float-wrapper:hover .ai-bubble-label {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0) scale(1);
+  transform: translateY(0) scale(1);
 
   /* מעבר בכניסה - bounce קל */
   transition:
@@ -234,13 +233,13 @@
 /* אנימציית Wiggle עדינה לבועה */
 @keyframes bubble-wiggle {
   0%, 100% {
-    transform: translateX(-50%) translateY(0) rotate(0deg);
+    transform: translateY(0) rotate(0deg);
   }
   25% {
-    transform: translateX(-50%) translateY(-2px) rotate(1deg);
+    transform: translateY(-2px) rotate(1deg);
   }
   75% {
-    transform: translateX(-50%) translateY(-2px) rotate(-1deg);
+    transform: translateY(-2px) rotate(-1deg);
   }
 }
 
