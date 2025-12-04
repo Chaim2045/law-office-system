@@ -26,9 +26,15 @@
          */
         async init() {
             try {
-                this.functions = firebase.functions();
-                this.db = firebase.firestore();
-                this.auth = firebase.auth();
+                // Use global Firebase instances from firebase.js
+                this.functions = window.firebaseFunctions;
+                this.db = window.firebaseDB;
+                this.auth = window.firebaseAuth;
+
+                if (!this.functions || !this.db || !this.auth) {
+                    throw new Error('Firebase services not initialized');
+                }
+
                 this.currentUser = this.auth.currentUser;
 
                 if (!this.currentUser) {
