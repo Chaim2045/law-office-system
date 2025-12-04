@@ -170,7 +170,7 @@
     <script src="js/core/constants.js?v=20251123v6"></script>
 
     <!-- ===== Navigation Component ===== -->
-    <script src="js/ui/Navigation.js?v=20251201v2"></script>
+    <script src="js/ui/Navigation.js?v=20251204v1"></script>
 
     <!-- ===== Phase 2: Data & UI Components ===== -->
     <script src="js/managers/DataManager.js?v=20251123v6"></script>
@@ -197,12 +197,12 @@
     <script src="js/ui/AdminChatUI.js?v=5.0.0"></script>
 
     <!-- ===== Messaging Center System (New) ===== -->
-    <script src="js/managers/ContextMessageManager.js?v=1.0.0"></script>
-    <script src="js/managers/ThreadManager.js?v=1.0.0"></script>
-    <script src="js/ui/MessageViewerModal.js?v=1.0.0"></script>
-    <script src="js/ui/ThreadViewerModal.js?v=1.0.0"></script>
-    <script src="js/ui/MessagingCenterUI.js?v=1.0.0"></script>
-    <script src="js/ui/MessagingTabUI.js?v=1.0.0"></script>
+    <script src="js/managers/ContextMessageManager.js?v=20251204"></script>
+    <script src="js/managers/ThreadManager.js?v=20251204"></script>
+    <script src="js/ui/MessageViewerModal.js?v=20251204"></script>
+    <script src="js/ui/ThreadViewerModal.js?v=20251204"></script>
+    <script src="js/ui/MessagingCenterUI.js?v=20251204"></script>
+    <script src="js/ui/MessagingTabUI.js?v=20251204"></script>
 
     <!-- ===== Floating Action Button ===== -->
     <script src="js/ui/FloatingActionButton.js?v=1"></script>
@@ -243,10 +243,12 @@
                     const dashboardContent = document.getElementById('dashboardContent');
                     if (dashboardContent) {
                         window.MessagingTabUI.init(dashboardContent);
-                        console.log('✅ MessagingTabUI initialized');
+                        console.log('✅ MessagingTabUI initialized successfully');
+                    } else {
+                        console.error('❌ dashboardContent element not found');
                     }
                 } else {
-                    console.warn('⚠️ MessagingTabUI not loaded');
+                    console.error('❌ MessagingTabUI not loaded - check script order');
                 }
 
                 // Initialize Floating Action Button
