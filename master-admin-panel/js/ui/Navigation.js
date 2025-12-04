@@ -346,8 +346,10 @@ return;
 }
 
             sendMessageBtn.addEventListener('click', () => {
-                if (!window.MessagingTabUI) {
-                    console.error('❌ MessagingTabUI not initialized');
+                if (!window.MessagingTabUI || !window.MessagingTabUI.container) {
+                    console.error('❌ MessagingTabUI not initialized properly');
+                    console.error('MessagingTabUI exists:', !!window.MessagingTabUI);
+                    console.error('MessagingTabUI.container:', window.MessagingTabUI?.container);
                     return;
                 }
 
@@ -367,8 +369,10 @@ return;
 }
 
             chatBtn.addEventListener('click', () => {
-                if (!window.MessagingTabUI) {
-                    console.error('❌ MessagingTabUI not initialized');
+                if (!window.MessagingTabUI || !window.MessagingTabUI.container) {
+                    console.error('❌ MessagingTabUI not initialized properly');
+                    console.error('MessagingTabUI exists:', !!window.MessagingTabUI);
+                    console.error('MessagingTabUI.container:', window.MessagingTabUI?.container);
                     return;
                 }
 
