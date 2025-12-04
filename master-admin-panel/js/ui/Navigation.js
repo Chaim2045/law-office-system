@@ -43,11 +43,14 @@
          * רינדור ניווט
          */
         render() {
-            if (!this.container) return;
+            if (!this.container) {
+return;
+}
 
             const navItems = [
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
                 { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
+                { id: 'messages', label: 'הודעות', icon: 'fa-envelope', href: '#', isTab: true }
             ];
 
             this.container.innerHTML = `
@@ -61,10 +64,17 @@
                     <div class="nav-tabs-wrapper">
                         <div class="nav-tabs">
                             ${navItems.map(item => `
-                                <a href="${item.href}" class="nav-tab ${item.id === this.currentPage ? 'active' : ''}">
-                                    <i class="fas ${item.icon}"></i>
-                                    <span>${item.label}</span>
-                                </a>
+                                ${item.isTab ? `
+                                    <button class="nav-tab ${item.id === this.currentPage ? 'active' : ''}" data-tab="${item.id}">
+                                        <i class="fas ${item.icon}"></i>
+                                        <span>${item.label}</span>
+                                    </button>
+                                ` : `
+                                    <a href="${item.href}" class="nav-tab ${item.id === this.currentPage ? 'active' : ''}">
+                                        <i class="fas ${item.icon}"></i>
+                                        <span>${item.label}</span>
+                                    </a>
+                                `}
                             `).join('')}
                         </div>
                     </div>
@@ -96,6 +106,9 @@
 
             // Setup chat button
             this.setupChatButton();
+
+            // Setup tab switching
+            this.setupTabSwitching();
         }
 
         /**
@@ -103,7 +116,9 @@
          * הזרקת סגנונות
          */
         injectStyles() {
-            if (document.getElementById('navigationStyles')) return;
+            if (document.getElementById('navigationStyles')) {
+return;
+}
 
             const style = document.createElement('style');
             style.id = 'navigationStyles';
@@ -312,7 +327,9 @@
          */
         setupLogout() {
             const logoutBtn = document.getElementById('navLogoutBtn');
-            if (!logoutBtn) return;
+            if (!logoutBtn) {
+return;
+}
 
             logoutBtn.addEventListener('click', async () => {
                 if (!window.firebaseAuth) {
@@ -322,7 +339,6 @@
 
                 try {
                     await window.firebaseAuth.signOut();
-                    console.log('✅ User signed out');
                     window.location.href = 'index.html';
                 } catch (error) {
                     console.error('❌ Error signing out:', error);
@@ -336,16 +352,16 @@
          */
         setupSendMessage() {
             const sendMessageBtn = document.getElementById('navSendMessageBtn');
-            if (!sendMessageBtn) return;
+            if (!sendMessageBtn) {
+return;
+}
 
             sendMessageBtn.addEventListener('click', () => {
                 if (!window.messageComposer) {
                     console.error('❌ MessageComposer not initialized');
-                    alert('מערכת ההודעות לא זמינה כרגע');
                     return;
                 }
 
-                console.log('📧 Opening message composer from navigation');
                 window.messageComposer.showComposeDialog();
             });
         }
@@ -356,17 +372,40 @@
          */
         setupChatButton() {
             const chatBtn = document.getElementById('navChatBtn');
-            if (!chatBtn) return;
+            if (!chatBtn) {
+return;
+}
 
             chatBtn.addEventListener('click', () => {
                 if (!window.adminChatUI) {
                     console.error('❌ AdminChatUI not initialized');
-                    alert('מערכת הצ\'אט לא זמינה כרגע');
                     return;
                 }
 
-                console.log('💬 Opening chat conversations list');
                 window.adminChatUI.openConversationsList();
+            });
+        }
+
+        /**
+         * Setup tab switching
+         * הגדרת מעבר בין טאבים
+         */
+        setupTabSwitching() {
+            const tabButtons = this.container.querySelectorAll('.nav-tab[data-tab]');
+
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const tabId = btn.getAttribute('data-tab');
+
+                    // Update active state
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    // Dispatch tab change event
+                    window.dispatchEvent(new CustomEvent('admin-tab-change', {
+                        detail: { tabId }
+                    }));
+                });
             });
         }
     }

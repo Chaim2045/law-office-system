@@ -41,6 +41,7 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/user-details.css?v=20251201v1">
     <link rel="stylesheet" href="css/messaging.css?v=2">
+    <link rel="stylesheet" href="css/messaging-modals.css?v=1.0.0">
     <link rel="stylesheet" href="../css/chat.css?v=5.0.0">
 </head>
 
@@ -195,6 +196,12 @@
     <script src="../js/managers/ChatManager.js?v=5.0.0"></script>
     <script src="js/ui/AdminChatUI.js?v=5.0.0"></script>
 
+    <!-- ===== Messaging Center System (New) ===== -->
+    <script src="js/ui/MessageViewerModal.js?v=1.0.0"></script>
+    <script src="js/ui/ThreadViewerModal.js?v=1.0.0"></script>
+    <script src="js/ui/MessagingCenterUI.js?v=1.0.0"></script>
+    <script src="js/ui/MessagingTabUI.js?v=1.0.0"></script>
+
     <!-- ===== Floating Action Button ===== -->
     <script src="js/ui/FloatingActionButton.js?v=1"></script>
 
@@ -227,6 +234,17 @@
                     await window.DashboardUI.init();
                 } else {
                     console.error('❌ DashboardUI not loaded');
+                }
+
+                // Initialize Messaging Tab UI
+                if (window.MessagingTabUI) {
+                    const dashboardContent = document.getElementById('dashboardContent');
+                    if (dashboardContent) {
+                        window.MessagingTabUI.init(dashboardContent);
+                        console.log('✅ MessagingTabUI initialized');
+                    }
+                } else {
+                    console.warn('⚠️ MessagingTabUI not loaded');
                 }
 
                 // Initialize Floating Action Button
