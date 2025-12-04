@@ -63,17 +63,10 @@ return;
                     <div class="nav-tabs-wrapper">
                         <div class="nav-tabs">
                             ${navItems.map(item => `
-                                ${item.isTab ? `
-                                    <button class="nav-tab ${item.id === this.currentPage ? 'active' : ''}" data-tab="${item.id}">
-                                        <i class="fas ${item.icon}"></i>
-                                        <span>${item.label}</span>
-                                    </button>
-                                ` : `
-                                    <a href="${item.href}" class="nav-tab ${item.id === this.currentPage ? 'active' : ''}">
-                                        <i class="fas ${item.icon}"></i>
-                                        <span>${item.label}</span>
-                                    </a>
-                                `}
+                                <a href="${item.href}" class="nav-tab ${item.id === this.currentPage ? 'active' : ''}">
+                                    <i class="fas ${item.icon}"></i>
+                                    <span>${item.label}</span>
+                                </a>
                             `).join('')}
                         </div>
                     </div>
