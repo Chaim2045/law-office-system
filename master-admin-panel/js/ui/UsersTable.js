@@ -263,11 +263,20 @@ return '-';
         /**
          * Format date
          * פורמט תאריך
+         *
+         * 🔧 FIX: משווה תאריכים קלנדריים במקום הפרש זמן
+         * זה מבטיח שתאריכים מוצגים נכון לפי יום בלוח השנה, לא לפי 24 שעות
          */
         formatDate(date) {
             const now = new Date();
-            const diff = now - date;
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            // Reset time to midnight for accurate day comparison
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+            // Calculate difference in days (calendar days, not 24-hour periods)
+            const diffTime = today - compareDate;
+            const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
             if (days === 0) {
                 return 'היום';
