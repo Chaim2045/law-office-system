@@ -19,7 +19,7 @@
             this.currentData = null;
 
             // References to managers
-            this.contextMessageManager = window.contextMessageManager;
+            this.alertCommManager = window.alertCommManager;
 
             // Create dialog element
             this.createDialog();
@@ -264,27 +264,40 @@
                 const title = this.dialogElement.querySelector('#messageTitle').value.trim();
                 const body = this.dialogElement.querySelector('#messageBody').value.trim();
 
-                // Prepare message data
-                const messageData = {
-                    to: {
-                        uid: this.currentData.userId,
-                        name: this.currentData.userName,
-                        role: 'employee'
-                    },
-                    messageType: messageType,
-                    title: title,
-                    body: body,
-                    context: this.currentData.alert ? {
-                        type: this.currentData.alert.type,
-                        relatedData: this.currentData.alert.contextData
-                    } : null,
-                    priority: messageType === 'urgent' ? 'urgent' : 'normal'
+                // Check if alertCommManager is available
+                if (!window.alertCommManager) {
+                    throw new Error('Alert Communication Manager not initialized');
+                }
+
+                // Map message type to AlertCommunicationManager format
+                const typeMap = {
+                    'reminder': 'info',
+                    'warning': 'warning',
+                    'urgent': 'alert',
+                    'info': 'info'
                 };
 
-                // Send message
-                const message = await this.contextMessageManager.sendMessage(messageData);
+                const priorityMap = {
+                    'reminder': 1,
+                    'warning': 3,
+                    'urgent': 10,
+                    'info': 1
+                };
 
-                console.log('✅ Message sent:', message.id);
+                // Combine title and body into message
+                const messageText = `${title}\n\n${body}`;
+
+                // Send message using AlertCommunicationManager
+                const messageId = await window.alertCommManager.sendMessage(
+                    this.currentData.userEmail,
+                    messageText,
+                    {
+                        type: typeMap[messageType] || 'info',
+                        priority: priorityMap[messageType] || 1
+                    }
+                );
+
+                console.log('✅ Message sent:', messageId);
 
                 // Hide loading
                 this.hideLoading();
@@ -299,7 +312,7 @@
 
                 // Callback if provided
                 if (this.currentData.onSent) {
-                    this.currentData.onSent(message);
+                    this.currentData.onSent({ id: messageId });
                 }
 
             } catch (error) {

@@ -62,10 +62,10 @@ export class NotificationBellSystem {
     this.currentUser = user;
 
     // Listen to user_messages collection
-    // Note: Removed orderBy to avoid needing a composite index
     this.messagesListener = db.collection('user_messages')
       .where('to', '==', user.email)
       .where('status', 'in', ['unread', 'read'])
+      .orderBy('createdAt', 'desc')
       .onSnapshot(
         snapshot => {
           console.log(`📨 NotificationBell: Received ${snapshot.size} admin messages`);

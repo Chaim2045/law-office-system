@@ -3134,23 +3134,37 @@ return;
 
             console.log(`📧 Opening message composer for: ${this.currentUser.email}`);
 
-            // Show simple prompt dialog
-            const message = prompt(`שלח הודעה ל-${this.currentUser.displayName || this.currentUser.email}:`);
-
-            if (!message || message.trim() === '') {
-                return;
-            }
-
-            // Send message using AlertCommunicationManager
-            window.alertCommManager.sendMessage(this.currentUser.email, message.trim())
-                .then(() => {
-                    console.log('✅ Message sent successfully');
-                })
-                .catch((error) => {
-                    console.error('❌ Failed to send message:', error);
-                    alert('שגיאה בשליחת ההודעה. נסה שוב.');
+            // Use QuickMessageDialog if available
+            if (window.quickMessageDialog) {
+                window.quickMessageDialog.show({
+                    userId: this.currentUser.uid,
+                    userName: this.currentUser.displayName || this.currentUser.email,
+                    userEmail: this.currentUser.email,
+                    onSent: (message) => {
+                        console.log('✅ Message sent successfully:', message.id);
+                    }
                 });
+            } else {
+                // Fallback: Show simple prompt dialog
+                const message = prompt(`שלח הודעה ל-${this.currentUser.displayName || this.currentUser.email}:`);
 
+                if (!message || message.trim() === '') {
+                    return;
+                }
+
+                // Send message using AlertCommunicationManager
+                window.alertCommManager.sendMessage(this.currentUser.email, message.trim())
+                    .then(() => {
+                        console.log('✅ Message sent successfully');
+                        if (window.notify) {
+                            window.notify.success('ההודעה נשלחה בהצלחה');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('❌ Failed to send message:', error);
+                        alert('שגיאה בשליחת ההודעה. נסה שוב.');
+                    });
+            }
         }
     }
 

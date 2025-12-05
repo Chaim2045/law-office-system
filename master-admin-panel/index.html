@@ -186,7 +186,10 @@
     <script src="js/managers/UsersActions.js?v=20251123v6"></script>
 
     <!-- ===== Alert Communication System ===== -->
+    <script src="js/managers/AlertEngine.js?v=1.0.0"></script>
     <script src="js/managers/AlertCommunicationManager.js?v=1.0.0"></script>
+    <script src="js/ui/UserAlertsPanel.js?v=1.0.0"></script>
+    <script src="js/ui/QuickMessageDialog.js?v=1.0.0"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>
@@ -219,6 +222,16 @@
                     console.error('❌ DashboardUI not loaded');
                 }
 
+                // Initialize Alert Engine
+                if (window.AlertEngine) {
+                    try {
+                        window.alertEngine = new window.AlertEngine();
+                        console.log('✅ Alert Engine initialized');
+                    } catch (error) {
+                        console.error('❌ Failed to initialize Alert Engine:', error);
+                    }
+                }
+
                 // Initialize Alert Communication System
                 if (window.AlertCommunicationManager && window.firebaseDB && window.DataManager) {
                     try {
@@ -230,6 +243,20 @@
                         );
                         await window.alertCommManager.init(adminUser);
                         console.log('✅ Alert Communication Manager initialized');
+
+                        // Start listening to user responses
+                        window.alertCommManager.listenToResponses((responses) => {
+                            console.log(`📬 Admin has ${responses.length} responses from users`);
+                            // Show badge or notification if there are new responses
+                            if (responses.length > 0) {
+                                console.log('💬 Latest responses:', responses.slice(0, 3).map(r => ({
+                                    from: r.toName,
+                                    message: r.message,
+                                    response: r.response
+                                })));
+                            }
+                        });
+                        console.log('✅ Listening to user responses');
                     } catch (error) {
                         console.error('❌ Failed to initialize Alert Communication Manager:', error);
                     }
