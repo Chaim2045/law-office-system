@@ -62,10 +62,10 @@ export class NotificationBellSystem {
     this.currentUser = user;
 
     // Listen to user_messages collection
+    // Note: Removed orderBy to avoid needing a composite index
     this.messagesListener = db.collection('user_messages')
       .where('to', '==', user.email)
       .where('status', 'in', ['unread', 'read'])
-      .orderBy('createdAt', 'desc')
       .onSnapshot(
         snapshot => {
           console.log(`📨 NotificationBell: Received ${snapshot.size} admin messages`);
@@ -73,20 +73,27 @@ export class NotificationBellSystem {
           // Remove old admin messages from notifications
           this.notifications = this.notifications.filter(n => !n.isAdminMessage);
 
-          // Add new admin messages (without calling render for each one)
-          snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            const notification = {
-              id: 'msg_' + doc.id,
-              type: data.type || 'info',
-              title: `📩 הודעה מ-${data.fromName || 'מנהל'}`,
-              description: data.message,
-              time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('he-IL') : '',
-              urgent: data.priority >= 5,
-              isAdminMessage: true,
-              messageId: doc.id,
-              status: data.status
-            };
+          // Convert to array and sort by createdAt (newest first)
+          const messages = snapshot.docs
+            .map(doc => {
+              const data = doc.data();
+              return {
+                id: 'msg_' + doc.id,
+                type: data.type || 'info',
+                title: `📩 הודעה מ-${data.fromName || 'מנהל'}`,
+                description: data.message,
+                time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('he-IL') : '',
+                urgent: data.priority >= 5,
+                isAdminMessage: true,
+                messageId: doc.id,
+                status: data.status,
+                timestamp: data.createdAt ? data.createdAt.toMillis() : 0
+              };
+            })
+            .sort((a, b) => b.timestamp - a.timestamp); // Sort newest first
+
+          // Add sorted messages to notifications
+          messages.forEach(notification => {
             this.notifications.unshift(notification);
           });
 
