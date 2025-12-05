@@ -73,11 +73,26 @@ export class NotificationBellSystem {
           // Remove old admin messages from notifications
           this.notifications = this.notifications.filter(n => !n.isAdminMessage);
 
-          // Add new admin messages
+          // Add new admin messages (without calling render for each one)
           snapshot.docs.forEach(doc => {
             const data = doc.data();
-            this.addAdminMessage(doc.id, data);
+            const notification = {
+              id: 'msg_' + doc.id,
+              type: data.type || 'info',
+              title: `📩 הודעה מ-${data.fromName || 'מנהל'}`,
+              description: data.message,
+              time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('he-IL') : '',
+              urgent: data.priority >= 5,
+              isAdminMessage: true,
+              messageId: doc.id,
+              status: data.status
+            };
+            this.notifications.unshift(notification);
           });
+
+          // Update UI once after all messages are added
+          this.updateBell();
+          this.renderNotifications();
         },
         error => {
           console.error('NotificationBell: Error listening to admin messages:', error);
