@@ -123,7 +123,9 @@
          * רינדור הטבלה
          */
         render(data) {
-            if (!this.tableBody) return;
+            if (!this.tableBody) {
+return;
+}
 
             const paginatedData = data || this.dataManager.getPaginatedClients();
             const clients = paginatedData.clients;
@@ -148,7 +150,7 @@
             const typeBadge = this.getTypeBadge(client);
             const hoursDisplay = this.getHoursDisplay(client);
             const teamMembers = this.getTeamMembers(client);
-            const lastActivity = this.formatDate(client.lastActivity);
+            const lastLogin = this.getTeamLastLogin(client);
 
             return `
                 <tr data-client-id="${client.id}">
@@ -162,7 +164,7 @@
                     <td>${hoursDisplay}</td>
                     <td>${statusBadge}</td>
                     <td>${teamMembers}</td>
-                    <td>${lastActivity}</td>
+                    <td>${lastLogin}</td>
                     <td>
                         <div class="table-actions">
                             <button class="btn-action btn-action-primary" data-action="manage" data-client-id="${client.id}">
@@ -279,11 +281,44 @@
         }
 
         /**
+         * Get team last login
+         * קבלת כניסה אחרונה של חברי הצוות
+         * מחזיר את הכניסה האחרונה של העובד שנכנס הכי לאחרונה
+         */
+        getTeamLastLogin(client) {
+            if (!client.assignedTo || client.assignedTo.length === 0) {
+                return '-';
+            }
+
+            // Get lastLogin for all team members
+            let latestLogin = null;
+
+            client.assignedTo.forEach(email => {
+                const employeeLogin = this.dataManager.getEmployeeLastLogin(email);
+                if (employeeLogin) {
+                    const loginTime = employeeLogin.toMillis ? employeeLogin.toMillis() : new Date(employeeLogin).getTime();
+                    if (!latestLogin || loginTime > latestLogin) {
+                        latestLogin = loginTime;
+                    }
+                }
+            });
+
+            if (!latestLogin) {
+                return '-';
+            }
+
+            // Convert back to timestamp format and format
+            return this.formatDate(new Date(latestLogin));
+        }
+
+        /**
          * Format date
          * עיצוב תאריך
          */
         formatDate(timestamp) {
-            if (!timestamp) return '-';
+            if (!timestamp) {
+return '-';
+}
 
             let date;
             if (timestamp.toDate) {
@@ -440,7 +475,7 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
             }
 
             // Convert to CSV
-            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'סטטוס', 'צוות', 'פעילות אחרונה'];
+            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'סטטוס', 'צוות', 'כניסה אחרונה'];
             const rows = clients.map(client => [
                 client.fullName,
                 client.caseNumber || '',
@@ -448,7 +483,7 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
                 client.type === 'hours' ? client.hoursRemaining || 0 : '-',
                 client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
                 client.assignedTo ? client.assignedTo.join(', ') : '',
-                this.formatDate(client.lastActivity)
+                this.getTeamLastLogin(client)
             ]);
 
             let csv = headers.join(',') + '\n';
@@ -472,7 +507,9 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
          * הימנעות מ-HTML injection
          */
         escapeHtml(text) {
-            if (!text) return '';
+            if (!text) {
+return '';
+}
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;

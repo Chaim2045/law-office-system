@@ -236,9 +236,10 @@
 
                 this.employees = snapshot.docs.map(doc => ({
                     id: doc.id,
-                    email: doc.data().email,
+                    email: doc.data().email || doc.id,
                     username: doc.data().username || doc.data().name || '',
-                    role: doc.data().role || 'employee'
+                    role: doc.data().role || 'employee',
+                    lastLogin: doc.data().lastLogin || null
                 }));
 
                 console.log(`✅ Loaded ${this.employees.length} employees`);
@@ -396,8 +397,9 @@
                         return this.sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
 
                     case 'lastActivity':
-                        aValue = a.lastActivity ? a.lastActivity.toMillis() : 0;
-                        bValue = b.lastActivity ? b.lastActivity.toMillis() : 0;
+                        // Sort by latest login of team members
+                        aValue = this.getLatestTeamLogin(a);
+                        bValue = this.getLatestTeamLogin(b);
                         return this.sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
 
                     case 'createdAt':
@@ -496,6 +498,39 @@
         getEmployeeName(email) {
             const employee = this.employees.find(e => e.email === email);
             return employee ? employee.username : email;
+        }
+
+        /**
+         * Get employee lastLogin by email
+         * קבלת כניסה אחרונה של עובד לפי מייל
+         */
+        getEmployeeLastLogin(email) {
+            const employee = this.employees.find(e => e.email === email);
+            return employee ? employee.lastLogin : null;
+        }
+
+        /**
+         * Get latest team login timestamp
+         * קבלת זמן הכניסה האחרונה של חברי הצוות (למיון)
+         */
+        getLatestTeamLogin(client) {
+            if (!client.assignedTo || client.assignedTo.length === 0) {
+                return 0;
+            }
+
+            let latestLogin = 0;
+
+            client.assignedTo.forEach(email => {
+                const employeeLogin = this.getEmployeeLastLogin(email);
+                if (employeeLogin) {
+                    const loginTime = employeeLogin.toMillis ? employeeLogin.toMillis() : new Date(employeeLogin).getTime();
+                    if (loginTime > latestLogin) {
+                        latestLogin = loginTime;
+                    }
+                }
+            });
+
+            return latestLogin;
         }
 
         /**
