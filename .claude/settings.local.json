@@ -39,7 +39,8 @@
       "Bash(node check-firestore-data.js:*)",
       "Bash(node:*)",
       "Bash(ls:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []
