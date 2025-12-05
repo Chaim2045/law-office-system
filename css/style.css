@@ -657,6 +657,40 @@ body.logged-in .main-content::before {
   color: #475569;
 }
 
+/* כפתור השב להודעות מנהל */
+.notification-reply-btn {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.notification-reply-btn:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.notification-reply-btn:active {
+  transform: translateY(0);
+}
+
+.notification-reply-btn i {
+  font-size: 14px;
+}
+
 /* תוכן ההתראה */
 .notification-content {
   flex: 1;
