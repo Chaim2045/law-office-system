@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messaging System - Script Loader</title>
+</head>
+<body>
+    <h1>מערכת הודעות חדשה - טוען סקריפטים...</h1>
+    <p>קובץ זה טוען את כל הסקריפטים של מערכת ההודעות החדשה בסדר הנכון.</p>
+    <p>העתק את תגי ה-<code>&lt;script&gt;</code> למטה ל-<code>index.html</code> של האדמין פאנל.</p>
+
+    <hr>
+
+    <h2>📋 סדר הטעינה הנכון:</h2>
+
+    <!-- ========================================
+         Phase 1: Foundation Layer
+         קבצי היסוד - Errors & Constants
+    ========================================= -->
+
+    <h3>1️⃣ Foundation - Errors</h3>
+    <script src="../js/core/errors/BaseError.js"></script>
+    <script src="../js/core/errors/ValidationError.js"></script>
+    <script src="../js/core/errors/PermissionError.js"></script>
+    <script src="../js/core/errors/NetworkError.js"></script>
+
+    <h3>2️⃣ Foundation - Constants</h3>
+    <script src="../js/core/constants/message-types.js"></script>
+    <script src="../js/core/constants/alert-types.js"></script>
+    <script src="../js/core/constants/thread-constants.js"></script>
+
+    <!-- ========================================
+         Phase 2: Data Models
+         מודלי הנתונים
+    ========================================= -->
+
+    <h3>3️⃣ Data Models</h3>
+    <script src="../js/models/Thread.js"></script>
+    <script src="../js/models/Message.js"></script>
+    <script src="../js/models/Alert.js"></script>
+    <script src="../js/models/ContextMessage.js"></script>
+
+    <!-- ========================================
+         Phase 3: Services & Utils
+         שירותים ועזרים
+    ========================================= -->
+
+    <h3>4️⃣ Services & Utils</h3>
+    <script src="../js/services/ValidationService.js"></script>
+    <script src="../js/utils/date-utils.js"></script>
+
+    <!-- ========================================
+         Phase 4: Managers
+         המנהלים - הליבה של המערכת
+    ========================================= -->
+
+    <h3>5️⃣ Managers</h3>
+    <script src="../js/managers/AlertEngine.js"></script>
+    <script src="../js/managers/ThreadManager.js"></script>
+    <script src="../js/managers/ContextMessageManager.js"></script>
+
+    <hr>
+
+    <h2>✅ בדיקה:</h2>
+    <script>
+        // Test that everything loaded correctly
+        window.addEventListener('load', () => {
+            const tests = [
+                { name: 'BaseError', obj: window.BaseError },
+                { name: 'ValidationError', obj: window.ValidationError },
+                { name: 'MESSAGE_TYPES', obj: window.MESSAGE_TYPES },
+                { name: 'ALERT_TYPES', obj: window.ALERT_TYPES },
+                { name: 'THREAD_CATEGORIES', obj: window.THREAD_CATEGORIES },
+                { name: 'Thread', obj: window.Thread },
+                { name: 'Message', obj: window.Message },
+                { name: 'Alert', obj: window.Alert },
+                { name: 'ContextMessage', obj: window.ContextMessage },
+                { name: 'ValidationService', obj: window.ValidationService },
+                { name: 'DateUtils', obj: window.DateUtils },
+                { name: 'AlertEngine', obj: window.AlertEngine },
+                { name: 'ThreadManager', obj: window.ThreadManager },
+                { name: 'ContextMessageManager', obj: window.ContextMessageManager }
+            ];
+
+            console.log('='.repeat(50));
+            console.log('🧪 Testing Messaging System Load...');
+            console.log('='.repeat(50));
+
+            let passed = 0;
+            let failed = 0;
+
+            tests.forEach(test => {
+                if (test.obj) {
+                    console.log(`✅ ${test.name} - Loaded`);
+                    passed++;
+                } else {
+                    console.error(`❌ ${test.name} - NOT LOADED`);
+                    failed++;
+                }
+            });
+
+            console.log('='.repeat(50));
+            console.log(`📊 Results: ${passed}/${tests.length} passed`);
+
+            if (failed === 0) {
+                console.log('🎉 All scripts loaded successfully!');
+                document.body.innerHTML += '<h2 style="color: green;">✅ כל הסקריפטים נטענו בהצלחה!</h2>';
+            } else {
+                console.error(`⚠️ ${failed} scripts failed to load`);
+                document.body.innerHTML += `<h2 style="color: red;">❌ ${failed} סקריפטים לא נטענו!</h2>`;
+            }
+            console.log('='.repeat(50));
+        });
+    </script>
+
+    <hr>
+
+    <h2>📝 הוראות שילוב ב-index.html:</h2>
+    <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; direction: ltr; text-align: left;">
+&lt;!-- ===== New Messaging System (Thread-Based) ===== --&gt;
+
+&lt;!-- Foundation - Errors --&gt;
+&lt;script src="../js/core/errors/BaseError.js"&gt;&lt;/script&gt;
+&lt;script src="../js/core/errors/ValidationError.js"&gt;&lt;/script&gt;
+&lt;script src="../js/core/errors/PermissionError.js"&gt;&lt;/script&gt;
+&lt;script src="../js/core/errors/NetworkError.js"&gt;&lt;/script&gt;
+
+&lt;!-- Foundation - Constants --&gt;
+&lt;script src="../js/core/constants/message-types.js"&gt;&lt;/script&gt;
+&lt;script src="../js/core/constants/alert-types.js"&gt;&lt;/script&gt;
+&lt;script src="../js/core/constants/thread-constants.js"&gt;&lt;/script&gt;
+
+&lt;!-- Data Models --&gt;
+&lt;script src="../js/models/Thread.js"&gt;&lt;/script&gt;
+&lt;script src="../js/models/Message.js"&gt;&lt;/script&gt;
+&lt;script src="../js/models/Alert.js"&gt;&lt;/script&gt;
+&lt;script src="../js/models/ContextMessage.js"&gt;&lt;/script&gt;
+
+&lt;!-- Services & Utils --&gt;
+&lt;script src="../js/services/ValidationService.js"&gt;&lt;/script&gt;
+&lt;script src="../js/utils/date-utils.js"&gt;&lt;/script&gt;
+
+&lt;!-- Managers --&gt;
+&lt;script src="../js/managers/AlertEngine.js"&gt;&lt;/script&gt;
+&lt;script src="../js/managers/ThreadManager.js"&gt;&lt;/script&gt;
+&lt;script src="../js/managers/ContextMessageManager.js"&gt;&lt;/script&gt;
+    </pre>
+</body>
+</html>

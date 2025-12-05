@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול פיצ'רים - Feature Flags</title>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        .warning-banner {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .warning-banner i {
+            color: #f59e0b;
+            font-size: 24px;
+        }
+
+        .warning-banner .text {
+            flex: 1;
+        }
+
+        .warning-banner h3 {
+            color: #92400e;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .warning-banner p {
+            color: #78350f;
+            font-size: 14px;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .feature-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .feature-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .feature-title h2 {
+            color: #1f2937;
+            font-size: 20px;
+        }
+
+        .feature-description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .feature-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: #9ca3af;
+            margin-bottom: 20px;
+        }
+
+        .feature-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #10b981;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge.active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .loading i {
+            font-size: 40px;
+            color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .history-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .history-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .history-item {
+            font-size: 13px;
+            color: #6b7280;
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-item i {
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-flag"></i> ניהול פיצ'רים</h1>
+            <p>Feature Flags - הפעלה וכיבוי של תכונות במערכת</p>
+        </div>
+
+        <div class="warning-banner">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="text">
+                <h3>⚠️ אזור רגיש - שים לב!</h3>
+                <p>שינוי דגלים משפיע על כל המשתמשים במערכת. וודא שאתה בטוח לפני ביצוע שינויים.</p>
+            </div>
+        </div>
+
+        <div id="featuresContainer" class="loading">
+            <i class="fas fa-spinner"></i>
+            <p>טוען פיצ'רים...</p>
+        </div>
+    </div>
+
+    <script src="../firebase-config.js"></script>
+    <script>
+        // Initialize Firebase
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const functions = firebase.functions();
+
+        // Global state
+        let currentFlags = null;
+
+        /**
+         * Load feature flags from Firestore
+         */
+        async function loadFeatureFlags() {
+            try {
+                const doc = await db.collection('system_settings').doc('feature_flags').get();
+
+                if (!doc.exists) {
+                    console.log('No feature flags found, initializing...');
+                    await initializeFlags();
+                    return loadFeatureFlags();
+                }
+
+                currentFlags = doc.data();
+                renderFeatureFlags(currentFlags);
+
+            } catch (error) {
+                console.error('Error loading flags:', error);
+                document.getElementById('featuresContainer').innerHTML = `
+                    <div style="color: #ef4444; text-align: center;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 40px; margin-bottom: 16px;"></i>
+                        <p>שגיאה בטעינת הדגלים: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadFeatureFlags()" style="margin-top: 16px;">
+                            נסה שוב
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Initialize flags if not exist
+         */
+        async function initializeFlags() {
+            const callInitialize = functions.httpsCallable('initializeFeatureFlags');
+            await callInitialize();
+        }
+
+        /**
+         * Render feature flags UI
+         */
+        function renderFeatureFlags(data) {
+            const { flags, metadata } = data;
+            const container = document.getElementById('featuresContainer');
+
+            if (!flags || Object.keys(flags).length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280;">אין פיצ'רים להצגה</p>';
+                return;
+            }
+
+            let html = '';
+
+            Object.keys(flags).forEach(flagName => {
+                const isEnabled = flags[flagName];
+                const meta = metadata?.[flagName] || {};
+                const history = data.history?.[flagName] || [];
+
+                html += `
+                    <div class="feature-card">
+                        <div class="feature-header">
+                            <div class="feature-title">
+                                <h2>${meta.name || flagName}</h2>
+                                <span class="status-badge ${isEnabled ? 'active' : 'inactive'}">
+                                    <i class="fas fa-circle" style="font-size: 8px;"></i>
+                                    ${isEnabled ? 'פעיל' : 'כבוי'}
+                                </span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox"
+                                       ${isEnabled ? 'checked' : ''}
+                                       onchange="toggleFeature('${flagName}', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="feature-description">
+                            ${meta.description || 'אין תיאור'}
+                        </div>
+
+                        <div class="feature-meta">
+                            <span><i class="fas fa-code-branch"></i> גרסה: ${meta.version || 'N/A'}</span>
+                            <span><i class="fas fa-calendar"></i> נוצר: ${meta.createdAt || 'N/A'}</span>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" onclick="toggleFeature('${flagName}', ${!isEnabled})">
+                                <i class="fas fa-${isEnabled ? 'times' : 'check'}"></i>
+                                ${isEnabled ? 'כבה' : 'הפעל'} פיצ'ר
+                            </button>
+                            ${isEnabled ? `
+                                <button class="btn btn-danger" onclick="confirmRollback('${flagName}')">
+                                    <i class="fas fa-undo"></i>
+                                    Rollback - חזור למצב ישן
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        ${history.length > 0 ? `
+                            <div class="history-section">
+                                <div class="history-title">
+                                    <i class="fas fa-history"></i> היסטוריה
+                                </div>
+                                ${history.slice(-3).reverse().map(h => `
+                                    <div class="history-item">
+                                        <i class="fas fa-${h.value ? 'toggle-on' : 'toggle-off'}"></i>
+                                        ${h.value ? 'הופעל' : 'כובה'} על ידי ${h.changedBy}
+                                        ב-${new Date(h.changedAt).toLocaleString('he-IL')}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        /**
+         * Toggle feature flag
+         */
+        async function toggleFeature(flagName, newValue) {
+            const currentValue = currentFlags.flags[flagName];
+
+            if (currentValue === newValue) {
+                console.log('No change needed');
+                return;
+            }
+
+            // Confirm with user
+            const action = newValue ? 'להפעיל' : 'לכבות';
+            if (!confirm(`האם אתה בטוח שברצונך ${action} את הפיצ'ר "${flagName}"?\n\nהשינוי ישפיע על כל המשתמשים מיד!`)) {
+                loadFeatureFlags(); // Reload to reset toggle
+                return;
+            }
+
+            try {
+                // Show loading
+                document.getElementById('featuresContainer').innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>מעדכן...</p>
+                    </div>
+                `;
+
+                // Call Cloud Function
+                const setFlag = functions.httpsCallable('setFeatureFlag');
+                const result = await setFlag({
+                    flagName,
+                    value: newValue
+                });
+
+                console.log('Feature flag updated:', result);
+
+                // Reload flags
+                await loadFeatureFlags();
+
+                alert(`✅ הפיצ'ר ${newValue ? 'הופעל' : 'כובה'} בהצלחה!`);
+
+            } catch (error) {
+                console.error('Error toggling feature:', error);
+                alert('❌ שגיאה בעדכון הפיצ'ר: ' + error.message);
+                loadFeatureFlags();
+            }
+        }
+
+        /**
+         * Confirm rollback
+         */
+        function confirmRollback(flagName) {
+            const message = `
+🔄 ROLLBACK - חזרה למצב הקודם
+
+האם אתה בטוח שברצונך לבצע rollback?
+
+פעולה זו תכבה את הפיצ'ר ותחזיר את המערכת למצב הקודם.
+
+⚠️ פעולה זו תשפיע על כל המשתמשים מיד!
+            `.trim();
+
+            if (confirm(message)) {
+                toggleFeature(flagName, false);
+            }
+        }
+
+        // Load on page load
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                loadFeatureFlags();
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

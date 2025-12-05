@@ -17,13 +17,15 @@ export class NotificationBellSystem {
     this.notifications = [];
     this.isDropdownOpen = false;
     this.clickHandler = null;
+    this.messagesListener = null;
+    this.currentUser = null;
     this.init();
   }
 
   init() {
     this.clickHandler = (e) => {
-      const bell = document.getElementById("notificationBell");
-      const dropdown = document.getElementById("notificationsDropdown");
+      const bell = document.getElementById('notificationBell');
+      const dropdown = document.getElementById('notificationsDropdown');
       if (
         bell &&
         dropdown &&
@@ -33,13 +35,77 @@ export class NotificationBellSystem {
         this.hideDropdown();
       }
     };
-    document.addEventListener("click", this.clickHandler);
+    document.addEventListener('click', this.clickHandler);
   }
 
   cleanup() {
     if (this.clickHandler) {
-      document.removeEventListener("click", this.clickHandler);
+      document.removeEventListener('click', this.clickHandler);
     }
+    if (this.messagesListener) {
+      this.messagesListener();
+      this.messagesListener = null;
+    }
+  }
+
+  /**
+   * Start listening to admin messages from Firestore
+   * @param {Object} user - Firebase user object with email
+   * @param {Object} db - Firestore database instance
+   */
+  startListeningToAdminMessages(user, db) {
+    if (!user || !db) {
+      console.warn('NotificationBell: Cannot listen to messages - user or db missing');
+      return;
+    }
+
+    this.currentUser = user;
+
+    // Listen to user_messages collection
+    this.messagesListener = db.collection('user_messages')
+      .where('to', '==', user.email)
+      .where('status', 'in', ['unread', 'read'])
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(
+        snapshot => {
+          console.log(`📨 NotificationBell: Received ${snapshot.size} admin messages`);
+
+          // Remove old admin messages from notifications
+          this.notifications = this.notifications.filter(n => !n.isAdminMessage);
+
+          // Add new admin messages
+          snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            this.addAdminMessage(doc.id, data);
+          });
+        },
+        error => {
+          console.error('NotificationBell: Error listening to admin messages:', error);
+        }
+      );
+
+    console.log('✅ NotificationBell: Listening to admin messages for', user.email);
+  }
+
+  /**
+   * Add admin message to notifications
+   */
+  addAdminMessage(messageId, data) {
+    const notification = {
+      id: 'msg_' + messageId,
+      type: data.type || 'info',
+      title: `📩 הודעה מ-${data.fromName || 'מנהל'}`,
+      description: data.message,
+      time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('he-IL') : '',
+      urgent: data.priority >= 5,
+      isAdminMessage: true,
+      messageId: messageId,
+      status: data.status
+    };
+
+    this.notifications.unshift(notification);
+    this.updateBell();
+    this.renderNotifications();
   }
 
   addNotification(type, title, description, urgent = false) {
@@ -48,8 +114,8 @@ export class NotificationBellSystem {
       type,
       title,
       description,
-      time: new Date().toLocaleString("he-IL"),
-      urgent,
+      time: new Date().toLocaleString('he-IL'),
+      urgent
     };
     this.notifications.unshift(notification);
     this.updateBell();
@@ -69,32 +135,32 @@ export class NotificationBellSystem {
   }
 
   updateBell() {
-    const bell = document.getElementById("notificationBell");
-    const count = document.getElementById("notificationCount");
+    const bell = document.getElementById('notificationBell');
+    const count = document.getElementById('notificationCount');
     if (bell && count) {
       if (this.notifications.length > 0) {
-        bell.classList.add("has-notifications");
-        count.classList.remove("hidden");
+        bell.classList.add('has-notifications');
+        count.classList.remove('hidden');
         count.textContent = this.notifications.length;
       } else {
-        bell.classList.remove("has-notifications");
-        count.classList.add("hidden");
+        bell.classList.remove('has-notifications');
+        count.classList.add('hidden');
       }
     }
   }
 
   showDropdown() {
-    const dropdown = document.getElementById("notificationsDropdown");
+    const dropdown = document.getElementById('notificationsDropdown');
     if (dropdown) {
-      dropdown.classList.add("show");
+      dropdown.classList.add('show');
       this.isDropdownOpen = true;
     }
   }
 
   hideDropdown() {
-    const dropdown = document.getElementById("notificationsDropdown");
+    const dropdown = document.getElementById('notificationsDropdown');
     if (dropdown) {
-      dropdown.classList.remove("show");
+      dropdown.classList.remove('show');
       this.isDropdownOpen = false;
     }
   }
@@ -104,8 +170,10 @@ export class NotificationBellSystem {
   }
 
   renderNotifications() {
-    const container = document.getElementById("notificationsContent");
-    if (!container) return;
+    const container = document.getElementById('notificationsContent');
+    if (!container) {
+return;
+}
 
     if (this.notifications.length === 0) {
       container.innerHTML = `
@@ -119,29 +187,34 @@ export class NotificationBellSystem {
     }
 
     const iconMap = {
-      blocked: "fas fa-ban",
-      critical: "fas fa-exclamation-triangle",
-      urgent: "fas fa-clock",
+      blocked: 'fas fa-ban',
+      critical: 'fas fa-exclamation-triangle',
+      urgent: 'fas fa-clock'
     };
 
     const notificationsHtml = this.notifications
       .map((notification) => {
-        const notificationDiv = document.createElement("div");
+        const notificationDiv = document.createElement('div');
         notificationDiv.className = `notification-item ${notification.type} ${
-          notification.urgent ? "urgent" : ""
+          notification.urgent ? 'urgent' : ''
         }`;
         notificationDiv.id = `notification-${notification.id}`;
 
+        // Check if this is an admin message
+        const replyButton = notification.isAdminMessage ? `
+          <button class="notification-reply-btn" onclick="notificationBell.openReplyModal('${notification.messageId}', '${safeText(notification.description).replace(/'/g, "\\'")}', '${safeText(notification.title).replace(/'/g, "\\'")}')">
+            <i class="fas fa-reply"></i> השב
+          </button>
+        ` : '';
+
         notificationDiv.innerHTML = `
-          <button class="notification-close" onclick="notificationBell.removeNotification(${
-            notification.id
-          })">
+          <button class="notification-close" onclick="notificationBell.removeNotification('${notification.id}')">
             <i class="fas fa-times"></i>
           </button>
           <div class="notification-content">
             <div class="notification-icon ${notification.type}">
               <i class="${
-                iconMap[notification.type] || "fas fa-info-circle"
+                iconMap[notification.type] || 'fas fa-info-circle'
               }"></i>
             </div>
             <div class="notification-text">
@@ -156,10 +229,11 @@ export class NotificationBellSystem {
               )}</div>
             </div>
           </div>
+          ${replyButton}
         `;
         return notificationDiv.outerHTML;
       })
-      .join("");
+      .join('');
 
     container.innerHTML = notificationsHtml;
   }
@@ -176,7 +250,7 @@ export class NotificationBellSystem {
           : '';
 
         this.addSystemNotification(
-          "blocked",
+          'blocked',
           `🚫 לקוח חסום: ${client.name}`,
           `נגמרה יתרת השעות${hoursText} - לא ניתן לרשום שעות נוספות`,
           true
@@ -190,7 +264,7 @@ export class NotificationBellSystem {
         const hoursRemaining = client.hoursRemaining.toFixed(1);
 
         this.addSystemNotification(
-          "critical",
+          'critical',
           `⚠️ שעות אוזלות: ${client.name}`,
           `נותרו ${hoursRemaining} שעות בלבד - יש ליידע את הלקוח ולהוסיף שעות`,
           false
@@ -230,7 +304,7 @@ export class NotificationBellSystem {
         }
 
         this.addSystemNotification(
-          "urgent",
+          'urgent',
           title,
           description,
           isUrgent
@@ -245,13 +319,65 @@ export class NotificationBellSystem {
       type,
       title,
       description,
-      time: new Date().toLocaleString("he-IL"),
+      time: new Date().toLocaleString('he-IL'),
       urgent,
-      isSystemGenerated: true,
+      isSystemGenerated: true
     };
     this.notifications.unshift(notification);
     this.updateBell();
     this.renderNotifications();
+  }
+
+  /**
+   * Open reply modal for admin message
+   */
+  openReplyModal(messageId, message, title) {
+    // Use the existing UserAlertsPanel modal if available, otherwise create simple prompt
+    if (window.userAlertsPanel && window.userAlertsPanel.openResponseModal) {
+      window.userAlertsPanel.openResponseModal(messageId, message, title);
+    } else {
+      // Fallback: Simple prompt
+      const response = prompt(`תגובה ל: ${title}\n\nהודעה: ${message}\n\nהתגובה שלך:`);
+      if (response && response.trim()) {
+        this.sendResponse(messageId, response.trim());
+      }
+    }
+  }
+
+  /**
+   * Send response to admin message
+   */
+  async sendResponse(messageId, response) {
+    if (!window.firebaseDB) {
+      alert('שגיאה: Firebase לא זמין');
+      return;
+    }
+
+    try {
+      await window.firebaseDB.collection('user_messages')
+        .doc(messageId)
+        .update({
+          response: response,
+          status: 'responded',
+          respondedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+      if (window.notify) {
+        window.notify.success('התגובה נשלחה בהצלחה');
+      } else {
+        alert('התגובה נשלחה בהצלחה!');
+      }
+
+      // Remove from notifications
+      this.removeNotification('msg_' + messageId);
+    } catch (error) {
+      console.error('Error sending response:', error);
+      if (window.notify) {
+        window.notify.error('שגיאה בשליחת התגובה');
+      } else {
+        alert('שגיאה בשליחת התגובה');
+      }
+    }
   }
 }
 

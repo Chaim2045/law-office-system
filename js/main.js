@@ -206,6 +206,11 @@ class LawOfficeManager {
 
         UIComponents.updateUserDisplay(this.currentUsername);
 
+        // Start listening to admin messages in notification bell
+        if (this.notificationBell && window.firebaseDB) {
+          this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
+        }
+
         // Load data and show app
         await this.loadData();
         this.showApp();
