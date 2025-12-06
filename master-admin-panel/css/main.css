@@ -633,11 +633,11 @@ body {
 /* ========== DASHBOARD ========== */
 
 .dashboard-container {
-  min-height: 100vh;
+  height: 100vh;
   background: var(--gray-50);
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* ===== Dashboard Header ===== */
