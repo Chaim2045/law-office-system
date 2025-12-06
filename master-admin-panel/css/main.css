@@ -743,6 +743,7 @@ body {
 /* ===== Dashboard Main ===== */
 .dashboard-main {
   flex: 1;
+  min-height: 0; /* Critical for flex overflow scrolling */
   padding: var(--space-6);
   overflow-y: auto;
   overflow-x: hidden;
