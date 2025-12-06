@@ -144,7 +144,7 @@
     <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=3.9.0" /> -->
 
     <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
-    <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=2.0.0">
+    <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=2.0.4-rtl">
 
     <!-- ===== SECURITY MODALS STYLES ===== -->
 
@@ -442,6 +442,12 @@
           <!-- ===== שורת משתמש עליונה ===== -->
           <!-- TOP USER BAR -->
           <div class="top-user-bar">
+            <!-- Messages Icon - Outside dropdown -->
+            <div class="messages-icon-container" style="position: relative; display: inline-block; margin-left: 12px;">
+              <i class="fas fa-envelope" id="messagesIcon" onclick="openAdminMessages()" style="color: #3b82f6; cursor: pointer; font-size: 18px;"></i>
+              <span id="messagesCountBadge" class="hidden" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 10px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; padding: 0 5px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">0</span>
+            </div>
+
             <div class="user-dropdown-top">
               <span id="currentUserDisplay">טוען...</span>
               <i class="fas fa-chevron-down"></i>
@@ -1226,7 +1232,8 @@
     <script src="js/modules/ai-system/ai-config.js?v=2.0.0"></script>
     <script src="js/modules/ai-system/ai-engine.js?v=2.0.0"></script>
     <script src="js/modules/ai-system/ai-context-builder.js?v=2.0.0"></script>
-    <script src="js/modules/ai-system/ai-chat-ui.js?v=2.0.0"></script>
+    <script src="js/modules/UserReplyModal.js?v=1.0.1-rtl"></script>
+    <script src="js/modules/ai-system/ai-chat-ui.js?v=2.0.3"></script>
 
     <!-- OLD: Legacy FAQ Bot (backup) -->
     <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=3.0.0"></script> -->

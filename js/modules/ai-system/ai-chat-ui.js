@@ -850,7 +850,7 @@ inputContainer.style.display = 'none';
             <div class="ai-notification-description">${this._escapeHTML(message.message || message.description || '')}</div>
             <div class="ai-notification-time">${this._escapeHTML(message.time || '')}</div>
             ${message.status !== 'responded' ? `
-              <button class="ai-notification-reply-btn" onclick="window.aiChat.replyToAdmin('${message.messageId}', ${JSON.stringify(this._escapeHTML(message.message || '')).replace(/'/g, '&apos;')})">
+              <button class="ai-notification-reply-btn" data-message-id="${message.messageId}" data-message-text="${this._escapeHTML(message.description || message.message || '').replace(/"/g, '&quot;')}">
                 <i class="fas fa-reply"></i> השב
               </button>
             ` : '<span class="ai-notification-responded">✓ נענה</span>'}
@@ -862,6 +862,18 @@ inputContainer.style.display = 'none';
     });
 
     notifContainer.appendChild(notificationsList);
+
+    // Add event listener delegation for reply buttons
+    notificationsList.addEventListener('click', (e) => {
+      const replyBtn = e.target.closest('.ai-notification-reply-btn');
+      if (replyBtn) {
+        const messageId = replyBtn.getAttribute('data-message-id');
+        const messageText = replyBtn.getAttribute('data-message-text');
+        if (messageId && messageText) {
+          this.replyToAdmin(messageId, messageText);
+        }
+      }
+    });
   }
 
   /**
@@ -1023,27 +1035,79 @@ inputContainer.style.display = 'none';
   }
 
   /**
-   * תשובה למנהל - פותח את הצ'אט עם הקשר של ההודעה
+   * תשובה למנהל - פותח מודל תגובה ושולח ל-Firestore
    */
-  replyToAdmin(messageId, originalMessage) {
-    // חזור לתצוגת צ'אט
-    this.backToChat();
+  async replyToAdmin(messageId, originalMessage) {
+    // Use custom UserReplyModal
+    if (window.userReplyModal) {
+      // Open modal with callback to refresh view
+      window.userReplyModal.open(messageId, originalMessage, () => {
+        // Re-render the admin messages view to update UI
+        if (this.currentView === 'admin-messages') {
+          setTimeout(() => {
+            this._renderAdminMessagesView();
+          }, 300);
+        }
+      });
 
-    // הוסף את ההודעה המקורית כהקשר
-    const contextMessage = `התקבלה הודעה מהמנהל: "${originalMessage}"\n\nאני רוצה להשיב:`;
+      if (this.config.debugMode) {
+        console.log(`[AI Chat] Opening UserReplyModal for message ${messageId}`);
+      }
+    } else {
+      // Fallback: Simple prompt with Firestore update
+      console.warn('[AI Chat] UserReplyModal not available, using fallback prompt');
+      const response = prompt(`תגובה להודעה מהמנהל:\n\n"${originalMessage}"\n\nהתגובה שלך:`);
 
-    // הכנס את ההקשר לשדה הטקסט
-    const textarea = document.getElementById('aiChatInput');
-    if (textarea) {
-      textarea.value = contextMessage;
-      textarea.focus();
-    }
+      if (response && response.trim()) {
+        try {
+          if (!window.firebaseDB) {
+            throw new Error('Firebase לא זמין');
+          }
 
-    // שמור את ה-messageId כדי לדעת לאיזו הודעה עונים
-    this.replyingToMessageId = messageId;
+          // Update Firestore with response
+          await window.firebaseDB.collection('user_messages')
+            .doc(messageId)
+            .update({
+              response: response.trim(),
+              status: 'responded',
+              respondedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
 
-    if (this.config.debugMode) {
-      console.log(`[AI Chat] Replying to message ${messageId}`);
+          if (this.config.debugMode) {
+            console.log(`[AI Chat] Response sent successfully for message ${messageId}`);
+          }
+
+          // Success notification
+          if (window.notify && typeof window.notify.success === 'function') {
+            window.notify.success('התגובה נשלחה בהצלחה');
+          } else {
+            // Fallback: simple alert
+            this.addAIMessage('✅ התגובה נשלחה בהצלחה למנהל');
+          }
+
+          // Re-render the admin messages view to update UI
+          if (this.currentView === 'admin-messages') {
+            setTimeout(() => {
+              this._renderAdminMessagesView();
+            }, 500);
+          }
+
+        } catch (error) {
+          console.error('[AI Chat] Error sending response:', error);
+
+          // Error notification
+          if (window.notify && typeof window.notify.error === 'function') {
+            window.notify.error('שגיאה בשליחת התגובה: ' + error.message);
+          } else {
+            // Fallback: simple alert
+            this.addErrorMessage('שגיאה בשליחת התגובה: ' + error.message);
+          }
+        }
+      } else {
+        if (this.config.debugMode) {
+          console.log(`[AI Chat] Reply cancelled by user`);
+        }
+      }
     }
   }
 }

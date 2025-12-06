@@ -59,24 +59,25 @@ window.WhatsAppMessageDialog = (function() {
         customMessage = '';
 
         const dialogHTML = `
-            <div class="modal-overlay" id="whatsappMessageModal">
-                <div class="modal-content whatsapp-message-modal">
+            <div class="modal-overlay modal-show" id="whatsappMessageModal">
+                <div class="modal-backdrop"></div>
+                <div class="modal-container modal-medium whatsapp-message-modal">
                     <div class="modal-header">
-                        <h2>
-                            <i class="fab fa-whatsapp"></i>
-                            שלח הודעת WhatsApp
-                        </h2>
-                        <button class="modal-close" id="closeWhatsAppModal">
+                        <div class="modal-header-content">
+                            <div class="modal-icon" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);">
+                                <i class="fab fa-whatsapp"></i>
+                            </div>
+                            <div class="modal-title-wrapper">
+                                <h2 class="modal-title">שלח הודעת WhatsApp</h2>
+                                <p class="modal-subtitle">שליחה אל: <strong>${userName}</strong></p>
+                            </div>
+                        </div>
+                        <button class="modal-close-btn" id="closeWhatsAppModal" aria-label="Close modal">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
 
                     <div class="modal-body">
-                        <div class="user-info">
-                            <i class="fas fa-user"></i>
-                            <span>שליחה אל: <strong>${userName}</strong></span>
-                        </div>
-
                         <div class="template-selection">
                             <label class="field-label">בחר תבנית הודעה:</label>
                             <div class="template-buttons">
@@ -104,12 +105,13 @@ window.WhatsAppMessageDialog = (function() {
                     </div>
 
                     <div class="modal-footer">
-                        <button class="btn-secondary" id="cancelWhatsAppBtn">
-                            ביטול
+                        <button class="btn btn-secondary" id="cancelWhatsAppBtn">
+                            <i class="fas fa-times"></i>
+                            <span>ביטול</span>
                         </button>
-                        <button class="btn-primary" id="sendWhatsAppBtn" disabled>
+                        <button class="btn btn-primary" id="sendWhatsAppBtn" disabled>
                             <i class="fab fa-whatsapp"></i>
-                            שלח הודעה
+                            <span>שלח הודעה</span>
                         </button>
                     </div>
                 </div>
