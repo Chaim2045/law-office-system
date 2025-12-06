@@ -75,7 +75,7 @@ class AIChatUI {
         <span>עוזר AI חכם</span>
       </div>
       <div class="ai-chat-actions">
-        <button class="ai-header-btn ai-messages-btn" id="aiMessagesBtn" onclick="window.aiChat.openAdminMessages()" title="הודעות מהמנהל" style="color: #3b82f6; position: relative; z-index: 100;">
+        <button class="ai-header-btn ai-messages-btn" id="aiMessagesBtn" onclick="window.aiChat.openAdminMessages()" title="הודעות מהמנהל" style="position: relative; z-index: 100;">
           <i class="fas fa-envelope" style="position: relative; z-index: 101;"></i>
           <span class="ai-notification-badge" id="aiMessagesBadge" style="z-index: 102;"></span>
         </button>
@@ -966,6 +966,9 @@ inputContainer.style.display = 'none';
             <div class="ai-notification-title">${this._escapeHTML(notification.title || 'התראה')}</div>
             <div class="ai-notification-description">${this._escapeHTML(notification.description || '')}</div>
             <div class="ai-notification-time">${this._escapeHTML(notification.time || '')}</div>
+            <button class="ai-notification-read-btn" onclick="window.aiChat.markNotificationAsRead(${notification.id})">
+              <i class="fas fa-check"></i> קראתי
+            </button>
           </div>
         </div>
       `;
@@ -987,6 +990,19 @@ inputContainer.style.display = 'none';
         this._renderSystemNotificationsView();
       } else if (this.currentView === 'admin-messages') {
         this._renderAdminMessagesView();
+      }
+    }
+  }
+
+  /**
+   * סימון התראה כנקראה (קראתי)
+   */
+  markNotificationAsRead(notifId) {
+    if (window.notificationBell && typeof window.notificationBell.removeNotification === 'function') {
+      window.notificationBell.removeNotification(notifId);
+      // Re-render the current view
+      if (this.currentView === 'notifications') {
+        this._renderSystemNotificationsView();
       }
     }
   }

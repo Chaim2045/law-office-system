@@ -61,10 +61,11 @@ export class NotificationBellSystem {
 
     this.currentUser = user;
 
-    // Listen to user_messages collection
+    // Listen to user_messages collection - ONLY unread messages
+    // Once read/dismissed, messages are not shown again (no history)
     this.messagesListener = db.collection('user_messages')
       .where('to', '==', user.email)
-      .where('status', 'in', ['unread', 'read'])
+      .where('status', '==', 'unread')
       .orderBy('createdAt', 'desc')
       .onSnapshot(
         snapshot => {
@@ -100,6 +101,9 @@ export class NotificationBellSystem {
           // Update UI once after all messages are added
           this.updateBell();
           this.renderNotifications();
+
+          // Update messages icon badge
+          this.updateMessagesIconBadge();
         },
         error => {
           console.error('NotificationBell: Error listening to admin messages:', error);
@@ -144,26 +148,122 @@ export class NotificationBellSystem {
     this.renderNotifications();
   }
 
-  removeNotification(id) {
+  async removeNotification(id) {
+    // Find the notification
+    const notification = this.notifications.find(n => n.id === id);
+
+    // If it's an admin message, update status in Firestore to 'dismissed'
+    if (notification && notification.isAdminMessage && notification.messageId) {
+      try {
+        if (window.firebaseDB) {
+          await window.firebaseDB.collection('user_messages')
+            .doc(notification.messageId)
+            .update({
+              status: 'dismissed',
+              dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          console.log(`✅ Message ${notification.messageId} dismissed`);
+        }
+      } catch (error) {
+        console.error('Error dismissing message:', error);
+      }
+    }
+
+    // Remove from local array (will be removed from Firestore listener automatically)
     this.notifications = this.notifications.filter((n) => n.id !== id);
     this.updateBell();
     this.renderNotifications();
+    this.updateMessagesIconBadge();
   }
 
-  clearAllNotifications() {
+  async clearAllNotifications() {
+    // Dismiss all admin messages in Firestore
+    const adminMessages = this.notifications.filter(n => n.isAdminMessage && n.messageId);
+
+    if (adminMessages.length > 0 && window.firebaseDB) {
+      try {
+        const batch = window.firebaseDB.batch();
+        adminMessages.forEach(msg => {
+          const ref = window.firebaseDB.collection('user_messages').doc(msg.messageId);
+          batch.update(ref, {
+            status: 'dismissed',
+            dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+        await batch.commit();
+        console.log(`✅ Dismissed ${adminMessages.length} messages`);
+      } catch (error) {
+        console.error('Error dismissing messages:', error);
+      }
+    }
+
+    // Clear local array
     this.notifications = [];
     this.updateBell();
     this.renderNotifications();
+    this.updateMessagesIconBadge();
+  }
+
+  /**
+   * Update messages icon badge (blue envelope in top bar and AI chat)
+   */
+  updateMessagesIconBadge() {
+    // Count unread admin messages
+    const unreadAdminCount = this.notifications.filter(n =>
+      n.isAdminMessage === true && n.status === 'unread'
+    ).length;
+
+    // Update top bar badge (if exists)
+    const topBarBadge = document.getElementById('messagesCountBadge');
+    if (topBarBadge) {
+      if (unreadAdminCount > 0) {
+        topBarBadge.textContent = unreadAdminCount;
+        topBarBadge.classList.remove('hidden');
+      } else {
+        topBarBadge.classList.add('hidden');
+      }
+    }
+
+    // Update AI chat messages badge (envelope)
+    const aiMessagesBadge = document.getElementById('aiMessagesBadge');
+    if (aiMessagesBadge) {
+      if (unreadAdminCount > 0) {
+        aiMessagesBadge.textContent = unreadAdminCount;
+        aiMessagesBadge.style.display = 'flex';
+      } else {
+        aiMessagesBadge.style.display = 'none';
+      }
+    }
+
+    // Update AI chat notifications badge (bell) - only system notifications
+    const systemNotificationsCount = this.notifications.filter(n =>
+      n.isAdminMessage !== true
+    ).length;
+
+    const aiNotificationBadge = document.getElementById('aiNotificationBadge');
+    if (aiNotificationBadge) {
+      if (systemNotificationsCount > 0) {
+        aiNotificationBadge.textContent = systemNotificationsCount;
+        aiNotificationBadge.style.display = 'flex';
+      } else {
+        aiNotificationBadge.style.display = 'none';
+      }
+    }
   }
 
   updateBell() {
     const bell = document.getElementById('notificationBell');
     const count = document.getElementById('notificationCount');
     if (bell && count) {
-      if (this.notifications.length > 0) {
+      // Count ONLY system notifications (not admin messages)
+      const systemNotificationsCount = this.notifications.filter(n =>
+        n.isAdminMessage !== true
+      ).length;
+
+      if (systemNotificationsCount > 0) {
         bell.classList.add('has-notifications');
         count.classList.remove('hidden');
-        count.textContent = this.notifications.length;
+        count.textContent = systemNotificationsCount;
       } else {
         bell.classList.remove('has-notifications');
         count.classList.add('hidden');
