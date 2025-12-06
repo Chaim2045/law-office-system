@@ -17,6 +17,9 @@ import { DOMCache } from './modules/dom-cache.js';
 import DataCache from './modules/data-cache.js';
 import STATE_CONFIG from './config/state-config.js';
 
+// ✅ NEW v2.0: Add Task System - Organized Component
+import { initAddTaskSystem } from '../components/add-task/index.js';
+
 // Notification System
 import { NotificationBellSystem } from './modules/notification-bell.js';
 // NotificationSystem is available globally on window object
@@ -73,6 +76,9 @@ class LawOfficeManager {
     this.budgetTasks = [];
     this.timesheetEntries = [];
     this.connectionStatus = 'unknown';
+
+    // ✅ NEW v2.0: Add Task Dialog System
+    this.addTaskDialog = null;
 
     // View State - ✅ Managed by STATE_CONFIG (config/state-config.js)
     // Session-only (resets on page load): taskFilter, timesheetFilter
@@ -214,6 +220,9 @@ class LawOfficeManager {
         // Load data and show app
         await this.loadData();
         this.showApp();
+
+        // ✅ NEW v2.0: Initialize Add Task System after login
+        this.initializeAddTaskSystem();
       } else {
         // User not found in employees - sign out
         await firebase.auth().signOut();
@@ -646,6 +655,37 @@ return false;
   /* ========================================
      BUDGET TASKS MANAGEMENT
      ======================================== */
+
+  /**
+   * Initialize Add Task System v2.0
+   * אתחול מערכת הוספת משימות המאורגנת
+   */
+  initializeAddTaskSystem() {
+    try {
+      console.log('🚀 Initializing Add Task System v2.0...');
+
+      this.addTaskDialog = initAddTaskSystem(this, {
+        onSuccess: (taskData) => {
+          console.log('✅ Task created successfully:', taskData);
+          // Refresh budget tasks list
+          this.filterBudgetTasks();
+        },
+        onError: (error) => {
+          console.error('❌ Error creating task:', error);
+          this.showNotification('שגיאה בשמירת המשימה: ' + error.message, 'error');
+        },
+        onCancel: () => {
+          console.log('ℹ️ User cancelled task creation');
+        },
+        enableDrafts: true
+      });
+
+      console.log('✅ Add Task System v2.0 initialized');
+    } catch (error) {
+      console.error('❌ Error initializing Add Task System:', error);
+      // System will fallback to old method automatically
+    }
+  }
 
   async addBudgetTask() {
     // ✅ Prevent race conditions - block if operation already in progress

@@ -1,0 +1,88 @@
+<!--
+  ═══════════════════════════════════════════════════════════════
+  LEGACY CODE - Add Task Form (Original HTML from index.html)
+  ═══════════════════════════════════════════════════════════════
+
+  מקור: index.html שורות 507-582
+  תאריך העברה: 2025-12-07
+  הועבר ל: components/add-task/AddTaskDialog.js
+
+  ⚠️ קוד זה לא בשימוש יותר - נשמר לבטיחות בלבד!
+-->
+
+<div class="compact-form hidden" id="budgetFormContainer">
+  <form id="budgetForm">
+    <!-- ✅ NEW: Unified Client-Case Selector -->
+    <div id="budgetClientCaseSelector"></div>
+
+    <!-- Compact Row: סניף + תאריך + דקות - הכל בשורה אחת מאוזנת -->
+    <div class="form-row" style="grid-template-columns: 1fr 1fr 160px; gap: 12px;">
+      <div class="form-group">
+        <label for="budgetBranch"
+          ><i class="fas fa-map-marker-alt"></i> סניף מטפל
+          <span class="category-required">*</span></label
+        >
+        <select id="budgetBranch" required>
+          <option value="">בחר סניף</option>
+          <option value="רחובות">רחובות</option>
+          <option value="תל אביב">תל אביב</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="budgetDeadline"
+          ><i class="fas fa-calendar-alt"></i> תאריך יעד
+          <span class="category-required">*</span></label
+        >
+        <input
+          type="datetime-local"
+          id="budgetDeadline"
+          required
+        />
+      </div>
+      <div class="form-group">
+        <label for="estimatedTime"
+          ><i class="fas fa-hourglass-half"></i> דקות
+          <span class="category-required">*</span></label
+        >
+        <input
+          type="number"
+          id="estimatedTime"
+          placeholder="120"
+          min="1"
+          max="999"
+          autocomplete="off"
+          required
+        />
+      </div>
+    </div>
+
+    <!-- תיאור המשימה - Smart Selector -->
+    <div class="form-row">
+      <div class="form-group">
+        <label for="budgetDescriptionSelector"
+          ><i class="fas fa-align-right"></i> תיאור המשימה
+          <span class="category-required">*</span></label
+        >
+        <div id="budgetDescriptionSelector"></div>
+        <!-- Hidden inputs for validation -->
+        <input type="hidden" id="budgetDescription" required>
+        <input type="hidden" id="budgetDescriptionCategory">
+      </div>
+    </div>
+
+    <div class="form-buttons">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-plus"></i>
+        הוסף לתקצוב
+      </button>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        onclick="document.getElementById('budgetFormContainer').classList.add('hidden')"
+      >
+        <i class="fas fa-times"></i>
+        ביטול
+      </button>
+    </div>
+  </form>
+</div>

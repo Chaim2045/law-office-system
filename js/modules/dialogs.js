@@ -608,37 +608,57 @@ function showTaskCompletionModal(task, manager) {
 /**
  * פתיחה/סגירה של טופס חכם (Smart Form)
  * מחליף בין טופס תקציב לשעתון לפי הטאב הפעיל
+ *
+ * ✅ v2.0: תמיכה במערכת המאורגנת החדשה עם fallback לישן
  */
 function openSmartForm() {
   const plusButton = document.getElementById('smartPlusBtn');
   const activeTab = document.querySelector('.tab-button.active');
   if (!activeTab) {
-return;
-}
-
-  let currentForm;
-  if (activeTab.onclick && activeTab.onclick.toString().includes('budget')) {
-    currentForm = document.getElementById('budgetFormContainer');
-  } else if (
-    activeTab.onclick &&
-    activeTab.onclick.toString().includes('timesheet')
-  ) {
-    currentForm = document.getElementById('timesheetFormContainer');
+    return;
   }
 
-  if (!currentForm) {
-return;
-}
-  if (currentForm.classList.contains('hidden')) {
-    currentForm.classList.remove('hidden');
-    if (plusButton) {
-plusButton.classList.add('active');
-}
-  } else {
-    currentForm.classList.add('hidden');
-    if (plusButton) {
-plusButton.classList.remove('active');
-}
+  // ✅ NEW v2.0: אם זה טאב תקציב, נסה את המערכת החדשה תחילה
+  if (activeTab.onclick && activeTab.onclick.toString().includes('budget')) {
+    // ✅ נסה את המערכת החדשה המאורגנת
+    if (window.AddTaskSystem && window.AddTaskSystem.show) {
+      try {
+        window.AddTaskSystem.show();
+        console.log('✅ Using new Add Task System v2.0');
+        return; // הצלחנו - לא צריך את הקוד הישן
+      } catch (error) {
+        console.warn('⚠️ New system failed, falling back to old:', error);
+        // נמשיך לקוד הישן למטה
+      }
+    }
+
+    // ⚠️ FALLBACK: אם המערכת החדשה לא זמינה - חזור לישן
+    console.log('ℹ️ Using legacy budget form (fallback)');
+    const currentForm = document.getElementById('budgetFormContainer');
+    if (currentForm) {
+      if (currentForm.classList.contains('hidden')) {
+        currentForm.classList.remove('hidden');
+        if (plusButton) plusButton.classList.add('active');
+      } else {
+        currentForm.classList.add('hidden');
+        if (plusButton) plusButton.classList.remove('active');
+      }
+    }
+    return;
+  }
+
+  // ✅ Timesheet - הקוד הישן נשאר בדיוק כמו שהיא
+  if (activeTab.onclick && activeTab.onclick.toString().includes('timesheet')) {
+    const currentForm = document.getElementById('timesheetFormContainer');
+    if (currentForm) {
+      if (currentForm.classList.contains('hidden')) {
+        currentForm.classList.remove('hidden');
+        if (plusButton) plusButton.classList.add('active');
+      } else {
+        currentForm.classList.add('hidden');
+        if (plusButton) plusButton.classList.remove('active');
+      }
+    }
   }
 }
 

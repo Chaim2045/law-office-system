@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Task System - Demo</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Add Task System CSS -->
+  <link rel="stylesheet" href="styles/add-task-dialog.css">
+  <link rel="stylesheet" href="styles/task-form.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .demo-container {
+      background: white;
+      border-radius: 16px;
+      padding: 48px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #1f2937;
+      margin-bottom: 12px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 32px;
+      font-size: 16px;
+    }
+
+    .demo-button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      transition: all 0.2s;
+    }
+
+    .demo-button:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+    }
+
+    .demo-button:active {
+      transform: translateY(0);
+    }
+
+    .info-box {
+      background: #f3f4f6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 32px;
+    }
+
+    .info-box h3 {
+      color: #1f2937;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .info-box ul {
+      list-style: none;
+      padding-right: 0;
+    }
+
+    .info-box li {
+      color: #4b5563;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-box li i {
+      color: #10b981;
+      font-size: 14px;
+    }
+
+    .note {
+      background: #fef3c7;
+      border-right: 4px solid #f59e0b;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 24px;
+      color: #92400e;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <h1>🎨 Add Task System Demo</h1>
+    <p class="subtitle">בדיקה מהירה של מערכת הוספת משימות v2.0</p>
+
+    <button class="demo-button" onclick="showDialog()">
+      <i class="fas fa-plus-circle"></i>
+      הצג דיאלוג הוספת משימה
+    </button>
+
+    <div class="info-box">
+      <h3>✨ תכונות במוצג:</h3>
+      <ul>
+        <li><i class="fas fa-check-circle"></i> עיצוב מודרני ונקי</li>
+        <li><i class="fas fa-check-circle"></i> אנימציות חלקות</li>
+        <li><i class="fas fa-check-circle"></i> Responsive Design</li>
+        <li><i class="fas fa-check-circle"></i> תמיכה מלאה ב-RTL</li>
+        <li><i class="fas fa-check-circle"></i> Accessibility נגישות</li>
+      </ul>
+    </div>
+
+    <div class="note">
+      <strong>💡 הערה:</strong>
+      זוהי דוגמה סטטית להצגת העיצוב והפונקציונליות. באינטגרציה מלאה, הדיאלוג יכלול את כל הפונקציות: בחירת לקוח, ולידציה, שמירה ל-Firebase ועוד.
+    </div>
+  </div>
+
+  <script type="module">
+    // Mock data for demo
+    const mockManager = {
+      currentUser: 'demo@example.com',
+      clients: [],
+      refreshBudgetTasks: () => console.log('✅ Refreshing budget tasks...')
+    };
+
+    // Mock selectors
+    window.ClientCaseSelectorsManager = {
+      initializeBudgetSelector: () => console.log('✅ ClientCaseSelector initialized'),
+      getBudgetValues: () => ({
+        clientName: 'לקוח לדוגמה',
+        clientId: 'demo123',
+        caseId: 'case456',
+        caseNumber: '12345',
+        caseTitle: 'תיק לדוגמה'
+      }),
+      clearBudget: () => console.log('✅ Selector cleared')
+    };
+
+    window.SmartComboSelector = class {
+      constructor(id, options) {
+        console.log('✅ SmartComboSelector initialized:', id);
+      }
+      clear() {}
+    };
+
+    window.FirebaseService = {
+      call: async (funcName, data) => {
+        console.log('🔥 Firebase call:', funcName, data);
+        return {
+          success: true,
+          data: { taskId: 'demo-task-' + Date.now() }
+        };
+      }
+    };
+
+    window.EventBus = {
+      emit: (event, data) => console.log('📡 Event emitted:', event, data)
+    };
+
+    window.NotificationSystem = {
+      show: (msg, type) => console.log(`${type === 'success' ? '✅' : '❌'} ${msg}`),
+      confirm: (msg, onYes, onNo, options) => {
+        const result = confirm(msg);
+        if (result && onYes) onYes();
+        else if (!result && onNo) onNo();
+      }
+    };
+
+    // Import and initialize
+    import { initAddTaskSystem } from './index.js';
+
+    const dialog = initAddTaskSystem(mockManager, {
+      onSuccess: (taskData) => {
+        console.log('✅ Task created:', taskData);
+        alert('✅ משימה נוצרה בהצלחה!\n\nבדוק את Console לפרטים מלאים.');
+      },
+      onError: (error) => {
+        console.error('❌ Error:', error);
+        alert('❌ שגיאה: ' + error.message);
+      },
+      enableDrafts: true
+    });
+
+    window.showDialog = () => {
+      dialog.show();
+    };
+
+    console.log('🎉 Demo loaded successfully!');
+    console.log('Click the button to show the dialog');
+  </script>
+</body>
+</html>
