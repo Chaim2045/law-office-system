@@ -236,7 +236,9 @@ export class AddTaskDialog {
    */
   setupEventListeners() {
     const form = document.getElementById('addTaskForm');
-    if (!form) return;
+    if (!form) {
+return;
+}
 
     // Form submit
     form.addEventListener('submit', (e) => {
@@ -298,7 +300,9 @@ export class AddTaskDialog {
     }
 
     const container = document.getElementById('addTaskClientCaseSelector');
-    if (!container) return;
+    if (!container) {
+return;
+}
 
     try {
       await window.ClientCaseSelectorsManager.initializeBudgetSelector(
@@ -324,7 +328,9 @@ export class AddTaskDialog {
     }
 
     const container = document.getElementById('taskDescriptionSelector');
-    if (!container) return;
+    if (!container) {
+return;
+}
 
     try {
       this.descriptionSelector = new window.SmartComboSelector('taskDescriptionSelector', {
@@ -415,17 +421,26 @@ export class AddTaskDialog {
 
   /**
    * Save task to Firebase
-   * שמירת משימה ל-Firebase
+   * שמירת משימה ל-Firebase - עם בקשת אישור תקציב
    *
    * @param {Object} taskData - Task data object
    */
   async saveTask(taskData) {
     try {
-      console.log('💾 Saving task to Firebase...', taskData);
+      console.log('💾 Saving task with approval request...', taskData);
+
+      // ✅ שלב 1: שמור את המשימה עם סטטוס pending_approval
+      const taskDataWithApproval = {
+        ...taskData,
+        status: 'pending_approval', // ❗ שינוי סטטוס
+        requestedMinutes: taskData.estimatedMinutes, // שמור תקציב מקורי
+        approvedMinutes: null, // יעודכן אחרי אישור
+        approvalId: null // יעודכן אחרי יצירת בקשה
+      };
 
       // Use FirebaseService if available
       if (window.FirebaseService) {
-        const result = await window.FirebaseService.call('createBudgetTask', taskData, {
+        const result = await window.FirebaseService.call('createBudgetTask', taskDataWithApproval, {
           retries: 3,
           timeout: 15000
         });
@@ -434,15 +449,49 @@ export class AddTaskDialog {
           throw new Error(result.error || 'Failed to create task');
         }
 
-        console.log('✅ Task created successfully:', result.data);
+        const taskId = result.data?.taskId;
+        console.log('✅ Task created with pending_approval status:', taskId);
+
+        // ✅ שלב 2: צור בקשת אישור ב-pending_task_approvals
+        try {
+          // Import TaskApprovalService dynamically
+          const { taskApprovalService } = await import('../../task-approval-system/services/task-approval-service.js');
+
+          // Initialize if needed
+          if (window.firebaseDB && this.manager.currentUser) {
+            taskApprovalService.init(window.firebaseDB, this.manager.currentUser);
+          }
+
+          // Create approval request
+          const approvalId = await taskApprovalService.createApprovalRequest(
+            taskId,
+            taskData,
+            this.manager.currentUser.email || this.manager.currentUser,
+            this.manager.currentUser.displayName || this.manager.currentUser.email || 'משתמש'
+          );
+
+          console.log('✅ Approval request created:', approvalId);
+
+          // Update task with approvalId
+          if (window.firebaseDB) {
+            await window.firebaseDB.collection('budget_tasks').doc(taskId).update({
+              approvalId: approvalId
+            });
+          }
+
+        } catch (approvalError) {
+          console.error('⚠️ Error creating approval request:', approvalError);
+          // Continue anyway - המשימה נוצרה, רק בקשת האישור נכשלה
+        }
 
         // Emit EventBus event if available
         if (window.EventBus) {
           window.EventBus.emit('task:created', {
-            taskId: result.data?.taskId || 'unknown',
+            taskId: taskId || 'unknown',
             clientId: taskData.clientId,
             clientName: taskData.clientName,
-            employee: taskData.employee
+            employee: taskData.employee,
+            status: 'pending_approval'
           });
         }
 
@@ -451,12 +500,12 @@ export class AddTaskDialog {
           this.formManager.clearDraft();
         }
 
-        // Show success message
+        // ✅ Show UPDATED success message - כולל הודעה על אישור
         if (window.NotificationSystem) {
           window.NotificationSystem.show(
-            `✅ המשימה "${taskData.description}" נוספה בהצלחה`,
+            `✅ המשימה הועברה למנהל לאישור תקציב\n\nתקציב מבוקש: ${taskData.estimatedMinutes} דקות\n\n💬 תקבל התראה באייקון המעטפה כשהמנהל יאשר`,
             'success',
-            3000
+            5000 // 5 seconds - longer to read
           );
         }
 
