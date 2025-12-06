@@ -328,8 +328,9 @@ bubblesContainer.classList.add('hidden');
 }
 
 function logout() {
-  // Use new notification system if available
-  if (window.NotificationSystem) {
+  // ✅ תיקון: השתמש ב-NotificationSystem.confirm רтолько אם הוא זמין ויש לו את המתודה
+  if (window.NotificationSystem && typeof window.NotificationSystem.confirm === 'function') {
+    console.log('✅ Using NotificationSystem.confirm');
     window.NotificationSystem.confirm(
       'האם אתה בטוח שברצונך לצאת? כל הנתונים שלא נשמרו יאבדו.',
       () => window.confirmLogout(),
@@ -341,38 +342,44 @@ function logout() {
         type: 'warning'
       }
     );
-  } else {
-    // Fallback to old popup system
-    const overlay = document.createElement('div');
-    overlay.className = 'popup-overlay';
-    overlay.innerHTML = `
-      <div class="popup" style="max-width: 450px;">
-        <div class="popup-header" style="color: #dc2626;">
-          <i class="fas fa-power-off"></i>
-          יציאה מהמערכת
-        </div>
-        <div style="text-align: center; padding: 20px 0;">
-          <div style="font-size: 48px; margin-bottom: 20px;">👋</div>
-          <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
-            האם אתה בטוח שברצונך לצאת?
-          </h3>
-          <p style="color: #6b7280; font-size: 16px;">
-            כל הנתונים שלא נשמרו יאבדו.
-          </p>
-        </div>
-        <div class="popup-buttons">
-          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-            <i class="fas fa-times"></i> ביטול
-          </button>
-          <button class="popup-btn popup-btn-confirm" onclick="confirmLogout()">
-            <i class="fas fa-check"></i> כן, צא מהמערכת
-          </button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
+    return; // ← חשוב! עצור כאן - אל תמשיך ל-Fallback
   }
+
+  // Fallback to old popup system
+  console.log('⚠️ Using Fallback popup (NotificationSystem not available)');
+  const overlay = document.createElement('div');
+  overlay.className = 'popup-overlay show';
+  overlay.style.cssText = 'position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10001; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px);';
+  overlay.innerHTML = `
+    <div class="popup" style="max-width: 450px;">
+      <div class="popup-header" style="color: #dc2626;">
+        <i class="fas fa-power-off"></i>
+        יציאה מהמערכת
+      </div>
+      <div style="text-align: center; padding: 20px 0;">
+        <div style="font-size: 48px; margin-bottom: 20px;">👋</div>
+        <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 20px;">
+          האם אתה בטוח שברצונך לצאת?
+        </h3>
+        <p style="color: #6b7280; font-size: 16px;">
+          כל הנתונים שלא נשמרו יאבדו.
+        </p>
+      </div>
+      <div class="popup-buttons">
+        <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+          <i class="fas fa-times"></i> ביטול
+        </button>
+        <button class="popup-btn popup-btn-confirm" onclick="confirmLogout()">
+          <i class="fas fa-check"></i> כן, צא מהמערכת
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // ✅ כבר הוספנו inline styles ו-class .show - לא צריך requestAnimationFrame
 }
+
 
 async function confirmLogout() {
   const interfaceElements = document.getElementById('interfaceElements');

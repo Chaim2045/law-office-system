@@ -308,6 +308,9 @@ continue;
     `;
     document.body.appendChild(overlay);
 
+    // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+    setTimeout(() => overlay.classList.add('show'), 10);
+
     setTimeout(() => {
       if (document.body.contains(overlay)) {
         overlay.remove();

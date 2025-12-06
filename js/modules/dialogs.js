@@ -124,6 +124,9 @@ function showBlockedClientDialog(clientName, action) {
   `;
   document.body.appendChild(overlay);
 
+  // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+  setTimeout(() => overlay.classList.add('show'), 10);
+
   setTimeout(() => {
     if (document.body.contains(overlay)) {
       overlay.remove();
@@ -196,6 +199,9 @@ function showAdvancedTimeDialog(taskId, manager) {
     </div>
   `;
   document.body.appendChild(overlay);
+
+  // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+  setTimeout(() => overlay.classList.add('show'), 10);
 
   // ✅ Initialize SmartComboSelector with context-aware filtering
   // This is the KEY feature - selector knows the task's category!
@@ -363,6 +369,9 @@ function showAdjustBudgetDialog(taskId, manager) {
   });
 
   document.body.appendChild(overlay);
+
+  // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+  setTimeout(() => overlay.classList.add('show'), 10);
 }
 
 /**
@@ -585,6 +594,9 @@ function showTaskCompletionModal(task, manager) {
   `;
 
   document.body.appendChild(overlay);
+
+  // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+  setTimeout(() => overlay.classList.add('show'), 10);
 }
 
 /**

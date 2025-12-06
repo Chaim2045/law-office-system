@@ -1392,6 +1392,9 @@ return;
     `;
 
     document.body.appendChild(overlay);
+
+    // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+    setTimeout(() => overlay.classList.add('show'), 10);
   }
 
   showExtendDeadlineDialog(taskId) {
@@ -1459,6 +1462,9 @@ return;
     `;
 
     document.body.appendChild(overlay);
+
+    // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+    setTimeout(() => overlay.classList.add('show'), 10);
   }
 
   async submitDeadlineExtension(taskId) {

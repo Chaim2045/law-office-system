@@ -253,6 +253,9 @@
     `;
 
     document.body.appendChild(overlay);
+
+    // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+    setTimeout(() => overlay.classList.add('show'), 10);
   }
 
   /**
@@ -401,6 +404,9 @@
     `;
 
     document.body.appendChild(overlay);
+
+    // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+    setTimeout(() => overlay.classList.add('show'), 10);
 
     // Add validation logic
     const textarea = overlay.querySelector('#criticalCompletionNotes');

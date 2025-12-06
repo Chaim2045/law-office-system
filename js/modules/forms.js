@@ -296,6 +296,9 @@ export function showEditTimesheetDialog(manager, entryId) {
 
   document.body.appendChild(overlay);
 
+  // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
+  setTimeout(() => overlay.classList.add('show'), 10);
+
   // הוספת עיצוב focus למקומות שנערכים
   setTimeout(() => {
     const editInputs = overlay.querySelectorAll('input, textarea');

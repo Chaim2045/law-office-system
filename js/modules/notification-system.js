@@ -70,14 +70,23 @@ class NotificationSystem {
    * Creates the container element
    */
   init() {
-    // Create notifications container
-    if (!this.container) {
-      this.container = document.createElement('div');
-      this.container.id = 'notification-container';
-      this.container.className = 'notification-container';
-      this.container.setAttribute('role', 'region');
-      this.container.setAttribute('aria-label', 'התראות מערכת');
-      document.body.appendChild(this.container);
+    // ✅ תיקון: וודא ש-DOM נטען לפני יצירת הקונטיינר
+    const createContainer = () => {
+      if (!this.container && document.body) {
+        this.container = document.createElement('div');
+        this.container.id = 'notification-container';
+        this.container.className = 'notification-container';
+        this.container.setAttribute('role', 'region');
+        this.container.setAttribute('aria-label', 'התראות מערכת');
+        document.body.appendChild(this.container);
+      }
+    };
+
+    // אם ה-DOM כבר נטען - צור מיד, אחרת חכה
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', createContainer);
+    } else {
+      createContainer();
     }
   }
 
@@ -378,6 +387,7 @@ return;
     // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
+    overlay.style.cssText = 'position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10001; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); animation: fadeIn 0.2s ease;';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'confirm-title');
@@ -386,24 +396,24 @@ return;
     const color = NotificationColors[type];
 
     overlay.innerHTML = `
-      <div class="confirm-dialog">
-        <div class="confirm-header">
-          <div class="confirm-icon" style="color: ${color}">
+      <div class="confirm-dialog" style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; direction: rtl; text-align: right;">
+        <div class="confirm-header" style="text-align: center; margin-bottom: 24px;">
+          <div class="confirm-icon" style="color: ${color}; font-size: 48px; margin-bottom: 16px;">
             <i class="${icon}"></i>
           </div>
-          <h3 id="confirm-title" class="confirm-title">${this.escapeHtml(title)}</h3>
+          <h3 id="confirm-title" class="confirm-title" style="font-size: 20px; font-weight: 600; color: #1f2937; margin: 0;">${this.escapeHtml(title)}</h3>
         </div>
 
-        <div class="confirm-body">
-          <p class="confirm-message">${this.escapeHtml(message)}</p>
+        <div class="confirm-body" style="margin-bottom: 32px; text-align: center;">
+          <p class="confirm-message" style="font-size: 16px; color: #6b7280; line-height: 1.5; margin: 0;">${this.escapeHtml(message)}</p>
         </div>
 
-        <div class="confirm-footer">
-          <button class="confirm-btn confirm-btn-cancel" type="button">
+        <div class="confirm-footer" style="display: flex; gap: 12px; justify-content: center;">
+          <button class="confirm-btn confirm-btn-cancel" type="button" style="padding: 12px 24px; border: 1px solid #d1d5db; border-radius: 8px; background: white; color: #6b7280; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-times"></i>
             ${this.escapeHtml(cancelText)}
           </button>
-          <button class="confirm-btn confirm-btn-confirm" type="button">
+          <button class="confirm-btn confirm-btn-confirm" type="button" style="padding: 12px 24px; border: none; border-radius: 8px; background: #ef4444; color: white; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-check"></i>
             ${this.escapeHtml(confirmText)}
           </button>
