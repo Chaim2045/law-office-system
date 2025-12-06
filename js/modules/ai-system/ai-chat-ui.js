@@ -75,9 +75,13 @@ class AIChatUI {
         <span>עוזר AI חכם</span>
       </div>
       <div class="ai-chat-actions">
-        <button class="ai-header-btn ai-notifications-btn" id="aiNotificationsBtn" onclick="window.aiChat.openNotifications()" title="התראות">
-          <i class="fas fa-bell"></i>
-          <span class="ai-notification-badge" id="aiNotificationBadge"></span>
+        <button class="ai-header-btn ai-messages-btn" id="aiMessagesBtn" onclick="window.aiChat.openAdminMessages()" title="הודעות מהמנהל" style="color: #3b82f6; position: relative; z-index: 100;">
+          <i class="fas fa-envelope" style="position: relative; z-index: 101;"></i>
+          <span class="ai-notification-badge" id="aiMessagesBadge" style="z-index: 102;"></span>
+        </button>
+        <button class="ai-header-btn ai-notifications-btn" id="aiNotificationsBtn" onclick="window.aiChat.openNotifications()" title="התראות מערכת" style="position: relative; z-index: 100;">
+          <i class="fas fa-bell" style="position: relative; z-index: 101;"></i>
+          <span class="ai-notification-badge" id="aiNotificationBadge" style="z-index: 102;"></span>
         </button>
         <button class="ai-header-btn" onclick="window.aiChat.clearConversation()" title="נקה שיחה">
           <i class="fas fa-trash"></i>
@@ -181,6 +185,11 @@ return;
     container.classList.remove('hidden');
     floatBtn?.classList.add('hidden');
     this.isOpen = true;
+
+    // Update badges with correct counts when chat opens
+    if (window.notificationBell && window.notificationBell.updateMessagesIconBadge) {
+      window.notificationBell.updateMessagesIconBadge();
+    }
 
     // Focus על ה-input
     setTimeout(() => {
@@ -644,55 +653,73 @@ return;
 
   /**
    * עדכון badge ההתראות
+   * משתמש במתודה updateMessagesIconBadge() של notification-bell
+   * לעקביות ו-Single Source of Truth
    * @private
    */
   _updateNotificationBadge() {
-    const headerBadge = document.getElementById('aiNotificationBadge');
+    // Use the notification bell's method for consistent badge updates
+    // This updates aiNotificationBadge (header bell) and aiMessagesBadge (envelope)
+    if (window.notificationBell?.updateMessagesIconBadge) {
+      window.notificationBell.updateMessagesIconBadge();
+    }
+
+    // Update floating button badge separately (not handled by notification-bell)
+    this._updateFloatingBadge();
+  }
+
+  /**
+   * עדכון תג הכפתור הצף בלבד
+   * מציג את סך כל ההתראות (מערכת + מנהל)
+   * @private
+   */
+  _updateFloatingBadge() {
     const floatBadge = document.getElementById('aiFloatNotificationBadge');
     const floatBtn = document.getElementById('aiFloatBtn');
 
-    const count = window.notificationBell?.notifications?.length || 0;
+    // Get total count of ALL notifications (system + admin messages)
+    const totalCount = window.notificationBell?.notifications?.length || 0;
 
-    // Update header badge
-    if (headerBadge) {
-      if (count > 0) {
-        headerBadge.textContent = count;
-        headerBadge.style.display = 'flex';
-      } else {
-        headerBadge.textContent = '';
-        headerBadge.style.display = 'none';
-      }
-    }
-
-    // Update floating button badge
     if (floatBadge) {
-      if (count > 0) {
-        floatBadge.textContent = count;
+      if (totalCount > 0) {
+        floatBadge.textContent = totalCount;
         floatBadge.style.display = 'flex';
         // Add attention class to button
         if (floatBtn) {
-floatBtn.classList.add('has-notifications');
-}
+          floatBtn.classList.add('has-notifications');
+        }
       } else {
         floatBadge.textContent = '';
         floatBadge.style.display = 'none';
         // Remove attention class
         if (floatBtn) {
-floatBtn.classList.remove('has-notifications');
-}
+          floatBtn.classList.remove('has-notifications');
+        }
       }
     }
   }
 
   /**
-   * פתיחת מערכת ההתראות
+   * פתיחת הודעות מהמנהל (מעטפה כחולה)
+   */
+  openAdminMessages() {
+    this.currentView = 'admin-messages';
+    this._renderAdminMessagesView();
+
+    if (this.config.debugMode) {
+      console.log('[AI Chat] Showing admin messages view');
+    }
+  }
+
+  /**
+   * פתיחת מערכת ההתראות (פעמון)
    */
   openNotifications() {
     this.currentView = 'notifications';
-    this._renderNotificationsView();
+    this._renderSystemNotificationsView();
 
     if (this.config.debugMode) {
-      console.log('[AI Chat] Showing notifications view');
+      console.log('[AI Chat] Showing system notifications view');
     }
   }
 
@@ -732,10 +759,10 @@ notifContainer.style.display = 'none';
   }
 
   /**
-   * הצגת view ההתראות
+   * הצגת view הודעות מהמנהל (מעטפה)
    * @private
    */
-  _renderNotificationsView() {
+  _renderAdminMessagesView() {
     const messagesContainer = document.getElementById('aiChatMessages');
     const inputContainer = document.querySelector('.ai-chat-input-container');
 
@@ -780,19 +807,20 @@ inputContainer.style.display = 'none';
     `;
     notifContainer.appendChild(header);
 
-    // Get notifications
-    const notifications = window.notificationBell?.notifications || [];
+    // Get ONLY admin messages (not system notifications)
+    const allNotifications = window.notificationBell?.notifications || [];
+    const adminMessages = allNotifications.filter(n => n.isAdminMessage === true);
 
-    if (notifications.length === 0) {
+    if (adminMessages.length === 0) {
       // Empty state
       const emptyState = document.createElement('div');
       emptyState.className = 'ai-notifications-empty';
       emptyState.innerHTML = `
         <div class="ai-notifications-empty-icon">
-          <i class="fas fa-bell-slash" style="font-size: 48px; color: var(--ai-gray-400);"></i>
+          <i class="fas fa-envelope-open" style="font-size: 48px; color: var(--ai-gray-400);"></i>
         </div>
-        <h3 class="ai-notifications-empty-title">אין התראות</h3>
-        <p class="ai-notifications-empty-text">כל ההתראות שלך יופיעו כאן</p>
+        <h3 class="ai-notifications-empty-title">אין הודעות מהמנהל</h3>
+        <p class="ai-notifications-empty-text">כל ההודעות מהמנהל יופיעו כאן</p>
       `;
       notifContainer.appendChild(emptyState);
       return;
@@ -802,12 +830,118 @@ inputContainer.style.display = 'none';
     const notificationsList = document.createElement('div');
     notificationsList.className = 'ai-notifications-list';
 
-    notifications.forEach(notification => {
+    adminMessages.forEach(message => {
+      const notifEl = document.createElement('div');
+      notifEl.className = `ai-notification-item ai-notification-${message.type || 'info'}`;
+      if (message.status === 'unread') {
+        notifEl.classList.add('ai-notification-unread');
+      }
+
+      // Icon for admin messages
+      const iconName = 'envelope';
+
+      notifEl.innerHTML = `
+        <div class="ai-notification-content">
+          <div class="ai-notification-icon">
+            <i class="fas fa-${iconName}"></i>
+          </div>
+          <div class="ai-notification-text">
+            <div class="ai-notification-title">הודעה מהמנהל</div>
+            <div class="ai-notification-description">${this._escapeHTML(message.message || message.description || '')}</div>
+            <div class="ai-notification-time">${this._escapeHTML(message.time || '')}</div>
+            ${message.status !== 'responded' ? `
+              <button class="ai-notification-reply-btn" onclick="window.aiChat.replyToAdmin('${message.messageId}', ${JSON.stringify(this._escapeHTML(message.message || '')).replace(/'/g, '&apos;')})">
+                <i class="fas fa-reply"></i> השב
+              </button>
+            ` : '<span class="ai-notification-responded">✓ נענה</span>'}
+          </div>
+        </div>
+      `;
+
+      notificationsList.appendChild(notifEl);
+    });
+
+    notifContainer.appendChild(notificationsList);
+  }
+
+  /**
+   * הצגת view התראות מערכת (פעמון)
+   * @private
+   */
+  _renderSystemNotificationsView() {
+    const messagesContainer = document.getElementById('aiChatMessages');
+    const inputContainer = document.querySelector('.ai-chat-input-container');
+
+    if (!messagesContainer) {
+      return;
+    }
+
+    // הסתר את הצ'אט וה-input
+    messagesContainer.style.display = 'none';
+    if (inputContainer) {
+      inputContainer.style.display = 'none';
+    }
+
+    // בדוק אם כבר יש notifications container
+    let notifContainer = document.getElementById('aiNotificationsContainer');
+
+    if (!notifContainer) {
+      // צור container חדש
+      notifContainer = document.createElement('div');
+      notifContainer.id = 'aiNotificationsContainer';
+      notifContainer.className = 'ai-notifications-container';
+      messagesContainer.parentElement.insertBefore(notifContainer, inputContainer);
+    }
+
+    // וודא שהוא מוצג
+    notifContainer.style.display = 'flex';
+
+    // נקה ובנה מחדש
+    notifContainer.innerHTML = '';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'ai-notifications-header';
+    header.innerHTML = `
+      <button class="ai-notifications-back-btn" onclick="window.aiChat.backToChat()">
+        <i class="fas fa-arrow-right"></i> חזרה
+      </button>
+      <h2 class="ai-notifications-title">התראות מערכת</h2>
+      <button class="ai-notifications-clear-btn" onclick="window.aiChat.clearAllNotifications()">
+        נקה הכל
+      </button>
+    `;
+    notifContainer.appendChild(header);
+
+    // Get ONLY system notifications (not admin messages)
+    const allNotifications = window.notificationBell?.notifications || [];
+    const systemNotifications = allNotifications.filter(n => n.isAdminMessage !== true);
+
+    if (systemNotifications.length === 0) {
+      // Empty state
+      const emptyState = document.createElement('div');
+      emptyState.className = 'ai-notifications-empty';
+      emptyState.innerHTML = `
+        <div class="ai-notifications-empty-icon">
+          <i class="fas fa-bell-slash" style="font-size: 48px; color: var(--ai-gray-400);"></i>
+        </div>
+        <h3 class="ai-notifications-empty-title">אין התראות מערכת</h3>
+        <p class="ai-notifications-empty-text">כל התראות המערכת יופיעו כאן</p>
+      `;
+      notifContainer.appendChild(emptyState);
+      return;
+    }
+
+    // Notifications list
+    const notificationsList = document.createElement('div');
+    notificationsList.className = 'ai-notifications-list';
+
+    systemNotifications.forEach(notification => {
       const notifEl = document.createElement('div');
       notifEl.className = `ai-notification-item ai-notification-${notification.type || 'info'}`;
       if (notification.urgent) {
-notifEl.classList.add('ai-notification-urgent');
-}
+        notifEl.classList.add('ai-notification-urgent');
+      }
 
       // Icon mapping
       const iconMap = {
@@ -848,7 +982,12 @@ notifEl.classList.add('ai-notification-urgent');
   removeNotification(notifId) {
     if (window.notificationBell && typeof window.notificationBell.removeNotification === 'function') {
       window.notificationBell.removeNotification(notifId);
-      this._renderNotificationsView(); // re-render
+      // Re-render the current view
+      if (this.currentView === 'notifications') {
+        this._renderSystemNotificationsView();
+      } else if (this.currentView === 'admin-messages') {
+        this._renderAdminMessagesView();
+      }
     }
   }
 
@@ -858,10 +997,54 @@ notifEl.classList.add('ai-notification-urgent');
   clearAllNotifications() {
     if (window.notificationBell && typeof window.notificationBell.clearAllNotifications === 'function') {
       window.notificationBell.clearAllNotifications();
-      this._renderNotificationsView(); // re-render
+      // Re-render the current view
+      if (this.currentView === 'notifications') {
+        this._renderSystemNotificationsView();
+      } else if (this.currentView === 'admin-messages') {
+        this._renderAdminMessagesView();
+      }
+    }
+  }
+
+  /**
+   * תשובה למנהל - פותח את הצ'אט עם הקשר של ההודעה
+   */
+  replyToAdmin(messageId, originalMessage) {
+    // חזור לתצוגת צ'אט
+    this.backToChat();
+
+    // הוסף את ההודעה המקורית כהקשר
+    const contextMessage = `התקבלה הודעה מהמנהל: "${originalMessage}"\n\nאני רוצה להשיב:`;
+
+    // הכנס את ההקשר לשדה הטקסט
+    const textarea = document.getElementById('aiChatInput');
+    if (textarea) {
+      textarea.value = contextMessage;
+      textarea.focus();
+    }
+
+    // שמור את ה-messageId כדי לדעת לאיזו הודעה עונים
+    this.replyingToMessageId = messageId;
+
+    if (this.config.debugMode) {
+      console.log(`[AI Chat] Replying to message ${messageId}`);
     }
   }
 }
+
+/**
+ * פונקציה גלובלית לפתיחת הודעות מהמנהל
+ */
+window.openAdminMessages = function() {
+  if (window.aiChat) {
+    // פתח את הצ'אט
+    window.aiChat.show();
+    // עבור לתצוגת התראות
+    setTimeout(() => {
+      window.aiChat.openNotifications();
+    }, 100);
+  }
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Export to global scope & Auto-init
