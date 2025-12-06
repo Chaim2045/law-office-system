@@ -318,6 +318,12 @@ return '-';
                             <i class="fas fa-edit"></i>
                             <span>ערוך</span>
                         </button>
+                        ${user.whatsappEnabled && user.phone ? `
+                        <button class="action-item whatsapp-action" data-action="whatsapp" data-user-email="${user.email}" data-user-name="${user.name || user.email}">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>שלח הודעת WhatsApp</span>
+                        </button>
+                        ` : ''}
                         <button class="action-item" data-action="block" data-user-email="${user.email}">
                             <i class="fas fa-ban"></i>
                             <span>${user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED ? 'הסר חסימה' : 'חסום'}</span>
@@ -371,7 +377,8 @@ return '-';
                 item.addEventListener('click', (e) => {
                     const action = item.getAttribute('data-action');
                     const userEmail = item.getAttribute('data-user-email');
-                    this.handleAction(action, userEmail);
+                    const userName = item.getAttribute('data-user-name');
+                    this.handleAction(action, userEmail, userName);
                 });
             });
 
@@ -433,7 +440,7 @@ return '-';
          * Handle action
          * טיפול בפעולה
          */
-        handleAction(action, userEmail) {
+        handleAction(action, userEmail, userName = null) {
             console.log(`🔧 Action: ${action} for ${userEmail}`);
 
             // Close menu
@@ -443,7 +450,8 @@ return '-';
             window.dispatchEvent(new CustomEvent('user:action', {
                 detail: {
                     action,
-                    userEmail
+                    userEmail,
+                    userName
                 }
             }));
         }

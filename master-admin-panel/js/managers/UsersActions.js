@@ -56,6 +56,9 @@
                 case 'delete':
                     await this.deleteUser(userEmail);
                     break;
+                case 'whatsapp':
+                    // Handled by WhatsAppMessageDialog event listener
+                    break;
                 default:
                     console.warn(`⚠️ Unknown action: ${action}`);
             }

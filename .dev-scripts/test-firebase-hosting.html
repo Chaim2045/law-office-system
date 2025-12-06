@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>🔬 בדיקת גישה ל-Firestore - Firebase Hosting</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .result {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+  </style>
+</head>
+<body>
+  <h1>🔬 בדיקת גישה ל-Firestore</h1>
+  <div id="results"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      databaseURL: "https://law-office-system-e4801-default-rtdb.firebaseio.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const resultsDiv = document.getElementById('results');
+
+    function addResult(className, text) {
+      const div = document.createElement('div');
+      div.className = `result ${className}`;
+      div.textContent = text;
+      resultsDiv.appendChild(div);
+    }
+
+    async function testFirestore() {
+      addResult('info', '🔍 מתחיל בדיקה...\n');
+
+      // Test 1: Check if Firebase is initialized
+      addResult('info', `✅ Firebase initialized: ${!!firebase.app()}`);
+      addResult('info', `✅ Firestore initialized: ${!!db}`);
+      addResult('info', `✅ Auth initialized: ${!!auth}\n`);
+
+      // Test 2: Check current auth state
+      const user = auth.currentUser;
+      addResult('info', `🔐 Current user: ${user ? user.email : 'לא מחובר'}`);
+
+      if (user) {
+        const token = await user.getIdTokenResult();
+        addResult('info', `👤 Custom Claims: ${JSON.stringify(token.claims, null, 2)}\n`);
+      }
+
+      // Test 3: Try to read clients collection WITHOUT auth
+      addResult('info', '📊 ניסיון קריאת clients ללא אימות...');
+      try {
+        const snapshot = await db.collection('clients').get();
+        addResult('success', `✅ קריאה הצליחה! מספר לקוחות: ${snapshot.size}`);
+
+        if (snapshot.size > 0) {
+          snapshot.forEach(doc => {
+            addResult('info', `   • ${doc.id}: ${doc.data().fullName || 'ללא שם'}`);
+          });
+        }
+      } catch (error) {
+        addResult('error', `❌ קריאה נכשלה: ${error.code} - ${error.message}`);
+      }
+
+      // Test 4: Try signing in anonymously
+      addResult('info', '\n🔐 ניסיון כניסה אנונימית...');
+      try {
+        await auth.signInAnonymously();
+        addResult('success', '✅ כניסה אנונימית הצליחה');
+
+        // Try reading again after auth
+        addResult('info', '\n📊 ניסיון קריאת clients אחרי אימות...');
+        const snapshot2 = await db.collection('clients').get();
+        addResult('success', `✅ קריאה הצליחה! מספר לקוחות: ${snapshot2.size}`);
+
+        if (snapshot2.size > 0) {
+          snapshot2.forEach(doc => {
+            addResult('info', `   • ${doc.id}: ${doc.data().fullName || 'ללא שם'}`);
+          });
+        }
+      } catch (error) {
+        addResult('error', `❌ ${error.code} - ${error.message}`);
+      }
+
+      addResult('info', '\n✅ בדיקה הסתיימה!');
+    }
+
+    testFirestore();
+  </script>
+</body>
+</html>

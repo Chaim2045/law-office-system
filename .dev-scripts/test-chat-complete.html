@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת צ'אט - דיאגנוסטיקה מלאה</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .instructions {
+            background: #f0f4ff;
+            border-right: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            margin-right: 20px;
+            line-height: 1.8;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+        }
+
+        .test-section h3 {
+            color: #764ba2;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .test-button:active {
+            transform: translateY(0);
+        }
+
+        .result-box {
+            background: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .result-box.success {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .result-box.error {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+
+        .result-box.warning {
+            background: #fff8e1;
+            border-color: #ff9800;
+        }
+
+        .status-icon {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 18px;
+        }
+
+        .check-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            background: white;
+            border-right: 3px solid #e0e0e0;
+        }
+
+        .check-item.pass {
+            border-right-color: #4caf50;
+        }
+
+        .check-item.fail {
+            border-right-color: #f44336;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 בדיקת מערכת הצ'אט</h1>
+        <p class="subtitle">דיאגנוסטיקה מלאה - Admin Panel Chat System</p>
+
+        <div class="instructions">
+            <h3>📋 הוראות שימוש:</h3>
+            <ol>
+                <li><strong>פתח את ה-Admin Panel</strong> בטאב אחר</li>
+                <li><strong>התחבר</strong> עם המשתמש admin</li>
+                <li><strong>פתח פרטי עובד</strong> (לחץ על עובד כלשהו מהרשימה)</li>
+                <li><strong>לחץ על הטאב "צ'אט"</strong> (חשוב!)</li>
+                <li><strong>חזור לכאן</strong> ולחץ על הכפתורים למטה</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>1️⃣ בדיקת מבנה בסיסי</h3>
+            <button class="test-button" onclick="testBasicStructure()">
+                🔍 בדוק מבנה בסיסי
+            </button>
+            <div id="basicResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2️⃣ בדיקת Modal ו-UserData</h3>
+            <button class="test-button" onclick="testModalData()">
+                👤 בדוק נתוני משתמש במודל
+            </button>
+            <div id="modalResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3️⃣ בדיקת Conversation ID</h3>
+            <button class="test-button" onclick="testConversationId()">
+                💬 בדוק מזהה שיחה
+            </button>
+            <div id="conversationResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4️⃣ בדיקת Chat UI</h3>
+            <button class="test-button" onclick="testChatUI()">
+                🎨 בדוק ממשק הצ'אט
+            </button>
+            <div id="uiResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5️⃣ בדיקה מלאה - ALL IN ONE</h3>
+            <button class="test-button" onclick="runFullDiagnostic()">
+                🚀 הרץ בדיקה מלאה
+            </button>
+            <div id="fullResult"></div>
+        </div>
+
+        <div class="footer">
+            <p>נוצר עבור מערכת ניהול משרד עו"ד | גרסה 1.0.0</p>
+        </div>
+    </div>
+
+    <script>
+        // Get the admin panel window (assumes it's already open)
+        function getAdminWindow() {
+            // Try to find the admin panel window
+            // User should have it open in another tab
+            return window.opener || window;
+        }
+
+        function testBasicStructure() {
+            const resultDiv = document.getElementById('basicResult');
+            const checks = [];
+
+            try {
+                // Try to access via window.open reference or same origin
+                const adminWin = getAdminWindow();
+
+                // Test Firebase
+                checks.push({
+                    test: 'Firebase SDK',
+                    pass: typeof firebase !== 'undefined',
+                    details: typeof firebase !== 'undefined' ? 'Firebase זמין' : 'Firebase לא זמין'
+                });
+
+                // Test ChatManager
+                checks.push({
+                    test: 'ChatManager Class',
+                    pass: typeof window.ChatManager !== 'undefined',
+                    details: typeof window.ChatManager !== 'undefined' ? 'ChatManager זמין' : 'ChatManager לא נמצא'
+                });
+
+                // Test chatManager instance
+                checks.push({
+                    test: 'chatManager Instance',
+                    pass: typeof window.chatManager !== 'undefined',
+                    details: typeof window.chatManager !== 'undefined' ? 'chatManager מאותחל' : 'chatManager לא מאותחל'
+                });
+
+                // Test ModalManager
+                checks.push({
+                    test: 'ModalManager',
+                    pass: typeof window.ModalManager !== 'undefined',
+                    details: typeof window.ModalManager !== 'undefined' ? 'ModalManager זמין' : 'ModalManager לא נמצא'
+                });
+
+                displayResults(resultDiv, checks);
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">❌ שגיאה: ${error.message}</div>`;
+            }
+        }
+
+        function testModalData() {
+            const resultDiv = document.getElementById('modalResult');
+            const checks = [];
+
+            try {
+                if (!window.ModalManager || !window.ModalManager.modals) {
+                    throw new Error('ModalManager לא זמין. וודא שפתחת את ה-Admin Panel');
+                }
+
+                const modalIds = Object.keys(window.ModalManager.modals);
+
+                checks.push({
+                    test: 'מודלים פעילים',
+                    pass: modalIds.length > 0,
+                    details: `נמצאו ${modalIds.length} מודלים פעילים`
+                });
+
+                if (modalIds.length === 0) {
+                    throw new Error('אין מודלים פעילים. פתח פרטי עובד ב-Admin Panel');
+                }
+
+                const modal = window.ModalManager.modals[modalIds[0]];
+
+                checks.push({
+                    test: 'Modal Instance',
+                    pass: !!modal,
+                    details: modal ? 'Modal קיים' : 'Modal לא נמצא'
+                });
+
+                checks.push({
+                    test: 'currentUser',
+                    pass: !!modal.currentUser,
+                    details: modal.currentUser ? `UID: ${modal.currentUser.uid}` : 'currentUser לא קיים'
+                });
+
+                checks.push({
+                    test: 'userData',
+                    pass: !!modal.userData,
+                    details: modal.userData ? 'userData קיים' : 'userData לא קיים'
+                });
+
+                if (modal.userData) {
+                    checks.push({
+                        test: 'userData.uid',
+                        pass: !!modal.userData.uid,
+                        details: modal.userData.uid ? `UID: ${modal.userData.uid}` : '❌ UID חסר!'
+                    });
+
+                    checks.push({
+                        test: 'userData.authUID',
+                        pass: !!modal.userData.authUID,
+                        details: modal.userData.authUID ? `authUID: ${modal.userData.authUID}` : 'authUID לא קיים'
+                    });
+
+                    checks.push({
+                        test: 'userData.email',
+                        pass: !!modal.userData.email,
+                        details: modal.userData.email || 'אימייל לא קיים'
+                    });
+
+                    checks.push({
+                        test: 'userData.displayName',
+                        pass: !!modal.userData.displayName,
+                        details: modal.userData.displayName || 'שם לא קיים'
+                    });
+                }
+
+                displayResults(resultDiv, checks, {
+                    currentUser: modal.currentUser,
+                    userData: modal.userData
+                });
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">❌ שגיאה: ${error.message}</div>`;
+            }
+        }
+
+        function testConversationId() {
+            const resultDiv = document.getElementById('conversationResult');
+            const checks = [];
+
+            try {
+                if (!window.chatManager) {
+                    throw new Error('chatManager לא זמין');
+                }
+
+                if (!window.ModalManager || !window.ModalManager.modals) {
+                    throw new Error('ModalManager לא זמין');
+                }
+
+                const modalIds = Object.keys(window.ModalManager.modals);
+                if (modalIds.length === 0) {
+                    throw new Error('אין מודלים פעילים');
+                }
+
+                const modal = window.ModalManager.modals[modalIds[0]];
+                const adminUid = window.firebaseAuth?.currentUser?.uid;
+                const employeeUid = modal.userData?.uid;
+
+                checks.push({
+                    test: 'Admin UID',
+                    pass: !!adminUid,
+                    details: adminUid || '❌ חסר'
+                });
+
+                checks.push({
+                    test: 'Employee UID',
+                    pass: !!employeeUid,
+                    details: employeeUid || '❌ חסר'
+                });
+
+                if (adminUid && employeeUid) {
+                    const conversationId = window.chatManager.getConversationId(adminUid, employeeUid);
+
+                    checks.push({
+                        test: 'Conversation ID',
+                        pass: conversationId && !conversationId.includes('undefined'),
+                        details: conversationId
+                    });
+
+                    checks.push({
+                        test: 'Format תקין',
+                        pass: /^conv_[^_]+_[^_]+$/.test(conversationId) && !conversationId.includes('undefined'),
+                        details: /^conv_[^_]+_[^_]+$/.test(conversationId) ? '✅ תקין' : '❌ לא תקין'
+                    });
+                }
+
+                displayResults(resultDiv, checks, {
+                    adminUid,
+                    employeeUid,
+                    conversationId: adminUid && employeeUid ? window.chatManager.getConversationId(adminUid, employeeUid) : 'N/A'
+                });
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">❌ שגיאה: ${error.message}</div>`;
+            }
+        }
+
+        function testChatUI() {
+            const resultDiv = document.getElementById('uiResult');
+            const checks = [];
+
+            try {
+                if (!window.ModalManager || !window.ModalManager.modals) {
+                    throw new Error('ModalManager לא זמין');
+                }
+
+                const modalIds = Object.keys(window.ModalManager.modals);
+                if (modalIds.length === 0) {
+                    throw new Error('אין מודלים פעילים');
+                }
+
+                const modal = window.ModalManager.modals[modalIds[0]];
+
+                // Check if modal has renderChatTab method
+                checks.push({
+                    test: 'renderChatTab Method',
+                    pass: typeof modal.renderChatTab === 'function',
+                    details: typeof modal.renderChatTab === 'function' ? 'המתודה קיימת' : 'המתודה לא נמצאה'
+                });
+
+                // Check if chat tab exists in DOM
+                const chatTab = document.querySelector('.tab-chat');
+                checks.push({
+                    test: 'Chat Tab בDOM',
+                    pass: !!chatTab,
+                    details: chatTab ? 'טאב הצ\'אט קיים בדף' : 'טאב הצ\'אט לא נמצא (האם לחצת על הטאב?)'
+                });
+
+                if (chatTab) {
+                    const chatContainer = chatTab.querySelector('.modal-chat-messages');
+                    checks.push({
+                        test: 'Chat Messages Container',
+                        pass: !!chatContainer,
+                        details: chatContainer ? 'קונטיינר ההודעות קיים' : 'קונטיינר ההודעות לא נמצא'
+                    });
+
+                    const chatInput = chatTab.querySelector('.modal-chat-input');
+                    checks.push({
+                        test: 'Chat Input',
+                        pass: !!chatInput,
+                        details: chatInput ? 'שדה קלט קיים' : 'שדה קלט לא נמצא'
+                    });
+
+                    const sendButton = chatTab.querySelector('.modal-chat-send-btn');
+                    checks.push({
+                        test: 'Send Button',
+                        pass: !!sendButton,
+                        details: sendButton ? 'כפתור שליחה קיים' : 'כפתור שליחה לא נמצא'
+                    });
+                }
+
+                // Check if chat listener is active
+                checks.push({
+                    test: 'Chat Listener',
+                    pass: !!modal.chatListener,
+                    details: modal.chatListener ? 'המאזין פעיל' : 'המאזין לא פעיל'
+                });
+
+                displayResults(resultDiv, checks);
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">❌ שגיאה: ${error.message}</div>`;
+            }
+        }
+
+        function runFullDiagnostic() {
+            const resultDiv = document.getElementById('fullResult');
+            let output = '';
+
+            try {
+                output += '═══════════════════════════════════════\n';
+                output += '🚀 בדיקה מלאה - Full Diagnostic Report\n';
+                output += '═══════════════════════════════════════\n\n';
+
+                // 1. Firebase
+                output += '1️⃣ FIREBASE:\n';
+                output += `   • Firebase SDK: ${typeof firebase !== 'undefined' ? '✅' : '❌'}\n`;
+                output += `   • Auth: ${typeof window.firebaseAuth !== 'undefined' ? '✅' : '❌'}\n`;
+                output += `   • Firestore: ${typeof window.firebaseDB !== 'undefined' ? '✅' : '❌'}\n`;
+                if (window.firebaseAuth?.currentUser) {
+                    output += `   • Current User: ${window.firebaseAuth.currentUser.email}\n`;
+                    output += `   • User UID: ${window.firebaseAuth.currentUser.uid}\n`;
+                }
+                output += '\n';
+
+                // 2. Chat System
+                output += '2️⃣ CHAT SYSTEM:\n';
+                output += `   • ChatManager Class: ${typeof window.ChatManager !== 'undefined' ? '✅' : '❌'}\n`;
+                output += `   • chatManager Instance: ${typeof window.chatManager !== 'undefined' ? '✅' : '❌'}\n`;
+                if (window.chatManager) {
+                    output += `   • Chat Enabled: ${window.chatManager.CHAT_ENABLED ? '✅' : '❌'}\n`;
+                    output += `   • Active Listeners: ${window.chatManager.activeListeners?.size || 0}\n`;
+                }
+                output += '\n';
+
+                // 3. Modal System
+                output += '3️⃣ MODAL SYSTEM:\n';
+                output += `   • ModalManager: ${typeof window.ModalManager !== 'undefined' ? '✅' : '❌'}\n`;
+                if (window.ModalManager?.modals) {
+                    const modalIds = Object.keys(window.ModalManager.modals);
+                    output += `   • Active Modals: ${modalIds.length}\n`;
+
+                    if (modalIds.length > 0) {
+                        const modal = window.ModalManager.modals[modalIds[0]];
+                        output += `   • Modal Type: ${modal.constructor.name}\n`;
+                        output += `   • renderChatTab: ${typeof modal.renderChatTab === 'function' ? '✅' : '❌'}\n`;
+
+                        if (modal.currentUser) {
+                            output += `\n   📋 currentUser:\n`;
+                            output += `      • uid: ${modal.currentUser.uid}\n`;
+                            output += `      • email: ${modal.currentUser.email || 'N/A'}\n`;
+                        }
+
+                        if (modal.userData) {
+                            output += `\n   📋 userData:\n`;
+                            output += `      • uid: ${modal.userData.uid || '❌ MISSING'}\n`;
+                            output += `      • authUID: ${modal.userData.authUID || 'N/A'}\n`;
+                            output += `      • email: ${modal.userData.email || 'N/A'}\n`;
+                            output += `      • displayName: ${modal.userData.displayName || 'N/A'}\n`;
+                        }
+
+                        output += `\n   🎯 Chat Listener: ${modal.chatListener ? '✅ פעיל' : '❌ לא פעיל'}\n`;
+                    }
+                }
+                output += '\n';
+
+                // 4. Conversation ID
+                output += '4️⃣ CONVERSATION ID:\n';
+                if (window.chatManager && window.ModalManager?.modals) {
+                    const modalIds = Object.keys(window.ModalManager.modals);
+                    if (modalIds.length > 0) {
+                        const modal = window.ModalManager.modals[modalIds[0]];
+                        const adminUid = window.firebaseAuth?.currentUser?.uid;
+                        const employeeUid = modal.userData?.uid;
+
+                        output += `   • Admin UID: ${adminUid || '❌ MISSING'}\n`;
+                        output += `   • Employee UID: ${employeeUid || '❌ MISSING'}\n`;
+
+                        if (adminUid && employeeUid) {
+                            const convId = window.chatManager.getConversationId(adminUid, employeeUid);
+                            output += `   • Conversation ID: ${convId}\n`;
+                            output += `   • Contains 'undefined': ${convId.includes('undefined') ? '❌ YES - BUG!' : '✅ NO'}\n`;
+                        } else {
+                            output += `   ⚠️ לא ניתן לחשב Conversation ID - חסרים UIDs\n`;
+                        }
+                    }
+                }
+                output += '\n';
+
+                // 5. DOM Elements
+                output += '5️⃣ DOM ELEMENTS:\n';
+                const chatTab = document.querySelector('.tab-chat');
+                output += `   • Chat Tab: ${chatTab ? '✅' : '❌ (לחץ על טאב הצ\'אט!)'}\n`;
+                if (chatTab) {
+                    output += `   • Messages Container: ${chatTab.querySelector('.modal-chat-messages') ? '✅' : '❌'}\n`;
+                    output += `   • Input Field: ${chatTab.querySelector('.modal-chat-input') ? '✅' : '❌'}\n`;
+                    output += `   • Send Button: ${chatTab.querySelector('.modal-chat-send-btn') ? '✅' : '❌'}\n`;
+                }
+                output += '\n';
+
+                // 6. Summary
+                output += '═══════════════════════════════════════\n';
+                output += '📊 SUMMARY:\n';
+                output += '═══════════════════════════════════════\n';
+
+                const allGood =
+                    typeof firebase !== 'undefined' &&
+                    typeof window.chatManager !== 'undefined' &&
+                    window.ModalManager?.modals &&
+                    Object.keys(window.ModalManager.modals).length > 0;
+
+                if (allGood) {
+                    const modal = window.ModalManager.modals[Object.keys(window.ModalManager.modals)[0]];
+                    const hasUid = modal.userData?.uid;
+
+                    if (hasUid && !hasUid.includes('undefined')) {
+                        output += '✅ הכל תקין! המערכת מוכנה לשימוש.\n';
+                        output += '\n💡 כעת נסה לשלוח הודעה בצ\'אט.\n';
+                    } else {
+                        output += '❌ בעיה: userData.uid חסר או מכיל undefined\n';
+                        output += '\n🔧 פתרון:\n';
+                        output += '   1. סגור את המודל\n';
+                        output += '   2. עשה Ctrl+Shift+R (hard refresh)\n';
+                        output += '   3. פתח שוב פרטי עובד\n';
+                        output += '   4. לחץ על טאב צ\'אט\n';
+                        output += '   5. הרץ שוב את הבדיקה\n';
+                    }
+                } else {
+                    output += '⚠️ חסרים רכיבים:\n';
+                    if (typeof firebase === 'undefined') output += '   • Firebase לא טעון\n';
+                    if (typeof window.chatManager === 'undefined') output += '   • ChatManager לא מאותחל\n';
+                    if (!window.ModalManager?.modals || Object.keys(window.ModalManager.modals).length === 0) {
+                        output += '   • אין מודלים פעילים (פתח פרטי עובד!)\n';
+                    }
+                }
+
+                resultDiv.innerHTML = `<div class="result-box">${output}</div>`;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">❌ שגיאה חמורה:\n\n${error.message}\n\n${error.stack}</div>`;
+            }
+        }
+
+        function displayResults(container, checks, additionalData = null) {
+            let html = '<div class="result-box">';
+
+            checks.forEach(check => {
+                const icon = check.pass ? '✅' : '❌';
+                const className = check.pass ? 'pass' : 'fail';
+                html += `
+                    <div class="check-item ${className}">
+                        <strong>${icon} ${check.test}:</strong> ${check.details}
+                    </div>
+                `;
+            });
+
+            if (additionalData) {
+                html += '<hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;">';
+                html += '<strong>📋 נתונים נוספים:</strong><br><br>';
+                html += '<pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto;">';
+                html += JSON.stringify(additionalData, null, 2);
+                html += '</pre>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Show welcome message
+        console.log(`
+╔═══════════════════════════════════════════════════════════════╗
+║                 🔍 מערכת בדיקת צ'אט                          ║
+╠═══════════════════════════════════════════════════════════════╣
+║                                                               ║
+║  ברוך הבא למערכת הדיאגנוסטיקה של Chat System                ║
+║                                                               ║
+║  השתמש בכפתורים בעמוד כדי לבדוק את תקינות המערכת            ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+        `);
+    </script>
+</body>
+</html>

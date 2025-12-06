@@ -246,7 +246,7 @@
             const userId = userData.uid || this.currentUser.uid || this.currentUser.id;
 
             // Load related data in parallel for speed
-            const [clientsSnapshot, tasksSnapshot, timesheetSnapshot, activitySnapshot] = await Promise.all([
+            const [clientsSnapshot, tasksSnapshot, timesheetSnapshot, activitySnapshot, messagesSnapshot] = await Promise.all([
                 // Get user's clients (limit to recent 50)
                 db.collection('cases')
                     .where('assignedTo', 'array-contains', userEmail)
@@ -269,10 +269,12 @@
                     const startOfMonth = new Date(this.selectedYear, this.selectedMonth - 1, 1);
                     const endOfMonth = new Date(this.selectedYear, this.selectedMonth, 0, 23, 59, 59);
 
-                    return db.collection('timesheet')
-                        .where('employeeEmail', '==', userEmail)
-                        .where('date', '>=', startOfMonth)
-                        .where('date', '<=', endOfMonth)
+                    // ✅ FIX: שימוש בקולקציה timesheet_entries במקום timesheet
+                    // ✅ FIX: שימוש בשדה employee במקום employeeEmail
+                    return db.collection('timesheet_entries')
+                        .where('employee', '==', userEmail)
+                        .where('date', '>=', startOfMonth.toISOString().split('T')[0])
+                        .where('date', '<=', endOfMonth.toISOString().split('T')[0])
                         .orderBy('date', 'desc')
                         .get()
                         .catch(() => ({ docs: [] }));
@@ -282,6 +284,14 @@
                 db.collection('activityLogs')
                     .where('userId', '==', userId)
                     .orderBy('timestamp', 'desc')
+                    .limit(100)
+                    .get()
+                    .catch(() => ({ docs: [] })),
+
+                // Get admin messages sent to this user (last 100)
+                db.collection('user_messages')
+                    .where('to', '==', userEmail)
+                    .orderBy('createdAt', 'desc')
                     .limit(100)
                     .get()
                     .catch(() => ({ docs: [] }))
@@ -300,13 +310,25 @@
             }));
 
             // Process timesheet
-            const timesheet = timesheetSnapshot.docs.map(doc => ({
+            // ✅ FIX: המרת minutes ל-hours כי timesheet_entries משתמש ב-minutes
+            const timesheet = timesheetSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    // ✅ אם יש minutes אבל אין hours, המר minutes ל-hours
+                    hours: data.hours ?? (data.minutes ? data.minutes / 60 : 0)
+                };
+            });
+
+            // Process activity logs
+            const activity = activitySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
 
-            // Process activity logs
-            const activity = activitySnapshot.docs.map(doc => ({
+            // Process messages
+            const messages = messagesSnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
@@ -316,6 +338,7 @@
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+            // ✅ FIX: שימוש ב-hours המעובד (שכולל המרה מ-minutes)
             const hoursThisWeek = timesheet
                 .filter(entry => new Date(entry.date.toDate?.() || entry.date) >= startOfWeek)
                 .reduce((sum, entry) => sum + (entry.hours || 0), 0);
@@ -340,6 +363,7 @@
                 timesheet,
                 hours: timesheet,
                 activity,
+                messages,
                 stats: {
                     totalClients: clientsCount,
                     activeTasks: tasksCount,
@@ -353,7 +377,7 @@
                 hoursPreFiltered: true  // ✅ סימון שהנתונים כבר מסוננים מ-Firestore
             };
 
-            console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs`);
+            console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs, ${messages.length} messages`);
             console.log(`✅ Stats from DataManager: clientsCount=${clientsCount}, tasksCount=${tasksCount}, hoursThisMonth=${hoursThisMonthCalc}`);
         }
 
@@ -388,6 +412,7 @@
                         ${this.renderTabButton('clients', 'fas fa-briefcase', 'לקוחות')}
                         ${this.renderTabButton('tasks', 'fas fa-tasks', 'משימות')}
                         ${this.renderTabButton('hours', 'fas fa-clock', 'שעות')}
+                        ${this.renderTabButton('messages', 'fas fa-envelope', 'הודעות')}
                         ${this.renderTabButton('activity', 'fas fa-history', 'פעילות')}
                     </div>
 
@@ -427,6 +452,8 @@
                     return this.renderTasksTab();
                 case 'hours':
                     return this.renderHoursTab();
+                case 'messages':
+                    return this.renderMessagesTab();
                 case 'activity':
                     return this.renderActivityTab();
                 default:
@@ -749,6 +776,245 @@
             `;
         }
 
+        /**
+         * Render Messages Tab - Timeline of admin ← user messages
+         * טאב הודעות - Timeline של הודעות מנהל ← משתמש
+         */
+        renderMessagesTab() {
+            if (!this.userData || !this.currentUser) {
+                return '<div class="tab-loading">טוען נתונים...</div>';
+            }
+
+            const messages = this.userData.messages || [];
+
+            // Sort by createdAt descending (newest first)
+            const sortedMessages = [...messages].sort((a, b) => {
+                const timeA = a.createdAt?.toMillis?.() || 0;
+                const timeB = b.createdAt?.toMillis?.() || 0;
+                return timeB - timeA;
+            });
+
+            const unreadCount = messages.filter(m => m.status === 'unread').length;
+            const respondedCount = messages.filter(m => m.status === 'responded').length;
+
+            return `
+                <div class="tab-panel tab-messages">
+                    <!-- Messages Header -->
+                    <div class="messages-header">
+                        <div class="messages-stats">
+                            <span class="stat-badge">
+                                <i class="fas fa-envelope"></i>
+                                <strong>${messages.length}</strong> הודעות
+                            </span>
+                            <span class="stat-badge ${unreadCount > 0 ? 'stat-badge-unread' : ''}">
+                                <i class="fas fa-circle"></i>
+                                <strong>${unreadCount}</strong> לא נקראו
+                            </span>
+                            <span class="stat-badge ${respondedCount > 0 ? 'stat-badge-responded' : ''}">
+                                <i class="fas fa-check-double"></i>
+                                <strong>${respondedCount}</strong> נענו
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary messages-fullscreen-btn" data-action="open-fullscreen">
+                                <i class="fas fa-expand"></i>
+                                הצג בחלון מלא
+                            </button>
+                            <button class="btn btn-primary messages-new-msg-btn" data-action="send-new-message">
+                                <i class="fas fa-plus"></i>
+                                שלח הודעה חדשה
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Messages Timeline -->
+                    <div class="messages-timeline">
+                        ${sortedMessages.length === 0 ? this.renderEmptyMessages() : ''}
+                        ${sortedMessages.map(msg => this.renderMessageTimelineItem(msg)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render empty messages state
+         * רינדור מצב ריק של הודעות
+         */
+        renderEmptyMessages() {
+            return `
+                <div class="messages-empty">
+                    <div class="messages-empty-icon">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h3 class="messages-empty-title">אין הודעות</h3>
+                    <p class="messages-empty-text">עדיין לא נשלחו הודעות למשתמש זה</p>
+                </div>
+            `;
+        }
+
+        /**
+         * Render single message in timeline
+         * רינדור הודעה בודדת ב-Timeline
+         */
+        renderMessageTimelineItem(message) {
+            const typeIcons = {
+                'info': 'fa-info-circle',
+                'warning': 'fa-exclamation-triangle',
+                'urgent': 'fa-exclamation-circle'
+            };
+
+            const typeColors = {
+                'info': 'msg-blue',
+                'warning': 'msg-orange',
+                'urgent': 'msg-red'
+            };
+
+            const typeLabels = {
+                'info': 'מידע',
+                'warning': 'אזהרה',
+                'urgent': 'דחוף'
+            };
+
+            const sentDate = message.createdAt ? this.formatTimestamp(message.createdAt) : 'לא ידוע';
+            const relativeTime = message.createdAt ? this.getRelativeTime(message.createdAt) : '';
+
+            return `
+                <div class="timeline-item message-${message.status}">
+                    <!-- Timeline Dot -->
+                    <div class="timeline-dot ${typeColors[message.type] || 'msg-blue'}"></div>
+
+                    <!-- Timeline Content -->
+                    <div class="timeline-content">
+                        <!-- Message Sent -->
+                        <div class="message-sent">
+                            <div class="message-header">
+                                <span class="message-icon">📤</span>
+                                <strong>נשלחה הודעה</strong>
+                                <span class="message-date">${sentDate}</span>
+                                ${relativeTime ? `<span class="message-relative">(${relativeTime})</span>` : ''}
+                            </div>
+                            <div class="message-body">
+                                <p>${this.escapeHtml(message.message)}</p>
+                            </div>
+                            <div class="message-meta">
+                                <span class="message-type ${typeColors[message.type] || 'msg-blue'}">
+                                    <i class="fas ${typeIcons[message.type] || typeIcons.info}"></i>
+                                    ${typeLabels[message.type] || typeLabels.info}
+                                </span>
+                                <span class="message-priority">עדיפות: ${message.priority || 1}</span>
+                                ${message.fromName ? `<span class="message-from">מאת: ${this.escapeHtml(message.fromName)}</span>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Response (if exists) -->
+                        ${this.renderMessageResponse(message)}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render message response (if exists)
+         * רינדור תשובת משתמש (אם קיימת)
+         */
+        renderMessageResponse(message) {
+            if (message.status === 'responded' && message.response) {
+                const respondedDate = message.respondedAt ? this.formatTimestamp(message.respondedAt) : '';
+                return `
+                    <div class="message-response responded">
+                        <div class="response-header">
+                            <span class="response-icon">✅</span>
+                            <strong>נענתה</strong>
+                            ${respondedDate ? `<span class="response-date">${respondedDate}</span>` : ''}
+                        </div>
+                        <div class="response-body">
+                            <p>${this.escapeHtml(message.response)}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (message.status === 'read') {
+                const readDate = message.readAt ? this.formatTimestamp(message.readAt) : '';
+                return `
+                    <div class="message-response read">
+                        <div class="response-header">
+                            <span class="response-icon">👁️</span>
+                            <strong>נקראה</strong>
+                            ${readDate ? `<span class="response-date">${readDate}</span>` : ''}
+                            <span class="response-status">(לא נענתה עדיין)</span>
+                        </div>
+                    </div>
+                `;
+            } else if (message.status === 'dismissed') {
+                const dismissedDate = message.dismissedAt ? this.formatTimestamp(message.dismissedAt) : '';
+                return `
+                    <div class="message-response dismissed">
+                        <div class="response-header">
+                            <span class="response-icon">❌</span>
+                            <strong>נדחתה</strong>
+                            ${dismissedDate ? `<span class="response-date">${dismissedDate}</span>` : ''}
+                            <span class="response-status">(המשתמש לא השיב)</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // unread
+                return `
+                    <div class="message-response unread">
+                        <div class="response-header">
+                            <span class="response-icon">📪</span>
+                            <strong>לא נקראה</strong>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Send new message to user
+         * שליחת הודעה חדשה למשתמש
+         */
+        sendNewMessage() {
+            if (!this.currentUser) {
+                console.error('No user selected');
+                return;
+            }
+
+            console.log('📧 Opening message composer for:', this.currentUser.email);
+
+            // Use QuickMessageDialog if available
+            if (window.quickMessageDialog && typeof window.quickMessageDialog.show === 'function') {
+                window.quickMessageDialog.show({
+                    userId: this.currentUser.uid,
+                    userEmail: this.currentUser.email,
+                    userName: this.currentUser.name || this.currentUser.email
+                });
+            } else {
+                alert('מערכת שליחת הודעות לא זמינה');
+            }
+        }
+
+        /**
+         * Open fullscreen messages modal
+         * פתיחת חלון הודעות במסך מלא
+         */
+        openFullscreenMessages() {
+            if (!this.currentUser) {
+                console.error('No user selected');
+                return;
+            }
+
+            console.log('📖 Opening fullscreen messages for:', this.currentUser.email);
+
+            // Use MessagesFullscreenModal if available
+            if (window.messagesFullscreenModal && typeof window.messagesFullscreenModal.open === 'function') {
+                const messages = this.userData?.messages || [];
+                window.messagesFullscreenModal.open(this.currentUser, messages);
+            } else {
+                console.error('MessagesFullscreenModal not available');
+                alert('חלון הודעות מלא לא זמין');
+            }
+        }
+
 
         /**
          * Categorize activity logs
@@ -1005,7 +1271,7 @@
                         ${task.estimatedHours > 0 ? `
                         <div class="task-info-row">
                             <i class="fas fa-chart-line"></i>
-                            <span>תקציב: ${task.estimatedHours.toFixed(1)} ש' | בוצע: ${task.actualHours.toFixed(1)} ש'</span>
+                            <span>תקציב: ${(task.estimatedHours || 0).toFixed(1)} ש' | בוצע: ${(task.actualHours || 0).toFixed(1)} ש'</span>
                         </div>
                         ` : ''}
 
@@ -1069,7 +1335,7 @@
                         <!-- שעות -->
                         <div style="display: flex; align-items: center; gap: 6px; background: ${borderColor}15; padding: 6px 12px; border-radius: 6px;">
                             <i class="fas fa-clock" style="color: ${iconColor}; font-size: 13px;"></i>
-                            <span style="font-weight: 700; color: ${iconColor}; font-size: 15px;">${entry.hours.toFixed(2)}</span>
+                            <span style="font-weight: 700; color: ${iconColor}; font-size: 15px;">${(entry.hours || 0).toFixed(2)}</span>
                             <span style="color: #6b7280; font-size: 13px;">ש'</span>
                         </div>
 
@@ -1231,7 +1497,7 @@
                         }
                     </td>
                     <td class="td-task" title="${this.escapeHtml(taskDesc)}">${this.escapeHtml(taskDesc)}</td>
-                    <td class="td-hours"><strong>${entry.hours.toFixed(2)}</strong> ש'</td>
+                    <td class="td-hours"><strong>${(entry.hours || 0).toFixed(2)}</strong> ש'</td>
                     <td class="td-billable">
                         <span class="billable-badge ${billableClass}">
                             <i class="fas fa-${entry.billable ? 'check' : 'times'}-circle"></i>
@@ -1512,11 +1778,11 @@ return;
                 });
             }
 
-            // Send Message button
+            // Send Message button (footer)
             const sendMessageBtn = modal.querySelector('#userDetailsSendMessageBtn');
             if (sendMessageBtn) {
                 sendMessageBtn.addEventListener('click', () => {
-                    this.openMessageComposer();
+                    this.sendNewMessage();
                 });
             }
 
@@ -1712,6 +1978,24 @@ return;
                     this.deleteHourEntry(entryId);
                 });
             });
+
+            // ========== MESSAGES TAB - EVENT DELEGATION ==========
+            // Event delegation for messages tab buttons (send new message, fullscreen)
+            // Uses data-action attribute instead of inline onclick
+            const messagesTabContent = modal.querySelector('.tab-panel.tab-messages');
+            if (messagesTabContent) {
+                messagesTabContent.addEventListener('click', (e) => {
+                    const btn = e.target.closest('[data-action]');
+                    if (!btn) return;
+
+                    const action = btn.getAttribute('data-action');
+                    if (action === 'send-new-message') {
+                        this.sendNewMessage();
+                    } else if (action === 'open-fullscreen') {
+                        this.openFullscreenMessages();
+                    }
+                });
+            }
 
         }
 
@@ -1940,6 +2224,106 @@ return '-';
             } catch (error) {
                 console.error('Error formatting date:', error, date);
                 return '-';
+            }
+        }
+
+        /**
+         * Format timestamp with time (for messages timeline)
+         * פורמט תאריך + שעה להודעות
+         */
+        formatTimestamp(timestamp) {
+            if (!timestamp) return '-';
+
+            try {
+                let dateObj;
+
+                // Handle Firestore Timestamp
+                if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+                    dateObj = timestamp.toDate();
+                } else if (timestamp._seconds !== undefined) {
+                    dateObj = new Date(timestamp._seconds * 1000);
+                } else if (typeof timestamp === 'number') {
+                    dateObj = new Date(timestamp);
+                } else if (timestamp instanceof Date) {
+                    dateObj = timestamp;
+                } else {
+                    return '-';
+                }
+
+                if (isNaN(dateObj.getTime())) {
+                    return '-';
+                }
+
+                return dateObj.toLocaleDateString('he-IL', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                console.error('Error formatting timestamp:', error);
+                return '-';
+            }
+        }
+
+        /**
+         * Get relative time (e.g. "לפני 2 שעות")
+         * קבלת זמן יחסי
+         */
+        getRelativeTime(timestamp) {
+            if (!timestamp) return '';
+
+            try {
+                let dateObj;
+
+                // Handle Firestore Timestamp
+                if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+                    dateObj = timestamp.toDate();
+                } else if (timestamp._seconds !== undefined) {
+                    dateObj = new Date(timestamp._seconds * 1000);
+                } else if (typeof timestamp === 'number') {
+                    dateObj = new Date(timestamp);
+                } else if (timestamp instanceof Date) {
+                    dateObj = timestamp;
+                } else {
+                    return '';
+                }
+
+                if (isNaN(dateObj.getTime())) {
+                    return '';
+                }
+
+                const now = new Date();
+                const diffMs = now - dateObj;
+                const diffSeconds = Math.floor(diffMs / 1000);
+                const diffMinutes = Math.floor(diffSeconds / 60);
+                const diffHours = Math.floor(diffMinutes / 60);
+                const diffDays = Math.floor(diffHours / 24);
+                const diffWeeks = Math.floor(diffDays / 7);
+                const diffMonths = Math.floor(diffDays / 30);
+                const diffYears = Math.floor(diffDays / 365);
+
+                if (diffSeconds < 60) {
+                    return 'עכשיו';
+                } else if (diffMinutes < 60) {
+                    return `לפני ${diffMinutes} ${diffMinutes === 1 ? 'דקה' : 'דקות'}`;
+                } else if (diffHours < 24) {
+                    return `לפני ${diffHours} ${diffHours === 1 ? 'שעה' : 'שעות'}`;
+                } else if (diffDays === 1) {
+                    return 'אתמול';
+                } else if (diffDays < 7) {
+                    return `לפני ${diffDays} ימים`;
+                } else if (diffWeeks < 4) {
+                    return `לפני ${diffWeeks} ${diffWeeks === 1 ? 'שבוע' : 'שבועות'}`;
+                } else if (diffMonths < 12) {
+                    return `לפני ${diffMonths} ${diffMonths === 1 ? 'חודש' : 'חודשים'}`;
+                } else {
+                    return `לפני ${diffYears} ${diffYears === 1 ? 'שנה' : 'שנים'}`;
+                }
+            } catch (error) {
+                console.error('Error calculating relative time:', error);
+                return '';
             }
         }
 
@@ -2327,7 +2711,7 @@ return '-';
                     <div class="progress-summary">
                         <div class="progress-text">
                             <span class="progress-label">ביצוע</span>
-                            <span class="progress-stats">${task.actualHours.toFixed(2)} / ${task.estimatedHours.toFixed(2)} שעות</span>
+                            <span class="progress-stats">${(task.actualHours || 0).toFixed(2)} / ${(task.estimatedHours || 0).toFixed(2)} שעות</span>
                             <span class="progress-percent" style="color: ${progressColor}">${progress}%</span>
                         </div>
                         <div class="progress-track">
@@ -2860,7 +3244,7 @@ return;
                                 <input
                                     type="number"
                                     id="edit-hour-hours"
-                                    value="${entry.hours.toFixed(2)}"
+                                    value="${(entry.hours || 0).toFixed(2)}"
                                     step="0.25"
                                     min="0.25"
                                     max="24"
@@ -3065,7 +3449,7 @@ return;
                 // הצג דיאלוג אישור
                 if (window.NotificationManager) {
                     window.NotificationManager.confirm(
-                        `האם למחוק רשומה זו?\n\nמשימה: ${entry.taskDescription || 'ללא תיאור'}\nשעות: ${entry.hours.toFixed(2)}\nתאריך: ${new Date(entry.date).toLocaleDateString('he-IL')}`,
+                        `האם למחוק רשומה זו?\n\nמשימה: ${entry.taskDescription || 'ללא תיאור'}\nשעות: ${(entry.hours || 0).toFixed(2)}\nתאריך: ${new Date(entry.date).toLocaleDateString('he-IL')}`,
                         async () => {
                             // אושר - ביצוע מחיקה
                             console.log('✅ Delete confirmed for entry:', entryId);

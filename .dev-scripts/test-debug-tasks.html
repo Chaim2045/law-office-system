@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>בדיקת משימות - בדיקה קיזוז</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .result { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .task { background: #f9f9f9; padding: 10px; margin: 10px 0; border-left: 4px solid #4CAF50; }
+        .error { border-left-color: #f44336; }
+        .warning { border-left-color: #ff9800; }
+        code { background: #e8e8e8; padding: 2px 6px; border-radius: 3px; }
+        h2 { color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 בדיקת משימות - לקוח "בדיקה קיזוז"</h1>
+    <div id="output"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDLHlaHF0kZVhzOtp4lxtsMIW4NO7p4qu4",
+            authDomain: "law-office-system-d680c.firebaseapp.com",
+            projectId: "law-office-system-d680c",
+            storageBucket: "law-office-system-d680c.firebasestorage.app",
+            messagingSenderId: "853658691111",
+            appId: "1:853658691111:web:96bcf4dea70706ff0c903b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const output = document.getElementById('output');
+
+        function log(html) {
+            output.innerHTML += html;
+        }
+
+        async function debugTasks() {
+            try {
+                log('<div class="result"><h2>שלב 1: מחפש את לקוח "בדיקה קיזוז"</h2>');
+
+                // Find client
+                const clientsQuery = query(collection(db, 'clients'), where('name', '==', 'בדיקה קיזוז'));
+                const clientsSnapshot = await getDocs(clientsQuery);
+
+                if (clientsSnapshot.empty) {
+                    log('<p style="color: red;">❌ לקוח לא נמצא!</p></div>');
+                    return;
+                }
+
+                const clientDoc = clientsSnapshot.docs[0];
+                const clientId = clientDoc.id;
+                const clientData = clientDoc.data();
+
+                log(`<p>✅ לקוח נמצא: <code>${clientId}</code></p>`);
+                log(`<p>שירותים בלקוח: <code>${clientData.services?.length || 0}</code></p>`);
+
+                // Show services
+                log('<h3>📋 שירותי הלקוח:</h3>');
+                if (clientData.services && clientData.services.length > 0) {
+                    clientData.services.forEach((service, index) => {
+                        log(`
+                            <div class="task">
+                                <strong>שירות ${index + 1}:</strong> ${service.name || service.type}<br>
+                                <strong>ID:</strong> <code>${service.id}</code><br>
+                                <strong>Type:</strong> <code>${service.type}</code><br>
+                                <strong>Packages:</strong> ${service.packages?.length || 0}
+                            </div>
+                        `);
+                    });
+                }
+                log('</div>');
+
+                // Find tasks for this client
+                log('<div class="result"><h2>שלב 2: מחפש משימות של הלקוח</h2>');
+
+                const tasksQuery = query(collection(db, 'budget_tasks'), where('clientId', '==', clientId));
+                const tasksSnapshot = await getDocs(tasksQuery);
+
+                if (tasksSnapshot.empty) {
+                    log('<p style="color: orange;">⚠️ אין משימות ללקוח זה!</p></div>');
+                    return;
+                }
+
+                log(`<p>✅ נמצאו <strong>${tasksSnapshot.size}</strong> משימות</p>`);
+
+                // Analyze each task
+                let tasksWithTime = 0;
+                let tasksWithServiceId = 0;
+                let hoursServicesTasksCount = 0;
+
+                tasksSnapshot.forEach((taskDoc) => {
+                    const taskData = taskDoc.data();
+                    const hasTime = taskData.actualMinutes && taskData.actualMinutes > 0;
+                    const hasServiceId = !!taskData.serviceId;
+                    const hasParentServiceId = !!taskData.parentServiceId;
+
+                    if (hasTime) tasksWithTime++;
+                    if (hasServiceId) tasksWithServiceId++;
+
+                    // Check if this task is for an hours service
+                    let linkedToHoursService = false;
+                    if (hasServiceId) {
+                        const linkedService = clientData.services?.find(s => s.id === taskData.serviceId);
+                        if (linkedService && linkedService.type === 'hours') {
+                            linkedToHoursService = true;
+                            hoursServicesTasksCount++;
+                        }
+                    }
+
+                    const cssClass = linkedToHoursService ? 'task' : (hasTime ? 'task warning' : 'task error');
+
+                    log(`
+                        <div class="${cssClass}">
+                            <strong>משימה:</strong> ${taskData.description || 'ללא תיאור'}<br>
+                            <strong>ID:</strong> <code>${taskDoc.id}</code><br>
+                            <strong>זמן נרשם:</strong> ${hasTime ? `✅ ${taskData.actualMinutes} דקות` : '❌ לא'}<br>
+                            <strong>serviceId:</strong> ${hasServiceId ? `<code>${taskData.serviceId}</code>` : '❌ חסר'}<br>
+                            <strong>parentServiceId:</strong> ${hasParentServiceId ? `<code>${taskData.parentServiceId}</code>` : '❌ חסר'}<br>
+                            <strong>serviceType:</strong> <code>${taskData.serviceType || 'לא מוגדר'}</code><br>
+                            ${linkedToHoursService ? '<strong style="color: green;">✅ מקושרת לשירות תוכנית שעות</strong>' : ''}
+                            ${!linkedToHoursService && hasTime ? '<strong style="color: orange;">⚠️ יש זמן אבל לא מקושרת לשירות שעות</strong>' : ''}
+                        </div>
+                    `);
+                });
+
+                log('</div>');
+
+                // Summary
+                log(`
+                    <div class="result">
+                        <h2>📊 סיכום</h2>
+                        <p><strong>סה"כ משימות:</strong> ${tasksSnapshot.size}</p>
+                        <p><strong>משימות עם זמן נרשם:</strong> ${tasksWithTime}</p>
+                        <p><strong>משימות עם serviceId:</strong> ${tasksWithServiceId}</p>
+                        <p><strong>משימות מקושרות לשירות תוכנית שעות:</strong> ${hoursServicesTasksCount}</p>
+
+                        ${hoursServicesTasksCount === 0 && tasksWithTime > 0 ? `
+                            <div style="background: #fff3cd; padding: 15px; margin-top: 15px; border-radius: 5px; border: 1px solid #ffc107;">
+                                <h3 style="color: #856404; margin-top: 0;">💡 אבחנה</h3>
+                                <p style="color: #856404;">
+                                    יש משימות עם זמן נרשם (${tasksWithTime}), אבל אף אחת מהן לא מקושרת לשירות תוכנית שעות!<br>
+                                    <strong>זו הסיבה שהבר מראה 0%</strong> - הזמן נרשם על משימות שלא מקושרות לשירותי השעות.
+                                </p>
+                            </div>
+                        ` : ''}
+
+                        ${hoursServicesTasksCount > 0 ? `
+                            <div style="background: #d4edda; padding: 15px; margin-top: 15px; border-radius: 5px; border: 1px solid #28a745;">
+                                <h3 style="color: #155724; margin-top: 0;">✅ משימות תקינות</h3>
+                                <p style="color: #155724;">
+                                    נמצאו ${hoursServicesTasksCount} משימות שמקושרות נכון לשירותי תוכנית השעות.
+                                </p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `);
+
+            } catch (error) {
+                log(`<div class="result"><p style="color: red;">❌ שגיאה: ${error.message}</p><pre>${error.stack}</pre></div>`);
+            }
+        }
+
+        debugTasks();
+    </script>
+</body>
+</html>

@@ -38,7 +38,7 @@
 
     <!-- ===== Master Admin Panel Styles ===== -->
     <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/components.css?v=20251206-event-fix">
     <link rel="stylesheet" href="css/user-details.css?v=20251201v1">
 </head>
 
@@ -172,24 +172,29 @@
     <!-- ===== Phase 2: Data & UI Components ===== -->
     <script src="js/managers/DataManager.js?v=20251123v6"></script>
     <script src="js/ui/StatsCards.js?v=20251123v6"></script>
-    <script src="js/ui/UsersTable.js?v=20251205-DATE-FIX"></script>
+    <script src="js/ui/UsersTable.js?v=20251206-WHATSAPP-FIX"></script>
     <script src="js/ui/FilterBar.js?v=20251123v6"></script>
     <script src="js/ui/Pagination.js?v=20251123v6"></script>
-    <script src="js/ui/DashboardUI.js?v=20251123v6"></script>
+    <script src="js/ui/DashboardUI.js?v=20251206-WHATSAPP"></script>
 
     <!-- ===== Phase 3: User Management Logic ===== -->
     <script src="js/managers/AuditLogger.js?v=20251123v6"></script>
     <script src="js/ui/Modals.js?v=20251123v6"></script>
     <script src="js/ui/Notifications.js?v=20251123v6"></script>
-    <script src="js/ui/UserForm.js?v=20251123v6"></script>
-    <script src="js/ui/UserDetailsModal.js?v=20251201v2"></script>
-    <script src="js/managers/UsersActions.js?v=20251123v6"></script>
+    <script src="js/ui/UserForm.js?v=20251206-WHATSAPP"></script>
+    <script src="js/ui/UserDetailsModal.js?v=20251206-event-delegation"></script>
+    <script src="js/managers/UsersActions.js?v=20251206-WHATSAPP"></script>
 
     <!-- ===== Alert Communication System ===== -->
     <script src="js/managers/AlertEngine.js?v=1.0.0"></script>
+
+    <!-- ===== WhatsApp Messaging System ===== -->
+    <script src="js/managers/WhatsAppMessageDialog.js?v=2.0.2-DEBUG"></script>
+
     <script src="js/managers/AlertCommunicationManager.js?v=1.0.0"></script>
     <script src="js/ui/UserAlertsPanel.js?v=1.0.0"></script>
     <script src="js/ui/QuickMessageDialog.js?v=1.0.0"></script>
+    <script src="js/ui/MessagesFullscreenModal.js?v=1.0.0"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>
@@ -229,6 +234,16 @@
                         console.log('✅ Alert Engine initialized');
                     } catch (error) {
                         console.error('❌ Failed to initialize Alert Engine:', error);
+                    }
+                }
+
+                // Initialize WhatsApp Message Dialog
+                if (window.WhatsAppMessageDialog) {
+                    try {
+                        window.WhatsAppMessageDialog.init();
+                        console.log('✅ WhatsApp Message Dialog initialized');
+                    } catch (error) {
+                        console.error('❌ Failed to initialize WhatsApp Message Dialog:', error);
                     }
                 }
 

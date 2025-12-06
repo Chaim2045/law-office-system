@@ -744,7 +744,7 @@ body {
 .dashboard-main {
   flex: 1;
   min-height: 0; /* Critical for flex overflow scrolling */
-  padding: var(--space-6);
+  padding: 0; /* Removed padding - moved to dashboard-content */
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -752,6 +752,7 @@ body {
 .dashboard-content {
   max-width: 1600px;
   margin: 0 auto;
+  padding: var(--space-6); /* Padding moved here so scroll reaches the bottom */
 }
 
 .welcome-message {

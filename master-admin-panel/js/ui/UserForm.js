@@ -222,6 +222,44 @@
                         <div class="form-error" data-error="username"></div>
                         <small class="form-hint">אם לא מוזן, יוצר אוטומטית מהאימייל</small>
                     </div>
+
+                    <!-- Phone Number (Optional) -->
+                    <div class="form-group">
+                        <label for="phone" class="form-label">
+                            <i class="fas fa-phone"></i>
+                            <span>מספר טלפון (אופציונלי)</span>
+                        </label>
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            class="form-input"
+                            placeholder="+972501234567"
+                            pattern="\\+972[0-9]{9}"
+                        >
+                        <div class="form-error" data-error="phone"></div>
+                        <small class="form-hint">פורמט: +972501234567 (נדרש ל-WhatsApp)</small>
+                    </div>
+
+                    <!-- WhatsApp Enabled -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>תזכורות WhatsApp</span>
+                        </label>
+                        <div class="toggle-switch-wrapper">
+                            <label class="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    id="whatsappEnabled"
+                                    name="whatsappEnabled"
+                                >
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label" id="whatsappToggleLabel">כבוי</span>
+                        </div>
+                        <small class="form-hint">שליחת תזכורת יומית לרישום שעות ב-WhatsApp</small>
+                    </div>
                 </form>
             `;
         }
@@ -308,6 +346,15 @@ return;
                     });
                 }
             }
+
+            // WhatsApp toggle
+            const whatsappCheckbox = modal.querySelector('[name="whatsappEnabled"]');
+            const whatsappLabel = modal.querySelector('#whatsappToggleLabel');
+            if (whatsappCheckbox && whatsappLabel) {
+                whatsappCheckbox.addEventListener('change', () => {
+                    whatsappLabel.textContent = whatsappCheckbox.checked ? 'פעיל' : 'כבוי';
+                });
+            }
         }
 
         /**
@@ -330,13 +377,23 @@ return;
 }
 
             // Populate fields
-            const fields = ['displayName', 'email', 'role', 'status', 'username'];
+            const fields = ['displayName', 'email', 'role', 'status', 'username', 'phone'];
             fields.forEach(field => {
                 const input = form.querySelector(`[name="${field}"]`);
                 if (input && this.currentUser[field] !== undefined) {
                     input.value = this.currentUser[field];
                 }
             });
+
+            // Populate WhatsApp toggle
+            const whatsappCheckbox = form.querySelector('[name="whatsappEnabled"]');
+            if (whatsappCheckbox) {
+                whatsappCheckbox.checked = this.currentUser.whatsappEnabled || false;
+                const label = form.querySelector('#whatsappToggleLabel');
+                if (label) {
+                    label.textContent = whatsappCheckbox.checked ? 'פעיל' : 'כבוי';
+                }
+            }
 
             console.log('✅ Form populated with user data');
         }
@@ -593,6 +650,12 @@ return null;
                 data[key] = value.trim();
             }
 
+            // Add checkbox value (not included in FormData by default)
+            const whatsappCheckbox = form.querySelector('[name="whatsappEnabled"]');
+            if (whatsappCheckbox) {
+                data.whatsappEnabled = whatsappCheckbox.checked;
+            }
+
             return data;
         }
 
@@ -620,7 +683,8 @@ return null;
                         displayName: userData.displayName,
                         username: userData.username || userData.email.split('@')[0],
                         role: userData.role,
-                        phone: userData.phone || ''
+                        phone: userData.phone || '',
+                        whatsappEnabled: userData.whatsappEnabled || false
                     }),
                     timeoutPromise
                 ]);
@@ -681,7 +745,8 @@ return null;
                     username: userData.username,
                     role: userData.role,
                     status: userData.status,
-                    phone: userData.phone
+                    phone: userData.phone,
+                    whatsappEnabled: userData.whatsappEnabled
                 });
 
                 console.log('✅ User updated successfully:', result.data);

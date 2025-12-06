@@ -79,7 +79,7 @@
      * Debug logging
      * הצגת לוגים מפורטים בקונסול
      */
-    DEBUG_SHARED_UI: true,
+    DEBUG_SHARED_UI: false,  // 🔴 PRODUCTION MODE
 
     /**
      * Show warnings for deprecated APIs

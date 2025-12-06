@@ -130,6 +130,8 @@
                         createdAt: userData.createdAt || null,
                         lastLogin: userData.lastLogin || null,
                         phoneNumber: userData.phoneNumber || '',
+                        phone: userData.phone || '',  // WhatsApp Bot field
+                        whatsappEnabled: userData.whatsappEnabled || false,  // WhatsApp Bot toggle
                         displayName: userData.displayName || userData.username || doc.id.split('@')[0],
                         photoURL: userData.photoURL || null,
                         // Will be filled by stats

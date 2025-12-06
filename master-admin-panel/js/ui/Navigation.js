@@ -71,14 +71,6 @@ return;
                         </div>
                     </div>
                     <div class="nav-user">
-                        <button class="btn-chat" id="navChatBtn" title="צ'אטים עם עובדים">
-                            <i class="fas fa-comments"></i>
-                            <span>צ'אטים</span>
-                        </button>
-                        <button class="btn-send-message" id="navSendMessageBtn" title="שלח הודעה לעובדים">
-                            <i class="fas fa-envelope"></i>
-                            <span>שלח הודעה</span>
-                        </button>
                         <button class="btn-logout" id="navLogoutBtn">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>יציאה</span>
@@ -92,12 +84,6 @@ return;
 
             // Setup logout
             this.setupLogout();
-
-            // Setup send message button
-            this.setupSendMessage();
-
-            // Setup chat button
-            this.setupChatButton();
         }
 
         /**
@@ -335,51 +321,6 @@ return;
             });
         }
 
-        /**
-         * Setup send message button
-         * הגדרת כפתור שליחת הודעה
-         */
-        setupSendMessage() {
-            const sendMessageBtn = document.getElementById('navSendMessageBtn');
-            if (!sendMessageBtn) {
-return;
-}
-
-            sendMessageBtn.addEventListener('click', () => {
-                if (!window.MessagingTabUI || !window.MessagingTabUI.container) {
-                    console.error('❌ MessagingTabUI not initialized properly');
-                    console.error('MessagingTabUI exists:', !!window.MessagingTabUI);
-                    console.error('MessagingTabUI.container:', window.MessagingTabUI?.container);
-                    return;
-                }
-
-                // Show messaging tab with Inbox view
-                window.MessagingTabUI.show('inbox');
-            });
-        }
-
-        /**
-         * Setup chat button
-         * הגדרת כפתור צ'אט
-         */
-        setupChatButton() {
-            const chatBtn = document.getElementById('navChatBtn');
-            if (!chatBtn) {
-return;
-}
-
-            chatBtn.addEventListener('click', () => {
-                if (!window.MessagingTabUI || !window.MessagingTabUI.container) {
-                    console.error('❌ MessagingTabUI not initialized properly');
-                    console.error('MessagingTabUI exists:', !!window.MessagingTabUI);
-                    console.error('MessagingTabUI.container:', window.MessagingTabUI?.container);
-                    return;
-                }
-
-                // Show messaging tab with Threads view
-                window.MessagingTabUI.show('threads');
-            });
-        }
 
     }
 
