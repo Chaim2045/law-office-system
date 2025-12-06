@@ -196,6 +196,9 @@
     <script src="js/ui/QuickMessageDialog.js?v=1.0.0"></script>
     <script src="js/ui/MessagesFullscreenModal.js?v=1.0.0"></script>
 
+    <!-- ===== Floating Action Button ===== -->
+    <script src="js/ui/FloatingActionButton.js?v=2"></script>
+
     <!-- ===== Initialization Script ===== -->
     <script>
         // Initialize when DOM is ready
@@ -277,6 +280,14 @@
                     }
                 } else {
                     console.warn('⚠️ Alert Communication Manager not available or dependencies missing');
+                }
+
+                // Initialize Floating Action Button
+                if (window.FloatingActionButton) {
+                    window.FloatingActionButton.init('users');
+                    console.log('✅ FAB initialized for users page');
+                } else {
+                    console.warn('⚠️ FloatingActionButton not loaded');
                 }
             });
 
