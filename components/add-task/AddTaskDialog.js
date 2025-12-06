@@ -455,7 +455,7 @@ return;
         // ✅ שלב 2: צור בקשת אישור ב-pending_task_approvals
         try {
           // Import TaskApprovalService dynamically
-          const { taskApprovalService } = await import('../../task-approval-system/services/task-approval-service.js');
+          const { taskApprovalService } = await import('../task-approval-system/services/task-approval-service.js');
 
           // Initialize if needed
           if (window.firebaseDB && this.manager.currentUser) {
