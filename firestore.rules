@@ -215,9 +215,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ✅ User Messages: Simple alert-based communication system
+    // ✅ User Messages: Simple alert-based communication system + Thread Replies
     // Purpose: Admin sends alerts/messages to users, users can respond
-    // Simpler than conversations - single message + single response
+    // Supports both: single response (legacy) + thread-based replies (new)
     match /user_messages/{messageId} {
       // Create: Only admins can create messages
       allow create: if isAdmin();
@@ -228,18 +228,50 @@ service cloud.firestore {
         isAdmin()
       );
 
-      // Update: Users can update response fields, admins can update any field (including archive)
+      // Update: Users can update response fields, admins can update any field (including archive, thread metadata)
       allow update: if isAuthenticated() && (
         // Users can only update their own messages (response fields only)
         (resource.data.to == request.auth.token.email &&
          request.resource.data.diff(resource.data).affectedKeys()
            .hasOnly(['response', 'status', 'respondedAt'])) ||
-        // Admins can update any field (including archived, archivedBy, archivedAt)
+        // Admins can update any field (including archived, archivedBy, archivedAt, repliesCount, lastReplyAt, lastReplyBy)
         isAdmin()
       );
 
       // Delete: Only admins can delete messages
       allow delete: if isAdmin();
+
+      // ✅ Replies subcollection (NEW - Thread-based messaging)
+      // Purpose: Support back-and-forth conversation threads
+      match /replies/{replyId} {
+        // Helper: Get parent message data
+        function getParentMessage() {
+          return get(/databases/$(database)/documents/user_messages/$(messageId)).data;
+        }
+
+        // Helper: Check if user is the message recipient
+        function isRecipient() {
+          let msg = getParentMessage();
+          return msg != null && msg.to == request.auth.token.email;
+        }
+
+        // Read: User can read replies if they're the message recipient, admins can read all
+        allow read: if isAuthenticated() && (
+          isRecipient() || isAdmin()
+        );
+
+        // Create: User can create reply if they're the recipient, admins can always create
+        allow create: if isAuthenticated() && (
+          (isRecipient() && request.resource.data.from == request.auth.token.email) ||
+          isAdmin()
+        );
+
+        // Update/Delete: Only the sender of the reply (or admin) can update/delete
+        allow update, delete: if isAuthenticated() && (
+          resource.data.from == request.auth.token.email ||
+          isAdmin()
+        );
+      }
     }
 
     // ✅ Conversations: Two-way chat system (WhatsApp-style)

@@ -229,6 +229,65 @@ class UserReplyModal {
   }
 
   /**
+   * Show success animation with Lottie
+   */
+  async showSuccessAnimation() {
+    // Create success overlay
+    const successOverlay = document.createElement('div');
+    successOverlay.className = 'user-reply-success-overlay';
+    successOverlay.innerHTML = `
+      <div class="user-reply-success-content">
+        <div class="user-reply-success-animation" id="userReplySuccessAnimation"></div>
+        <h3 class="user-reply-success-title">התשובה נשלחה בהצלחה!</h3>
+        <p class="user-reply-success-message">תודה רבה, המנהל יקבל את תגובתך</p>
+      </div>
+    `;
+
+    // Add to modal
+    const modalContainer = this.modal.querySelector('.user-reply-container');
+    modalContainer.appendChild(successOverlay);
+
+    // Show overlay with animation
+    setTimeout(() => {
+      successOverlay.classList.add('show');
+    }, 10);
+
+    // Load Lottie animation
+    const animationContainer = document.getElementById('userReplySuccessAnimation');
+    if (animationContainer && window.lottie && typeof LottieAnimations !== 'undefined') {
+      try {
+        const animation = window.lottie.loadAnimation({
+          container: animationContainer,
+          renderer: 'svg',
+          loop: false,
+          autoplay: true,
+          path: LottieAnimations.successSimple
+        });
+
+        // Wait for animation to complete
+        await new Promise(resolve => {
+          animation.addEventListener('complete', resolve);
+          // Fallback timeout (2 seconds)
+          setTimeout(resolve, 2000);
+        });
+
+        // Destroy animation to free memory
+        animation.destroy();
+      } catch (error) {
+        console.warn('⚠️ Failed to load Lottie animation:', error);
+        // Fallback: wait 1.5 seconds
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    } else {
+      // Fallback: wait 1.5 seconds if Lottie not available
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
+    // Remove success overlay
+    successOverlay.remove();
+  }
+
+  /**
    * Send response
    */
   async send() {
@@ -300,15 +359,11 @@ class UserReplyModal {
       // Hide loading FIRST (critical - prevents spinner bug)
       this.hideLoading();
 
-      // Close modal
-      this.close();
+      // Show success animation + message (before closing modal)
+      await this.showSuccessAnimation();
 
-      // Show success notification using NotificationSystem
-      if (window.NotificationSystem) {
-        window.NotificationSystem.success('✅ התשובה נשלחה בהצלחה למנהל! תודה רבה', 4000);
-      } else {
-        alert('התשובה נשלחה בהצלחה!');
-      }
+      // Close modal after animation
+      this.close();
 
       // Call callback if provided (this removes the notification from the list)
       if (this.onSendCallback && typeof this.onSendCallback === 'function') {
