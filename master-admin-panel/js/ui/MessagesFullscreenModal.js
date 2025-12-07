@@ -222,9 +222,19 @@
       // Already a Date object
       if (timestamp instanceof Date) return timestamp;
 
-      // Firestore Timestamp object
+      // Firestore Timestamp object (from real-time listener)
       if (timestamp.toDate && typeof timestamp.toDate === 'function') {
         return timestamp.toDate();
+      }
+
+      // Firestore Timestamp from Cloud Function (serialized format)
+      if (timestamp._seconds !== undefined) {
+        return new Date(timestamp._seconds * 1000);
+      }
+
+      // Plain object with seconds property
+      if (timestamp.seconds !== undefined) {
+        return new Date(timestamp.seconds * 1000);
       }
 
       // Number (milliseconds)
@@ -234,9 +244,14 @@
 
       // Try to parse as date string
       try {
-        return new Date(timestamp);
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) {
+          console.error('Invalid date:', timestamp);
+          return null;
+        }
+        return date;
       } catch (e) {
-        console.error('Failed to parse timestamp:', timestamp);
+        console.error('Failed to parse timestamp:', timestamp, e);
         return null;
       }
     }
