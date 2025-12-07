@@ -2232,7 +2232,7 @@ select.form-input,
   padding: 10px 16px;
   background: var(--gray-100);
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 16px; /* Rounded corners for modern look */
   font-size: 14px;
   font-weight: 500;
   color: var(--gray-700);
