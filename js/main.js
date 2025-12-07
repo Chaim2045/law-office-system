@@ -20,6 +20,9 @@ import STATE_CONFIG from './config/state-config.js';
 // ✅ NEW v2.0: Add Task System - Organized Component
 import { initAddTaskSystem } from '../components/add-task/index.js';
 
+// ✅ NEW v1.0: Case Creation System - Organized Component
+import { initCaseCreationSystem } from '../components/case-creation/index.js';
+
 // Notification System
 import { NotificationBellSystem } from './modules/notification-bell.js';
 // NotificationSystem is available globally on window object
@@ -223,6 +226,9 @@ class LawOfficeManager {
 
         // ✅ NEW v2.0: Initialize Add Task System after login
         this.initializeAddTaskSystem();
+
+        // ✅ NEW v1.0: Initialize Case Creation System after login
+        this.initializeCaseCreationSystem();
       } else {
         // User not found in employees - sign out
         await firebase.auth().signOut();
@@ -687,6 +693,36 @@ return false;
     }
   }
 
+  /**
+   * Initialize Case Creation System v1.0
+   * אתחול מערכת יצירת תיקים המאורגנת
+   */
+  initializeCaseCreationSystem() {
+    try {
+      console.log('🚀 Initializing Case Creation System v1.0...');
+
+      this.caseCreationDialog = initCaseCreationSystem(this, {
+        onSuccess: (caseData) => {
+          console.log('✅ Case created successfully:', caseData);
+          // Refresh clients/cases list
+          this.loadClients();
+        },
+        onError: (error) => {
+          console.error('❌ Error creating case:', error);
+          this.showNotification('שגיאה ביצירת תיק: ' + error.message, 'error');
+        },
+        onCancel: () => {
+          console.log('ℹ️ User cancelled case creation');
+        }
+      });
+
+      console.log('✅ Case Creation System v1.0 initialized');
+    } catch (error) {
+      console.error('❌ Error initializing Case Creation System:', error);
+      // System will fallback to old method automatically
+    }
+  }
+
   async addBudgetTask() {
     // ✅ Prevent race conditions - block if operation already in progress
     if (this.isTaskOperationInProgress) {
@@ -764,7 +800,9 @@ return false;
             originalEstimate: estimatedMinutes, // ✅ NEW: originalEstimate for v2.0
             deadline: deadline,
             employee: this.currentUser,
-            status: 'active',
+            status: 'pending_approval',  // ✅ CHANGED: Requires manager approval
+            requestedMinutes: estimatedMinutes,  // ✅ Original requested budget
+            approvedMinutes: null,  // ✅ Will be set after approval
             timeSpent: 0,
             timeEntries: [],
             createdAt: new Date()
@@ -788,13 +826,33 @@ return false;
             throw new Error(result.error || 'Failed to create budget task');
           }
 
+          const taskId = result.data?.taskId;
+          Logger.log('✅ Task created with pending_approval status:', taskId);
+
+          // ✅ Create approval request
+          try {
+            const { taskApprovalService } = await import('../components/task-approval-system/services/task-approval-service.js');
+            taskApprovalService.init(window.firebaseDB, { email: this.currentUser });
+
+            await taskApprovalService.createApprovalRequest(
+              taskId,
+              taskData,
+              this.currentUser,
+              this.currentUser.split('@')[0]
+            );
+            Logger.log('✅ Approval request created for task:', taskId);
+          } catch (approvalError) {
+            console.error('❌ Error creating approval request:', approvalError);
+          }
+
           // Emit EventBus event
           window.EventBus.emit('task:created', {
-            taskId: result.data?.taskId || 'unknown',
+            taskId: taskId || 'unknown',
             clientId: taskData.clientId,
             clientName: taskData.clientName,
             employee: taskData.employee,
-            originalEstimate: taskData.estimatedMinutes
+            originalEstimate: taskData.estimatedMinutes,
+            status: 'pending_approval'
           });
           Logger.log('  🚀 [v2.0] EventBus: task:created emitted');
 

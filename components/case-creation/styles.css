@@ -1,0 +1,562 @@
+/**
+ * Case Creation Dialog - Linear/Vercel Style
+ * עיצוב מינימליסטי ונקי לדיאלוג יצירת תיק חדש
+ *
+ * גרסה: 1.0.0
+ * סטייל: Linear/Vercel - מינימליסטי, נקי, ברור
+ */
+
+/* ==========================================================================
+   1. OVERLAY & CONTAINER
+   ========================================================================== */
+
+.case-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.case-dialog-container {
+  background: white;
+  border-radius: 12px;
+  max-width: 700px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  animation: slideUp 0.3s ease-out;
+  border: 1px solid #e5e7eb;
+}
+
+/* ==========================================================================
+   2. HEADER
+   ========================================================================== */
+
+.case-dialog-header {
+  background: white;
+  padding: 20px 28px;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.case-dialog-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.case-dialog-header i {
+  font-size: 20px;
+  color: #64748b;
+}
+
+.case-dialog-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.case-dialog-close {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.case-dialog-close:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+/* ==========================================================================
+   3. CONTENT
+   ========================================================================== */
+
+.case-dialog-content {
+  padding: 28px;
+  overflow-y: auto;
+  max-height: calc(90vh - 140px);
+  direction: rtl;
+  text-align: right;
+}
+
+/* Custom scrollbar */
+.case-dialog-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.case-dialog-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.case-dialog-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.case-dialog-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ==========================================================================
+   4. FORM SECTIONS
+   ========================================================================== */
+
+.form-section {
+  margin-bottom: 28px;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.form-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-section h3 i {
+  font-size: 16px;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   5. TABS (MODE SELECTOR)
+   ========================================================================== */
+
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #e5e7eb;
+}
+
+.mode-tab {
+  flex: 1;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  color: #64748b;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mode-tab:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.mode-tab.active {
+  background: white;
+  color: #0f172a;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   6. FORM INPUTS
+   ========================================================================== */
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #334155;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-label i {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.form-label .required {
+  color: #ef4444;
+  margin-right: 2px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: white;
+  color: #0f172a;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input:disabled,
+.form-select:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.form-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Grid layout for form rows */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-row.single {
+  grid-template-columns: 1fr;
+}
+
+/* ==========================================================================
+   7. DIVIDER
+   ========================================================================== */
+
+.form-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 24px 0;
+}
+
+/* ==========================================================================
+   8. INFO BOX
+   ========================================================================== */
+
+.info-box {
+  background: #f0f9ff;
+  padding: 14px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #bfdbfe;
+  border-right: 3px solid #3b82f6;
+}
+
+.info-box p {
+  margin: 0;
+  font-size: 13px;
+  color: #1e40af;
+  line-height: 1.5;
+}
+
+.info-box strong {
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   9. PRICING TYPE SELECTOR
+   ========================================================================== */
+
+.pricing-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.pricing-type-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.pricing-type-label:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.pricing-type-label input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.pricing-type-label.selected {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+  border-width: 2px;
+  padding: 11px 15px; /* Compensate for thicker border */
+}
+
+.pricing-type-content {
+  flex: 1;
+}
+
+.pricing-type-title {
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.pricing-type-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   10. STAGES
+   ========================================================================== */
+
+.stage-container {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+}
+
+.stage-container:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.stage-header {
+  margin: 0 0 12px 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.stage-badge.stage-a {
+  background: #3b82f6;
+}
+
+.stage-badge.stage-b {
+  background: #10b981;
+}
+
+.stage-badge.stage-c {
+  background: #f59e0b;
+}
+
+/* ==========================================================================
+   11. BUTTONS
+   ========================================================================== */
+
+.case-dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 28px;
+  background: white;
+  border-radius: 0 0 12px 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+}
+
+.btn i {
+  font-size: 14px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Buttons inherit from buttons.css - no custom styles needed here */
+/* .btn-primary and .btn-secondary styles are defined in css/buttons.css */
+
+/* ==========================================================================
+   12. ANIMATIONS
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   13. ERRORS & WARNINGS
+   ========================================================================== */
+
+.form-errors,
+.form-warnings {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.form-errors {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-right: 3px solid #ef4444;
+  color: #991b1b;
+}
+
+.form-warnings {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-right: 3px solid #f59e0b;
+  color: #92400e;
+}
+
+.form-errors ul,
+.form-warnings ul {
+  margin: 0;
+  padding-right: 20px;
+}
+
+.form-errors li,
+.form-warnings li {
+  margin: 4px 0;
+}
+
+/* ==========================================================================
+   14. HELPER TEXT
+   ========================================================================== */
+
+.help-text {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.help-text i {
+  font-size: 11px;
+}
+
+/* ==========================================================================
+   15. RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .case-dialog-container {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .case-dialog-header,
+  .case-dialog-content,
+  .case-dialog-actions {
+    padding: 16px 20px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-types {
+    grid-template-columns: 1fr;
+  }
+}
