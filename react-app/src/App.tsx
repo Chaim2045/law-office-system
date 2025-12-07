@@ -204,6 +204,7 @@ const App: React.FC = () => {
             </LegalProceduresProvider>
           </ClientsProvider>
         </NotificationProvider>
+        </AdminProvider>
       </AuthProvider>
     </Router>
   );

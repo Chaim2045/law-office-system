@@ -177,16 +177,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return unsubscribe;
   }, []);
 
-  // Re-check admin status periodically (every 5 minutes)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (auth.currentUser) {
-        refreshAdminClaims();
-      }
-    }, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // ✅ REMOVED: Periodic re-check interval (was polling every 5 minutes)
+  // Firebase Auth automatically handles token refresh
+  // No need for manual polling - saves unnecessary Firestore reads
 
   const value = {
     isAdmin,
