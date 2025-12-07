@@ -1071,19 +1071,27 @@
          */
         openFullscreenMessages() {
             if (!this.currentUser) {
-                console.error('No user selected');
+                console.error('❌ No user selected');
                 return;
             }
 
             console.log('📖 Opening fullscreen messages for:', this.currentUser.email);
+            console.log('📦 window.messagesFullscreenModal exists?', !!window.messagesFullscreenModal);
+            console.log('📦 typeof open:', typeof window.messagesFullscreenModal?.open);
 
             // Use MessagesFullscreenModal if available
             if (window.messagesFullscreenModal && typeof window.messagesFullscreenModal.open === 'function') {
                 const messages = this.userData?.messages || [];
+                console.log(`✅ Opening fullscreen with ${messages.length} messages`);
                 window.messagesFullscreenModal.open(this.currentUser, messages);
             } else {
-                console.error('MessagesFullscreenModal not available');
-                alert('חלון הודעות מלא לא זמין');
+                console.error('❌ MessagesFullscreenModal not available');
+                console.error('   window.messagesFullscreenModal =', window.messagesFullscreenModal);
+                if (window.notify) {
+                    window.notify.error('חלון הודעות מלא לא זמין');
+                } else {
+                    alert('חלון הודעות מלא לא זמין');
+                }
             }
         }
 
@@ -1093,18 +1101,30 @@
          */
         async archiveMessage(messageId) {
             try {
+                console.log('🗂️ Archiving message:', messageId);
+
+                if (!messageId) {
+                    throw new Error('Message ID is missing');
+                }
+
                 if (!window.alertCommManager) {
                     throw new Error('AlertCommunicationManager not available');
                 }
 
+                console.log('✅ Calling alertCommManager.archiveMessage...');
                 await window.alertCommManager.archiveMessage(messageId);
 
+                console.log('✅ Message archived, reloading user data...');
                 // Reload user data to refresh messages
                 await this.loadFullUserData();
+
+                console.log('✅ Archive complete!');
             } catch (error) {
                 console.error('❌ Error archiving message:', error);
+                console.error('   Message ID was:', messageId);
+                console.error('   Error details:', error.message);
                 if (window.notify) {
-                    window.notify.error('שגיאה בהעברה לארכיון');
+                    window.notify.error(`שגיאה בהעברה לארכיון: ${error.message}`);
                 }
             }
         }
@@ -2101,9 +2121,12 @@ return;
             const messagesTabContent = modal.querySelector('.tab-panel.tab-messages');
             if (messagesTabContent) {
                 messagesTabContent.addEventListener('click', async (e) => {
+                    console.log('🖱️ Messages tab click detected:', e.target);
+
                     // Check for filter tabs
                     const filterTab = e.target.closest('.filter-tab');
                     if (filterTab) {
+                        console.log('📑 Filter tab clicked:', filterTab.getAttribute('data-filter'));
                         const filter = filterTab.getAttribute('data-filter');
                         this.messageFilter = filter;
                         this.switchTab('messages'); // Refresh to show filtered messages
@@ -2114,6 +2137,7 @@ return;
                     const actionBtn = e.target.closest('[data-action]');
                     if (actionBtn) {
                         const action = actionBtn.getAttribute('data-action');
+                        console.log('🎬 Action button clicked:', action);
                         if (action === 'send-new-message') {
                             this.sendNewMessage();
                         } else if (action === 'open-fullscreen') {
@@ -2126,6 +2150,7 @@ return;
                     const archiveBtn = e.target.closest('.btn-archive-message');
                     if (archiveBtn) {
                         const messageId = archiveBtn.getAttribute('data-message-id');
+                        console.log('🗂️ Archive button clicked, messageId:', messageId);
                         await this.archiveMessage(messageId);
                         return;
                     }
@@ -2134,10 +2159,13 @@ return;
                     const restoreBtn = e.target.closest('.btn-restore-message');
                     if (restoreBtn) {
                         const messageId = restoreBtn.getAttribute('data-message-id');
+                        console.log('♻️ Restore button clicked, messageId:', messageId);
                         await this.restoreMessage(messageId);
                         return;
                     }
                 });
+            } else {
+                console.warn('⚠️ Messages tab content not found - event delegation not attached');
             }
 
         }
