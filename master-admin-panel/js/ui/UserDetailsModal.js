@@ -844,27 +844,29 @@
                     </div>
 
                     <!-- Filter Tabs -->
-                    <div class="messages-filter-tabs">
-                        <button class="filter-tab ${this.messageFilter === 'all' ? 'active' : ''}" data-filter="all">
-                            <i class="fas fa-inbox"></i>
-                            <span>פעילות</span>
-                            <span class="filter-count">${allCount}</span>
-                        </button>
-                        <button class="filter-tab ${this.messageFilter === 'unread' ? 'active' : ''}" data-filter="unread">
-                            <i class="fas fa-envelope"></i>
-                            <span>לא נקראו</span>
-                            <span class="filter-count">${unreadCount}</span>
-                        </button>
-                        <button class="filter-tab ${this.messageFilter === 'read' ? 'active' : ''}" data-filter="read">
-                            <i class="fas fa-envelope-open"></i>
-                            <span>נקראו</span>
-                            <span class="filter-count">${readCount}</span>
-                        </button>
-                        <button class="filter-tab ${this.messageFilter === 'archived' ? 'active' : ''}" data-filter="archived">
-                            <i class="fas fa-archive"></i>
-                            <span>ארכיון</span>
-                            <span class="filter-count">${archivedCount}</span>
-                        </button>
+                    <div style="text-align: center; padding: 16px 20px; background: white; border-bottom: 2px solid var(--gray-200);">
+                        <div class="messages-filter-tabs">
+                            <button class="filter-tab ${this.messageFilter === 'all' ? 'active' : ''}" data-filter="all">
+                                <i class="fas fa-inbox"></i>
+                                <span>פעילות</span>
+                                <span class="filter-count">${allCount}</span>
+                            </button>
+                            <button class="filter-tab ${this.messageFilter === 'unread' ? 'active' : ''}" data-filter="unread">
+                                <i class="fas fa-envelope"></i>
+                                <span>לא נקראו</span>
+                                <span class="filter-count">${unreadCount}</span>
+                            </button>
+                            <button class="filter-tab ${this.messageFilter === 'read' ? 'active' : ''}" data-filter="read">
+                                <i class="fas fa-envelope-open"></i>
+                                <span>נקראו</span>
+                                <span class="filter-count">${readCount}</span>
+                            </button>
+                            <button class="filter-tab ${this.messageFilter === 'archived' ? 'active' : ''}" data-filter="archived">
+                                <i class="fas fa-archive"></i>
+                                <span>ארכיון</span>
+                                <span class="filter-count">${archivedCount}</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Messages Timeline -->
