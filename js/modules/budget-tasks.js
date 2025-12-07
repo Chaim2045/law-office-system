@@ -530,8 +530,12 @@ return '';
   const now = new Date();
   const deadline = new Date(task.deadline);
   const createdAt = task.createdAt ? new Date(task.createdAt) : now;
-  const totalDays = Math.max(1, (deadline - createdAt) / (1000 * 60 * 60 * 24));
-  const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+
+  // 🔧 FIX: Handle case where deadline is before createdAt (data inconsistency)
+  // Use deadline as start point if it's earlier than createdAt
+  const startDate = createdAt < deadline ? createdAt : deadline;
+  const totalDays = Math.max(1, (deadline - startDate) / (1000 * 60 * 60 * 24));
+  const elapsedDays = (now - startDate) / (1000 * 60 * 60 * 24);
   // ✅ FIX: הסרת הגבלת 100% - מאפשר להראות איחור אמיתי (למשל 120% = איחור של 20%)
   const deadlineProgress = Math.max(0, Math.round((elapsedDays / totalDays) * 100));
   const isDeadlineOverdue = daysUntilDeadline < 0;
@@ -775,8 +779,10 @@ export function createTableRow(task, options = {}) {
 
     // Calculate deadline progress (elapsed time / total time)
     // ✅ FIX: הסרת הגבלת 100% - מאפשר להראות איחור אמיתי בטבלה
-    const totalDays = Math.max(1, (deadline - createdAt) / (1000 * 60 * 60 * 24));
-    const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+    // 🔧 FIX: Handle case where deadline is before createdAt
+    const startDate = createdAt < deadline ? createdAt : deadline;
+    const totalDays = Math.max(1, (deadline - startDate) / (1000 * 60 * 60 * 24));
+    const elapsedDays = (now - startDate) / (1000 * 60 * 60 * 24);
     const deadlineProgress = Math.max(0, Math.round((elapsedDays / totalDays) * 100));
 
     deadlineHtml = window.SVGRings.createCompactDeadlineRing({
