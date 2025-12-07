@@ -178,12 +178,6 @@
 
                 // Setup events
                 this.setupEvents();
-
-                // Show info notification
-                window.notify.info(
-                    'מוצגים נתונים בסיסיים. Cloud Functions יהיו זמינים ב-Phase 4',
-                    'מצב פיתוח'
-                );
             }
         }
 
