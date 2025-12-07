@@ -323,6 +323,22 @@ service cloud.firestore {
       }
     }
 
+    // ✅ Task Approval Requests: Budget approval workflow
+    // Purpose: Employees request task budget approval, admins approve/reject
+    match /pending_task_approvals/{approvalId} {
+      // Create: Any authenticated user can create approval requests
+      allow create: if isAuthenticated();
+
+      // Read: Users can read their own requests, admins can read all
+      allow read: if isAuthenticated() && (
+        resource.data.requestedBy == request.auth.token.email ||
+        isAdmin()
+      );
+
+      // Update/Delete: Only admins can update or delete approval requests
+      allow update, delete: if isAdmin();
+    }
+
     // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;

@@ -22,6 +22,7 @@ export class TaskApprovalService {
         requestedBy,
         requestedByName: requestedByName || requestedBy,
         requestedAt: new Date(),
+        requestedMinutes: parseInt(taskData.estimatedMinutes) || 0, // ✅ הוסף שדה זה!
         taskData: {
           description: taskData.description || '',
           clientId: taskData.clientId || '',
