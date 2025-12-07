@@ -1,0 +1,348 @@
+/**
+ * Task Approval Panel - Styles
+ * עיצוב פאנל אישורי משימות
+ * ✅ עיצוב נקי, מינימליסטי, ממוין לפי משתמשים
+ */
+
+/* ========== CONTAINER ========== */
+.approval-panel {
+  background: #fafafa;
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+}
+
+/* ========== HEADER ========== */
+.panel-header {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2c2c2c;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+#searchInput {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  width: 200px;
+  background: #fafafa;
+}
+
+#searchInput:focus {
+  outline: none;
+  border-color: #4a90e2;
+  background: white;
+}
+
+.btn-refresh {
+  padding: 0.5rem 1rem;
+  background: white;
+  color: #4a90e2;
+  border: 1px solid #4a90e2;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.btn-refresh:hover {
+  background: #4a90e2;
+  color: white;
+}
+
+/* ========== FILTERS ========== */
+.panel-filters {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-btn {
+  flex: 1;
+  padding: 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: #757575;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  color: #4a90e2;
+  background: #f5f5f5;
+}
+
+.filter-btn.active {
+  color: #4a90e2;
+  border-bottom-color: #4a90e2;
+  background: transparent;
+}
+
+/* ========== USER GROUPS (ארגון לפי משתמשים) ========== */
+.approvals-list {
+  padding: 1.5rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.user-group {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.user-group-header {
+  background: #f5f5f5;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  background: #4a90e2;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.user-details h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #2c2c2c;
+}
+
+.user-details p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.8125rem;
+  color: #757575;
+}
+
+.requests-count {
+  background: #4a90e2;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* ========== REQUESTS TABLE ========== */
+.requests-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.requests-table thead {
+  background: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.requests-table th {
+  padding: 0.75rem 1.5rem;
+  text-align: right;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #757575;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.requests-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.requests-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.requests-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.requests-table td {
+  padding: 1rem 1.5rem;
+  font-size: 0.875rem;
+  color: #2c2c2c;
+}
+
+.task-desc {
+  font-weight: 500;
+  color: #2c2c2c;
+}
+
+.task-client {
+  color: #757575;
+  font-size: 0.8125rem;
+}
+
+.task-budget {
+  font-weight: 600;
+  color: #4a90e2;
+  direction: ltr;
+  text-align: left;
+}
+
+.task-time {
+  color: #757575;
+  font-size: 0.8125rem;
+}
+
+.task-status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.task-status.pending {
+  background: #fff9e6;
+  color: #c89400;
+}
+
+.task-status.approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.task-status.rejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.task-status.modified {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* ========== STATES ========== */
+.loading,
+.empty-state,
+.error-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #9e9e9e;
+}
+
+.loading i,
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #bdbdbd;
+  display: block;
+}
+
+.empty-state p {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.875rem;
+}
+
+.error-state {
+  color: #e57373;
+}
+
+.error-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.error-state button {
+  margin-top: 1rem;
+  padding: 0.625rem 1.25rem;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.error-state button:hover {
+  background: #3a7bc8;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .approvals-list {
+    padding: 1rem;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .panel-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  #searchInput,
+  .btn-refresh {
+    width: 100%;
+  }
+
+  .requests-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .requests-table th,
+  .requests-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .user-group-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8125rem;
+  }
+}

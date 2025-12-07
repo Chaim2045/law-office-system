@@ -30,8 +30,8 @@
     <link rel="stylesheet" href="css/components.css">
 
     <!-- ===== Task Approval System Styles ===== -->
-    <link rel="stylesheet" href="../components/task-approval-system/styles/task-approval-panel.css">
-    <link rel="stylesheet" href="../components/task-approval-system/styles/task-approval-dialog.css">
+    <link rel="stylesheet" href="components/task-approval-system/styles/task-approval-panel.css">
+    <link rel="stylesheet" href="components/task-approval-system/styles/task-approval-dialog.css">
 </head>
 
 <body class="login-page">
@@ -215,7 +215,7 @@
 
                 try {
                     // Import and initialize Task Approval System
-                    const { initTaskApprovalSystem } = await import('../components/task-approval-system/index.js');
+                    const { initTaskApprovalSystem } = await import('./components/task-approval-system/index.js');
 
                     const panel = initTaskApprovalSystem({
                         containerId: 'task-approval-panel-container',
