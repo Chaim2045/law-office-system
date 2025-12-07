@@ -448,8 +448,12 @@ export function calculateSimpleProgress(task) {
  * @returns {string} Color name ('blue', 'orange', or 'red')
  */
 export function getProgressColor(progress) {
-  if (progress >= 100) return 'red';
-  if (progress >= 85) return 'orange';
+  if (progress >= 100) {
+return 'red';
+}
+  if (progress >= 85) {
+return 'orange';
+}
   return 'blue';
 }
 
@@ -528,7 +532,8 @@ return '';
   const createdAt = task.createdAt ? new Date(task.createdAt) : now;
   const totalDays = Math.max(1, (deadline - createdAt) / (1000 * 60 * 60 * 24));
   const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
-  const deadlineProgress = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+  // ✅ FIX: הסרת הגבלת 100% - מאפשר להראות איחור אמיתי (למשל 120% = איחור של 20%)
+  const deadlineProgress = Math.max(0, Math.round((elapsedDays / totalDays) * 100));
   const isDeadlineOverdue = daysUntilDeadline < 0;
   const overdueDays = Math.abs(Math.min(0, daysUntilDeadline));
 
@@ -551,9 +556,18 @@ return '';
 
   // Deadline Ring Config
   const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
+
+  // ✅ FIX: צבע דינמי מתאים לאחוז התקדמות (כולל מעל 100%)
+  let deadlineColor = 'blue'; // ברירת מחדל - כחול
+  if (deadlineProgress >= 100) {
+    deadlineColor = 'red'; // אדום - איחור
+  } else if (deadlineProgress >= 85) {
+    deadlineColor = 'orange'; // כתום - התקרבות ליעד
+  }
+
   const deadlineRingConfig = {
     progress: deadlineProgress,
-    color: isDeadlineOverdue ? 'red' : getProgressColor(deadlineProgress), // שימוש בפונקציה המשותפת
+    color: deadlineColor,
     icon: 'fas fa-calendar-alt',
     label: 'תאריך יעד',
     value: isDeadlineOverdue
@@ -755,9 +769,10 @@ export function createTableRow(task, options = {}) {
     const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
 
     // Calculate deadline progress (elapsed time / total time)
+    // ✅ FIX: הסרת הגבלת 100% - מאפשר להראות איחור אמיתי בטבלה
     const totalDays = Math.max(1, (deadline - createdAt) / (1000 * 60 * 60 * 24));
     const elapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
-    const deadlineProgress = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+    const deadlineProgress = Math.max(0, Math.round((elapsedDays / totalDays) * 100));
 
     deadlineHtml = window.SVGRings.createCompactDeadlineRing({
       daysRemaining: daysUntilDeadline,

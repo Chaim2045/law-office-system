@@ -235,6 +235,8 @@
     const radius = 20;
     const strokeWidth = 3;
     const circumference = 2 * Math.PI * radius;
+    // ✅ FIX: הסרת הגבלת 100% - מאפשר להראות איחור אמיתי ברינג מוקטן (טבלה)
+    // הרינג ייראה מלא (100%) כשיש איחור, והאיחור יוצג במספר הימים
     const dashOffset = calculateDashOffset(Math.min(progress, 100), radius);
 
     // Determine color based on days remaining
@@ -329,7 +331,7 @@
         </svg>
         <!-- "ימים" label below ring -->
         <div class="compact-ring-label-below" style="color: ${colorScheme.text};">ימים</div>
-        ${isOverdue ? `<div class="compact-ring-status">איחור!</div>` : ''}
+        ${isOverdue ? '<div class="compact-ring-status">איחור!</div>' : ''}
       </div>
     `;
   }
