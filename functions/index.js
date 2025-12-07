@@ -5829,11 +5829,12 @@ exports.approveTaskBudget = functions.https.onCall(async (data, context) => {
     batch.set(messageRef, {
       to: approval.requestedBy,
       from: 'system',
+      fromName: 'מערכת',
       message: messageText,
       type: 'task_approval',
       taskId: taskId,
       approvalId: approvalId,
-      read: false,
+      status: 'unread',
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -5916,11 +5917,12 @@ exports.rejectTaskBudget = functions.https.onCall(async (data, context) => {
     batch.set(messageRef, {
       to: approval.requestedBy,
       from: 'system',
+      fromName: 'מערכת',
       message: messageText,
       type: 'task_rejection',
       taskId: taskId,
       approvalId: approvalId,
-      read: false,
+      status: 'unread',
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 

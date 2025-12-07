@@ -55,7 +55,22 @@
       "Bash(netlify open:site:*)",
       "Bash(netlify open:admin:*)",
       "Bash(gcloud projects describe:*)",
-      "Bash(curl -s \"https://firebase.googleapis.com/v1beta1/projects/law-office-system-e4801\")"
+      "Bash(curl -s \"https://firebase.googleapis.com/v1beta1/projects/law-office-system-e4801\")",
+      "Bash(cat:*)",
+      "Bash(git fetch:*)",
+      "Bash(netlify sites:list:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(python3 -m json.tool:*)",
+      "Bash(netlify switch:*)",
+      "Bash(npm run compile-ts:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(netlify unlink:*)",
+      "Bash(netlify link:*)",
+      "Bash(firebase functions:delete:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
