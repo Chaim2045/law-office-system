@@ -263,8 +263,14 @@
                         console.log('✅ Alert Communication Manager initialized');
 
                         // Start listening to user responses
-                        window.alertCommManager.listenToResponses((responses) => {
+                        window.alertCommManager.listenToResponses(async (responses) => {
                             console.log(`📬 Admin has ${responses.length} responses from users`);
+
+                            // Update UsersTable response counts
+                            if (window.UsersTable) {
+                                await window.UsersTable.loadResponseCounts();
+                            }
+
                             // Show badge or notification if there are new responses
                             if (responses.length > 0) {
                                 console.log('💬 Latest responses:', responses.slice(0, 3).map(r => ({
