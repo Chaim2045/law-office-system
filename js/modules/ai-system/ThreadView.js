@@ -217,7 +217,9 @@ class ThreadView {
    */
   renderReplies(replies) {
     const repliesList = document.getElementById('aiThreadRepliesList');
-    if (!repliesList) return;
+    if (!repliesList) {
+return;
+}
 
     if (replies.length === 0) {
       repliesList.innerHTML = '';
@@ -249,7 +251,9 @@ class ThreadView {
     const textarea = document.getElementById('aiThreadReplyInput');
     const sendBtn = document.getElementById('aiThreadSendBtn');
 
-    if (!textarea || !sendBtn) return;
+    if (!textarea || !sendBtn) {
+return;
+}
 
     const replyText = textarea.value.trim();
 
@@ -262,13 +266,16 @@ class ThreadView {
       return;
     }
 
-    if (!window.currentUser) {
-      console.error('No current user');
+    if (!window.notificationBell) {
+      console.error('NotificationBell not available');
       return;
     }
 
-    if (!window.notificationBell) {
-      console.error('NotificationBell not available');
+    // ✅ Get current user from notificationBell (single source of truth)
+    const currentUser = window.notificationBell.currentUser;
+
+    if (!currentUser) {
+      console.error('No current user');
       return;
     }
 
@@ -281,7 +288,7 @@ class ThreadView {
       await window.notificationBell.sendReplyToAdmin(
         this.currentThreadId,
         replyText,
-        window.currentUser
+        currentUser
       );
 
       // Clear textarea
@@ -330,21 +337,31 @@ class ThreadView {
    * @returns {string} - Formatted time string
    */
   _formatTime(date) {
-    if (!date) return '';
+    if (!date) {
+return '';
+}
 
     try {
       const now = new Date();
       const diffMs = now - date;
       const diffMins = Math.floor(diffMs / 60000);
 
-      if (diffMins < 1) return 'עכשיו';
-      if (diffMins < 60) return `לפני ${diffMins} דקות`;
+      if (diffMins < 1) {
+return 'עכשיו';
+}
+      if (diffMins < 60) {
+return `לפני ${diffMins} דקות`;
+}
 
       const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) return `לפני ${diffHours} שעות`;
+      if (diffHours < 24) {
+return `לפני ${diffHours} שעות`;
+}
 
       const diffDays = Math.floor(diffHours / 24);
-      if (diffDays < 7) return `לפני ${diffDays} ימים`;
+      if (diffDays < 7) {
+return `לפני ${diffDays} ימים`;
+}
 
       // Format as date
       return date.toLocaleDateString('he-IL');
@@ -361,7 +378,9 @@ class ThreadView {
    * @returns {string} - Escaped string
    */
   _escapeHTML(str) {
-    if (!str) return '';
+    if (!str) {
+return '';
+}
 
     const div = document.createElement('div');
     div.textContent = str;

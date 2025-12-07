@@ -269,7 +269,10 @@ class UserReplyModal {
         throw new Error('Firebase לא זמין');
       }
 
-      if (!window.currentUser) {
+      // ✅ Get current user from notificationBell (single source of truth)
+      const currentUser = window.notificationBell?.currentUser;
+
+      if (!currentUser) {
         throw new Error('משתמש לא מחובר');
       }
 
@@ -279,7 +282,7 @@ class UserReplyModal {
         await window.notificationBell.sendReplyToAdmin(
           this.currentMessageId,
           response,
-          window.currentUser
+          currentUser
         );
         console.log(`✅ Response sent using thread API for message ${this.currentMessageId}`);
       } else {
