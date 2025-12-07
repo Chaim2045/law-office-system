@@ -382,8 +382,16 @@ function calculateTimesheetStatistics(entries) {
  * @returns {Object} מידע חכם על מטרות והתקדמות
  */
 function calculateSmartGoals(monthHours, now) {
-  // מטרת חודש: 160 שעות (40 שעות/שבוע × 4 שבועות)
-  const monthlyGoal = 160;
+  // קבלת תקן שעות אישי של העובד (אם קיים)
+  const employeeData = window.manager?.currentEmployee || {};
+  const dailyHoursTarget = employeeData.dailyHoursTarget || null;
+
+  // יצירת מחשבון עם תקן אישי
+  const calculator = new WorkHoursCalculator(dailyHoursTarget);
+  const quota = calculator.getMonthlyQuota(now.getFullYear(), now.getMonth());
+
+  // תקן חודשי דינמי לפי ימי עבודה (מוריד שישי-שבת וחגים)
+  const monthlyGoal = quota.monthlyQuota;
 
   // חישוב ימי עבודה בחודש (ללא שישי-שבת)
   const year = now.getFullYear();

@@ -1,12 +1,16 @@
 /**
  * מחשבון שעות עבודה חכם
  * מחשב מכסת שעות חודשית מדויקת לפי לוח שנה ישראלי
- * מדד: 186 שעות/חודש ממוצע
+ * מדד: 186 שעות/חודש ממוצע (או תקן אישי לפי עובד)
  */
 
 class WorkHoursCalculator {
-    constructor() {
-        // מדד שעות חודשי ממוצע
+    constructor(dailyHoursTarget = null) {
+        // תקן שעות יומי (ברירת מחדל: 8.45 שעות/יום)
+        // אם מועבר תקן אישי - משתמש בו, אחרת 8.45
+        this.DAILY_HOURS_TARGET = dailyHoursTarget || 8.45;
+
+        // מדד שעות חודשי ממוצע (למען תאימות לאחור)
         this.MONTHLY_HOURS_TARGET = 186;
 
         // חגים ישראליים 2025 (תאריכים גרגוריאניים)
@@ -38,7 +42,7 @@ class WorkHoursCalculator {
             { name: 'שבועות', start: new Date(2025, 5, 2), end: new Date(2025, 5, 2) }, // 2 יוני
 
             // תשעה באב (לא חג רשמי אבל חלק מהמקומות לא עובדים)
-            { name: 'תשעה באב', start: new Date(2025, 7, 3), end: new Date(2025, 7, 3) }, // 3 אוגוסט
+            { name: 'תשעה באב', start: new Date(2025, 7, 3), end: new Date(2025, 7, 3) } // 3 אוגוסט
         ];
 
         // חגים 2024 (למי שצריך)
@@ -53,7 +57,7 @@ class WorkHoursCalculator {
             { name: 'יום הזיכרון', start: new Date(2024, 4, 13), end: new Date(2024, 4, 13) },
             { name: 'יום העצמאות', start: new Date(2024, 4, 14), end: new Date(2024, 4, 14) },
             { name: 'שבועות', start: new Date(2024, 5, 12), end: new Date(2024, 5, 12) },
-            { name: 'תשעה באב', start: new Date(2024, 7, 13), end: new Date(2024, 7, 13) },
+            { name: 'תשעה באב', start: new Date(2024, 7, 13), end: new Date(2024, 7, 13) }
         ];
 
         // חגים 2026 (למי שצריך)
@@ -68,7 +72,7 @@ class WorkHoursCalculator {
             { name: 'יום הזיכרון', start: new Date(2026, 3, 21), end: new Date(2026, 3, 21) },
             { name: 'יום העצמאות', start: new Date(2026, 3, 22), end: new Date(2026, 3, 22) },
             { name: 'שבועות', start: new Date(2026, 4, 22), end: new Date(2026, 4, 22) },
-            { name: 'תשעה באב', start: new Date(2026, 6, 23), end: new Date(2026, 6, 23) },
+            { name: 'תשעה באב', start: new Date(2026, 6, 23), end: new Date(2026, 6, 23) }
         ];
 
         this.allHolidays = [...this.holidays2024, ...this.holidays2025, ...this.holidays2026];
@@ -214,7 +218,7 @@ class WorkHoursCalculator {
 
     /**
      * מחשב מכסת שעות חודשית מדויקת לפי ימי עבודה בפועל
-     * מבוסס על מדד של 186 שעות לחודש ממוצע
+     * מבוסס על תקן יומי × ימי עבודה בחודש (אחרי קיזוז שישי-שבת וחגים)
      * @param {number} year - שנה (אופציונלי, ברירת מחדל: שנה נוכחית)
      * @param {number} month - חודש 0-11 (אופציונלי, ברירת מחדל: חודש נוכחי)
      * @returns {Object} - אובייקט עם פרטי מכסה
@@ -224,14 +228,14 @@ class WorkHoursCalculator {
         year = year || today.getFullYear();
         month = month !== null ? month : today.getMonth();
 
-        // חישוב ימי עבודה בחודש
+        // חישוב ימי עבודה בחודש (אחרי קיזוז שישי-שבת וחגים)
         const workDaysInMonth = this.getWorkDaysInMonth(year, month);
 
-        // חישוב ממוצע שעות ליום עבודה (186 שעות / 22 ימים בממוצע = 8.45 שעות/יום)
-        const avgHoursPerDay = this.MONTHLY_HOURS_TARGET / 22;
+        // תקן שעות יומי (אישי או ברירת מחדל)
+        const dailyTarget = this.DAILY_HOURS_TARGET;
 
-        // מכסת שעות לחודש זה בפועל
-        const monthlyQuota = Math.round(workDaysInMonth * avgHoursPerDay * 10) / 10;
+        // מכסת שעות לחודש זה = ימי עבודה × תקן יומי
+        const monthlyQuota = Math.round(workDaysInMonth * dailyTarget * 10) / 10;
 
         return {
             year,
@@ -239,7 +243,9 @@ class WorkHoursCalculator {
             monthName: this.getMonthName(month),
             workDaysInMonth,
             monthlyQuota,
-            avgHoursPerDay: Math.round(avgHoursPerDay * 10) / 10
+            avgHoursPerDay: Math.round(dailyTarget * 10) / 10,
+            dailyTarget: Math.round(dailyTarget * 10) / 10,
+            isCustomTarget: this.DAILY_HOURS_TARGET !== 8.45 // האם זה תקן אישי
         };
     }
 
