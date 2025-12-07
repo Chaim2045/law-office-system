@@ -565,6 +565,11 @@ return '';
     deadlineColor = 'orange'; // כתום - התקרבות ליעד
   }
 
+  // 🐛 DEBUG: Log deadline progress for task with overdue
+  if (deadlineProgress > 100) {
+    console.log(`🔍 Task ${task.id.substring(0, 8)}: deadlineProgress = ${deadlineProgress}%`);
+  }
+
   const deadlineRingConfig = {
     progress: deadlineProgress,
     color: deadlineColor,
