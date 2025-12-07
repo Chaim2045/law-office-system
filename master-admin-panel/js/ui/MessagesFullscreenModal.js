@@ -213,13 +213,43 @@
     }
 
     /**
+     * Convert timestamp to Date object (handles Firestore Timestamp, Date, or number)
+     * @param {*} timestamp - Timestamp in various formats
+     */
+    toDate(timestamp) {
+      if (!timestamp) return null;
+
+      // Already a Date object
+      if (timestamp instanceof Date) return timestamp;
+
+      // Firestore Timestamp object
+      if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+      }
+
+      // Number (milliseconds)
+      if (typeof timestamp === 'number') {
+        return new Date(timestamp);
+      }
+
+      // Try to parse as date string
+      try {
+        return new Date(timestamp);
+      } catch (e) {
+        console.error('Failed to parse timestamp:', timestamp);
+        return null;
+      }
+    }
+
+    /**
      * Render single message item
      * @param {Object} msg - Message object
      */
     renderMessageItem(msg) {
       const dotColor = this.getMessageDotColor(msg);
       const typeClass = `type-${msg.type || 'info'}`;
-      const time = msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleString('he-IL') : '';
+      const createdDate = this.toDate(msg.createdAt);
+      const time = createdDate ? createdDate.toLocaleString('he-IL') : '';
 
       return `
         <div class="fullscreen-timeline-item">
@@ -277,9 +307,8 @@
       }
 
       if (msg.response && msg.status === 'responded') {
-        const responseTime = msg.respondedAt
-          ? new Date(msg.respondedAt.toDate()).toLocaleString('he-IL')
-          : '';
+        const respondedDate = this.toDate(msg.respondedAt);
+        const responseTime = respondedDate ? respondedDate.toLocaleString('he-IL') : '';
 
         return `
           <div class="fullscreen-message-response responded">
