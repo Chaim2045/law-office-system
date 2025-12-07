@@ -61,35 +61,34 @@
     // Generate unique gradient ID
     const gradientId = `ring-gradient-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Color schemes - צבעים עשירים וכהים
+    // Color schemes - מילוי צבעוני, רקע אפור
     const colors = {
       green: {
         start: '#059669',
         end: '#047857',
-        bg: '#d1fae5',
         text: '#065f46'
       },
       blue: {
         start: '#2563eb',
         end: '#1e40af',
-        bg: '#dbeafe',
         text: '#1e3a8a'
       },
       red: {
         start: '#dc2626',
         end: '#b91c1c',
-        bg: '#fee2e2',
         text: '#991b1b'
       },
       orange: {
         start: '#ea580c',
         end: '#c2410c',
-        bg: '#fed7aa',
         text: '#9a3412'
       }
     };
 
     const colorScheme = colors[color] || colors.green;
+
+    // הרקע תמיד אפור
+    const bgColor = '#e5e7eb';
 
     // Meta Clean: Only add status class for DANGER (overage)
     // Color alone is enough for warning/ok states
@@ -99,13 +98,13 @@
       <div class="svg-ring-container ${overage ? 'overage-ring' : ''}">
         <div class="svg-ring-wrapper ${statusClass}">
           <svg width="${size}" height="${size}" viewBox="0 0 80 80" class="svg-ring">
-            <!-- Background circle -->
+            <!-- Background circle (gray) -->
             <circle
               cx="40"
               cy="40"
               r="${radius}"
               fill="none"
-              stroke="${colorScheme.bg}"
+              stroke="${bgColor}"
               stroke-width="${strokeWidth}"
             />
 
@@ -132,21 +131,21 @@
               </linearGradient>
             </defs>
 
-            <!-- Center icon -->
+            <!-- Center icon (gray) -->
             <g transform="translate(40, 40)">
               <text
                 text-anchor="middle"
                 dominant-baseline="central"
                 font-size="18"
-                fill="${colorScheme.text}"
+                fill="#6b7280"
                 class="svg-ring-icon">
                 <tspan class="${icon}"></tspan>
               </text>
             </g>
           </svg>
 
-          <!-- Percentage text (overlay) -->
-          <div class="svg-ring-percentage" style="color: ${colorScheme.text};">
+          <!-- Percentage text (overlay, gray) -->
+          <div class="svg-ring-percentage" style="color: #6b7280;">
             ${Math.round(progress)}%
           </div>
         </div>
@@ -384,6 +383,138 @@
     `;
   }
 
+  /**
+   * יצירת טבעת תאריך יעד עם ימים נותרים (במקום אחוזים)
+   * @param {Object} config - Configuration object
+   * @param {Date} config.deadline - Deadline date
+   * @param {number} config.daysRemaining - Days until deadline (negative = overdue)
+   * @param {number} [config.size=100] - Ring size in pixels
+   * @param {Object} [config.button] - Button configuration { text, onclick, show }
+   * @returns {string} - HTML string
+   */
+  function createDeadlineDisplay(config) {
+    const {
+      deadline,
+      daysRemaining,
+      size = 100,
+      button = null
+    } = config;
+
+    const isOverdue = daysRemaining < 0;
+    const absDays = Math.abs(daysRemaining);
+
+    // צבע המילוי משתנה לפי דחיפות
+    let colorScheme;
+
+    if (isOverdue) {
+      colorScheme = {
+        start: '#dc2626',
+        end: '#b91c1c'
+      };
+    } else if (daysRemaining <= 3) {
+      colorScheme = {
+        start: '#ea580c',
+        end: '#c2410c'
+      };
+    } else {
+      colorScheme = {
+        start: '#2563eb',
+        end: '#1e40af'
+      };
+    }
+
+    // הרקע תמיד אפור
+    const bgColor = '#e5e7eb';
+
+    const radius = 32;
+    const strokeWidth = 6;
+    const circumference = 2 * Math.PI * radius;
+    const gradientId = `deadline-gradient-${Math.random().toString(36).substr(2, 9)}`;
+
+    // פורמט תאריך קומפקטי
+    const day = deadline.getDate();
+    const month = deadline.getMonth() + 1;
+    const dateStr = `${day}.${month}`;
+
+    // טקסט מתחת לטבעת
+    let bottomText;
+    if (isOverdue) {
+      bottomText = absDays === 1 ? 'איחור יום' : `איחור ${absDays} ימים`;
+    } else if (daysRemaining === 0) {
+      bottomText = 'היום!';
+    } else if (daysRemaining === 1) {
+      bottomText = 'יום אחד';
+    } else {
+      bottomText = `${daysRemaining} ימים`;
+    }
+
+    return `
+      <div class="svg-ring-container">
+        <div class="svg-ring-wrapper">
+          <svg width="${size}" height="${size}" viewBox="0 0 80 80" class="svg-ring">
+            <!-- Background circle (gray) -->
+            <circle
+              cx="40"
+              cy="40"
+              r="${radius}"
+              fill="none"
+              stroke="${bgColor}"
+              stroke-width="${strokeWidth}"
+            />
+
+            <!-- Progress circle (colored - full) -->
+            <circle
+              cx="40"
+              cy="40"
+              r="${radius}"
+              fill="none"
+              stroke="url(#${gradientId})"
+              stroke-width="${strokeWidth}"
+              stroke-dasharray="${circumference}"
+              stroke-dashoffset="0"
+              stroke-linecap="round"
+              transform="rotate(-90 40 40)"
+              class="svg-ring-progress"
+            />
+
+            <!-- Gradient definition -->
+            <defs>
+              <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="${colorScheme.start}" />
+                <stop offset="100%" stop-color="${colorScheme.end}" />
+              </linearGradient>
+            </defs>
+
+            <!-- Center content: Compact date (gray text) -->
+            <text
+              x="40"
+              y="40"
+              text-anchor="middle"
+              dominant-baseline="central"
+              font-size="16"
+              font-weight="700"
+              fill="#6b7280">
+              ${dateStr}
+            </text>
+          </svg>
+        </div>
+
+        <!-- Label and value -->
+        <div class="svg-ring-info">
+          <div class="svg-ring-label">תאריך יעד</div>
+          <div class="svg-ring-value">${bottomText}</div>
+        </div>
+
+        <!-- Action button (if provided) -->
+        ${button && button.show ? `
+          <button class="svg-ring-action-btn ${button.cssClass || ''}" onclick="${button.onclick}">
+            <i class="${button.icon || 'fas fa-edit'}"></i> ${button.text}
+          </button>
+        ` : ''}
+      </div>
+    `;
+  }
+
   // Export to global scope
   if (typeof window !== 'undefined') {
     window.SVGRings = {
@@ -392,6 +523,7 @@
       createOverageIndicator,
       createCompactDeadlineRing,
       createTableProgressBar,
+      createDeadlineDisplay,
       calculateDashOffset
     };
   }

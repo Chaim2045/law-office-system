@@ -574,25 +574,27 @@ return '';
     console.log(`🔍 Task ${task.id.substring(0, 8)}: deadlineProgress = ${deadlineProgress}%`);
   }
 
-  const deadlineRingConfig = {
-    progress: deadlineProgress,
-    color: deadlineColor,
-    icon: 'fas fa-calendar-alt',
-    label: 'תאריך יעד',
-    value: isDeadlineOverdue
-      ? `איחור ${overdueDays} ${overdueDays === 1 ? 'יום' : 'ימים'}`
-      : `${daysUntilDeadline} ${daysUntilDeadline === 1 ? 'יום' : 'ימים'} נותרו`,
+  // ✅ NEW: Use createDeadlineDisplay instead of createSVGRing for deadline
+  const budgetRingHTML = window.SVGRings.createSVGRing(budgetRingConfig);
+  const deadlineRingHTML = window.SVGRings.createDeadlineDisplay({
+    deadline: deadline,
+    daysRemaining: daysUntilDeadline,
     size: 80,
-    button: isDeadlineOverdue ? { // ✅ Always shows when overdue - allows repeated extensions
+    button: isDeadlineOverdue ? {
       text: wasExtended ? 'הארך שוב' : 'הארך יעד',
       onclick: `event.stopPropagation(); manager.showExtendDeadlineDialog('${task.id}')`,
       icon: 'fas fa-calendar-plus',
       cssClass: 'deadline-btn',
       show: true
     } : null
-  };
+  });
 
-  let ringsHTML = window.SVGRings.createDualRings(budgetRingConfig, deadlineRingConfig);
+  let ringsHTML = `
+    <div class="svg-rings-dual-layout">
+      ${budgetRingHTML}
+      ${deadlineRingHTML}
+    </div>
+  `;
 
   // Add info note if budget was adjusted
   if (wasAdjusted) {
