@@ -485,6 +485,156 @@ return;
   }
 
   /**
+   * Show alert dialog with OK button
+   * דיאלוג הודעה עם כפתור אישור בלבד
+   * @param {string} message - Message to display
+   * @param {Function} onOk - Callback when OK is clicked (optional)
+   * @param {Object} options - Alert options
+   * @param {string} options.title - Dialog title
+   * @param {string} options.okText - OK button text
+   * @param {string} options.type - Type (success, info, warning, error)
+   */
+  alert(message, onOk = null, options = {}) {
+    const {
+      title = 'הודעה',
+      okText = 'הבנתי',
+      type = 'success'
+    } = options;
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'alert-overlay';
+    overlay.style.cssText = 'position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10001; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); animation: fadeIn 0.2s ease;';
+    overlay.setAttribute('role', 'alertdialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'alert-title');
+
+    const icon = NotificationIcons[type];
+    // Use blue color for success instead of green
+    const color = type === 'success' ? '#3b82f6' : NotificationColors[type];
+
+    // Parse structured message (detect lines with specific patterns)
+    const messageHtml = this.parseStructuredAlertMessage(message);
+
+    overlay.innerHTML = `
+      <div class="alert-dialog" style="background: white; border-radius: 16px; padding: 32px; max-width: 520px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; direction: rtl; text-align: right;">
+        <div class="alert-header" style="text-align: center; margin-bottom: 24px;">
+          <div class="alert-icon" style="color: ${color}; font-size: 48px; margin-bottom: 16px;">
+            <i class="${icon}"></i>
+          </div>
+          <h3 id="alert-title" class="alert-title" style="font-size: 20px; font-weight: 600; color: #1f2937; margin: 0;">${this.escapeHtml(title)}</h3>
+        </div>
+
+        <div class="alert-body" style="margin-bottom: 32px;">
+          ${messageHtml}
+        </div>
+
+        <div class="alert-footer" style="display: flex; justify-content: center;">
+          <button class="alert-btn alert-btn-ok" type="button" style="padding: 14px 32px; border: none; border-radius: 8px; background: ${color}; color: white; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.2s;">
+            <i class="fas fa-check"></i>
+            ${this.escapeHtml(okText)}
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    // Focus on OK button
+    setTimeout(() => {
+      overlay.querySelector('.alert-btn-ok')?.focus();
+    }, 100);
+
+    // Handle OK click
+    const okBtn = overlay.querySelector('.alert-btn-ok');
+    okBtn.addEventListener('click', () => {
+      this.closeConfirm(overlay);
+      if (onOk) {
+        onOk();
+      }
+    });
+
+    // Handle Enter key
+    const handleEnter = (e) => {
+      if (e.key === 'Enter') {
+        this.closeConfirm(overlay);
+        if (onOk) {
+          onOk();
+        }
+        document.removeEventListener('keydown', handleEnter);
+      }
+    };
+    document.addEventListener('keydown', handleEnter);
+
+    // Trigger animation
+    setTimeout(() => {
+      overlay.classList.add('show');
+    }, 10);
+  }
+
+  /**
+   * Parse structured alert message into organized HTML
+   * Converts multiline text with emojis into clean sections
+   * @private
+   */
+  parseStructuredAlertMessage(message) {
+    // If message contains specific patterns, structure it nicely
+    const lines = message.split('\n').filter(line => line.trim());
+
+    // Check if this is a task creation message (contains ✅ and 📋)
+    if (message.includes('✅') && message.includes('📋')) {
+      let html = '<div style="text-align: right;">';
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        // Main success message
+        if (trimmed.startsWith('✅')) {
+          html += `<div style="background: #eff6ff; border-right: 4px solid #3b82f6; padding: 12px 16px; margin-bottom: 20px; border-radius: 8px;">
+            <div style="font-size: 15px; font-weight: 600; color: #1e40af;">
+              ${this.escapeHtml(trimmed.replace('✅', '').trim())}
+            </div>
+          </div>`;
+        }
+        // Task details (📋, 👤, ⏱️)
+        else if (trimmed.startsWith('📋') || trimmed.startsWith('👤') || trimmed.startsWith('⏱️')) {
+          const parts = trimmed.split(' ');
+          const emoji = parts[0];
+          const text = parts.slice(1).join(' ');
+          html += `<div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-size: 20px; flex-shrink: 0;">${emoji}</span>
+            <span style="font-size: 14px; color: #374151; flex: 1;">${this.escapeHtml(text)}</span>
+          </div>`;
+        }
+        // Notification message (🔔)
+        else if (trimmed.startsWith('🔔')) {
+          html += `<div style="background: #fef3c7; border-right: 3px solid #f59e0b; padding: 12px 16px; margin-top: 20px; margin-bottom: 12px; border-radius: 8px;">
+            <div style="font-size: 14px; color: #92400e; font-weight: 500;">
+              ${this.escapeHtml(trimmed.replace('🔔', '').trim())}
+            </div>
+          </div>`;
+        }
+        // Info message (💡)
+        else if (trimmed.startsWith('💡')) {
+          html += `<div style="background: #f0f9ff; border-right: 3px solid #0ea5e9; padding: 12px 16px; margin-top: 8px; border-radius: 8px;">
+            <div style="font-size: 13px; color: #075985;">
+              ${this.escapeHtml(trimmed.replace('💡', '').trim())}
+            </div>
+          </div>`;
+        }
+      });
+
+      html += '</div>';
+      return html;
+    }
+
+    // Fallback: simple formatted message
+    return `<p style="font-size: 16px; color: #4b5563; line-height: 1.8; margin: 0; text-align: center;">${this.escapeHtml(message).replace(/\n/g, '<br>')}</p>`;
+  }
+
+  /**
    * ========================================
    * Utility Methods
    * ========================================

@@ -653,7 +653,7 @@ export function createTaskCard(task, options = {}) {
 
   const pendingApprovalIndicator = isPendingApproval ? `
     <span class="pending-approval-badge">
-      <i class="fas fa-clock"></i>
+      <i class="fas fa-lock"></i>
       ממתין לאישור מנהל
     </span>
   ` : '';

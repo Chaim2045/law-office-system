@@ -832,9 +832,26 @@ return false;
           );
           this.filterBudgetTasks();
         },
-        successMessage: msgs.success.created(selectorValues.clientName, description, estimatedMinutes),
+        successMessage: null,  // ✅ לא להציג toast - נציג alert dialog במקום
         errorMessage: msgs.error.createFailed,
         onSuccess: () => {
+          // ✅ הצג דיאלוג אישור עם כפתור "הבנתי"
+          if (window.NotificationSystem && window.NotificationSystem.alert) {
+            const alertMessage = msgs.success.created(selectorValues.clientName, description, estimatedMinutes);
+            window.NotificationSystem.alert(
+              alertMessage,
+              () => {
+                // Callback אחרי לחיצה על "הבנתי"
+                console.log('✅ User acknowledged task creation');
+              },
+              {
+                title: '✅ המשימה נשלחה בהצלחה',
+                okText: 'הבנתי',
+                type: 'success'
+              }
+            );
+          }
+
           // Clear form and hide
           Forms.clearBudgetForm(this);
           document.getElementById('budgetFormContainer')?.classList.add('hidden');
@@ -1013,10 +1030,8 @@ return;
     if (this.currentTaskFilter === 'completed') {
       this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status === 'הושלם');
     } else if (this.currentTaskFilter === 'active') {
-      // ✅ סנן החוצה משימות ממתינות לאישור - הן לא "פעילות" עדיין
-      this.filteredBudgetTasks = this.budgetTasks.filter(task =>
-        task.status !== 'הושלם' && task.status !== 'pending_approval'
-      );
+      // ✅ הצג גם משימות ממתינות לאישור - עם סטייל מיוחד (מנעול)
+      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status !== 'הושלם');
     } else {
       // 'all' - show everything (including pending_approval)
       this.filteredBudgetTasks = [...this.budgetTasks];

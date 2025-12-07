@@ -54,7 +54,8 @@
       "Bash(netlify status:*)",
       "Bash(netlify open:site:*)",
       "Bash(netlify open:admin:*)",
-      "Bash(gcloud projects describe:*)"
+      "Bash(gcloud projects describe:*)",
+      "Bash(curl -s \"https://firebase.googleapis.com/v1beta1/projects/law-office-system-e4801\")"
     ],
     "deny": [],
     "ask": []

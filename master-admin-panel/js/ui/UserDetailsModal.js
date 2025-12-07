@@ -2233,8 +2233,25 @@ return;
          * Switch tab
          * מעבר בין טאבים
          */
-        switchTab(tabId) {
+        async switchTab(tabId) {
             this.activeTab = tabId;
+
+            // If switching to messages tab, mark user's responses as read by admin
+            if (tabId === 'messages' && this.currentUser && window.alertCommManager) {
+                try {
+                    const count = await window.alertCommManager.markUserResponsesAsReadByAdmin(this.currentUser.email);
+                    if (count > 0) {
+                        console.log(`✅ Marked ${count} responses as read by admin`);
+
+                        // Refresh the badge counts in the users table
+                        if (window.UsersTable && typeof window.UsersTable.loadResponseCounts === 'function') {
+                            await window.UsersTable.loadResponseCounts();
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to mark responses as read:', error);
+                }
+            }
 
             // Update modal content
             window.ModalManager.updateContent(this.modalId, this.renderContent());

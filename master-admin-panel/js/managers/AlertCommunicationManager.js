@@ -290,8 +290,8 @@
         }
 
         /**
-         * Get unread responses count per user
-         * קבלת מספר תגובות שלא נקראו לפי משתמש
+         * Get unread responses count per user (only responses admin hasn't seen)
+         * קבלת מספר תגובות שהמנהל לא ראה לפי משתמש
          *
          * @returns {Promise<Map>} - Map of userEmail -> count
          */
@@ -309,8 +309,11 @@
 
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
-                const userEmail = data.to;
-                counts.set(userEmail, (counts.get(userEmail) || 0) + 1);
+                // Only count if admin hasn't read it yet
+                if (data.adminRead !== true) {
+                    const userEmail = data.to;
+                    counts.set(userEmail, (counts.get(userEmail) || 0) + 1);
+                }
             });
 
             return counts;
@@ -326,6 +329,54 @@
                 .update({
                     status: 'read'
                 });
+        }
+
+        /**
+         * Mark user's responded messages as read by admin
+         * סימון כל התגובות של משתמש כנקראו על ידי מנהל
+         *
+         * @param {string} userEmail - User email
+         * @returns {Promise<number>} - Number of messages marked
+         */
+        async markUserResponsesAsReadByAdmin(userEmail) {
+            if (!this.currentAdmin) {
+                throw new Error('Admin user not initialized');
+            }
+
+            console.log(`📖 Marking responses from ${userEmail} as read by admin...`);
+
+            // Get all responded messages from this user that admin hasn't read yet
+            const snapshot = await this.db.collection('user_messages')
+                .where('from', '==', this.currentAdmin.email)
+                .where('to', '==', userEmail)
+                .where('status', '==', 'responded')
+                .get();
+
+            // Batch update for performance
+            const batch = this.db.batch();
+            let count = 0;
+
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                // Only update if not already marked as read by admin
+                if (data.adminRead !== true) {
+                    batch.update(doc.ref, {
+                        adminRead: true,
+                        adminReadAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        adminReadBy: this.currentAdmin.email
+                    });
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                await batch.commit();
+                console.log(`✅ Marked ${count} responses as read by admin`);
+            } else {
+                console.log('ℹ️ No new responses to mark');
+            }
+
+            return count;
         }
 
         /**
