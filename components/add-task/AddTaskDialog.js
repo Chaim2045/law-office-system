@@ -51,15 +51,23 @@ export class AddTaskDialog {
    * הצגת הדיאלוג
    */
   show() {
+    console.log('🔍 AddTaskDialog.show() called');
+
     if (this.isVisible) {
       console.warn('⚠️ Dialog is already visible');
       return;
     }
 
-    this.render();
-    this.isVisible = true;
-
-    console.log('✅ Add Task Dialog shown');
+    try {
+      console.log('🔍 Calling render()...');
+      this.render();
+      this.isVisible = true;
+      console.log('✅ Add Task Dialog shown successfully');
+    } catch (error) {
+      console.error('❌ Error showing Add Task Dialog:', error);
+      console.error('Stack trace:', error.stack);
+      throw error;
+    }
   }
 
   /**
@@ -99,46 +107,65 @@ export class AddTaskDialog {
    * בניית HTML של הדיאלוג - inline בדיוק כמו המקור
    */
   render() {
-    const html = this.buildHTML();
+    console.log('🔍 render() called');
 
-    // ✅ חפש את המיקום המקורי של הטופס (לפני budgetTab content)
-    const budgetTab = document.getElementById('budgetTab');
-    if (!budgetTab) {
-      console.error('❌ budgetTab not found');
-      return;
-    }
+    try {
+      const html = this.buildHTML();
+      console.log('✅ buildHTML() completed');
 
-    // יצירת הטופס
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-    this.overlay = tempDiv.firstElementChild;
+      // ✅ חפש את המיקום המקורי של הטופס (לפני budgetTab content)
+      const budgetTab = document.getElementById('budgetTab');
+      if (!budgetTab) {
+        console.error('❌ budgetTab not found - element does not exist in DOM');
+        console.log('Available elements:', document.querySelectorAll('[id*="budget"]'));
+        throw new Error('budgetTab element not found');
+      }
+      console.log('✅ budgetTab found:', budgetTab);
 
-    // הוספת הטופס בתחילת budgetTab (כמו המקור)
-    budgetTab.insertBefore(this.overlay, budgetTab.firstChild);
+      // יצירת הטופס
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      this.overlay = tempDiv.firstElementChild;
+      console.log('✅ overlay created:', this.overlay);
 
-    // הסרת class hidden להצגת הטופס
-    this.overlay.classList.remove('hidden');
+      // הוספת הטופס בתחילת budgetTab (כמו המקור)
+      budgetTab.insertBefore(this.overlay, budgetTab.firstChild);
+      console.log('✅ overlay inserted into budgetTab');
 
-    // Initialize form manager
-    this.formManager.init();
+      // הסרת class hidden להצגת הטופס
+      this.overlay.classList.remove('hidden');
+      console.log('✅ hidden class removed');
 
-    // Setup event listeners
-    this.setupEventListeners();
+      // Initialize form manager
+      this.formManager.init();
+      console.log('✅ form manager initialized');
 
-    // Initialize selectors
-    setTimeout(() => this.initializeSelectors(), 100);
+      // Setup event listeners
+      this.setupEventListeners();
+      console.log('✅ event listeners setup');
 
-    // Load draft if enabled
-    if (this.options.enableDrafts) {
-      const draft = this.formManager.loadDraft();
-      if (draft) {
-        this.showDraftPrompt(draft);
+      // Initialize selectors
+      setTimeout(() => this.initializeSelectors(), 100);
+      console.log('✅ selectors initialization scheduled');
+
+      // Load draft if enabled
+      if (this.options.enableDrafts) {
+        const draft = this.formManager.loadDraft();
+        if (draft) {
+          this.showDraftPrompt(draft);
+        } else {
+          // No draft - fill defaults
+          this.formManager.fillDefaults();
+        }
       } else {
-        // No draft - fill defaults
         this.formManager.fillDefaults();
       }
-    } else {
-      this.formManager.fillDefaults();
+      console.log('✅ render() completed successfully');
+
+    } catch (error) {
+      console.error('❌ Error in render():', error);
+      console.error('Stack trace:', error.stack);
+      throw error;
     }
   }
 
