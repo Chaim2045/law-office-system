@@ -571,7 +571,8 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       clientsSnapshot,
       tasksSnapshot,
       timesheetSnapshot,
-      activitySnapshot
+      activitySnapshot,
+      messagesSnapshot
     ] = await Promise.all([
       // שליפת נתוני Auth
       employeeData.authUID ? auth.getUser(employeeData.authUID).catch(() => null) : Promise.resolve(null),
@@ -601,6 +602,13 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       db.collection('audit_log')
         .where('userId', '==', employeeData.authUID || '')
         .orderBy('timestamp', 'desc')
+        .limit(50)
+        .get(),
+
+      // שליפת הודעות (messages sent to this user)
+      db.collection('user_messages')
+        .where('to', '==', data.email)
+        .orderBy('createdAt', 'desc')
         .limit(50)
         .get()
     ]);
@@ -651,6 +659,12 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       };
     });
 
+    // עיבוד הודעות
+    const messages = messagesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
     // בניית תשובה
     const response = {
       success: true,
@@ -665,12 +679,14 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
         lastLogin: employeeData.lastLogin,
         loginCount: employeeData.loginCount || 0,
         photoURL: authUserData?.photoURL || null,
-        emailVerified: authUserData?.emailVerified || false
+        emailVerified: authUserData?.emailVerified || false,
+        authUID: employeeData.authUID // ✅ הוספת authUID למשתמש
       },
       clients: clients,
       tasks: tasks,
       timesheet: timesheet,
       activity: activity,
+      messages: messages, // ✅ הוספת הודעות
       stats: {
         totalClients: clients.length,
         activeTasks: tasks.filter(t => t.status !== 'הושלם').length, // ✅ System uses "פעיל" (not "ממתין"/"בטיפול")

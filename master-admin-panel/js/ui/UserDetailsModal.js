@@ -139,6 +139,7 @@
                     timesheet: [],
                     hours: [], // Alias for compatibility
                     activity: [],
+                    messages: [], // ✅ תיקון: הוספת messages
                     stats: {},
                     clientsCount: 0,
                     tasksCount: 0,
@@ -187,6 +188,7 @@
                 timesheet: responseData.timesheet || [],
                 hours: responseData.timesheet || [],
                 activity: responseData.activity || [],
+                messages: responseData.messages || [], // ✅ תיקון: הוספת messages
                 stats: responseData.stats || {},
                 clientsCount: responseData.stats?.totalClients || 0,
                 tasksCount: responseData.stats?.activeTasks || 0,
