@@ -444,6 +444,188 @@
         }
 
         /**
+         * ═══════════════════════════════════════════════════════════════════════════
+         * THREAD-BASED MESSAGING API (New)
+         * ═══════════════════════════════════════════════════════════════════════════
+         * Added: 2025-12-07
+         * Part of thread-based messaging system
+         */
+
+        /**
+         * Load thread replies for a message
+         * טעינת תשובות לשרשור
+         *
+         * @param {string} messageId - Message ID
+         * @returns {Promise<Array>} - Array of reply objects
+         */
+        async loadThreadReplies(messageId) {
+            if (!messageId) {
+                throw new Error('messageId is required');
+            }
+
+            try {
+                const snapshot = await this.db.collection('user_messages')
+                    .doc(messageId)
+                    .collection('replies')
+                    .orderBy('createdAt', 'asc')
+                    .get();
+
+                const replies = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate()
+                }));
+
+                console.log(`✅ Loaded ${replies.length} replies for message ${messageId}`);
+                return replies;
+
+            } catch (error) {
+                console.error('Error loading thread replies:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Listen to thread replies in real-time
+         * האזנה לתשובות בזמן אמת
+         *
+         * @param {string} messageId - Message ID
+         * @param {Function} callback - Callback function (replies) => {}
+         * @returns {Function} - Unsubscribe function
+         */
+        listenToThreadReplies(messageId, callback) {
+            if (!messageId) {
+                throw new Error('messageId is required');
+            }
+
+            if (!callback || typeof callback !== 'function') {
+                throw new Error('callback function is required');
+            }
+
+            console.log(`👂 Listening to replies for message ${messageId}`);
+
+            return this.db.collection('user_messages')
+                .doc(messageId)
+                .collection('replies')
+                .orderBy('createdAt', 'asc')
+                .onSnapshot(
+                    snapshot => {
+                        const replies = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data(),
+                            createdAt: doc.data().createdAt?.toDate()
+                        }));
+
+                        console.log(`📨 Received ${replies.length} replies`);
+                        callback(replies);
+                    },
+                    error => {
+                        console.error('Error listening to thread replies:', error);
+                    }
+                );
+        }
+
+        /**
+         * Send admin reply to thread
+         * שליחת תשובת מנהל לשרשור
+         *
+         * @param {string} messageId - Message ID
+         * @param {string} replyText - Reply text
+         * @returns {Promise<string>} - Reply ID
+         */
+        async sendAdminReply(messageId, replyText) {
+            if (!this.currentAdmin) {
+                throw new Error('Admin user not initialized. Call init() first.');
+            }
+
+            if (!messageId || !replyText) {
+                throw new Error('messageId and replyText are required');
+            }
+
+            const trimmedReply = replyText.trim();
+            if (!trimmedReply) {
+                throw new Error('Reply text cannot be empty');
+            }
+
+            try {
+                // Add reply to subcollection
+                const replyRef = await this.db.collection('user_messages')
+                    .doc(messageId)
+                    .collection('replies')
+                    .add({
+                        from: this.currentAdmin.email,
+                        fromName: this.currentAdmin.displayName || this.currentAdmin.email,
+                        message: trimmedReply,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        readBy: [] // Track who read this reply
+                    });
+
+                // Update parent document with metadata
+                await this.db.collection('user_messages')
+                    .doc(messageId)
+                    .update({
+                        repliesCount: firebase.firestore.FieldValue.increment(1),
+                        lastReplyAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastReplyBy: this.currentAdmin.email,
+                        status: 'responded' // Mark as responded
+                    });
+
+                console.log(`✅ Admin reply sent: ${replyRef.id}`);
+
+                // Show success notification
+                if (window.notify) {
+                    window.notify.success('התגובה נשלחה בהצלחה!');
+                }
+
+                return replyRef.id;
+
+            } catch (error) {
+                console.error('Error sending admin reply:', error);
+
+                if (window.notify) {
+                    window.notify.error('שגיאה בשליחת התגובה: ' + error.message);
+                }
+
+                throw error;
+            }
+        }
+
+        /**
+         * Get thread metadata
+         * קבלת מטא-דאטה של שרשור
+         *
+         * @param {string} messageId - Message ID
+         * @returns {Promise<Object>} - Thread metadata
+         */
+        async getThreadMetadata(messageId) {
+            if (!messageId) {
+                throw new Error('messageId is required');
+            }
+
+            try {
+                const doc = await this.db.collection('user_messages')
+                    .doc(messageId)
+                    .get();
+
+                if (!doc.exists) {
+                    throw new Error('Message not found');
+                }
+
+                const data = doc.data();
+                return {
+                    repliesCount: data.repliesCount || 0,
+                    lastReplyAt: data.lastReplyAt?.toDate(),
+                    lastReplyBy: data.lastReplyBy,
+                    status: data.status
+                };
+
+            } catch (error) {
+                console.error('Error getting thread metadata:', error);
+                throw error;
+            }
+        }
+
+        /**
          * Sync alerts from AlertEngine
          * סנכרון התראות מ-AlertEngine
          *

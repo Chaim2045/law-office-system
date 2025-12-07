@@ -1,0 +1,226 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * AdminThreadView Styles - Thread-Based Message Conversations (Admin Panel)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Created: 2025-12-07
+ */
+
+/* Container */
+.admin-thread-container {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  background: var(--gray-50, #f9fafb);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Messages Area */
+.admin-thread-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Individual Message */
+.admin-thread-message {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Admin Message (left side - admin sent) */
+.admin-thread-message-admin {
+  align-self: flex-start;
+  background: white;
+  border: 1px solid var(--gray-200, #e5e7eb);
+}
+
+/* User Message (right side - user sent) */
+.admin-thread-message-user {
+  align-self: flex-end;
+  background: var(--primary-500, #3b82f6);
+  color: white;
+  border: 1px solid var(--primary-600, #2563eb);
+}
+
+.admin-thread-message-user .admin-thread-message-header {
+  color: rgba(255,255,255,0.9);
+}
+
+.admin-thread-message-user .admin-thread-message-time {
+  color: rgba(255,255,255,0.7);
+}
+
+/* Message Header */
+.admin-thread-message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--gray-600, #4b5563);
+}
+
+.admin-thread-message-header strong {
+  font-weight: 600;
+}
+
+.admin-thread-message-time {
+  font-size: 12px;
+  color: var(--gray-500, #6b7280);
+}
+
+/* Message Content */
+.admin-thread-message-content {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Loading Indicator */
+.admin-thread-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--gray-500, #6b7280);
+  font-size: 14px;
+}
+
+.admin-thread-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--gray-200, #e5e7eb);
+  border-top-color: var(--primary-500, #3b82f6);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error State */
+.admin-thread-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--danger-600, #dc2626);
+  font-size: 14px;
+}
+
+/* Input Container */
+.admin-thread-input-container {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border-top: 1px solid var(--gray-200, #e5e7eb);
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.05);
+}
+
+.admin-thread-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--gray-300, #d1d5db);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color 0.2s;
+}
+
+.admin-thread-input:focus {
+  outline: none;
+  border-color: var(--primary-500, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin-thread-input::placeholder {
+  color: var(--gray-400, #9ca3af);
+}
+
+.admin-thread-send-btn {
+  padding: 10px 20px;
+  background: var(--primary-500, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.admin-thread-send-btn:hover:not(:disabled) {
+  background: var(--primary-600, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+}
+
+.admin-thread-send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Scrollbar Styling */
+.admin-thread-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-thread-messages::-webkit-scrollbar-track {
+  background: var(--gray-100, #f3f4f6);
+}
+
+.admin-thread-messages::-webkit-scrollbar-thumb {
+  background: var(--gray-300, #d1d5db);
+  border-radius: 4px;
+}
+
+.admin-thread-messages::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400, #9ca3af);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-thread-message {
+    max-width: 85%;
+  }
+
+  .admin-thread-input-container {
+    flex-direction: column;
+  }
+
+  .admin-thread-send-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

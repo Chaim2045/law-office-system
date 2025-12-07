@@ -981,6 +981,14 @@
 
                                 <!-- Action Buttons -->
                                 <div class="message-actions">
+                                    ${(message.repliesCount && message.repliesCount > 0) ? `
+                                        <button class="btn-icon btn-view-thread"
+                                                data-message-id="${message.id}"
+                                                title="צפה בשיחה (${message.repliesCount} תשובות)">
+                                            <i class="fas fa-comments"></i>
+                                            <span style="font-size: 10px; margin-right: 4px;">${message.repliesCount}</span>
+                                        </button>
+                                    ` : ''}
                                     ${!message.archived ? `
                                         <button class="btn-icon btn-archive-message"
                                                 data-message-id="${message.id}"
@@ -1206,6 +1214,43 @@
                 console.error('   Error details:', error.message);
                 if (window.notify) {
                     window.notify.error(`שגיאה בשחזור הודעה: ${error.message}`);
+                }
+            }
+        }
+
+        /**
+         * Open thread view for a message
+         * פתיחת תצוגת שיחה להודעה
+         */
+        async openThread(messageId) {
+            try {
+                console.log('💬 Opening thread view for message:', messageId);
+
+                if (!messageId) {
+                    throw new Error('Message ID is missing');
+                }
+
+                // Find the message in local data
+                const message = this.userData.messages.find(m => m.id === messageId);
+                if (!message) {
+                    throw new Error('Message not found in local data');
+                }
+
+                // Check if AdminThreadView is available
+                if (!window.adminThreadView) {
+                    throw new Error('AdminThreadView not initialized');
+                }
+
+                // Open thread view
+                await window.adminThreadView.open(messageId, message);
+
+                console.log('✅ Thread view opened successfully');
+            } catch (error) {
+                console.error('❌ Error opening thread view:', error);
+                console.error('   Message ID was:', messageId);
+                console.error('   Error details:', error.message);
+                if (window.notify) {
+                    window.notify.error(`שגיאה בפתיחת השיחה: ${error.message}`);
                 }
             }
         }
@@ -2250,6 +2295,15 @@ return;
                         const messageId = restoreBtn.getAttribute('data-message-id');
                         console.log('♻️ Restore button clicked, messageId:', messageId);
                         await this.restoreMessage(messageId);
+                        return;
+                    }
+
+                    // Check for view thread button
+                    const threadBtn = e.target.closest('.btn-view-thread');
+                    if (threadBtn) {
+                        const messageId = threadBtn.getAttribute('data-message-id');
+                        console.log('💬 View thread button clicked, messageId:', messageId);
+                        await this.openThread(messageId);
                         return;
                     }
                 });
