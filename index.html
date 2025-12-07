@@ -440,8 +440,8 @@
           <div class="top-user-bar">
             <!-- Messages Icon - Outside dropdown -->
             <div class="messages-icon-container" style="position: relative; display: inline-block; margin-left: 12px;">
-              <i class="fas fa-envelope" id="aiNotificationsBtn" onclick="if(window.userAlertsPanel) window.userAlertsPanel.toggleDropdown()" style="color: #3b82f6; cursor: pointer; font-size: 18px;"></i>
-              <span id="alertsBadge" class="hidden" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 10px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; padding: 0 5px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">0</span>
+              <i class="fas fa-envelope" id="messagesIcon" onclick="if(window.notificationBell) window.notificationBell.toggleDropdown()" style="color: #3b82f6; cursor: pointer; font-size: 18px;"></i>
+              <span id="messagesCountBadge" class="hidden" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 10px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; padding: 0 5px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">0</span>
             </div>
 
             <div class="user-dropdown-top">
@@ -1114,10 +1114,6 @@
     <!-- Toast notifications with Lottie animations -->
     <script src="js/modules/notification-messages.js?v=1.0.1"></script>
     <script src="js/modules/notification-system.js?v=1.0.2"></script>
-
-    <!-- ===== User Alerts Panel - התראות משתמש ===== -->
-    <script src="js/managers/UserAlertsPanel.js?v=1.0.0"></script>
-    <script src="js/init-user-alerts.js?v=1.0.0"></script>
 
     <!-- ===== 🎯 NEW: Unified UI System - Step 1: Load Components ===== -->
     <!-- Feature Flags - Controls whether to use new or legacy system -->
