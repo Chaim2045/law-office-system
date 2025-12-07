@@ -2213,7 +2213,7 @@ select.form-input,
   color: #059669;
 }
 
-/* Messages Filter Tabs */
+/* Messages Filter Tabs - Tab-style with smooth transitions */
 .messages-filter-tabs {
   display: flex;
   gap: 8px;
@@ -2232,36 +2232,68 @@ select.form-input,
   padding: 10px 16px;
   background: var(--gray-100);
   border: 2px solid transparent;
-  border-radius: 16px; /* Rounded corners for modern look */
+  border-radius: 16px;
   font-size: 14px;
   font-weight: 500;
   color: var(--gray-700);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth tab transition */
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
-.filter-tab i {
-  font-size: 14px;
-  opacity: 0.7;
-}
-
+/* Hover effect - subtle lift */
 .filter-tab:hover:not(.active) {
   background: var(--gray-200);
   border-color: var(--gray-300);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Active state - bold gradient with smooth animation */
 .filter-tab.active {
   background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
   color: white;
   border-color: #4f46e5;
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  transform: translateY(-1px);
+  animation: tabActivate 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tab activation animation */
+@keyframes tabActivate {
+  0% {
+    transform: translateY(0) scale(0.98);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-2px) scale(1.02);
+  }
+  100% {
+    transform: translateY(-1px) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Icon animations */
+.filter-tab i {
+  font-size: 14px;
+  opacity: 0.7;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .filter-tab.active i {
   opacity: 1;
+  transform: scale(1.1);
 }
 
+.filter-tab:hover:not(.active) i {
+  transform: scale(1.05);
+  opacity: 0.85;
+}
+
+/* Count badge */
 .filter-count {
   display: inline-flex;
   align-items: center;
@@ -2273,19 +2305,38 @@ select.form-input,
   border-radius: 12px;
   font-size: 12px;
   font-weight: 700;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .filter-tab.active .filter-count {
   background: rgba(255, 255, 255, 0.25);
   color: white;
+  transform: scale(1.05);
 }
 
-/* Messages Timeline */
+.filter-tab:hover:not(.active) .filter-count {
+  transform: scale(1.02);
+}
+
+/* Messages Timeline - with smooth fade-in animation */
 .messages-timeline {
   position: relative;
   padding: 24px 24px 24px 64px;
   background: var(--gray-50);
   min-height: 400px;
+  animation: fadeInContent 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Fade-in animation for timeline content */
+@keyframes fadeInContent {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .timeline-item {
