@@ -220,8 +220,18 @@ exports.createUser = functions.https.onCall(async (data, context) => {
     // יצירת username מה-email
     const username = data.username || data.email.split('@')[0];
 
+    // Validation של תקן שעות יומי (אם נשלח)
+    let dailyHoursTarget = null;
+    if (data.dailyHoursTarget !== undefined && data.dailyHoursTarget !== null && data.dailyHoursTarget !== '') {
+      const hours = parseFloat(data.dailyHoursTarget);
+      if (isNaN(hours) || hours < 1 || hours > 24) {
+        throw new functions.https.HttpsError('invalid-argument', 'תקן שעות יומי חייב להיות בין 1 ל-24');
+      }
+      dailyHoursTarget = hours;
+    }
+
     // יצירת מסמך ב-Firestore (EMAIL = Document ID)
-    await db.collection('employees').doc(data.email).set({
+    const employeeData = {
       authUID: userRecord.uid,
       username: username,
       displayName: sanitizeString(data.displayName),
@@ -236,7 +246,14 @@ exports.createUser = functions.https.onCall(async (data, context) => {
       lastLogin: null,
       loginCount: 0,
       migratedToAuth: true
-    });
+    };
+
+    // הוספת תקן שעות יומי אם נשלח
+    if (dailyHoursTarget !== null) {
+      employeeData.dailyHoursTarget = dailyHoursTarget;
+    }
+
+    await db.collection('employees').doc(data.email).set(employeeData);
 
     // Audit log
     await logAction('CREATE_USER', adminUser.uid, adminUser.username, {
@@ -317,6 +334,20 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
         await auth.setCustomUserClaims(employeeData.authUID, {
           role: data.role
         });
+      }
+    }
+
+    // עדכון תקן שעות יומי (אם נשלח)
+    if (data.dailyHoursTarget !== undefined) {
+      if (data.dailyHoursTarget === null || data.dailyHoursTarget === '') {
+        // מחיקת תקן אישי (חזרה לברירת מחדל)
+        updates.dailyHoursTarget = admin.firestore.FieldValue.delete();
+      } else {
+        const hours = parseFloat(data.dailyHoursTarget);
+        if (isNaN(hours) || hours < 1 || hours > 24) {
+          throw new functions.https.HttpsError('invalid-argument', 'תקן שעות יומי חייב להיות בין 1 ל-24');
+        }
+        updates.dailyHoursTarget = hours;
       }
     }
 
