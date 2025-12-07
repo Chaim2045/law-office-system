@@ -249,6 +249,18 @@ export class NotificationBellSystem {
         aiNotificationBadge.style.display = 'none';
       }
     }
+
+    // Update AI floating button badge (shows total unread: admin + system)
+    const totalUnreadCount = unreadAdminCount + systemNotificationsCount;
+    const aiFloatBadge = document.getElementById('aiFloatNotificationBadge');
+    if (aiFloatBadge) {
+      if (totalUnreadCount > 0) {
+        aiFloatBadge.textContent = totalUnreadCount;
+        aiFloatBadge.style.display = 'flex';
+      } else {
+        aiFloatBadge.style.display = 'none';
+      }
+    }
   }
 
   updateBell() {
