@@ -241,6 +241,26 @@
                         <small class="form-hint">פורמט: +972501234567 (נדרש ל-WhatsApp)</small>
                     </div>
 
+                    <!-- Daily Hours Target (Optional) -->
+                    <div class="form-group">
+                        <label for="dailyHoursTarget" class="form-label">
+                            <i class="fas fa-business-time"></i>
+                            <span>תקן שעות יומי (אופציונלי)</span>
+                        </label>
+                        <input
+                            type="number"
+                            id="dailyHoursTarget"
+                            name="dailyHoursTarget"
+                            class="form-input"
+                            placeholder="8.45"
+                            min="1"
+                            max="24"
+                            step="0.5"
+                        >
+                        <div class="form-error" data-error="dailyHoursTarget"></div>
+                        <small class="form-hint">ברירת מחדל: 8.45 שעות/יום. המערכת תחשב אוטומטית את התקן החודשי לפי ימי העבודה בפועל (מוריד שישי-שבת וחגים).</small>
+                    </div>
+
                     <!-- WhatsApp Enabled -->
                     <div class="form-group">
                         <label class="form-label">
@@ -377,7 +397,7 @@ return;
 }
 
             // Populate fields
-            const fields = ['displayName', 'email', 'role', 'status', 'username', 'phone'];
+            const fields = ['displayName', 'email', 'role', 'status', 'username', 'phone', 'dailyHoursTarget'];
             fields.forEach(field => {
                 const input = form.querySelector(`[name="${field}"]`);
                 if (input && this.currentUser[field] !== undefined) {
@@ -463,6 +483,19 @@ return false;
                         error = 'שם משתמש לא יכול להכיל רווחים';
                     } else if (value && value.length > 50) {
                         error = 'שם משתמש ארוך מדי (מקסימום 50 תווים)';
+                    }
+                    break;
+
+                case 'dailyHoursTarget':
+                    if (value) {
+                        const hours = parseFloat(value);
+                        if (isNaN(hours)) {
+                            error = 'תקן שעות חייב להיות מספר';
+                        } else if (hours < 1) {
+                            error = 'תקן שעות נמוך מדי (מינימום 1 שעה)';
+                        } else if (hours > 24) {
+                            error = 'תקן שעות לא יכול לעבור 24 שעות';
+                        }
                     }
                     break;
             }
