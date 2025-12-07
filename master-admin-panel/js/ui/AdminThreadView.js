@@ -123,32 +123,43 @@
          * Load and listen to replies
          */
         async loadAndListenToReplies() {
+            console.log('🔍 Starting loadAndListenToReplies for thread:', this.currentThreadId);
+
             if (!this.currentThreadId) {
-                console.error('No thread ID set');
+                console.error('❌ No thread ID set');
                 return;
             }
 
             if (!window.alertCommManager) {
-                console.error('AlertCommunicationManager not available');
+                console.error('❌ AlertCommunicationManager not available');
                 return;
             }
 
             const loadingEl = document.getElementById('adminThreadLoading');
+            console.log('📍 Loading element found:', !!loadingEl);
+
             if (loadingEl) {
                 loadingEl.style.display = 'flex';
             }
 
             try {
+                console.log('👂 Setting up real-time listener...');
+
                 // Set up real-time listener
                 this.unsubscribeReplies = window.alertCommManager.listenToThreadReplies(
                     this.currentThreadId,
                     (replies) => {
+                        console.log(`📨 Received ${replies.length} replies from Firestore`);
+                        console.log('Reply data:', replies);
+
                         this.replies = replies;
                         this.renderReplies(replies);
 
                         // Hide loading
-                        if (loadingEl) {
-                            loadingEl.style.display = 'none';
+                        const currentLoadingEl = document.getElementById('adminThreadLoading');
+                        if (currentLoadingEl) {
+                            console.log('✅ Hiding loading indicator');
+                            currentLoadingEl.style.display = 'none';
                         }
 
                         // Scroll to bottom
@@ -156,18 +167,20 @@
                     }
                 );
 
+                console.log('✅ Listener attached successfully');
+
                 // Attach event listeners after UI is rendered
                 this.attachEventListeners();
 
             } catch (error) {
-                console.error('Error loading thread replies:', error);
+                console.error('❌ Error loading thread replies:', error);
 
                 // Hide loading and show error
                 if (loadingEl) {
                     loadingEl.innerHTML = `
                         <div class="admin-thread-error">
                             <i class="fas fa-exclamation-triangle"></i>
-                            שגיאה בטעינת תשובות
+                            שגיאה בטעינת תשובות: ${error.message}
                         </div>
                     `;
                 }
@@ -211,16 +224,29 @@
          */
         renderReplies(replies) {
             const repliesList = document.getElementById('adminThreadRepliesList');
-            if (!repliesList) return;
+
+            if (!repliesList) {
+                console.error('❌ adminThreadRepliesList element not found in DOM');
+                console.log('Available elements:', {
+                    modal: document.querySelector('.modal'),
+                    modalContent: document.querySelector('.modal-content'),
+                    allDivs: document.querySelectorAll('div[id*="Thread"]').length
+                });
+                return;
+            }
+
+            console.log(`📝 Rendering ${replies.length} replies...`);
 
             if (replies.length === 0) {
-                repliesList.innerHTML = '';
+                repliesList.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280;">אין עדיין תגובות לשיחה זו</div>';
                 return;
             }
 
             repliesList.innerHTML = replies.map(reply => {
                 const isAdmin = reply.from === window.currentAdminUser?.email;
                 const messageClass = isAdmin ? 'admin-thread-message-admin' : 'admin-thread-message-user';
+
+                console.log(`  - Reply from: ${reply.from}, isAdmin: ${isAdmin}`);
 
                 return `
                     <div class="admin-thread-message ${messageClass}">
@@ -234,6 +260,8 @@
                     </div>
                 `;
             }).join('');
+
+            console.log('✅ Replies rendered successfully');
         }
 
         /**
