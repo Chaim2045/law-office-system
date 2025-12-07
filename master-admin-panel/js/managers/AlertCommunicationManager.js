@@ -168,6 +168,9 @@
                 throw new Error('Admin user not initialized');
             }
 
+            // Track first load to avoid toast spam
+            let isFirstLoad = true;
+
             // Listen to messages where admin is sender and status is 'responded'
             this.responsesListener = this.db.collection('user_messages')
                 .where('from', '==', this.currentAdmin.email)
@@ -183,16 +186,25 @@
 
                         console.log(`📨 Received ${responses.length} responses`);
 
-                        // Show notification for new responses
-                        snapshot.docChanges().forEach(change => {
-                            if (change.type === 'added' && window.notify) {
-                                const data = change.doc.data();
-                                window.notify.info(
-                                    `${data.toName} הגיב/ה להודעה`,
-                                    'תגובה חדשה'
-                                );
-                            }
-                        });
+                        // 🔇 DISABLED: Toast notifications on initial load
+                        // Only show toast for truly new responses after initial load
+                        if (!isFirstLoad) {
+                            snapshot.docChanges().forEach(change => {
+                                if (change.type === 'added' && window.notify) {
+                                    const data = change.doc.data();
+                                    window.notify.info(
+                                        `${data.toName} הגיב/ה להודעה`,
+                                        'תגובה חדשה'
+                                    );
+                                }
+                            });
+                        }
+
+                        // Mark first load as complete
+                        if (isFirstLoad) {
+                            isFirstLoad = false;
+                            console.log('✅ First load complete - toast notifications enabled for new responses');
+                        }
 
                         callback(responses);
                     },
@@ -275,6 +287,33 @@
                 : 0;
 
             return stats;
+        }
+
+        /**
+         * Get unread responses count per user
+         * קבלת מספר תגובות שלא נקראו לפי משתמש
+         *
+         * @returns {Promise<Map>} - Map of userEmail -> count
+         */
+        async getUserResponseCounts() {
+            if (!this.currentAdmin) {
+                throw new Error('Admin user not initialized');
+            }
+
+            const snapshot = await this.db.collection('user_messages')
+                .where('from', '==', this.currentAdmin.email)
+                .where('status', '==', 'responded')
+                .get();
+
+            const counts = new Map();
+
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const userEmail = data.to;
+                counts.set(userEmail, (counts.get(userEmail) || 0) + 1);
+            });
+
+            return counts;
         }
 
         /**

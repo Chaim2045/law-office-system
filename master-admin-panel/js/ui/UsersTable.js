@@ -28,6 +28,7 @@
                 { key: 'tasksCount', title: 'משימות', sortable: true },
                 { key: 'hoursThisMonth', title: 'שעות (חודש)', sortable: true },
                 { key: 'lastLogin', title: 'כניסה אחרונה', sortable: true },
+                { key: 'messages', title: 'הודעות', sortable: false, width: '90px' },
                 { key: 'actions', title: 'פעולות', sortable: false, width: '120px' }
             ];
 
@@ -35,6 +36,46 @@
                 field: 'displayName',
                 order: 'asc'
             };
+
+            // Store response counts
+            this.responseCounts = new Map();
+
+            // Load response counts on init
+            this.loadResponseCounts();
+        }
+
+        /**
+         * Load response counts from AlertCommunicationManager
+         * טעינת ספירת תגובות מהמערכת
+         */
+        async loadResponseCounts() {
+            try {
+                if (window.alertCommManager && typeof window.alertCommManager.getUserResponseCounts === 'function') {
+                    this.responseCounts = await window.alertCommManager.getUserResponseCounts();
+                    console.log(`✅ UsersTable: Loaded response counts for ${this.responseCounts.size} users`);
+
+                    // Refresh table if already rendered
+                    this.refreshMessageBadges();
+                }
+            } catch (error) {
+                console.error('❌ Failed to load response counts:', error);
+            }
+        }
+
+        /**
+         * Refresh message badges in table
+         * רענון תגי ההודעות בטבלה
+         */
+        refreshMessageBadges() {
+            this.responseCounts.forEach((count, email) => {
+                const row = document.querySelector(`tr[data-user-id="${email}"]`);
+                if (row) {
+                    const messageTd = row.querySelector('.user-messages-badge-cell');
+                    if (messageTd) {
+                        messageTd.innerHTML = this.renderMessageBadge(email);
+                    }
+                }
+            });
         }
 
         /**
@@ -151,6 +192,7 @@
                     <td>${user.tasksCount || 0}</td>
                     <td>${this.renderHours(user.hoursThisMonth)}</td>
                     <td>${this.renderDate(user.lastLogin)}</td>
+                    <td class="user-messages-badge-cell">${this.renderMessageBadge(user.email)}</td>
                     <td>${this.renderActions(user)}</td>
                 </tr>
             `;
@@ -241,6 +283,28 @@ return '?';
 return '-';
 }
             return `${hours.toFixed(1)} ש'`;
+        }
+
+        /**
+         * Render message badge
+         * רינדור תג הודעות
+         */
+        renderMessageBadge(userEmail) {
+            const count = this.responseCounts.get(userEmail) || 0;
+
+            if (count === 0) {
+                return '-';
+            }
+
+            return `
+                <button class="user-message-badge"
+                        data-user-email="${userEmail}"
+                        data-action="view-messages"
+                        title="לחץ לצפייה בהודעות">
+                    <i class="fas fa-envelope"></i>
+                    <span class="badge-count">${count}</span>
+                </button>
+            `;
         }
 
         /**
@@ -382,6 +446,15 @@ return '-';
                 });
             });
 
+            // Message badge buttons
+            document.querySelectorAll('.user-message-badge').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const userEmail = btn.getAttribute('data-user-email');
+                    this.handleMessageBadgeClick(userEmail);
+                });
+            });
+
             // Close menus on outside click
             document.addEventListener('click', () => {
                 this.closeAllMenus();
@@ -454,6 +527,26 @@ return '-';
                     userName
                 }
             }));
+        }
+
+        /**
+         * Handle message badge click
+         * טיפול בלחיצה על תג הודעות
+         */
+        handleMessageBadgeClick(userEmail) {
+            console.log(`📧 Opening messages for: ${userEmail}`);
+
+            // Find the user in DataManager
+            if (window.DataManager && window.DataManager.allUsers) {
+                const user = window.DataManager.allUsers.find(u => u.email === userEmail);
+                if (user && window.userDetailsModal) {
+                    // Open user details modal with messages tab
+                    window.userDetailsModal.open(user);
+                    // TODO: Switch to messages tab automatically
+                } else {
+                    console.error('User or userDetailsModal not found');
+                }
+            }
         }
 
         /**
