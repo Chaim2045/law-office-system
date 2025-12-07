@@ -42,8 +42,8 @@ import * as ClientHours from './modules/client-hours.js';
 // Forms Management
 import * as Forms from './modules/forms.js';
 
-// Budget Tasks Module
-import * as BudgetTasks from './modules/budget-tasks.js';
+// Budget Tasks Module (v5.2.4 - rings fix with 100%+ support)
+import * as BudgetTasks from './modules/budget-tasks.js?v=5.2.4';
 
 // Timesheet Module
 import * as Timesheet from './modules/timesheet.js';
