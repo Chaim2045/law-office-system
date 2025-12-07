@@ -71,6 +71,10 @@ return;
                         </div>
                     </div>
                     <div class="nav-user">
+                        <a href="task-approvals.html" class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" title="אישורי תקציב משימות">
+                            <i class="fas fa-clipboard-check"></i>
+                            <span>אישורי משימות</span>
+                        </a>
                         <button class="btn-logout" id="navLogoutBtn">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>יציאה</span>
@@ -201,6 +205,7 @@ return;
                     left: 24px;
                 }
 
+                .btn-approvals,
                 .btn-chat,
                 .btn-send-message,
                 .btn-logout {
@@ -216,6 +221,16 @@ return;
                     transition: all 0.2s;
                     font-size: 0.813rem;
                     font-weight: 500;
+                    text-decoration: none;
+                }
+
+                .btn-approvals:hover,
+                .btn-approvals.active {
+                    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+                    border-color: #4f46e5;
+                    color: white;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
                 }
 
                 .btn-chat:hover {
@@ -242,6 +257,7 @@ return;
                     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
                 }
 
+                .btn-approvals i,
                 .btn-chat i,
                 .btn-send-message i,
                 .btn-logout i {
@@ -284,6 +300,7 @@ return;
                         font-size: 13px;
                     }
 
+                    .btn-approvals,
                     .btn-chat,
                     .btn-send-message,
                     .btn-logout {

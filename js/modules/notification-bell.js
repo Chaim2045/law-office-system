@@ -454,11 +454,15 @@ return;
    * Open reply modal for admin message
    */
   openReplyModal(messageId, message, title) {
-    // Use the existing UserAlertsPanel modal if available, otherwise create simple prompt
-    if (window.userAlertsPanel && window.userAlertsPanel.openResponseModal) {
-      window.userAlertsPanel.openResponseModal(messageId, message, title);
+    // Use the UserReplyModal if available
+    if (window.userReplyModal && window.userReplyModal.open) {
+      window.userReplyModal.open(messageId, message, () => {
+        // Callback after successful send - remove notification
+        this.removeNotification('msg_' + messageId);
+      });
     } else {
       // Fallback: Simple prompt
+      console.warn('⚠️ UserReplyModal not available, using fallback prompt');
       const response = prompt(`תגובה ל: ${title}\n\nהודעה: ${message}\n\nהתגובה שלך:`);
       if (response && response.trim()) {
         this.sendResponse(messageId, response.trim());

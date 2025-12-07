@@ -1777,7 +1777,9 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       budgetAdjustments: [],
       deadlineExtensions: [],
 
-      status: 'פעיל',
+      status: data.status || 'פעיל',  // ✅ Use provided status or default to 'פעיל'
+      requestedMinutes: data.requestedMinutes || null,  // ✅ For approval workflow
+      approvedMinutes: data.approvedMinutes || null,  // ✅ For approval workflow
       deadline: deadlineTimestamp,
       employee: user.email, // ✅ EMAIL for security rules and queries
       lawyer: user.username, // ✅ Username for display
@@ -5748,4 +5750,192 @@ exports.setAdminClaims = functions.https.onRequest(async (req, res) => {
   });
 });
 
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims)');
+// ===============================
+// Task Approval System
+// ===============================
+
+/**
+ * Approve task budget request
+ */
+exports.approveTaskBudget = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Only admins can approve
+    const tokenResult = await auth.getUser(context.auth.uid);
+    const isAdmin = tokenResult.customClaims?.role === 'admin';
+
+    if (!isAdmin) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים לאשר תקציבים'
+      );
+    }
+
+    const { approvalId, approvedMinutes, adminNotes } = data;
+
+    if (!approvalId) {
+      throw new functions.https.HttpsError('invalid-argument', 'חסר מזהה בקשה');
+    }
+
+    if (!approvedMinutes || approvedMinutes <= 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'תקציב מאושר חייב להיות חיובי');
+    }
+
+    // Get approval request
+    const approvalRef = db.collection('pending_task_approvals').doc(approvalId);
+    const approvalDoc = await approvalRef.get();
+
+    if (!approvalDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'בקשת אישור לא נמצאה');
+    }
+
+    const approval = approvalDoc.data();
+    const taskId = approval.taskId;
+    const requestedMinutes = approval.taskData.estimatedMinutes;
+    const isModified = approvedMinutes !== requestedMinutes;
+    const newStatus = isModified ? 'modified' : 'approved';
+
+    // Use batch for atomic update
+    const batch = db.batch();
+
+    // Update approval status
+    batch.update(approvalRef, {
+      status: newStatus,
+      reviewedBy: user.email,
+      reviewedByName: user.username,
+      reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
+      approvedMinutes: approvedMinutes,
+      adminNotes: adminNotes || ''
+    });
+
+    // Update task
+    const taskRef = db.collection('budget_tasks').doc(taskId);
+    batch.update(taskRef, {
+      status: 'פעיל',
+      estimatedMinutes: approvedMinutes,
+      estimatedHours: approvedMinutes / 60,
+      approvedMinutes: approvedMinutes,
+      approvedBy: user.email,
+      approvedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Create notification message
+    const messageText = isModified
+      ? `✅ תקציב המשימה אושר עם שינוי\n\n📋 משימה: ${approval.taskData.description}\n⏱️ תקציב מבוקש: ${requestedMinutes} דקות\n✅ תקציב מאושר: ${approvedMinutes} דקות${adminNotes ? `\n📝 הערות: ${adminNotes}` : ''}`
+      : `✅ תקציב המשימה אושר במלואו\n\n📋 משימה: ${approval.taskData.description}\n⏱️ תקציב: ${approvedMinutes} דקות`;
+
+    const messageRef = db.collection('user_messages').doc();
+    batch.set(messageRef, {
+      to: approval.requestedBy,
+      from: 'system',
+      message: messageText,
+      type: 'task_approval',
+      taskId: taskId,
+      approvalId: approvalId,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+
+    console.log(`✅ Task ${taskId} approved: ${approvedMinutes} minutes`);
+
+    return {
+      success: true,
+      taskId: taskId,
+      status: newStatus
+    };
+
+  } catch (error) {
+    console.error('❌ Error approving task:', error);
+    throw error;
+  }
+});
+
+/**
+ * Reject task budget request
+ */
+exports.rejectTaskBudget = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    // Only admins can reject
+    const tokenResult = await auth.getUser(context.auth.uid);
+    const isAdmin = tokenResult.customClaims?.role === 'admin';
+
+    if (!isAdmin) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים לדחות תקציבים'
+      );
+    }
+
+    const { approvalId, rejectionReason } = data;
+
+    if (!approvalId) {
+      throw new functions.https.HttpsError('invalid-argument', 'חסר מזהה בקשה');
+    }
+
+    if (!rejectionReason || rejectionReason.trim().length < 3) {
+      throw new functions.https.HttpsError('invalid-argument', 'חובה להזין סיבת דחייה');
+    }
+
+    // Get approval request
+    const approvalRef = db.collection('pending_task_approvals').doc(approvalId);
+    const approvalDoc = await approvalRef.get();
+
+    if (!approvalDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'בקשת אישור לא נמצאה');
+    }
+
+    const approval = approvalDoc.data();
+    const taskId = approval.taskId;
+
+    // Use batch for atomic update
+    const batch = db.batch();
+
+    // Update approval status
+    batch.update(approvalRef, {
+      status: 'rejected',
+      reviewedBy: user.email,
+      reviewedByName: user.username,
+      reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
+      rejectionReason: rejectionReason
+    });
+
+    // Delete the task (it was never approved)
+    const taskRef = db.collection('budget_tasks').doc(taskId);
+    batch.delete(taskRef);
+
+    // Create notification message
+    const messageText = `❌ בקשת תקציב נדחתה\n\n📋 משימה: ${approval.taskData.description}\n⏱️ תקציב מבוקש: ${approval.taskData.estimatedMinutes} דקות\n📝 סיבת דחייה: ${rejectionReason}`;
+
+    const messageRef = db.collection('user_messages').doc();
+    batch.set(messageRef, {
+      to: approval.requestedBy,
+      from: 'system',
+      message: messageText,
+      type: 'task_rejection',
+      taskId: taskId,
+      approvalId: approvalId,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+
+    console.log(`✅ Task ${taskId} rejected`);
+
+    return {
+      success: true,
+      taskId: taskId
+    };
+
+  } catch (error) {
+    console.error('❌ Error rejecting task:', error);
+    throw error;
+  }
+});
+
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System)');

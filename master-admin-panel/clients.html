@@ -503,15 +503,43 @@
     <script src="js/ui/Notifications.js?v=20251123v1"></script>
     <script src="js/ui/MessageComposer.js?v=1"></script>
 
-    <!-- ===== Case Creation Dialog Dependencies ===== -->
+    <!-- ===== Case Creation System v1.0 (NEW - Organized Component) ===== -->
+    <link rel="stylesheet" href="../components/case-creation/styles.css?v=1.0.0">
+    <script type="module">
+        // Import and initialize Case Creation System
+        import { initCaseCreationSystem } from '../components/case-creation/index.js';
+
+        // Wait for DOM and auth
+        window.addEventListener('DOMContentLoaded', () => {
+            window.firebaseAuth?.onAuthStateChanged((user) => {
+                if (user) {
+                    // Initialize Case Creation System
+                    window.caseCreationDialog = initCaseCreationSystem(window, {
+                        onSuccess: (caseData) => {
+                            console.log('✅ Case created:', caseData);
+                            // Refresh clients table
+                            if (window.ClientsDataManager) {
+                                window.ClientsDataManager.refresh();
+                            }
+                        },
+                        onError: (error) => {
+                            console.error('❌ Error creating case:', error);
+                            if (window.Notifications) {
+                                window.Notifications.show('שגיאה ביצירת תיק: ' + error.message, 'error');
+                            }
+                        }
+                    });
+                    console.log('✅ Case Creation System v1.0 initialized in Admin Panel');
+                }
+            });
+        });
+    </script>
+
+    <!-- ===== Legacy Dependencies (still needed by other modules) ===== -->
     <script src="js/modules/logger.js?v=20251201-FIX2"></script>
     <script src="js/modules/event-bus.js?v=20251201-FIX2"></script>
-    <script src="js/modules/case-number-generator.js?v=20251201-FIX2"></script>
-    <script src="js/modules/case-form-validator.js?v=20251201-FIX2"></script>
-    <script src="js/modules/service-card-renderer.js?v=20251201-FIX2"></script>
     <script src="js/modules/client-case-selector.js?v=20251201-FIX2"></script>
-    <script src="js/modules/case-creation-dialog.js?v=20251201-FIX2"></script>
-    <link rel="stylesheet" href="css/case-creation-dialog.css?v=20251201-FIX2">
+    <script src="js/modules/service-card-renderer.js?v=20251201-FIX2"></script>
 
     <!-- ===== Floating Action Button ===== -->
     <script src="js/ui/FloatingActionButton.js?v=2"></script>

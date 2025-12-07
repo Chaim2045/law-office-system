@@ -182,12 +182,16 @@ return;
          * פתיחת חלון הוספת לקוח
          */
         openAddClientModal() {
-            // Check if CaseCreationDialog is available
-            if (window.CaseCreationDialog) {
-                console.log('📝 Opening Case Creation Dialog...');
-                new window.CaseCreationDialog().open();
+            // ✅ Case Creation System v1.0 - Using new organized component
+            if (window.CaseCreationSystem?.show) {
+                console.log('📝 Opening Case Creation System v1.0...');
+                window.CaseCreationSystem.show('new-client');
+            } else if (window.caseCreationDialog?.show) {
+                // Fallback to global instance
+                console.log('📝 Opening Case Creation Dialog (global)...');
+                window.caseCreationDialog.show('new-client');
             } else {
-                console.error('❌ CaseCreationDialog not found');
+                console.error('❌ Case Creation System not found');
                 alert('מערכת הוספת לקוחות לא זמינה');
             }
         }

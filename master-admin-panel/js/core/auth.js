@@ -463,6 +463,10 @@ this.dashboardScreen.style.display = 'flex';
             this.hideLoading();
             this.setButtonLoading(false);
 
+            // Dispatch dashboard ready event for other components
+            window.dispatchEvent(new CustomEvent('dashboard:ready'));
+            console.log('📊 Dashboard ready event dispatched');
+
             // Update admin name
             if (this.adminName && this.currentUser) {
                 const displayName = this.currentUser.displayName || this.currentUser.email.split('@')[0];

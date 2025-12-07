@@ -240,18 +240,20 @@ class UserReplyModal {
 
       console.log(`✅ Response sent for message ${this.currentMessageId}`);
 
-      // Success notification
-      if (window.notify && typeof window.notify.success === 'function') {
-        window.notify.success('התגובה נשלחה בהצלחה');
+      // Close modal first
+      this.close();
+
+      // Show info notification (blue) using NotificationSystem
+      if (window.NotificationSystem) {
+        window.NotificationSystem.info('✅ התשובה שלך נשלחה בהצלחה למנהל', 4000);
+      } else {
+        alert('התשובה נשלחה בהצלחה!');
       }
 
-      // Call callback if provided
+      // Call callback if provided (this removes the notification from the list)
       if (this.onSendCallback && typeof this.onSendCallback === 'function') {
         this.onSendCallback();
       }
-
-      // Close modal
-      this.close();
 
     } catch (error) {
       console.error('❌ Error sending response:', error);
@@ -259,8 +261,8 @@ class UserReplyModal {
       this.hideLoading();
 
       // Error notification
-      if (window.notify && typeof window.notify.error === 'function') {
-        window.notify.error('שגיאה בשליחת התגובה: ' + error.message);
+      if (window.NotificationSystem) {
+        window.NotificationSystem.error('❌ שגיאה בשליחת התגובה: ' + error.message, 5000);
       } else {
         alert('שגיאה בשליחת התגובה: ' + error.message);
       }

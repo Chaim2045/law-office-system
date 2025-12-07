@@ -643,9 +643,18 @@ export function createTaskCard(task, options = {}) {
 
   // Check if task is completed
   const isCompleted = safeTask.status === 'הושלם';
+  const isPendingApproval = safeTask.status === 'pending_approval';
+
   const completedIndicator = isCompleted ? `
     <span class="completed-badge">
       <i class="fas fa-check-circle"></i>
+    </span>
+  ` : '';
+
+  const pendingApprovalIndicator = isPendingApproval ? `
+    <span class="pending-approval-badge">
+      <i class="fas fa-clock"></i>
+      ממתין לאישור מנהל
     </span>
   ` : '';
 
@@ -665,12 +674,13 @@ export function createTaskCard(task, options = {}) {
   ` : '';
 
   return `
-    <div class="linear-minimal-card" data-task-id="${safeTask.id}">
+    <div class="linear-minimal-card ${isPendingApproval ? 'pending-approval' : ''}" data-task-id="${safeTask.id}">
       ${badgesRow}
       <div class="linear-card-content">
         <h3 class="linear-card-title" title="${safeClientName}">
           ${safeDescription}
           ${completedIndicator}
+          ${pendingApprovalIndicator}
         </h3>
 
         <!-- 🎯 SVG RINGS -->

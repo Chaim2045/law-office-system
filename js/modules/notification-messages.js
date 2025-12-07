@@ -66,7 +66,7 @@ class NotificationMessages {
     // Success messages
     success: {
       created: (clientName, taskDescription) =>
-        `המשימה "${taskDescription}" נוספה עבור ${clientName}`,
+        `המשימה הועברה למנהל לאישור תקציב\n\nתקבל התראה באייקון המעטפה כשהמנהל יאשר`,
       completed: (clientName) =>
         `משימה הושלמה: ${clientName}. תוכל לראות אותה בהושלמו`,
       timeAdded: (minutes) =>

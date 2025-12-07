@@ -20,9 +20,6 @@ import STATE_CONFIG from './config/state-config.js';
 // ✅ NEW v2.0: Add Task System - Organized Component
 import { initAddTaskSystem } from '../components/add-task/index.js';
 
-// ✅ NEW v1.0: Case Creation System - Organized Component
-import { initCaseCreationSystem } from '../components/case-creation/index.js';
-
 // Notification System
 import { NotificationBellSystem } from './modules/notification-bell.js';
 // NotificationSystem is available globally on window object
@@ -226,9 +223,6 @@ class LawOfficeManager {
 
         // ✅ NEW v2.0: Initialize Add Task System after login
         this.initializeAddTaskSystem();
-
-        // ✅ NEW v1.0: Initialize Case Creation System after login
-        this.initializeCaseCreationSystem();
       } else {
         // User not found in employees - sign out
         await firebase.auth().signOut();
@@ -689,36 +683,6 @@ return false;
       console.log('✅ Add Task System v2.0 initialized');
     } catch (error) {
       console.error('❌ Error initializing Add Task System:', error);
-      // System will fallback to old method automatically
-    }
-  }
-
-  /**
-   * Initialize Case Creation System v1.0
-   * אתחול מערכת יצירת תיקים המאורגנת
-   */
-  initializeCaseCreationSystem() {
-    try {
-      console.log('🚀 Initializing Case Creation System v1.0...');
-
-      this.caseCreationDialog = initCaseCreationSystem(this, {
-        onSuccess: (caseData) => {
-          console.log('✅ Case created successfully:', caseData);
-          // Refresh clients/cases list
-          this.loadClients();
-        },
-        onError: (error) => {
-          console.error('❌ Error creating case:', error);
-          this.showNotification('שגיאה ביצירת תיק: ' + error.message, 'error');
-        },
-        onCancel: () => {
-          console.log('ℹ️ User cancelled case creation');
-        }
-      });
-
-      console.log('✅ Case Creation System v1.0 initialized');
-    } catch (error) {
-      console.error('❌ Error initializing Case Creation System:', error);
       // System will fallback to old method automatically
     }
   }

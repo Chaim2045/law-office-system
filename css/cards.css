@@ -715,6 +715,63 @@
   animation: fadeIn 0.3s ease;
 }
 
+/* Pending Approval Badge - תג ממתין לאישור */
+.pending-approval-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.pending-approval-badge i {
+  font-size: 14px;
+}
+
+/* Pending Approval Card - כרטיס ממתין לאישור */
+.linear-minimal-card.pending-approval {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+  border: 2px dashed #9ca3af !important;
+  opacity: 0.75;
+  pointer-events: none;
+  position: relative;
+}
+
+.linear-minimal-card.pending-approval::before {
+  content: "🔒";
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 24px;
+  opacity: 0.3;
+}
+
+.linear-minimal-card.pending-approval .linear-card-title {
+  color: #6b7280 !important;
+}
+
+.linear-minimal-card.pending-approval .linear-expand-btn {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
 /* Animations - אנימציות */
 @keyframes pulse-danger {
   0%, 100% {
