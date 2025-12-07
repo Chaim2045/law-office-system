@@ -2213,6 +2213,73 @@ select.form-input,
   color: #059669;
 }
 
+/* Messages Filter Tabs */
+.messages-filter-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 2px solid var(--gray-200);
+  position: sticky;
+  top: 80px;
+  z-index: 9;
+}
+
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--gray-100);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-tab i {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.filter-tab:hover:not(.active) {
+  background: var(--gray-200);
+  border-color: var(--gray-300);
+}
+
+.filter-tab.active {
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  color: white;
+  border-color: #4f46e5;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.filter-tab.active i {
+  opacity: 1;
+}
+
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.filter-tab.active .filter-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
 /* Messages Timeline */
 .messages-timeline {
   position: relative;

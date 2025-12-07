@@ -38,6 +38,9 @@
             };
             this.hoursSortBy = 'date'; // date / client / hours
             this.hoursSortDirection = 'desc'; // asc / desc
+
+            // Messages tab state
+            this.messageFilter = 'all'; // all / unread / read / archived
         }
 
         /**
@@ -789,14 +792,22 @@
 
             const messages = this.userData.messages || [];
 
+            // Calculate counts for filter tabs
+            const allCount = messages.length;
+            const unreadCount = messages.filter(m => m.status === 'unread').length;
+            const readCount = messages.filter(m => m.status === 'read' || m.status === 'responded').length;
+            const archivedCount = messages.filter(m => m.archived === true).length;
+
+            // Filter messages based on selected filter
+            const filteredMessages = this.filterMessages(messages, this.messageFilter);
+
             // Sort by createdAt descending (newest first)
-            const sortedMessages = [...messages].sort((a, b) => {
+            const sortedMessages = [...filteredMessages].sort((a, b) => {
                 const timeA = a.createdAt?.toMillis?.() || 0;
                 const timeB = b.createdAt?.toMillis?.() || 0;
                 return timeB - timeA;
             });
 
-            const unreadCount = messages.filter(m => m.status === 'unread').length;
             const respondedCount = messages.filter(m => m.status === 'responded').length;
 
             return `
@@ -829,6 +840,30 @@
                         </div>
                     </div>
 
+                    <!-- Filter Tabs -->
+                    <div class="messages-filter-tabs">
+                        <button class="filter-tab ${this.messageFilter === 'all' ? 'active' : ''}" data-filter="all">
+                            <i class="fas fa-inbox"></i>
+                            <span>הכל</span>
+                            <span class="filter-count">${allCount}</span>
+                        </button>
+                        <button class="filter-tab ${this.messageFilter === 'unread' ? 'active' : ''}" data-filter="unread">
+                            <i class="fas fa-envelope"></i>
+                            <span>לא נקראו</span>
+                            <span class="filter-count">${unreadCount}</span>
+                        </button>
+                        <button class="filter-tab ${this.messageFilter === 'read' ? 'active' : ''}" data-filter="read">
+                            <i class="fas fa-envelope-open"></i>
+                            <span>נקראו</span>
+                            <span class="filter-count">${readCount}</span>
+                        </button>
+                        <button class="filter-tab ${this.messageFilter === 'archived' ? 'active' : ''}" data-filter="archived">
+                            <i class="fas fa-archive"></i>
+                            <span>ארכיון</span>
+                            <span class="filter-count">${archivedCount}</span>
+                        </button>
+                    </div>
+
                     <!-- Messages Timeline -->
                     <div class="messages-timeline">
                         ${sortedMessages.length === 0 ? this.renderEmptyMessages() : ''}
@@ -836,6 +871,24 @@
                     </div>
                 </div>
             `;
+        }
+
+        /**
+         * Filter messages based on selected filter
+         * סינון הודעות לפי מסנן נבחר
+         */
+        filterMessages(messages, filter) {
+            switch (filter) {
+                case 'unread':
+                    return messages.filter(m => m.status === 'unread' && !m.archived);
+                case 'read':
+                    return messages.filter(m => (m.status === 'read' || m.status === 'responded') && !m.archived);
+                case 'archived':
+                    return messages.filter(m => m.archived === true);
+                case 'all':
+                default:
+                    return messages.filter(m => !m.archived); // Show all non-archived by default
+            }
         }
 
         /**
@@ -2043,11 +2096,20 @@ return;
             });
 
             // ========== MESSAGES TAB - EVENT DELEGATION ==========
-            // Event delegation for messages tab buttons (send new message, fullscreen, archive, restore)
+            // Event delegation for messages tab buttons (send new message, fullscreen, archive, restore, filter tabs)
             // Uses data-action attribute instead of inline onclick
             const messagesTabContent = modal.querySelector('.tab-panel.tab-messages');
             if (messagesTabContent) {
                 messagesTabContent.addEventListener('click', async (e) => {
+                    // Check for filter tabs
+                    const filterTab = e.target.closest('.filter-tab');
+                    if (filterTab) {
+                        const filter = filterTab.getAttribute('data-filter');
+                        this.messageFilter = filter;
+                        this.switchTab('messages'); // Refresh to show filtered messages
+                        return;
+                    }
+
                     // Check for action buttons
                     const actionBtn = e.target.closest('[data-action]');
                     if (actionBtn) {
