@@ -176,10 +176,10 @@
                 return;
             }
 
-            // Listen to unread and read messages (not responded)
+            // Listen to unread messages only
             this.messagesListener = this.db.collection('user_messages')
                 .where('to', '==', this.currentUser.email)
-                .where('status', 'in', ['unread', 'read'])
+                .where('status', '==', 'unread')
                 .orderBy('createdAt', 'desc')
                 .onSnapshot(
                     snapshot => {
@@ -494,7 +494,7 @@ textarea.focus();
         }
 
         /**
-         * Dismiss message (mark as read)
+         * Dismiss message (mark as dismissed)
          * סגירת הודעה
          */
         async dismissMessage(messageId) {
@@ -502,11 +502,12 @@ textarea.focus();
                 await this.db.collection('user_messages')
                     .doc(messageId)
                     .update({
-                        status: 'read'
+                        status: 'dismissed',
+                        dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
                 if (window.notify) {
-                    window.notify.success('ההודעה סומנה כנקראה');
+                    window.notify.success('ההודעה הוסרה');
                 }
 
             } catch (error) {
@@ -518,8 +519,8 @@ textarea.focus();
         }
 
         /**
-         * Mark all messages as read
-         * סימון כל ההודעות כנקראו
+         * Mark all messages as dismissed
+         * סימון כל ההודעות כנקראו והסרתן
          */
         async markAllAsRead() {
             if (!this.currentUser) {
@@ -534,17 +535,20 @@ return;
 
                 const batch = this.db.batch();
                 snapshot.docs.forEach(doc => {
-                    batch.update(doc.ref, { status: 'read' });
+                    batch.update(doc.ref, {
+                        status: 'dismissed',
+                        dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 });
 
                 await batch.commit();
 
                 if (window.notify) {
-                    window.notify.success('כל ההודעות סומנו כנקראו');
+                    window.notify.success('כל ההודעות הוסרו');
                 }
 
             } catch (error) {
-                console.error('Error marking all as read:', error);
+                console.error('Error marking all as dismissed:', error);
                 if (window.notify) {
                     window.notify.error('שגיאה בעדכון ההודעות');
                 }
