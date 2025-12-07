@@ -460,14 +460,39 @@ function calculateSmartGoals(monthHours, now) {
  * @returns {string} HTML string
  */
 function createTimesheetStatsBar(stats) {
+  // קבלת תאריך נוכחי
+  const now = new Date();
+  const day = now.getDate();
+  const monthNames = [
+    'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+    'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+  ];
+  const currentMonth = monthNames[now.getMonth()];
+  const currentDate = `${day} ${currentMonth}`;
+
+  // בדיקה אם יש תקן אישי
+  const employeeData = window.manager?.currentEmployee || {};
+  const hasCustomTarget = employeeData.dailyHoursTarget && employeeData.dailyHoursTarget !== 8.45;
+  const targetIcon = hasCustomTarget ? '🎯' : '📊';
+
   return `
     <div class="stats-badge">
+      <div class="stat-compact stat-highlight">
+        <div class="stat-icon">
+          <i class="far fa-calendar-check"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">תאריך</div>
+          <div class="stat-value">${currentDate}</div>
+        </div>
+      </div>
+
       <div class="stat-compact stat-highlight">
         <div class="stat-icon">
           <i class="far fa-calendar"></i>
         </div>
         <div class="stat-content">
-          <div class="stat-label">החודש</div>
+          <div class="stat-label">${currentMonth}</div>
           <div class="stat-value">${stats.monthHours}h</div>
         </div>
       </div>
@@ -477,7 +502,7 @@ function createTimesheetStatsBar(stats) {
           <i class="far fa-flag"></i>
         </div>
         <div class="stat-content">
-          <div class="stat-label">יעד</div>
+          <div class="stat-label">תקן ${targetIcon}</div>
           <div class="stat-value">${stats.monthlyGoal}h</div>
         </div>
       </div>
