@@ -5792,7 +5792,7 @@ exports.approveTaskBudget = functions.https.onCall(async (data, context) => {
 
     const approval = approvalDoc.data();
     const taskId = approval.taskId;
-    const requestedMinutes = approval.taskData.estimatedMinutes;
+    const requestedMinutes = approval.requestedMinutes || approval.taskData.estimatedMinutes || 0;
     const isModified = approvedMinutes !== requestedMinutes;
     const newStatus = isModified ? 'modified' : 'approved';
 
@@ -5891,6 +5891,7 @@ exports.rejectTaskBudget = functions.https.onCall(async (data, context) => {
 
     const approval = approvalDoc.data();
     const taskId = approval.taskId;
+    const requestedMinutes = approval.requestedMinutes || approval.taskData.estimatedMinutes || 0;
 
     // Use batch for atomic update
     const batch = db.batch();
@@ -5909,7 +5910,7 @@ exports.rejectTaskBudget = functions.https.onCall(async (data, context) => {
     batch.delete(taskRef);
 
     // Create notification message
-    const messageText = `❌ בקשת תקציב נדחתה\n\n📋 משימה: ${approval.taskData.description}\n⏱️ תקציב מבוקש: ${approval.taskData.estimatedMinutes} דקות\n📝 סיבת דחייה: ${rejectionReason}`;
+    const messageText = `❌ בקשת תקציב נדחתה\n\n📋 משימה: ${approval.taskData.description}\n⏱️ תקציב מבוקש: ${requestedMinutes} דקות\n📝 סיבת דחייה: ${rejectionReason}`;
 
     const messageRef = db.collection('user_messages').doc();
     batch.set(messageRef, {

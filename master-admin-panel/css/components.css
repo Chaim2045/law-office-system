@@ -2307,6 +2307,7 @@ select.form-input,
 
 .message-icon {
   font-size: 18px;
+  color: var(--blue);
 }
 
 .message-header strong {
@@ -2324,6 +2325,45 @@ select.form-input,
   color: var(--gray-500);
   font-size: 12px;
   font-style: italic;
+}
+
+/* Message Action Buttons */
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.btn-archive-message,
+.btn-restore-message {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-archive-message:hover {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.btn-restore-message:hover {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
 }
 
 .message-body {

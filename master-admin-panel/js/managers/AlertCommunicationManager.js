@@ -329,6 +329,56 @@
         }
 
         /**
+         * Archive message
+         * העברת הודעה לארכיון
+         *
+         * @param {string} messageId - Message ID
+         * @returns {Promise<void>}
+         */
+        async archiveMessage(messageId) {
+            if (!this.currentAdmin) {
+                throw new Error('Admin user not initialized');
+            }
+
+            await this.db.collection('user_messages')
+                .doc(messageId)
+                .update({
+                    archived: true,
+                    archivedBy: this.currentAdmin.email,
+                    archivedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+            console.log(`✅ Message ${messageId} archived`);
+
+            if (window.notify) {
+                window.notify.success('ההודעה הועברה לארכיון');
+            }
+        }
+
+        /**
+         * Restore message from archive
+         * שחזור הודעה מארכיון
+         *
+         * @param {string} messageId - Message ID
+         * @returns {Promise<void>}
+         */
+        async restoreMessage(messageId) {
+            await this.db.collection('user_messages')
+                .doc(messageId)
+                .update({
+                    archived: false,
+                    archivedBy: null,
+                    archivedAt: null
+                });
+
+            console.log(`✅ Message ${messageId} restored from archive`);
+
+            if (window.notify) {
+                window.notify.success('ההודעה שוחזרה מהארכיון');
+            }
+        }
+
+        /**
          * Delete message
          * מחיקת הודעה
          */

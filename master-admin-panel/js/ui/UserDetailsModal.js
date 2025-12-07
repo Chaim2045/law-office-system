@@ -890,10 +890,27 @@
                         <!-- Message Sent -->
                         <div class="message-sent">
                             <div class="message-header">
-                                <span class="message-icon">📤</span>
+                                <span class="message-icon"><i class="fas fa-paper-plane"></i></span>
                                 <strong>נשלחה הודעה</strong>
                                 <span class="message-date">${sentDate}</span>
                                 ${relativeTime ? `<span class="message-relative">(${relativeTime})</span>` : ''}
+
+                                <!-- Action Buttons -->
+                                <div class="message-actions">
+                                    ${!message.archived ? `
+                                        <button class="btn-icon btn-archive-message"
+                                                data-message-id="${message.id}"
+                                                title="העבר לארכיון">
+                                            <i class="fas fa-archive"></i>
+                                        </button>
+                                    ` : `
+                                        <button class="btn-icon btn-restore-message"
+                                                data-message-id="${message.id}"
+                                                title="שחזר מארכיון">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    `}
+                                </div>
                             </div>
                             <div class="message-body">
                                 <p>${this.escapeHtml(message.message)}</p>
@@ -925,7 +942,7 @@
                 return `
                     <div class="message-response responded">
                         <div class="response-header">
-                            <span class="response-icon">✅</span>
+                            <span class="response-icon"><i class="fas fa-check-circle"></i></span>
                             <strong>נענתה</strong>
                             ${respondedDate ? `<span class="response-date">${respondedDate}</span>` : ''}
                         </div>
@@ -939,7 +956,7 @@
                 return `
                     <div class="message-response read">
                         <div class="response-header">
-                            <span class="response-icon">👁️</span>
+                            <span class="response-icon"><i class="fas fa-eye"></i></span>
                             <strong>נקראה</strong>
                             ${readDate ? `<span class="response-date">${readDate}</span>` : ''}
                             <span class="response-status">(לא נענתה עדיין)</span>
@@ -951,7 +968,7 @@
                 return `
                     <div class="message-response dismissed">
                         <div class="response-header">
-                            <span class="response-icon">❌</span>
+                            <span class="response-icon"><i class="fas fa-times-circle"></i></span>
                             <strong>נדחתה</strong>
                             ${dismissedDate ? `<span class="response-date">${dismissedDate}</span>` : ''}
                             <span class="response-status">(המשתמש לא השיב)</span>
@@ -963,7 +980,7 @@
                 return `
                     <div class="message-response unread">
                         <div class="response-header">
-                            <span class="response-icon">📪</span>
+                            <span class="response-icon"><i class="fas fa-envelope-open"></i></span>
                             <strong>לא נקראה</strong>
                         </div>
                     </div>
@@ -1014,6 +1031,50 @@
             } else {
                 console.error('MessagesFullscreenModal not available');
                 alert('חלון הודעות מלא לא זמין');
+            }
+        }
+
+        /**
+         * Archive message
+         * העברת הודעה לארכיון
+         */
+        async archiveMessage(messageId) {
+            try {
+                if (!window.alertCommManager) {
+                    throw new Error('AlertCommunicationManager not available');
+                }
+
+                await window.alertCommManager.archiveMessage(messageId);
+
+                // Reload user data to refresh messages
+                await this.loadFullUserData();
+            } catch (error) {
+                console.error('❌ Error archiving message:', error);
+                if (window.notify) {
+                    window.notify.error('שגיאה בהעברה לארכיון');
+                }
+            }
+        }
+
+        /**
+         * Restore message from archive
+         * שחזור הודעה מארכיון
+         */
+        async restoreMessage(messageId) {
+            try {
+                if (!window.alertCommManager) {
+                    throw new Error('AlertCommunicationManager not available');
+                }
+
+                await window.alertCommManager.restoreMessage(messageId);
+
+                // Reload user data to refresh messages
+                await this.loadFullUserData();
+            } catch (error) {
+                console.error('❌ Error restoring message:', error);
+                if (window.notify) {
+                    window.notify.error('שגיאה בשחזור הודעה');
+                }
             }
         }
 
@@ -1982,19 +2043,37 @@ return;
             });
 
             // ========== MESSAGES TAB - EVENT DELEGATION ==========
-            // Event delegation for messages tab buttons (send new message, fullscreen)
+            // Event delegation for messages tab buttons (send new message, fullscreen, archive, restore)
             // Uses data-action attribute instead of inline onclick
             const messagesTabContent = modal.querySelector('.tab-panel.tab-messages');
             if (messagesTabContent) {
-                messagesTabContent.addEventListener('click', (e) => {
-                    const btn = e.target.closest('[data-action]');
-                    if (!btn) return;
+                messagesTabContent.addEventListener('click', async (e) => {
+                    // Check for action buttons
+                    const actionBtn = e.target.closest('[data-action]');
+                    if (actionBtn) {
+                        const action = actionBtn.getAttribute('data-action');
+                        if (action === 'send-new-message') {
+                            this.sendNewMessage();
+                        } else if (action === 'open-fullscreen') {
+                            this.openFullscreenMessages();
+                        }
+                        return;
+                    }
 
-                    const action = btn.getAttribute('data-action');
-                    if (action === 'send-new-message') {
-                        this.sendNewMessage();
-                    } else if (action === 'open-fullscreen') {
-                        this.openFullscreenMessages();
+                    // Check for archive button
+                    const archiveBtn = e.target.closest('.btn-archive-message');
+                    if (archiveBtn) {
+                        const messageId = archiveBtn.getAttribute('data-message-id');
+                        await this.archiveMessage(messageId);
+                        return;
+                    }
+
+                    // Check for restore button
+                    const restoreBtn = e.target.closest('.btn-restore-message');
+                    if (restoreBtn) {
+                        const messageId = restoreBtn.getAttribute('data-message-id');
+                        await this.restoreMessage(messageId);
+                        return;
                     }
                 });
             }
