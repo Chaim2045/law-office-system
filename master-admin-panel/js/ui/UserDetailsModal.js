@@ -13,6 +13,29 @@
     'use strict';
 
     /**
+     * ========================================
+     * Message Type Constants
+     * קבועי סוגי הודעות
+     * ========================================
+     *
+     * הודעות מערכת (לא להציג בתקשורת מנהל-משתמש):
+     * - task_approval: הודעת אישור תקציב משימה
+     * - task_rejection: הודעת דחיית תקציב משימה
+     * - task_update: עדכון סטטוס משימה
+     * - system_notification: הודעות מערכת כלליות
+     *
+     * הודעות תקשורת (להציג):
+     * - admin_message: הודעה שהמנהל שלח למשתמש
+     * - user_reply: תגובת משתמש למנהל
+     */
+    const SYSTEM_MESSAGE_TYPES = [
+        'task_approval',
+        'task_rejection',
+        'task_update',
+        'system_notification'
+    ];
+
+    /**
      * UserDetailsModal Class
      * מנהל את מודאל פרטי המשתמש
      */
@@ -294,13 +317,22 @@
                     .catch(() => ({ docs: [] })),
 
                 // Get admin messages sent to this user (last 100)
-                // ✅ סינון: רק הודעות שהמנהל שלח ידנית (לא הודעות מערכת)
+                // ✅ סינון מקצועי: רק תקשורת ידנית מנהל↔משתמש (לא הודעות מערכת)
+                // הודעות מערכת (task_approval, task_rejection וכו') לא מוצגות כאן
                 db.collection('user_messages')
                     .where('to', '==', userEmail)
-                    .where('from', '!=', 'system')
                     .orderBy('createdAt', 'desc')
-                    .limit(100)
+                    .limit(200)  // Fetch more to ensure 100+ after filtering
                     .get()
+                    .then(snapshot => {
+                        // Filter out system messages using type field
+                        const filtered = snapshot.docs.filter(doc => {
+                            const type = doc.data().type;
+                            return !SYSTEM_MESSAGE_TYPES.includes(type);
+                        });
+                        // Return only first 100 after filtering
+                        return { docs: filtered.slice(0, 100) };
+                    })
                     .catch(() => ({ docs: [] }))
             ]);
 
