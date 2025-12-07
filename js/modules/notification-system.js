@@ -517,20 +517,24 @@ return;
     const messageHtml = this.parseStructuredAlertMessage(message);
 
     overlay.innerHTML = `
-      <div class="alert-dialog" style="background: white; border-radius: 16px; padding: 32px; max-width: 520px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; direction: rtl; text-align: right;">
-        <div class="alert-header" style="text-align: center; margin-bottom: 24px;">
-          <div class="alert-icon" style="color: ${color}; font-size: 48px; margin-bottom: 16px;">
-            <i class="${icon}"></i>
+      <div class="alert-dialog" style="background: white; border-radius: 12px; padding: 0; max-width: 700px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; direction: rtl; text-align: right; border: 1px solid #e5e7eb;">
+
+        <!-- Header -->
+        <div class="alert-header" style="background: white; color: #0f172a; padding: 24px 32px 20px; border-bottom: 1px solid #e2e8f0;">
+          <div style="display: flex; align-items: center; gap: 12px; justify-content: flex-end;">
+            <i class="${icon}" style="color: ${color}; font-size: 20px;"></i>
+            <h2 id="alert-title" style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${this.escapeHtml(title)}</h2>
           </div>
-          <h3 id="alert-title" class="alert-title" style="font-size: 20px; font-weight: 600; color: #1f2937; margin: 0;">${this.escapeHtml(title)}</h3>
         </div>
 
-        <div class="alert-body" style="margin-bottom: 32px;">
+        <!-- Content -->
+        <div class="alert-body" style="padding: 32px;">
           ${messageHtml}
         </div>
 
-        <div class="alert-footer" style="display: flex; justify-content: center;">
-          <button class="alert-btn alert-btn-ok" type="button" style="padding: 14px 32px; border: none; border-radius: 8px; background: ${color}; color: white; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.2s;">
+        <!-- Footer -->
+        <div class="alert-footer" style="padding: 20px 32px 32px 32px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button class="alert-btn alert-btn-ok" type="button" style="padding: 12px 32px; background: ${color}; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='${type === 'success' ? '#2563eb' : color}'" onmouseout="this.style.background='${color}'">
             <i class="fas fa-check"></i>
             ${this.escapeHtml(okText)}
           </button>
@@ -584,47 +588,96 @@ return;
 
     // Check if this is a task creation message (contains ✅ and 📋)
     if (message.includes('✅') && message.includes('📋')) {
-      let html = '<div style="text-align: right;">';
+      let html = '<div>';
+
+      // Collect task details for horizontal grid
+      const taskDetails = [];
+      let mainMessage = '';
+      let notificationMessage = '';
+      let infoMessage = '';
 
       lines.forEach(line => {
         const trimmed = line.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+return;
+}
 
-        // Main success message
         if (trimmed.startsWith('✅')) {
-          html += `<div style="background: #eff6ff; border-right: 4px solid #3b82f6; padding: 12px 16px; margin-bottom: 20px; border-radius: 8px;">
-            <div style="font-size: 15px; font-weight: 600; color: #1e40af;">
-              ${this.escapeHtml(trimmed.replace('✅', '').trim())}
-            </div>
-          </div>`;
-        }
-        // Task details (📋, 👤, ⏱️)
-        else if (trimmed.startsWith('📋') || trimmed.startsWith('👤') || trimmed.startsWith('⏱️')) {
-          const parts = trimmed.split(' ');
-          const emoji = parts[0];
-          const text = parts.slice(1).join(' ');
-          html += `<div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
-            <span style="font-size: 20px; flex-shrink: 0;">${emoji}</span>
-            <span style="font-size: 14px; color: #374151; flex: 1;">${this.escapeHtml(text)}</span>
-          </div>`;
-        }
-        // Notification message (🔔)
-        else if (trimmed.startsWith('🔔')) {
-          html += `<div style="background: #fef3c7; border-right: 3px solid #f59e0b; padding: 12px 16px; margin-top: 20px; margin-bottom: 12px; border-radius: 8px;">
-            <div style="font-size: 14px; color: #92400e; font-weight: 500;">
-              ${this.escapeHtml(trimmed.replace('🔔', '').trim())}
-            </div>
-          </div>`;
-        }
-        // Info message (💡)
-        else if (trimmed.startsWith('💡')) {
-          html += `<div style="background: #f0f9ff; border-right: 3px solid #0ea5e9; padding: 12px 16px; margin-top: 8px; border-radius: 8px;">
-            <div style="font-size: 13px; color: #075985;">
-              ${this.escapeHtml(trimmed.replace('💡', '').trim())}
-            </div>
-          </div>`;
+          mainMessage = trimmed.replace('✅', '').trim();
+        } else if (trimmed.startsWith('📋')) {
+          taskDetails.push({
+            icon: 'fa-tasks',
+            label: 'תיאור',
+            text: trimmed.replace('📋', '').trim()
+          });
+        } else if (trimmed.startsWith('👤')) {
+          taskDetails.push({
+            icon: 'fa-user',
+            label: 'לקוח',
+            text: trimmed.replace('👤', '').trim()
+          });
+        } else if (trimmed.startsWith('⏱️')) {
+          taskDetails.push({
+            icon: 'fa-clock',
+            label: 'תקציב',
+            text: trimmed.replace('⏱️', '').trim()
+          });
+        } else if (trimmed.startsWith('🔔')) {
+          notificationMessage = trimmed.replace('🔔', '').trim();
+        } else if (trimmed.startsWith('💡')) {
+          infoMessage = trimmed.replace('💡', '').trim();
         }
       });
+
+      // Main success message
+      if (mainMessage) {
+        html += `<div style="background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 8px; border-right: 3px solid #3b82f6; margin-bottom: 24px;">
+          <div style="font-size: 15px; font-weight: 600; color: #1f2937;">
+            ${this.escapeHtml(mainMessage)}
+          </div>
+        </div>`;
+      }
+
+      // Task details in horizontal grid (3 columns)
+      if (taskDetails.length > 0) {
+        html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">';
+        taskDetails.forEach(detail => {
+          html += `<div style="background: #fafafa; padding: 16px; border-radius: 8px; border: 1px solid #e5e5e5;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <i class="fas ${detail.icon}" style="color: #3b82f6; font-size: 14px;"></i>
+              <span style="font-size: 12px; color: #737373; font-weight: 500;">${detail.label}</span>
+            </div>
+            <div style="font-size: 14px; color: #171717; font-weight: 600;">
+              ${this.escapeHtml(detail.text)}
+            </div>
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      // Notification message
+      if (notificationMessage) {
+        html += `<div style="background: #fef3c7; border-right: 3px solid #f59e0b; padding: 12px 16px; margin-bottom: 12px; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-bell" style="color: #f59e0b; font-size: 14px;"></i>
+            <span style="font-size: 14px; color: #92400e; font-weight: 500;">
+              ${this.escapeHtml(notificationMessage)}
+            </span>
+          </div>
+        </div>`;
+      }
+
+      // Info message
+      if (infoMessage) {
+        html += `<div style="background: #f0f9ff; border-right: 3px solid #0ea5e9; padding: 12px 16px; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-lightbulb" style="color: #0ea5e9; font-size: 14px;"></i>
+            <span style="font-size: 13px; color: #075985;">
+              ${this.escapeHtml(infoMessage)}
+            </span>
+          </div>
+        </div>`;
+      }
 
       html += '</div>';
       return html;

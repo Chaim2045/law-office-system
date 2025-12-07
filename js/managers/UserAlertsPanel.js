@@ -179,7 +179,7 @@
             // Listen to unread messages only
             this.messagesListener = this.db.collection('user_messages')
                 .where('to', '==', this.currentUser.email)
-                .where('status', '==', 'unread')
+                .where('read', '==', false)
                 .orderBy('createdAt', 'desc')
                 .onSnapshot(
                     snapshot => {
@@ -245,14 +245,24 @@ countSpan.textContent = docs.length;
             // Render messages
             const messagesHTML = docs.map(doc => {
                 const data = doc.data();
-                const isUnread = data.status === 'unread';
+                const isUnread = data.read === false;
+                const fromName = data.fromName || (data.from === 'system' ? 'מערכת' : data.from);
+                const messageType = data.type || 'general';
+
+                // Icon based on message type
+                let icon = 'fa-bell';
+                if (messageType === 'task_approval') {
+icon = 'fa-check-circle';
+} else if (messageType === 'task_rejection') {
+icon = 'fa-times-circle';
+}
 
                 return `
                     <div class="alert-item ${isUnread ? 'unread' : ''}" data-message-id="${doc.id}">
                         <div class="alert-header">
                             <div class="alert-sender">
-                                <i class="fas fa-user-shield"></i>
-                                <strong>${data.fromName}</strong>
+                                <i class="fas ${icon}"></i>
+                                <strong>${this.escapeHtml(fromName)}</strong>
                             </div>
                             <div class="alert-time">${this.formatTime(data.createdAt)}</div>
                         </div>
@@ -262,10 +272,12 @@ countSpan.textContent = docs.length;
                         </div>
 
                         <div class="alert-actions">
-                            <button class="btn-respond" onclick="window.userAlertsPanel.openResponseModal('${doc.id}', '${this.escapeHtml(data.message).replace(/'/g, "\\'")}', '${data.fromName}')">
+                            ${data.from !== 'system' ? `
+                            <button class="btn-respond" onclick="window.userAlertsPanel.openResponseModal('${doc.id}', '${this.escapeHtml(data.message).replace(/'/g, "\\'")}', '${this.escapeHtml(fromName)}')">
                                 <i class="fas fa-reply"></i>
                                 השב
                             </button>
+                            ` : ''}
                             <button class="btn-dismiss" onclick="window.userAlertsPanel.dismissMessage('${doc.id}')">
                                 <i class="fas fa-check"></i>
                                 הבנתי
@@ -502,12 +514,12 @@ textarea.focus();
                 await this.db.collection('user_messages')
                     .doc(messageId)
                     .update({
-                        status: 'dismissed',
-                        dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        read: true,
+                        readAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
                 if (window.notify) {
-                    window.notify.success('ההודעה הוסרה');
+                    window.notify.success('ההודעה סומנה כנקראה');
                 }
 
             } catch (error) {
@@ -530,14 +542,14 @@ return;
             try {
                 const snapshot = await this.db.collection('user_messages')
                     .where('to', '==', this.currentUser.email)
-                    .where('status', '==', 'unread')
+                    .where('read', '==', false)
                     .get();
 
                 const batch = this.db.batch();
                 snapshot.docs.forEach(doc => {
                     batch.update(doc.ref, {
-                        status: 'dismissed',
-                        dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        read: true,
+                        readAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 });
 
