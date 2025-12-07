@@ -517,6 +517,146 @@ return;
       }
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Thread-Based Messaging API (NEW - 2025-12-07)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Send a reply to an admin message (using subcollection)
+   * @param {string} messageId - Parent message ID
+   * @param {string} replyText - Reply content
+   * @param {Object} user - Current user object { email, displayName }
+   * @returns {Promise<string>} - Reply document ID
+   */
+  async sendReplyToAdmin(messageId, replyText, user) {
+    if (!messageId || !replyText || !user) {
+      throw new Error('Missing required parameters: messageId, replyText, or user');
+    }
+
+    if (!window.firebaseDB) {
+      throw new Error('Firebase DB not available');
+    }
+
+    try {
+      // Add reply to subcollection
+      const replyRef = await window.firebaseDB
+        .collection('user_messages')
+        .doc(messageId)
+        .collection('replies')
+        .add({
+          from: user.email,
+          fromName: user.displayName || user.email,
+          message: replyText.trim(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          readBy: [] // Track who read this reply
+        });
+
+      // Update parent document with metadata
+      await window.firebaseDB
+        .collection('user_messages')
+        .doc(messageId)
+        .update({
+          repliesCount: firebase.firestore.FieldValue.increment(1),
+          lastReplyAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastReplyBy: user.email,
+          status: 'responded'
+        });
+
+      console.log(`✅ Reply sent successfully: ${replyRef.id}`);
+      return replyRef.id;
+
+    } catch (error) {
+      console.error('❌ Error sending reply:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load all replies for a message thread
+   * @param {string} messageId - Parent message ID
+   * @returns {Promise<Array>} - Array of reply objects
+   */
+  async loadThreadReplies(messageId) {
+    if (!messageId) {
+      throw new Error('Missing messageId parameter');
+    }
+
+    if (!window.firebaseDB) {
+      throw new Error('Firebase DB not available');
+    }
+
+    try {
+      const snapshot = await window.firebaseDB
+        .collection('user_messages')
+        .doc(messageId)
+        .collection('replies')
+        .orderBy('createdAt', 'asc')
+        .get();
+
+      const replies = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        // Convert Firestore Timestamp to JS Date for easier handling
+        createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : null
+      }));
+
+      console.log(`📨 Loaded ${replies.length} replies for message ${messageId}`);
+      return replies;
+
+    } catch (error) {
+      console.error('❌ Error loading replies:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Listen to real-time updates for a message thread
+   * @param {string} messageId - Parent message ID
+   * @param {Function} callback - Called with array of replies when updated
+   * @returns {Function} - Unsubscribe function
+   */
+  listenToThreadReplies(messageId, callback) {
+    if (!messageId || !callback) {
+      throw new Error('Missing required parameters: messageId or callback');
+    }
+
+    if (!window.firebaseDB) {
+      throw new Error('Firebase DB not available');
+    }
+
+    try {
+      const unsubscribe = window.firebaseDB
+        .collection('user_messages')
+        .doc(messageId)
+        .collection('replies')
+        .orderBy('createdAt', 'asc')
+        .onSnapshot(
+          snapshot => {
+            const replies = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : null
+            }));
+
+            console.log(`🔄 Thread updated: ${replies.length} replies`);
+            callback(replies);
+          },
+          error => {
+            console.error('❌ Error in thread listener:', error);
+            // Call callback with empty array on error
+            callback([]);
+          }
+        );
+
+      console.log(`👂 Listening to thread: ${messageId}`);
+      return unsubscribe;
+
+    } catch (error) {
+      console.error('❌ Error setting up thread listener:', error);
+      throw error;
+    }
+  }
 }
 
 export default NotificationBellSystem;

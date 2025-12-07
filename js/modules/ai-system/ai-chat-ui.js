@@ -840,6 +840,9 @@ inputContainer.style.display = 'none';
       // Icon for admin messages
       const iconName = 'envelope';
 
+      // Check if has replies
+      const hasReplies = (message.repliesCount && message.repliesCount > 0);
+
       notifEl.innerHTML = `
         <div class="ai-notification-content">
           <div class="ai-notification-icon">
@@ -849,11 +852,15 @@ inputContainer.style.display = 'none';
             <div class="ai-notification-title">הודעה מהמנהל</div>
             <div class="ai-notification-description">${this._escapeHTML(message.message || message.description || '')}</div>
             <div class="ai-notification-time">${this._escapeHTML(message.time || '')}</div>
-            ${message.status !== 'responded' ? `
+            ${hasReplies ? `
+              <button class="ai-notification-thread-btn" data-message-id="${message.messageId}">
+                <i class="fas fa-comments"></i> 💬 ${message.repliesCount} תשובות - צפה בשיחה
+              </button>
+            ` : `
               <button class="ai-notification-reply-btn" data-message-id="${message.messageId}" data-message-text="${this._escapeHTML(message.description || message.message || '').replace(/"/g, '&quot;')}">
                 <i class="fas fa-reply"></i> השב
               </button>
-            ` : '<span class="ai-notification-responded">✓ נענה</span>'}
+            `}
           </div>
         </div>
       `;
@@ -863,8 +870,19 @@ inputContainer.style.display = 'none';
 
     notifContainer.appendChild(notificationsList);
 
-    // Add event listener delegation for reply buttons
+    // Add event listener delegation for reply and thread buttons
     notificationsList.addEventListener('click', (e) => {
+      // Check for thread button (view conversation)
+      const threadBtn = e.target.closest('.ai-notification-thread-btn');
+      if (threadBtn) {
+        const messageId = threadBtn.getAttribute('data-message-id');
+        if (messageId) {
+          this.openThread(messageId);
+        }
+        return;
+      }
+
+      // Check for reply button (first response)
       const replyBtn = e.target.closest('.ai-notification-reply-btn');
       if (replyBtn) {
         const messageId = replyBtn.getAttribute('data-message-id');
@@ -874,6 +892,32 @@ inputContainer.style.display = 'none';
         }
       }
     });
+  }
+
+  /**
+   * Open thread view for a message
+   * @param {string} messageId - Message ID
+   */
+  openThread(messageId) {
+    if (!window.threadView) {
+      console.error('ThreadView not available');
+      return;
+    }
+
+    // Find the message object
+    const message = window.notificationBell?.notifications.find(n => n.messageId === messageId);
+
+    if (!message) {
+      console.error('Message not found:', messageId);
+      return;
+    }
+
+    // Open thread view
+    window.threadView.open(messageId, message);
+
+    if (this.config.debugMode) {
+      console.log(`[AI Chat] Opening thread for message ${messageId}`);
+    }
   }
 
   /**

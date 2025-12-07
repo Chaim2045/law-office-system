@@ -269,16 +269,30 @@ class UserReplyModal {
         throw new Error('Firebase לא זמין');
       }
 
-      // Update Firestore
-      await window.firebaseDB.collection('user_messages')
-        .doc(this.currentMessageId)
-        .update({
-          response: response,
-          status: 'responded',
-          respondedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+      if (!window.currentUser) {
+        throw new Error('משתמש לא מחובר');
+      }
 
-      console.log(`✅ Response sent for message ${this.currentMessageId}`);
+      // Use new thread-based API
+      if (window.notificationBell && typeof window.notificationBell.sendReplyToAdmin === 'function') {
+        // New method: Use subcollection
+        await window.notificationBell.sendReplyToAdmin(
+          this.currentMessageId,
+          response,
+          window.currentUser
+        );
+        console.log(`✅ Response sent using thread API for message ${this.currentMessageId}`);
+      } else {
+        // Fallback: Old method (backward compatibility)
+        await window.firebaseDB.collection('user_messages')
+          .doc(this.currentMessageId)
+          .update({
+            response: response,
+            status: 'responded',
+            respondedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        console.log(`✅ Response sent using legacy API for message ${this.currentMessageId}`);
+      }
 
       // Hide loading FIRST (critical - prevents spinner bug)
       this.hideLoading();
