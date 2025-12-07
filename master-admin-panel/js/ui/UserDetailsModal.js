@@ -792,10 +792,11 @@
 
             const messages = this.userData.messages || [];
 
-            // Calculate counts for filter tabs
-            const allCount = messages.length;
-            const unreadCount = messages.filter(m => m.status === 'unread').length;
-            const readCount = messages.filter(m => m.status === 'read' || m.status === 'responded').length;
+            // Calculate counts for filter tabs (excluding archived from active counts)
+            const activeMessages = messages.filter(m => !m.archived);
+            const allCount = activeMessages.length; // Only active (non-archived) messages
+            const unreadCount = messages.filter(m => m.status === 'unread' && !m.archived).length;
+            const readCount = messages.filter(m => (m.status === 'read' || m.status === 'responded') && !m.archived).length;
             const archivedCount = messages.filter(m => m.archived === true).length;
 
             // Filter messages based on selected filter
@@ -844,7 +845,7 @@
                     <div class="messages-filter-tabs">
                         <button class="filter-tab ${this.messageFilter === 'all' ? 'active' : ''}" data-filter="all">
                             <i class="fas fa-inbox"></i>
-                            <span>הכל</span>
+                            <span>פעילות</span>
                             <span class="filter-count">${allCount}</span>
                         </button>
                         <button class="filter-tab ${this.messageFilter === 'unread' ? 'active' : ''}" data-filter="unread">
