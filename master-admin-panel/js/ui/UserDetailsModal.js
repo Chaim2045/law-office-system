@@ -294,8 +294,10 @@
                     .catch(() => ({ docs: [] })),
 
                 // Get admin messages sent to this user (last 100)
+                // ✅ סינון: רק הודעות שהמנהל שלח ידנית (לא הודעות מערכת)
                 db.collection('user_messages')
                     .where('to', '==', userEmail)
+                    .where('from', '!=', 'system')
                     .orderBy('createdAt', 'desc')
                     .limit(100)
                     .get()
@@ -2479,7 +2481,9 @@ return '-';
          * פורמט תאריך + שעה להודעות
          */
         formatTimestamp(timestamp) {
-            if (!timestamp) return '-';
+            if (!timestamp) {
+return '-';
+}
 
             try {
                 let dateObj;
@@ -2519,7 +2523,9 @@ return '-';
          * קבלת זמן יחסי
          */
         getRelativeTime(timestamp) {
-            if (!timestamp) return '';
+            if (!timestamp) {
+return '';
+}
 
             try {
                 let dateObj;
