@@ -350,7 +350,8 @@ class ActionFlowManager {
       // 4. Show success message
       if (successMessage) {
         if (window.NotificationSystem) {
-          window.NotificationSystem.success(successMessage, 3000);
+          // ✅ 5 seconds for important messages like task approval
+          window.NotificationSystem.success(successMessage, 5000);
         } else {
           window.showNotification?.(successMessage, 'success');
         }

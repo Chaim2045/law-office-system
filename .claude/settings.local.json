@@ -40,7 +40,21 @@
       "Bash(node:*)",
       "Bash(ls:*)",
       "Bash(npm run test:*)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(netlify open:*)",
+      "Bash(wc:*)",
+      "Bash(firebase projects:list:*)",
+      "Bash(firebase firestore:databases:list:*)",
+      "Bash(gcloud config get-value:*)",
+      "Bash(gcloud auth list:*)",
+      "Bash(where:*)",
+      "Bash(firebase --version:*)",
+      "Bash(firebase apps:list:*)",
+      "Bash(firebase apps:sdkconfig:*)",
+      "Bash(netlify status:*)",
+      "Bash(netlify open:site:*)",
+      "Bash(netlify open:admin:*)",
+      "Bash(gcloud projects describe:*)"
     ],
     "deny": [],
     "ask": []

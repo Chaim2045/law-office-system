@@ -244,25 +244,25 @@
 
 .dialog-actions button {
   flex: 1;
-  padding: 0.75rem 1.25rem;
+  padding: var(--space-3) var(--space-5); /* נמוך יותר כמו btn-add-user */
   border: none;
-  border-radius: var(--radius-md); /* תואם לשאר המערכת */
-  font-weight: 600;
-  font-size: 0.875rem;
+  border-radius: var(--radius-sm); /* עיגול קטן */
+  font-weight: var(--font-medium);
+  font-size: var(--text-md);
   cursor: pointer;
-  transition: all var(--transition-smooth);
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: var(--shadow-md);
 }
 
-/* כפתור אישור - Gradient כחול כמו בטאב הראשי */
+/* כפתור אישור - gradient כחול כמו btn-primary */
 .btn-approve-full,
 .btn-approve-modified {
   background: linear-gradient(135deg, var(--blue), var(--blue-dark));
   color: white;
+  box-shadow: var(--shadow-md);
 }
 
 .btn-approve-full:hover,
@@ -271,16 +271,17 @@
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
 }
 
-/* כפתור דחייה - אדום כמו .btn-danger */
+/* כפתור דחייה - אדום */
 .btn-reject {
   background: var(--red);
   color: white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
 }
 
 .btn-reject:hover {
   background: var(--red-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
 }
 
 /* Loading State */

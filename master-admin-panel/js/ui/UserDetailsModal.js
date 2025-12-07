@@ -1114,9 +1114,17 @@
                 console.log('✅ Calling alertCommManager.archiveMessage...');
                 await window.alertCommManager.archiveMessage(messageId);
 
-                console.log('✅ Message archived, reloading user data...');
-                // Reload user data to refresh messages
-                await this.loadFullUserData();
+                console.log('✅ Message archived, updating local data...');
+                // Update local message data instead of full reload
+                const messageIndex = this.userData.messages.findIndex(m => m.id === messageId);
+                if (messageIndex !== -1) {
+                    this.userData.messages[messageIndex].archived = true;
+                    this.userData.messages[messageIndex].archivedBy = window.firebaseAuth.currentUser.email;
+                    this.userData.messages[messageIndex].archivedAt = new Date();
+                }
+
+                // Re-render only the messages tab content
+                this.refreshMessagesTab();
 
                 console.log('✅ Archive complete!');
             } catch (error) {
@@ -1135,20 +1143,70 @@
          */
         async restoreMessage(messageId) {
             try {
+                console.log('♻️ Restoring message:', messageId);
+
+                if (!messageId) {
+                    throw new Error('Message ID is missing');
+                }
+
                 if (!window.alertCommManager) {
                     throw new Error('AlertCommunicationManager not available');
                 }
 
+                console.log('✅ Calling alertCommManager.restoreMessage...');
                 await window.alertCommManager.restoreMessage(messageId);
 
-                // Reload user data to refresh messages
-                await this.loadFullUserData();
+                console.log('✅ Message restored, updating local data...');
+                // Update local message data instead of full reload
+                const messageIndex = this.userData.messages.findIndex(m => m.id === messageId);
+                if (messageIndex !== -1) {
+                    this.userData.messages[messageIndex].archived = false;
+                    this.userData.messages[messageIndex].archivedBy = null;
+                    this.userData.messages[messageIndex].archivedAt = null;
+                }
+
+                // Re-render only the messages tab content
+                this.refreshMessagesTab();
+
+                console.log('✅ Restore complete!');
             } catch (error) {
                 console.error('❌ Error restoring message:', error);
+                console.error('   Message ID was:', messageId);
+                console.error('   Error details:', error.message);
                 if (window.notify) {
-                    window.notify.error('שגיאה בשחזור הודעה');
+                    window.notify.error(`שגיאה בשחזור הודעה: ${error.message}`);
                 }
             }
+        }
+
+        /**
+         * Refresh messages tab without full reload
+         * רענון טאב הודעות בלי לטעון הכל מחדש
+         */
+        refreshMessagesTab() {
+            console.log('🔄 Refreshing messages tab...');
+
+            // Find the messages tab panel in the DOM
+            const messagesTabPanel = document.querySelector('.tab-panel.tab-messages');
+            if (!messagesTabPanel) {
+                console.warn('⚠️ Messages tab panel not found in DOM');
+                return;
+            }
+
+            // Re-render the messages tab HTML
+            const updatedHTML = this.renderMessagesTab();
+
+            // Create a temporary container to parse the new HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = updatedHTML;
+
+            // Get the new content
+            const newContent = tempDiv.firstElementChild;
+
+            // Replace the old tab panel with the new one
+            messagesTabPanel.replaceWith(newContent);
+
+            console.log('✅ Messages tab refreshed successfully');
         }
 
 

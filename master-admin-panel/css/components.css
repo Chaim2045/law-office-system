@@ -3184,7 +3184,7 @@ select.form-input,
   z-index: 1;
 }
 
-/* Timeline dot */
+/* Timeline dot - Blue only color scheme */
 .fullscreen-timeline-dot {
   position: absolute;
   right: 10px;
@@ -3199,14 +3199,11 @@ select.form-input,
   transition: all 0.2s;
 }
 
-.fullscreen-timeline-dot.msg-orange {
-  border-color: var(--orange);
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
+/* All dots use blue color scheme */
+.fullscreen-timeline-dot.msg-orange,
 .fullscreen-timeline-dot.msg-red {
-  border-color: var(--red);
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .fullscreen-timeline-item:hover .fullscreen-timeline-dot {
@@ -3259,19 +3256,14 @@ select.form-input,
   letter-spacing: 0.3px;
 }
 
-.message-type-badge.type-info {
+/* All badges use blue color scheme */
+.message-type-badge.type-info,
+.message-type-badge.type-warning,
+.message-type-badge.type-alert,
+.message-type-badge.type-urgent,
+.message-type-badge.type-reminder {
   background: var(--blue-50);
   color: var(--blue);
-}
-
-.message-type-badge.type-warning {
-  background: var(--orange-50);
-  color: var(--orange);
-}
-
-.message-type-badge.type-alert {
-  background: var(--red-50);
-  color: var(--red);
 }
 
 .message-priority-badge {
@@ -3300,7 +3292,7 @@ select.form-input,
   word-wrap: break-word;
 }
 
-/* Response Section */
+/* Response Section - Blue only color scheme */
 .fullscreen-message-response {
   margin-top: 12px;
   padding: 12px;
@@ -3309,11 +3301,8 @@ select.form-input,
   border-right: 3px solid var(--gray-400);
 }
 
-.fullscreen-message-response.responded {
-  background: rgba(16, 185, 129, 0.05);
-  border-right-color: var(--green);
-}
-
+/* All response states use blue color scheme */
+.fullscreen-message-response.responded,
 .fullscreen-message-response.read {
   background: rgba(59, 130, 246, 0.05);
   border-right-color: var(--blue);

@@ -65,8 +65,13 @@ class NotificationMessages {
 
     // Success messages
     success: {
-      created: (clientName, taskDescription) =>
-        `המשימה הועברה למנהל לאישור תקציב\n\nתקבל התראה באייקון המעטפה כשהמנהל יאשר`,
+      created: (clientName, taskDescription, estimatedMinutes) =>
+        `✅ המשימה נשלחה למנהל לאישור תקציב\n\n` +
+        `📋 ${taskDescription}\n` +
+        `👤 ${clientName}\n` +
+        `⏱️ תקציב מבוקש: ${estimatedMinutes || '---'} דקות\n\n` +
+        `🔔 תקבל התראה במעטפה 📧 כשהמנהל יאשר\n\n` +
+        `💡 המשימה תופיע בטאב "פעיל" רק אחרי אישור המנהל`,
       completed: (clientName) =>
         `משימה הושלמה: ${clientName}. תוכל לראות אותה בהושלמו`,
       timeAdded: (minutes) =>

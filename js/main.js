@@ -832,7 +832,7 @@ return false;
           );
           this.filterBudgetTasks();
         },
-        successMessage: msgs.success.created(selectorValues.clientName, description),
+        successMessage: msgs.success.created(selectorValues.clientName, description, estimatedMinutes),
         errorMessage: msgs.error.createFailed,
         onSuccess: () => {
           // Clear form and hide
@@ -1013,9 +1013,12 @@ return;
     if (this.currentTaskFilter === 'completed') {
       this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status === 'הושלם');
     } else if (this.currentTaskFilter === 'active') {
-      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status !== 'הושלם');
+      // ✅ סנן החוצה משימות ממתינות לאישור - הן לא "פעילות" עדיין
+      this.filteredBudgetTasks = this.budgetTasks.filter(task =>
+        task.status !== 'הושלם' && task.status !== 'pending_approval'
+      );
     } else {
-      // 'all' - show everything
+      // 'all' - show everything (including pending_approval)
       this.filteredBudgetTasks = [...this.budgetTasks];
     }
     this.renderBudgetView();
