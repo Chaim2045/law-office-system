@@ -55,6 +55,7 @@
     const radius = 32;
     const strokeWidth = 6;
     const circumference = 2 * Math.PI * radius;
+    // ✅ FIX: Allow progress > 100% - ring visual caps at 100%, but text shows actual %
     const dashOffset = calculateDashOffset(Math.min(progress, 100), radius);
 
     // Generate unique gradient ID
