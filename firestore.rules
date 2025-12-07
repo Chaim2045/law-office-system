@@ -228,11 +228,15 @@ service cloud.firestore {
         isAdmin()
       );
 
-      // Update: Users can only update their own messages (response fields only)
-      allow update: if isAuthenticated() &&
-                       resource.data.to == request.auth.token.email &&
-                       request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['response', 'status', 'respondedAt']);
+      // Update: Users can update response fields, admins can update any field (including archive)
+      allow update: if isAuthenticated() && (
+        // Users can only update their own messages (response fields only)
+        (resource.data.to == request.auth.token.email &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['response', 'status', 'respondedAt'])) ||
+        // Admins can update any field (including archived, archivedBy, archivedAt)
+        isAdmin()
+      );
 
       // Delete: Only admins can delete messages
       allow delete: if isAdmin();
