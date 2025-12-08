@@ -2276,7 +2276,16 @@ return;
             const messagesTabContent = modal.querySelector('.tab-panel.tab-messages');
             console.log('   Found messagesTabContent:', !!messagesTabContent);
             if (messagesTabContent) {
-                messagesTabContent.addEventListener('click', async (e) => {
+                console.log('✅ Attaching event delegation to messages tab');
+
+                // Remove existing listener if any (prevent duplicates)
+                if (messagesTabContent._messagesClickHandler) {
+                    messagesTabContent.removeEventListener('click', messagesTabContent._messagesClickHandler);
+                    console.log('   🗑️ Removed old event listener');
+                }
+
+                // Create new handler and store reference
+                const clickHandler = async (e) => {
                     console.log('🖱️ Messages tab click detected:', e.target);
 
                     // Check for filter tabs
@@ -2328,7 +2337,12 @@ return;
                         await this.openThread(messageId);
                         return;
                     }
-                });
+                };
+
+                // Store handler reference and attach
+                messagesTabContent._messagesClickHandler = clickHandler;
+                messagesTabContent.addEventListener('click', clickHandler);
+                console.log('   ✅ Event listener attached');
             } else {
                 console.warn('⚠️ Messages tab content not found - event delegation not attached');
             }
