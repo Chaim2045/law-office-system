@@ -271,7 +271,9 @@
             const textarea = document.getElementById('adminThreadReplyInput');
             const sendBtn = document.getElementById('adminThreadSendBtn');
 
-            if (!textarea || !sendBtn) return;
+            if (!textarea || !sendBtn) {
+return;
+}
 
             const replyText = textarea.value.trim();
 
@@ -342,24 +344,42 @@
          * @returns {string} - Formatted time string
          */
         _formatTime(date) {
-            if (!date) return '';
+            if (!date) {
+return '';
+}
 
             try {
+                // Convert Firestore Timestamp to Date if needed
+                let dateObj = date;
+                if (date && typeof date.toDate === 'function') {
+                    dateObj = date.toDate();
+                } else if (!(date instanceof Date)) {
+                    dateObj = new Date(date);
+                }
+
                 const now = new Date();
-                const diffMs = now - date;
+                const diffMs = now - dateObj;
                 const diffMins = Math.floor(diffMs / 60000);
 
-                if (diffMins < 1) return 'עכשיו';
-                if (diffMins < 60) return `לפני ${diffMins} דקות`;
+                if (diffMins < 1) {
+return 'עכשיו';
+}
+                if (diffMins < 60) {
+return `לפני ${diffMins} דקות`;
+}
 
                 const diffHours = Math.floor(diffMins / 60);
-                if (diffHours < 24) return `לפני ${diffHours} שעות`;
+                if (diffHours < 24) {
+return `לפני ${diffHours} שעות`;
+}
 
                 const diffDays = Math.floor(diffHours / 24);
-                if (diffDays < 7) return `לפני ${diffDays} ימים`;
+                if (diffDays < 7) {
+return `לפני ${diffDays} ימים`;
+}
 
                 // Format as date
-                return date.toLocaleDateString('he-IL');
+                return dateObj.toLocaleDateString('he-IL');
 
             } catch (error) {
                 console.error('Error formatting time:', error);
@@ -373,7 +393,9 @@
          * @returns {string} - Escaped string
          */
         _escapeHTML(str) {
-            if (!str) return '';
+            if (!str) {
+return '';
+}
 
             const div = document.createElement('div');
             div.textContent = str;
