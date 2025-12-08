@@ -421,8 +421,6 @@
                         font-size: 14px;
                         transition: all 0.2s;
                       "
-                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
                     >
                   </div>
                 </div>
@@ -510,8 +508,6 @@
                         font-size: 14px;
                         transition: all 0.2s;
                       "
-                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
                     >
                   </div>
 
@@ -533,8 +529,6 @@
                         resize: vertical;
                         transition: all 0.2s;
                       "
-                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
                     ></textarea>
                   </div>
                 </div>
@@ -585,8 +579,6 @@
                         font-size: 14px;
                         transition: all 0.2s;
                       "
-                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
                     >
                   </div>
 
@@ -1013,14 +1005,14 @@ serviceTitleField.style.display = 'block';
       if (!window.CaseNumberGenerator) {
         console.error('❌ CaseNumberGenerator not loaded!');
         input.value = 'שגיאה: Generator לא נטען';
-        input.style.color = '#ef4444';
+        input.classList.add('text-danger');
         return;
       }
 
       // אם לא מאותחל - חכה לאתחול
       if (!window.CaseNumberGenerator.isInitialized) {
         input.value = 'טוען...';
-        input.style.color = '#9ca3af';
+        input.classList.add('input-disabled');
 
         // חכה עד 5 שניות לאתחול
         let attempts = 0;
@@ -1034,20 +1026,22 @@ serviceTitleField.style.display = 'block';
         if (!window.CaseNumberGenerator.isInitialized) {
           console.error('❌ CaseNumberGenerator initialization timeout!');
           input.value = 'שגיאה: לא הצליח לטעון';
-          input.style.color = '#ef4444';
+          input.classList.remove('input-disabled');
+          input.classList.add('text-danger');
           return;
         }
       }
 
       // ✅ טען מספר תיק חכם עם בדיקת זמינות בזמן אמת
       input.value = 'בודק זמינות...';
-      input.style.color = '#3b82f6';
-      input.style.fontWeight = '600';
+      input.classList.remove('input-disabled', 'text-danger', 'input-warning');
+      input.classList.add('input-info');
 
       try {
         const nextNumber = await window.CaseNumberGenerator.getNextAvailableCaseNumber();
         input.value = nextNumber;
-        input.style.color = '#059669';
+        input.classList.remove('input-info');
+        input.classList.add('input-success');
 
         Logger.log(`✅ Available case number loaded: ${nextNumber}`);
       } catch (error) {
@@ -1056,7 +1050,8 @@ serviceTitleField.style.display = 'block';
         // Fallback לפונקציה הרגילה אם הזמינות נכשלה
         const fallbackNumber = window.CaseNumberGenerator.getNextCaseNumber();
         input.value = fallbackNumber;
-        input.style.color = '#f59e0b'; // צהוב לסימן אזהרה
+        input.classList.remove('input-info');
+        input.classList.add('input-warning');
 
         Logger.log(`⚠️ Using fallback case number: ${fallbackNumber}`);
       }
@@ -1119,8 +1114,6 @@ serviceTitleField.style.display = 'block';
                 font-size: 15px;
                 transition: all 0.2s;
               "
-              onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-              onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
             >
             <p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280;">
               <i class="fas fa-info-circle" style="margin-left: 4px;"></i>
@@ -1239,8 +1232,6 @@ serviceTitleField.style.display = 'block';
                 transition: all 0.2s;
                 box-sizing: border-box;
               "
-              onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-              onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
             >
           </div>
 
@@ -1265,8 +1256,6 @@ serviceTitleField.style.display = 'block';
                 transition: all 0.2s;
                 box-sizing: border-box;
               "
-              onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-              onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
             >
           </div>
         </div>
@@ -1284,42 +1273,6 @@ serviceTitleField.style.display = 'block';
       // מעבר בין מצבי לקוח
       document.getElementById('newClientModeBtn')?.addEventListener('click', () => this.switchMode('new'));
       document.getElementById('existingClientModeBtn')?.addEventListener('click', () => this.switchMode('existing'));
-
-      // 🎨 Hover effects לטאבים
-      const tabButtons = [
-        document.getElementById('newClientModeBtn'),
-        document.getElementById('existingClientModeBtn')
-      ];
-
-      tabButtons.forEach(btn => {
-        if (!btn) {
-return;
-}
-
-        btn.addEventListener('mouseenter', () => {
-          if (!btn.classList.contains('active')) {
-            btn.style.background = '#f8fafc';
-            btn.style.color = '#374151';
-            const icon = btn.querySelector('i');
-            if (icon) {
-              icon.style.color = '#3b82f6';
-              icon.style.transform = 'scale(1.1)';
-            }
-          }
-        });
-
-        btn.addEventListener('mouseleave', () => {
-          if (!btn.classList.contains('active')) {
-            btn.style.background = 'transparent';
-            btn.style.color = '#64748b';
-            const icon = btn.querySelector('i');
-            if (icon) {
-              icon.style.color = '';
-              icon.style.transform = '';
-            }
-          }
-        });
-      });
 
       // ✅ Stepper Navigation
       document.getElementById('nextStepBtn')?.addEventListener('click', () => this.nextStep());
@@ -1447,14 +1400,7 @@ return;
             transition: all 0.2s;
             box-sizing: border-box;
           `;
-          newField.onfocus = function() {
-            this.style.borderColor = '#3b82f6';
-            this.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)';
-          };
-          newField.onblur = function() {
-            this.style.borderColor = '#d1d5db';
-            this.style.boxShadow = 'none';
-          };
+          // CSS handles focus/blur states automatically
 
           // החלף את השדה
           oldField.replaceWith(newField);
@@ -1479,32 +1425,9 @@ return;
       const existingBtn = document.getElementById('existingClientModeBtn');
       const dialogTitle = document.getElementById('dialogTitle');
 
-      // הסר את ה-active מכל הכפתורים
+      // הסר את ה-active מכל הכפתורים (CSS יטפל בעיצוב)
       newBtn.classList.remove('active');
       existingBtn.classList.remove('active');
-
-      // אפס סטיילים ישנים
-      [newBtn, existingBtn].forEach(btn => {
-        btn.style.color = '#64748b';
-        btn.style.fontWeight = '600';
-        btn.style.transform = '';
-        btn.style.removeProperty('background');
-        btn.style.removeProperty('border');
-        btn.style.removeProperty('box-shadow');
-
-        // אפס אייקון
-        const icon = btn.querySelector('i');
-        if (icon) {
-          icon.style.color = '';
-          icon.style.filter = '';
-        }
-
-        // הסתר נקודה אם קיימת
-        const dot = btn.querySelector('.tab-dot');
-        if (dot) {
-          dot.style.display = 'none';
-        }
-      });
 
       if (mode === 'new') {
         // עדכון כותרת
@@ -2005,13 +1928,11 @@ return;
       // Clear previous highlights
       this.clearErrorHighlights();
 
-      // Highlight all error fields
+      // Highlight all error fields using CSS class
       fieldIds.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-          field.style.borderColor = '#ef4444';
-          field.style.borderWidth = '2px';
-          field.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+          field.classList.add('input-error');
         }
       });
 
@@ -2030,9 +1951,7 @@ return;
       // Get all input and select fields in the dialog
       const fields = document.querySelectorAll('#modernCaseDialog input, #modernCaseDialog select, #modernCaseDialog textarea');
       fields.forEach(field => {
-        field.style.borderColor = '';
-        field.style.borderWidth = '';
-        field.style.boxShadow = '';
+        field.classList.remove('input-error');
       });
     }
 

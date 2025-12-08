@@ -395,3 +395,64 @@
     gap: 4px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * INPUT FOCUS/BLUR STATES
+ * מצבי פוקוס לשדות קלט - במקום inline styles
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Focus State - Blue Border + Shadow */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  outline: none;
+}
+
+/* Blur State - Default Gray Border */
+input:not(:focus),
+select:not(:focus),
+textarea:not(:focus) {
+  border-color: #d1d5db;
+  box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * VALIDATION STATES
+ * מצבי ולידציה לשדות - במקום inline styles
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Error State - Red Border + Shadow */
+.input-error {
+  border-color: #ef4444 !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Success State - Green */
+.input-success {
+  color: #059669 !important;
+  font-weight: 600;
+}
+
+/* Warning State - Orange/Amber */
+.input-warning {
+  color: #f59e0b !important;
+}
+
+/* Info State - Blue */
+.input-info {
+  color: #3b82f6 !important;
+  font-weight: 600;
+}
+
+/* Disabled/Placeholder State - Gray */
+.input-disabled {
+  color: #9ca3af !important;
+}
+
+/* Danger Text - Red */
+.text-danger {
+  color: #ef4444 !important;
+}
