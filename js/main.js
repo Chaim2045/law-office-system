@@ -179,12 +179,22 @@ class LawOfficeManager {
     Logger.log('⏳ Waiting for Firebase Auth...');
     const user = await this.waitForAuthReady();
 
-    // טיפול בהתאם למצב authentication
+    // 🔒 SECURITY FIX: Always show login screen, even if user has saved session
+    // This matches banking systems behavior - browser can fill password but user must click login
     if (user) {
-      await this.handleAuthenticatedUser(user);
-    } else {
-      this.showLogin();
+      // Found saved Firebase session, but don't auto-login
+      Logger.log('✅ Found saved session for:', user.email);
+      Logger.log('🔐 Showing login screen - manual login required (like banks)');
+
+      // Optional: Pre-fill email field for convenience
+      const emailInput = document.getElementById('email');
+      if (emailInput && user.email) {
+        emailInput.value = user.email;
+      }
     }
+
+    // Always show login screen - login only happens on manual button click
+    this.showLogin();
 
     Logger.log('✅ System initialized');
   }
