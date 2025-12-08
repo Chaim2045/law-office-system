@@ -210,24 +210,28 @@
          */
         monitorAuthState() {
             this.auth.onAuthStateChanged(async (user) => {
-                // 🔒 SECURITY FIX: Always show login screen, even if user has saved session
-                // This matches banking systems behavior - browser can fill password but user must click login
                 if (user) {
-                    console.log('✅ Found saved admin session for:', user.email);
-                    console.log('🔐 Showing login screen - manual login required (like banks)');
+                    console.log('👤 User authenticated:', user.email);
 
-                    // Optional: Pre-fill email field for convenience
-                    if (this.emailInput && user.email) {
-                        this.emailInput.value = user.email;
+                    // Check if user is admin
+                    const isAdmin = await this.checkIfAdmin(user);
+
+                    if (isAdmin) {
+                        this.currentUser = user;
+                        this.isAdmin = true;
+                        this.showDashboard();
+                    } else {
+                        // Not an admin - sign out immediately
+                        console.warn('⚠️ Unauthorized access attempt:', user.email);
+                        await this.auth.signOut();
+                        this.showError('אין לך הרשאות גישה למערכת זו. גישה למנהלים בלבד.');
                     }
                 } else {
                     console.log('👤 No user authenticated');
+                    this.currentUser = null;
+                    this.isAdmin = false;
+                    this.showLoginScreen();
                 }
-
-                // Always show login screen - login only happens on manual button click
-                this.currentUser = null;
-                this.isAdmin = false;
-                this.showLoginScreen();
             });
         }
 
