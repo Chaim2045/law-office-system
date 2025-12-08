@@ -366,6 +366,15 @@
                 ...doc.data()
             }));
 
+            // 🔍 DEBUG: Log messages with repliesCount
+            console.log(`📨 Loaded ${messages.length} messages`);
+            const messagesWithReplies = messages.filter(m => m.repliesCount > 0);
+            console.log(`💬 Messages with replies: ${messagesWithReplies.length}`, messagesWithReplies.map(m => ({
+                id: m.id,
+                repliesCount: m.repliesCount,
+                message: m.message?.substring(0, 50)
+            })));
+
             // Calculate stats
             const now = new Date();
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
@@ -943,6 +952,15 @@
          * רינדור הודעה בודדת ב-Timeline
          */
         renderMessageTimelineItem(message) {
+            // 🔍 DEBUG: Log repliesCount for each message
+            console.log(`📝 Rendering message ${message.id}:`, {
+                repliesCount: message.repliesCount,
+                hasRepliesCount: 'repliesCount' in message,
+                repliesCountValue: message.repliesCount,
+                repliesCountType: typeof message.repliesCount,
+                willShowButton: !!(message.repliesCount && message.repliesCount > 0)
+            });
+
             const typeIcons = {
                 'info': 'fa-info-circle',
                 'warning': 'fa-exclamation-triangle',
@@ -2252,7 +2270,11 @@ return;
             // ========== MESSAGES TAB - EVENT DELEGATION ==========
             // Event delegation for messages tab buttons (send new message, fullscreen, archive, restore, filter tabs)
             // Uses data-action attribute instead of inline onclick
+            console.log('🔍 Looking for .tab-panel.tab-messages in modal...');
+            console.log('   Modal exists:', !!modal);
+            console.log('   Modal innerHTML length:', modal?.innerHTML?.length || 0);
             const messagesTabContent = modal.querySelector('.tab-panel.tab-messages');
+            console.log('   Found messagesTabContent:', !!messagesTabContent);
             if (messagesTabContent) {
                 messagesTabContent.addEventListener('click', async (e) => {
                     console.log('🖱️ Messages tab click detected:', e.target);
@@ -2318,6 +2340,7 @@ return;
          * מעבר בין טאבים
          */
         async switchTab(tabId) {
+            console.log(`🔄 switchTab called: ${this.activeTab} → ${tabId}`);
             this.activeTab = tabId;
 
             // If switching to messages tab, mark user's responses as read by admin
