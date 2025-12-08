@@ -183,8 +183,21 @@ class ThreadView {
       this.unsubscribeReplies = window.notificationBell.listenToThreadReplies(
         this.currentThreadId,
         (replies) => {
-          this.replies = replies;
-          this.renderReplies(replies);
+          // ✅ Backward compatibility: Add legacy `response` as first reply if exists
+          let allReplies = [...replies];
+          if (this.currentOriginalMessage.response && replies.length === 0) {
+            console.log('📜 Adding legacy response as first reply');
+            allReplies = [{
+              id: 'legacy-response',
+              from: this.currentOriginalMessage.to,
+              fromName: this.currentOriginalMessage.toName || this.currentOriginalMessage.to,
+              message: this.currentOriginalMessage.response,
+              createdAt: this.currentOriginalMessage.respondedAt?.toDate?.() || new Date(this.currentOriginalMessage.respondedAt)
+            }];
+          }
+
+          this.replies = allReplies;
+          this.renderReplies(allReplies);
 
           // Hide loading
           if (loadingEl) {

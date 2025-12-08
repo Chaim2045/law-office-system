@@ -70,7 +70,12 @@
       "Bash(netlify unlink:*)",
       "Bash(netlify link:*)",
       "Bash(firebase functions:delete:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git checkout:*)",
+      "Bash(git revert:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(firebase functions:config:get:*)",
+      "Bash(firebase functions:log:*)"
     ],
     "deny": [],
     "ask": []

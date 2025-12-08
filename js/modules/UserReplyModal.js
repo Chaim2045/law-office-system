@@ -335,26 +335,17 @@ class UserReplyModal {
         throw new Error('משתמש לא מחובר');
       }
 
-      // Use new thread-based API
-      if (window.notificationBell && typeof window.notificationBell.sendReplyToAdmin === 'function') {
-        // New method: Use subcollection
-        await window.notificationBell.sendReplyToAdmin(
-          this.currentMessageId,
-          response,
-          currentUser
-        );
-        console.log(`✅ Response sent using thread API for message ${this.currentMessageId}`);
-      } else {
-        // Fallback: Old method (backward compatibility)
-        await window.firebaseDB.collection('user_messages')
-          .doc(this.currentMessageId)
-          .update({
-            response: response,
-            status: 'responded',
-            respondedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        console.log(`✅ Response sent using legacy API for message ${this.currentMessageId}`);
+      // ✅ Use thread-based API only (no legacy fallback)
+      if (!window.notificationBell || typeof window.notificationBell.sendReplyToAdmin !== 'function') {
+        throw new Error('NotificationBell API לא זמין. אנא רענן את הדף ונסה שוב.');
       }
+
+      await window.notificationBell.sendReplyToAdmin(
+        this.currentMessageId,
+        response,
+        currentUser
+      );
+      console.log(`✅ Response sent using thread API for message ${this.currentMessageId}`);
 
       // Hide loading FIRST (critical - prevents spinner bug)
       this.hideLoading();

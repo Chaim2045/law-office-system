@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>🔍 בדיקת בעיית טבעת תאריך יעד</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      direction: rtl;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #e74c3c;
+      padding-bottom: 10px;
+    }
+    .task-card {
+      background: #f9f9f9;
+      padding: 20px;
+      margin: 15px 0;
+      border-radius: 8px;
+      border-right: 5px solid #3498db;
+    }
+    .task-card.problem {
+      border-right-color: #e74c3c;
+      background: #fee;
+    }
+    .task-card.warning {
+      border-right-color: #f39c12;
+      background: #fff8e1;
+    }
+    .task-card.ok {
+      border-right-color: #2ecc71;
+      background: #e8f5e9;
+    }
+    .label {
+      font-weight: bold;
+      color: #555;
+      display: inline-block;
+      min-width: 150px;
+    }
+    .value {
+      color: #222;
+    }
+    .issue {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 15px;
+      margin-top: 15px;
+      border-radius: 4px;
+      color: #856404;
+      font-weight: bold;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat-box.problem {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .stat-box h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .stat-box .number {
+      font-size: 36px;
+      font-weight: bold;
+    }
+    #loading {
+      text-align: center;
+      padding: 50px;
+      font-size: 18px;
+      color: #666;
+    }
+    .calculation {
+      background: #e3f2fd;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .button-group {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    button.danger {
+      background: #e74c3c;
+    }
+    button.danger:hover {
+      background: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 בדיקת בעיית טבעת תאריך יעד - משימות של חיים</h1>
+
+    <div class="button-group">
+      <button onclick="location.reload()">🔄 רענן</button>
+      <button id="toggleProblems">
+        🔍 הצג רק בעיות
+      </button>
+    </div>
+
+    <div id="loading">⏳ טוען נתונים מ-Firestore...</div>
+
+    <div id="stats" style="display:none;"></div>
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      databaseURL: "https://law-office-system-e4801-default-rtdb.firebaseio.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "199682320505",
+      appId: "1:199682320505:web:8e4f5e34653476479b4ca8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let showOnlyProblems = false;
+
+    // הוסף event listener לכפתור
+    document.getElementById('toggleProblems')?.addEventListener('click', () => {
+      showOnlyProblems = !showOnlyProblems;
+      debugDeadlines();
+    });
+
+    async function debugDeadlines() {
+      const now = new Date();
+      console.log('🔍 בודק משימות של חיים...');
+      console.log('⏰ זמן עכשיו:', now.toLocaleString('he-IL'));
+
+      try {
+        // טען את כל משימות התקציב של חיים
+        const q = query(
+          collection(db, 'budget_tasks'),
+          where('employee', '==', 'haimle1193@gmail.com')
+        );
+        const snapshot = await getDocs(q);
+
+        const results = {
+          total: 0,
+          withDeadline: 0,
+          createdAfterDeadline: 0,
+          lowProgress: 0,
+          problems: [],
+          ok: []
+        };
+
+        const taskCards = [];
+
+        snapshot.forEach((doc) => {
+          const task = doc.data();
+          results.total++;
+
+          // רק משימות עם deadline
+          if (!task.deadline) {
+            return;
+          }
+
+          results.withDeadline++;
+
+          const deadline = task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline);
+          const createdAt = task.createdAt
+            ? (task.createdAt.toDate ? task.createdAt.toDate() : new Date(task.createdAt))
+            : now;
+
+          // 🔧 חישוב לפי הלוגיקה הנוכחית (זו שלכאורה לא עובדת)
+          const startDate = createdAt < deadline ? createdAt : deadline;
+          const totalDays = Math.max(1, (deadline - startDate) / (1000 * 60 * 60 * 24));
+          const elapsedDays = (now - startDate) / (1000 * 60 * 60 * 24);
+          const deadlineProgress = Math.max(0, Math.round((elapsedDays / totalDays) * 100));
+
+          // 🔧 חישוב נכון (מה שצריך להיות)
+          const correctTotalDays = Math.max(1, (deadline - createdAt) / (1000 * 60 * 60 * 24));
+          const correctElapsedDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+          const correctProgress = Math.max(0, Math.round((correctElapsedDays / correctTotalDays) * 100));
+
+          const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+          const isOverdue = daysUntilDeadline < 0;
+          const isCreatedAfterDeadline = createdAt > deadline;
+
+          if (isCreatedAfterDeadline) results.createdAfterDeadline++;
+          if (deadlineProgress < 50 && isOverdue) results.lowProgress++;
+
+          const taskInfo = {
+            id: doc.id,
+            description: task.description || 'אין תיאור',
+            clientName: task.clientName || 'לא צוין',
+            deadlineDate: deadline.toLocaleDateString('he-IL'),
+            createdAtDate: createdAt.toLocaleDateString('he-IL'),
+            daysUntilDeadline,
+            isOverdue,
+            isCreatedAfterDeadline,
+            currentProgress: deadlineProgress,
+            correctProgress: correctProgress,
+            progressDiff: correctProgress - deadlineProgress,
+            startDate: startDate.toLocaleDateString('he-IL'),
+            totalDays: Math.round(totalDays * 10) / 10,
+            elapsedDays: Math.round(elapsedDays * 10) / 10,
+            issues: []
+          };
+
+          // זיהוי בעיות
+          if (isCreatedAfterDeadline) {
+            taskInfo.issues.push('❌ תאריך יצירה אחרי תאריך יעד - לוגיקת החישוב שבורה!');
+            results.problems.push(taskInfo);
+          } else if (isOverdue && deadlineProgress < 80) {
+            taskInfo.issues.push(`⚠️ משימה באיחור ${Math.abs(daysUntilDeadline)} ימים אבל מציגה רק ${deadlineProgress}%`);
+            results.problems.push(taskInfo);
+          } else if (Math.abs(taskInfo.progressDiff) > 10) {
+            taskInfo.issues.push(`⚠️ הפרש גדול בין חישוב נוכחי (${deadlineProgress}%) לנכון (${correctProgress}%)`);
+            results.problems.push(taskInfo);
+          } else {
+            results.ok.push(taskInfo);
+          }
+
+          taskCards.push(taskInfo);
+        });
+
+        // הצג סטטיסטיקות
+        document.getElementById('stats').innerHTML = `
+          <div class="stats">
+            <div class="stat-box">
+              <h3>סה"כ משימות</h3>
+              <div class="number">${results.total}</div>
+            </div>
+            <div class="stat-box">
+              <h3>עם תאריך יעד</h3>
+              <div class="number">${results.withDeadline}</div>
+            </div>
+            <div class="stat-box problem">
+              <h3>נוצרו אחרי יעד</h3>
+              <div class="number">${results.createdAfterDeadline}</div>
+            </div>
+            <div class="stat-box problem">
+              <h3>איחור + % נמוך</h3>
+              <div class="number">${results.lowProgress}</div>
+            </div>
+            <div class="stat-box problem">
+              <h3>סה"כ בעיות</h3>
+              <div class="number">${results.problems.length}</div>
+            </div>
+          </div>
+        `;
+        document.getElementById('stats').style.display = 'block';
+
+        // הצג משימות
+        let html = '';
+
+        if (results.problems.length > 0) {
+          html += `<h2 style="color: #e74c3c;">❌ משימות בעייתיות (${results.problems.length})</h2>`;
+          results.problems.forEach(task => {
+            html += createTaskCard(task, 'problem');
+          });
+        }
+
+        if (!showOnlyProblems && results.ok.length > 0) {
+          html += `<h2 style="color: #2ecc71; margin-top: 40px;">✅ משימות תקינות (${results.ok.length})</h2>`;
+          html += '<details><summary style="cursor: pointer; padding: 10px; background: #e8f5e9; border-radius: 5px; margin-bottom: 10px;">הצג משימות תקינות</summary>';
+          results.ok.forEach(task => {
+            html += createTaskCard(task, 'ok');
+          });
+          html += '</details>';
+        }
+
+        document.getElementById('results').innerHTML = html;
+        document.getElementById('loading').style.display = 'none';
+
+      } catch (error) {
+        console.error('❌ שגיאה:', error);
+        document.getElementById('loading').innerHTML = `
+          <div style="color: red;">
+            <h2>❌ שגיאה בטעינת נתונים</h2>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function createTaskCard(task, className) {
+      return `
+        <div class="task-card ${className}">
+          <div><span class="label">🆔 מזהה:</span> <span class="value">${task.id.substring(0, 12)}</span></div>
+          <div><span class="label">📋 תיאור:</span> <span class="value">${task.description}</span></div>
+          <div><span class="label">👤 לקוח:</span> <span class="value">${task.clientName}</span></div>
+
+          <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+
+          <div><span class="label">📅 תאריך יצירה:</span> <span class="value">${task.createdAtDate}</span></div>
+          <div><span class="label">⏰ תאריך יעד:</span> <span class="value">${task.deadlineDate}</span></div>
+          <div><span class="label">⏱️ ימים עד יעד:</span> <span class="value" style="font-weight: bold; color: ${task.isOverdue ? '#e74c3c' : '#2ecc71'};">${task.daysUntilDeadline} ימים ${task.isOverdue ? '(באיחור!)' : ''}</span></div>
+
+          ${task.isCreatedAfterDeadline ? `
+            <div style="background: #ffe0e0; padding: 10px; margin: 10px 0; border-radius: 4px; border: 2px solid #ff0000;">
+              <strong style="color: #d00;">⚠️ בעיה חמורה: המשימה נוצרה AFTER תאריך היעד!</strong>
+            </div>
+          ` : ''}
+
+          <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+
+          <div class="calculation">
+            <strong>🧮 חישובים:</strong><br>
+            startDate = ${task.startDate}<br>
+            totalDays = ${task.totalDays} ימים<br>
+            elapsedDays = ${task.elapsedDays} ימים<br>
+            <br>
+            <strong style="color: #e74c3c;">❌ החישוב הנוכחי (שגוי):</strong> ${task.currentProgress}%<br>
+            <strong style="color: #2ecc71;">✅ החישוב הנכון:</strong> ${task.correctProgress}%<br>
+            <strong>📊 הפרש:</strong> ${task.progressDiff}%
+          </div>
+
+          ${task.issues.length > 0 ? `
+            <div class="issue">
+              ${task.issues.join('<br>')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // המתן לאותנטיקציה
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('✅ משתמש מחובר:', user.email);
+        window.debugDeadlines = debugDeadlines;
+        debugDeadlines();
+      } else {
+        document.getElementById('loading').innerHTML = `
+          <div>
+            <h2>🔐 נדרשת התחברות</h2>
+            <p>אנא התחבר למערכת כדי לראות את המשימות</p>
+            <button onclick="window.location.href='/index.html'">חזור לדף הבית</button>
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>

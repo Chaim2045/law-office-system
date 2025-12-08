@@ -999,12 +999,12 @@
 
                                 <!-- Action Buttons -->
                                 <div class="message-actions">
-                                    ${(message.repliesCount && message.repliesCount > 0) ? `
+                                    ${(message.repliesCount > 0 || message.response) ? `
                                         <button class="btn-icon btn-view-thread"
                                                 data-message-id="${message.id}"
-                                                title="צפה בשיחה (${message.repliesCount} תשובות)">
+                                                title="צפה בשיחה (${message.repliesCount || 1} תשובות)">
                                             <i class="fas fa-comments"></i>
-                                            <span style="font-size: 10px; margin-right: 4px;">${message.repliesCount}</span>
+                                            <span style="font-size: 10px; margin-right: 4px;">${message.repliesCount || 1}</span>
                                         </button>
                                     ` : ''}
                                     ${!message.archived ? `

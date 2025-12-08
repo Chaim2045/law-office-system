@@ -40,6 +40,30 @@ export class TaskApprovalService {
 
       const docRef = await this.db.collection('pending_task_approvals').add(approvalData);
       console.log('✅ Approval request created:', docRef.id);
+
+      // 🆕 Send WhatsApp notification to admins automatically
+      try {
+        const functions = window.firebaseFunctions || window.firebase?.functions();
+        if (functions) {
+          const sendWhatsAppApprovalNotification = functions.httpsCallable('sendWhatsAppApprovalNotification');
+
+          const whatsappResult = await sendWhatsAppApprovalNotification({
+            approvalId: docRef.id,
+            taskData: {
+              ...taskData,
+              taskId: taskId
+            },
+            requestedBy,
+            requestedByName: requestedByName || requestedBy
+          });
+
+          console.log(`✅ WhatsApp notification sent: ${whatsappResult.data?.sent || 0} admins notified`);
+        }
+      } catch (whatsappError) {
+        // Don't fail the approval creation if WhatsApp fails
+        console.warn('⚠️ WhatsApp notification failed (approval still created):', whatsappError.message);
+      }
+
       return docRef.id;
     } catch (error) {
       console.error('❌ Error creating approval request:', error);
@@ -87,7 +111,7 @@ export class TaskApprovalService {
         adminNotes
       });
 
-      console.log(`✅ Task approved via Cloud Function:`, result.data);
+      console.log('✅ Task approved via Cloud Function:', result.data);
       return result.data;
     } catch (error) {
       console.error('❌ Error approving request:', error);
@@ -109,7 +133,7 @@ export class TaskApprovalService {
         rejectionReason
       });
 
-      console.log(`✅ Task rejected via Cloud Function:`, result.data);
+      console.log('✅ Task rejected via Cloud Function:', result.data);
       return result.data;
     } catch (error) {
       console.error('❌ Error rejecting request:', error);

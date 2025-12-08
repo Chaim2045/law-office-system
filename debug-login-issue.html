@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Login Issue</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<h1>Debug Login lastLogin Issue</h1>
+<div id="output"></div>
+
+<script>
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyC_MWU8FkGCfvMb4NI7F0NVuHvqmn3pDGI",
+  authDomain: "law-office-system-e4801.firebaseapp.com",
+  databaseURL: "https://law-office-system-e4801-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "law-office-system-e4801",
+  storageBucket: "law-office-system-e4801.firebasestorage.app",
+  messagingSenderId: "731776935820",
+  appId: "1:731776935820:web:5e8c09ca5d83b4cbb49fcb",
+  measurementId: "G-G36EKTL2F9"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+const output = document.getElementById('output');
+
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    output.innerHTML = '<h2>User logged in: ' + user.email + '</h2>';
+
+    // Get employee document
+    try {
+      const employeeDoc = await db.collection('employees').doc(user.email).get();
+
+      if (employeeDoc.exists) {
+        const data = employeeDoc.data();
+        output.innerHTML += '<h3>Employee Document:</h3>';
+        output.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+
+        output.innerHTML += '<h3>lastLogin Field:</h3>';
+        output.innerHTML += '<p>Exists: ' + (!!data.lastLogin) + '</p>';
+        output.innerHTML += '<p>Type: ' + typeof data.lastLogin + '</p>';
+
+        if (data.lastLogin) {
+          output.innerHTML += '<p>Has toDate(): ' + (typeof data.lastLogin.toDate === 'function') + '</p>';
+
+          if (data.lastLogin.toDate) {
+            const date = data.lastLogin.toDate();
+            output.innerHTML += '<p>Date: ' + date.toString() + '</p>';
+            output.innerHTML += '<p>Formatted: ' + date.toLocaleString('he-IL', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }) + '</p>';
+          }
+        } else {
+          output.innerHTML += '<p style="color: red;">⚠️ lastLogin is NULL or UNDEFINED!</p>';
+        }
+
+        output.innerHTML += '<h3>All Fields:</h3>';
+        output.innerHTML += '<ul>';
+        for (let key in data) {
+          output.innerHTML += '<li><strong>' + key + ':</strong> ' + typeof data[key] + '</li>';
+        }
+        output.innerHTML += '</ul>';
+      } else {
+        output.innerHTML += '<p style="color: red;">Employee document not found!</p>';
+      }
+    } catch (error) {
+      output.innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+    }
+  } else {
+    output.innerHTML = '<h2>Not logged in</h2><p>Please login at: <a href="/">Main Site</a></p>';
+  }
+});
+</script>
+</body>
+</html>

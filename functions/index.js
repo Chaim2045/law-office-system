@@ -5941,4 +5941,542 @@ exports.rejectTaskBudget = functions.https.onCall(async (data, context) => {
   }
 });
 
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System)');
+// ===============================
+// WhatsApp Broadcast with Twilio
+// ===============================
+
+/**
+ * Send WhatsApp broadcast messages to selected employees
+ * Uses Twilio WhatsApp Business API
+ */
+exports.sendBroadcastMessage = functions.https.onCall(async (data, context) => {
+  try {
+    // Check authentication
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'נדרשת התחברות למערכת'
+      );
+    }
+
+    // Check if user is admin
+    const userEmail = context.auth.token.email;
+    const employeeDoc = await db.collection('employees').doc(userEmail).get();
+
+    if (!employeeDoc.exists || employeeDoc.data().role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים לשלוח הודעות broadcast'
+      );
+    }
+
+    // Validate input
+    const { employeeEmails, templateType, customMessage } = data;
+
+    if (!employeeEmails || !Array.isArray(employeeEmails) || employeeEmails.length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חייב לספק רשימת עובדים'
+      );
+    }
+
+    if (!templateType) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חייב לבחור תבנית הודעה'
+      );
+    }
+
+    // Initialize Twilio (get credentials from Firebase Config)
+    const twilioConfig = functions.config().twilio;
+
+    if (!twilioConfig || !twilioConfig.account_sid || !twilioConfig.auth_token) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'Twilio לא מוגדר. הרץ: firebase functions:config:set twilio.account_sid="YOUR_SID" twilio.auth_token="YOUR_TOKEN" twilio.whatsapp_number="whatsapp:+14155238886"'
+      );
+    }
+
+    const twilio = require('twilio');
+    const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
+    const fromNumber = twilioConfig.whatsapp_number || 'whatsapp:+14155238886'; // Twilio Sandbox default
+
+    // Message templates
+    const templates = {
+      DAILY_REMINDER: (name) => `שלום ${name}! ⏰\n\nתזכורת לרישום שעות היום במערכת.\n\nכניסה למערכת:\nhttps://gh-law-office-system.netlify.app`,
+
+      WEEKLY_SUMMARY: (name) => `שלום ${name}! 📅\n\nבקשה לעדכן את סיכום שעות השבוע במערכת.\n\nכניסה למערכת:\nhttps://gh-law-office-system.netlify.app`,
+
+      SYSTEM_ANNOUNCEMENT: (name, message) => `שלום ${name}! 📢\n\nהודעת מערכת:\n${message}\n\nכניסה למערכת:\nhttps://gh-law-office-system.netlify.app`,
+
+      CUSTOM: (name, message) => `שלום ${name}!\n\n${message}\n\nכניסה למערכת:\nhttps://gh-law-office-system.netlify.app`
+    };
+
+    // Results tracking
+    const results = {
+      success: [],
+      failed: []
+    };
+
+    // Send messages to each employee
+    for (const email of employeeEmails) {
+      try {
+        // Get employee data
+        const empDoc = await db.collection('employees').doc(email).get();
+
+        if (!empDoc.exists) {
+          results.failed.push({
+            email,
+            name: email,
+            error: 'עובד לא נמצא במערכת'
+          });
+          continue;
+        }
+
+        const employee = empDoc.data();
+        const name = employee.name || employee.username || email;
+
+        // Check if employee has WhatsApp enabled and phone number
+        if (!employee.whatsappEnabled || !employee.phone) {
+          results.failed.push({
+            email,
+            name,
+            error: 'WhatsApp לא מופעל או אין מספר טלפון'
+          });
+          continue;
+        }
+
+        // Format phone number for WhatsApp
+        let phone = employee.phone.replace(/\D/g, ''); // Remove non-digits
+
+        // Israeli phone format: 05X-XXXXXXX -> +9725XXXXXXXX
+        if (phone.startsWith('05')) {
+          phone = '972' + phone.substring(1);
+        } else if (!phone.startsWith('972')) {
+          phone = '972' + phone;
+        }
+
+        const toNumber = `whatsapp:+${phone}`;
+
+        // Generate message
+        let messageBody;
+        if (templateType === 'SYSTEM_ANNOUNCEMENT' || templateType === 'CUSTOM') {
+          messageBody = templates[templateType](name, customMessage);
+        } else {
+          messageBody = templates[templateType](name);
+        }
+
+        // Send via Twilio
+        const message = await client.messages.create({
+          from: fromNumber,
+          to: toNumber,
+          body: messageBody
+        });
+
+        results.success.push({
+          email,
+          name,
+          phone: toNumber,
+          messageSid: message.sid
+        });
+
+        console.log(`✅ WhatsApp sent to ${name} (${email}): ${message.sid}`);
+
+      } catch (error) {
+        console.error(`❌ Failed to send to ${email}:`, error);
+        results.failed.push({
+          email,
+          name: email,
+          error: error.message || 'שגיאה בשליחה'
+        });
+      }
+    }
+
+    // Log to audit
+    await logAction('whatsapp_broadcast', context.auth.uid, userEmail, {
+      templateType,
+      totalSent: results.success.length,
+      totalFailed: results.failed.length,
+      recipients: employeeEmails
+    });
+
+    return {
+      totalSent: results.success.length,
+      totalFailed: results.failed.length,
+      results
+    };
+
+  } catch (error) {
+    console.error('❌ sendBroadcastMessage error:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      error.message || 'שגיאה בשליחת הודעות'
+    );
+  }
+});
+
+// ===============================
+// WhatsApp Task Approval Automation
+// ===============================
+
+/**
+ * Send WhatsApp notification to admin when new task approval is requested
+ * Called automatically when approval is created
+ */
+exports.sendWhatsAppApprovalNotification = functions.https.onCall(async (data, context) => {
+  try {
+    // Check authentication
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'נדרשת התחברות');
+    }
+
+    const { approvalId, taskData, requestedBy, requestedByName } = data;
+
+    if (!approvalId || !taskData) {
+      throw new functions.https.HttpsError('invalid-argument', 'חסרים פרמטרים');
+    }
+
+    // Get all admins with WhatsApp enabled
+    const adminsSnapshot = await db.collection('employees')
+      .where('role', '==', 'admin')
+      .where('whatsappEnabled', '==', true)
+      .get();
+
+    if (adminsSnapshot.empty) {
+      console.log('⚠️ No admins with WhatsApp enabled');
+      return { success: true, sent: 0, message: 'אין מנהלים עם WhatsApp מופעל' };
+    }
+
+    // Initialize Twilio
+    const twilioConfig = functions.config().twilio;
+    if (!twilioConfig?.account_sid || !twilioConfig?.auth_token) {
+      throw new functions.https.HttpsError('failed-precondition', 'Twilio לא מוגדר');
+    }
+
+    const twilio = require('twilio');
+    const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
+    const fromNumber = twilioConfig.whatsapp_number || 'whatsapp:+14155238886';
+
+    const results = [];
+
+    // Send to each admin
+    for (const adminDoc of adminsSnapshot.docs) {
+      const admin = adminDoc.data();
+      const adminName = admin.name || admin.username || adminDoc.id;
+
+      // Format phone number
+      let phone = (admin.phone || '').replace(/\D/g, '');
+      if (phone.startsWith('05')) {
+        phone = '972' + phone.substring(1);
+      } else if (!phone.startsWith('972')) {
+        phone = '972' + phone;
+      }
+      const toNumber = `whatsapp:+${phone}`;
+
+      // Calculate hours
+      const minutes = parseInt(taskData.estimatedMinutes) || 0;
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      const timeStr = hours > 0
+        ? `${hours} שעות${mins > 0 ? ` ו-${mins} דקות` : ''}`
+        : `${mins} דקות`;
+
+      // Create message
+      const message = `היי ${adminName}! 👋
+
+${requestedByName || requestedBy} הוסיף משימה חדשה לאישור:
+
+📋 לקוח: ${taskData.clientName || 'לא צוין'}
+📝 משימה: ${taskData.description}
+⏱️ תקציב מבוקש: ${minutes} דקות (${timeStr})
+🔑 מזהה: ${approvalId}
+
+כדי לאשר, השב:
+✅ אישור
+✅ אישור [מספר דקות] (לדוגמה: אישור 120)
+❌ דחייה [סיבה]
+
+הודעה זו נשלחה אוטומטית ממערכת ניהול משרד עו"ד`;
+
+      try {
+        const twilioMessage = await client.messages.create({
+          from: fromNumber,
+          to: toNumber,
+          body: message
+        });
+
+        results.push({
+          admin: adminName,
+          phone: toNumber,
+          success: true,
+          messageSid: twilioMessage.sid
+        });
+
+        console.log(`✅ Approval notification sent to ${adminName}: ${twilioMessage.sid}`);
+
+      } catch (error) {
+        console.error(`❌ Failed to send to ${adminName}:`, error);
+        results.push({
+          admin: adminName,
+          phone: toNumber,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    // Save notification log
+    await db.collection('whatsapp_approval_notifications').add({
+      approvalId,
+      taskId: taskData.taskId || null,
+      requestedBy,
+      sentTo: results.map(r => r.admin),
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      results
+    });
+
+    const successCount = results.filter(r => r.success).length;
+
+    return {
+      success: true,
+      sent: successCount,
+      total: results.length,
+      results
+    };
+
+  } catch (error) {
+    console.error('❌ sendWhatsAppApprovalNotification error:', error);
+    throw new functions.https.HttpsError('internal', error.message || 'שגיאה בשליחת התראה');
+  }
+});
+
+/**
+ * Webhook to receive WhatsApp messages from Twilio
+ * Handles approval/rejection responses from admins
+ */
+exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
+  try {
+    // Verify it's from Twilio (optional but recommended)
+    const twilioSignature = req.headers['x-twilio-signature'];
+
+    // Get message data
+    const { From, Body, MessageSid } = req.body;
+
+    console.log(`📨 WhatsApp message received from ${From}: "${Body}"`);
+
+    if (!From || !Body) {
+      res.status(400).send('Missing parameters');
+      return;
+    }
+
+    // Extract phone number
+    const phoneNumber = From.replace('whatsapp:', '').replace('+', '');
+
+    // Find admin by phone number
+    const adminSnapshot = await db.collection('employees')
+      .where('phone', '>=', phoneNumber.substring(phoneNumber.length - 9))
+      .limit(10)
+      .get();
+
+    let admin = null;
+    for (const doc of adminSnapshot.docs) {
+      const data = doc.data();
+      const adminPhone = (data.phone || '').replace(/\D/g, '');
+      if (adminPhone.includes(phoneNumber.substring(phoneNumber.length - 9))) {
+        admin = { id: doc.id, ...data };
+        break;
+      }
+    }
+
+    if (!admin || admin.role !== 'admin') {
+      console.log(`⚠️ Message from non-admin or unknown number: ${From}`);
+      res.status(200).send('OK');
+      return;
+    }
+
+    console.log(`✅ Admin identified: ${admin.name || admin.id}`);
+
+    // Parse the message
+    const bodyLower = Body.trim();
+    const bodyNormalized = bodyLower.replace(/\s+/g, ' ');
+
+    // Pattern matching
+    let approvalId = null;
+    let action = null;
+    let approvedMinutes = null;
+    let reason = null;
+
+    // Extract approval ID if present (format: "ID:xxxxxx" or just at the end)
+    const idMatch = bodyNormalized.match(/(?:מזהה|id|מס)[:\s]*([a-zA-Z0-9]+)/i);
+    if (idMatch) {
+      approvalId = idMatch[1];
+    }
+
+    // Check for approval
+    if (/אישור|מאשר|אישר|ok|approve|yes|✅/i.test(bodyNormalized)) {
+      action = 'approve';
+
+      // Check if specific minutes mentioned
+      const minutesMatch = bodyNormalized.match(/(\d+)\s*(?:דקות|דק|minutes|min)?/);
+      if (minutesMatch) {
+        approvedMinutes = parseInt(minutesMatch[1]);
+      }
+    }
+    // Check for rejection
+    else if (/דחייה|דוחה|דחה|reject|no|❌/i.test(bodyNormalized)) {
+      action = 'reject';
+
+      // Extract reason
+      const reasonMatch = bodyNormalized.match(/(?:דחייה|דוחה|דחה|reject)[:\s-]*(.*)/i);
+      if (reasonMatch && reasonMatch[1]) {
+        reason = reasonMatch[1].trim();
+      }
+    }
+
+    if (!action) {
+      console.log(`⚠️ Could not parse action from: "${Body}"`);
+
+      // Send help message
+      const twilioConfig = functions.config().twilio;
+      if (twilioConfig?.account_sid) {
+        const twilio = require('twilio');
+        const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
+        await client.messages.create({
+          from: twilioConfig.whatsapp_number || 'whatsapp:+14155238886',
+          to: From,
+          body: `לא הבנתי את הפקודה 🤔
+
+פורמט נכון:
+✅ אישור
+✅ אישור 120
+❌ דחייה הסיבה כאן
+
+אם יש מזהה משימה, הוסף: מזהה: ${approvalId || 'XXXXX'}`
+        });
+      }
+
+      res.status(200).send('OK');
+      return;
+    }
+
+    // If no approval ID in message, find the latest pending approval
+    if (!approvalId) {
+      const latestApproval = await db.collection('pending_task_approvals')
+        .where('status', '==', 'pending')
+        .orderBy('requestedAt', 'desc')
+        .limit(1)
+        .get();
+
+      if (!latestApproval.empty) {
+        approvalId = latestApproval.docs[0].id;
+        console.log(`🔍 Using latest pending approval: ${approvalId}`);
+      } else {
+        console.log('⚠️ No pending approvals found');
+        res.status(200).send('OK');
+        return;
+      }
+    }
+
+    // Get approval data
+    const approvalDoc = await db.collection('pending_task_approvals').doc(approvalId).get();
+
+    if (!approvalDoc.exists) {
+      console.log(`⚠️ Approval ${approvalId} not found`);
+      res.status(200).send('OK');
+      return;
+    }
+
+    const approval = approvalDoc.data();
+
+    if (approval.status !== 'pending') {
+      console.log(`⚠️ Approval ${approvalId} already processed: ${approval.status}`);
+      res.status(200).send('OK');
+      return;
+    }
+
+    console.log(`✅ Processing ${action} for approval ${approvalId}`);
+
+    // Create auth context for the function calls
+    const fakeContext = {
+      auth: {
+        uid: admin.authUID || 'whatsapp-bot',
+        token: {
+          email: admin.id,
+          role: admin.role
+        }
+      }
+    };
+
+    let result;
+
+    if (action === 'approve') {
+      // Use requested minutes if not specified
+      const finalMinutes = approvedMinutes || approval.requestedMinutes || approval.taskData?.estimatedMinutes || 0;
+
+      // Call approve function directly
+      const approveData = {
+        approvalId,
+        approvedMinutes: finalMinutes,
+        adminNotes: `אושר דרך WhatsApp על ידי ${admin.name || admin.id}`
+      };
+
+      result = await exports.approveTaskBudget.run(approveData, fakeContext);
+
+      console.log(`✅ Task approved via WhatsApp: ${finalMinutes} minutes`);
+
+    } else if (action === 'reject') {
+      const rejectData = {
+        approvalId,
+        rejectionReason: reason || `נדחה דרך WhatsApp על ידי ${admin.name || admin.id}`
+      };
+
+      result = await exports.rejectTaskBudget.run(rejectData, fakeContext);
+
+      console.log(`✅ Task rejected via WhatsApp`);
+    }
+
+    // Log the WhatsApp interaction
+    await db.collection('whatsapp_approval_responses').add({
+      approvalId,
+      from: From,
+      adminId: admin.id,
+      adminName: admin.name || admin.id,
+      action,
+      approvedMinutes: approvedMinutes || null,
+      reason: reason || null,
+      originalMessage: Body,
+      messageSid: MessageSid,
+      processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      result: result?.success ? 'success' : 'error'
+    });
+
+    // Send confirmation back
+    const twilioConfig = functions.config().twilio;
+    if (twilioConfig?.account_sid) {
+      const twilio = require('twilio');
+      const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
+
+      let confirmationMessage = '';
+      if (action === 'approve') {
+        const finalMinutes = approvedMinutes || approval.requestedMinutes || 0;
+        confirmationMessage = `✅ המשימה אושרה בהצלחה!\n\nתקציב מאושר: ${finalMinutes} דקות\nמשימה: ${approval.taskData?.description || 'לא צוין'}`;
+      } else {
+        confirmationMessage = `❌ המשימה נדחתה\n\nסיבה: ${reason || 'לא צוינה'}\nמשימה: ${approval.taskData?.description || 'לא צוין'}`;
+      }
+
+      await client.messages.create({
+        from: twilioConfig.whatsapp_number || 'whatsapp:+14155238886',
+        to: From,
+        body: confirmationMessage
+      });
+    }
+
+    res.status(200).send('OK');
+
+  } catch (error) {
+    console.error('❌ whatsappWebhook error:', error);
+    res.status(500).send('Error');
+  }
+});
+
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Approval Automation)');

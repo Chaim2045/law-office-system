@@ -315,6 +315,12 @@
         this.renderDialog();
         this.attachEventListeners();
 
+        // 🎨 החל סטייל ראשוני על הטאב הפעיל
+        const newBtn = document.getElementById('newClientModeBtn');
+        if (newBtn && newBtn.classList.contains('active')) {
+          this.applyActiveTabStyle(newBtn);
+        }
+
         // המתנה מינימלית של 200ms כדי שהמשתמש יראה את הלוטי
         const elapsedTime = Date.now() - startTime;
         const remainingTime = 200 - elapsedTime;
@@ -362,42 +368,55 @@
                 <div id="formErrors" style="display: none;"></div>
                 <div id="formWarnings" style="display: none;"></div>
 
-                <!-- Mode Selection (Tabs) -->
-                <div style="margin-bottom: 24px;">
+                <!-- Mode Selection (Tabs) - עיצוב כמו תקצוב משימות -->
+                <div style="margin-bottom: 24px; text-align: center;">
                   <div style="
-                    display: flex;
-                    gap: 8px;
-                    padding: 4px;
-                    background: #f3f4f6;
-                    border-radius: 8px;
+                    display: inline-flex;
+                    gap: 6px;
+                    padding: 6px;
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
                   ">
                     <button type="button" id="newClientModeBtn" class="mode-tab active" style="
-                      flex: 1;
-                      padding: 10px 20px;
-                      background: white;
-                      border: 1px solid #3b82f6;
-                      border-radius: 6px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      gap: 8px;
+                      padding: 12px 32px;
+                      background: transparent;
+                      border: none;
+                      border-radius: 12px;
                       cursor: pointer;
                       font-weight: 600;
-                      font-size: 14px;
-                      color: #3b82f6;
-                      transition: all 0.2s;
-                      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                      font-size: 15px;
+                      color: #64748b;
+                      transition: all 0.25s ease;
+                      position: relative;
+                      white-space: nowrap;
                     ">
+                      <i class="fas fa-user-plus"></i>
                       לקוח חדש
                     </button>
                     <button type="button" id="existingClientModeBtn" class="mode-tab" style="
-                      flex: 1;
-                      padding: 10px 20px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      gap: 8px;
+                      padding: 12px 32px;
                       background: transparent;
-                      border: 1px solid transparent;
-                      border-radius: 6px;
+                      border: none;
+                      border-radius: 12px;
                       cursor: pointer;
-                      font-weight: 500;
-                      font-size: 14px;
-                      color: #6b7280;
-                      transition: all 0.2s;
+                      font-weight: 600;
+                      font-size: 15px;
+                      color: #64748b;
+                      transition: all 0.25s ease;
+                      position: relative;
+                      white-space: nowrap;
                     ">
+                      <i class="fas fa-user-check"></i>
                       לקוח קיים
                     </button>
                   </div>
@@ -1150,32 +1169,34 @@ return;
      * רינדור סקשן הליך משפטי
      */
     renderLegalProcedureSection() {
-      // הקוד ימשך בקובץ הבא בגלל אורכו...
+      // 🔧 FIX: שימוש ב-this.pricingType לבדיקת הבחירה הנוכחית
+      const isHourly = this.pricingType === 'hourly';
+
       return `
         <div class="form-section">
-          <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1f2937;">
-            <i class="fas fa-balance-scale" style="color: #8b5cf6; margin-left: 8px;"></i>
+          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #0f172a;">
+            <i class="fas fa-balance-scale" style="color: #3b82f6; margin-left: 8px;"></i>
             הליך משפטי
           </h3>
 
           <!-- הודעה מידעית -->
           <div style="
-            background: linear-gradient(135deg, #ede9fe 0%, #e9d5ff 100%);
-            padding: 16px;
+            background: #f0f9ff;
+            padding: 14px;
             border-radius: 8px;
             margin-bottom: 20px;
-            border-right: 4px solid #8b5cf6;
+            border: 1px solid #bfdbfe;
+            border-right: 3px solid #3b82f6;
           ">
-            <p style="margin: 0; font-size: 13px; color: #7c3aed; line-height: 1.6;">
-              <i class="fas fa-info-circle" style="margin-left: 6px;"></i>
+            <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.5;">
+              <i class="fas fa-info-circle" style="margin-left: 4px;"></i>
               יש למלא <strong>3 שלבים מלאים</strong>. בחר סוג תמחור ומלא את הפרטים עבור כל שלב.
             </p>
           </div>
 
           <!-- בחירת סוג תמחור -->
           <div style="margin-bottom: 24px;">
-            <label style="display: block; margin-bottom: 12px; font-weight: 600; color: #374151; font-size: 14px;">
-              <i class="fas fa-calculator" style="color: #8b5cf6; margin-left: 6px;"></i>
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 14px;">
               סוג תמחור <span style="color: #ef4444;">*</span>
             </label>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -1184,18 +1205,19 @@ return;
                 align-items: center;
                 gap: 10px;
                 padding: 12px 16px;
-                border: 2px solid #3b82f6;
+                border: 1px solid ${isHourly ? '#3b82f6' : '#d1d5db'};
                 border-radius: 8px;
                 cursor: pointer;
-                background: #f0f9ff;
+                background: ${isHourly ? '#f0f9ff' : 'white'};
+                transition: all 0.2s ease;
               ">
-                <input type="radio" name="pricingType" value="hourly" checked style="width: 18px; height: 18px;">
+                <input type="radio" name="pricingType" value="hourly" ${isHourly ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
                 <div style="flex: 1;">
-                  <div style="font-weight: 600; color: #1a1a1a;">
+                  <div style="font-weight: 600; color: #0f172a; font-size: 14px;">
                     <i class="fas fa-clock" style="color: #3b82f6; margin-left: 6px;"></i>
                     תמחור שעתי
                   </div>
-                  <div style="font-size: 12px; color: #6b7280;">תקרת שעות לכל שלב</div>
+                  <div style="font-size: 12px; color: #64748b;">תקרת שעות לכל שלב</div>
                 </div>
               </label>
 
@@ -1204,27 +1226,28 @@ return;
                 align-items: center;
                 gap: 10px;
                 padding: 12px 16px;
-                border: 2px solid #e5e7eb;
+                border: 1px solid ${!isHourly ? '#3b82f6' : '#d1d5db'};
                 border-radius: 8px;
                 cursor: pointer;
-                background: white;
+                background: ${!isHourly ? '#f0f9ff' : 'white'};
+                transition: all 0.2s ease;
               ">
-                <input type="radio" name="pricingType" value="fixed" style="width: 18px; height: 18px;">
+                <input type="radio" name="pricingType" value="fixed" ${!isHourly ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
                 <div style="flex: 1;">
-                  <div style="font-weight: 600; color: #1a1a1a;">
-                    <i class="fas fa-shekel-sign" style="color: #10b981; margin-left: 6px;"></i>
+                  <div style="font-weight: 600; color: #0f172a; font-size: 14px;">
+                    <i class="fas fa-shekel-sign" style="color: #3b82f6; margin-left: 6px;"></i>
                     מחיר פיקס
                   </div>
-                  <div style="font-size: 12px; color: #6b7280;">מחיר קבוע לכל שלב</div>
+                  <div style="font-size: 12px; color: #64748b;">מחיר קבוע לכל שלב</div>
                 </div>
               </label>
             </div>
           </div>
 
-          <!-- 3 שלבים -->
+          <!-- 3 שלבים - כולם בכחול -->
           ${this.renderStage('A', 'א\'', '#3b82f6')}
-          ${this.renderStage('B', 'ב\'', '#10b981')}
-          ${this.renderStage('C', 'ג\'', '#f59e0b')}
+          ${this.renderStage('B', 'ב\'', '#3b82f6')}
+          ${this.renderStage('C', 'ג\'', '#3b82f6')}
         </div>
       `;
     }
@@ -1238,29 +1261,30 @@ return;
       return `
         <div style="
           background: white;
-          border: 2px solid #e5e7eb;
+          border: 1px solid #e5e7eb;
           border-radius: 8px;
           padding: 16px;
           margin-bottom: 16px;
+          transition: all 0.2s ease;
         ">
-          <h4 style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 14px; font-weight: 600;">
+          <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
             <span style="
-              display: inline-block;
-              width: 28px;
-              height: 28px;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              width: 26px;
+              height: 26px;
               background: ${color};
               color: white;
               border-radius: 50%;
-              text-align: center;
-              line-height: 28px;
-              margin-left: 8px;
-              font-size: 13px;
+              font-size: 12px;
+              font-weight: 600;
             ">${stageName}</span>
             שלב ${stageName}
           </h4>
 
           <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #374151;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #334155;">
               תיאור השלב <span style="color: #ef4444;">*</span>
             </label>
             <input
@@ -1270,17 +1294,21 @@ return;
               required
               style="
                 width: 100%;
-                padding: 10px 14px;
-                border: 2px solid #e5e7eb;
+                padding: 10px 12px;
+                border: 1px solid #d1d5db;
                 border-radius: 6px;
                 font-size: 14px;
+                transition: all 0.2s;
+                box-sizing: border-box;
               "
+              onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+              onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
             >
           </div>
 
           <div>
-            <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #374151;">
-              ${isHourly ? 'שעות' : 'מחיר פיקס'} <span style="color: #ef4444;">*</span>
+            <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #334155;">
+              ${isHourly ? 'שעות' : 'מחיר פיקס (₪)'} <span style="color: #ef4444;">*</span>
             </label>
             <input
               type="number"
@@ -1292,11 +1320,15 @@ return;
               required
               style="
                 width: 100%;
-                padding: 10px 14px;
-                border: 2px solid #e5e7eb;
+                padding: 10px 12px;
+                border: 1px solid #d1d5db;
                 border-radius: 6px;
                 font-size: 14px;
+                transition: all 0.2s;
+                box-sizing: border-box;
               "
+              onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+              onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
             >
           </div>
         </div>
@@ -1314,6 +1346,42 @@ return;
       // מעבר בין מצבי לקוח
       document.getElementById('newClientModeBtn')?.addEventListener('click', () => this.switchMode('new'));
       document.getElementById('existingClientModeBtn')?.addEventListener('click', () => this.switchMode('existing'));
+
+      // 🎨 Hover effects לטאבים
+      const tabButtons = [
+        document.getElementById('newClientModeBtn'),
+        document.getElementById('existingClientModeBtn')
+      ];
+
+      tabButtons.forEach(btn => {
+        if (!btn) {
+return;
+}
+
+        btn.addEventListener('mouseenter', () => {
+          if (!btn.classList.contains('active')) {
+            btn.style.background = '#f8fafc';
+            btn.style.color = '#374151';
+            const icon = btn.querySelector('i');
+            if (icon) {
+              icon.style.color = '#3b82f6';
+              icon.style.transform = 'scale(1.1)';
+            }
+          }
+        });
+
+        btn.addEventListener('mouseleave', () => {
+          if (!btn.classList.contains('active')) {
+            btn.style.background = 'transparent';
+            btn.style.color = '#64748b';
+            const icon = btn.querySelector('i');
+            if (icon) {
+              icon.style.color = '';
+              icon.style.transform = '';
+            }
+          }
+        });
+      });
 
       // ✅ Stepper Navigation
       document.getElementById('nextStepBtn')?.addEventListener('click', () => this.nextStep());
@@ -1340,31 +1408,25 @@ return;
 
     /**
      * צירוף listeners לסוג תמחור
+     * 🔧 FIX: שינוי ל-click event במקום change, והסרת עדכון סטייל ידני
      */
     attachPricingTypeListeners() {
       const pricingRadios = document.querySelectorAll('input[name="pricingType"]');
       pricingRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
+        // שימוש ב-click במקום change לתמיכה טובה יותר
+        radio.addEventListener('click', (e) => {
+          // עדכן את סוג התמחור
           this.pricingType = e.target.value;
-          this.renderServiceSection();
 
-          // עדכון סטייל של הלייבלים
-          document.querySelectorAll('.pricing-type-label').forEach(label => {
-            const input = label.querySelector('input');
-            if (input.checked) {
-              label.style.borderColor = input.value === 'hourly' ? '#3b82f6' : '#10b981';
-              label.style.background = input.value === 'hourly' ? '#f0f9ff' : '#f0fdf4';
-            } else {
-              label.style.borderColor = '#e5e7eb';
-              label.style.background = 'white';
-            }
-          });
+          // רינדור מחדש את כל הסקשן (כולל הכפתורים והשלבים)
+          this.renderServiceSection();
         });
       });
     }
 
     /**
      * מעבר בין מצבים
+     * 🎨 NEW: סטייל כמו טאבים של תקצוב משימות עם gradient ו-pseudo-elements
      */
     switchMode(mode) {
       this.currentMode = mode;
@@ -1378,44 +1440,51 @@ return;
       const existingBtn = document.getElementById('existingClientModeBtn');
       const dialogTitle = document.getElementById('dialogTitle');
 
+      // הסר את ה-active מכל הכפתורים
+      newBtn.classList.remove('active');
+      existingBtn.classList.remove('active');
+
+      // אפס סטיילים ישנים
+      [newBtn, existingBtn].forEach(btn => {
+        btn.style.color = '#64748b';
+        btn.style.fontWeight = '600';
+        btn.style.transform = '';
+        btn.style.removeProperty('background');
+        btn.style.removeProperty('border');
+        btn.style.removeProperty('box-shadow');
+
+        // אפס אייקון
+        const icon = btn.querySelector('i');
+        if (icon) {
+          icon.style.color = '';
+          icon.style.filter = '';
+        }
+
+        // הסתר נקודה אם קיימת
+        const dot = btn.querySelector('.tab-dot');
+        if (dot) {
+          dot.style.display = 'none';
+        }
+      });
+
       if (mode === 'new') {
         // עדכון כותרת
         if (dialogTitle) {
-dialogTitle.textContent = 'יצירת תיק חדש';
-}
+          dialogTitle.textContent = 'יצירת תיק חדש';
+        }
 
-        // עדכון טאבים - button style
+        // הפעל את הטאב
         newBtn.classList.add('active');
-        existingBtn.classList.remove('active');
-        newBtn.style.background = 'white';
-        newBtn.style.border = '1px solid #3b82f6';
-        newBtn.style.color = '#3b82f6';
-        newBtn.style.fontWeight = '600';
-        newBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-        existingBtn.style.background = 'transparent';
-        existingBtn.style.border = '1px solid transparent';
-        existingBtn.style.color = '#6b7280';
-        existingBtn.style.fontWeight = '500';
-        existingBtn.style.boxShadow = 'none';
+        this.applyActiveTabStyle(newBtn);
       } else {
         // עדכון כותרת
         if (dialogTitle) {
-dialogTitle.textContent = 'הוספת שירות לתיק קיים';
-}
+          dialogTitle.textContent = 'הוספת שירות לתיק קיים';
+        }
 
-        // עדכון טאבים - button style
+        // הפעל את הטאב
         existingBtn.classList.add('active');
-        newBtn.classList.remove('active');
-        existingBtn.style.background = 'white';
-        existingBtn.style.border = '1px solid #3b82f6';
-        existingBtn.style.color = '#3b82f6';
-        existingBtn.style.fontWeight = '600';
-        existingBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-        newBtn.style.background = 'transparent';
-        newBtn.style.border = '1px solid transparent';
-        newBtn.style.color = '#6b7280';
-        newBtn.style.fontWeight = '500';
-        newBtn.style.boxShadow = 'none';
+        this.applyActiveTabStyle(existingBtn);
 
         // צור selector אם לא קיים
         if (!this.clientSelector) {
@@ -1432,6 +1501,53 @@ dialogTitle.textContent = 'הוספת שירות לתיק קיים';
       this.updateNavigationButtons();
 
       Logger.log(`✅ Switched to ${mode} mode, reset to step 1/${this.totalSteps}`);
+    }
+
+    /**
+     * 🎨 החלת סטייל טאב פעיל - כמו תקצוב משימות
+     */
+    applyActiveTabStyle(btn) {
+      // צבע טקסט לבן
+      btn.style.color = 'white';
+      btn.style.fontWeight = '700';
+      btn.style.transform = 'translateY(-1px)';
+
+      // gradient background עם ::before
+      // נשתמש ב-CSS custom property או inline background
+      btn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+      btn.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.3)';
+
+      // 🎨 צבע האייקון גם לבן
+      const icon = btn.querySelector('i');
+      if (icon) {
+        icon.style.color = 'white';
+        icon.style.filter = 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))';
+      }
+
+      // הוסף נקודה כחולה מתחת עם ::after
+      // (לא ניתן ליצור ::after עם JS, אז נוסיף את זה ב-CSS או ניצור element)
+      if (!btn.querySelector('.tab-dot')) {
+        const dot = document.createElement('div');
+        dot.className = 'tab-dot';
+        dot.style.cssText = `
+          position: absolute;
+          bottom: -8px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 10px;
+          height: 10px;
+          background: #3b82f6;
+          border-radius: 50%;
+          box-shadow: 0 0 0 3px white;
+        `;
+        btn.appendChild(dot);
+      }
+
+      // הצג את הנקודה
+      const dot = btn.querySelector('.tab-dot');
+      if (dot) {
+        dot.style.display = 'block';
+      }
     }
 
 

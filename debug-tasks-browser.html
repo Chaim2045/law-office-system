@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>בדיקת משימות - Debug</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      direction: rtl;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 10px;
+    }
+    .task-card {
+      background: #f9f9f9;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+      border-right: 4px solid #3498db;
+    }
+    .task-card.overdue {
+      border-right-color: #e74c3c;
+      background: #fee;
+    }
+    .task-card.ok {
+      border-right-color: #2ecc71;
+      background: #efe;
+    }
+    .task-card.warning {
+      border-right-color: #f39c12;
+      background: #ffe;
+    }
+    .label {
+      font-weight: bold;
+      color: #555;
+    }
+    .value {
+      color: #222;
+    }
+    .problem {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      color: #856404;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat-box h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .stat-box .number {
+      font-size: 32px;
+      font-weight: bold;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    #loading {
+      text-align: center;
+      padding: 50px;
+      font-size: 18px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 בדיקת משימות - Debug Live</h1>
+
+    <div id="loading">⏳ טוען נתונים...</div>
+
+    <div id="stats" style="display:none;"></div>
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDSJcEu-bK7CY0cdk8O-AiRCZ0hJsXWp54",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "633561922031",
+      appId: "1:633561922031:web:c1e9fc5dcc63c3e2d486fa"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    async function debugTasks(userEmail) {
+      const now = new Date();
+
+      console.log('🔍 בודק את כל המשימות...');
+      console.log('⏰ זמן עכשיו:', now.toLocaleString('he-IL'));
+
+      try {
+        const tasksSnapshot = await getDocs(collection(db, 'tasks'));
+
+        const results = {
+          total: 0,
+          withDeadline: 0,
+          overdue: 0,
+          problematic: [],
+          ok: []
+        };
+
+        const taskCards = [];
+
+        tasksSnapshot.forEach((doc) => {
+          const task = doc.data();
+          results.total++;
+
+          // רק משימות עם deadline
+          if (!task.deadline) {
+            return;
+          }
+
+          results.withDeadline++;
+
+          const deadline = task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline);
+          const createdAt = task.createdAt ?
+            (task.createdAt.toDate ? task.createdAt.toDate() : new Date(task.createdAt)) :
+            now;
+
+          // 🔧 חישוב לפי הלוגיקה החדשה (אותה לוגיקה מbudget-tasks.js)
+          const startDate = createdAt < deadline ? createdAt : deadline;
+          const totalDays = Math.max(1, (deadline - startDate) / (1000 * 60 * 60 * 24));
+          const elapsedDays = (now - startDate) / (1000 * 60 * 60 * 24);
+          const deadlineProgress = Math.max(0, Math.round((elapsedDays / totalDays) * 100));
+
+          const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+          const isOverdue = daysUntilDeadline < 0;
+
+          if (isOverdue) results.overdue++;
+
+          const taskInfo = {
+            id: doc.id,
+            description: task.description || 'אין תיאור',
+            clientName: task.clientName || 'לא צוין',
+            deadline: deadline.toLocaleDateString('he-IL'),
+            createdAt: createdAt.toLocaleDateString('he-IL'),
+            progress: deadlineProgress,
+            daysUntilDeadline,
+            isOverdue,
+            problems: []
+          };
+
+          // בדוק בעיות
+          if (isOverdue && deadlineProgress < 100) {
+            taskInfo.problems.push(`❌ משימה באיחור ${Math.abs(daysUntilDeadline)} ימים אבל מציגה רק ${deadlineProgress}%`);
+            results.problematic.push(taskInfo);
+          } else if (createdAt > deadline) {
+            taskInfo.problems.push(`⚠️ תאריך יצירה (${taskInfo.createdAt}) אחרי תאריך יעד (${taskInfo.deadline})`);
+            results.problematic.push(taskInfo);
+          } else {
+            results.ok.push(taskInfo);
+          }
+
+          taskCards.push(taskInfo);
+        });
+
+        // הצג סטטיסטיקות
+        document.getElementById('stats').innerHTML = `
+          <div class="stats">
+            <div class="stat-box">
+              <h3>סה"כ משימות</h3>
+              <div class="number">${results.total}</div>
+            </div>
+            <div class="stat-box">
+              <h3>עם תאריך יעד</h3>
+              <div class="number">${results.withDeadline}</div>
+            </div>
+            <div class="stat-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+              <h3>באיחור</h3>
+              <div class="number">${results.overdue}</div>
+            </div>
+            <div class="stat-box" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+              <h3>בעייתיות</h3>
+              <div class="number">${results.problematic.length}</div>
+            </div>
+          </div>
+        `;
+        document.getElementById('stats').style.display = 'block';
+
+        // הצג משימות
+        let html = '';
+
+        if (results.problematic.length > 0) {
+          html += '<h2 style="color: #e74c3c;">❌ משימות בעייתיות (' + results.problematic.length + ')</h2>';
+          results.problematic.forEach(task => {
+            html += createTaskCard(task, 'warning');
+          });
+        }
+
+        if (results.ok.length > 0) {
+          html += '<h2 style="color: #2ecc71; margin-top: 40px;">✅ משימות תקינות (' + results.ok.length + ')</h2>';
+          html += '<details><summary style="cursor: pointer; padding: 10px; background: #e8f5e9; border-radius: 5px; margin-bottom: 10px;">הצג משימות תקינות</summary>';
+          results.ok.forEach(task => {
+            html += createTaskCard(task, task.isOverdue ? 'overdue' : 'ok');
+          });
+          html += '</details>';
+        }
+
+        document.getElementById('results').innerHTML = html;
+        document.getElementById('loading').style.display = 'none';
+
+      } catch (error) {
+        console.error('❌ שגיאה:', error);
+        document.getElementById('loading').innerHTML = `
+          <div style="color: red;">
+            <h2>❌ שגיאה בטעינת נתונים</h2>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function createTaskCard(task, className) {
+      return `
+        <div class="task-card ${className}">
+          <div><span class="label">🆔 ID:</span> <span class="value">${task.id.substring(0, 8)}</span></div>
+          <div><span class="label">📋 תיאור:</span> <span class="value">${task.description}</span></div>
+          <div><span class="label">👤 לקוח:</span> <span class="value">${task.clientName}</span></div>
+          <div><span class="label">📅 יצירה:</span> <span class="value">${task.createdAt}</span></div>
+          <div><span class="label">⏰ יעד:</span> <span class="value">${task.deadline}</span></div>
+          <div><span class="label">📊 התקדמות:</span> <span class="value" style="font-size: 24px; font-weight: bold; color: ${task.progress >= 100 ? '#e74c3c' : '#2ecc71'};">${task.progress}%</span></div>
+          <div><span class="label">⏱️ זמן:</span> <span class="value">${task.isOverdue ? '🔴 באיחור ' + Math.abs(task.daysUntilDeadline) + ' ימים' : '🟢 ' + task.daysUntilDeadline + ' ימים נותרו'}</span></div>
+          ${task.problems.length > 0 ? '<div class="problem">' + task.problems.join('<br>') + '</div>' : ''}
+        </div>
+      `;
+    }
+
+    // המתן לאותנטיקציה
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('✅ משתמש מחובר:', user.email);
+        debugTasks(user.email);
+      } else {
+        document.getElementById('loading').innerHTML = `
+          <div>
+            <h2>🔐 נדרשת התחברות</h2>
+            <p>אנא התחבר למערכת כדי לראות את המשימות</p>
+            <button onclick="window.location.href='/'">חזור לדף הבית</button>
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
