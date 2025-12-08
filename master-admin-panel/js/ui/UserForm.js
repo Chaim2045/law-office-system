@@ -717,7 +717,8 @@ return null;
                         username: userData.username || userData.email.split('@')[0],
                         role: userData.role,
                         phone: userData.phone || '',
-                        whatsappEnabled: userData.whatsappEnabled || false
+                        whatsappEnabled: userData.whatsappEnabled || false,
+                        dailyHoursTarget: userData.dailyHoursTarget || null
                     }),
                     timeoutPromise
                 ]);
@@ -779,7 +780,8 @@ return null;
                     role: userData.role,
                     status: userData.status,
                     phone: userData.phone,
-                    whatsappEnabled: userData.whatsappEnabled
+                    whatsappEnabled: userData.whatsappEnabled,
+                    dailyHoursTarget: userData.dailyHoursTarget || null
                 });
 
                 console.log('✅ User updated successfully:', result.data);
