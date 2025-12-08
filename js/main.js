@@ -72,6 +72,7 @@ class LawOfficeManager {
     // Core State
     this.currentUser = null; // Email for queries
     this.currentUsername = null; // Username for display
+    this.currentEmployee = null; // Full employee data from Firestore
     this.clients = [];
     this.budgetTasks = [];
     this.timesheetEntries = [];
@@ -209,6 +210,7 @@ class LawOfficeManager {
         const employee = doc.data();
         this.currentUser = employee.email; // ✅ EMAIL for queries
         this.currentUsername = employee.username || employee.name; // Username for display
+        this.currentEmployee = employee; // ✅ Full employee data (including dailyHoursTarget)
 
         UIComponents.updateUserDisplay(this.currentUsername);
 

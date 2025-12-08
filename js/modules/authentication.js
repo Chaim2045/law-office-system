@@ -96,6 +96,7 @@ async function handleLogin() {
     this.currentUid = uid; // ✅ Firebase Auth UID
     this.currentUser = employee.email; // ✅ EMAIL for queries and security
     this.currentUsername = employee.username || employee.name; // Username for display
+    this.currentEmployee = employee; // ✅ Full employee data (including dailyHoursTarget)
 
     updateUserDisplay(this.currentUsername);
 
@@ -698,6 +699,7 @@ async function verifyOTP() {
     // Set current user
     this.currentUser = result.employeeData.email;
     this.currentUsername = result.employeeData.username || result.employeeData.name;
+    this.currentEmployee = result.employeeData; // ✅ Full employee data (including dailyHoursTarget)
 
     updateUserDisplay(this.currentUsername);
 
