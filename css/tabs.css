@@ -239,3 +239,159 @@
     display: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CASE CREATION DIALOG TABS
+ * טאבים לדיאלוג יצירת תיק - עיצוב זהה לטאבים הראשיים
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 1️⃣ Mode Tabs - לקוח חדש / לקוח קיים */
+.mode-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 32px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.mode-tab i {
+  font-size: 16px;
+  transition: all 0.25s ease;
+}
+
+/* 2️⃣ Service Type Tabs - שעות / הליך משפטי */
+.service-type-tab,
+.service-type-tab-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.service-type-tab i,
+.service-type-tab-new i {
+  font-size: 16px;
+  transition: all 0.25s ease;
+}
+
+/* 3️⃣ Pricing Type Tabs - תמחור שעתי / מחיר פיקס */
+.pricing-type-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.pricing-type-tab i {
+  font-size: 12px;
+  transition: all 0.25s ease;
+}
+
+/* Hover State - NOT active */
+.mode-tab:hover:not(.active),
+.service-type-tab:hover:not(.active),
+.service-type-tab-new:hover:not(.active),
+.pricing-type-tab:hover:not(.active) {
+  background: #f8fafc;
+  color: #374151;
+}
+
+.mode-tab:hover:not(.active) i,
+.service-type-tab:hover:not(.active) i,
+.service-type-tab-new:hover:not(.active) i,
+.pricing-type-tab:hover:not(.active) i {
+  color: #3b82f6;
+  transform: scale(1.1);
+}
+
+/* Active State - Blue Gradient */
+.mode-tab.active,
+.service-type-tab.active,
+.service-type-tab-new.active,
+.pricing-type-tab.active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  font-weight: 700;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+/* Active Icon - White */
+.mode-tab.active i,
+.service-type-tab.active i,
+.service-type-tab-new.active i,
+.pricing-type-tab.active i {
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* Blue Dot Below Active Tab */
+.mode-tab.active::after,
+.service-type-tab.active::after,
+.service-type-tab-new.active::after,
+.pricing-type-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px white;
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+  .mode-tab {
+    padding: 10px 24px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .service-type-tab,
+  .service-type-tab-new {
+    padding: 8px 18px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .pricing-type-tab {
+    padding: 6px 16px;
+    font-size: 12px;
+    gap: 4px;
+  }
+}

@@ -315,11 +315,8 @@
         this.renderDialog();
         this.attachEventListeners();
 
-        // 🎨 החל סטייל ראשוני על הטאב הפעיל
-        const newBtn = document.getElementById('newClientModeBtn');
-        if (newBtn && newBtn.classList.contains('active')) {
-          this.applyActiveTabStyle(newBtn);
-        }
+        // 🎨 החל סטיילים ראשוניים על כל הטאבים הפעילים
+        this.initializeActiveTabStyles();
 
         // המתנה מינימלית של 200ms כדי שהמשתמש יראה את הלוטי
         const elapsedTime = Date.now() - startTime;
@@ -379,43 +376,11 @@
                     border-radius: 12px;
                     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
                   ">
-                    <button type="button" id="newClientModeBtn" class="mode-tab active" style="
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      gap: 8px;
-                      padding: 12px 32px;
-                      background: transparent;
-                      border: none;
-                      border-radius: 12px;
-                      cursor: pointer;
-                      font-weight: 600;
-                      font-size: 15px;
-                      color: #64748b;
-                      transition: all 0.25s ease;
-                      position: relative;
-                      white-space: nowrap;
-                    ">
+                    <button type="button" id="newClientModeBtn" class="mode-tab active">
                       <i class="fas fa-user-plus"></i>
                       לקוח חדש
                     </button>
-                    <button type="button" id="existingClientModeBtn" class="mode-tab" style="
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      gap: 8px;
-                      padding: 12px 32px;
-                      background: transparent;
-                      border: none;
-                      border-radius: 12px;
-                      cursor: pointer;
-                      font-weight: 600;
-                      font-size: 15px;
-                      color: #64748b;
-                      transition: all 0.25s ease;
-                      position: relative;
-                      white-space: nowrap;
-                    ">
+                    <button type="button" id="existingClientModeBtn" class="mode-tab">
                       <i class="fas fa-user-check"></i>
                       לקוח קיים
                     </button>
@@ -500,29 +465,31 @@
                       >
                     </div>
 
-                    <!-- סוג הליך -->
-                    <div>
-                      <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                    <!-- סוג הליך - טאבים במקום dropdown -->
+                    <div style="margin-bottom: 16px;">
+                      <label style="display: block; margin-bottom: 12px; font-weight: 500; color: #374151; font-size: 14px; text-align: center;">
                         סוג הליך <span style="color: #ef4444;">*</span>
                       </label>
-                      <select
-                        id="procedureType"
-                        style="
-                          width: 100%;
-                          padding: 10px 12px;
-                          border: 1px solid #d1d5db;
-                          border-radius: 6px;
-                          font-size: 14px;
+                      <div style="text-align: center;">
+                        <div style="
+                          display: inline-flex;
+                          gap: 6px;
+                          padding: 6px;
                           background: white;
-                          cursor: pointer;
-                          transition: all 0.2s;
-                        "
-                        onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                        onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
-                      >
-                        <option value="hours">שעות (ללא שלבים)</option>
-                        <option value="legal_procedure">הליך משפטי מבוסס שלבים</option>
-                      </select>
+                          border: 1px solid #e2e8f0;
+                          border-radius: 12px;
+                          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+                        ">
+                          <button type="button" id="serviceTypeTab_hours_new" class="service-type-tab-new active" data-type="hours">
+                            <i class="fas fa-clock"></i>
+                            שעות
+                          </button>
+                          <button type="button" id="serviceTypeTab_legal_new" class="service-type-tab-new" data-type="legal_procedure">
+                            <i class="fas fa-balance-scale"></i>
+                            הליך משפטי
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -579,29 +546,26 @@
                     הגדרת שירות
                   </h3>
 
-                  <!-- Service Type Selector for Existing Client Mode -->
-                  <div id="serviceTypeSelector_existing" style="display: none; margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
-                      סוג שירות <span style="color: #ef4444;">*</span>
-                    </label>
-                    <select
-                      id="procedureType_existing"
-                      style="
-                        width: 100%;
-                        padding: 10px 12px;
-                        border: 1px solid #d1d5db;
-                        border-radius: 6px;
-                        font-size: 14px;
-                        background: white;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                      "
-                      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                      onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
-                    >
-                      <option value="hours">שעות (ללא שלבים)</option>
-                      <option value="legal_procedure">הליך משפטי מבוסס שלבים</option>
-                    </select>
+                  <!-- Service Type Selector for Existing Client Mode - טאבים -->
+                  <div id="serviceTypeSelector_existing" style="display: none; margin-bottom: 24px; text-align: center;">
+                    <div style="
+                      display: inline-flex;
+                      gap: 6px;
+                      padding: 6px;
+                      background: white;
+                      border: 1px solid #e2e8f0;
+                      border-radius: 12px;
+                      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+                    ">
+                      <button type="button" id="serviceTypeTab_hours" class="service-type-tab active" data-type="hours">
+                        <i class="fas fa-clock"></i>
+                        שעות
+                      </button>
+                      <button type="button" id="serviceTypeTab_legal" class="service-type-tab" data-type="legal_procedure">
+                        <i class="fas fa-balance-scale"></i>
+                        הליך משפטי
+                      </button>
+                    </div>
                   </div>
 
                   <!-- Service Title for Existing Client Mode -->
@@ -659,8 +623,8 @@
 
       document.body.insertAdjacentHTML('beforeend', dialogHTML);
 
-      // רינדור סקשן שירות (ברירת מחדל: שעות)
-      this.renderServiceSection();
+      // 🔧 לא קוראים ל-renderServiceSection() כאן - זה יקרה ב-updateStepVisibility() כשמגיעים לשלב 3
+      // renderServiceSection() תיקרא רק כשעוברים לשלב השירות (שלב 3)
     }
 
     /**
@@ -859,6 +823,8 @@ serviceTypeSelector.style.display = 'none';
           if (serviceTitleField) {
 serviceTitleField.style.display = 'none';
 }
+          // 🔧 רינדור סקשן השירות לפי procedureType
+          this.renderServiceSection();
         }
       } else {
         // Existing Client: 2 steps
@@ -932,9 +898,8 @@ serviceTitleField.style.display = 'block';
             errors.push('אנא הזן כותרת תיק (לפחות 2 תווים)');
           }
 
-          // עדכן את סוג ההליך
-          this.procedureType = document.getElementById('procedureType')?.value || 'hours';
-          this.renderServiceSection(); // רינדור שירות לפי הבחירה
+          // 🔧 procedureType כבר מתעדכן דרך טאבי סוג השירות, לא צריך לקרוא מה-DOM
+          // השדה procedureType (dropdown) הוסר והוחלף בטאבים
         } else if (this.currentStep === 3) {
           // Step 3: Service - validate based on procedure type
           if (this.procedureType === 'hours') {
@@ -953,7 +918,7 @@ serviceTitleField.style.display = 'block';
             }
 
             // Check hours/price based on pricing type
-            const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
+            const pricingType = this.pricingType; // 🔧 משתמש ב-instance variable במקום radio buttons
             if (pricingType === 'hourly') {
               const stageA_hours = parseFloat(document.getElementById('stageA_hours')?.value);
               const stageB_hours = parseFloat(document.getElementById('stageB_hours')?.value);
@@ -982,12 +947,8 @@ serviceTitleField.style.display = 'block';
           }
         } else if (this.currentStep === 2) {
           // Step 2: Service
-          // עדכן procedureType מהשדה של existing
-          const procedureTypeSelect = document.getElementById('procedureType_existing');
-          if (procedureTypeSelect) {
-            this.procedureType = procedureTypeSelect.value;
-            this.renderServiceSection(); // רינדור שירות לפי הבחירה
-          }
+          // 🔧 procedureType כבר מתעדכן דרך טאבי סוג השירות (existing mode)
+          // השדה procedureType_existing (dropdown) הוסר והוחלף בטאבים
 
           const serviceTitle = document.getElementById('serviceTitle_existing')?.value?.trim();
           if (!serviceTitle || serviceTitle.length < 2) {
@@ -1010,7 +971,7 @@ serviceTitleField.style.display = 'block';
               errors.push('חובה למלא תיאור עבור כל 3 השלבים');
             }
 
-            const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
+            const pricingType = this.pricingType; // 🔧 משתמש ב-instance variable במקום radio buttons
             if (pricingType === 'hourly') {
               const stageA_hours = parseFloat(document.getElementById('stageA_hours')?.value);
               const stageB_hours = parseFloat(document.getElementById('stageB_hours')?.value);
@@ -1107,12 +1068,17 @@ serviceTitleField.style.display = 'block';
     renderServiceSection() {
       const container = document.getElementById('serviceSection');
       if (!container) {
-return;
-}
+        console.log('❌ serviceSection container not found!');
+        return;
+      }
+
+      console.log('🔍 renderServiceSection called with procedureType:', this.procedureType);
 
       if (this.procedureType === 'hours') {
+        console.log('✅ Rendering HOURS section');
         container.innerHTML = this.renderHoursSection();
       } else if (this.procedureType === 'legal_procedure') {
+        console.log('✅ Rendering LEGAL PROCEDURE section');
         container.innerHTML = this.renderLegalProcedureSection();
       }
 
@@ -1194,53 +1160,25 @@ return;
             </p>
           </div>
 
-          <!-- בחירת סוג תמחור -->
-          <div style="margin-bottom: 24px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 14px;">
-              סוג תמחור <span style="color: #ef4444;">*</span>
-            </label>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <label class="pricing-type-label" style="
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 12px 16px;
-                border: 1px solid ${isHourly ? '#3b82f6' : '#d1d5db'};
-                border-radius: 8px;
-                cursor: pointer;
-                background: ${isHourly ? '#f0f9ff' : 'white'};
-                transition: all 0.2s ease;
-              ">
-                <input type="radio" name="pricingType" value="hourly" ${isHourly ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
-                <div style="flex: 1;">
-                  <div style="font-weight: 600; color: #0f172a; font-size: 14px;">
-                    <i class="fas fa-clock" style="color: #3b82f6; margin-left: 6px;"></i>
-                    תמחור שעתי
-                  </div>
-                  <div style="font-size: 12px; color: #64748b;">תקרת שעות לכל שלב</div>
-                </div>
-              </label>
-
-              <label class="pricing-type-label" style="
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 12px 16px;
-                border: 1px solid ${!isHourly ? '#3b82f6' : '#d1d5db'};
-                border-radius: 8px;
-                cursor: pointer;
-                background: ${!isHourly ? '#f0f9ff' : 'white'};
-                transition: all 0.2s ease;
-              ">
-                <input type="radio" name="pricingType" value="fixed" ${!isHourly ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
-                <div style="flex: 1;">
-                  <div style="font-weight: 600; color: #0f172a; font-size: 14px;">
-                    <i class="fas fa-shekel-sign" style="color: #3b82f6; margin-left: 6px;"></i>
-                    מחיר פיקס
-                  </div>
-                  <div style="font-size: 12px; color: #64748b;">מחיר קבוע לכל שלב</div>
-                </div>
-              </label>
+          <!-- בחירת סוג תמחור - טאבים קטנים -->
+          <div style="margin-bottom: 24px; text-align: center;">
+            <div style="
+              display: inline-flex;
+              gap: 4px;
+              padding: 4px;
+              background: white;
+              border: 1px solid #e2e8f0;
+              border-radius: 10px;
+              box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            ">
+              <button type="button" id="pricingTypeTab_hourly" class="pricing-type-tab ${isHourly ? 'active' : ''}" data-pricing="hourly">
+                <i class="fas fa-clock"></i>
+                תמחור שעתי
+              </button>
+              <button type="button" id="pricingTypeTab_fixed" class="pricing-type-tab ${!isHourly ? 'active' : ''}" data-pricing="fixed">
+                <i class="fas fa-shekel-sign"></i>
+                מחיר פיקס
+              </button>
             </div>
           </div>
 
@@ -1315,7 +1253,7 @@ return;
               id="stage${stageKey}_${isHourly ? 'hours' : 'fixedPrice'}"
               class="${isHourly ? 'hourly-field' : 'fixed-field'}"
               min="1"
-              step="${isHourly ? '0.5' : '100'}"
+              step="${isHourly ? '0.5' : '1'}"
               placeholder="${isHourly ? '20' : '5000'}"
               required
               style="
@@ -1387,16 +1325,51 @@ return;
       document.getElementById('nextStepBtn')?.addEventListener('click', () => this.nextStep());
       document.getElementById('prevStepBtn')?.addEventListener('click', () => this.prevStep());
 
-      // שינוי סוג הליך - New Client Mode
-      document.getElementById('procedureType')?.addEventListener('change', (e) => {
-        this.procedureType = e.target.value;
-        this.renderServiceSection();
+      // שינוי סוג הליך - New Client Mode (טאבים)
+      const serviceTypeTabsNew = [
+        document.getElementById('serviceTypeTab_hours_new'),
+        document.getElementById('serviceTypeTab_legal_new')
+      ];
+
+      serviceTypeTabsNew.forEach(tab => {
+        if (!tab) return;
+
+        tab.addEventListener('click', () => {
+          // עדכן את procedureType
+          const newType = tab.getAttribute('data-type');
+          this.procedureType = newType;
+
+          // הסר active מכל הטאבים
+          serviceTypeTabsNew.forEach(t => t?.classList.remove('active'));
+
+          // הפעל את הטאב שנלחץ (CSS יטפל בעיצוב)
+          tab.classList.add('active');
+        });
+
       });
 
-      // שינוי סוג הליך - Existing Client Mode
-      document.getElementById('procedureType_existing')?.addEventListener('change', (e) => {
-        this.procedureType = e.target.value;
-        this.renderServiceSection();
+      // שינוי סוג הליך - Existing Client Mode (טאבים)
+      const serviceTypeTabs = [
+        document.getElementById('serviceTypeTab_hours'),
+        document.getElementById('serviceTypeTab_legal')
+      ];
+
+      serviceTypeTabs.forEach(tab => {
+        if (!tab) return;
+
+        tab.addEventListener('click', () => {
+          // עדכן את procedureType
+          this.procedureType = tab.getAttribute('data-type');
+
+          // הסר active מכל הטאבים
+          serviceTypeTabs.forEach(t => t?.classList.remove('active'));
+
+          // הפעל את הטאב שנלחץ (CSS יטפל בעיצוב)
+          tab.classList.add('active');
+
+          // רינדור מחדש
+          this.renderServiceSection();
+        });
       });
 
       // שליחת טופס
@@ -1407,20 +1380,85 @@ return;
     }
 
     /**
-     * צירוף listeners לסוג תמחור
-     * 🔧 FIX: שינוי ל-click event במקום change, והסרת עדכון סטייל ידני
+     * צירוף listeners לסוג תמחור - טאבים
      */
     attachPricingTypeListeners() {
-      const pricingRadios = document.querySelectorAll('input[name="pricingType"]');
-      pricingRadios.forEach(radio => {
-        // שימוש ב-click במקום change לתמיכה טובה יותר
-        radio.addEventListener('click', (e) => {
-          // עדכן את סוג התמחור
-          this.pricingType = e.target.value;
+      const pricingTabs = [
+        document.getElementById('pricingTypeTab_hourly'),
+        document.getElementById('pricingTypeTab_fixed')
+      ];
 
-          // רינדור מחדש את כל הסקשן (כולל הכפתורים והשלבים)
-          this.renderServiceSection();
+      pricingTabs.forEach(tab => {
+        if (!tab) return;
+
+        tab.addEventListener('click', () => {
+          // עדכן את pricingType
+          this.pricingType = tab.getAttribute('data-pricing');
+
+          // הסר active מכל הטאבים
+          pricingTabs.forEach(t => t?.classList.remove('active'));
+
+          // הפעל את הטאב שנלחץ (CSS יטפל בעיצוב)
+          tab.classList.add('active');
+
+          // עדכן רק את השלבים במקום render מחדש של הכל
+          this.updateStagesForPricingType();
         });
+      });
+    }
+
+    /**
+     * עדכון השלבים לפי סוג התמחור - ללא render מחדש של הכל
+     */
+    updateStagesForPricingType() {
+      const isHourly = this.pricingType === 'hourly';
+      const stages = ['A', 'B', 'C'];
+
+      stages.forEach(stageKey => {
+        // מצא את התווית ושדה הקלט
+        const label = document.querySelector(`label[for="stage${stageKey}_${isHourly ? 'hours' : 'fixedPrice'}"]`);
+        const oldField = document.getElementById(`stage${stageKey}_${isHourly ? 'fixedPrice' : 'hours'}`);
+
+        // אם השדה הישן קיים, החלף אותו
+        if (oldField) {
+          const parent = oldField.parentElement;
+          const labelElement = parent.querySelector('label');
+
+          // עדכן תווית
+          if (labelElement) {
+            labelElement.innerHTML = `${isHourly ? 'שעות' : 'מחיר פיקס (₪)'} <span style="color: #ef4444;">*</span>`;
+          }
+
+          // צור שדה חדש
+          const newField = document.createElement('input');
+          newField.type = 'number';
+          newField.id = `stage${stageKey}_${isHourly ? 'hours' : 'fixedPrice'}`;
+          newField.className = isHourly ? 'hourly-field' : 'fixed-field';
+          newField.min = '1';
+          newField.step = isHourly ? '0.5' : '1';
+          newField.placeholder = isHourly ? '20' : '5000';
+          newField.required = true;
+          newField.style.cssText = `
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-sizing: border-box;
+          `;
+          newField.onfocus = function() {
+            this.style.borderColor = '#3b82f6';
+            this.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)';
+          };
+          newField.onblur = function() {
+            this.style.borderColor = '#d1d5db';
+            this.style.boxShadow = 'none';
+          };
+
+          // החלף את השדה
+          oldField.replaceWith(newField);
+        }
       });
     }
 
@@ -1429,6 +1467,7 @@ return;
      * 🎨 NEW: סטייל כמו טאבים של תקצוב משימות עם gradient ו-pseudo-elements
      */
     switchMode(mode) {
+      console.log('🔄 switchMode called:', mode, '| Current procedureType:', this.procedureType);
       this.currentMode = mode;
 
       // ✅ Reset stepper
@@ -1473,18 +1512,16 @@ return;
           dialogTitle.textContent = 'יצירת תיק חדש';
         }
 
-        // הפעל את הטאב
+        // הפעל את הטאב (CSS יטפל בעיצוב)
         newBtn.classList.add('active');
-        this.applyActiveTabStyle(newBtn);
       } else {
         // עדכון כותרת
         if (dialogTitle) {
           dialogTitle.textContent = 'הוספת שירות לתיק קיים';
         }
 
-        // הפעל את הטאב
+        // הפעל את הטאב (CSS יטפל בעיצוב)
         existingBtn.classList.add('active');
-        this.applyActiveTabStyle(existingBtn);
 
         // צור selector אם לא קיים
         if (!this.clientSelector) {
@@ -1500,56 +1537,18 @@ return;
       this.updateStepVisibility();
       this.updateNavigationButtons();
 
+      // CSS מטפל בעיצוב אוטומטית - לא צריך קוד JS
+
       Logger.log(`✅ Switched to ${mode} mode, reset to step 1/${this.totalSteps}`);
     }
 
     /**
-     * 🎨 החלת סטייל טאב פעיל - כמו תקצוב משימות
+     * 🎨 אתחול טאבים - CSS מטפל בעיצוב
+     * הפונקציה נשארת לצורך backward compatibility אבל לא עושה כלום
      */
-    applyActiveTabStyle(btn) {
-      // צבע טקסט לבן
-      btn.style.color = 'white';
-      btn.style.fontWeight = '700';
-      btn.style.transform = 'translateY(-1px)';
-
-      // gradient background עם ::before
-      // נשתמש ב-CSS custom property או inline background
-      btn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
-      btn.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.3)';
-
-      // 🎨 צבע האייקון גם לבן
-      const icon = btn.querySelector('i');
-      if (icon) {
-        icon.style.color = 'white';
-        icon.style.filter = 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))';
-      }
-
-      // הוסף נקודה כחולה מתחת עם ::after
-      // (לא ניתן ליצור ::after עם JS, אז נוסיף את זה ב-CSS או ניצור element)
-      if (!btn.querySelector('.tab-dot')) {
-        const dot = document.createElement('div');
-        dot.className = 'tab-dot';
-        dot.style.cssText = `
-          position: absolute;
-          bottom: -8px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 10px;
-          height: 10px;
-          background: #3b82f6;
-          border-radius: 50%;
-          box-shadow: 0 0 0 3px white;
-        `;
-        btn.appendChild(dot);
-      }
-
-      // הצג את הנקודה
-      const dot = btn.querySelector('.tab-dot');
-      if (dot) {
-        dot.style.display = 'block';
-      }
+    initializeActiveTabStyles() {
+      // CSS מטפל בעיצוב אוטומטית דרך .active class - אין צורך בקוד JS
     }
-
 
     /**
      * אתחול ClientCaseSelector
@@ -1898,7 +1897,7 @@ return;
         caseNumber: document.getElementById('caseNumber')?.value,
         title: document.getElementById('caseTitle')?.value?.trim(),
         description: document.getElementById('caseDescription')?.value?.trim(),
-        procedureType: document.getElementById('procedureType')?.value
+        procedureType: this.procedureType // 🔧 משתמש ב-instance variable במקום dropdown
       };
 
       // שירות
@@ -1908,7 +1907,7 @@ return;
         };
       } else if (this.procedureType === 'legal_procedure') {
         formData.service = {
-          pricingType: document.querySelector('input[name="pricingType"]:checked')?.value,
+          pricingType: this.pricingType, // 🔧 משתמש ב-instance variable במקום radio buttons
           stageA: this.collectStageData('A'),
           stageB: this.collectStageData('B'),
           stageC: this.collectStageData('C')
@@ -2046,8 +2045,8 @@ return;
         document.getElementById('formErrors').style.display = 'none';
         this.clearErrorHighlights();
 
-        // Get procedure type from the correct field (existing client mode)
-        const procedureType = document.getElementById('procedureType_existing')?.value || this.procedureType;
+        // 🔧 Get procedure type from instance variable (updated by tabs)
+        const procedureType = this.procedureType;
 
         // Get service name from the correct field (existing client mode)
         const serviceName = document.getElementById('serviceTitle_existing')?.value?.trim();
@@ -2066,7 +2065,8 @@ return;
           serviceData.hours = totalHours;
 
         } else if (procedureType === 'legal_procedure') {
-          const pricingType = document.querySelector('input[name="pricingType"]:checked')?.value || 'hourly';
+          // 🔧 משתמש ב-instance variable במקום radio buttons שהוסרו
+          const pricingType = this.pricingType;
           serviceData.pricingType = pricingType;
 
           // איסוף נתוני שלבים
