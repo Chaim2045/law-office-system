@@ -178,6 +178,11 @@
             const data = doc.data();
             const fullName = data.fullName || data.clientName;
 
+            // ✅ סינון תיקים פנימיים - לא מציגים אותם בבחירת לקוח
+            if (data.isInternal === true || data.clientType === 'internal') {
+              return; // דילוג על תיק פנימי
+            }
+
             if (change.type === 'added') {
               // לקוח חדש נוסף
               if (fullName) {
