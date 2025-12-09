@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>בדיקת DataManager</title>
+</head>
+<body>
+    <h1>🔍 בדיקת DataManager</h1>
+    <p>העתק והדבק את הקוד הזה בקונסול של האדמין פאנל:</p>
+    <pre style="direction: ltr; background: #f5f5f5; padding: 15px; border-radius: 5px;">
+// בדיקת DataManager
+console.log('🔍 בודק DataManager...');
+
+// 1. בדוק אם DataManager קיים
+console.log('1. DataManager exists:', !!window.DataManager);
+
+// 2. בדוק אם יש משתמשים
+if (window.DataManager) {
+    const users = window.DataManager.getAllUsers();
+    console.log('2. Total users:', users.length);
+
+    // 3. מצא את המשתמש
+    const haim = users.find(u => u.email === 'haim@ghlawoffice.co.il');
+
+    if (haim) {
+        console.log('\n✅ משתמש נמצא ב-DataManager:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📧 Email:', haim.email);
+        console.log('👤 Name:', haim.displayName);
+        console.log('🎯 dailyHoursTarget:', haim.dailyHoursTarget);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        if (haim.dailyHoursTarget) {
+            console.log('\n✅ DataManager מכיר את התקן!');
+        } else {
+            console.log('\n❌ DataManager לא מכיר את התקן!');
+            console.log('💡 פתרון: רענן את הדף (Ctrl+R) כדי ש-DataManager יטען מחדש');
+        }
+
+        // הדפס את כל השדות
+        console.log('\n📋 כל השדות של המשתמש:');
+        console.log(haim);
+    } else {
+        console.error('❌ משתמש לא נמצא ב-DataManager');
+    }
+} else {
+    console.error('❌ DataManager לא קיים!');
+}
+    </pre>
+
+    <h2>🎯 מה לעשות לפי התוצאה:</h2>
+    <ul>
+        <li><strong>אם רואה "dailyHoursTarget: 10"</strong> → הכל תקין! השדה פשוט לא מוצג נכון בטופס</li>
+        <li><strong>אם רואה "dailyHoursTarget: undefined"</strong> → רענן את הדף (Ctrl+R) ונסה שוב</li>
+    </ul>
+</body>
+</html>

@@ -6189,12 +6189,11 @@ ${requestedByName || requestedBy} הוסיף משימה חדשה לאישור:
 📋 לקוח: ${taskData.clientName || 'לא צוין'}
 📝 משימה: ${taskData.description}
 ⏱️ תקציב מבוקש: ${minutes} דקות (${timeStr})
-🔑 מזהה: ${approvalId}
 
-כדי לאשר, השב:
-✅ אישור
-✅ אישור [מספר דקות] (לדוגמה: אישור 120)
-❌ דחייה [סיבה]
+📲 איך להגיב?
+✅ לאישור: כתוב "אישור" או "OK"
+✅ לאישור עם שינוי זמן: כתוב "אישור 120" (120 דקות)
+❌ לדחייה: כתוב "דחייה" ואחריו הסיבה (לדוגמה: "דחייה תקציב גבוה מדי")
 
 הודעה זו נשלחה אוטומטית ממערכת ניהול משרד עו"ד`;
 
@@ -6256,9 +6255,6 @@ ${requestedByName || requestedBy} הוסיף משימה חדשה לאישור:
  */
 exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
   try {
-    // Verify it's from Twilio (optional but recommended)
-    const twilioSignature = req.headers['x-twilio-signature'];
-
     // Get message data
     const { From, Body, MessageSid } = req.body;
 
@@ -6272,211 +6268,411 @@ exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
     // Extract phone number
     const phoneNumber = From.replace('whatsapp:', '').replace('+', '');
 
-    // Find admin by phone number
-    const adminSnapshot = await db.collection('employees')
-      .where('phone', '>=', phoneNumber.substring(phoneNumber.length - 9))
-      .limit(10)
-      .get();
+    // Import the WhatsApp Bot
+    const WhatsAppBot = require('./src/whatsapp-bot/WhatsAppBot');
+    const bot = new WhatsAppBot();
 
-    let admin = null;
-    for (const doc of adminSnapshot.docs) {
-      const data = doc.data();
-      const adminPhone = (data.phone || '').replace(/\D/g, '');
-      if (adminPhone.includes(phoneNumber.substring(phoneNumber.length - 9))) {
-        admin = { id: doc.id, ...data };
-        break;
-      }
-    }
+    // Identify user
+    const userInfo = await bot.identifyUser(phoneNumber);
 
-    if (!admin || admin.role !== 'admin') {
-      console.log(`⚠️ Message from non-admin or unknown number: ${From}`);
+    // Only allow admins to use the bot
+    if (userInfo.role !== 'admin') {
+      console.log(`⚠️ Message from non-admin: ${From} (${userInfo.name})`);
       res.status(200).send('OK');
       return;
     }
 
-    console.log(`✅ Admin identified: ${admin.name || admin.id}`);
+    console.log(`✅ Admin identified: ${userInfo.name || userInfo.email}`);
 
-    // Parse the message
-    const bodyLower = Body.trim();
-    const bodyNormalized = bodyLower.replace(/\s+/g, ' ');
+    // Handle the message with the bot
+    const response = await bot.handleMessage(phoneNumber, Body, userInfo);
 
-    // Pattern matching
-    let approvalId = null;
-    let action = null;
-    let approvedMinutes = null;
-    let reason = null;
-
-    // Extract approval ID if present (format: "ID:xxxxxx" or just at the end)
-    const idMatch = bodyNormalized.match(/(?:מזהה|id|מס)[:\s]*([a-zA-Z0-9]+)/i);
-    if (idMatch) {
-      approvalId = idMatch[1];
-    }
-
-    // Check for approval
-    if (/אישור|מאשר|אישר|ok|approve|yes|✅/i.test(bodyNormalized)) {
-      action = 'approve';
-
-      // Check if specific minutes mentioned
-      const minutesMatch = bodyNormalized.match(/(\d+)\s*(?:דקות|דק|minutes|min)?/);
-      if (minutesMatch) {
-        approvedMinutes = parseInt(minutesMatch[1]);
-      }
-    }
-    // Check for rejection
-    else if (/דחייה|דוחה|דחה|reject|no|❌/i.test(bodyNormalized)) {
-      action = 'reject';
-
-      // Extract reason
-      const reasonMatch = bodyNormalized.match(/(?:דחייה|דוחה|דחה|reject)[:\s-]*(.*)/i);
-      if (reasonMatch && reasonMatch[1]) {
-        reason = reasonMatch[1].trim();
-      }
-    }
-
-    if (!action) {
-      console.log(`⚠️ Could not parse action from: "${Body}"`);
-
-      // Send help message
-      const twilioConfig = functions.config().twilio;
-      if (twilioConfig?.account_sid) {
-        const twilio = require('twilio');
-        const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
-        await client.messages.create({
-          from: twilioConfig.whatsapp_number || 'whatsapp:+14155238886',
-          to: From,
-          body: `לא הבנתי את הפקודה 🤔
-
-פורמט נכון:
-✅ אישור
-✅ אישור 120
-❌ דחייה הסיבה כאן
-
-אם יש מזהה משימה, הוסף: מזהה: ${approvalId || 'XXXXX'}`
-        });
-      }
-
-      res.status(200).send('OK');
-      return;
-    }
-
-    // If no approval ID in message, find the latest pending approval
-    if (!approvalId) {
-      const latestApproval = await db.collection('pending_task_approvals')
-        .where('status', '==', 'pending')
-        .orderBy('requestedAt', 'desc')
-        .limit(1)
-        .get();
-
-      if (!latestApproval.empty) {
-        approvalId = latestApproval.docs[0].id;
-        console.log(`🔍 Using latest pending approval: ${approvalId}`);
-      } else {
-        console.log('⚠️ No pending approvals found');
-        res.status(200).send('OK');
-        return;
-      }
-    }
-
-    // Get approval data
-    const approvalDoc = await db.collection('pending_task_approvals').doc(approvalId).get();
-
-    if (!approvalDoc.exists) {
-      console.log(`⚠️ Approval ${approvalId} not found`);
-      res.status(200).send('OK');
-      return;
-    }
-
-    const approval = approvalDoc.data();
-
-    if (approval.status !== 'pending') {
-      console.log(`⚠️ Approval ${approvalId} already processed: ${approval.status}`);
-      res.status(200).send('OK');
-      return;
-    }
-
-    console.log(`✅ Processing ${action} for approval ${approvalId}`);
-
-    // Create auth context for the function calls
-    const fakeContext = {
-      auth: {
-        uid: admin.authUID || 'whatsapp-bot',
-        token: {
-          email: admin.id,
-          role: admin.role
-        }
-      }
-    };
-
-    let result;
-
-    if (action === 'approve') {
-      // Use requested minutes if not specified
-      const finalMinutes = approvedMinutes || approval.requestedMinutes || approval.taskData?.estimatedMinutes || 0;
-
-      // Call approve function directly
-      const approveData = {
-        approvalId,
-        approvedMinutes: finalMinutes,
-        adminNotes: `אושר דרך WhatsApp על ידי ${admin.name || admin.id}`
-      };
-
-      result = await exports.approveTaskBudget.run(approveData, fakeContext);
-
-      console.log(`✅ Task approved via WhatsApp: ${finalMinutes} minutes`);
-
-    } else if (action === 'reject') {
-      const rejectData = {
-        approvalId,
-        rejectionReason: reason || `נדחה דרך WhatsApp על ידי ${admin.name || admin.id}`
-      };
-
-      result = await exports.rejectTaskBudget.run(rejectData, fakeContext);
-
-      console.log(`✅ Task rejected via WhatsApp`);
-    }
-
-    // Log the WhatsApp interaction
-    await db.collection('whatsapp_approval_responses').add({
-      approvalId,
-      from: From,
-      adminId: admin.id,
-      adminName: admin.name || admin.id,
-      action,
-      approvedMinutes: approvedMinutes || null,
-      reason: reason || null,
-      originalMessage: Body,
-      messageSid: MessageSid,
-      processedAt: admin.firestore.FieldValue.serverTimestamp(),
-      result: result?.success ? 'success' : 'error'
-    });
-
-    // Send confirmation back
+    // Send response via Twilio
     const twilioConfig = functions.config().twilio;
-    if (twilioConfig?.account_sid) {
+    if (twilioConfig?.account_sid && response) {
       const twilio = require('twilio');
       const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
-
-      let confirmationMessage = '';
-      if (action === 'approve') {
-        const finalMinutes = approvedMinutes || approval.requestedMinutes || 0;
-        confirmationMessage = `✅ המשימה אושרה בהצלחה!\n\nתקציב מאושר: ${finalMinutes} דקות\nמשימה: ${approval.taskData?.description || 'לא צוין'}`;
-      } else {
-        confirmationMessage = `❌ המשימה נדחתה\n\nסיבה: ${reason || 'לא צוינה'}\nמשימה: ${approval.taskData?.description || 'לא צוין'}`;
-      }
 
       await client.messages.create({
         from: twilioConfig.whatsapp_number || 'whatsapp:+14155238886',
         to: From,
-        body: confirmationMessage
+        body: response
       });
+
+      console.log(`✅ Bot response sent to ${userInfo.name}`);
     }
+
+    // Log the interaction
+    await db.collection('whatsapp_bot_interactions').add({
+      from: From,
+      userId: userInfo.email,
+      userName: userInfo.name || userInfo.email,
+      message: Body,
+      response: response,
+      messageSid: MessageSid,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
 
     res.status(200).send('OK');
 
   } catch (error) {
     console.error('❌ whatsappWebhook error:', error);
+
+    // Try to send error message to user
+    try {
+      const { From } = req.body;
+      const twilioConfig = functions.config().twilio;
+      if (twilioConfig?.account_sid && From) {
+        const twilio = require('twilio');
+        const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
+        await client.messages.create({
+          from: twilioConfig.whatsapp_number || 'whatsapp:+14155238886',
+          to: From,
+          body: '❌ מצטער, הייתה שגיאה במערכת. נסה שוב מאוחר יותר או כתוב "עזרה"'
+        });
+      }
+    } catch (sendError) {
+      console.error('❌ Failed to send error message:', sendError);
+    }
+
     res.status(500).send('Error');
   }
 });
 
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Approval Automation)');
+/**
+ * Debug function - Check all employees data
+ * Temporary function to debug WhatsApp bot issue
+ */
+exports.debugEmployees = functions.https.onRequest(async (req, res) => {
+  try {
+    const snapshot = await db.collection('employees').get();
+
+    const users = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      users.push({
+        id: doc.id,
+        name: data.name || 'NO NAME',
+        email: data.email || 'NO EMAIL',
+        phone: data.phone || 'NO PHONE',
+        role: data.role || 'NO ROLE',
+        whatsappEnabled: data.whatsappEnabled || false
+      });
+    });
+
+    res.json({
+      success: true,
+      total: users.length,
+      users: users
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ===============================
+// DELETE USER DATA - מחיקת נתוני משתמש
+// ===============================
+
+/**
+ * Delete user data (tasks, timesheets, approvals)
+ * מחיקת נתוני משתמש (משימות, שעתונים, אישורים)
+ */
+exports.deleteUserData = functions.https.onCall(async (data, context) => {
+  try {
+    // Check authentication
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'נדרשת התחברות');
+    }
+
+    // Check admin permissions
+    const callerEmail = context.auth.token.email;
+    const adminSnapshot = await db.collection('employees').where('email', '==', callerEmail).get();
+
+    if (adminSnapshot.empty) {
+      throw new functions.https.HttpsError('permission-denied', 'אין הרשאות מנהל');
+    }
+
+    const adminData = adminSnapshot.docs[0].data();
+    if (!adminData.isAdmin && adminData.role !== 'admin') {
+      throw new functions.https.HttpsError('permission-denied', 'אין הרשאות מנהל');
+    }
+
+    const { email, deleteTasks, deleteTimesheets, deleteApprovals } = data;
+
+    if (!email) {
+      throw new functions.https.HttpsError('invalid-argument', 'חסר אימייל משתמש');
+    }
+
+    console.log(`🗑️ Deleting user data for: ${email}`);
+    console.log(`   Tasks: ${deleteTasks}, Timesheets: ${deleteTimesheets}, Approvals: ${deleteApprovals}`);
+
+    let deletedCounts = {
+      tasks: 0,
+      timesheets: 0,
+      approvals: 0
+    };
+
+    // Delete budget_tasks
+    if (deleteTasks) {
+      const tasksQuery = db.collection('budget_tasks').where('employeeEmail', '==', email);
+      let tasksSnapshot = await tasksQuery.get();
+
+      while (!tasksSnapshot.empty) {
+        const batch = db.batch();
+        tasksSnapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+          deletedCounts.tasks++;
+        });
+        await batch.commit();
+
+        // Get next batch
+        tasksSnapshot = await tasksQuery.limit(500).get();
+      }
+      console.log(`✅ Deleted ${deletedCounts.tasks} tasks`);
+    }
+
+    // Delete timesheet_entries
+    if (deleteTimesheets) {
+      const timesheetsQuery = db.collection('timesheet_entries').where('employeeEmail', '==', email);
+      let timesheetsSnapshot = await timesheetsQuery.get();
+
+      while (!timesheetsSnapshot.empty) {
+        const batch = db.batch();
+        timesheetsSnapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+          deletedCounts.timesheets++;
+        });
+        await batch.commit();
+
+        // Get next batch
+        timesheetsSnapshot = await timesheetsQuery.limit(500).get();
+      }
+      console.log(`✅ Deleted ${deletedCounts.timesheets} timesheet entries`);
+    }
+
+    // Delete pending_task_approvals
+    if (deleteApprovals) {
+      const approvalsQuery = db.collection('pending_task_approvals').where('requestedBy', '==', email);
+      let approvalsSnapshot = await approvalsQuery.get();
+
+      while (!approvalsSnapshot.empty) {
+        const batch = db.batch();
+        approvalsSnapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+          deletedCounts.approvals++;
+        });
+        await batch.commit();
+
+        // Get next batch
+        approvalsSnapshot = await approvalsQuery.limit(500).get();
+      }
+      console.log(`✅ Deleted ${deletedCounts.approvals} task approvals`);
+    }
+
+    // Log the action
+    await db.collection('audit_log').add({
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      action: 'delete_user_data',
+      adminEmail: callerEmail,
+      targetEmail: email,
+      deletedCounts,
+      details: { deleteTasks, deleteTimesheets, deleteApprovals }
+    });
+
+    console.log(`✅ User data deleted successfully for: ${email}`);
+
+    return {
+      success: true,
+      message: 'הנתונים נמחקו בהצלחה',
+      deletedCounts
+    };
+
+  } catch (error) {
+    console.error('❌ Error deleting user data:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      error.message || 'שגיאה במחיקת נתונים'
+    );
+  }
+});
+
+// ===============================
+// DELETE USER DATA SELECTIVE - מחיקה סלקטיבית מאובטחת
+// 🔒 PHASE 1: READ-ONLY MODE
+// ===============================
+
+const { validateDeletionRequest, checkRateLimit } = require('./src/deletion/validators');
+const { verifyAllOwnership } = require('./src/deletion/ownership');
+const { executeDeletion, DELETION_ENABLED } = require('./src/deletion/deletion-engine');
+const { logDeletionAttempt, checkSuspiciousActivity } = require('./src/deletion/audit');
+
+/**
+ * Delete user data selectively (tasks, timesheets, approvals)
+ * מחיקה סלקטיבית של נתוני משתמש
+ *
+ * 🔒 Security Layers:
+ * 1. Authentication - אימות
+ * 2. Authorization - הרשאות admin בלבד
+ * 3. Input Validation - וולידציה מלאה
+ * 4. Rate Limiting - מניעת שימוש לרעה
+ * 5. Ownership Verification - בדיקת בעלות
+ * 6. Transaction Safety - מחיקה מאובטחת
+ * 7. Audit Logging - רישום מלא
+ *
+ * 🚨 PHASE 1: READ-ONLY - לא מוחק בפועל!
+ */
+exports.deleteUserDataSelective = functions.https.onCall(async (data, context) => {
+  const startTime = Date.now();
+
+  try {
+    console.log('🚀 =================================');
+    console.log('🗑️  DELETE USER DATA SELECTIVE');
+    console.log('🚨 PHASE 1: READ-ONLY MODE');
+    console.log('🚀 =================================');
+
+    // ============================================
+    // 🔒 LAYER 1: Authentication Check
+    // ============================================
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'נדרשת התחברות');
+    }
+
+    const callerEmail = context.auth.token.email;
+    const callerUid = context.auth.uid;
+
+    console.log(`👤 Caller: ${callerEmail} (${callerUid})`);
+
+    // ============================================
+    // 🔒 LAYER 2: Authorization Check (Admin Only)
+    // ============================================
+    const adminSnapshot = await db.collection('employees').where('email', '==', callerEmail).get();
+
+    if (adminSnapshot.empty) {
+      console.error(`❌ User ${callerEmail} not found in employees collection`);
+      throw new functions.https.HttpsError('permission-denied', 'אין הרשאות מנהל');
+    }
+
+    const adminData = adminSnapshot.docs[0].data();
+    if (!adminData.isAdmin && adminData.role !== 'admin') {
+      console.error(`❌ User ${callerEmail} is not admin: isAdmin=${adminData.isAdmin}, role=${adminData.role}`);
+      throw new functions.https.HttpsError('permission-denied', 'רק מנהלים יכולים למחוק נתונים');
+    }
+
+    console.log(`✅ Admin verified: ${callerEmail}`);
+
+    // ============================================
+    // 🔒 LAYER 3: Input Validation
+    // ============================================
+    const validatedData = validateDeletionRequest(data);
+    console.log(`✅ Validation passed: ${validatedData.totalItems} items to process`);
+
+    // ============================================
+    // 🔒 LAYER 4: Rate Limiting
+    // ============================================
+    if (!validatedData.dryRun) {
+      const rateLimit = await checkRateLimit(db, callerEmail);
+      console.log(`✅ Rate limit check passed: ${rateLimit.remainingInWindow} deletions remaining`);
+    }
+
+    // ============================================
+    // 🔒 LAYER 5: Suspicious Activity Check
+    // ============================================
+    const suspiciousCheck = await checkSuspiciousActivity(db, callerEmail);
+    if (suspiciousCheck.suspicious) {
+      console.warn(`⚠️ Suspicious activity detected for ${callerEmail}`);
+      // בשלב זה רק מתריעים, לא חוסמים
+    }
+
+    // ============================================
+    // 🔒 LAYER 6: Ownership Verification
+    // ============================================
+    const verifiedOwnership = await verifyAllOwnership(db, validatedData.userEmail, {
+      taskIds: validatedData.taskIds,
+      timesheetIds: validatedData.timesheetIds,
+      approvalIds: validatedData.approvalIds
+    });
+
+    console.log(`✅ Ownership verified: ${verifiedOwnership.totalVerified} items belong to ${validatedData.userEmail}`);
+
+    // ============================================
+    // 🔒 LAYER 7: Execute Deletion (or Dry Run)
+    // ============================================
+    const result = await executeDeletion(db, verifiedOwnership, validatedData.dryRun);
+
+    // ============================================
+    // 🔒 LAYER 8: Audit Logging
+    // ============================================
+    await logDeletionAttempt(db, {
+      adminEmail: callerEmail,
+      userEmail: validatedData.userEmail,
+      requestData: {
+        ...validatedData,
+        adminUid: callerUid
+      },
+      verifiedOwnership,
+      result,
+      dryRun: validatedData.dryRun,
+      success: true
+    });
+
+    const executionTime = Date.now() - startTime;
+
+    console.log('🚀 =================================');
+    console.log(`✅ SUCCESS (${executionTime}ms)`);
+    console.log(`   Mode: ${validatedData.dryRun ? 'DRY RUN' : 'REAL DELETION'}`);
+    console.log(`   Items: ${result.deletedCounts.total}`);
+    console.log('🚀 =================================');
+
+    // ============================================
+    // Response
+    // ============================================
+    return {
+      success: true,
+      dryRun: validatedData.dryRun,
+      phase: 'phase_1_readonly',
+      deletionEnabled: DELETION_ENABLED,
+      message: validatedData.dryRun
+        ? `✅ Preview: ${result.deletedCounts.total} פריטים יימחקו`
+        : `🚨 Phase 1: מחיקה אמיתית עדיין לא זמינה`,
+      deletedCounts: result.deletedCounts,
+      preview: result.preview,
+      executionTime: `${executionTime}ms`
+    };
+
+  } catch (error) {
+    console.error('❌ Error in deleteUserDataSelective:', error);
+
+    // רישום שגיאה ב-audit log
+    try {
+      await logDeletionAttempt(db, {
+        adminEmail: context.auth?.token?.email || 'unknown',
+        userEmail: data?.userEmail || 'unknown',
+        requestData: data || {},
+        verifiedOwnership: {},
+        result: null,
+        dryRun: data?.dryRun || false,
+        success: false,
+        error
+      });
+    } catch (auditError) {
+      console.error('❌ Failed to log error to audit:', auditError);
+    }
+
+    // זריקת השגיאה הלאה
+    if (error.code && error.code.startsWith('functions/')) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      error.message || 'שגיאה במחיקת נתונים'
+    );
+  }
+});
+
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Smart Bot 🤖 + Delete User Data + Delete User Data Selective 🔒)');

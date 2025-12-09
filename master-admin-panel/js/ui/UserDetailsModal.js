@@ -45,6 +45,7 @@
             this.modalId = null;
             this.activeTab = 'general';
             this.userData = null; // Full user data from backend
+            this.threadListener = null; // Real-time listener for thread updates
 
             // Hours tab state
             this.hoursViewMode = 'cards'; // 'cards' or 'table'
@@ -137,13 +138,24 @@
                     console.log('✅ User data loaded from Firestore (fast fallback)');
                 }
 
+                // ✅ Find active thread with user
+                const threadInfo = await this.findActiveThread(this.currentUser.email);
+                if (threadInfo) {
+                    this.userData.threadInfo = threadInfo;
+                    console.log(`✅ Active thread found: ${threadInfo.messageId}`);
+                } else {
+                    this.userData.threadInfo = null;
+                    console.log('📭 No active thread');
+                }
+
                 // Update modal content with full data
                 console.log('🔄 Updating modal content with loaded data:', {
                     clients: this.userData?.clients?.length || 0,
                     tasks: this.userData?.tasks?.length || 0,
                     activity: this.userData?.activity?.length || 0,
                     clientsCount: this.userData?.clientsCount,
-                    tasksCount: this.userData?.tasksCount
+                    tasksCount: this.userData?.tasksCount,
+                    hasThread: !!this.userData?.threadInfo
                 });
 
                 window.ModalManager.updateContent(this.modalId, this.renderContent());
@@ -151,6 +163,9 @@
 
                 // Setup events after content is rendered
                 this.setupEvents();
+
+                // 👂 Start real-time listener for thread updates
+                this.startThreadListener();
 
             } catch (error) {
                 console.error('❌ Error loading user data:', error);
@@ -424,6 +439,95 @@
         }
 
         /**
+         * Load original message from Firestore
+         * טעינת הודעה מקורית מ-Firestore
+         * @param {string} messageId - Message ID
+         * @returns {Promise<Object|null>} - Message data or null
+         */
+        async loadOriginalMessage(messageId) {
+            if (!window.firebaseDB) {
+                console.error('❌ Firestore not available');
+                return null;
+            }
+
+            try {
+                const doc = await window.firebaseDB
+                    .collection('user_messages')
+                    .doc(messageId)
+                    .get();
+
+                if (!doc.exists) {
+                    console.error('❌ Message not found:', messageId);
+                    return null;
+                }
+
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate(),
+                    lastReplyAt: data.lastReplyAt?.toDate()
+                };
+            } catch (error) {
+                console.error('❌ Error loading original message:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Find active thread with user
+         * חיפוש שיחה פעילה עם משתמש
+         * @param {string} userEmail - User email
+         * @returns {Promise<Object|null>} - Thread info or null
+         */
+        async findActiveThread(userEmail) {
+            if (!window.firebaseDB) {
+                console.warn('⚠️ Firestore not available');
+                return null;
+            }
+
+            try {
+                console.log(`🔍 Searching for active thread with user: ${userEmail}`);
+
+                // חיפוש הודעה שנשלחה למשתמש זה (מהמנהל או מהמשתמש)
+                const snapshot = await window.firebaseDB
+                    .collection('user_messages')
+                    .where('to', '==', userEmail)  // הודעות שנשלחו אליו
+                    .orderBy('createdAt', 'desc')  // הכי חדשות קודם
+                    .limit(1)  // רק האחרונה
+                    .get();
+
+                if (snapshot.empty) {
+                    console.log('📭 No active thread found');
+                    return null;
+                }
+
+                const doc = snapshot.docs[0];
+                const data = doc.data();
+
+                const threadInfo = {
+                    messageId: doc.id,
+                    message: data.message,
+                    repliesCount: data.repliesCount || 0,
+                    lastReplyAt: data.lastReplyAt?.toDate() || data.createdAt?.toDate(),
+                    lastReplyBy: data.lastReplyBy || data.from,
+                    status: data.status || 'sent',
+                    from: data.from,
+                    fromName: data.fromName,
+                    to: data.to,
+                    toName: data.toName
+                };
+
+                console.log(`✅ Found active thread: ${doc.id}, ${threadInfo.repliesCount} replies`);
+                return threadInfo;
+
+            } catch (error) {
+                console.error('❌ Error finding active thread:', error);
+                return null;
+            }
+        }
+
+        /**
          * Render error state
          * רינדור מצב שגיאה
          */
@@ -454,7 +558,6 @@
                         ${this.renderTabButton('clients', 'fas fa-briefcase', 'לקוחות')}
                         ${this.renderTabButton('tasks', 'fas fa-tasks', 'משימות')}
                         ${this.renderTabButton('hours', 'fas fa-clock', 'שעות')}
-                        ${this.renderTabButton('messages', 'fas fa-envelope', 'הודעות')}
                         ${this.renderTabButton('activity', 'fas fa-history', 'פעילות')}
                     </div>
 
@@ -494,8 +597,6 @@
                     return this.renderTasksTab();
                 case 'hours':
                     return this.renderHoursTab();
-                case 'messages':
-                    return this.renderMessagesTab();
                 case 'activity':
                     return this.renderActivityTab();
                 default:
@@ -556,6 +657,9 @@
                             </div>
                         </div>
 
+                        <!-- Communication Section -->
+                        ${this.renderCommunicationSection()}
+
                         <!-- Actions -->
                         <div class="user-info-section">
                             <h4 class="section-title">
@@ -571,6 +675,10 @@
                                     <i class="fas fa-ban"></i>
                                     <span>${user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED ? 'הסר חסימה' : 'חסום משתמש'}</span>
                                 </button>
+                                <button class="btn-action btn-info" data-action="delete-data">
+                                    <i class="fas fa-broom"></i>
+                                    <span>מחק משימות/שעתונים</span>
+                                </button>
                                 <button class="btn-action btn-danger" data-action="delete">
                                     <i class="fas fa-trash"></i>
                                     <span>מחק משתמש</span>
@@ -580,6 +688,286 @@
                     </div>
                 </div>
             `;
+        }
+
+        /**
+         * Render communication section (dynamic button based on thread status)
+         * רינדור קטע תקשורת
+         */
+        renderCommunicationSection() {
+            const user = this.userData || this.currentUser;
+            const threadInfo = user.threadInfo;
+
+            // ✅ Check if thread EXISTS (not just if repliesCount > 0)
+            // If there's a messageId, a thread exists (even with 0 replies)
+            if (!threadInfo || !threadInfo.messageId) {
+                // אין שיחה פעילה - כפתור "שלח הודעה ראשונה"
+                return `
+                    <div class="user-info-section">
+                        <h4 class="section-title">
+                            <i class="fas fa-comments"></i>
+                            <span>תקשורת</span>
+                        </h4>
+                        <div class="communication-no-thread">
+                            <p class="no-thread-message">
+                                <i class="fas fa-envelope-open-text"></i>
+                                אין שיחה פעילה עם משתמש זה
+                            </p>
+                            <button
+                                class="btn btn-primary btn-send-first-message"
+                                data-user-email="${user.email}"
+                                data-user-name="${this.escapeHtml(user.displayName || user.username)}">
+                                <i class="fas fa-paper-plane"></i>
+                                שלח הודעה ראשונה
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // יש שיחה פעילה - כפתור "צפה בשיחה" + מידע
+                const isAdminLastReply = threadInfo.lastReplyBy === window.currentAdminUser?.email;
+                const statusBadge = isAdminLastReply
+                    ? '<span class="badge badge-waiting">⏳ ממתין לתגובה מהמשתמש</span>'
+                    : '<span class="badge badge-pending">❗ ממתין לתגובתך</span>';
+
+                // ✅ Total messages = 1 (original) + repliesCount
+                const totalMessages = 1 + (threadInfo.repliesCount || 0);
+
+                return `
+                    <div class="user-info-section">
+                        <h4 class="section-title">
+                            <i class="fas fa-comments"></i>
+                            <span>תקשורת</span>
+                        </h4>
+                        <div class="communication-active-thread">
+                            <div class="thread-summary">
+                                <p><strong>שיחה פעילה:</strong> ${totalMessages} ${totalMessages === 1 ? 'הודעה' : 'הודעות'}</p>
+                                <p><strong>עדכון אחרון:</strong> ${this.formatRelativeTime(threadInfo.lastReplyAt)}</p>
+                                <p><strong>סטטוס:</strong> ${statusBadge}</p>
+                            </div>
+                            <button
+                                class="btn btn-primary btn-view-thread"
+                                data-message-id="${threadInfo.messageId}">
+                                <i class="fas fa-comments"></i>
+                                צפה בשיחה (${totalMessages})
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Refresh communication section after sending first message
+         * רענון אזור התקשורת אחרי שליחת הודעה ראשונה
+         */
+        async refreshCommunicationSection() {
+            if (!this.userData || !window.firebaseDB) {
+                console.error('❌ Cannot refresh communication section - missing data');
+                return;
+            }
+
+            console.log('🔄 Refreshing communication section...');
+
+            try {
+                // חיפוש thread חדש
+                const threadInfo = await this.findActiveThread(this.userData.email);
+
+                // Update userData with new thread info
+                this.userData.threadInfo = threadInfo;
+
+                // מציאת אזור התקשורת ב-DOM (multiple selectors for robustness)
+                let commSection = document.querySelector('.btn-send-first-message')?.closest('.user-info-section');
+
+                if (!commSection) {
+                    commSection = document.querySelector('.btn-view-thread')?.closest('.user-info-section');
+                }
+
+                if (!commSection) {
+                    // Try to find by section heading
+                    const sections = document.querySelectorAll('.user-info-section');
+                    for (const section of sections) {
+                        const heading = section.querySelector('.section-title');
+                        if (heading && heading.textContent.includes('תקשורת')) {
+                            commSection = section;
+                            break;
+                        }
+                    }
+                }
+
+                if (!commSection) {
+                    console.warn('⚠️ Communication section not found in DOM - full refresh needed');
+                    // Full modal refresh as fallback
+                    window.ModalManager.updateContent(this.modalId, this.renderContent());
+                    this.setupEvents();
+                    return;
+                }
+
+                // רינדור מחדש של סקציית התקשורת
+                const newHTML = await this.renderCommunicationSection(threadInfo);
+
+                // החלפת ה-HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newHTML;
+                const newSection = tempDiv.firstElementChild;
+
+                if (newSection) {
+                    commSection.replaceWith(newSection);
+
+                    // צירוף מחדש של event listeners
+                    this.reattachCommunicationListeners();
+
+                    console.log('✅ Communication section refreshed successfully');
+
+                    if (threadInfo) {
+                        console.log(`   New state: Thread exists with ${threadInfo.repliesCount} replies`);
+                    } else {
+                        console.log('   New state: No thread yet');
+                    }
+                }
+
+            } catch (error) {
+                console.error('❌ Error refreshing communication section:', error);
+            }
+        }
+
+        /**
+         * Start listening to thread updates in real-time
+         * התחל להאזין לעדכוני שיחה בזמן אמת
+         */
+        startThreadListener() {
+            if (!this.userData || !window.firebaseDB) {
+                console.warn('⚠️ Cannot start thread listener - missing data');
+                return;
+            }
+
+            // Stop existing listener if any
+            if (this.threadListener) {
+                this.threadListener();
+                this.threadListener = null;
+            }
+
+            const userEmail = this.userData.email;
+
+            console.log(`👂 Starting real-time listener for threads with: ${userEmail}`);
+
+            // ✅ Listen to user_messages where to === userEmail
+            this.threadListener = window.firebaseDB
+                .collection('user_messages')
+                .where('to', '==', userEmail)
+                .where('type', '==', 'admin_to_user')
+                .orderBy('createdAt', 'desc')
+                .limit(1)
+                .onSnapshot(
+                    (snapshot) => {
+                        if (snapshot.empty) {
+                            console.log('📭 No messages found - showing "send first message" button');
+                            // No thread exists - refresh to show "send first message"
+                            this.refreshCommunicationSection();
+                            return;
+                        }
+
+                        const doc = snapshot.docs[0];
+                        const data = doc.data();
+
+                        const threadInfo = {
+                            messageId: doc.id,
+                            message: data.message,
+                            repliesCount: data.repliesCount || 0,
+                            lastReplyAt: data.lastReplyAt?.toDate() || data.createdAt?.toDate(),
+                            lastReplyBy: data.lastReplyBy || data.from,
+                            status: data.status || 'sent',
+                            from: data.from,
+                            fromName: data.fromName,
+                            to: data.to,
+                            toName: data.toName
+                        };
+
+                        console.log(`📨 Thread update received: ${threadInfo.messageId}, replies: ${threadInfo.repliesCount}`);
+
+                        // Only refresh if data actually changed
+                        const currentThreadInfo = this.userData?.threadInfo;
+                        if (
+                            !currentThreadInfo ||
+                            currentThreadInfo.messageId !== threadInfo.messageId ||
+                            currentThreadInfo.repliesCount !== threadInfo.repliesCount
+                        ) {
+                            console.log('🔄 Thread data changed - refreshing UI...');
+                            this.userData.threadInfo = threadInfo;
+                            this.refreshCommunicationSection();
+                        } else {
+                            console.log('ℹ️ Thread data unchanged - skipping refresh');
+                        }
+                    },
+                    (error) => {
+                        console.error('❌ Thread listener error:', error);
+                    }
+                );
+
+            console.log('✅ Thread listener started successfully');
+        }
+
+        /**
+         * Reattach event listeners for communication buttons
+         * צירוף מחדש של event listeners לכפתורי תקשורת
+         */
+        reattachCommunicationListeners() {
+            const modal = document.getElementById(this.modalId);
+            if (!modal) return;
+
+            // "שלח הודעה ראשונה" button
+            const sendFirstMessageBtn = modal.querySelector('.btn-send-first-message');
+            if (sendFirstMessageBtn) {
+                sendFirstMessageBtn.addEventListener('click', async () => {
+                    const userEmail = sendFirstMessageBtn.dataset.userEmail;
+                    const userName = sendFirstMessageBtn.dataset.userName;
+
+                    console.log('📤 Opening new thread for user:', userEmail);
+
+                    if (window.adminThreadView) {
+                        await window.adminThreadView.openNewThread({
+                            to: userEmail,
+                            toName: userName
+                        });
+
+                        setTimeout(async () => {
+                            await this.refreshCommunicationSection();
+                        }, 500);
+                    } else {
+                        console.error('❌ AdminThreadView not available');
+                        if (window.notify) {
+                            window.notify.error('מודל השיחות לא זמין');
+                        }
+                    }
+                });
+            }
+
+            // "צפה בשיחה" button
+            const viewThreadBtn = modal.querySelector('.btn-view-thread');
+            if (viewThreadBtn) {
+                viewThreadBtn.addEventListener('click', async () => {
+                    const messageId = viewThreadBtn.dataset.messageId;
+
+                    console.log('👁️ Opening existing thread:', messageId);
+
+                    const originalMessage = await this.loadOriginalMessage(messageId);
+                    if (!originalMessage) {
+                        if (window.notify) {
+                            window.notify.error('שגיאה בטעינת השיחה');
+                        }
+                        return;
+                    }
+
+                    if (window.adminThreadView) {
+                        await window.adminThreadView.open(messageId, originalMessage);
+                    } else {
+                        console.error('❌ AdminThreadView not available');
+                        if (window.notify) {
+                            window.notify.error('מודל השיחות לא זמין');
+                        }
+                    }
+                });
+            }
         }
 
         /**
@@ -999,12 +1387,12 @@
 
                                 <!-- Action Buttons -->
                                 <div class="message-actions">
-                                    ${(message.repliesCount > 0 || message.response) ? `
+                                    ${(message.repliesCount && message.repliesCount > 0) ? `
                                         <button class="btn-icon btn-view-thread"
                                                 data-message-id="${message.id}"
-                                                title="צפה בשיחה (${message.repliesCount || 1} תשובות)">
+                                                title="צפה בשיחה (${message.repliesCount} תשובות)">
                                             <i class="fas fa-comments"></i>
-                                            <span style="font-size: 10px; margin-right: 4px;">${message.repliesCount || 1}</span>
+                                            <span style="font-size: 10px; margin-right: 4px;">${message.repliesCount}</span>
                                         </button>
                                     ` : ''}
                                     ${!message.archived ? `
@@ -1108,16 +1496,16 @@
                 return;
             }
 
-            console.log('📧 Opening message composer for:', this.currentUser.email);
+            console.log('📧 Opening NEW THREAD for:', this.currentUser.email);
 
-            // Use QuickMessageDialog if available
-            if (window.quickMessageDialog && typeof window.quickMessageDialog.show === 'function') {
-                window.quickMessageDialog.show({
-                    userId: this.currentUser.uid,
-                    userEmail: this.currentUser.email,
-                    userName: this.currentUser.name || this.currentUser.email
+            // ✅ Use AdminThreadView with category system (NEW THREAD mode)
+            if (window.adminThreadView && typeof window.adminThreadView.open === 'function') {
+                window.adminThreadView.open(null, {
+                    to: this.currentUser.email,
+                    toName: this.currentUser.name || this.currentUser.email
                 });
             } else {
+                console.error('❌ AdminThreadView not available');
                 alert('מערכת שליחת הודעות לא זמינה');
             }
         }
@@ -2092,6 +2480,67 @@ return;
                 });
             });
 
+            // ========== COMMUNICATION BUTTONS ==========
+
+            // "שלח הודעה ראשונה" button
+            const sendFirstMessageBtn = modal.querySelector('.btn-send-first-message');
+            if (sendFirstMessageBtn) {
+                sendFirstMessageBtn.addEventListener('click', async () => {
+                    const userEmail = sendFirstMessageBtn.dataset.userEmail;
+                    const userName = sendFirstMessageBtn.dataset.userName;
+
+                    console.log('📤 Opening new thread for user:', userEmail);
+
+                    // פתיחת AdminThreadView במצב "הודעה חדשה"
+                    if (window.adminThreadView) {
+                        await window.adminThreadView.openNewThread({
+                            to: userEmail,
+                            toName: userName
+                        });
+
+                        // רענון האזור התקשורת אחרי סגירת המודל
+                        // (המודל נסגר אוטומטית אחרי שליחת הודעה ראשונה)
+                        setTimeout(async () => {
+                            await this.refreshCommunicationSection();
+                        }, 500);
+                    } else {
+                        console.error('❌ AdminThreadView not available');
+                        if (window.notify) {
+                            window.notify.error('מודל השיחות לא זמין');
+                        }
+                    }
+                });
+            }
+
+            // "צפה בשיחה" button
+            const viewThreadBtn = modal.querySelector('.btn-view-thread');
+            if (viewThreadBtn) {
+                viewThreadBtn.addEventListener('click', async () => {
+                    const messageId = viewThreadBtn.dataset.messageId;
+
+                    console.log('👁️ Opening existing thread:', messageId);
+
+                    // טעינת ההודעה המקורית
+                    const originalMessage = await this.loadOriginalMessage(messageId);
+                    if (!originalMessage) {
+                        if (window.notify) {
+                            window.notify.error('שגיאה בטעינת השיחה');
+                        }
+                        return;
+                    }
+
+                    // פתיחת AdminThreadView עם השיחה הקיימת
+                    if (window.adminThreadView) {
+                        await window.adminThreadView.open(messageId, originalMessage);
+                    } else {
+                        console.error('❌ AdminThreadView not available');
+                        if (window.notify) {
+                            window.notify.error('מודל השיחות לא זמין');
+                        }
+                    }
+                });
+            }
+
             // Edit Task buttons
             const editTaskButtons = modal.querySelectorAll('.btn-edit-task');
             editTaskButtons.forEach(btn => {
@@ -2591,6 +3040,47 @@ return '-';
                 });
             } catch (error) {
                 console.error('Error formatting date:', error, date);
+                return '-';
+            }
+        }
+
+        /**
+         * Format relative time (e.g., "לפני 3 דקות")
+         * פורמט זמן יחסי
+         */
+        formatRelativeTime(date) {
+            if (!date) return '-';
+
+            try {
+                let dateObj;
+
+                // Handle Firestore Timestamp
+                if (date.toDate && typeof date.toDate === 'function') {
+                    dateObj = date.toDate();
+                } else if (date instanceof Date) {
+                    dateObj = date;
+                } else {
+                    dateObj = new Date(date);
+                }
+
+                const now = new Date();
+                const diffMs = now - dateObj;
+                const diffMins = Math.floor(diffMs / 60000);
+
+                if (diffMins < 1) return 'עכשיו';
+                if (diffMins < 60) return `לפני ${diffMins} דקות`;
+
+                const diffHours = Math.floor(diffMins / 60);
+                if (diffHours < 24) return `לפני ${diffHours} שעות`;
+
+                const diffDays = Math.floor(diffHours / 24);
+                if (diffDays < 7) return `לפני ${diffDays} ימים`;
+
+                // Format as date
+                return dateObj.toLocaleDateString('he-IL');
+
+            } catch (error) {
+                console.error('Error formatting relative time:', error);
                 return '-';
             }
         }
@@ -3858,6 +4348,12 @@ return;
          * סגירת המודאל
          */
         close() {
+            // 🔥 Unsubscribe from real-time listener
+            if (this.threadListener) {
+                this.threadListener();
+                this.threadListener = null;
+                console.log('🔌 Thread listener unsubscribed');
+            }
 
             if (this.modalId) {
                 window.ModalManager.close(this.modalId);
@@ -3927,12 +4423,15 @@ return;
     // Create global instance
     const userDetailsModal = new UserDetailsModal();
 
-    // Make UserDetailsModal available globally
-    window.UserDetailsModal = userDetailsModal;
+    // Make UserDetailsModal available globally (both lowercase and uppercase for compatibility)
+    window.userDetailsModal = userDetailsModal;  // ✅ Lowercase (used in debug script)
+    window.UserDetailsModal = userDetailsModal;  // ✅ Uppercase (for backwards compatibility)
 
     // Export for ES6 modules (if needed in the future)
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = userDetailsModal;
     }
+
+    console.log('✅ UserDetailsModal initialized and available globally');
 
 })();

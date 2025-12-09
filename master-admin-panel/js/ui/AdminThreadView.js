@@ -29,32 +29,133 @@
             this.unsubscribeReplies = null;
             this.replies = [];
             this.modalId = null;
+            this.isNewThread = false;  // Flag for new thread mode
+            this.targetUser = null;    // Target user for new thread
         }
 
         /**
-         * Open thread view for a specific message
-         * @param {string} messageId - Message ID
-         * @param {Object} originalMessage - Original message data
+         * Open a new thread (first message to user)
+         * פתיחת שיחה חדשה (הודעה ראשונה למשתמש)
+         * @param {Object} userData - User data { to, toName }
          */
-        async open(messageId, originalMessage) {
-            this.currentThreadId = messageId;
-            this.currentOriginalMessage = originalMessage;
+        async openNewThread(userData) {
+            this.currentThreadId = null;  // אין עדיין message ID
+            this.isNewThread = true;       // סימון שזו שיחה חדשה
+            this.targetUser = userData;    // שמירת פרטי המשתמש
+            this.currentOriginalMessage = null;
+
+            console.log('📝 Opening new thread for user:', userData);
 
             // Create modal
             this.modalId = window.ModalManager.create({
-                title: `💬 שיחה עם ${originalMessage.toName || originalMessage.to}`,
-                content: this.renderThreadUI(),
+                title: `✉️ הודעה חדשה ל-${userData.toName}`,
+                content: this.renderNewThreadUI(),
                 footer: '',
-                size: 'xlarge',
-                onOpen: async () => {
-                    await this.loadAndListenToReplies();
+                size: 'large',
+                onOpen: () => {
+                    this.attachEventListeners();
                 },
                 onClose: () => {
                     this.close();
                 }
             });
 
-            console.log('📖 AdminThreadView opened for message:', messageId);
+            console.log('📝 AdminThreadView opened in NEW THREAD mode');
+        }
+
+        /**
+         * Render UI for new thread
+         * רינדור ממשק למשתמש חדש
+         */
+        renderNewThreadUI() {
+            // Get categories for dropdown
+            const categories = window.MessageCategories ? window.MessageCategories.getAllCategories() : [];
+
+            return `
+                <div class="admin-thread-container">
+                    <div class="admin-thread-messages" id="adminThreadMessages">
+                        <!-- Empty state for new thread -->
+                        <div class="admin-thread-no-replies">
+                            <i class="fas fa-envelope-open-text" style="font-size: 48px; margin-bottom: 16px; opacity: 0.4;"></i>
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; color: rgba(0, 0, 0, 0.6);">שיחה חדשה</h3>
+                            <p style="margin: 0; font-size: 14px;">בחר קטגוריה וכתוב את ההודעה למשתמש</p>
+                        </div>
+
+                        <!-- ✅ Category and Subject Selection -->
+                        <div class="admin-message-metadata">
+                            <div class="admin-message-field">
+                                <label for="adminMessageCategory">קטגוריה *</label>
+                                <select id="adminMessageCategory" class="admin-message-select" required>
+                                    <option value="">בחר קטגוריה...</option>
+                                    ${categories.map(cat => `
+                                        <option value="${cat.id}" style="color: ${cat.color};">
+                                            ${cat.icon} ${cat.name} - ${cat.description}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+
+                            <div class="admin-message-field">
+                                <label for="adminMessageSubject">נושא (אופציונלי)</label>
+                                <input
+                                    type="text"
+                                    id="adminMessageSubject"
+                                    class="admin-message-input"
+                                    placeholder="לדוגמה: דוח שעות חודש דצמבר"
+                                    maxlength="100"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-thread-input-container">
+                        <textarea
+                            id="adminThreadReplyInput"
+                            class="admin-thread-input"
+                            placeholder="כתוב הודעה ראשונה..."
+                            rows="3"
+                            maxlength="1000"
+                        ></textarea>
+                        <button class="admin-thread-send-btn" id="adminThreadSendBtn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Open thread view for a specific message
+         * @param {string} messageId - Message ID
+         * @param {Object} originalMessage - Original message data (can be {to, toName} for new thread)
+         */
+        async open(messageId, originalMessage) {
+            this.currentThreadId = messageId;
+            this.currentOriginalMessage = originalMessage;
+
+            // ✅ Check if this is a NEW thread or EXISTING thread
+            const isNewThread = (messageId === null);
+            this.isNewThread = isNewThread;
+            this.targetUser = isNewThread ? originalMessage : null;
+
+            // Create modal
+            this.modalId = window.ModalManager.create({
+                title: `💬 שיחה עם ${originalMessage.toName || originalMessage.to}`,
+                content: isNewThread ? this.renderNewThreadUI() : this.renderThreadUI(),
+                footer: '',
+                size: 'large',
+                onOpen: async () => {
+                    if (!isNewThread) {
+                        await this.loadAndListenToReplies();
+                    }
+                    this.attachEventListeners();
+                },
+                onClose: () => {
+                    this.close();
+                }
+            });
+
+            console.log('📖 AdminThreadView opened for message:', messageId, isNewThread ? '(NEW THREAD)' : '(EXISTING)');
         }
 
         /**
@@ -70,6 +171,8 @@
             this.currentThreadId = null;
             this.currentOriginalMessage = null;
             this.replies = [];
+            this.isNewThread = false;
+            this.targetUser = null;
 
             console.log('🚪 AdminThreadView closed');
         }
@@ -81,14 +184,16 @@
             return `
                 <div class="admin-thread-container">
                     <div class="admin-thread-messages" id="adminThreadMessages">
-                        <!-- Original message -->
+                        <!-- Original message - WhatsApp bubble style -->
                         <div class="admin-thread-message admin-thread-message-admin">
-                            <div class="admin-thread-message-header">
-                                <strong>${this._escapeHTML(this.currentOriginalMessage.fromName || 'מנהל')}</strong>
-                                <span class="admin-thread-message-time">${this._escapeHTML(this.currentOriginalMessage.time || this._formatTime(this.currentOriginalMessage.createdAt))}</span>
-                            </div>
-                            <div class="admin-thread-message-content">
-                                ${this._escapeHTML(this.currentOriginalMessage.message || this.currentOriginalMessage.description || '')}
+                            <div class="admin-thread-message-bubble">
+                                <div class="admin-thread-message-header">
+                                    <strong>${this._escapeHTML(this.currentOriginalMessage.fromName || 'מנהל')}</strong>
+                                    <span class="admin-thread-message-time">${this._escapeHTML(this.currentOriginalMessage.time || this._formatTime(this.currentOriginalMessage.createdAt))}</span>
+                                </div>
+                                <div class="admin-thread-message-content">
+                                    ${this._escapeHTML(this.currentOriginalMessage.message || this.currentOriginalMessage.description || '')}
+                                </div>
                             </div>
                         </div>
 
@@ -112,7 +217,6 @@
                         ></textarea>
                         <button class="admin-thread-send-btn" id="adminThreadSendBtn">
                             <i class="fas fa-paper-plane"></i>
-                            שלח
                         </button>
                     </div>
                 </div>
@@ -152,21 +256,8 @@
                         console.log(`📨 Received ${replies.length} replies from Firestore`);
                         console.log('Reply data:', replies);
 
-                        // ✅ Backward compatibility: Add legacy `response` as first reply if exists
-                        let allReplies = [...replies];
-                        if (this.currentOriginalMessage.response && replies.length === 0) {
-                            console.log('📜 Adding legacy response as first reply');
-                            allReplies = [{
-                                id: 'legacy-response',
-                                from: this.currentOriginalMessage.to,
-                                fromName: this.currentOriginalMessage.toName || this.currentOriginalMessage.to,
-                                message: this.currentOriginalMessage.response,
-                                createdAt: this.currentOriginalMessage.respondedAt?.toDate?.() || new Date(this.currentOriginalMessage.respondedAt)
-                            }, ...replies];
-                        }
-
-                        this.replies = allReplies;
-                        this.renderReplies(allReplies);
+                        this.replies = replies;
+                        this.renderReplies(replies);
 
                         // Hide loading
                         const currentLoadingEl = document.getElementById('adminThreadLoading');
@@ -251,7 +342,7 @@
             console.log(`📝 Rendering ${replies.length} replies...`);
 
             if (replies.length === 0) {
-                repliesList.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280;">אין עדיין תגובות לשיחה זו</div>';
+                repliesList.innerHTML = '<div class="admin-thread-no-replies">אין עדיין תגובות לשיחה זו</div>';
                 return;
             }
 
@@ -263,12 +354,14 @@
 
                 return `
                     <div class="admin-thread-message ${messageClass}">
-                        <div class="admin-thread-message-header">
-                            <strong>${this._escapeHTML(reply.fromName || reply.from)}</strong>
-                            <span class="admin-thread-message-time">${this._formatTime(reply.createdAt)}</span>
-                        </div>
-                        <div class="admin-thread-message-content">
-                            ${this._escapeHTML(reply.message)}
+                        <div class="admin-thread-message-bubble">
+                            <div class="admin-thread-message-header">
+                                <strong>${this._escapeHTML(reply.fromName || reply.from)}</strong>
+                                <span class="admin-thread-message-time">${this._formatTime(reply.createdAt)}</span>
+                            </div>
+                            <div class="admin-thread-message-content">
+                                ${this._escapeHTML(reply.message)}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -278,7 +371,7 @@
         }
 
         /**
-         * Send a reply
+         * Send a reply (handles both new threads and existing threads)
          */
         async sendReply() {
             const textarea = document.getElementById('adminThreadReplyInput');
@@ -294,11 +387,6 @@ return;
                 return;
             }
 
-            if (!this.currentThreadId) {
-                console.error('No thread ID');
-                return;
-            }
-
             if (!window.alertCommManager) {
                 console.error('AlertCommunicationManager not available');
                 return;
@@ -309,27 +397,68 @@ return;
             sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח...';
 
             try {
-                // Send reply using AlertCommunicationManager API
-                await window.alertCommManager.sendAdminReply(
-                    this.currentThreadId,
-                    replyText
-                );
+                if (this.isNewThread) {
+                    // ✅ שליחת הודעה ראשונה (יצירת document חדש)
+                    console.log('📤 Sending first message to user:', this.targetUser);
 
-                // Clear textarea
-                textarea.value = '';
-                textarea.style.height = 'auto';
+                    // ✅ Get category and subject
+                    const categorySelect = document.getElementById('adminMessageCategory');
+                    const subjectInput = document.getElementById('adminMessageSubject');
 
-                // Success notification (already shown by AlertCommunicationManager)
-                // The real-time listener will automatically add the reply to the view
+                    const category = categorySelect ? categorySelect.value : null;
+                    const subject = subjectInput ? subjectInput.value.trim() : null;
+
+                    // Validate category
+                    if (!category) {
+                        if (window.notify) {
+                            window.notify.error('נא לבחור קטגוריה');
+                        } else {
+                            alert('נא לבחור קטגוריה');
+                        }
+                        return;
+                    }
+
+                    const messageId = await window.alertCommManager.sendNewMessage(
+                        this.targetUser.to,
+                        this.targetUser.toName,
+                        replyText,
+                        category,      // ✅ Pass category
+                        subject        // ✅ Pass subject
+                    );
+
+                    console.log(`✅ New thread created: ${messageId}`);
+
+                    // סגירת המודל והצגת הודעת הצלחה
+                    window.ModalManager.close(this.modalId);
+
+                } else {
+                    // ✅ תשובה להודעה קיימת
+                    if (!this.currentThreadId) {
+                        console.error('No thread ID');
+                        return;
+                    }
+
+                    await window.alertCommManager.sendAdminReply(
+                        this.currentThreadId,
+                        replyText
+                    );
+
+                    // Clear textarea
+                    textarea.value = '';
+                    textarea.style.height = 'auto';
+
+                    // Success notification (already shown by AlertCommunicationManager)
+                    // The real-time listener will automatically add the reply to the view
+                }
 
             } catch (error) {
-                console.error('Error sending reply:', error);
+                console.error('Error sending message:', error);
 
                 // Error notification (already shown by AlertCommunicationManager)
                 if (window.notify) {
-                    window.notify.error('❌ שגיאה בשליחת התגובה: ' + error.message);
+                    window.notify.error('❌ שגיאה בשליחת ההודעה: ' + error.message);
                 } else {
-                    alert('שגיאה בשליחת התגובה: ' + error.message);
+                    alert('שגיאה בשליחת ההודעה: ' + error.message);
                 }
 
             } finally {

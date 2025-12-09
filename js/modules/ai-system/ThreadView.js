@@ -41,7 +41,35 @@ class ThreadView {
     // Load and listen to replies
     await this.loadAndListenToReplies();
 
+    // ✅ Mark message as read (user opened the thread)
+    this.markThreadAsRead(messageId);
+
     console.log('📖 ThreadView opened for message:', messageId);
+  }
+
+  /**
+   * Mark thread as read by user
+   * @param {string} messageId - Message ID
+   * @private
+   */
+  async markThreadAsRead(messageId) {
+    if (!messageId || !window.firebaseDB) {
+      return;
+    }
+
+    try {
+      // Update userReadLastReply flag to indicate user has seen the latest replies
+      await window.firebaseDB.collection('user_messages')
+        .doc(messageId)
+        .update({
+          userReadLastReply: true,
+          userLastReadAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+      console.log('✅ ThreadView: Marked thread as read:', messageId);
+    } catch (error) {
+      console.error('❌ ThreadView: Error marking thread as read:', error);
+    }
   }
 
   /**
@@ -57,6 +85,12 @@ class ThreadView {
     this.currentThreadId = null;
     this.currentOriginalMessage = null;
     this.replies = [];
+
+    // ✅ Hide thread container
+    const threadContainer = document.getElementById('aiThreadContainer');
+    if (threadContainer) {
+      threadContainer.classList.remove('active');
+    }
 
     // Return to admin messages view
     if (window.aiChat) {
@@ -94,12 +128,13 @@ class ThreadView {
       messagesContainer.parentElement.insertBefore(threadContainer, inputContainer);
     }
 
-    threadContainer.style.display = 'flex';
+    // ✅ Add active class to show the container
+    threadContainer.classList.add('active');
 
     // Build HTML
     threadContainer.innerHTML = `
       <div class="ai-thread-header">
-        <button class="ai-thread-back-btn" onclick="window.threadView.close()">
+        <button class="ai-thread-back-btn" id="aiThreadBackBtn">
           <i class="fas fa-arrow-right"></i> חזרה
         </button>
         <h2 class="ai-thread-title">💬 שיחה עם המנהל</h2>
@@ -135,15 +170,26 @@ class ThreadView {
           rows="2"
           maxlength="1000"
         ></textarea>
-        <button class="ai-thread-send-btn" id="aiThreadSendBtn" onclick="window.threadView.sendReply()">
+        <button class="ai-thread-send-btn" id="aiThreadSendBtn">
           <i class="fas fa-paper-plane"></i>
-          שלח
         </button>
       </div>
     `;
 
-    // Auto-resize textarea
+    // ✅ Get all interactive elements
+    const backBtn = threadContainer.querySelector('#aiThreadBackBtn');
     const textarea = threadContainer.querySelector('#aiThreadReplyInput');
+    const sendBtn = threadContainer.querySelector('#aiThreadSendBtn');
+
+    // ✅ Back button event listener
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        console.log('🔙 Back button clicked');
+        this.close();
+      });
+    }
+
+    // Auto-resize textarea
     if (textarea) {
       textarea.addEventListener('input', () => {
         textarea.style.height = 'auto';
@@ -157,6 +203,14 @@ class ThreadView {
         }
       });
     }
+
+    // ✅ Send button event listener
+    if (sendBtn) {
+      sendBtn.addEventListener('click', () => {
+        console.log('📤 Send button clicked');
+        this.sendReply();
+      });
+    }
   }
 
   /**
@@ -164,12 +218,24 @@ class ThreadView {
    */
   async loadAndListenToReplies() {
     if (!this.currentThreadId) {
-      console.error('No thread ID set');
+      console.error('❌ ThreadView: No thread ID set');
       return;
     }
 
-    if (!window.notificationBell) {
-      console.error('NotificationBell not available');
+    // ✅ Wait for notificationBell to be available (with timeout)
+    const notificationBell = await this._waitForNotificationBell();
+
+    if (!notificationBell) {
+      console.error('❌ ThreadView: NotificationBell not available after timeout');
+      const loadingEl = document.getElementById('aiThreadLoading');
+      if (loadingEl) {
+        loadingEl.innerHTML = `
+          <div class="ai-thread-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            מערכת ההודעות לא זמינה - נסה לרענן את הדף
+          </div>
+        `;
+      }
       return;
     }
 
@@ -180,24 +246,11 @@ class ThreadView {
 
     try {
       // Set up real-time listener
-      this.unsubscribeReplies = window.notificationBell.listenToThreadReplies(
+      this.unsubscribeReplies = notificationBell.listenToThreadReplies(
         this.currentThreadId,
         (replies) => {
-          // ✅ Backward compatibility: Add legacy `response` as first reply if exists
-          let allReplies = [...replies];
-          if (this.currentOriginalMessage.response && replies.length === 0) {
-            console.log('📜 Adding legacy response as first reply');
-            allReplies = [{
-              id: 'legacy-response',
-              from: this.currentOriginalMessage.to,
-              fromName: this.currentOriginalMessage.toName || this.currentOriginalMessage.to,
-              message: this.currentOriginalMessage.response,
-              createdAt: this.currentOriginalMessage.respondedAt?.toDate?.() || new Date(this.currentOriginalMessage.respondedAt)
-            }];
-          }
-
-          this.replies = allReplies;
-          this.renderReplies(allReplies);
+          this.replies = replies;
+          this.renderReplies(replies);
 
           // Hide loading
           if (loadingEl) {
@@ -210,18 +263,41 @@ class ThreadView {
       );
 
     } catch (error) {
-      console.error('Error loading thread replies:', error);
+      console.error('❌ ThreadView: Error loading thread replies:', error);
 
       // Hide loading and show error
       if (loadingEl) {
         loadingEl.innerHTML = `
           <div class="ai-thread-error">
             <i class="fas fa-exclamation-triangle"></i>
-            שגיאה בטעינת תשובות
+            שגיאה בטעינת תשובות: ${error.message}
           </div>
         `;
       }
     }
+  }
+
+  /**
+   * Wait for window.notificationBell to be available
+   * @returns {Promise<Object|null>} - NotificationBell instance or null after timeout
+   * @private
+   */
+  async _waitForNotificationBell(timeout = 5000) {
+    const startTime = Date.now();
+
+    while (!window.notificationBell) {
+      // Check if timeout exceeded
+      if (Date.now() - startTime > timeout) {
+        console.error('❌ ThreadView: Timeout waiting for notificationBell');
+        return null;
+      }
+
+      // Wait 100ms before checking again
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    console.log('✅ ThreadView: notificationBell is available');
+    return window.notificationBell;
   }
 
   /**
@@ -261,52 +337,74 @@ return;
    * Send a reply
    */
   async sendReply() {
+    console.log('🔵 sendReply() called');
+    console.log('🔵 this.currentThreadId:', this.currentThreadId);
+
     const textarea = document.getElementById('aiThreadReplyInput');
     const sendBtn = document.getElementById('aiThreadSendBtn');
 
     if (!textarea || !sendBtn) {
-return;
-}
+      console.error('❌ Textarea or button not found');
+      return;
+    }
 
     const replyText = textarea.value.trim();
 
     if (!replyText) {
+      console.log('⚠️ No reply text');
       return;
     }
 
     if (!this.currentThreadId) {
-      console.error('No thread ID');
+      console.error('❌ No thread ID - this.currentThreadId:', this.currentThreadId);
       return;
     }
 
-    if (!window.notificationBell) {
-      console.error('NotificationBell not available');
+    // ✅ Wait for notificationBell to be available
+    const notificationBell = await this._waitForNotificationBell();
+
+    if (!notificationBell) {
+      console.error('❌ NotificationBell not available');
+      alert('מערכת ההודעות לא זמינה - נסה לרענן את הדף');
       return;
     }
 
     // ✅ Get current user from notificationBell (single source of truth)
-    const currentUser = window.notificationBell.currentUser;
+    const currentUser = notificationBell.currentUser;
 
     if (!currentUser) {
-      console.error('No current user');
+      console.error('❌ No current user');
+      alert('משתמש לא מחובר - נסה להתחבר מחדש');
       return;
     }
 
+    console.log('✅ All validations passed, sending reply...');
+    console.log('📧 Thread ID:', this.currentThreadId);
+    console.log('👤 Current user:', currentUser.email);
+
     // Disable button
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח...';
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
 
     try {
+      console.log('🚀 Calling sendReplyToAdmin...');
+
       // Send reply using NotificationBell API
-      await window.notificationBell.sendReplyToAdmin(
+      await notificationBell.sendReplyToAdmin(
         this.currentThreadId,
         replyText,
         currentUser
       );
 
+      console.log('✅ Reply sent successfully!');
+
       // Clear textarea
-      textarea.value = '';
-      textarea.style.height = 'auto';
+      if (textarea) {
+        textarea.value = '';
+        textarea.style.height = 'auto';
+      }
 
       // Success notification
       if (window.NotificationSystem) {
@@ -316,7 +414,7 @@ return;
       // The real-time listener will automatically add the reply to the view
 
     } catch (error) {
-      console.error('Error sending reply:', error);
+      console.error('❌ Error sending reply:', error);
 
       // Error notification
       if (window.NotificationSystem) {
@@ -327,8 +425,10 @@ return;
 
     } finally {
       // Re-enable button
-      sendBtn.disabled = false;
-      sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> שלח';
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+      }
     }
   }
 

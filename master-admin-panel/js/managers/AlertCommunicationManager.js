@@ -567,7 +567,8 @@
                         repliesCount: firebase.firestore.FieldValue.increment(1),
                         lastReplyAt: firebase.firestore.FieldValue.serverTimestamp(),
                         lastReplyBy: this.currentAdmin.email,
-                        status: 'responded' // Mark as responded
+                        status: 'responded', // Mark as responded
+                        userReadLastReply: false // ✅ Mark as unread for user (new reply from admin)
                     });
 
                 console.log(`✅ Admin reply sent: ${replyRef.id}`);
@@ -621,6 +622,74 @@
 
             } catch (error) {
                 console.error('Error getting thread metadata:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Send new message to user (create new thread)
+         * שליחת הודעה חדשה למשתמש (יצירת שיחה חדשה)
+         *
+         * @param {string} toEmail - Recipient email
+         * @param {string} toName - Recipient name
+         * @param {string} messageText - Message text
+         * @param {string} category - Message category (critical, urgent, task, etc.)
+         * @param {string|null} subject - Optional subject line
+         * @returns {Promise<string>} - Message ID
+         */
+        async sendNewMessage(toEmail, toName, messageText, category = 'info', subject = null) {
+            if (!this.currentAdmin) {
+                throw new Error('Admin user not initialized. Call init() first.');
+            }
+
+            if (!toEmail || !messageText) {
+                throw new Error('toEmail and messageText are required');
+            }
+
+            const trimmedMessage = messageText.trim();
+            if (!trimmedMessage) {
+                throw new Error('Message text cannot be empty');
+            }
+
+            if (!category) {
+                throw new Error('Category is required');
+            }
+
+            try {
+                console.log(`📤 Sending new message to ${toEmail} (category: ${category})`);
+
+                // יצירת document חדש ב-user_messages
+                const messageRef = await this.db.collection('user_messages').add({
+                    from: this.currentAdmin.email,
+                    fromName: this.currentAdmin.displayName || this.currentAdmin.email,
+                    to: toEmail,
+                    toName: toName || toEmail,
+                    message: trimmedMessage,
+                    category: category,           // ✅ Category
+                    subject: subject || null,     // ✅ Subject (optional)
+                    type: 'admin_to_user',
+                    status: 'unread',             // ✅ Changed from 'sent' to 'unread'
+                    read: false,
+                    repliesCount: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log(`✅ New message sent: ${messageRef.id}`);
+
+                // Show success notification
+                if (window.notify) {
+                    window.notify.success('ההודעה נשלחה בהצלחה!');
+                }
+
+                return messageRef.id;
+
+            } catch (error) {
+                console.error('❌ Error sending new message:', error);
+
+                if (window.notify) {
+                    window.notify.error('שגיאה בשליחת ההודעה: ' + error.message);
+                }
+
                 throw error;
             }
         }

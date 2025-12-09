@@ -481,3 +481,265 @@
     margin: 0;
     color: var(--gray-500);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   WHATSAPP-STYLE ADMIN THREAD VIEW
+   ══════════════════════════════════════════════════════════════════ */
+
+.admin-thread-container {
+    display: flex;
+    flex-direction: column;
+    height: 600px;
+    background: #e5ddd5; /* WhatsApp background color */
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* WhatsApp-style pattern background */
+.admin-thread-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 80px;
+    background-image:
+        repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px),
+        repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Messages Container */
+.admin-thread-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    position: relative;
+    z-index: 1;
+    background: transparent;
+}
+
+/* Custom scrollbar for messages */
+.admin-thread-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-thread-messages::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+.admin-thread-messages::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.admin-thread-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* Message Bubble - Base Styles */
+.admin-thread-message {
+    display: flex;
+    flex-direction: column;
+    max-width: 65%;
+    margin-bottom: var(--space-2);
+    animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Admin messages (right side - green like WhatsApp) */
+.admin-thread-message-admin {
+    align-self: flex-end;
+}
+
+.admin-thread-message-admin .admin-thread-message-bubble {
+    background: #dcf8c6; /* WhatsApp green */
+    border-radius: 8px 8px 0 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* User messages (left side - white like WhatsApp) */
+.admin-thread-message-user {
+    align-self: flex-start;
+}
+
+.admin-thread-message-user .admin-thread-message-bubble {
+    background: white;
+    border-radius: 8px 8px 8px 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Message Bubble Content */
+.admin-thread-message-bubble {
+    padding: 8px 12px;
+    position: relative;
+}
+
+.admin-thread-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    gap: var(--space-3);
+}
+
+.admin-thread-message-header strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: #075e54; /* WhatsApp dark green */
+}
+
+.admin-thread-message-user .admin-thread-message-header strong {
+    color: #128c7e; /* User name in blue-green */
+}
+
+.admin-thread-message-time {
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
+}
+
+.admin-thread-message-content {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #303030;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Input Container - Fixed at bottom */
+.admin-thread-input-container {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: #f0f0f0;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    position: relative;
+    z-index: 2;
+}
+
+.admin-thread-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 24px;
+    font-family: inherit;
+    font-size: 15px;
+    resize: none;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    min-height: 44px;
+    max-height: 120px;
+}
+
+.admin-thread-input:focus {
+    outline: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.admin-thread-input::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+/* Send Button - WhatsApp style */
+.admin-thread-send-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: #25d366; /* WhatsApp green */
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
+    flex-shrink: 0;
+    font-size: 0; /* Hide text */
+}
+
+.admin-thread-send-btn:hover {
+    background: #20ba5a;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+}
+
+.admin-thread-send-btn:active {
+    transform: scale(0.95);
+}
+
+.admin-thread-send-btn i {
+    font-size: 18px;
+}
+
+/* Loading Indicator */
+.admin-thread-loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-6);
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 14px;
+}
+
+.admin-thread-loading.show {
+    display: flex;
+}
+
+.admin-thread-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top-color: #25d366;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Empty state when no replies */
+.admin-thread-no-replies {
+    text-align: center;
+    padding: var(--space-8);
+    color: rgba(0, 0, 0, 0.4);
+    font-size: 14px;
+}
+
+/* Date separator (optional for future) */
+.admin-thread-date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: var(--space-4) 0;
+}
+
+.admin-thread-date-separator span {
+    background: rgba(225, 225, 225, 0.9);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}

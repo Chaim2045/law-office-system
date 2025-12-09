@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>בדיקת הודעה אחרונה</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .message {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 6px;
+    }
+    .category-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .critical { background: #fee2e2; color: #dc2626; border: 1px solid #dc2626; }
+    .urgent { background: #fed7aa; color: #ea580c; border: 1px solid #ea580c; }
+    .task { background: #dbeafe; color: #2563eb; border: 1px solid #2563eb; }
+    .info { background: #cffafe; color: #0891b2; border: 1px solid #0891b2; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 בדיקת הודעה אחרונה</h1>
+    <div id="output">טוען...</div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDaNLRe35gEymb7sX4SDPRtHNjjxuJlI5I",
+      authDomain: "law-office-system-e4801.firebaseapp.com",
+      projectId: "law-office-system-e4801",
+      storageBucket: "law-office-system-e4801.firebasestorage.app",
+      messagingSenderId: "424873951338",
+      appId: "1:424873951338:web:8fb1ac5c3a17d2e0ed3c25",
+      measurementId: "G-GJN4Y3K20G"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function checkLastMessage() {
+      const output = document.getElementById('output');
+
+      try {
+        console.log('🔍 Fetching last 5 messages from user_messages...');
+
+        const snapshot = await db.collection('user_messages')
+          .orderBy('createdAt', 'desc')
+          .limit(5)
+          .get();
+
+        if (snapshot.empty) {
+          output.innerHTML = '<p style="color: red;">❌ לא נמצאו הודעות ב-Firestore!</p>';
+          return;
+        }
+
+        console.log(`✅ Found ${snapshot.size} messages`);
+
+        let html = `<h2>📨 נמצאו ${snapshot.size} הודעות אחרונות:</h2>`;
+
+        snapshot.forEach((doc, index) => {
+          const data = doc.data();
+          const createdAt = data.createdAt ? data.createdAt.toDate().toLocaleString('he-IL') : 'N/A';
+
+          const categoryClass = data.category || 'info';
+          const categoryDisplay = data.category ? `${data.category}` : 'אין קטגוריה';
+
+          html += `
+            <div class="message">
+              <h3>הודעה #${index + 1} (ID: ${doc.id})</h3>
+              <div class="category-badge ${categoryClass}">${categoryDisplay}</div>
+              <p><strong>מאת:</strong> ${data.fromName || data.from}</p>
+              <p><strong>אל:</strong> ${data.toName || data.to}</p>
+              ${data.subject ? `<p><strong>נושא:</strong> ${data.subject}</p>` : ''}
+              <p><strong>הודעה:</strong> ${data.message}</p>
+              <p><strong>סוג:</strong> ${data.type}</p>
+              <p><strong>סטטוס:</strong> ${data.status}</p>
+              <p><strong>נוצר:</strong> ${createdAt}</p>
+              <details>
+                <summary>📋 JSON מלא</summary>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+              </details>
+            </div>
+          `;
+        });
+
+        output.innerHTML = html;
+
+        // Listen for new messages in real-time
+        console.log('👂 Starting real-time listener...');
+        db.collection('user_messages')
+          .orderBy('createdAt', 'desc')
+          .limit(1)
+          .onSnapshot(snapshot => {
+            console.log('🔔 Real-time update received!', snapshot.size, 'messages');
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              console.log('Latest message:', {
+                id: doc.id,
+                from: data.from,
+                to: data.to,
+                category: data.category,
+                subject: data.subject,
+                status: data.status,
+                message: data.message
+              });
+            });
+          });
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        output.innerHTML = `<p style="color: red;">❌ שגיאה: ${error.message}</p>
+          <pre>${JSON.stringify(error, null, 2)}</pre>`;
+      }
+    }
+
+    checkLastMessage();
+  </script>
+</body>
+</html>

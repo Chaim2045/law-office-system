@@ -134,6 +134,7 @@
                         whatsappEnabled: userData.whatsappEnabled || false,  // WhatsApp Bot toggle
                         displayName: userData.displayName || userData.username || doc.id.split('@')[0],
                         photoURL: userData.photoURL || null,
+                        dailyHoursTarget: userData.dailyHoursTarget || null,  // Daily hours target for work quota
                         // Will be filled by stats
                         clientsCount: 0,
                         tasksCount: 0,

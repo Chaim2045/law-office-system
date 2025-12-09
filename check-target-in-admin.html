@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>בדיקת תקן שעות - Admin Console</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+        .code-block { background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🔍 בדיקת תקן שעות יומי</h1>
+    <p><strong>הוראות:</strong></p>
+    <ol>
+        <li>פתח את האדמין פאנל: <a href="https://admin-gh-law-office-system.netlify.app" target="_blank">https://admin-gh-law-office-system.netlify.app</a></li>
+        <li>התחבר כמנהל</li>
+        <li>פתח את Console (F12) ועבור ל-Console</li>
+        <li>העתק והדבק את הקוד הזה:</li>
+    </ol>
+
+    <div class="code-block">
+<pre style="direction: ltr; text-align: left;">
+// בדיקת תקן שעות יומי
+(async function() {
+    console.log('🔍 בודק תקן שעות עבור haim@ghlawoffice.co.il...');
+
+    try {
+        const doc = await window.firebaseDB
+            .collection('employees')
+            .doc('haim@ghlawoffice.co.il')
+            .get();
+
+        if (!doc.exists) {
+            console.error('❌ משתמש לא נמצא!');
+            return;
+        }
+
+        const data = doc.data();
+
+        console.log('\n✅ נתוני העובד:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📧 אימייל:', data.email);
+        console.log('👤 שם:', data.displayName);
+        console.log('🎯 תקן שעות יומי:', data.dailyHoursTarget !== undefined ? data.dailyHoursTarget : 'לא מוגדר');
+        console.log('🕐 עדכון אחרון:', data.updatedAt ? new Date(data.updatedAt.seconds * 1000).toLocaleString('he-IL') : 'לא זמין');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        // חישוב תקן חודשי
+        const dailyTarget = data.dailyHoursTarget || 8.45;
+        const workDaysDecember = 23; // ימי עבודה בדצמבר 2025
+        const monthlyTarget = dailyTarget * workDaysDecember;
+
+        console.log('\n📊 חישוב תקן חודשי:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📍 תקן יומי:', dailyTarget, 'שעות/יום');
+        console.log('📅 ימי עבודה בדצמבר:', workDaysDecember, 'ימים');
+        console.log('📈 תקן חודשי:', monthlyTarget, 'שעות');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        if (data.dailyHoursTarget) {
+            console.log('\n✅ תקן אישי הוגדר בהצלחה!');
+            console.log('💡 העובד יראה תקן של', monthlyTarget, 'שעות בחודש');
+        } else {
+            console.log('\n⚠️ תקן אישי לא הוגדר - ישתמש בברירת מחדל (8.45)');
+            console.log('💡 העובד יראה תקן של', monthlyTarget, 'שעות בחודש');
+        }
+
+        // החזר את האובייקט כדי שניתן יהיה לבדוק אותו ב-console
+        return data;
+
+    } catch (error) {
+        console.error('❌ שגיאה:', error.message);
+        console.error(error);
+    }
+})();
+</pre>
+    </div>
+
+    <h2>📋 מה לחפש בתוצאות:</h2>
+    <ul>
+        <li class="success">✅ אם רואה "תקן שעות יומי: 10" - הכל תקין!</li>
+        <li class="warning">⚠️ אם רואה "תקן שעות יומי: לא מוגדר" - צריך לעדכן שוב באדמין</li>
+        <li class="error">❌ אם יש שגיאה - העתק את השגיאה ושלח אותה</li>
+    </ul>
+
+    <h2>🎯 הצעד הבא:</h2>
+    <p>אחרי שתאשר שהתקן נשמר, נבדוק שהוא מוצג נכון בממשק העובדים!</p>
+</body>
+</html>

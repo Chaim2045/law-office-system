@@ -1,0 +1,152 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Message Categories Styles
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Created: 2025-12-08
+ * Part of Admin Panel - Message Category System
+ */
+
+/* ══════════════════════════════════════════════════════════════════
+   MESSAGE METADATA FORM (Category & Subject)
+   ══════════════════════════════════════════════════════════════════ */
+
+.admin-message-metadata {
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #e5e7eb;
+}
+
+.admin-message-field {
+    margin-bottom: 16px;
+}
+
+.admin-message-field:last-child {
+    margin-bottom: 0;
+}
+
+.admin-message-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.admin-message-select,
+.admin-message-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.admin-message-select:focus,
+.admin-message-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin-message-select {
+    cursor: pointer;
+    background: white;
+}
+
+.admin-message-select option {
+    padding: 8px;
+}
+
+.admin-message-input::placeholder {
+    color: #9ca3af;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CATEGORY BADGE IN MESSAGE
+   ══════════════════════════════════════════════════════════════════ */
+
+.message-category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+    margin-bottom: 8px;
+}
+
+/* Individual category colors */
+.message-category-critical {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #dc2626;
+}
+
+.message-category-urgent {
+    background: #fed7aa;
+    color: #ea580c;
+    border-color: #ea580c;
+}
+
+.message-category-task {
+    background: #dbeafe;
+    color: #2563eb;
+    border-color: #2563eb;
+}
+
+.message-category-info {
+    background: #cffafe;
+    color: #0891b2;
+    border-color: #0891b2;
+}
+
+.message-category-report {
+    background: #ede9fe;
+    color: #7c3aed;
+    border-color: #7c3aed;
+}
+
+.message-category-question {
+    background: #d1fae5;
+    color: #059669;
+    border-color: #059669;
+}
+
+.message-category-approval {
+    background: #dcfce7;
+    color: #16a34a;
+    border-color: #16a34a;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SUBJECT LINE
+   ══════════════════════════════════════════════════════════════════ */
+
+.message-subject {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    .admin-message-metadata {
+        padding: 16px;
+    }
+
+    .admin-message-select,
+    .admin-message-input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}

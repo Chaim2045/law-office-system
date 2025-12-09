@@ -82,6 +82,13 @@ export class TaskApprovalPanel {
         filterBtns.forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         this.currentFilter = e.target.dataset.filter;
+
+        // 🔥 עדכן את ה-listener כשמחליפים טאב
+        if (this.realtimeUnsubscribe) {
+          this.realtimeUnsubscribe();
+        }
+        this.startRealtimeListener();
+
         this.loadApprovals();
       });
     });
@@ -209,12 +216,15 @@ export class TaskApprovalPanel {
   }
 
   startRealtimeListener() {
-    this.realtimeUnsubscribe = taskApprovalService.listenToPendingApprovals((approvals) => {
-      if (this.currentFilter === 'pending') {
+    // 🔥 מאזין לכל השינויים בזמן אמת לפי הפילטר הנוכחי
+    this.realtimeUnsubscribe = taskApprovalService.listenToAllApprovals(
+      (approvals) => {
+        console.log(`🔥 Real-time update: ${approvals.length} tasks (filter: ${this.currentFilter})`);
         this.approvals = approvals;
         this.applyFiltersAndSort();
-      }
-    });
+      },
+      this.currentFilter
+    );
   }
 
   cleanup() {

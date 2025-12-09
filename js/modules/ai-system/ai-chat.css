@@ -1086,6 +1086,40 @@
   font-size: 14px;
 }
 
+/* ✅ כפתור צפה בשיחה (עם תשובות קיימות) */
+.ai-notification-thread-btn {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: var(--ai-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--ai-transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.ai-notification-thread-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.ai-notification-thread-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.ai-notification-thread-btn i {
+  font-size: 14px;
+}
+
 /* כפתור "קראתי" */
 .ai-notification-read-btn {
   margin-top: 12px;
@@ -1133,9 +1167,94 @@
   border-radius: var(--ai-radius-sm);
 }
 
+/* ✅ "NEW" badge for unread replies */
+.ai-notification-new-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 12px;
+  margin-right: 6px;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+  animation: pulse-new-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-new-badge {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CATEGORY SYSTEM
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Category filter dropdown */
+.ai-category-filter {
+  padding: 6px 12px;
+  border: 1px solid var(--ai-gray-300);
+  border-radius: var(--ai-radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+  transition: all var(--ai-transition);
+}
+
+.ai-category-filter:focus {
+  outline: none;
+  border-color: var(--ai-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.ai-category-filter:hover {
+  border-color: var(--ai-gray-400);
+}
+
+/* Header row with category and badges */
+.ai-notification-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+/* Category badge */
+.ai-notification-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+/* Subject line */
+.ai-notification-subject {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ai-gray-900);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
 /* Unread badge for notifications */
 .ai-notification-unread {
   position: relative;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.08) 100%);
+  border-right: 3px solid #ef4444;
 }
 
 .ai-notification-unread::before {

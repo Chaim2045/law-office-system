@@ -75,7 +75,14 @@
       "Bash(git revert:*)",
       "Bash(git cherry-pick:*)",
       "Bash(firebase functions:config:get:*)",
-      "Bash(firebase functions:log:*)"
+      "Bash(firebase functions:log:*)",
+      "Bash(firebase firestore:get:*)",
+      "Bash(Select-Object -Last 50)",
+      "Bash(firebase firestore:indexes:list:*)",
+      "Bash(netlify watch:*)",
+      "Bash(firebase hosting:channel:list:*)",
+      "Bash(start http://localhost:5000/check-last-message.html)",
+      "Bash(start http://localhost:5000/test-notification-bell.html)"
     ],
     "deny": [],
     "ask": []

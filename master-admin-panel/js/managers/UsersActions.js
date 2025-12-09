@@ -56,6 +56,9 @@
                 case 'delete':
                     await this.deleteUser(userEmail);
                     break;
+                case 'delete-data':
+                    await this.deleteUserData(userEmail);
+                    break;
                 case 'whatsapp':
                     // Handled by WhatsAppMessageDialog event listener
                     break;
@@ -327,6 +330,107 @@
                     },
                     onClose: () => {
                         resolve(false);
+                    }
+                });
+            });
+        }
+
+        /**
+         * Delete user data (tasks and timesheets) - SELECTIVE
+         * מחיקת נתוני משתמש סלקטיבית
+         */
+        async deleteUserData(userEmail) {
+            try {
+                // Get user
+                const user = window.DataManager.getUserByEmail(userEmail);
+
+                if (!user) {
+                    throw new Error('משתמש לא נמצא');
+                }
+
+                // Open new DeleteDataModal with selective deletion
+                if (window.DeleteDataModal) {
+                    window.DeleteDataModal.open(user);
+                } else {
+                    console.error('❌ DeleteDataModal not loaded');
+                    window.notify.error('מודול מחיקה לא נטען');
+                }
+
+            } catch (error) {
+                console.error('❌ Error opening delete data modal:', error);
+                window.notify.error(error.message || 'שגיאה בפתיחת מודאל מחיקה');
+            }
+        }
+
+        /**
+         * Show modal to select what data to delete
+         * הצגת מודאל לבחירת נתונים למחיקה
+         */
+        async showDeleteDataModal(user) {
+            return new Promise((resolve) => {
+                const modalId = window.ModalManager.create({
+                    title: `מחיקת נתונים: ${user.displayName || user.email}`,
+                    content: `
+                        <div class="delete-data-modal">
+                            <p style="margin-bottom: 20px; font-size: 16px; color: var(--gray-700);">
+                                בחר אילו נתונים למחוק:
+                            </p>
+                            <div class="checkbox-group" style="text-align: right;">
+                                <label class="checkbox-label" style="display: block; margin-bottom: 15px; font-size: 15px;">
+                                    <input type="checkbox" id="deleteTasks" checked>
+                                    <span style="margin-right: 10px;">מחק את כל המשימות (budget_tasks)</span>
+                                </label>
+                                <label class="checkbox-label" style="display: block; margin-bottom: 15px; font-size: 15px;">
+                                    <input type="checkbox" id="deleteTimesheets" checked>
+                                    <span style="margin-right: 10px;">מחק את כל השעתונים (timesheet_entries)</span>
+                                </label>
+                                <label class="checkbox-label" style="display: block; margin-bottom: 15px; font-size: 15px;">
+                                    <input type="checkbox" id="deleteApprovals" checked>
+                                    <span style="margin-right: 10px;">מחק את כל אישורי המשימות (pending_task_approvals)</span>
+                                </label>
+                            </div>
+                            <p style="margin-top: 20px; font-size: 14px; color: var(--orange);">
+                                <i class="fas fa-info-circle"></i>
+                                הלקוחות לא יימחקו
+                            </p>
+                        </div>
+                    `,
+                    footer: `
+                        <button class="btn btn-secondary" id="deleteDataCancelBtn">
+                            <i class="fas fa-times"></i>
+                            <span>ביטול</span>
+                        </button>
+                        <button class="btn btn-danger" id="deleteDataConfirmBtn">
+                            <i class="fas fa-trash"></i>
+                            <span>המשך</span>
+                        </button>
+                    `,
+                    size: 'medium',
+                    onOpen: () => {
+                        const modal = window.ModalManager.getElement(modalId);
+
+                        // Cancel button
+                        const cancelBtn = modal.querySelector('#deleteDataCancelBtn');
+                        cancelBtn.addEventListener('click', () => {
+                            window.ModalManager.close(modalId);
+                            resolve(null);
+                        });
+
+                        // Confirm button
+                        const confirmBtn = modal.querySelector('#deleteDataConfirmBtn');
+                        confirmBtn.addEventListener('click', () => {
+                            const tasks = modal.querySelector('#deleteTasks').checked;
+                            const timesheets = modal.querySelector('#deleteTimesheets').checked;
+                            const approvals = modal.querySelector('#deleteApprovals').checked;
+
+                            if (!tasks && !timesheets && !approvals) {
+                                window.notify.warning('יש לבחור לפחות פריט אחד למחיקה');
+                                return;
+                            }
+
+                            window.ModalManager.close(modalId);
+                            resolve({ tasks, timesheets, approvals });
+                        });
                     }
                 });
             });

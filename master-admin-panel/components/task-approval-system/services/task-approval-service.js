@@ -130,6 +130,33 @@ export class TaskApprovalService {
         callback(approvals);
       });
   }
+
+  /**
+   * 🔥 Real-time listener לכל הסטטוסים
+   * מאזין לכל השינויים ב-pending_task_approvals
+   */
+  listenToAllApprovals(callback, status = 'all', limit = 50) {
+    let query = this.db.collection('pending_task_approvals');
+
+    // אם יש סינון לפי סטטוס
+    if (status !== 'all') {
+      query = query.where('status', '==', status);
+    }
+
+    query = query.orderBy('requestedAt', 'desc').limit(limit);
+
+    return query.onSnapshot(snapshot => {
+      const approvals = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        requestedAt: doc.data().requestedAt?.toDate() || null,
+        reviewedAt: doc.data().reviewedAt?.toDate() || null
+      }));
+      callback(approvals);
+    }, error => {
+      console.error('❌ Real-time listener error:', error);
+    });
+  }
 }
 
 export const taskApprovalService = new TaskApprovalService();

@@ -71,7 +71,7 @@ class AIChatUI {
     <!-- Header -->
     <div class="ai-chat-header">
       <div class="ai-chat-title">
-        <i class="fas fa-robot"></i>
+        <i class="fas fa-comment-dots"></i>
         <span>עוזר AI חכם</span>
       </div>
       <div class="ai-chat-actions">
@@ -96,7 +96,7 @@ class AIChatUI {
     <div class="ai-chat-messages" id="aiChatMessages">
       <!-- Welcome message -->
       <div class="ai-message ai-message-welcome">
-        <div class="ai-message-avatar"><i class="fas fa-robot"></i></div>
+        <div class="ai-message-avatar"><i class="fas fa-comment-dots"></i></div>
         <div class="ai-message-content">
           <p>${this.config.welcomeMessage}</p>
         </div>
@@ -130,7 +130,7 @@ class AIChatUI {
 <!-- Floating Button with Bubble Pop Label -->
 <div class="ai-float-wrapper">
   <button class="ai-float-btn" id="aiFloatBtn" onclick="window.aiChat.toggle()">
-    <i class="fas fa-robot"></i>
+    <i class="fas fa-comment-dots"></i>
     <span class="ai-float-notification-badge" id="aiFloatNotificationBadge"></span>
   </button>
   <!-- Bubble Pop Label (appears above on hover) -->
@@ -352,7 +352,7 @@ return;
 
     const messageHTML = `
 <div class="ai-message ai-message-ai" id="${messageId}">
-  <div class="ai-message-avatar"><i class="fas fa-robot"></i></div>
+  <div class="ai-message-avatar"><i class="fas fa-comment-dots"></i></div>
   <div class="ai-message-content">
     ${this._formatAIResponse(text)}
   </div>
@@ -378,7 +378,7 @@ return null;
 
     const messageHTML = `
 <div class="ai-message ai-message-ai ai-message-typing" id="${messageId}">
-  <div class="ai-message-avatar"><i class="fas fa-robot"></i></div>
+  <div class="ai-message-avatar"><i class="fas fa-comment-dots"></i></div>
   <div class="ai-message-content">
     <div class="ai-typing-indicator">
       <span></span>
@@ -435,7 +435,7 @@ return null;
 
     const messageHTML = `
 <div class="ai-message ai-message-ai" id="${messageId}">
-  <div class="ai-message-avatar"><i class="fas fa-robot"></i></div>
+  <div class="ai-message-avatar"><i class="fas fa-comment-dots"></i></div>
   <div class="ai-message-content" id="${messageId}-content"></div>
 </div>
     `;
@@ -793,7 +793,7 @@ inputContainer.style.display = 'none';
     // נקה ובנה מחדש
     notifContainer.innerHTML = '';
 
-    // Header
+    // Header with category filter
     const header = document.createElement('div');
     header.className = 'ai-notifications-header';
     header.innerHTML = `
@@ -801,30 +801,74 @@ inputContainer.style.display = 'none';
         <i class="fas fa-arrow-right"></i> חזרה
       </button>
       <h2 class="ai-notifications-title">התראות</h2>
+      <select id="aiCategoryFilter" class="ai-category-filter">
+        <option value="all">הכל</option>
+        <option value="critical">🔴 קריטי</option>
+        <option value="urgent">🟠 דחוף</option>
+        <option value="task">📋 משימה</option>
+        <option value="info">ℹ️ מידע</option>
+        <option value="report">📊 דוח</option>
+        <option value="question">❓ שאלה</option>
+        <option value="approval">✅ אישור</option>
+      </select>
       <button class="ai-notifications-clear-btn" onclick="window.aiChat.clearAllNotifications()">
         נקה הכל
       </button>
     `;
     notifContainer.appendChild(header);
 
+    // ✅ Add filter event listener
+    const filterSelect = document.getElementById('aiCategoryFilter');
+    if (filterSelect) {
+      filterSelect.addEventListener('change', () => {
+        this._renderAdminMessagesView();
+      });
+    }
+
     // Get ONLY admin messages (not system notifications)
     const allNotifications = window.notificationBell?.notifications || [];
-    const adminMessages = allNotifications.filter(n => n.isAdminMessage === true);
+    let adminMessages = allNotifications.filter(n => n.isAdminMessage === true);
+
+    // ✅ Apply category filter
+    const selectedCategory = filterSelect ? filterSelect.value : 'all';
+    if (selectedCategory && selectedCategory !== 'all') {
+      adminMessages = adminMessages.filter(msg => msg.category === selectedCategory);
+    }
 
     if (adminMessages.length === 0) {
       // Empty state
       const emptyState = document.createElement('div');
       emptyState.className = 'ai-notifications-empty';
+      const emptyMessage = selectedCategory === 'all'
+        ? 'אין הודעות מהמנהל'
+        : `אין הודעות בקטגוריה זו`;
+
       emptyState.innerHTML = `
         <div class="ai-notifications-empty-icon">
           <i class="fas fa-envelope-open" style="font-size: 48px; color: var(--ai-gray-400);"></i>
         </div>
-        <h3 class="ai-notifications-empty-title">אין הודעות מהמנהל</h3>
+        <h3 class="ai-notifications-empty-title">${emptyMessage}</h3>
         <p class="ai-notifications-empty-text">כל ההודעות מהמנהל יופיעו כאן</p>
       `;
       notifContainer.appendChild(emptyState);
       return;
     }
+
+    // ✅ Sort messages - unread replies first, then by lastReplyAt/createdAt
+    adminMessages.sort((a, b) => {
+      // Check if has unread replies
+      const aHasUnread = a.hasUnreadReplies === true;
+      const bHasUnread = b.hasUnreadReplies === true;
+
+      // Unread replies first
+      if (aHasUnread && !bHasUnread) return -1;
+      if (!aHasUnread && bHasUnread) return 1;
+
+      // Then sort by last activity (lastReplyAt or createdAt)
+      const aTime = a.lastReplyAt || a.createdAt || 0;
+      const bTime = b.lastReplyAt || b.createdAt || 0;
+      return bTime - aTime; // Newest first
+    });
 
     // Notifications list
     const notificationsList = document.createElement('div');
@@ -833,7 +877,9 @@ inputContainer.style.display = 'none';
     adminMessages.forEach(message => {
       const notifEl = document.createElement('div');
       notifEl.className = `ai-notification-item ai-notification-${message.type || 'info'}`;
-      if (message.status === 'unread') {
+
+      // ✅ Add unread class if message has unread replies
+      if (message.hasUnreadReplies === true) {
         notifEl.classList.add('ai-notification-unread');
       }
 
@@ -843,13 +889,33 @@ inputContainer.style.display = 'none';
       // Check if has replies
       const hasReplies = (message.repliesCount && message.repliesCount > 0);
 
+      // ✅ Show "NEW" badge if has unread replies
+      const newBadge = message.hasUnreadReplies ? '<span class="ai-notification-new-badge">🔴 חדש</span>' : '';
+
+      // ✅ Get category info
+      const categoryId = message.category || 'info';
+      const categoryDisplay = window.MessageCategories
+        ? window.MessageCategories.getCategoryDisplayName(categoryId)
+        : categoryId;
+      const categoryColor = window.MessageCategories
+        ? window.MessageCategories.getCategoryColor(categoryId)
+        : '#6b7280';
+
       notifEl.innerHTML = `
         <div class="ai-notification-content">
-          <div class="ai-notification-icon">
+          <div class="ai-notification-icon" style="color: ${categoryColor};">
             <i class="fas fa-${iconName}"></i>
           </div>
           <div class="ai-notification-text">
-            <div class="ai-notification-title">הודעה מהמנהל</div>
+            <div class="ai-notification-header-row">
+              <span class="ai-notification-category" style="background-color: ${categoryColor}20; color: ${categoryColor}; border-color: ${categoryColor};">
+                ${categoryDisplay}
+              </span>
+              ${newBadge}
+            </div>
+            ${message.subject ? `
+              <div class="ai-notification-subject">${this._escapeHTML(message.subject)}</div>
+            ` : ''}
             <div class="ai-notification-description">${this._escapeHTML(message.message || message.description || '')}</div>
             <div class="ai-notification-time">${this._escapeHTML(message.time || '')}</div>
             ${hasReplies ? `
@@ -895,10 +961,11 @@ inputContainer.style.display = 'none';
   }
 
   /**
-   * Open thread view for a message
+   * Open thread view for a message - WhatsApp style
    * @param {string} messageId - Message ID
    */
   openThread(messageId) {
+    // ✅ Use ThreadView for WhatsApp-style conversation view
     if (!window.threadView) {
       console.error('ThreadView not available');
       return;
@@ -912,11 +979,21 @@ inputContainer.style.display = 'none';
       return;
     }
 
-    // Open thread view
-    window.threadView.open(messageId, message);
+    // ✅ Prepare message data for ThreadView
+    const originalMessage = {
+      message: message.description || message.message,
+      time: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+      fromName: 'מנהל',
+      toName: window.notificationBell?.currentUser?.displayName || window.notificationBell?.currentUser?.username || 'אתה',
+      from: 'admin',
+      to: window.notificationBell?.currentUser?.email || ''
+    };
+
+    // ✅ Open WhatsApp-style thread view
+    window.threadView.open(messageId, originalMessage);
 
     if (this.config.debugMode) {
-      console.log(`[AI Chat] Opening thread for message ${messageId}`);
+      console.log(`[AI Chat] Opening ThreadView for admin message ${messageId}`);
     }
   }
 
@@ -1079,79 +1156,15 @@ inputContainer.style.display = 'none';
   }
 
   /**
-   * תשובה למנהל - פותח מודל תגובה ושולח ל-Firestore
+   * תשובה למנהל - פותח ThreadView (WhatsApp-style)
+   * ✅ UNIFIED: תמיד משתמש ב-ThreadView, בין אם יש תשובות או לא
    */
   async replyToAdmin(messageId, originalMessage) {
-    // Use custom UserReplyModal
-    if (window.userReplyModal) {
-      // Open modal with callback to refresh view
-      window.userReplyModal.open(messageId, originalMessage, () => {
-        // Re-render the admin messages view to update UI
-        if (this.currentView === 'admin-messages') {
-          setTimeout(() => {
-            this._renderAdminMessagesView();
-          }, 300);
-        }
-      });
+    // ✅ Use ThreadView for consistent UI (just like openThread)
+    this.openThread(messageId);
 
-      if (this.config.debugMode) {
-        console.log(`[AI Chat] Opening UserReplyModal for message ${messageId}`);
-      }
-    } else {
-      // Fallback: Simple prompt with Firestore update
-      console.warn('[AI Chat] UserReplyModal not available, using fallback prompt');
-      const response = prompt(`תגובה להודעה מהמנהל:\n\n"${originalMessage}"\n\nהתגובה שלך:`);
-
-      if (response && response.trim()) {
-        try {
-          if (!window.firebaseDB) {
-            throw new Error('Firebase לא זמין');
-          }
-
-          // Update Firestore with response
-          await window.firebaseDB.collection('user_messages')
-            .doc(messageId)
-            .update({
-              response: response.trim(),
-              status: 'responded',
-              respondedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-          if (this.config.debugMode) {
-            console.log(`[AI Chat] Response sent successfully for message ${messageId}`);
-          }
-
-          // Success notification
-          if (window.notify && typeof window.notify.success === 'function') {
-            window.notify.success('התגובה נשלחה בהצלחה');
-          } else {
-            // Fallback: simple alert
-            this.addAIMessage('✅ התגובה נשלחה בהצלחה למנהל');
-          }
-
-          // Re-render the admin messages view to update UI
-          if (this.currentView === 'admin-messages') {
-            setTimeout(() => {
-              this._renderAdminMessagesView();
-            }, 500);
-          }
-
-        } catch (error) {
-          console.error('[AI Chat] Error sending response:', error);
-
-          // Error notification
-          if (window.notify && typeof window.notify.error === 'function') {
-            window.notify.error('שגיאה בשליחת התגובה: ' + error.message);
-          } else {
-            // Fallback: simple alert
-            this.addErrorMessage('שגיאה בשליחת התגובה: ' + error.message);
-          }
-        }
-      } else {
-        if (this.config.debugMode) {
-          console.log(`[AI Chat] Reply cancelled by user`);
-        }
-      }
+    if (this.config.debugMode) {
+      console.log(`[AI Chat] Opening ThreadView for first reply to message ${messageId}`);
     }
   }
 }
