@@ -6,13 +6,21 @@
  * Part of Law Office Management System
  */
 
-import { safeText } from './core-utils.js';
+// Helper function: safeText (inline to avoid import issues)
+function safeText(text) {
+  if (!text) {
+return '';
+}
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 /**
  * NotificationBellSystem class
  * Manages the notification bell UI, dropdown, and notification list
  */
-export class NotificationBellSystem {
+class NotificationBellSystem {
   constructor() {
     this.notifications = [];
     this.isDropdownOpen = false;
@@ -46,6 +54,10 @@ export class NotificationBellSystem {
       this.messagesListener();
       this.messagesListener = null;
     }
+    if (this.taskApprovalListener) {
+      this.taskApprovalListener();
+      this.taskApprovalListener = null;
+    }
   }
 
   /**
@@ -61,37 +73,71 @@ export class NotificationBellSystem {
 
     this.currentUser = user;
 
-    // Listen to user_messages collection - ONLY unread messages
-    // Once read/dismissed, messages are not shown again (no history)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Listen to user_messages collection - NEW THREAD MODEL
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Shows messages with:
+    // ✅ type: 'admin_to_user' (new model only)
+    // ✅ status: 'sent' or 'responded' (active messages)
+    // ❌ Excludes: status: 'dismissed' (user dismissed)
+    // ❌ Excludes: old model messages (no type field or type !== 'admin_to_user')
     this.messagesListener = db.collection('user_messages')
       .where('to', '==', user.email)
-      .where('status', '==', 'unread')
+      .where('type', '==', 'admin_to_user')  // ✅ Only new model messages
       .orderBy('createdAt', 'desc')
+      .limit(50)  // Reasonable limit for performance
       .onSnapshot(
         snapshot => {
-          console.log(`📨 NotificationBell: Received ${snapshot.size} admin messages`);
+          console.log(`📨 NotificationBell: Received ${snapshot.size} admin messages (new model)`);
 
           // Remove old admin messages from notifications
           this.notifications = this.notifications.filter(n => !n.isAdminMessage);
 
-          // Convert to array and sort by createdAt (newest first)
+          // Filter and convert to notification format
           const messages = snapshot.docs
+            .filter(doc => {
+              const data = doc.data();
+              // Only show active messages (not dismissed)
+              return data.status === 'unread' || data.status === 'sent' || data.status === 'responded';
+            })
             .map(doc => {
               const data = doc.data();
+
+              // ✅ Check if has unread replies:
+              // - Has replies (repliesCount > 0)
+              // - Last reply was by admin (lastReplyBy !== user.email)
+              // - User hasn't read the last reply yet (userReadLastReply !== true)
+              const hasUnreadReplies = (
+                data.repliesCount > 0 &&
+                data.lastReplyBy &&
+                data.lastReplyBy !== user.email &&
+                data.userReadLastReply !== true
+              );
+
               return {
                 id: 'msg_' + doc.id,
                 type: data.type || 'info',
                 title: `📩 הודעה מ-${data.fromName || 'מנהל'}`,
                 description: data.message,
+                message: data.message, // ✅ Add message field for compatibility
+                category: data.category || 'info', // ✅ Category
+                subject: data.subject || null,     // ✅ Subject
                 time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('he-IL') : '',
-                urgent: data.priority >= 5,
+                urgent: hasUnreadReplies,  // Mark as urgent if has unread replies
+                hasUnreadReplies: hasUnreadReplies, // ✅ Explicit flag for UI
                 isAdminMessage: true,
                 messageId: doc.id,
                 status: data.status,
+                repliesCount: data.repliesCount || 0,
+                lastReplyAt: data.lastReplyAt?.toMillis() || 0,
+                lastReplyBy: data.lastReplyBy,
+                createdAt: data.createdAt?.toMillis() || 0,
                 timestamp: data.createdAt ? data.createdAt.toMillis() : 0
               };
             })
             .sort((a, b) => b.timestamp - a.timestamp); // Sort newest first
+
+          console.log(`✅ Filtered to ${messages.length} active messages`);
 
           // Add sorted messages to notifications
           messages.forEach(notification => {
@@ -110,7 +156,63 @@ export class NotificationBellSystem {
         }
       );
 
-    console.log('✅ NotificationBell: Listening to admin messages for', user.email);
+    console.log('✅ NotificationBell: Listening to NEW MODEL admin messages for', user.email);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 Listen to task approval notifications
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Shows messages with:
+    // ✅ type: 'task_approval' (budget approved/rejected messages)
+    // ✅ status: 'unread' (new approval notifications)
+    this.taskApprovalListener = db.collection('user_messages')
+      .where('to', '==', user.email)
+      .where('type', '==', 'task_approval')
+      .where('status', '==', 'unread')
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .onSnapshot(
+        snapshot => {
+          console.log(`✅ NotificationBell: Received ${snapshot.size} task approval notifications`);
+
+          // Remove old task approval notifications
+          this.notifications = this.notifications.filter(n => !n.isTaskApproval);
+
+          // Convert to notification format
+          const approvalNotifications = snapshot.docs.map(doc => {
+            const data = doc.data();
+
+            return {
+              id: 'approval_' + doc.id,
+              type: 'success',
+              title: '✅ אישור תקציב',
+              description: data.message,
+              time: data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('he-IL') : '',
+              urgent: true,  // Always show as urgent
+              isTaskApproval: true,
+              messageId: doc.id,
+              taskId: data.taskId,
+              approvalId: data.approvalId,
+              timestamp: data.createdAt ? data.createdAt.toMillis() : 0
+            };
+          }).sort((a, b) => b.timestamp - a.timestamp);
+
+          console.log(`✅ Filtered to ${approvalNotifications.length} task approval notifications`);
+
+          // Add sorted notifications
+          approvalNotifications.forEach(notification => {
+            this.notifications.unshift(notification);
+          });
+
+          // Update UI
+          this.updateBell();
+          this.renderNotifications();
+        },
+        error => {
+          console.error('NotificationBell: Error listening to task approvals:', error);
+        }
+      );
+
+    console.log('✅ NotificationBell: Listening to task approval notifications for', user.email);
   }
 
   /**
@@ -152,8 +254,8 @@ export class NotificationBellSystem {
     // Find the notification
     const notification = this.notifications.find(n => n.id === id);
 
-    // If it's an admin message, update status in Firestore to 'dismissed'
-    if (notification && notification.isAdminMessage && notification.messageId) {
+    // If it's an admin message OR task approval notification, update status in Firestore to 'dismissed'
+    if (notification && (notification.isAdminMessage || notification.isTaskApproval) && notification.messageId) {
       try {
         if (window.firebaseDB) {
           await window.firebaseDB.collection('user_messages')
@@ -162,10 +264,10 @@ export class NotificationBellSystem {
               status: 'dismissed',
               dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-          console.log(`✅ Message ${notification.messageId} dismissed`);
+          console.log(`✅ ${notification.isTaskApproval ? 'Task approval notification' : 'Message'} ${notification.messageId} dismissed`);
         }
       } catch (error) {
-        console.error('Error dismissing message:', error);
+        console.error('Error dismissing notification:', error);
       }
     }
 
@@ -177,23 +279,25 @@ export class NotificationBellSystem {
   }
 
   async clearAllNotifications() {
-    // Dismiss all admin messages in Firestore
-    const adminMessages = this.notifications.filter(n => n.isAdminMessage && n.messageId);
+    // Dismiss all admin messages AND task approval notifications in Firestore
+    const dismissableNotifications = this.notifications.filter(n =>
+      (n.isAdminMessage || n.isTaskApproval) && n.messageId
+    );
 
-    if (adminMessages.length > 0 && window.firebaseDB) {
+    if (dismissableNotifications.length > 0 && window.firebaseDB) {
       try {
         const batch = window.firebaseDB.batch();
-        adminMessages.forEach(msg => {
-          const ref = window.firebaseDB.collection('user_messages').doc(msg.messageId);
+        dismissableNotifications.forEach(notif => {
+          const ref = window.firebaseDB.collection('user_messages').doc(notif.messageId);
           batch.update(ref, {
             status: 'dismissed',
             dismissedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
         });
         await batch.commit();
-        console.log(`✅ Dismissed ${adminMessages.length} messages`);
+        console.log(`✅ Dismissed ${dismissableNotifications.length} notifications (admin messages + task approvals)`);
       } catch (error) {
-        console.error('Error dismissing messages:', error);
+        console.error('Error dismissing notifications:', error);
       }
     }
 
@@ -560,7 +664,8 @@ return;
           repliesCount: firebase.firestore.FieldValue.increment(1),
           lastReplyAt: firebase.firestore.FieldValue.serverTimestamp(),
           lastReplyBy: user.email,
-          status: 'responded'
+          status: 'responded',
+          userReadLastReply: true // ✅ User sent the message, so they already read it
         });
 
       console.log(`✅ Reply sent successfully: ${replyRef.id}`);
@@ -659,4 +764,10 @@ return;
   }
 }
 
-export default NotificationBellSystem;
+// ES6 Module Export
+export { NotificationBellSystem };
+
+// Initialize and export to window (for backward compatibility)
+window.NotificationBellSystem = NotificationBellSystem;
+window.notificationBell = new NotificationBellSystem();
+console.log('✅ NotificationBell initialized successfully');
