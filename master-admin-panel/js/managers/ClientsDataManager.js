@@ -189,30 +189,33 @@
 
                 const snapshot = await this.db.collection('clients').get();
 
-                this.clients = snapshot.docs.map(doc => {
-                    const clientData = doc.data();
-                    const client = {
-                        id: doc.id,
-                        ...clientData,
-                        // Ensure we have the correct field names
-                        fullName: clientData.fullName || clientData.clientName || '',
-                        caseNumber: clientData.caseNumber || '',
-                        type: clientData.type || 'hours',
-                        isBlocked: clientData.isBlocked || false,
-                        isCritical: clientData.isCritical || false,
-                        status: clientData.status || 'active',
-                        assignedTo: clientData.assignedTo || [],
-                        services: clientData.services || [],
-                        createdAt: clientData.createdAt,
-                        lastActivity: clientData.lastActivity || clientData.lastModifiedAt
-                    };
+                this.clients = snapshot.docs
+                    .map(doc => {
+                        const clientData = doc.data();
+                        const client = {
+                            id: doc.id,
+                            ...clientData,
+                            // Ensure we have the correct field names
+                            fullName: clientData.fullName || clientData.clientName || '',
+                            caseNumber: clientData.caseNumber || '',
+                            type: clientData.type || 'hours',
+                            isBlocked: clientData.isBlocked || false,
+                            isCritical: clientData.isCritical || false,
+                            status: clientData.status || 'active',
+                            assignedTo: clientData.assignedTo || [],
+                            services: clientData.services || [],
+                            createdAt: clientData.createdAt,
+                            lastActivity: clientData.lastActivity || clientData.lastModifiedAt
+                        };
 
-                    // Calculate hours dynamically from services
-                    client.totalHours = this.calculateTotalHoursFromServices(client);
-                    client.hoursRemaining = this.calculateRemainingHoursFromServices(client);
+                        // Calculate hours dynamically from services
+                        client.totalHours = this.calculateTotalHoursFromServices(client);
+                        client.hoursRemaining = this.calculateRemainingHoursFromServices(client);
 
-                    return client;
-                });
+                        return client;
+                    })
+                    // ✅ סינון תיקים פנימיים - לא מציגים אותם ברשימת הלקוחות
+                    .filter(client => !client.isInternal && client.clientType !== 'internal');
 
                 console.log(`✅ Loaded ${this.clients.length} clients`);
 
