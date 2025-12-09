@@ -6818,7 +6818,7 @@ exports.uploadFeeAgreement = functions.https.onCall(async (data, context) => {
       downloadUrl: downloadUrl,
       fileType: data.fileType,
       fileSize: fileSize,
-      uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+      uploadedAt: admin.firestore.Timestamp.now(),
       uploadedBy: user.email
     };
 

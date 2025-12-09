@@ -87,7 +87,8 @@
       "Bash(firebase login:*)",
       "Bash(export GOOGLE_APPLICATION_CREDENTIALS=\"/c/Users/User/law-office-system/service-account-key.json\")",
       "Bash(GOOGLE_APPLICATION_CREDENTIALS=\"./service-account-key.json\" firebase deploy:*)",
-      "Bash(firebase logout:*)"
+      "Bash(firebase logout:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
