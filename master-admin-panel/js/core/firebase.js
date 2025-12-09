@@ -33,6 +33,7 @@
             this.auth = null;
             this.db = null;
             this.functions = null;
+            this.storage = null;
             this.initialized = false;
         }
 
@@ -63,6 +64,7 @@
                 this.auth = this.app.auth();
                 this.db = this.app.firestore();
                 this.functions = this.app.functions();
+                this.storage = this.app.storage();
 
                 // CRITICAL: Set persistence to SESSION only for Master Admin
                 // זה מבטיח שה-session לא ישתף עם טאבים אחרים
@@ -96,6 +98,7 @@
                 window.firebaseAuth = this.auth;
                 window.firebaseDB = this.db;
                 window.firebaseFunctions = this.functions;
+                window.firebaseStorage = this.storage;
 
                 // Dispatch custom event
                 window.dispatchEvent(new CustomEvent('firebase:ready'));
@@ -140,6 +143,17 @@
                 throw new Error('Firebase לא אותחל. קרא ל-init() תחילה.');
             }
             return this.functions;
+        }
+
+        /**
+         * Get Storage Instance
+         * קבלת instance של Cloud Storage
+         */
+        getStorage() {
+            if (!this.initialized) {
+                throw new Error('Firebase לא אותחל. קרא ל-init() תחילה.');
+            }
+            return this.storage;
         }
 
         /**

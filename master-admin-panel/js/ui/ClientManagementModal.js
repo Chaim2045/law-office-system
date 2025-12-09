@@ -106,6 +106,8 @@
             // Render content
             this.renderClientInfo();
             this.renderServices();
+            this.renderFeeAgreements();
+            this.setupFeeAgreementListeners();
 
             // Show modal
             this.modalElement.style.display = 'flex';
@@ -1357,6 +1359,309 @@
                 // Fallback to alert
                 alert(message);
             }
+        }
+
+        // ===============================
+        // Fee Agreements Functions - הסכמי שכר טרחה
+        // ===============================
+
+        /**
+         * Render fee agreements list
+         * רינדור רשימת הסכמי שכר טרחה
+         */
+        renderFeeAgreements() {
+            const container = document.getElementById('feeAgreementsList');
+            if (!container) return;
+
+            const agreements = this.currentClient?.feeAgreements || [];
+
+            if (agreements.length === 0) {
+                container.innerHTML = `
+                    <div class="fee-agreements-empty">
+                        <i class="fas fa-file-contract"></i>
+                        <p>אין הסכמי שכר טרחה</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const agreementsHTML = agreements.map(agreement => {
+                const isPdf = agreement.fileType === 'application/pdf';
+                const iconClass = isPdf ? 'pdf' : 'image';
+                const icon = isPdf ? 'fa-file-pdf' : 'fa-file-image';
+
+                // Format date
+                let uploadDate = '-';
+                if (agreement.uploadedAt) {
+                    const date = agreement.uploadedAt.seconds
+                        ? new Date(agreement.uploadedAt.seconds * 1000)
+                        : new Date(agreement.uploadedAt);
+                    uploadDate = date.toLocaleDateString('he-IL');
+                }
+
+                // Format file size
+                const fileSize = this.formatFileSize(agreement.fileSize);
+
+                return `
+                    <div class="fee-agreement-item" data-agreement-id="${agreement.id}">
+                        <div class="fee-agreement-info">
+                            <div class="fee-agreement-icon ${iconClass}">
+                                <i class="fas ${icon}"></i>
+                            </div>
+                            <div class="fee-agreement-details">
+                                <div class="fee-agreement-name" title="${this.escapeHtml(agreement.originalName || agreement.fileName)}">
+                                    ${this.escapeHtml(agreement.originalName || agreement.fileName)}
+                                </div>
+                                <div class="fee-agreement-meta">
+                                    <span><i class="fas fa-calendar-alt"></i> ${uploadDate}</span>
+                                    <span><i class="fas fa-hdd"></i> ${fileSize}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fee-agreement-actions">
+                            <button class="fee-agreement-action-btn view" data-action="view" data-agreement-id="${agreement.id}" title="צפה בהסכם">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="fee-agreement-action-btn delete" data-action="delete" data-agreement-id="${agreement.id}" title="מחק הסכם">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = agreementsHTML;
+
+            // Attach action listeners
+            this.attachFeeAgreementActionListeners();
+        }
+
+        /**
+         * Setup fee agreement upload listeners
+         * הגדרת מאזינים להעלאת הסכם
+         */
+        setupFeeAgreementListeners() {
+            const uploadBtn = document.getElementById('uploadFeeAgreementBtn');
+            const fileInput = document.getElementById('feeAgreementInput');
+
+            if (!uploadBtn || !fileInput) return;
+
+            // Remove existing listeners to prevent duplicates
+            uploadBtn.replaceWith(uploadBtn.cloneNode(true));
+            fileInput.replaceWith(fileInput.cloneNode(true));
+
+            // Get fresh references
+            const newUploadBtn = document.getElementById('uploadFeeAgreementBtn');
+            const newFileInput = document.getElementById('feeAgreementInput');
+
+            // Upload button click
+            newUploadBtn.addEventListener('click', () => {
+                newFileInput.click();
+            });
+
+            // File selected
+            newFileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    await this.uploadFeeAgreement(file);
+                }
+                // Reset input
+                newFileInput.value = '';
+            });
+        }
+
+        /**
+         * Attach fee agreement action listeners
+         * חיבור מאזיני אירועים לפעולות הסכם
+         */
+        attachFeeAgreementActionListeners() {
+            const container = document.getElementById('feeAgreementsList');
+            if (!container) return;
+
+            const actionButtons = container.querySelectorAll('[data-action]');
+            actionButtons.forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const action = e.currentTarget.dataset.action;
+                    const agreementId = e.currentTarget.dataset.agreementId;
+
+                    if (action === 'view') {
+                        this.viewFeeAgreement(agreementId);
+                    } else if (action === 'delete') {
+                        await this.deleteFeeAgreement(agreementId);
+                    }
+                });
+            });
+        }
+
+        /**
+         * Upload fee agreement
+         * העלאת הסכם שכר טרחה
+         */
+        async uploadFeeAgreement(file) {
+            // Validate file type
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                this.showNotification('סוג קובץ לא נתמך. יש להעלות PDF או תמונה', 'error');
+                return;
+            }
+
+            // Validate file size (max 6MB)
+            const maxSize = 6 * 1024 * 1024;
+            if (file.size > maxSize) {
+                this.showNotification('הקובץ גדול מדי. גודל מקסימלי: 6MB', 'error');
+                return;
+            }
+
+            try {
+                this.showLoading('מעלה הסכם...');
+
+                // Convert file to base64
+                const base64Data = await this.fileToBase64(file);
+
+                // Call Cloud Function
+                const uploadFeeAgreementFn = window.firebaseFunctions.httpsCallable('uploadFeeAgreement');
+                const result = await uploadFeeAgreementFn({
+                    clientId: this.currentClient.id,
+                    fileName: file.name,
+                    fileData: base64Data,
+                    fileType: file.type,
+                    fileSize: file.size
+                });
+
+                if (result.data.success) {
+                    // Add to local state
+                    if (!this.currentClient.feeAgreements) {
+                        this.currentClient.feeAgreements = [];
+                    }
+                    this.currentClient.feeAgreements.push(result.data.agreement);
+
+                    // Re-render
+                    this.renderFeeAgreements();
+
+                    this.hideLoading();
+                    this.showNotification('ההסכם הועלה בהצלחה', 'success');
+
+                    // Refresh parent data
+                    if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
+                        await window.ClientsDataManager.loadClients();
+                    }
+                } else {
+                    throw new Error(result.data.message || 'שגיאה בהעלאה');
+                }
+
+            } catch (error) {
+                console.error('❌ Error uploading fee agreement:', error);
+                this.hideLoading();
+                this.showNotification(`שגיאה בהעלאת הסכם: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * View fee agreement
+         * צפייה בהסכם שכר טרחה
+         */
+        viewFeeAgreement(agreementId) {
+            const agreement = this.currentClient?.feeAgreements?.find(a => a.id === agreementId);
+
+            if (!agreement || !agreement.downloadUrl) {
+                this.showNotification('לא ניתן לפתוח את ההסכם', 'error');
+                return;
+            }
+
+            // Open in new tab
+            window.open(agreement.downloadUrl, '_blank');
+        }
+
+        /**
+         * Delete fee agreement
+         * מחיקת הסכם שכר טרחה
+         */
+        async deleteFeeAgreement(agreementId) {
+            const agreement = this.currentClient?.feeAgreements?.find(a => a.id === agreementId);
+
+            if (!agreement) {
+                this.showNotification('הסכם לא נמצא', 'error');
+                return;
+            }
+
+            const confirmMessage = `האם למחוק את ההסכם "${agreement.originalName || agreement.fileName}"?\n\nשים לב: הפעולה בלתי הפיכה!`;
+
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            try {
+                this.showLoading('מוחק הסכם...');
+
+                // Call Cloud Function
+                const deleteFeeAgreementFn = window.firebaseFunctions.httpsCallable('deleteFeeAgreement');
+                const result = await deleteFeeAgreementFn({
+                    clientId: this.currentClient.id,
+                    agreementId: agreementId
+                });
+
+                if (result.data.success) {
+                    // Remove from local state
+                    this.currentClient.feeAgreements = this.currentClient.feeAgreements.filter(
+                        a => a.id !== agreementId
+                    );
+
+                    // Re-render
+                    this.renderFeeAgreements();
+
+                    this.hideLoading();
+                    this.showNotification('ההסכם נמחק בהצלחה', 'success');
+
+                    // Refresh parent data
+                    if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
+                        await window.ClientsDataManager.loadClients();
+                    }
+                } else {
+                    throw new Error(result.data.message || 'שגיאה במחיקה');
+                }
+
+            } catch (error) {
+                console.error('❌ Error deleting fee agreement:', error);
+                this.hideLoading();
+                this.showNotification(`שגיאה במחיקת הסכם: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Convert file to base64
+         * המרת קובץ ל-base64
+         */
+        fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        /**
+         * Format file size
+         * פורמט גודל קובץ
+         */
+        formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let unitIndex = 0;
+            let size = bytes;
+
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+
+            return `${size.toFixed(1)} ${units[unitIndex]}`;
         }
     }
 

@@ -1,0 +1,65 @@
+rules_version = '2';
+
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ * FIREBASE STORAGE SECURITY RULES
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * Last Updated: 2025-12-09
+ * Purpose: Secure storage for client fee agreements (PDF/Images)
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ==================== Helper Functions ====================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is admin (Custom Claims)
+    function isAdmin() {
+      return request.auth != null &&
+             request.auth.token.role == 'admin';
+    }
+
+    // Validate file size (max 10MB)
+    function isValidFileSize() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Validate file type (PDF or Images only)
+    function isValidFileType() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('image/jpeg') ||
+             request.resource.contentType.matches('image/png') ||
+             request.resource.contentType.matches('image/webp');
+    }
+
+    // ==================== Storage Rules ====================
+
+    // Client Fee Agreements
+    // Path: /clients/{clientId}/agreements/{fileName}
+    match /clients/{clientId}/agreements/{fileName} {
+      // Read: Admin only
+      allow read: if isAdmin();
+
+      // Write: Admin only + file validation
+      allow write: if isAdmin() &&
+                      isValidFileSize() &&
+                      isValidFileType();
+
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
+    // Default: Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

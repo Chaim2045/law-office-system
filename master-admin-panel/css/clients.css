@@ -1491,3 +1491,228 @@ select.form-input {
 .management-empty-state p {
     font-size: 0.875rem;
 }
+
+/* ===== Fee Agreements Section ===== */
+.fee-agreements-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.fee-agreements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Individual Agreement Item */
+.fee-agreement-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-item:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.fee-agreement-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.fee-agreement-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.fee-agreement-icon i {
+    font-size: 1rem;
+}
+
+.fee-agreement-icon.pdf {
+    background: rgba(220, 38, 38, 0.08);
+    color: #dc2626;
+}
+
+.fee-agreement-icon.image {
+    background: rgba(16, 185, 129, 0.08);
+    color: #10b981;
+}
+
+.fee-agreement-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.fee-agreement-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fee-agreement-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fee-agreement-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Agreement Actions */
+.fee-agreement-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.fee-agreement-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-action-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.04);
+}
+
+.fee-agreement-action-btn.view:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.fee-agreement-action-btn.delete:hover {
+    border-color: var(--danger-red);
+    color: var(--danger-red);
+    background: rgba(220, 38, 38, 0.04);
+}
+
+/* Upload Area */
+.fee-agreement-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    background: rgba(107, 114, 128, 0.02);
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-upload:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.fee-agreement-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-upload-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.fee-agreement-upload-btn i {
+    font-size: 1rem;
+}
+
+.fee-agreement-upload-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Empty State for Agreements */
+.fee-agreements-empty {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.fee-agreements-empty i {
+    font-size: 2rem;
+    color: var(--border-color);
+    margin-bottom: 0.5rem;
+}
+
+.fee-agreements-empty p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Upload Progress */
+.fee-agreement-uploading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(37, 99, 235, 0.04);
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+}
+
+.fee-agreement-uploading i {
+    color: var(--primary-color);
+    animation: spin 1s linear infinite;
+}
+
+.fee-agreement-uploading span {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
