@@ -64,7 +64,12 @@
                 this.auth = this.app.auth();
                 this.db = this.app.firestore();
                 this.functions = this.app.functions();
-                this.storage = this.app.storage();
+
+                // Initialize Storage only if SDK is loaded (optional service)
+                // דפים שצריכים Storage יטענו את ה-SDK, דפים אחרים ימשיכו לעבוד
+                if (typeof this.app.storage === 'function') {
+                    this.storage = this.app.storage();
+                }
 
                 // CRITICAL: Set persistence to SESSION only for Master Admin
                 // זה מבטיח שה-session לא ישתף עם טאבים אחרים
@@ -98,7 +103,9 @@
                 window.firebaseAuth = this.auth;
                 window.firebaseDB = this.db;
                 window.firebaseFunctions = this.functions;
-                window.firebaseStorage = this.storage;
+                if (this.storage) {
+                    window.firebaseStorage = this.storage;
+                }
 
                 // Dispatch custom event
                 window.dispatchEvent(new CustomEvent('firebase:ready'));
