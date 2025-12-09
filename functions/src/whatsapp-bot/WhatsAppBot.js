@@ -399,42 +399,79 @@ class WhatsAppBot {
             }
 
             const approval = approvalDoc.data();
+            const taskId = approval.taskId;
 
             // 🛡️ בדיקת בטיחות: האם המשימה כבר אושרה/נדחתה?
             if (approval.status !== 'pending') {
-                const approvedBy = approval.approvedByName || approval.approvedBy || 'מנהל אחר';
+                const approvedBy = approval.reviewedByName || approval.approvedByName || approval.approvedBy || 'מנהל אחר';
                 return `⚠️ המשימה כבר טופלה!
 
 📋 לקוח: ${approval.taskData?.clientName || 'לא צוין'}
-✅ סטטוס: ${approval.status === 'approved' ? 'אושרה' : 'נדחתה'}
+✅ סטטוס: ${approval.status === 'approved' || approval.status === 'modified' ? 'אושרה' : 'נדחתה'}
 👤 על ידי: ${approvedBy}
-📅 בתאריך: ${approval.approvedAt?.toDate().toLocaleString('he-IL') || approval.reviewedAt?.toDate().toLocaleString('he-IL') || 'לא ידוע'}
+📅 בתאריך: ${approval.reviewedAt?.toDate().toLocaleString('he-IL') || approval.approvedAt?.toDate().toLocaleString('he-IL') || 'לא ידוע'}
 
 כתוב "משימות" לרשימה עדכנית`;
             }
 
             // אם המנהל לא ציין דקות, קח מהמקורות האפשריים
-            const finalMinutes = approvedMinutes || approval.requestedMinutes || approval.taskData?.budgetMinutes || approval.taskData?.estimatedMinutes || 0;
+            const requestedMinutes = approval.requestedMinutes || approval.taskData?.estimatedMinutes || 0;
+            const finalMinutes = approvedMinutes || requestedMinutes;
 
-            // עדכן את הסטטוס ל-approved
-            await this.db.collection('pending_task_approvals').doc(approvalId).update({
-                status: 'approved',
-                approvedBy: userInfo?.email || 'unknown',
-                approvedByName: userInfo?.name || 'Unknown',
+            // קבע סטטוס - approved אם אותו תקציב, modified אם שונה
+            const isModified = finalMinutes !== requestedMinutes;
+            const newStatus = isModified ? 'modified' : 'approved';
+
+            // 🔄 שימוש ב-Batch Write כמו ב-Cloud Function - אטומי!
+            const batch = this.db.batch();
+
+            // 1. עדכון pending_task_approvals (בדיוק כמו Cloud Function)
+            const approvalRef = this.db.collection('pending_task_approvals').doc(approvalId);
+            batch.update(approvalRef, {
+                status: newStatus,
+                reviewedBy: userInfo?.email || 'unknown',
+                reviewedByName: userInfo?.name || 'Unknown',
+                reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
                 approvedMinutes: finalMinutes,
-                approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+                adminNotes: 'אושר דרך WhatsApp',
                 whatsappApproval: true
             });
 
-            // עדכן את המשימה עצמה
-            if (approval.taskId) {
-                await this.db.collection('budget_tasks').doc(approval.taskId).update({
-                    status: 'approved',
-                    approvedBudgetMinutes: finalMinutes,
+            // 2. עדכון budget_tasks (בדיוק כמו Cloud Function)
+            if (taskId) {
+                const taskRef = this.db.collection('budget_tasks').doc(taskId);
+                batch.update(taskRef, {
+                    status: 'פעיל',  // ✅ סטטוס נכון! (לא 'approved')
+                    estimatedMinutes: finalMinutes,
+                    estimatedHours: finalMinutes / 60,
+                    approvedMinutes: finalMinutes,
                     approvedBy: userInfo?.email || 'unknown',
                     approvedAt: admin.firestore.FieldValue.serverTimestamp()
                 });
             }
+
+            // 3. יצירת הודעה לעובד (בדיוק כמו Cloud Function)
+            const messageText = isModified
+                ? `✅ תקציב המשימה אושר עם שינוי\n\n📋 משימה: ${approval.taskData?.description || ''}\n⏱️ תקציב מבוקש: ${requestedMinutes} דקות\n✅ תקציב מאושר: ${finalMinutes} דקות\n📝 אושר דרך WhatsApp`
+                : `✅ תקציב המשימה אושר במלואו\n\n📋 משימה: ${approval.taskData?.description || ''}\n⏱️ תקציב: ${finalMinutes} דקות\n📝 אושר דרך WhatsApp`;
+
+            const messageRef = this.db.collection('user_messages').doc();
+            batch.set(messageRef, {
+                to: approval.requestedBy,
+                from: 'system',
+                fromName: 'מערכת',
+                message: messageText,
+                type: 'task_approval',
+                taskId: taskId,
+                approvalId: approvalId,
+                status: 'unread',
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 4. ביצוע כל העדכונים באופן אטומי
+            await batch.commit();
+
+            console.log(`✅ WhatsApp Bot: Task ${taskId} approved: ${finalMinutes} minutes by ${userInfo?.name}`);
 
             const hours = Math.floor(finalMinutes / 60);
             const mins = finalMinutes % 60;
@@ -447,6 +484,7 @@ class WhatsAppBot {
 📋 לקוח: ${approval.taskData?.clientName || 'לא צוין'}
 ⏱️ תקציב מאושר: ${timeStr}
 👤 אושר על ידי: ${userInfo?.name || 'אתה'}
+📨 העובד יקבל התראה
 
 כתוב "משימות" לעוד משימות או "תפריט" לתפריט ראשי`;
 
@@ -473,45 +511,71 @@ class WhatsAppBot {
             }
 
             const approval = approvalDoc.data();
+            const taskId = approval.taskId;
+            const requestedMinutes = approval.requestedMinutes || approval.taskData?.estimatedMinutes || 0;
 
             // 🛡️ בדיקת בטיחות: האם המשימה כבר אושרה/נדחתה?
             if (approval.status !== 'pending') {
-                const handledBy = approval.approvedByName || approval.rejectedByName || approval.approvedBy || approval.rejectedBy || 'מנהל אחר';
+                const handledBy = approval.reviewedByName || approval.approvedByName || approval.rejectedByName || approval.approvedBy || approval.rejectedBy || 'מנהל אחר';
                 return `⚠️ המשימה כבר טופלה!
 
 📋 לקוח: ${approval.taskData?.clientName || 'לא צוין'}
-✅ סטטוס: ${approval.status === 'approved' ? 'אושרה' : 'נדחתה'}
+✅ סטטוס: ${approval.status === 'approved' || approval.status === 'modified' ? 'אושרה' : 'נדחתה'}
 👤 על ידי: ${handledBy}
-📅 בתאריך: ${approval.approvedAt?.toDate().toLocaleString('he-IL') || approval.rejectedAt?.toDate().toLocaleString('he-IL') || approval.reviewedAt?.toDate().toLocaleString('he-IL') || 'לא ידוע'}
+📅 בתאריך: ${approval.reviewedAt?.toDate().toLocaleString('he-IL') || approval.approvedAt?.toDate().toLocaleString('he-IL') || approval.rejectedAt?.toDate().toLocaleString('he-IL') || 'לא ידוע'}
 
 כתוב "משימות" לרשימה עדכנית`;
             }
 
-            // עדכן סטטוס ל-rejected
-            await this.db.collection('pending_task_approvals').doc(approvalId).update({
+            const finalReason = reason || 'לא צוינה סיבה (נדחה דרך WhatsApp)';
+
+            // 🔄 שימוש ב-Batch Write כמו ב-Cloud Function - אטומי!
+            const batch = this.db.batch();
+
+            // 1. עדכון pending_task_approvals (בדיוק כמו Cloud Function)
+            const approvalRef = this.db.collection('pending_task_approvals').doc(approvalId);
+            batch.update(approvalRef, {
                 status: 'rejected',
-                rejectedBy: userInfo?.email || 'unknown',
-                rejectedByName: userInfo?.name || 'Unknown',
-                rejectionReason: reason || 'לא צוינה סיבה',
-                rejectedAt: admin.firestore.FieldValue.serverTimestamp(),
+                reviewedBy: userInfo?.email || 'unknown',
+                reviewedByName: userInfo?.name || 'Unknown',
+                reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
+                rejectionReason: finalReason,
                 whatsappApproval: true
             });
 
-            // עדכן את המשימה עצמה
-            if (approval.taskId) {
-                await this.db.collection('budget_tasks').doc(approval.taskId).update({
-                    status: 'rejected',
-                    rejectionReason: reason || 'לא צוינה סיבה',
-                    rejectedBy: userInfo?.email || 'unknown',
-                    rejectedAt: admin.firestore.FieldValue.serverTimestamp()
-                });
+            // 2. מחיקת budget_tasks (בדיוק כמו Cloud Function)
+            if (taskId) {
+                const taskRef = this.db.collection('budget_tasks').doc(taskId);
+                batch.delete(taskRef);  // ✅ מחיקה! (לא עדכון סטטוס)
             }
+
+            // 3. יצירת הודעה לעובד (בדיוק כמו Cloud Function)
+            const messageText = `❌ בקשת תקציב נדחתה\n\n📋 משימה: ${approval.taskData?.description || ''}\n⏱️ תקציב מבוקש: ${requestedMinutes} דקות\n💬 סיבה: ${finalReason}\n📝 נדחה דרך WhatsApp`;
+
+            const messageRef = this.db.collection('user_messages').doc();
+            batch.set(messageRef, {
+                to: approval.requestedBy,
+                from: 'system',
+                fromName: 'מערכת',
+                message: messageText,
+                type: 'task_rejection',
+                taskId: taskId,
+                approvalId: approvalId,
+                status: 'unread',
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 4. ביצוע כל העדכונים באופן אטומי
+            await batch.commit();
+
+            console.log(`❌ WhatsApp Bot: Task ${taskId} rejected by ${userInfo?.name}. Reason: ${finalReason}`);
 
             return `❌ המשימה נדחתה
 
 📋 לקוח: ${approval.taskData?.clientName || 'לא צוין'}
-💬 סיבה: ${reason || 'לא צוינה'}
+💬 סיבה: ${finalReason}
 👤 נדחה על ידי: ${userInfo?.name || 'אתה'}
+📨 העובד יקבל התראה
 
 כתוב "משימות" לעוד משימות או "תפריט" לתפריט ראשי`;
 
