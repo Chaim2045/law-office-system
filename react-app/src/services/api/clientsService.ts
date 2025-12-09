@@ -41,15 +41,16 @@ export const createClient = async (clientData: ClientFormData): Promise<Client> 
 
 /**
  * קבלת כל הלקוחות
+ * @param includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
  */
-export const getClients = async (): Promise<Client[]> => {
+export const getClients = async (includeInternal = false): Promise<Client[]> => {
   try {
-    const getClientsFn = httpsCallable<void, FirebaseFunctionResponse<{ clients: Client[] }>>(
+    const getClientsFn = httpsCallable<{ includeInternal?: boolean }, FirebaseFunctionResponse<{ clients: Client[] }>>(
       functions,
       'getClients'
     );
 
-    const result = await getClientsFn();
+    const result = await getClientsFn({ includeInternal });
 
     if (!result.data.success) {
       throw new Error(result.data.message || 'שגיאה בטעינת לקוחות');
@@ -166,10 +167,12 @@ export const deleteClient = async (clientId: string): Promise<void> => {
 
 /**
  * חיפוש לקוחות
+ * @param searchTerm - מילת חיפוש
+ * @param includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
  */
-export const searchClients = async (searchTerm: string): Promise<Client[]> => {
+export const searchClients = async (searchTerm: string, includeInternal = false): Promise<Client[]> => {
   try {
-    const allClients = await getClients();
+    const allClients = await getClients(includeInternal);
 
     if (!searchTerm.trim()) {
       return allClients;
