@@ -261,8 +261,8 @@ jobs:
     name: 🎭 E2E Tests (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [build]
-    # Run E2E after build completes (Netlify deploys automatically)
+    needs: [deploy-staging]
+    # Run E2E after staging deployment completes
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
 
     steps:
@@ -394,9 +394,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment:
-      name: staging
-      url: https://law-office-system-e4801.web.app
     timeout-minutes: 15
 
     steps:
@@ -442,9 +439,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-staging, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment:
-      name: production
-      url: https://law-office-system-e4801.web.app
     timeout-minutes: 20
 
     steps:
@@ -542,7 +536,7 @@ jobs:
   notify:
     name: 📬 Send Notifications
     runs-on: ubuntu-latest
-    needs: [health-check, e2e]
+    needs: [health-check]
     if: always()
 
     steps:
