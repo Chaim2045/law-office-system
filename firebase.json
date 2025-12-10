@@ -31,6 +31,10 @@
     ],
     "rewrites": [
       {
+        "source": "**/*.@(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf|eot)",
+        "destination": "**/*.@(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf|eot)"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
