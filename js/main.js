@@ -224,19 +224,27 @@ class LawOfficeManager {
 
         UIComponents.updateUserDisplay(this.currentUsername);
 
-        // Start listening to admin messages in notification bell
+        // ✅ CRITICAL: Start listening to admin messages in notification bell
+        console.log('🔍 [DEBUG] About to start NotificationBell listener...');
+        console.log('🔍 [DEBUG] this.notificationBell:', !!this.notificationBell);
+        console.log('🔍 [DEBUG] window.firebaseDB:', !!window.firebaseDB);
+        console.log('🔍 [DEBUG] user:', user);
+
         if (this.notificationBell && window.firebaseDB) {
           console.log('🔔 Starting NotificationBell listener for', user.email);
           try {
             this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
             console.log('✅ NotificationBell listener started successfully');
+            console.log('✅ [DEBUG] Listener confirmed active:', !!this.notificationBell.messagesListener);
           } catch (error) {
             console.error('❌ Failed to start NotificationBell listener:', error);
           }
         } else {
-          console.warn('⚠️ Cannot start NotificationBell listener:', {
+          console.error('⚠️ CRITICAL: Cannot start NotificationBell listener!', {
             hasNotificationBell: !!this.notificationBell,
-            hasFirebaseDB: !!window.firebaseDB
+            hasFirebaseDB: !!window.firebaseDB,
+            notificationBell: this.notificationBell,
+            firebaseDB: window.firebaseDB
           });
         }
 
