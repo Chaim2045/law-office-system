@@ -463,7 +463,7 @@ class LawOfficeManager {
       // First load: Fetch from Firebase and cache
       // Second load (< 5 min): Return from cache immediately (fast!)
       // Third load (5-15 min): Return stale cache + refresh in background
-      const [clients, budgetTasks, timesheetEntries] = await Promise.all([
+      const dataLoadingPromise = Promise.all([
         this.dataCache.get('clients', () => FirebaseOps.loadClientsFromFirebase()),
         this.dataCache.get(`budgetTasks:${this.currentUser}:${this.currentTaskFilter}`, () =>
           this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
@@ -474,6 +474,24 @@ class LawOfficeManager {
             || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         )
       ]);
+
+      // ✅ Simulate progress updates during loading (for better UX)
+      const progressUpdates = [
+        { delay: 300, text: 'טוען משימות...', progress: 55 },
+        { delay: 300, text: 'טוען נתוני זמן...', progress: 65 }
+      ];
+
+      let progressIndex = 0;
+      const progressInterval = setInterval(() => {
+        if (progressIndex < progressUpdates.length) {
+          const update = progressUpdates[progressIndex];
+          this.updateLoaderText(update.text, update.progress);
+          progressIndex++;
+        }
+      }, 300);
+
+      const [clients, budgetTasks, timesheetEntries] = await dataLoadingPromise;
+      clearInterval(progressInterval);
 
       this.updateLoaderText('עיבוד נתונים...', 70);
 
@@ -550,8 +568,14 @@ return false;
       this.startRealTimeListeners();
       this.updateLoaderText('כמעט מוכן...', 95);
 
+      // ✅ Small delay before final step for smoother UX
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       Logger.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
       this.updateLoaderText('הכל מוכן!', 100);
+
+      // ✅ Small delay to show 100% before entering app
+      await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
       console.error('❌ Error loading data:', error);
       this.showNotification('שגיאה בטעינת נתונים', 'error');

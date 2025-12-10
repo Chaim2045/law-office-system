@@ -264,12 +264,10 @@ bubblesContainer.classList.remove('hidden');
  * וידוא שמסך הברוך הבא מוצג לפחות 3 שניות
  */
 async function waitForWelcomeMinimumTime() {
-  // Ensure welcome screen shows for at least 1 second (optimized from 3s)
-  const elapsed = Date.now() - this.welcomeScreenStartTime;
-  const remaining = Math.max(0, 1000 - elapsed);
-  if (remaining > 0) {
-    await new Promise((resolve) => setTimeout(resolve, remaining));
-  }
+  // ✅ REMOVED: No artificial delay - progress bar provides natural feedback
+  // The progress bar at 100% is enough visual confirmation
+  // User enters immediately when data is ready
+  return;
 }
 
 /**
