@@ -217,6 +217,12 @@ bubblesContainer.classList.remove('hidden');
   // ✅ Start timing AFTER screen is visible
   this.welcomeScreenStartTime = Date.now();
 
+  // ✅ Initialize progress bar to 0
+  const progressBar = document.getElementById('progressBar');
+  if (progressBar) {
+    progressBar.style.width = '0%';
+  }
+
   // ✅ תיקון יסודי: קריאת lastLogin מ-Firebase (לא localStorage!)
   if (lastLoginTime) {
     try {
@@ -258,18 +264,18 @@ bubblesContainer.classList.remove('hidden');
  * וידוא שמסך הברוך הבא מוצג לפחות 3 שניות
  */
 async function waitForWelcomeMinimumTime() {
-  // Ensure welcome screen shows for at least 3 seconds
+  // Ensure welcome screen shows for at least 1 second (optimized from 3s)
   const elapsed = Date.now() - this.welcomeScreenStartTime;
-  const remaining = Math.max(0, 3000 - elapsed);
+  const remaining = Math.max(0, 1000 - elapsed);
   if (remaining > 0) {
     await new Promise((resolve) => setTimeout(resolve, remaining));
   }
 }
 
 /**
- * עדכון טקסט הטעינה במסך ברוך הבא
+ * עדכון טקסט הטעינה במסך ברוך הבא + Progress Bar
  */
-function updateLoaderText(text) {
+function updateLoaderText(text, progress = null) {
   // Only update if welcome screen is active
   if (!window.isInWelcomeScreen) {
     return;
@@ -277,6 +283,14 @@ function updateLoaderText(text) {
   const loaderText = document.getElementById('loaderText');
   if (loaderText) {
     loaderText.textContent = text;
+  }
+
+  // Update progress bar if progress provided
+  if (progress !== null) {
+    const progressBar = document.getElementById('progressBar');
+    if (progressBar) {
+      progressBar.style.width = `${Math.min(progress, 100)}%`;
+    }
   }
 }
 

@@ -118,6 +118,7 @@
     <link rel="stylesheet" href="css/tables.css?v=4.5.0" />
     <link rel="stylesheet" href="css/timesheet-cards.css?v=2.0.1" />
     <link rel="stylesheet" href="css/modals.css?v=2.0.0" />
+    <link rel="stylesheet" href="css/quick-actions-extend-deadline.css?v=1.0.0" />
     <link rel="stylesheet" href="css/case-creation-dialog.css?v=2.2.0" />
     <link rel="stylesheet" href="css/popups-unified.css?v=1.0.0" />
     <link rel="stylesheet" href="css/popups-rtl.css?v=1.0.0" />
@@ -427,7 +428,10 @@
               כניסה אחרונה: <span id="lastLoginTime">טוען...</span>
             </p>
             <div class="welcome-loader">
-              <div class="loader-spinner"></div>
+              <!-- Gmail-style Progress Bar -->
+              <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+              </div>
               <p class="loader-text" id="loaderText">טוען את המערכת...</p>
             </div>
           </div>
@@ -1334,22 +1338,50 @@
         border-top: 1px solid #e9ecef;
       }
 
-      .loader-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid #e2e8f0;
-        border-top: 3px solid #4299e1;
-        border-radius: 50%;
-        margin: 0 auto 12px;
-        animation: spin 0.8s linear infinite;
+      /* Gmail-style Progress Bar */
+      .progress-bar-container {
+        width: 100%;
+        height: 4px;
+        background: #e2e8f0;
+        border-radius: 2px;
+        overflow: hidden;
+        margin: 0 auto 20px;
+        position: relative;
       }
 
-      @keyframes spin {
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #4299e1 0%, #3b82f6 50%, #2563eb 100%);
+        border-radius: 2px;
+        width: 0%;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        box-shadow: 0 0 10px rgba(66, 153, 225, 0.5);
+      }
+
+      /* Shimmer effect like Gmail */
+      .progress-bar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.3) 50%,
+          transparent 100%
+        );
+        animation: shimmer 1.5s infinite;
+      }
+
+      @keyframes shimmer {
         0% {
-          transform: rotate(0deg);
+          transform: translateX(-100%);
         }
         100% {
-          transform: rotate(360deg);
+          transform: translateX(100%);
         }
       }
 

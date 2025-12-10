@@ -92,7 +92,9 @@
       "Bash(chmod:*)",
       "Bash(firebase functions:secrets:set:*)",
       "Bash(firebase functions:config:set:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(firebase serve:*)",
+      "Bash(gcloud functions logs read:*)"
     ],
     "deny": [],
     "ask": []

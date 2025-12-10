@@ -370,8 +370,8 @@ class LawOfficeManager {
     await Auth.waitForWelcomeMinimumTime.call(this);
   }
 
-  updateLoaderText(text) {
-    Auth.updateLoaderText.call(this, text);
+  updateLoaderText(text, progress = null) {
+    Auth.updateLoaderText.call(this, text, progress);
   }
 
   showApp() {
