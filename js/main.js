@@ -440,20 +440,24 @@ class LawOfficeManager {
    */
   async loadData() {
     try {
-      this.updateLoaderText('טוען נתונים...');
+      this.updateLoaderText('מתחבר...', 10);
 
       // Initialize Firebase
       FirebaseOps.initializeFirebase();
+      this.updateLoaderText('מתחבר ל-Firebase...', 20);
 
       // 🎯 אתחול CaseNumberGenerator (רק אחרי auth!)
       if (window.CaseNumberGenerator) {
         try {
           await window.CaseNumberGenerator.initialize();
+          this.updateLoaderText('מאתחל מערכת...', 30);
         } catch (error) {
           Logger.log('⚠️ CaseNumberGenerator initialization failed:', error);
           // לא עוצרים את הטעינה בגלל זה
         }
       }
+
+      this.updateLoaderText('טוען לקוחות...', 40);
 
       // ✅ Load all data in parallel with smart caching
       // First load: Fetch from Firebase and cache
@@ -471,6 +475,8 @@ class LawOfficeManager {
         )
       ]);
 
+      this.updateLoaderText('עיבוד נתונים...', 70);
+
       this.clients = clients;
       this.budgetTasks = budgetTasks;
       this.timesheetEntries = timesheetEntries;
@@ -483,7 +489,7 @@ class LawOfficeManager {
       window.lawOfficeManager = this;
       window.CoreUtils = CoreUtils; // Expose CoreUtils for date formatting, etc.
 
-      this.updateLoaderText('מכין ממשק...');
+      this.updateLoaderText('מכין ממשק...', 85);
 
       // Initialize TaskActionsManager if available
       if (window.TaskActionsModule && !this.taskActionsManager) {
@@ -542,8 +548,10 @@ return false;
 
       // ✅ הפעלת Real-time listeners למשימות ושעות
       this.startRealTimeListeners();
+      this.updateLoaderText('כמעט מוכן...', 95);
 
       Logger.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
+      this.updateLoaderText('הכל מוכן!', 100);
     } catch (error) {
       console.error('❌ Error loading data:', error);
       this.showNotification('שגיאה בטעינת נתונים', 'error');
@@ -1076,30 +1084,60 @@ return;
 
   /**
    * ✅ Update task count badges for both active and completed
+   * 🚀 OPTIMIZED: Uses Firestore count() for accurate counts without loading all documents
    */
   async updateTaskCountBadges() {
     try {
-      // טעינה מהירה של שני הסוגים לספירה
-      const [activeTasks, completedTasks] = await Promise.all([
-        BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, 'active', 50),
-        BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, 'completed', 50)
+      const db = window.firebaseDB;
+      if (!db) {
+        console.warn('⚠️ Firebase DB not available for count badges');
+        return;
+      }
+
+      // 🚀 Count queries - fast and accurate! (doesn't load documents)
+      const [activeSnapshot, completedSnapshot] = await Promise.all([
+        db.collection('budget_tasks')
+          .where('employee', '==', this.currentUser)
+          .where('status', '!=', 'הושלם')
+          .count()
+          .get(),
+
+        db.collection('budget_tasks')
+          .where('employee', '==', this.currentUser)
+          .where('status', '==', 'הושלם')
+          .count()
+          .get()
       ]);
+
+      const activeCount = activeSnapshot.data().count;
+      const completedCount = completedSnapshot.data().count;
 
       // עדכון המונה של פעילות
       const activeBadge = document.getElementById('activeCountBadge');
       if (activeBadge) {
-        activeBadge.textContent = activeTasks.length;
-        activeBadge.style.display = activeTasks.length > 0 ? 'inline-flex' : 'none';
+        activeBadge.textContent = activeCount;
+        activeBadge.style.display = activeCount > 0 ? 'inline-flex' : 'none';
       }
 
       // עדכון המונה של מושלמות
       const completedBadge = document.getElementById('completedCountBadge');
       if (completedBadge) {
-        completedBadge.textContent = completedTasks.length;
-        completedBadge.style.display = completedTasks.length > 0 ? 'inline-flex' : 'none';
+        completedBadge.textContent = completedCount;
+        completedBadge.style.display = completedCount > 0 ? 'inline-flex' : 'none';
       }
+
+      Logger.log(`✅ Count badges updated: ${activeCount} active, ${completedCount} completed`);
     } catch (error) {
       console.error('Error updating count badges:', error);
+      // Fallback: hide badges on error
+      const activeBadge = document.getElementById('activeCountBadge');
+      const completedBadge = document.getElementById('completedCountBadge');
+      if (activeBadge) {
+activeBadge.style.display = 'none';
+}
+      if (completedBadge) {
+completedBadge.style.display = 'none';
+}
     }
   }
 
