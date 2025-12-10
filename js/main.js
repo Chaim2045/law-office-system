@@ -1094,23 +1094,21 @@ return;
         return;
       }
 
-      // 🚀 Count queries - fast and accurate! (doesn't load documents)
+      // 🚀 Count queries - Firebase SDK 9.22.0 compatible (using .get() + .size)
       const [activeSnapshot, completedSnapshot] = await Promise.all([
         db.collection('budget_tasks')
           .where('employee', '==', this.currentUser)
           .where('status', '!=', 'הושלם')
-          .count()
           .get(),
 
         db.collection('budget_tasks')
           .where('employee', '==', this.currentUser)
           .where('status', '==', 'הושלם')
-          .count()
           .get()
       ]);
 
-      const activeCount = activeSnapshot.data().count;
-      const completedCount = completedSnapshot.data().count;
+      const activeCount = activeSnapshot.size;
+      const completedCount = completedSnapshot.size;
 
       // עדכון המונה של פעילות
       const activeBadge = document.getElementById('activeCountBadge');
