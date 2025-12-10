@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug - הודעות מנהל למשתמש</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+
+        .output:empty::before {
+            content: '⏳ בחר פעולה כדי להתחיל...';
+            color: #666;
+            font-style: italic;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .message-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .message-card .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .message-card .from {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .message-card .time {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .message-card .message-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .message-card .meta {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            color: #666;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .message-card .meta-item {
+            background: #e9ecef;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-top: 4px solid #667eea;
+        }
+
+        .stat-box .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-box .label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .icon {
+            font-size: 24px;
+        }
+
+        #messagesContainer {
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .no-messages .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Debug - מערכת הודעות מנהל ← משתמש</h1>
+            <p>כלי אבחון לבדיקת הודעות שנשלחו מהמנהל למשתמשים</p>
+        </div>
+
+        <div class="content">
+            <!-- Section 1: User Email Input -->
+            <div class="section">
+                <h2>
+                    <span class="icon">👤</span>
+                    שלב 1: בחר משתמש לבדיקה
+                </h2>
+                <div class="input-group">
+                    <label for="userEmail">אימייל משתמש:</label>
+                    <input
+                        type="email"
+                        id="userEmail"
+                        placeholder="לדוגמה: user@example.com"
+                        value=""
+                    />
+                </div>
+                <button class="btn" onclick="loadCurrentUser()">
+                    🔑 טען משתמש מחובר נוכחי
+                </button>
+                <div id="currentUserOutput" class="output" style="display: none;"></div>
+            </div>
+
+            <!-- Section 2: Check Messages -->
+            <div class="section">
+                <h2>
+                    <span class="icon">📨</span>
+                    שלב 2: בדוק הודעות
+                </h2>
+                <button class="btn btn-success" onclick="checkMessages()">
+                    🔍 בדוק הודעות מהמנהל
+                </button>
+                <button class="btn btn-secondary" onclick="checkAllMessages()">
+                    📋 הצג את כל ההודעות (כולל מסוגים אחרים)
+                </button>
+                <div id="statsContainer"></div>
+                <div id="messagesContainer"></div>
+            </div>
+
+            <!-- Section 3: Real-time Listener -->
+            <div class="section">
+                <h2>
+                    <span class="icon">🔴</span>
+                    שלב 3: האזנה בזמן אמת
+                </h2>
+                <button class="btn" onclick="startRealtimeListener()">
+                    ▶️ התחל האזנה (כמו NotificationBell)
+                </button>
+                <button class="btn btn-secondary" onclick="stopRealtimeListener()">
+                    ⏸️ עצור האזנה
+                </button>
+                <div id="listenerOutput" class="output"></div>
+            </div>
+
+            <!-- Section 4: Test Send Message -->
+            <div class="section">
+                <h2>
+                    <span class="icon">✉️</span>
+                    שלב 4: שלח הודעת בדיקה
+                </h2>
+                <div class="input-group">
+                    <label for="testMessage">תוכן הודעה:</label>
+                    <input
+                        type="text"
+                        id="testMessage"
+                        placeholder="הודעת בדיקה..."
+                        value="🧪 הודעת בדיקה אוטומטית"
+                    />
+                </div>
+                <button class="btn btn-success" onclick="sendTestMessage()">
+                    🚀 שלח הודעת בדיקה
+                </button>
+                <div id="sendOutput" class="output" style="display: none;"></div>
+            </div>
+
+            <!-- Section 5: Console Script -->
+            <div class="section">
+                <h2>
+                    <span class="icon">💻</span>
+                    שלב 5: הדבק בקונסול (F12)
+                </h2>
+                <p style="margin-bottom: 15px; color: #666;">
+                    העתק את הקוד הזה והדבק בקונסול של דף המשתמש (לא האדמין):
+                </p>
+                <div class="code-block" id="consoleCode">
+// 🔍 Debug Script - בדיקת הודעות מנהל
+(async function() {
+    console.clear();
+    console.log('%c🔍 DEBUG: בודק הודעות מהמנהל...', 'font-size: 20px; font-weight: bold; color: #667eea;');
+
+    // בדיקה 1: האם Firebase זמין?
+    if (!window.firebase) {
+        console.error('❌ Firebase לא טעון!');
+        return;
+    }
+    console.log('✅ Firebase טעון');
+
+    // בדיקה 2: האם Firestore זמין?
+    if (!window.firebaseDB) {
+        console.error('❌ firebaseDB לא זמין!');
+        return;
+    }
+    console.log('✅ Firestore זמין');
+
+    // בדיקה 3: האם יש משתמש מחובר?
+    const user = window.currentUser || window.firebase.auth().currentUser;
+    if (!user) {
+        console.error('❌ אין משתמש מחובר!');
+        return;
+    }
+    console.log('✅ משתמש מחובר:', user.email || user.uid);
+
+    const userEmail = user.email;
+
+    // בדיקה 4: שאילתת הודעות
+    console.log('%c📨 מחפש הודעות עבור:', 'color: blue;', userEmail);
+
+    try {
+        const snapshot = await window.firebaseDB.collection('user_messages')
+            .where('to', '==', userEmail)
+            .get();
+
+        console.log(`%c📊 נמצאו ${snapshot.size} הודעות סה"כ`, 'font-size: 16px; font-weight: bold; color: green;');
+
+        if (snapshot.empty) {
+            console.warn('⚠️ לא נמצאו הודעות עבור משתמש זה!');
+            console.log('💡 נסה לשלוח הודעה מהאדמין פאנל ובדוק שוב');
+            return;
+        }
+
+        // סינון הודעות לפי סוג
+        const allMessages = [];
+        const adminToUserMessages = [];
+        const taskApprovalMessages = [];
+        const otherMessages = [];
+
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const msg = {
+                id: doc.id,
+                ...data
+            };
+            allMessages.push(msg);
+
+            if (data.type === 'admin_to_user') {
+                adminToUserMessages.push(msg);
+            } else if (data.type === 'task_approval') {
+                taskApprovalMessages.push(msg);
+            } else {
+                otherMessages.push(msg);
+            }
+        });
+
+        console.log('%c📋 סיכום הודעות:', 'font-size: 14px; font-weight: bold; color: purple;');
+        console.log('  📧 הודעות מנהל (admin_to_user):', adminToUserMessages.length);
+        console.log('  ✅ אישורי משימות (task_approval):', taskApprovalMessages.length);
+        console.log('  ❓ אחרות:', otherMessages.length);
+
+        // הצג הודעות admin_to_user
+        if (adminToUserMessages.length > 0) {
+            console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #667eea;');
+            console.log('%c📧 הודעות מהמנהל (admin_to_user):', 'font-size: 16px; font-weight: bold; color: #667eea;');
+
+            adminToUserMessages.forEach((msg, index) => {
+                console.group(`📩 הודעה #${index + 1} - ${msg.id}`);
+                console.log('📤 מאת:', msg.from, '(' + msg.fromName + ')');
+                console.log('📥 אל:', msg.to, '(' + msg.toName + ')');
+                console.log('💬 הודעה:', msg.message);
+                console.log('📁 קטגוריה:', msg.category || 'לא הוגדר');
+                console.log('📌 נושא:', msg.subject || 'לא הוגדר');
+                console.log('🏷️ סטטוס:', msg.status);
+                console.log('📅 נוצר:', msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleString('he-IL') : 'לא ידוע');
+                console.log('💬 תשובות:', msg.repliesCount || 0);
+                console.log('🔍 נתונים מלאים:', msg);
+                console.groupEnd();
+            });
+        } else {
+            console.warn('⚠️ לא נמצאו הודעות מסוג admin_to_user!');
+            console.log('💡 זה יכול להיות בגלל:');
+            console.log('   1. המנהל לא שלח הודעות למשתמש זה');
+            console.log('   2. השדה type לא מוגדר נכון בהודעות');
+            console.log('   3. יש בעיה בשליחת ההודעות מהאדמין');
+        }
+
+        // הצג את כל ההודעות (גם שאינן admin_to_user)
+        if (otherMessages.length > 0) {
+            console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: orange;');
+            console.log('%c❓ הודעות מסוגים אחרים:', 'font-size: 16px; font-weight: bold; color: orange;');
+            otherMessages.forEach((msg, index) => {
+                console.log(`${index + 1}.`, msg.type || 'אין type', '-', msg.message?.substring(0, 50) || 'אין תוכן');
+            });
+        }
+
+        // בדיקה 5: האם NotificationBell מאזין?
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: blue;');
+        console.log('%c🔔 בדיקת NotificationBell:', 'font-size: 16px; font-weight: bold; color: blue;');
+
+        if (!window.notificationBell) {
+            console.error('❌ window.notificationBell לא קיים!');
+        } else {
+            console.log('✅ NotificationBell קיים');
+            console.log('👤 Current User:', window.notificationBell.currentUser?.email || 'לא מוגדר');
+            console.log('📨 Notifications:', window.notificationBell.notifications?.length || 0);
+            console.log('🎧 Messages Listener:', window.notificationBell.messagesListener ? 'פעיל' : 'לא פעיל');
+
+            if (window.notificationBell.notifications) {
+                const adminMessages = window.notificationBell.notifications.filter(n => n.isAdminMessage);
+                console.log('📧 הודעות מנהל ב-NotificationBell:', adminMessages.length);
+
+                if (adminMessages.length > 0) {
+                    console.log('הודעות:');
+                    adminMessages.forEach((msg, idx) => {
+                        console.log(`  ${idx + 1}.`, msg.title, '-', msg.description?.substring(0, 50));
+                    });
+                }
+            }
+        }
+
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: green;');
+        console.log('%c✅ בדיקה הושלמה!', 'font-size: 18px; font-weight: bold; color: green;');
+
+    } catch (error) {
+        console.error('❌ שגיאה בבדיקת הודעות:', error);
+    }
+})();
+                </div>
+                <button class="copy-btn" onclick="copyConsoleCode()">
+                    📋 העתק לקונסול
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8VVcehLHoMNI9poBdKOq4Kj8u_gJiCd0",
+            authDomain: "law-office-system-e4801.firebaseapp.com",
+            projectId: "law-office-system-e4801",
+            storageBucket: "law-office-system-e4801.firebasestorage.app",
+            messagingSenderId: "764454692735",
+            appId: "1:764454692735:web:a48af6fb15d84ca5ccbe19"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let realtimeListener = null;
+        let currentUserEmail = null;
+
+        // Load current user
+        async function loadCurrentUser() {
+            const output = document.getElementById('currentUserOutput');
+            output.style.display = 'block';
+            output.innerHTML = '⏳ טוען משתמש מחובר...';
+
+            try {
+                const user = auth.currentUser;
+
+                if (!user) {
+                    output.innerHTML = '❌ אין משתמש מחובר!\n\nנא להתחבר תחילה ואז לרענן את הדף.';
+                    return;
+                }
+
+                currentUserEmail = user.email;
+                document.getElementById('userEmail').value = user.email;
+
+                output.innerHTML = `✅ משתמש נטען בהצלחה!
+
+📧 אימייל: ${user.email}
+🆔 UID: ${user.uid}
+📛 שם: ${user.displayName || 'לא מוגדר'}
+
+👉 עכשיו לחץ על "בדוק הודעות מהמנהל"`;
+            } catch (error) {
+                output.innerHTML = `❌ שגיאה בטעינת משתמש:\n${error.message}`;
+            }
+        }
+
+        // Check messages
+        async function checkMessages() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            const container = document.getElementById('messagesContainer');
+            const statsContainer = document.getElementById('statsContainer');
+
+            if (!userEmail) {
+                alert('נא להזין אימייל משתמש או ללחוץ על "טען משתמש מחובר נוכחי"');
+                return;
+            }
+
+            container.innerHTML = '<div class="spinner"></div>';
+            statsContainer.innerHTML = '';
+
+            try {
+                console.log('🔍 מחפש הודעות עבור:', userEmail);
+
+                // Query: הודעות שנשלחו למשתמש מסוג admin_to_user
+                const snapshot = await db.collection('user_messages')
+                    .where('to', '==', userEmail)
+                    .where('type', '==', 'admin_to_user')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                console.log(`📊 נמצאו ${snapshot.size} הודעות מסוג admin_to_user`);
+
+                // Stats
+                let unreadCount = 0;
+                let respondedCount = 0;
+                let dismissedCount = 0;
+
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.status === 'unread') unreadCount++;
+                    if (data.status === 'responded') respondedCount++;
+                    if (data.status === 'dismissed') dismissedCount++;
+                });
+
+                // Display stats
+                statsContainer.innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="number">${snapshot.size}</div>
+                            <div class="label">סה"כ הודעות</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="number">${unreadCount}</div>
+                            <div class="label">לא נקראו</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="number">${respondedCount}</div>
+                            <div class="label">נענו</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="number">${dismissedCount}</div>
+                            <div class="label">נדחו</div>
+                        </div>
+                    </div>
+                `;
+
+                if (snapshot.empty) {
+                    container.innerHTML = `
+                        <div class="no-messages">
+                            <div class="icon">📭</div>
+                            <h3>לא נמצאו הודעות מהמנהל</h3>
+                            <p>למשתמש <strong>${userEmail}</strong> אין הודעות מסוג admin_to_user</p>
+                            <p style="margin-top: 15px; color: #999;">💡 נסה לשלוח הודעת בדיקה דרך האדמין פאנל</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Display messages
+                let html = '';
+                snapshot.docs.forEach((doc, index) => {
+                    const data = doc.data();
+                    const createdAt = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('he-IL') : 'לא ידוע';
+
+                    let statusBadge = '';
+                    if (data.status === 'unread') statusBadge = '<span class="status info">לא נקרא</span>';
+                    else if (data.status === 'responded') statusBadge = '<span class="status success">נענה</span>';
+                    else if (data.status === 'dismissed') statusBadge = '<span class="status error">נדחה</span>';
+
+                    html += `
+                        <div class="message-card">
+                            <div class="header-row">
+                                <div class="from">📩 ${data.fromName || data.from}</div>
+                                <div class="time">${createdAt}</div>
+                            </div>
+                            <div class="message-text">${data.message}</div>
+                            <div class="meta">
+                                <div class="meta-item">🆔 ${doc.id}</div>
+                                <div class="meta-item">📁 ${data.category || 'לא הוגדר'}</div>
+                                <div class="meta-item">📌 ${data.subject || 'אין נושא'}</div>
+                                <div class="meta-item">💬 ${data.repliesCount || 0} תשובות</div>
+                                ${statusBadge}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+
+                console.log('✅ הצגת הודעות הושלמה');
+
+            } catch (error) {
+                console.error('❌ שגיאה:', error);
+                container.innerHTML = `
+                    <div style="color: red; padding: 20px; background: #fee; border-radius: 8px;">
+                        <strong>❌ שגיאה:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Check all messages (including other types)
+        async function checkAllMessages() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            const container = document.getElementById('messagesContainer');
+
+            if (!userEmail) {
+                alert('נא להזין אימייל משתמש');
+                return;
+            }
+
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                // Query all messages to this user (no type filter)
+                const snapshot = await db.collection('user_messages')
+                    .where('to', '==', userEmail)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                console.log(`📊 נמצאו ${snapshot.size} הודעות סה"כ (כל הסוגים)`);
+
+                if (snapshot.empty) {
+                    container.innerHTML = `
+                        <div class="no-messages">
+                            <div class="icon">📭</div>
+                            <h3>אין הודעות בכלל!</h3>
+                            <p>למשתמש <strong>${userEmail}</strong> אין אף הודעה ב-Firestore</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Group by type
+                const byType = {};
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const type = data.type || 'undefined';
+                    if (!byType[type]) byType[type] = [];
+                    byType[type].push({ id: doc.id, ...data });
+                });
+
+                let html = '<h3 style="margin-bottom: 20px;">📋 כל ההודעות (קיבוץ לפי סוג):</h3>';
+
+                Object.keys(byType).forEach(type => {
+                    const messages = byType[type];
+                    html += `
+                        <div style="margin-bottom: 30px;">
+                            <h4 style="color: #667eea; margin-bottom: 15px;">
+                                📁 סוג: ${type} (${messages.length} הודעות)
+                            </h4>
+                    `;
+
+                    messages.forEach(msg => {
+                        const createdAt = msg.createdAt ? new Date(msg.createdAt.toDate()).toLocaleString('he-IL') : 'לא ידוע';
+                        html += `
+                            <div class="message-card">
+                                <div class="header-row">
+                                    <div class="from">📩 ${msg.fromName || msg.from || 'לא ידוע'}</div>
+                                    <div class="time">${createdAt}</div>
+                                </div>
+                                <div class="message-text">${msg.message || 'אין תוכן'}</div>
+                                <div class="meta">
+                                    <div class="meta-item">🆔 ${msg.id}</div>
+                                    <div class="meta-item">🏷️ ${msg.status || 'אין סטטוס'}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                });
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('❌ שגיאה:', error);
+                container.innerHTML = `
+                    <div style="color: red; padding: 20px;">
+                        <strong>❌ שגיאה:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Start real-time listener
+        function startRealtimeListener() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            const output = document.getElementById('listenerOutput');
+
+            if (!userEmail) {
+                alert('נא להזין אימייל משתמש');
+                return;
+            }
+
+            if (realtimeListener) {
+                output.innerHTML = '⚠️ ה-Listener כבר פועל!\n\nעצור אותו תחילה לפני הפעלה מחדש.';
+                return;
+            }
+
+            output.innerHTML = `🔴 LIVE: מאזין להודעות עבור ${userEmail}...\n`;
+
+            let eventCount = 0;
+
+            realtimeListener = db.collection('user_messages')
+                .where('to', '==', userEmail)
+                .where('type', '==', 'admin_to_user')
+                .onSnapshot(
+                    snapshot => {
+                        eventCount++;
+                        const timestamp = new Date().toLocaleTimeString('he-IL');
+
+                        output.innerHTML += `\n[${timestamp}] 📨 Event #${eventCount}: נתקבלו ${snapshot.size} הודעות`;
+
+                        snapshot.docChanges().forEach(change => {
+                            const data = change.doc.data();
+                            if (change.type === 'added') {
+                                output.innerHTML += `\n  ➕ הודעה חדשה: "${data.message?.substring(0, 50)}..."`;
+                            } else if (change.type === 'modified') {
+                                output.innerHTML += `\n  ✏️ הודעה עודכנה: ${change.doc.id}`;
+                            } else if (change.type === 'removed') {
+                                output.innerHTML += `\n  ➖ הודעה הוסרה: ${change.doc.id}`;
+                            }
+                        });
+
+                        // Auto-scroll to bottom
+                        output.scrollTop = output.scrollHeight;
+                    },
+                    error => {
+                        output.innerHTML += `\n\n❌ שגיאה ב-Listener:\n${error.message}`;
+                        realtimeListener = null;
+                    }
+                );
+
+            output.innerHTML += '\n✅ Listener פעיל!\n💡 עכשיו נסה לשלוח הודעה מהאדמין - אתה תראה אותה כאן בזמן אמת';
+        }
+
+        // Stop real-time listener
+        function stopRealtimeListener() {
+            const output = document.getElementById('listenerOutput');
+
+            if (!realtimeListener) {
+                output.innerHTML = '⚠️ אין Listener פעיל';
+                return;
+            }
+
+            realtimeListener();
+            realtimeListener = null;
+            output.innerHTML += '\n\n⏸️ Listener נעצר.';
+        }
+
+        // Send test message
+        async function sendTestMessage() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            const message = document.getElementById('testMessage').value.trim();
+            const output = document.getElementById('sendOutput');
+
+            if (!userEmail) {
+                alert('נא להזין אימייל משתמש');
+                return;
+            }
+
+            if (!message) {
+                alert('נא להזין תוכן הודעה');
+                return;
+            }
+
+            output.style.display = 'block';
+            output.innerHTML = '⏳ שולח הודעה...';
+
+            try {
+                const currentUser = auth.currentUser;
+                if (!currentUser) {
+                    output.innerHTML = '❌ אתה צריך להיות מחובר כדי לשלוח הודעה';
+                    return;
+                }
+
+                const docRef = await db.collection('user_messages').add({
+                    from: currentUser.email,
+                    fromName: currentUser.displayName || currentUser.email,
+                    to: userEmail,
+                    toName: userEmail,
+                    message: message,
+                    type: 'admin_to_user',
+                    category: 'info',
+                    subject: 'הודעת בדיקה',
+                    status: 'unread',
+                    repliesCount: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                output.innerHTML = `✅ ההודעה נשלחה בהצלחה!
+
+🆔 Message ID: ${docRef.id}
+📤 מאת: ${currentUser.email}
+📥 אל: ${userEmail}
+💬 תוכן: "${message}"
+
+💡 עכשיו בדוק אם ההודעה מופיעה ב-"בדוק הודעות מהמנהל"`;
+
+                console.log('✅ הודעת בדיקה נשלחה:', docRef.id);
+
+            } catch (error) {
+                output.innerHTML = `❌ שגיאה בשליחת הודעה:\n${error.message}`;
+                console.error('❌ שגיאה:', error);
+            }
+        }
+
+        // Copy console code
+        function copyConsoleCode() {
+            const code = document.getElementById('consoleCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('✅ הקוד הועתק ללוח!\n\nעכשיו:\n1. פתח את דף המשתמש\n2. לחץ F12 לפתיחת Console\n3. הדבק את הקוד (Ctrl+V)\n4. לחץ Enter');
+            }).catch(err => {
+                alert('❌ שגיאה בהעתקה: ' + err.message);
+            });
+        }
+
+        // Auto-load user on page load
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                console.log('✅ משתמש מחובר:', user.email);
+                loadCurrentUser();
+            } else {
+                console.log('⚠️ אין משתמש מחובר');
+                document.getElementById('currentUserOutput').style.display = 'block';
+                document.getElementById('currentUserOutput').innerHTML =
+                    '⚠️ לא מחובר!\n\nהתחבר תחילה ורענן את הדף.';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -226,7 +226,18 @@ class LawOfficeManager {
 
         // Start listening to admin messages in notification bell
         if (this.notificationBell && window.firebaseDB) {
-          this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
+          console.log('🔔 Starting NotificationBell listener for', user.email);
+          try {
+            this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
+            console.log('✅ NotificationBell listener started successfully');
+          } catch (error) {
+            console.error('❌ Failed to start NotificationBell listener:', error);
+          }
+        } else {
+          console.warn('⚠️ Cannot start NotificationBell listener:', {
+            hasNotificationBell: !!this.notificationBell,
+            hasFirebaseDB: !!window.firebaseDB
+          });
         }
 
         // Load data and show app
@@ -1498,6 +1509,7 @@ return;
 
     const overlay = document.createElement('div');
     overlay.className = 'popup-overlay';
+    overlay.id = 'extendDeadlineOverlay'; // ✅ NEW: ID for optimistic updates
 
     // תיקון: המרת Firebase Timestamp לDate נכון
     let currentDeadline = window.DatesModule
@@ -1514,8 +1526,14 @@ return;
     defaultNewDate.setDate(defaultNewDate.getDate() + 7);
     const defaultDateValue = defaultNewDate.toISOString().split('T')[0];
 
+    // ✅ NEW: Set min date to current deadline (prevent past dates)
+    const minDateValue = currentDeadline.toISOString().split('T')[0];
+
+    // ✅ NEW: Build extensions history HTML
+    const extensionsHistory = this._buildExtensionsHistoryHTML(task);
+
     overlay.innerHTML = `
-      <div class="popup" style="max-width: 500px;">
+      <div class="popup" style="max-width: 580px;">
         <div class="popup-header">
           <i class="fas fa-calendar-plus"></i>
           הארכת תאריך יעד
@@ -1533,9 +1551,50 @@ return;
               currentDeadline
             )}</div>
           </div>
+
+          ${extensionsHistory}
+
           <div class="form-group">
             <label for="newDeadlineDate">תאריך יעד חדש:</label>
-            <input type="date" id="newDeadlineDate" value="${defaultDateValue}" required>
+
+            <!-- ✅ NEW: Quick Actions -->
+            <div class="quick-actions-row">
+              <button type="button" class="quick-action-btn" data-days="3">
+                <i class="fas fa-clock"></i> +3 ימים
+              </button>
+              <button type="button" class="quick-action-btn" data-days="7">
+                <i class="fas fa-calendar-week"></i> +7 ימים
+              </button>
+              <button type="button" class="quick-action-btn" data-days="14">
+                <i class="fas fa-calendar-alt"></i> +14 ימים
+              </button>
+              <button type="button" class="quick-action-btn" data-days="30">
+                <i class="fas fa-calendar"></i> +30 ימים
+              </button>
+            </div>
+
+            <input
+              type="date"
+              id="newDeadlineDate"
+              value="${defaultDateValue}"
+              min="${minDateValue}"
+              required
+            >
+
+            <!-- ✅ NEW: Days difference display -->
+            <div id="daysDifferenceDisplay" style="display: none; margin-top: 8px; padding: 10px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #93c5fd; border-right: 3px solid #3b82f6; border-radius: 6px; font-size: 13px; color: #1e40af;">
+              <i class="fas fa-calendar-check" style="color: #3b82f6;"></i>
+              <strong>הארכה של: <span id="daysCount">0</span> ימים</strong>
+              <div style="margin-top: 4px; font-size: 12px; color: #64748b;">
+                מ-<span id="oldDateDisplay">${CoreUtils.formatDate(currentDeadline)}</span>
+                →
+                <span id="newDateDisplay" style="color: #10b981; font-weight: 600;"></span>
+              </div>
+            </div>
+
+            <small id="dateValidationError" style="color: #dc2626; display: none; margin-top: 4px; font-size: 12px;">
+              <i class="fas fa-exclamation-triangle"></i> התאריך החדש חייב להיות מאוחר מהיעד הנוכחי
+            </small>
           </div>
           <div class="form-group">
             <label for="extensionReason">סיבת ההארכה:</label>
@@ -1555,8 +1614,144 @@ return;
 
     document.body.appendChild(overlay);
 
+    // ✅ NEW: Add real-time date validation
+    const dateInput = document.getElementById('newDeadlineDate');
+    const dateError = document.getElementById('dateValidationError');
+    const confirmBtn = overlay.querySelector('.popup-btn-confirm');
+    const daysDifferenceDisplay = document.getElementById('daysDifferenceDisplay');
+    const daysCountSpan = document.getElementById('daysCount');
+    const newDateDisplaySpan = document.getElementById('newDateDisplay');
+
+    // ✅ NEW: Function to update days difference display
+    const updateDaysDifference = (newDateValue) => {
+      if (!newDateValue) {
+        daysDifferenceDisplay.style.display = 'none';
+        return;
+      }
+
+      const selectedDate = new Date(newDateValue);
+      const currentDate = new Date(minDateValue);
+      const diffTime = selectedDate - currentDate;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0) {
+        daysCountSpan.textContent = diffDays;
+        newDateDisplaySpan.textContent = CoreUtils.formatDate(selectedDate);
+        daysDifferenceDisplay.style.display = 'block';
+      } else {
+        daysDifferenceDisplay.style.display = 'none';
+      }
+    };
+
+    // ✅ NEW: Quick Actions buttons
+    const quickActionBtns = overlay.querySelectorAll('.quick-action-btn');
+    quickActionBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const days = parseInt(btn.dataset.days);
+        const newDate = new Date(currentDeadline);
+        newDate.setDate(newDate.getDate() + days);
+        const newDateValue = newDate.toISOString().split('T')[0];
+
+        dateInput.value = newDateValue;
+        dateInput.dispatchEvent(new Event('change'));
+
+        // Visual feedback - highlight selected button
+        quickActionBtns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+
+    // ✅ Date validation + days difference
+    dateInput.addEventListener('change', () => {
+      const selectedDate = new Date(dateInput.value);
+      const minDate = new Date(minDateValue);
+
+      // Remove selected state from quick actions
+      quickActionBtns.forEach(b => b.classList.remove('selected'));
+
+      if (selectedDate <= minDate) {
+        dateError.style.display = 'block';
+        dateInput.style.borderColor = '#dc2626';
+        confirmBtn.disabled = true;
+        confirmBtn.style.opacity = '0.5';
+        confirmBtn.style.cursor = 'not-allowed';
+        daysDifferenceDisplay.style.display = 'none';
+      } else {
+        dateError.style.display = 'none';
+        dateInput.style.borderColor = '';
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.cursor = 'pointer';
+        updateDaysDifference(dateInput.value);
+      }
+    });
+
+    // ✅ Initial display of days difference
+    updateDaysDifference(dateInput.value);
+
     // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
     setTimeout(() => overlay.classList.add('show'), 10);
+  }
+
+  /**
+   * ✅ NEW: Build extensions history HTML section
+   * @private
+   */
+  _buildExtensionsHistoryHTML(task) {
+    if (!task.deadlineExtensions || task.deadlineExtensions.length === 0) {
+      return ''; // No history to show
+    }
+
+    const extensions = task.deadlineExtensions
+      .map(ext => {
+        const oldDate = window.DatesModule
+          ? window.DatesModule.convertFirebaseTimestamp(ext.oldDeadline)
+          : new Date(ext.oldDeadline);
+        const newDate = window.DatesModule
+          ? window.DatesModule.convertFirebaseTimestamp(ext.newDeadline)
+          : new Date(ext.newDeadline);
+        const extendedAt = window.DatesModule
+          ? window.DatesModule.convertFirebaseTimestamp(ext.extendedAt)
+          : new Date(ext.extendedAt);
+
+        return `
+          <div class="extension-history-item">
+            <div class="extension-header">
+              <span class="extension-date">
+                <i class="fas fa-calendar-alt"></i>
+                ${CoreUtils.formatDate(extendedAt)}
+              </span>
+              <span class="extension-user">
+                <i class="fas fa-user"></i>
+                ${ext.extendedBy || 'לא ידוע'}
+              </span>
+            </div>
+            <div class="extension-details">
+              <div class="extension-dates">
+                <span class="old-date">${CoreUtils.formatDate(oldDate)}</span>
+                <i class="fas fa-arrow-left"></i>
+                <span class="new-date">${CoreUtils.formatDate(newDate)}</span>
+              </div>
+              <div class="extension-reason">${ext.reason || 'ללא סיבה'}</div>
+            </div>
+          </div>
+        `;
+      })
+      .reverse() // Latest first
+      .join('');
+
+    return `
+      <div class="extensions-history-section">
+        <div class="extensions-history-header">
+          <i class="fas fa-history"></i>
+          היסטוריית הארכות (${task.deadlineExtensions.length})
+        </div>
+        <div class="extensions-history-list">
+          ${extensions}
+        </div>
+      </div>
+    `;
   }
 
   async submitDeadlineExtension(taskId) {
