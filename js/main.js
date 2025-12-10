@@ -21,8 +21,8 @@ import STATE_CONFIG from './config/state-config.js';
 import { initAddTaskSystem } from '../components/add-task/index.js';
 
 // Notification System
-import { NotificationBellSystem } from './modules/notification-bell.js';
-// NotificationSystem is available globally on window object
+// NotificationBellSystem is loaded via script tag and available on window.notificationBell
+// No import needed here - it's initialized globally
 
 // Firebase Operations
 import * as FirebaseOps from './modules/firebase-operations.js';
@@ -128,7 +128,7 @@ class LawOfficeManager {
 
     // Module Instances
     this.domCache = new DOMCache();
-    this.notificationBell = new NotificationBellSystem();
+    this.notificationBell = window.notificationBell; // Use globally initialized instance
     this.clientValidation = new ClientValidation(this); // Pass 'this' as manager
 
     // Activity Logger & Task Actions (initialized after Firebase)
