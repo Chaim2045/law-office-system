@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════
+   QUICK ACTIONS - כפתורי קיצור להארכת יעד
+   גרסה: 1.0.0
+   תאריך: 2025-12-10
+   צבעים: כחול משני עדין
+   ═══════════════════════════════════════════════════════════════ */
+
+.quick-actions-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quick-action-btn {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.quick-action-btn i {
+  font-size: 12px;
+  color: #93c5fd;
+}
+
+.quick-action-btn:hover {
+  background: #dbeafe;
+  border-color: #bfdbfe;
+  color: #334155;
+}
+
+.quick-action-btn:hover i {
+  color: #60a5fa;
+}
+
+.quick-action-btn:active {
+  transform: scale(0.98);
+}
+
+/* כפתור שנבחר - מינימליסטי */
+.quick-action-btn.selected {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.quick-action-btn.selected i {
+  color: white;
+}
+
+/* Responsive - mobile */
+@media (max-width: 480px) {
+  .quick-actions-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .quick-action-btn {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+}

@@ -203,11 +203,15 @@
     <script src="js/ui/AdminThreadView.js?v=20251208-2130-FINAL"></script>
 
     <!-- ✅ NotificationBell - For admins who are also users -->
-    <script type="module">
-        import { NotificationBellSystem } from '../js/modules/notification-bell.js';
-        window.NotificationBellSystem = NotificationBellSystem;
-        window.notificationBell = new NotificationBellSystem();
-        console.log('✅ [Admin Panel] NotificationBell initialized');
+    <script src="../js/modules/notification-bell.js?v=20251210-fix"></script>
+    <script>
+        // NotificationBell is already initialized by the module itself
+        // Just verify it's available
+        if (window.notificationBell) {
+            console.log('✅ [Admin Panel] NotificationBell available');
+        } else {
+            console.error('❌ [Admin Panel] NotificationBell not available!');
+        }
     </script>
 
     <!-- ===== Floating Action Button ===== -->

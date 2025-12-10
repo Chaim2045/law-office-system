@@ -764,10 +764,9 @@ return;
   }
 }
 
-// ES6 Module Export
-export { NotificationBellSystem };
-
-// Initialize and export to window (for backward compatibility)
+// Export to window for global access
 window.NotificationBellSystem = NotificationBellSystem;
+
+// Auto-initialize for regular script loading
 window.notificationBell = new NotificationBellSystem();
 console.log('✅ NotificationBell initialized successfully');
