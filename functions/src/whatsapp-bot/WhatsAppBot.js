@@ -357,12 +357,27 @@ class WhatsAppBot {
             }
         }
 
-        if (!action || !taskNumber) {
+        if (!action) {
             return `❌ לא הבנתי. נסה:\n"אישור 1" או "דחייה 1 סיבה"`;
         }
 
-        // קבל את המשימה
+        // 🎯 אם אין מספר משימה - בדוק אם יש רק משימה אחת ממתינה
         const taskIds = session.data?.tasks || [];
+
+        if (!taskNumber) {
+            if (taskIds.length === 0) {
+                return `❌ אין משימות ממתינות.\nכתוב "משימות" לרשימה עדכנית.`;
+            } else if (taskIds.length === 1) {
+                // ✅ יש רק משימה אחת - אפשר לאשר ישיר!
+                taskNumber = 1;
+                console.log(`✅ אישור ישיר - יש רק משימה אחת ממתינה`);
+            } else {
+                // יש יותר ממשימה אחת - חובה לציין מספר
+                return `❌ יש ${taskIds.length} משימות ממתינות.\nציין מספר משימה:\n"${action === 'approve' ? 'אישור' : 'דחייה'} [מספר]"\n\nכתוב "משימות" לראות את הרשימה`;
+            }
+        }
+
+        // קבל את המשימה
         const taskId = taskIds[taskNumber - 1];
 
         if (!taskId) {
@@ -473,6 +488,10 @@ class WhatsAppBot {
 
             console.log(`✅ WhatsApp Bot: Task ${taskId} approved: ${finalMinutes} minutes by ${userInfo?.name}`);
 
+            // 5. שלח התראה למנהלים אחרים
+            this.notifyOtherAdmins(approvalId, 'approved', userInfo?.name || 'מנהל', approval.taskData)
+                .catch(err => console.error('Failed to notify other admins:', err));
+
             const hours = Math.floor(finalMinutes / 60);
             const mins = finalMinutes % 60;
             const timeStr = hours > 0
@@ -485,6 +504,7 @@ class WhatsAppBot {
 ⏱️ תקציב מאושר: ${timeStr}
 👤 אושר על ידי: ${userInfo?.name || 'אתה'}
 📨 העובד יקבל התראה
+💬 מנהלים אחרים יקבלו עדכון
 
 כתוב "משימות" לעוד משימות או "תפריט" לתפריט ראשי`;
 
@@ -570,12 +590,17 @@ class WhatsAppBot {
 
             console.log(`❌ WhatsApp Bot: Task ${taskId} rejected by ${userInfo?.name}. Reason: ${finalReason}`);
 
+            // 5. שלח התראה למנהלים אחרים
+            this.notifyOtherAdmins(approvalId, 'rejected', userInfo?.name || 'מנהל', approval.taskData)
+                .catch(err => console.error('Failed to notify other admins:', err));
+
             return `❌ המשימה נדחתה
 
 📋 לקוח: ${approval.taskData?.clientName || 'לא צוין'}
 💬 סיבה: ${finalReason}
 👤 נדחה על ידי: ${userInfo?.name || 'אתה'}
 📨 העובד יקבל התראה
+💬 מנהלים אחרים יקבלו עדכון
 
 כתוב "משימות" לעוד משימות או "תפריט" לתפריט ראשי`;
 
@@ -770,6 +795,87 @@ class WhatsAppBot {
 
     isApprovalCommand(text) {
         return /אישור|דחייה|מאשר|דוחה|approve|reject/.test(text);
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * שליחת התראה למנהלים אחרים שמשימה טופלה
+     * ═══════════════════════════════════════════════════════════
+     */
+    async notifyOtherAdmins(approvalId, action, handledBy, taskData) {
+        try {
+            // קבל את כל המנהלים עם WhatsApp מופעל
+            const adminsSnapshot = await this.db.collection('employees')
+                .where('role', '==', 'admin')
+                .where('whatsappEnabled', '==', true)
+                .get();
+
+            if (adminsSnapshot.empty) {
+                console.log('⚠️ No other admins to notify');
+                return;
+            }
+
+            // הכן את ההודעה
+            const actionText = action === 'approved' ? 'אושרה' : 'נדחתה';
+            const actionEmoji = action === 'approved' ? '✅' : '❌';
+
+            const message = `${actionEmoji} עדכון: משימה ${actionText}
+
+📋 לקוח: ${taskData?.clientName || 'לא צוין'}
+📝 תיאור: ${taskData?.description || 'אין תיאור'}
+👤 ${actionText} על ידי: ${handledBy}
+
+💡 המשימה כבר לא ממתינה לאישור
+כתוב "משימות" לרשימה עדכנית`;
+
+            // שלח לכל מנהל (חוץ ממי שטיפל)
+            const twilio = require('twilio');
+            const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+            const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+            const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER;
+
+            if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+                console.log('⚠️ Twilio not configured, skipping admin notifications');
+                return;
+            }
+
+            const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+
+            for (const adminDoc of adminsSnapshot.docs) {
+                const adminData = adminDoc.data();
+                const adminEmail = adminDoc.id;
+
+                // דלג על המנהל שטיפל במשימה
+                if (adminEmail === handledBy.email) {
+                    continue;
+                }
+
+                // פורמט מספר טלפון
+                let phone = (adminData.phone || '').replace(/\D/g, '');
+                if (phone.startsWith('05')) {
+                    phone = '972' + phone.substring(1);
+                } else if (!phone.startsWith('972')) {
+                    phone = '972' + phone;
+                }
+                const toNumber = `whatsapp:+${phone}`;
+
+                try {
+                    await client.messages.create({
+                        from: TWILIO_WHATSAPP_NUMBER,
+                        to: toNumber,
+                        body: message
+                    });
+
+                    console.log(`✅ Notified admin ${adminData.name || adminEmail} about ${action}`);
+                } catch (error) {
+                    console.error(`❌ Failed to notify ${adminData.name || adminEmail}:`, error.message);
+                }
+            }
+
+        } catch (error) {
+            console.error('❌ Error notifying other admins:', error);
+            // לא זורקים error כי זה לא קריטי
+        }
     }
 }
 

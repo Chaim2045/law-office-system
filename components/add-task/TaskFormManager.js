@@ -238,10 +238,10 @@ export class TaskFormManager {
 
     // Get form field values
     const branch = this.form.querySelector('#taskBranch')?.value || '';
-    const deadline = this.form.querySelector('#taskDeadline')?.value || '';
-    const estimatedTime = this.form.querySelector('#taskEstimatedTime')?.value || '';
-    const description = this.form.querySelector('#taskDescription')?.value || '';
-    const descriptionCategory = this.form.querySelector('#taskDescriptionCategory')?.value || '';
+    const deadline = this.form.querySelector('#budgetDeadline')?.value || '';
+    const estimatedTime = this.form.querySelector('#estimatedTime')?.value || '';
+    const description = this.form.querySelector('#budgetDescription')?.value || '';
+    const descriptionCategory = this.form.querySelector('#budgetDescriptionCategory')?.value || '';
 
     return {
       // Client & Case

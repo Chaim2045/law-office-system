@@ -1,18 +1,44 @@
 # ════════════════════════════════════════════════════════════════
 # Law Office Management System - Netlify Configuration (Main App)
 # ════════════════════════════════════════════════════════════════
-# Production URL: https://gh-law-office-system.netlify.app
+# Production URL (LIVE - משתמשים אמיתיים!): https://gh-law-office-system.netlify.app
 # Admin Panel URL: https://admin-gh-law-office-system.netlify.app
 # Firebase Backend: law-office-system-e4801.web.app
 # ════════════════════════════════════════════════════════════════
 
+# ════════════════════════════════════════════════════════════════
+# 🚨 PRODUCTION BUILD - עם בדיקות מלאות!
+# אם יש שגיאות - הדפלוי ייכשל (זה טוב!)
+# ════════════════════════════════════════════════════════════════
 [build]
   publish = "."
-  command = "npm run compile-ts || echo 'TypeScript compilation skipped'"
+  # שלבים: TypeScript → Lint → Build
+  # אם אחד נכשל - הכל נעצר!
+  command = "npm run type-check && npm run compile-ts"
 
 # Production environment variables
 [context.production.environment]
   NODE_VERSION = "18"
+
+# ════════════════════════════════════════════════════════════════
+# 🔬 BRANCH DEPLOYS - סביבות בדיקה בטוחות
+# ════════════════════════════════════════════════════════════════
+
+# Develop Branch - סביבת פיתוח (פחות בדיקות, יותר מהירות)
+[context.develop]
+  command = "npm run compile-ts || echo 'TS compilation skipped in develop'"
+
+[context.develop.environment]
+  NODE_VERSION = "18"
+  ENVIRONMENT = "staging"
+
+# Feature Branches - Deploy Previews
+[context.branch-deploy]
+  command = "npm run compile-ts || echo 'TS compilation skipped in preview'"
+
+[context.branch-deploy.environment]
+  NODE_VERSION = "18"
+  ENVIRONMENT = "preview"
 
 # Block access to admin panel from main site
 [[redirects]]

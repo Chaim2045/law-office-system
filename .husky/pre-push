@@ -1,0 +1,91 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# ════════════════════════════════════════════════════════════════
+# 🛡️ Pre-Push Safety Check - הגנה לפני Push
+# ════════════════════════════════════════════════════════════════
+
+# קבל את שם ה-branch שאליו אנחנו דוחפים
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+echo "════════════════════════════════════════════════════════════════"
+echo "🚀 Pre-Push Safety Check"
+echo "Branch: $CURRENT_BRANCH"
+echo "════════════════════════════════════════════════════════════════"
+
+# ════════════════════════════════════════════════════════════════
+# 🚨 בדיקות חובה לפני Push ל-main (PRODUCTION!)
+# ════════════════════════════════════════════════════════════════
+if [ "$CURRENT_BRANCH" = "main" ]; then
+  echo ""
+  echo "⚠️  WARNING: Pushing to MAIN branch (PRODUCTION!)"
+  echo "⚠️  This will deploy to LIVE site with real users!"
+  echo ""
+  echo "🔍 Running mandatory checks..."
+  echo ""
+
+  # 1. TypeScript Type Check
+  echo "📘 [1/2] TypeScript type check..."
+  npm run type-check
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ TypeScript type check FAILED!"
+    echo "❌ Cannot push to main with type errors"
+    echo ""
+    echo "💡 Fix the errors or push to a different branch"
+    echo "💡 To skip (NOT recommended): git push --no-verify"
+    exit 1
+  fi
+  echo "✅ TypeScript OK"
+  echo ""
+
+  # 2. TypeScript Compilation
+  echo "🏗️  [2/2] TypeScript compilation..."
+  npm run compile-ts
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ TypeScript compilation FAILED!"
+    echo "❌ Cannot push to main with compilation errors"
+    echo ""
+    echo "💡 Fix the errors or push to a different branch"
+    echo "💡 To skip (NOT recommended): git push --no-verify"
+    exit 1
+  fi
+  echo "✅ Compilation OK"
+  echo ""
+
+  echo "════════════════════════════════════════════════════════════════"
+  echo "✅ All checks passed! Safe to push to PRODUCTION"
+  echo "════════════════════════════════════════════════════════════════"
+  echo ""
+
+# ════════════════════════════════════════════════════════════════
+# 🔬 בדיקות קלות יותר ל-develop ו-feature branches
+# ════════════════════════════════════════════════════════════════
+elif [ "$CURRENT_BRANCH" = "develop" ]; then
+  echo ""
+  echo "🔬 Pushing to develop branch (staging)"
+  echo "🔍 Running light checks..."
+  echo ""
+
+  # רק TypeScript compilation (לא type-check מלא)
+  echo "🏗️  TypeScript compilation..."
+  npm run compile-ts > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "⚠️  Warning: TypeScript compilation has errors"
+    echo "⚠️  Continuing anyway (develop branch)"
+  else
+    echo "✅ Compilation OK"
+  fi
+  echo ""
+
+else
+  # Feature branches - אזהרה בלבד
+  echo ""
+  echo "🌿 Pushing to feature branch: $CURRENT_BRANCH"
+  echo "✅ No mandatory checks for feature branches"
+  echo "💡 Tests will run on Deploy Preview"
+  echo ""
+fi
+
+echo "════════════════════════════════════════════════════════════════"

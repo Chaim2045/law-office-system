@@ -7,6 +7,9 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onRequest } = require('firebase-functions/v2/https');
 const { addTimeToTaskWithTransaction } = require('./addTimeToTask_v2');
 const { updateBudgetTask, markNotificationAsRead } = require('./task-update-realtime');
 
@@ -17,6 +20,11 @@ const DeductionSystem = require('./src/modules/deduction');
 admin.initializeApp();
 const db = admin.firestore();
 const auth = admin.auth();
+
+// Twilio environment variables for v1 functions compatibility
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || 'fed2170530e4ed34d3b1b3407e0f0f5f';
+const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
 
 // ===============================
 // CORS Configuration
@@ -4874,10 +4882,11 @@ exports.initializeAdminClaims = functions.https.onCall(async (data, context) => 
  * 2. משימות שכבר עבר תאריך היעד שלהן (overdue)
  * שולח התראה אוטומטית לעובדים (לא למנהלים - הם רואים בדשבורד)
  */
-exports.dailyTaskReminders = functions.pubsub
-  .schedule('0 9 * * *')  // כל יום בשעה 09:00
-  .timeZone('Asia/Jerusalem')
-  .onRun(async (context) => {
+exports.dailyTaskReminders = onSchedule({
+  schedule: '0 9 * * *',  // כל יום בשעה 09:00
+  timeZone: 'Asia/Jerusalem',
+  region: 'us-central1'
+}, async (event) => {
     try {
       console.log('🔔 Running dailyTaskReminders at', new Date().toISOString());
 
@@ -4960,10 +4969,11 @@ exports.dailyTaskReminders = functions.pubsub
  * 2. משימות שחרגו 100% מתקציב הזמן (danger)
  * שולח התראה אוטומטית לעובדים
  */
-exports.dailyBudgetWarnings = functions.pubsub
-  .schedule('0 17 * * *')  // כל יום בשעה 17:00
-  .timeZone('Asia/Jerusalem')
-  .onRun(async (context) => {
+exports.dailyBudgetWarnings = onSchedule({
+  schedule: '0 17 * * *',  // כל יום בשעה 17:00
+  timeZone: 'Asia/Jerusalem',
+  region: 'us-central1'
+}, async (event) => {
     try {
       console.log('💰 Running dailyBudgetWarnings at', new Date().toISOString());
 
@@ -5623,11 +5633,13 @@ exports.getUserMetrics = functions.https.onCall(async (data, context) => {
  *
  * מעדכן את user_metrics/{email} באופן אטומי
  */
-exports.updateMetricsOnTaskChange = functions.firestore
-  .document('budget_tasks/{taskId}')
-  .onWrite(async (change, context) => {
+exports.updateMetricsOnTaskChange = onDocumentWritten({
+  document: 'budget_tasks/{taskId}',
+  region: 'us-central1'
+}, async (event) => {
     try {
-      const taskId = context.params.taskId;
+      const taskId = event.params.taskId;
+      const change = event.data;
 
       // קבל את המשימה (לפני/אחרי)
       const oldTask = change.before.exists ? change.before.data() : null;
@@ -6194,20 +6206,27 @@ exports.sendWhatsAppApprovalNotification = functions.https.onCall(async (data, c
         : `${mins} דקות`;
 
       // Create message
-      const message = `היי ${adminName}! 👋
+      const message = `🔔 משימה חדשה לאישור
 
-${requestedByName || requestedBy} הוסיף משימה חדשה לאישור:
+👤 ${requestedByName || requestedBy} מבקש אישור תקציב:
 
 📋 לקוח: ${taskData.clientName || 'לא צוין'}
-📝 משימה: ${taskData.description}
-⏱️ תקציב מבוקש: ${minutes} דקות (${timeStr})
+📝 תיאור: ${taskData.description}
+⏱️ תקציב: ${timeStr} (${minutes} דקות)
 
-📲 איך להגיב?
-✅ לאישור: כתוב "אישור" או "OK"
-✅ לאישור עם שינוי זמן: כתוב "אישור 120" (120 דקות)
-❌ לדחייה: כתוב "דחייה" ואחריו הסיבה (לדוגמה: "דחייה תקציב גבוה מדי")
+━━━━━━━━━━━━━━━━━━━━
 
-הודעה זו נשלחה אוטומטית ממערכת ניהול משרד עו"ד`;
+📲 לאישור - כתוב:
+✅ "אישור" - לאשר כמו שביקש
+✅ "אישור 90" - לאשר עם 90 דקות
+
+📲 לדחייה - כתוב:
+❌ "דחייה" + סיבה
+דוגמה: "דחייה תקציב גבוה"
+
+💡 כתוב "משימות" לראות הכל
+
+🤖 הודעה אוטומטית ממערכת ניהול`;
 
       try {
         const twilioMessage = await client.messages.create({
@@ -6265,7 +6284,9 @@ ${requestedByName || requestedBy} הוסיף משימה חדשה לאישור:
  * Webhook to receive WhatsApp messages from Twilio
  * Handles approval/rejection responses from admins
  */
-exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
+exports.whatsappWebhook = onRequest({
+  region: 'us-central1'
+}, async (req, res) => {
   try {
     // Get message data
     const { From, Body, MessageSid } = req.body;
@@ -6300,13 +6321,16 @@ exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
     const response = await bot.handleMessage(phoneNumber, Body, userInfo);
 
     // Send response via Twilio
-    const twilioConfig = functions.config().twilio;
-    if (twilioConfig?.account_sid && response) {
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || 'fed2170530e4ed34d3b1b3407e0f0f5f';
+    const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+
+    if (twilioAccountSid && response) {
       const twilio = require('twilio');
-      const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
+      const client = twilio(twilioAccountSid, twilioAuthToken);
 
       await client.messages.create({
-        from: twilioConfig.whatsapp_number || 'whatsapp:+14155238886',
+        from: twilioWhatsappNumber,
         to: From,
         body: response
       });
@@ -6333,12 +6357,15 @@ exports.whatsappWebhook = functions.https.onRequest(async (req, res) => {
     // Try to send error message to user
     try {
       const { From } = req.body;
-      const twilioConfig = functions.config().twilio;
-      if (twilioConfig?.account_sid && From) {
+      const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
+      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || 'fed2170530e4ed34d3b1b3407e0f0f5f';
+      const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+
+      if (twilioAccountSid && From) {
         const twilio = require('twilio');
-        const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
+        const client = twilio(twilioAccountSid, twilioAuthToken);
         await client.messages.create({
-          from: twilioConfig.whatsapp_number || 'whatsapp:+14155238886',
+          from: twilioWhatsappNumber,
           to: From,
           body: '❌ מצטער, הייתה שגיאה במערכת. נסה שוב מאוחר יותר או כתוב "עזרה"'
         });
