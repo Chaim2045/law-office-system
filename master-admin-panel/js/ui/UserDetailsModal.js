@@ -489,20 +489,45 @@
             try {
                 console.log(`🔍 Searching for active thread with user: ${userEmail}`);
 
-                // חיפוש הודעה שנשלחה למשתמש זה (מהמנהל או מהמשתמש)
-                const snapshot = await window.firebaseDB
+                // ✅ FIX: Search for messages in BOTH directions
+                // Query 1: Messages sent TO the user (admin → user)
+                const sentToUserPromise = window.firebaseDB
                     .collection('user_messages')
-                    .where('to', '==', userEmail)  // הודעות שנשלחו אליו
-                    .orderBy('createdAt', 'desc')  // הכי חדשות קודם
-                    .limit(1)  // רק האחרונה
+                    .where('to', '==', userEmail)
+                    .orderBy('createdAt', 'desc')
+                    .limit(1)
                     .get();
 
-                if (snapshot.empty) {
-                    console.log('📭 No active thread found');
+                // Query 2: Messages sent FROM the user (user → admin or user replies)
+                const sentFromUserPromise = window.firebaseDB
+                    .collection('user_messages')
+                    .where('from', '==', userEmail)
+                    .orderBy('createdAt', 'desc')
+                    .limit(1)
+                    .get();
+
+                // Execute both queries in parallel
+                const [sentToUser, sentFromUser] = await Promise.all([
+                    sentToUserPromise,
+                    sentFromUserPromise
+                ]);
+
+                // Combine results
+                const allDocs = [...sentToUser.docs, ...sentFromUser.docs];
+
+                if (allDocs.length === 0) {
+                    console.log('📭 No active thread found (checked both directions)');
                     return null;
                 }
 
-                const doc = snapshot.docs[0];
+                // Sort by createdAt to get the most recent thread
+                allDocs.sort((a, b) => {
+                    const aTime = a.data().createdAt?.toDate() || new Date(0);
+                    const bTime = b.data().createdAt?.toDate() || new Date(0);
+                    return bTime - aTime;
+                });
+
+                const doc = allDocs[0];
                 const data = doc.data();
 
                 const threadInfo = {
@@ -518,7 +543,7 @@
                     toName: data.toName
                 };
 
-                console.log(`✅ Found active thread: ${doc.id}, ${threadInfo.repliesCount} replies`);
+                console.log(`✅ Found active thread: ${doc.id}, ${threadInfo.repliesCount} replies (direction: ${data.from === userEmail ? 'user→admin' : 'admin→user'})`);
                 return threadInfo;
 
             } catch (error) {
@@ -841,66 +866,115 @@
                 return;
             }
 
-            // Stop existing listener if any
+            // Stop existing listeners if any
             if (this.threadListener) {
                 this.threadListener();
                 this.threadListener = null;
             }
+            if (this.threadListenerFromUser) {
+                this.threadListenerFromUser();
+                this.threadListenerFromUser = null;
+            }
 
             const userEmail = this.userData.email;
 
-            console.log(`👂 Starting real-time listener for threads with: ${userEmail}`);
+            console.log(`👂 Starting real-time listeners for threads with: ${userEmail} (both directions)`);
 
-            // ✅ Listen to user_messages where to === userEmail
+            // Handler function to process thread updates
+            const handleThreadUpdate = (snapshot, direction) => {
+                if (snapshot.empty) {
+                    console.log(`📭 No messages found (${direction}) - checking other direction...`);
+                    return null;
+                }
+
+                const doc = snapshot.docs[0];
+                const data = doc.data();
+
+                return {
+                    messageId: doc.id,
+                    message: data.message,
+                    repliesCount: data.repliesCount || 0,
+                    lastReplyAt: data.lastReplyAt?.toDate() || data.createdAt?.toDate(),
+                    lastReplyBy: data.lastReplyBy || data.from,
+                    status: data.status || 'sent',
+                    from: data.from,
+                    fromName: data.fromName,
+                    to: data.to,
+                    toName: data.toName,
+                    direction: direction
+                };
+            };
+
+            // Shared state for comparing which thread is more recent
+            let latestThreadToUser = null;
+            let latestThreadFromUser = null;
+
+            const updateUI = () => {
+                // Compare timestamps and use the most recent thread
+                let mostRecentThread = null;
+
+                if (latestThreadToUser && latestThreadFromUser) {
+                    const toUserTime = latestThreadToUser.lastReplyAt?.getTime() || 0;
+                    const fromUserTime = latestThreadFromUser.lastReplyAt?.getTime() || 0;
+                    mostRecentThread = fromUserTime > toUserTime ? latestThreadFromUser : latestThreadToUser;
+                } else {
+                    mostRecentThread = latestThreadToUser || latestThreadFromUser;
+                }
+
+                const currentThreadInfo = this.userData?.threadInfo;
+
+                if (!mostRecentThread) {
+                    console.log('📭 No threads found in either direction - showing "send first message" button');
+                    this.userData.threadInfo = null;
+                    this.refreshCommunicationSection();
+                    return;
+                }
+
+                // Only refresh if data actually changed
+                if (
+                    !currentThreadInfo ||
+                    currentThreadInfo.messageId !== mostRecentThread.messageId ||
+                    currentThreadInfo.repliesCount !== mostRecentThread.repliesCount
+                ) {
+                    console.log(`🔄 Thread data changed - refreshing UI... (${mostRecentThread.direction})`);
+                    this.userData.threadInfo = mostRecentThread;
+                    this.refreshCommunicationSection();
+                } else {
+                    console.log('ℹ️ Thread data unchanged - skipping refresh');
+                }
+            };
+
+            // ✅ Listener 1: Messages sent TO the user (admin → user)
             this.threadListener = window.firebaseDB
                 .collection('user_messages')
                 .where('to', '==', userEmail)
-                .where('type', '==', 'admin_to_user')
                 .orderBy('createdAt', 'desc')
                 .limit(1)
                 .onSnapshot(
                     (snapshot) => {
-                        if (snapshot.empty) {
-                            console.log('📭 No messages found - showing "send first message" button');
-                            // No thread exists - refresh to show "send first message"
-                            this.refreshCommunicationSection();
-                            return;
-                        }
-
-                        const doc = snapshot.docs[0];
-                        const data = doc.data();
-
-                        const threadInfo = {
-                            messageId: doc.id,
-                            message: data.message,
-                            repliesCount: data.repliesCount || 0,
-                            lastReplyAt: data.lastReplyAt?.toDate() || data.createdAt?.toDate(),
-                            lastReplyBy: data.lastReplyBy || data.from,
-                            status: data.status || 'sent',
-                            from: data.from,
-                            fromName: data.fromName,
-                            to: data.to,
-                            toName: data.toName
-                        };
-
-                        console.log(`📨 Thread update received: ${threadInfo.messageId}, replies: ${threadInfo.repliesCount}`);
-
-                        // Only refresh if data actually changed
-                        const currentThreadInfo = this.userData?.threadInfo;
-                        if (
-                            !currentThreadInfo ||
-                            currentThreadInfo.messageId !== threadInfo.messageId ||
-                            currentThreadInfo.repliesCount !== threadInfo.repliesCount
-                        ) {
-                            console.log('🔄 Thread data changed - refreshing UI...');
-                            this.userData.threadInfo = threadInfo;
-                            this.refreshCommunicationSection();
-                        } else {
-                            console.log('ℹ️ Thread data unchanged - skipping refresh');
-                        }
+                        latestThreadToUser = handleThreadUpdate(snapshot, 'admin→user');
+                        console.log(`📨 Listener 1 (admin→user): ${latestThreadToUser ? latestThreadToUser.messageId : 'none'}`);
+                        updateUI();
                     },
                     (error) => {
-                        console.error('❌ Thread listener error:', error);
+                        console.error('❌ Thread listener error (admin→user):', error);
+                    }
+                );
+
+            // ✅ Listener 2: Messages sent FROM the user (user → admin)
+            this.threadListenerFromUser = window.firebaseDB
+                .collection('user_messages')
+                .where('from', '==', userEmail)
+                .orderBy('createdAt', 'desc')
+                .limit(1)
+                .onSnapshot(
+                    (snapshot) => {
+                        latestThreadFromUser = handleThreadUpdate(snapshot, 'user→admin');
+                        console.log(`📨 Listener 2 (user→admin): ${latestThreadFromUser ? latestThreadFromUser.messageId : 'none'}`);
+                        updateUI();
+                    },
+                    (error) => {
+                        console.error('❌ Thread listener error (user→admin):', error);
                     }
                 );
 
@@ -913,7 +987,9 @@
          */
         reattachCommunicationListeners() {
             const modal = document.getElementById(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             // "שלח הודעה ראשונה" button
             const sendFirstMessageBtn = modal.querySelector('.btn-send-first-message');
@@ -3049,7 +3125,9 @@ return '-';
          * פורמט זמן יחסי
          */
         formatRelativeTime(date) {
-            if (!date) return '-';
+            if (!date) {
+return '-';
+}
 
             try {
                 let dateObj;
@@ -3067,14 +3145,22 @@ return '-';
                 const diffMs = now - dateObj;
                 const diffMins = Math.floor(diffMs / 60000);
 
-                if (diffMins < 1) return 'עכשיו';
-                if (diffMins < 60) return `לפני ${diffMins} דקות`;
+                if (diffMins < 1) {
+return 'עכשיו';
+}
+                if (diffMins < 60) {
+return `לפני ${diffMins} דקות`;
+}
 
                 const diffHours = Math.floor(diffMins / 60);
-                if (diffHours < 24) return `לפני ${diffHours} שעות`;
+                if (diffHours < 24) {
+return `לפני ${diffHours} שעות`;
+}
 
                 const diffDays = Math.floor(diffHours / 24);
-                if (diffDays < 7) return `לפני ${diffDays} ימים`;
+                if (diffDays < 7) {
+return `לפני ${diffDays} ימים`;
+}
 
                 // Format as date
                 return dateObj.toLocaleDateString('he-IL');
@@ -4348,11 +4434,16 @@ return;
          * סגירת המודאל
          */
         close() {
-            // 🔥 Unsubscribe from real-time listener
+            // 🔥 Unsubscribe from real-time listeners
             if (this.threadListener) {
                 this.threadListener();
                 this.threadListener = null;
-                console.log('🔌 Thread listener unsubscribed');
+                console.log('🔌 Thread listener (admin→user) unsubscribed');
+            }
+            if (this.threadListenerFromUser) {
+                this.threadListenerFromUser();
+                this.threadListenerFromUser = null;
+                console.log('🔌 Thread listener (user→admin) unsubscribed');
             }
 
             if (this.modalId) {
