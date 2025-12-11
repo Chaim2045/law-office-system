@@ -9,8 +9,9 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
-// ✅ Initialize Firestore (if not already)
-const db = admin.firestore();
+// ✅ Get Firestore reference (will be initialized by index.js)
+// DON'T initialize here - index.js does it
+let db;
 
 /**
  * 🎯 יצירת מספר תיק אוטומטי עם Firestore Transaction (ATOMIC)
@@ -23,6 +24,11 @@ const db = admin.firestore();
  * @returns {Promise<string>} - מספר תיק חדש וייחודי
  */
 async function generateCaseNumberWithTransaction(maxRetries = 5) {
+  // Lazy init db reference
+  if (!db) {
+    db = admin.firestore();
+  }
+
   const counterRef = db.collection('_system').doc('caseNumberCounter');
   const currentYear = new Date().getFullYear().toString();
 
