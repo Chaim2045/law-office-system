@@ -1238,20 +1238,8 @@
     <!-- ===== Virtual Assistant 3.9.0 - TEMPORARILY DISABLED ===== -->
     <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=3.9.0"></script> -->
 
-    <!-- ===== Notification Bell System ===== -->
-    <script src="js/modules/notification-bell.js?v=20251210-fix"></script>
-
-    <!-- Notification Bell Helper Functions -->
-    <script>
-      // Global helper function for clearing notifications
-      function clearAllNotifications() {
-        if (window.notificationBell) {
-          window.notificationBell.clearAllNotifications();
-        }
-      }
-    </script>
-
     <!-- ===== AI CHAT SYSTEM (NEW) - LAZY LOADED ===== -->
+    <!-- ⚡ NotificationBell is also lazy-loaded (requires authenticated user) -->
     <!-- ⚡ Performance Optimization: AI Chat scripts are now loaded AFTER login -->
     <!-- This reduces initial page load time by ~70KB and improves login screen performance -->
     <!-- Scripts are dynamically loaded in authentication.js after successful login -->
@@ -1510,6 +1498,19 @@
           setDateTimeDefaults();
         }
       })();
+    </script>
+
+    <!-- Notification Bell Helper Functions -->
+    <script>
+      // Global helper function for clearing notifications
+      // NotificationBell is lazy-loaded, so this provides safe fallback
+      function clearAllNotifications() {
+        if (window.notificationBell) {
+          window.notificationBell.clearAllNotifications();
+        } else {
+          console.warn('NotificationBell not loaded yet');
+        }
+      }
     </script>
   </body>
 </html>

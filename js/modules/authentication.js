@@ -158,6 +158,10 @@ async function handleLogin() {
     // Show app after everything loaded
     this.showApp();
 
+    // ⚡ Lazy load AI Chat System AFTER successful login (prevents showing on login screen)
+    // This improves initial page load time by ~70KB
+    this.initAIChatSystem();
+
   } catch (error) {
     console.error('Login error:', error);
 
@@ -829,6 +833,64 @@ allFilled = false;
   });
 }
 
+/**
+ * ⚡ Lazy load AI Chat System
+ * טעינה דינמית של מערכת AI Chat אחרי התחברות מוצלחת
+ * @description מייעל ביצועים - חוסך ~70KB בטעינה ראשונית
+ */
+async function initAIChatSystem() {
+  try {
+    // בדיקה אם כבר נטען
+    if (window.aiChat) {
+      Logger.log('[AI Chat] Already initialized, skipping');
+      return;
+    }
+
+    // בדיקה אם LazyLoader זמין
+    if (!window.lazyLoader) {
+      console.error('[AI Chat] LazyLoader not available');
+      return;
+    }
+
+    Logger.log('[AI Chat] 🚀 Starting lazy load...');
+    const startTime = performance.now();
+
+    // טעינת כל הסקריפטים הדרושים
+    const aiScripts = [
+      { src: 'js/modules/ai-system/ai-config.js', options: { version: '2.0.0' } },
+      { src: 'js/modules/ai-system/ai-engine.js', options: { version: '2.0.0' } },
+      { src: 'js/modules/ai-system/ai-context-builder.js', options: { version: '2.0.0' } },
+      { src: 'js/modules/UserReplyModal.js', options: { version: '1.0.3-threads' } },
+      { src: 'js/config/message-categories.js', options: { version: '1.0.0' } },
+      { src: 'js/modules/notification-bell.js', options: { version: '20251210-fix' } },
+      { src: 'js/modules/ai-system/ThreadView.js', options: { version: '1.0.4-mark-as-read' } }
+    ];
+
+    // טען את כל הסקריפטים במקביל (מהיר יותר)
+    await window.lazyLoader.loadScripts(aiScripts);
+
+    // טען את ה-UI אחרון (תלוי בשאר)
+    await window.lazyLoader.loadScript(
+      'js/modules/ai-system/ai-chat-ui.js',
+      { version: '2.0.7-categories' }
+    );
+
+    // אתחל את המערכת
+    if (window.AIChatUI && !window.aiChat) {
+      window.aiChat = new window.AIChatUI();
+
+      const loadTime = (performance.now() - startTime).toFixed(0);
+      Logger.log(`[AI Chat] ✅ Initialized successfully (${loadTime}ms)`);
+    } else {
+      console.warn('[AI Chat] ⚠️ AIChatUI class not available after loading');
+    }
+
+  } catch (error) {
+    console.error('[AI Chat] ❌ Failed to lazy load:', error);
+    // לא חוסם את המערכת - AI Chat הוא optional
+  }
+}
+
 // Exports
 export {
   showLogin,
@@ -845,5 +907,6 @@ export {
   switchAuthMethod,         // ← חדש
   handleSMSLogin,           // ← חדש
   verifyOTP,                // ← חדש
-  setupOTPInputs            // ← חדש
+  setupOTPInputs,           // ← חדש
+  initAIChatSystem          // ⚡ Lazy loading
 };

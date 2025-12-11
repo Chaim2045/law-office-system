@@ -841,7 +841,7 @@ inputContainer.style.display = 'none';
       emptyState.className = 'ai-notifications-empty';
       const emptyMessage = selectedCategory === 'all'
         ? 'אין הודעות מהמנהל'
-        : `אין הודעות בקטגוריה זו`;
+        : 'אין הודעות בקטגוריה זו';
 
       emptyState.innerHTML = `
         <div class="ai-notifications-empty-icon">
@@ -861,8 +861,12 @@ inputContainer.style.display = 'none';
       const bHasUnread = b.hasUnreadReplies === true;
 
       // Unread replies first
-      if (aHasUnread && !bHasUnread) return -1;
-      if (!aHasUnread && bHasUnread) return 1;
+      if (aHasUnread && !bHasUnread) {
+return -1;
+}
+      if (!aHasUnread && bHasUnread) {
+return 1;
+}
 
       // Then sort by last activity (lastReplyAt or createdAt)
       const aTime = a.lastReplyAt || a.createdAt || 0;
@@ -1184,15 +1188,10 @@ window.openAdminMessages = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Export to global scope & Auto-init
+// Export to global scope
 // ═══════════════════════════════════════════════════════════════════════════
 window.AIChatUI = AIChatUI;
 
-// אתחול אוטומטי כשהדף נטען
-window.addEventListener('DOMContentLoaded', () => {
-  window.aiChat = new AIChatUI();
-
-  if (window.AI_CONFIG?.debugMode) {
-    console.log('[AI Chat UI] Ready');
-  }
-});
+// ⚠️ IMPORTANT: AI Chat is now initialized AFTER login (see main.js)
+// This prevents the AI button from appearing on the login screen
+// The initialization happens in the onAuthSuccess handler
