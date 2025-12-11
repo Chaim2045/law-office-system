@@ -71,6 +71,10 @@ return;
                         </div>
                     </div>
                     <div class="nav-user">
+                        <button class="btn-announcements ${this.currentPage === 'announcements' ? 'active' : ''}" id="navAnnouncementsBtn" title="הודעות מערכת">
+                            <i class="fas fa-bullhorn"></i>
+                            <span>הודעות מערכת</span>
+                        </button>
                         <a href="task-approvals.html" class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" title="אישורי תקציב משימות">
                             <i class="fas fa-clipboard-check"></i>
                             <span>אישורי משימות</span>
@@ -86,8 +90,8 @@ return;
             // Add CSS
             this.injectStyles();
 
-            // Setup logout
-            this.setupLogout();
+            // Setup event listeners
+            this.setupEventListeners();
         }
 
         /**
@@ -325,28 +329,38 @@ return;
         }
 
         /**
-         * Setup logout
-         * הגדרת יציאה
+         * Setup event listeners
+         * הגדרת מאזיני אירועים
          */
-        setupLogout() {
+        setupEventListeners() {
+            // Announcements button
+            const announcementsBtn = document.getElementById('navAnnouncementsBtn');
+            if (announcementsBtn) {
+                announcementsBtn.addEventListener('click', () => {
+                    console.log('📢 Switching to Announcements panel');
+                    window.dispatchEvent(new CustomEvent('navigation:change', {
+                        detail: { page: 'announcements' }
+                    }));
+                });
+            }
+
+            // Logout button
             const logoutBtn = document.getElementById('navLogoutBtn');
-            if (!logoutBtn) {
-return;
-}
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    if (!window.firebaseAuth) {
+                        console.error('❌ Firebase Auth not found');
+                        return;
+                    }
 
-            logoutBtn.addEventListener('click', async () => {
-                if (!window.firebaseAuth) {
-                    console.error('❌ Firebase Auth not found');
-                    return;
-                }
-
-                try {
-                    await window.firebaseAuth.signOut();
-                    window.location.href = 'index.html';
-                } catch (error) {
-                    console.error('❌ Error signing out:', error);
-                }
-            });
+                    try {
+                        await window.firebaseAuth.signOut();
+                        window.location.href = 'index.html';
+                    } catch (error) {
+                        console.error('❌ Error signing out:', error);
+                    }
+                });
+            }
         }
 
 
