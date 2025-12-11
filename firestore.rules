@@ -375,6 +375,48 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ✅ KB Analytics: Analytics tracking for Knowledge Base usage
+    // Purpose: Track KB usage, search queries, article views, user feedback
+    // Data: Non-sensitive analytics events (what was viewed, searched, clicked)
+    match /kb_analytics/{analyticsId} {
+      // Create: Any authenticated user can create analytics events
+      // Reason: Need to track usage patterns for all users
+      allow create: if isAuthenticated();
+
+      // Read: Only admins can read analytics (for insights dashboard)
+      // Reason: Aggregated data should only be visible to admins
+      allow read: if isAdmin();
+
+      // Update/Delete: No one (analytics events are immutable)
+      // Reason: Maintain data integrity for accurate reporting
+      allow update, delete: if false;
+    }
+
+    // ✅ System Announcements: Global announcements banner system
+    // Purpose: Admins broadcast system-wide messages to all users
+    // Features: User-specific dismissal tracking, expiry dates, severity levels
+    match /system_announcements/{announcementId} {
+      // Create: Only admins can create announcements
+      allow create: if isAdmin();
+
+      // Read: All authenticated users can read active announcements
+      // Reason: Users need to see system messages
+      allow read: if isAuthenticated();
+
+      // Update: Admins can update any field, users can only add themselves to dismissedBy
+      allow update: if isAuthenticated() && (
+        // Admins can update everything
+        isAdmin() ||
+        // Users can only add their email to dismissedBy array
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissedBy']) &&
+         request.resource.data.dismissedBy.hasAll(resource.data.dismissedBy) &&
+         request.resource.data.dismissedBy.hasOnly([request.auth.token.email].toSet().union(resource.data.dismissedBy.toSet())))
+      );
+
+      // Delete: Only admins can delete announcements
+      allow delete: if isAdmin();
+    }
+
     // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;
