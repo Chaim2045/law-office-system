@@ -289,10 +289,25 @@ class LawOfficeManager {
         } catch (error) {
           console.error('❌ Failed to start NotificationBell listener:', error);
         }
+
+        // ✅ Start System Announcement Banner
+        if (window.systemAnnouncementBanner) {
+          console.log('📢 Starting SystemAnnouncementBanner...');
+          try {
+            window.systemAnnouncementBanner.init(user, window.firebaseDB);
+            console.log('✅ SystemAnnouncementBanner initialized successfully');
+          } catch (error) {
+            console.error('❌ Failed to initialize SystemAnnouncementBanner:', error);
+          }
+        }
       } else if (!user) {
         console.log('🔔 Auth state changed - User logged out, cleaning up...');
         if (this.notificationBell) {
           this.notificationBell.cleanup();
+        }
+        // ✅ Cleanup System Announcement Banner
+        if (window.systemAnnouncementBanner) {
+          window.systemAnnouncementBanner.cleanup();
         }
       } else {
         console.warn('⚠️ Cannot start NotificationBell - missing dependencies:', {
