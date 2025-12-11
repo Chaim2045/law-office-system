@@ -86,6 +86,16 @@ class WhatsAppBot {
             return await this.handleStatsContext(message, session, userInfo);
         }
 
+        // אם המשתמש במצב של שעתונים
+        if (session.context === 'timesheets_menu') {
+            return await this.handleTimesheetsMenuContext(message, session, userInfo);
+        }
+
+        // אם המשתמש במצב של משימות שלי
+        if (session.context === 'tasks_menu') {
+            return await this.handleTasksMenuContext(message, session, userInfo);
+        }
+
         // ═══ זיהוי פקודות מהתפריט ═══
 
         // 1️⃣ משימות לאישור
@@ -98,13 +108,23 @@ class WhatsAppBot {
             return await this.showStats(userInfo, session);
         }
 
-        // 3️⃣ שליחת הודעה לעובד
-        if (msgNormalized.match(/^3$|הודעה|שלח|עובד/)) {
+        // 3️⃣ שעתונים
+        if (msgNormalized.match(/^3$|שעתונים|שעות|timesheets/)) {
+            return await this.showTimesheetsMenu(userInfo, session);
+        }
+
+        // 4️⃣ משימות שלי
+        if (msgNormalized.match(/^4$|משימות שלי|המשימות שלי|my tasks/)) {
+            return await this.showTasksMenu(userInfo, session);
+        }
+
+        // 5️⃣ שליחת הודעה לעובד
+        if (msgNormalized.match(/^5$|הודעה|שלח|עובד/)) {
             return await this.handleSendMessage(message, session, userInfo);
         }
 
-        // 4️⃣ עזרה
-        if (msgNormalized.match(/^4$/)) {
+        // 6️⃣ עזרה
+        if (msgNormalized.match(/^6$/)) {
             return this.showHelp(userInfo);
         }
 
@@ -140,8 +160,10 @@ class WhatsAppBot {
 
 1️⃣ משימות לאישור${pendingCount > 0 ? ` (${pendingCount})` : ''}
 2️⃣ סטטיסטיקות יומי
-3️⃣ שלח הודעה לעובד
-4️⃣ עזרה
+3️⃣ שעתונים (רישומי שעות)
+4️⃣ משימות שלי (סטטוס משימות)
+5️⃣ שלח הודעה לעובד
+6️⃣ עזרה
 ━━━━━━━━━━━━━━━━━━━━
 
 💡 כתוב מספר או שם הפעולה
@@ -875,6 +897,454 @@ class WhatsAppBot {
         } catch (error) {
             console.error('❌ Error notifying other admins:', error);
             // לא זורקים error כי זה לא קריטי
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * 🕐 תפריט שעתונים - בחירת עובד
+     * ═══════════════════════════════════════════════════════════
+     */
+    async showTimesheetsMenu(userInfo, session) {
+        try {
+            // קבל את כל העובדים
+            const employeesSnapshot = await this.db.collection('employees').get();
+
+            if (employeesSnapshot.empty) {
+                return '❌ לא נמצאו עובדים במערכת.';
+            }
+
+            const employees = [];
+            employeesSnapshot.forEach(doc => {
+                const data = doc.data();
+                employees.push({
+                    email: doc.id,
+                    name: data.name || data.username || doc.id
+                });
+            });
+
+            // עדכן session
+            await this.sessionManager.updateSession(session.phoneNumber, {
+                context: 'timesheets_menu',
+                data: { employees }
+            });
+
+            // בנה תפריט
+            let response = `📊 שעתונים - רישומי שעות\n\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            response += `🔹 0️⃣ כל העובדים (סיכום)\n\n`;
+
+            employees.forEach((emp, index) => {
+                response += `🔹 ${index + 1}️⃣ ${emp.name}\n`;
+            });
+
+            response += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `💡 כתוב מספר לבחירה\nכתוב "תפריט" לחזרה`;
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Error showing timesheets menu:', error);
+            return '❌ שגיאה בטעינת תפריט שעתונים.';
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * טיפול בבחירה מתפריט שעתונים
+     * ═══════════════════════════════════════════════════════════
+     */
+    async handleTimesheetsMenuContext(message, session, userInfo) {
+        const choice = parseInt(message.trim());
+
+        if (isNaN(choice)) {
+            return '❌ נא לבחור מספר מהרשימה.\nכתוב "תפריט" לחזרה.';
+        }
+
+        const employees = session.data?.employees || [];
+
+        if (choice === 0) {
+            // הצג כל העובדים
+            return await this.showAllEmployeesTimesheets();
+        } else if (choice > 0 && choice <= employees.length) {
+            // הצג עובד ספציפי
+            const employee = employees[choice - 1];
+            return await this.showEmployeeTimesheets(employee);
+        } else {
+            return `❌ בחירה לא תקינה. בחר 0-${employees.length}`;
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * הצגת שעתונים של כל העובדים
+     * ═══════════════════════════════════════════════════════════
+     */
+    async showAllEmployeesTimesheets() {
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            // קבל את כל רישומי השעות של היום
+            const timesheetsSnapshot = await this.db.collection('timesheet_entries')
+                .where('date', '>=', today)
+                .where('date', '<', tomorrow)
+                .get();
+
+            if (timesheetsSnapshot.empty) {
+                return '📊 אין רישומי שעות להיום עדיין.\n\nכתוב "תפריט" לחזרה';
+            }
+
+            // צבור נתונים לפי עובד
+            const employeeStats = {};
+
+            timesheetsSnapshot.forEach(doc => {
+                const entry = doc.data();
+                const empEmail = entry.employeeEmail || entry.employee;
+                const empName = entry.employeeName || empEmail;
+                const minutes = entry.minutes || 0;
+                const isClient = entry.isClientWork !== false; // ברירת מחדל true
+
+                if (!employeeStats[empEmail]) {
+                    employeeStats[empEmail] = {
+                        name: empName,
+                        totalMinutes: 0,
+                        clientMinutes: 0,
+                        internalMinutes: 0
+                    };
+                }
+
+                employeeStats[empEmail].totalMinutes += minutes;
+                if (isClient) {
+                    employeeStats[empEmail].clientMinutes += minutes;
+                } else {
+                    employeeStats[empEmail].internalMinutes += minutes;
+                }
+            });
+
+            // בנה תשובה
+            let response = `📊 שעתונים - ${today.toLocaleDateString('he-IL')}\n\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+            Object.values(employeeStats).forEach(stat => {
+                const hours = Math.floor(stat.totalMinutes / 60);
+                const mins = stat.totalMinutes % 60;
+                const clientHours = Math.floor(stat.clientMinutes / 60);
+                const internalHours = Math.floor(stat.internalMinutes / 60);
+
+                response += `👤 ${stat.name}\n`;
+                response += `   ⏱️ סה"כ: ${hours}:${String(mins).padStart(2, '0')}\n`;
+                response += `   👥 לקוחות: ${clientHours}:${String(stat.clientMinutes % 60).padStart(2, '0')}\n`;
+                response += `   🏢 פנימי: ${internalHours}:${String(stat.internalMinutes % 60).padStart(2, '0')}\n\n`;
+            });
+
+            response += `━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `כתוב "תפריט" לחזרה`;
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Error showing all timesheets:', error);
+            return '❌ שגיאה בטעינת שעתונים.';
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * הצגת שעתונים של עובד ספציפי
+     * ═══════════════════════════════════════════════════════════
+     */
+    async showEmployeeTimesheets(employee) {
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            // קבל רישומי שעות של העובד להיום
+            const timesheetsSnapshot = await this.db.collection('timesheet_entries')
+                .where('employeeEmail', '==', employee.email)
+                .where('date', '>=', today)
+                .where('date', '<', tomorrow)
+                .orderBy('date', 'desc')
+                .get();
+
+            if (timesheetsSnapshot.empty) {
+                return `📊 ${employee.name}\n\nאין רישומי שעות להיום.\n\nכתוב "תפריט" לחזרה`;
+            }
+
+            let totalMinutes = 0;
+            let clientMinutes = 0;
+            let internalMinutes = 0;
+            const entries = [];
+
+            timesheetsSnapshot.forEach(doc => {
+                const entry = doc.data();
+                const minutes = entry.minutes || 0;
+                const isClient = entry.isClientWork !== false;
+
+                totalMinutes += minutes;
+                if (isClient) {
+                    clientMinutes += minutes;
+                } else {
+                    internalMinutes += minutes;
+                }
+
+                entries.push({
+                    time: entry.date?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+                    client: entry.clientName || 'פנימי',
+                    action: entry.action || 'לא צוין',
+                    minutes
+                });
+            });
+
+            // בנה תשובה
+            let response = `📊 ${employee.name} - ${today.toLocaleDateString('he-IL')}\n\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+            entries.forEach((entry, index) => {
+                const hours = Math.floor(entry.minutes / 60);
+                const mins = entry.minutes % 60;
+                response += `${index + 1}. ${entry.time} | ${entry.client}\n`;
+                response += `   ${entry.action} (${hours}:${String(mins).padStart(2, '0')})\n\n`;
+            });
+
+            const totalHours = Math.floor(totalMinutes / 60);
+            const totalMins = totalMinutes % 60;
+            const clientHours = Math.floor(clientMinutes / 60);
+            const internalHours = Math.floor(internalMinutes / 60);
+
+            response += `━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `⏱️ סה"כ: ${totalHours}:${String(totalMins).padStart(2, '0')}\n`;
+            response += `👥 לקוחות: ${clientHours}:${String(clientMinutes % 60).padStart(2, '0')}\n`;
+            response += `🏢 פנימי: ${internalHours}:${String(internalMinutes % 60).padStart(2, '0')}\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `כתוב "תפריט" לחזרה`;
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Error showing employee timesheets:', error);
+            return '❌ שגיאה בטעינת שעתונים.';
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * 📋 תפריט משימות שלי - בחירת עובד
+     * ═══════════════════════════════════════════════════════════
+     */
+    async showTasksMenu(userInfo, session) {
+        try {
+            // קבל את כל העובדים
+            const employeesSnapshot = await this.db.collection('employees').get();
+
+            if (employeesSnapshot.empty) {
+                return '❌ לא נמצאו עובדים במערכת.';
+            }
+
+            const employees = [];
+            employeesSnapshot.forEach(doc => {
+                const data = doc.data();
+                employees.push({
+                    email: doc.id,
+                    name: data.name || data.username || doc.id
+                });
+            });
+
+            // עדכן session
+            await this.sessionManager.updateSession(session.phoneNumber, {
+                context: 'tasks_menu',
+                data: { employees }
+            });
+
+            // בנה תפריט
+            let response = `📋 משימות שלי - סטטוס משימות\n\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            response += `🔹 0️⃣ כל העובדים (סיכום)\n\n`;
+
+            employees.forEach((emp, index) => {
+                response += `🔹 ${index + 1}️⃣ ${emp.name}\n`;
+            });
+
+            response += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `💡 כתוב מספר לבחירה\nכתוב "תפריט" לחזרה`;
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Error showing tasks menu:', error);
+            return '❌ שגיאה בטעינת תפריט משימות.';
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * טיפול בבחירה מתפריט משימות שלי
+     * ═══════════════════════════════════════════════════════════
+     */
+    async handleTasksMenuContext(message, session, userInfo) {
+        const choice = parseInt(message.trim());
+
+        if (isNaN(choice)) {
+            return '❌ נא לבחור מספר מהרשימה.\nכתוב "תפריט" לחזרה.';
+        }
+
+        const employees = session.data?.employees || [];
+
+        if (choice === 0) {
+            // הצג כל העובדים
+            return await this.showAllEmployeesTasks();
+        } else if (choice > 0 && choice <= employees.length) {
+            // הצג עובד ספציפי
+            const employee = employees[choice - 1];
+            return await this.showEmployeeTasks(employee);
+        } else {
+            return `❌ בחירה לא תקינה. בחר 0-${employees.length}`;
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * הצגת משימות של כל העובדים
+     * ═══════════════════════════════════════════════════════════
+     */
+    async showAllEmployeesTasks() {
+        try {
+            // קבל את כל המשימות הפעילות
+            const tasksSnapshot = await this.db.collection('budget_tasks').get();
+
+            if (tasksSnapshot.empty) {
+                return '📋 אין משימות במערכת.\n\nכתוב "תפריט" לחזרה';
+            }
+
+            // צבור נתונים לפי עובד
+            const employeeStats = {};
+
+            tasksSnapshot.forEach(doc => {
+                const task = doc.data();
+                const empEmail = task.employeeEmail || task.employee;
+                const empName = task.employeeName || empEmail;
+                const status = task.status || 'פעיל';
+                const estimatedMinutes = task.estimatedMinutes || task.budgetMinutes || 0;
+
+                if (!employeeStats[empEmail]) {
+                    employeeStats[empEmail] = {
+                        name: empName,
+                        active: 0,
+                        completed: 0,
+                        totalMinutes: 0
+                    };
+                }
+
+                if (status === 'פעיל') {
+                    employeeStats[empEmail].active++;
+                    employeeStats[empEmail].totalMinutes += estimatedMinutes;
+                } else if (status === 'הושלם') {
+                    employeeStats[empEmail].completed++;
+                }
+            });
+
+            // בנה תשובה
+            let response = `📋 משימות שלי - סיכום כללי\n\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+            Object.values(employeeStats).forEach(stat => {
+                const hours = Math.floor(stat.totalMinutes / 60);
+                const mins = stat.totalMinutes % 60;
+
+                response += `👤 ${stat.name}\n`;
+                response += `   ▶️ פעילות: ${stat.active}\n`;
+                response += `   ✅ הושלמו: ${stat.completed}\n`;
+                response += `   ⏱️ נותרו: ${hours}:${String(mins).padStart(2, '0')}\n\n`;
+            });
+
+            response += `━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `כתוב "תפריט" לחזרה`;
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Error showing all tasks:', error);
+            return '❌ שגיאה בטעינת משימות.';
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * הצגת משימות של עובד ספציפי
+     * ═══════════════════════════════════════════════════════════
+     */
+    async showEmployeeTasks(employee) {
+        try {
+            // קבל משימות של העובד
+            const [activeTasks, completedTasks] = await Promise.all([
+                this.db.collection('budget_tasks')
+                    .where('employeeEmail', '==', employee.email)
+                    .where('status', '==', 'פעיל')
+                    .orderBy('deadline', 'asc')
+                    .limit(10)
+                    .get(),
+                this.db.collection('budget_tasks')
+                    .where('employeeEmail', '==', employee.email)
+                    .where('status', '==', 'הושלם')
+                    .orderBy('completedAt', 'desc')
+                    .limit(5)
+                    .get()
+            ]);
+
+            let response = `📋 ${employee.name}\n\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+            // משימות פעילות
+            if (!activeTasks.empty) {
+                response += `▶️ משימות פעילות (${activeTasks.size}):\n\n`;
+                let totalMinutes = 0;
+
+                activeTasks.forEach((doc, index) => {
+                    const task = doc.data();
+                    const minutes = task.estimatedMinutes || task.budgetMinutes || 0;
+                    totalMinutes += minutes;
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    const deadline = task.deadline?.toDate().toLocaleDateString('he-IL') || 'ללא';
+
+                    response += `${index + 1}. ${task.clientName || 'לא צוין'}\n`;
+                    response += `   ${task.description || 'אין תיאור'}\n`;
+                    response += `   ⏱️ ${hours}:${String(mins).padStart(2, '0')} | 📅 ${deadline}\n\n`;
+                });
+
+                const totalHours = Math.floor(totalMinutes / 60);
+                const totalMins = totalMinutes % 60;
+                response += `סה"כ זמן נותר: ${totalHours}:${String(totalMins).padStart(2, '0')}\n\n`;
+            } else {
+                response += `▶️ אין משימות פעילות\n\n`;
+            }
+
+            // משימות שהושלמו
+            if (!completedTasks.empty) {
+                response += `✅ הושלמו לאחרונה (${completedTasks.size}):\n\n`;
+
+                completedTasks.forEach((doc, index) => {
+                    const task = doc.data();
+                    const completedDate = task.completedAt?.toDate().toLocaleDateString('he-IL') || 'לא ידוע';
+
+                    response += `${index + 1}. ${task.clientName || 'לא צוין'}\n`;
+                    response += `   ${task.description || 'אין תיאור'}\n`;
+                    response += `   📅 ${completedDate}\n\n`;
+                });
+            }
+
+            response += `━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `כתוב "תפריט" לחזרה`;
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Error showing employee tasks:', error);
+            return '❌ שגיאה בטעינת משימות.';
         }
     }
 }
