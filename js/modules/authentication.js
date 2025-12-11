@@ -886,14 +886,23 @@ async function initAIChatSystem() {
     }
 
     // ✅ אתחל את מערכת ההודעות (NotificationBell)
-    if (window.NotificationBellSystem && !window.notificationBell) {
-      window.notificationBell = new window.NotificationBellSystem();
+    if (window.NotificationBellSystem) {
+      // יצירת instance אם לא קיים
+      if (!window.notificationBell) {
+        window.notificationBell = new window.NotificationBellSystem();
+        Logger.log('[NotificationBell] Instance created');
+      }
 
-      // התחבר למערכת ההודעות אם יש משתמש מחובר
+      // חיבור למשתמש - גם אם ה-instance כבר קיים
       if (this.currentUser && window.firebaseDB) {
         const user = { email: this.currentUser };
         window.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
-        Logger.log('[NotificationBell] ✅ Listening to admin messages');
+        Logger.log(`[NotificationBell] ✅ Listening to admin messages for ${user.email}`);
+      } else {
+        console.warn('[NotificationBell] ⚠️ Cannot start listening - missing user or DB', {
+          currentUser: this.currentUser,
+          firebaseDB: !!window.firebaseDB
+        });
       }
     }
 
