@@ -169,9 +169,17 @@
             'use strict';
 
             // Wait for Firebase to initialize
-            // Use the correct event name from firebase.js
-            function initAfterFirebase() {
-                console.log('✅ Firebase ready, initializing page...');
+            let authStateListenerStarted = false;
+
+            function startAuthListener() {
+                // Prevent duplicate listeners
+                if (authStateListenerStarted) {
+                    console.log('⚠️ Auth listener already started, skipping');
+                    return;
+                }
+                authStateListenerStarted = true;
+
+                console.log('✅ Starting Firebase auth listener...');
 
                 // Check if user is already logged in
                 firebase.auth().onAuthStateChanged((user) => {
@@ -185,14 +193,19 @@
                 });
             }
 
-            // Listen for correct event name
-            window.addEventListener('firebase:ready', initAfterFirebase);
+            // Listen for firebase:ready event
+            window.addEventListener('firebase:ready', () => {
+                console.log('📢 Received firebase:ready event');
+                startAuthListener();
+            });
 
-            // Fallback: If Firebase is already initialized, call directly
-            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-                console.log('🔥 Firebase already initialized, starting immediately');
-                initAfterFirebase();
-            }
+            // Fallback: Try after a short delay if event didn't fire
+            setTimeout(() => {
+                if (!authStateListenerStarted && typeof firebase !== 'undefined' && firebase.auth) {
+                    console.log('⏰ Fallback: Starting auth listener after timeout');
+                    startAuthListener();
+                }
+            }, 1000);
 
             // Show dashboard
             function showDashboard() {
