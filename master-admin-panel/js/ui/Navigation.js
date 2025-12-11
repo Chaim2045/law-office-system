@@ -75,10 +75,6 @@ return;
                             <i class="fas fa-clipboard-check"></i>
                             <span>אישורי משימות</span>
                         </a>
-                        <a href="system-announcements.html" class="btn-announcements ${this.currentPage === 'announcements' ? 'active' : ''}" title="הודעות מערכת">
-                            <i class="fas fa-bullhorn"></i>
-                            <span>הודעות מערכת</span>
-                        </a>
                         <button class="btn-logout" id="navLogoutBtn">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>יציאה</span>

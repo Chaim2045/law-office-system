@@ -1071,6 +1071,10 @@
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
     <script src="js/modules/logger.js?v=2.0.0"></script>
 
+    <!-- ===== ⚡ Lazy Loader - Dynamic Script Loading ===== -->
+    <!-- טעינה דינמית של סקריפטים - שיפור ביצועים -->
+    <script src="js/modules/lazy-loader.js?v=1.0.0"></script>
+
     <script src="js/modules/dates.js?v=1.2.0"></script>
     <script defer src="js/modules/statistics.js?v=5.2.1"></script>
     <script src="js/modules/pagination.js?v=1.0.0"></script>
@@ -1098,11 +1102,6 @@
     <script type="module" src="js/modules/employees-manager.js?v=1.0.0"></script>
     <!-- ✅ Presence System - מעקב משתמשים בזמן אמת (Realtime Database) -->
     <script src="js/modules/presence-system.js?v=2.0.0"></script>
-
-    <!-- ===== System Announcement Banner ===== -->
-    <!-- Global announcements displayed at the top of the page -->
-    <link rel="stylesheet" href="css/system-announcement-banner.css?v=1.0.0">
-    <script defer src="js/modules/system-announcement-banner.js?v=1.0.0"></script>
 
     <!-- Cases Management System - ניהול תיקים -->
     <script src="js/cases.js?v=1.0.0"></script>
@@ -1233,15 +1232,11 @@
     <!-- ===== Virtual Assistant 3.9.0 - TEMPORARILY DISABLED ===== -->
     <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=3.9.0"></script> -->
 
-    <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
-    <script src="js/modules/ai-system/ai-config.js?v=2.0.0"></script>
-    <script src="js/modules/ai-system/ai-engine.js?v=2.0.0"></script>
-    <script src="js/modules/ai-system/ai-context-builder.js?v=2.0.0"></script>
-    <script src="js/modules/UserReplyModal.js?v=1.0.3-threads"></script>
-    <script src="js/config/message-categories.js?v=1.0.0"></script>
-    <script src="js/modules/notification-bell.js?v=20251210-fix"></script>
-    <script src="js/modules/ai-system/ThreadView.js?v=1.0.4-mark-as-read"></script>
-    <script src="js/modules/ai-system/ai-chat-ui.js?v=2.0.7-categories"></script>
+    <!-- ===== AI CHAT SYSTEM (NEW) - LAZY LOADED ===== -->
+    <!-- ⚡ Performance Optimization: AI Chat scripts are now loaded AFTER login -->
+    <!-- This reduces initial page load time by ~70KB and improves login screen performance -->
+    <!-- Scripts are dynamically loaded in authentication.js after successful login -->
+    <!-- See: authentication.js -> initAIChatSystem() -->
 
     <!-- OLD: Legacy FAQ Bot (backup) -->
     <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=3.0.0"></script> -->
