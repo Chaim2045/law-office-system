@@ -169,7 +169,8 @@
             'use strict';
 
             // Wait for Firebase to initialize
-            window.addEventListener('firebaseReady', () => {
+            // Use the correct event name from firebase.js
+            function initAfterFirebase() {
                 console.log('✅ Firebase ready, initializing page...');
 
                 // Check if user is already logged in
@@ -182,7 +183,16 @@
                         showLogin();
                     }
                 });
-            });
+            }
+
+            // Listen for correct event name
+            window.addEventListener('firebase:ready', initAfterFirebase);
+
+            // Fallback: If Firebase is already initialized, call directly
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                console.log('🔥 Firebase already initialized, starting immediately');
+                initAfterFirebase();
+            }
 
             // Show dashboard
             function showDashboard() {
