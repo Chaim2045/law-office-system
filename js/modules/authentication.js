@@ -875,7 +875,7 @@ async function initAIChatSystem() {
       { version: '2.0.7-categories' }
     );
 
-    // אתחל את המערכת
+    // אתחל את מערכת AI Chat
     if (window.AIChatUI && !window.aiChat) {
       window.aiChat = new window.AIChatUI();
 
@@ -883,6 +883,18 @@ async function initAIChatSystem() {
       Logger.log(`[AI Chat] ✅ Initialized successfully (${loadTime}ms)`);
     } else {
       console.warn('[AI Chat] ⚠️ AIChatUI class not available after loading');
+    }
+
+    // ✅ אתחל את מערכת ההודעות (NotificationBell)
+    if (window.NotificationBellSystem && !window.notificationBell) {
+      window.notificationBell = new window.NotificationBellSystem();
+
+      // התחבר למערכת ההודעות אם יש משתמש מחובר
+      if (this.currentUser && window.firebaseDB) {
+        const user = { email: this.currentUser };
+        window.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
+        Logger.log('[NotificationBell] ✅ Listening to admin messages');
+      }
     }
 
   } catch (error) {
