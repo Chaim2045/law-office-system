@@ -36,7 +36,7 @@
 .table th,
 #budgetTable th,
 #timesheetTable th {
-  background: #ffffff;
+  background: #fff;
   padding: var(--space-3) var(--space-4);
   text-align: right;
   font-weight: var(--font-semibold);
@@ -88,28 +88,28 @@
 .table tbody tr:hover,
 #budgetTable tbody tr:hover,
 #timesheetTable tbody tr:hover {
-  background: #ffffff;
+  background: #fff;
 }
 
 /* Budget table specific */
 #budgetTable th {
-  background: #ffffff;
+  background: #fff;
   color: var(--gray-600);
 }
 
 #budgetTable tbody tr:hover {
-  background: #ffffff;
+  background: #fff;
 }
 
 /* Timesheet table specific */
 #timesheetTable th {
-  background: #ffffff;
+  background: #fff;
   color: var(--gray-600);
   border-bottom: 1px solid var(--gray-200);
 }
 
 #timesheetTable tbody tr:hover {
-  background: #ffffff;
+  background: #fff;
 }
 
 /* Table action buttons */
@@ -138,7 +138,7 @@
 
 .table-action-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .table-action-btn.primary {
@@ -206,7 +206,7 @@
 .modern-table-title i {
   font-size: 18px;
   color: #64748b; /* אפור מקצועי אחיד */
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 10%));
 }
 
 .modern-table-subtitle {
@@ -226,19 +226,19 @@
 
 .modern-budget-table tbody tr:nth-child(odd),
 .modern-timesheet-table tbody tr:nth-child(odd) {
-  background: #ffffff;
+  background: #fff;
 }
 
 /* שורות על hover */
 .modern-budget-table tbody tr:hover,
 .modern-timesheet-table tbody tr:hover {
-  background: #ffffff;
+  background: #fff;
 }
 
 /* גבול עדין בין השורות */
 .modern-budget-table tbody tr,
 .modern-timesheet-table tbody tr {
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  border-bottom: 1px solid rgb(226 232 240 / 60%);
 }
 
 /* כפתורי פעולה גדולים יותר */
@@ -271,7 +271,7 @@
   /* אפקט תג מעוגל */
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
   border: 1px solid var(--gray-200);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -284,7 +284,7 @@
 .modern-budget-table thead th:hover,
 .modern-timesheet-table thead th:hover {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 12%);
   transform: translateY(-1px);
 }
 
@@ -346,7 +346,7 @@
   border-radius: 12px;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 .table-progress-fill {
@@ -372,7 +372,7 @@
 /* Critical state for budget overrun (>100%) */
 .progress-fill.critical {
   background: linear-gradient(90deg, #dc2626, #991b1b);
-  box-shadow: 0 0 8px rgba(220, 38, 38, 0.3);
+  box-shadow: 0 0 8px rgb(220 38 38 / 30%);
 }
 
 .progress-fill.complete {
@@ -389,7 +389,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.4),
+    rgb(255 255 255 / 40%),
     transparent
   );
   animation: progressShine 2s ease-in-out infinite;
@@ -422,7 +422,7 @@
 
 .table-action-btn:hover {
   transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .table-action-btn.primary {
@@ -481,7 +481,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-sm);
-  background: #ffffff;
+  background: #fff;
   color: var(--gray-700);
   cursor: pointer;
   transition: var(--transition-fast);
@@ -518,7 +518,7 @@
 
 /* Modern timesheet header */
 .modern-timesheet-header {
-  background: #ffffff;
+  background: #fff;
   padding: var(--space-5);
   border-bottom: 1px solid var(--gray-200);
 }
@@ -579,7 +579,7 @@
   border-radius: 6px;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 .modern-progress-fill {
@@ -616,7 +616,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.4),
+    rgb(255 255 255 / 40%),
     transparent
   );
   animation: progressShine 2s infinite;
@@ -674,7 +674,7 @@
   height: 32px;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-sm);
-  background: #ffffff;
+  background: #fff;
   color: var(--gray-600);
   cursor: pointer;
   transition: var(--transition-fast);
@@ -980,10 +980,12 @@
 .table-progress-normal {
   color: #6b7280;
 }
+
 .table-progress-over {
   color: #f59e0b;
   font-weight: 700;
 }
+
 .table-progress-critical {
   color: #ef4444;
   font-weight: 700;
@@ -1092,9 +1094,9 @@
 }
 
 .card:hover {
-  background: #ffffff;
+  background: #fff;
   border-color: var(--gray-300);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 4%);
   transform: translateY(-2px);
 }
 
@@ -1218,7 +1220,7 @@
 /* Critical state for budget overrun (>100%) */
 .progress-fill.critical {
   background: linear-gradient(90deg, #dc2626, #991b1b);
-  box-shadow: 0 0 8px rgba(220, 38, 38, 0.3);
+  box-shadow: 0 0 8px rgb(220 38 38 / 30%);
 }
 
 .card-actions {
@@ -1232,7 +1234,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-sm);
-  background: #ffffff;
+  background: #fff;
   color: var(--gray-700);
   font-size: 12px;
   font-weight: 600;
@@ -1256,7 +1258,7 @@
 
 /* ========== TABLE STRUCTURE ========== */
 .table-header {
-  background: #ffffff;
+  background: #fff;
   border-bottom: 1px solid var(--gray-200);
   padding: var(--space-5);
 }
@@ -1315,7 +1317,7 @@
   height: 32px;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-sm);
-  background: #ffffff;
+  background: #fff;
   color: var(--gray-600);
   font-size: 12px;
   cursor: pointer;
@@ -1356,12 +1358,12 @@
   max-width: none;
   overflow-x: auto; /* גלילה אופקית אם צריך */
   overflow-y: visible; /* הפופאובר לא ייחתך */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 5%);
   padding: 2px; /* padding אולטרה מינימלי - רוחב מקסימלי */
 }
 
 .modern-table-header {
-  background: #ffffff;
+  background: #fff;
   padding: var(--space-5);
   border-bottom: 1px solid var(--gray-200);
 }
@@ -1440,7 +1442,7 @@
 
 .modern-budget-table th,
 .modern-timesheet-table th {
-  background: #ffffff;
+  background: #fff;
   font-weight: var(--font-semibold);
   color: var(--gray-600);
   font-size: var(--text-xs);
@@ -1451,7 +1453,7 @@
 
 .modern-budget-table tbody tr:hover,
 .modern-timesheet-table tbody tr:hover {
-  background: #ffffff;
+  background: #fff;
 }
 
 .modern-budget-table tbody tr:nth-child(even),
@@ -1471,7 +1473,7 @@
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-sm);
-  background: #ffffff;
+  background: #fff;
   color: var(--gray-700);
   cursor: pointer;
   transition: var(--transition-fast);
@@ -1596,7 +1598,7 @@
   background: #f1f5f9;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .table-progress-fill {
@@ -1616,7 +1618,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.3),
+    rgb(255 255 255 / 30%),
     transparent
   );
   animation: progressShine 2s infinite;
@@ -1626,6 +1628,7 @@
   0% {
     left: -50%;
   }
+
   100% {
     left: 150%;
   }
@@ -1729,9 +1732,9 @@
 .task-card:hover,
 .budget-card:hover,
 .timesheet-card:hover {
-  background: #ffffff;
+  background: #fff;
   border-color: var(--gray-300);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 4%);
   transform: translateY(-2px);
 }
 
@@ -1752,7 +1755,7 @@
   padding: var(--space-5);
   padding-bottom: 70px; /* מקום לכפתור + meta */
 
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06); /* ✅ צל יותר בולט ומקצועי */
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 6%); /* ✅ צל יותר בולט ומקצועי */
   direction: rtl;
   text-align: right;
   display: flex;
@@ -1761,9 +1764,9 @@
 }
 
 .linear-minimal-card:hover {
-  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); /* ✅ gradient בהיר יותר ב-hover */
+  background: linear-gradient(135deg, #fff 0%, #fafbfc 100%); /* ✅ gradient בהיר יותר ב-hover */
   border-color: #d1d5db;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04); /* ✅ צל יותר בולט ב-hover */
+  box-shadow: 0 4px 16px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 4%); /* ✅ צל יותר בולט ב-hover */
   transform: translateY(-2px);
 }
 
@@ -1778,11 +1781,11 @@
   opacity: 0.75;
   font-style: normal;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgb(255 255 255 / 95%);
   padding: 3px 7px;
   border-radius: 3px;
-  border: 1px solid rgba(229, 231, 235, 0.6);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgb(229 231 235 / 60%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
   transition: all 0.2s ease;
   letter-spacing: 0.01em;
   line-height: 1.4;
@@ -1794,8 +1797,8 @@
 
 .linear-minimal-card:hover .card-creation-date {
   opacity: 0.95;
-  background: rgba(255, 255, 255, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgb(255 255 255 / 100%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }
 
 /* תגי שירות ותיק בפינה ימנית עליונה - עיצוב ultra-minimal */
@@ -1809,6 +1812,7 @@
   flex-wrap: nowrap;
   opacity: 0.9;
   transition: opacity 0.2s ease;
+
   /* ✅ מניעת overflow - הגבלת רוחב */
   max-width: calc(100% - 40px); /* 10px ימין + 10px שמאל + 20px מרווח בטיחות */
   overflow: hidden;
@@ -1835,7 +1839,7 @@
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
-  background: #ffffff;
+  background: #fff;
   border: 1px solid var(--gray-300);
   color: var(--gray-700);
   display: flex;
@@ -2033,9 +2037,9 @@
   gap: 2px;
   text-align: center;
   padding: 6px;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgb(59 130 246 / 5%);
   border-radius: 6px;
-  border: 1px solid rgba(59, 130, 246, 0.1);
+  border: 1px solid rgb(59 130 246 / 10%);
 }
 
 .time-label {
@@ -2053,8 +2057,8 @@
 
 /* צבע שונה לזמן בפועל */
 .time-item.actual {
-  background: rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.1);
+  background: rgb(16 185 129 / 5%);
+  border-color: rgb(16 185 129 / 10%);
 }
 
 .time-item.actual .time-value {
@@ -2115,10 +2119,10 @@
 }
 
 .card-badges-button:hover {
-  background: #ffffff;
+  background: #fff;
   border-color: var(--gray-300);
   color: var(--gray-700);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 6%);
 }
 
 .card-badges-button:active {
@@ -2199,7 +2203,7 @@
 }
 
 /* רספונסיביות ריבועית */
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .cards-grid,
   .budget-cards-grid,
   .timesheet-cards-grid {
@@ -2209,7 +2213,7 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .cards-grid,
   .budget-cards-grid,
   .timesheet-cards-grid {
@@ -2219,7 +2223,7 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .cards-grid,
   .budget-cards-grid,
   .timesheet-cards-grid {
@@ -2260,12 +2264,12 @@
 .compact-svg-ring {
   display: block;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.06));
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 6%));
 }
 
 .compact-deadline-ring:hover .compact-svg-ring {
   transform: scale(1.04);
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 10%));
 }
 
 .compact-ring-progress {
@@ -2311,6 +2315,7 @@
   0%, 100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -2333,10 +2338,10 @@
 }
 
 .table-badges-button:hover {
-  background: #ffffff;
+  background: #fff;
   border-color: var(--gray-300);
   color: var(--gray-700);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 6%);
 }
 
 .table-badges-button:active {
@@ -2371,7 +2376,7 @@
 .badges-mini-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgb(15 23 42 / 40%);
   backdrop-filter: blur(8px);
   z-index: 3000;
   display: flex;
@@ -2389,11 +2394,11 @@
 }
 
 .badges-mini-modal {
-  background: #ffffff;
+  background: #fff;
   border-radius: 12px;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05),
-              0 4px 16px rgba(15, 23, 42, 0.1),
-              0 8px 32px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 0 0 1px rgb(15 23 42 / 5%),
+              0 4px 16px rgb(15 23 42 / 10%),
+              0 8px 32px rgb(15 23 42 / 15%);
   max-width: 360px;
   width: 100%;
   transform: translateY(8px) scale(0.96);
@@ -2470,9 +2475,9 @@
 }
 
 .badges-mini-modal-item:hover {
-  background: #ffffff;
+  background: #fff;
   border-color: var(--gray-300);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
 }
 
 .badges-mini-modal-item i {

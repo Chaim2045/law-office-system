@@ -1,4 +1,5 @@
 /* Input Component Styles */
+
 /* ====================== */
 
 .input-wrapper {
@@ -34,7 +35,7 @@
 .input-field {
   width: 100%;
   padding: 0.75rem 1rem;
-  font-family: 'Rubik', sans-serif;
+  font-family: Rubik, sans-serif;
   font-size: 1rem;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -46,7 +47,7 @@
 
 .input-field:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  box-shadow: 0 0 0 3px rgb(26 115 232 / 10%);
 }
 
 .input-field:disabled {
@@ -83,7 +84,7 @@
 
 .input-error:focus {
   border-color: var(--danger-color);
-  box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.1);
+  box-shadow: 0 0 0 3px rgb(234 67 53 / 10%);
 }
 
 .input-error-text {

@@ -58,7 +58,7 @@
     font-weight: 700;
     min-width: 18px;
     text-align: center;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 2px 8px rgb(239 68 68 / 40%);
     animation: pulse-badge 2s infinite;
     border: 2px solid white;
 }
@@ -66,11 +66,12 @@
 @keyframes pulse-badge {
     0%, 100% {
         transform: scale(1);
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+        box-shadow: 0 2px 8px rgb(239 68 68 / 40%);
     }
+
     50% {
         transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+        box-shadow: 0 4px 12px rgb(239 68 68 / 60%);
     }
 }
 
@@ -86,8 +87,8 @@
     max-height: 600px;
     background: white;
     border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
-                0 10px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 15%),
+                0 10px 30px rgb(0 0 0 / 10%);
     z-index: 10000;
     overflow: hidden;
     display: flex;
@@ -101,6 +102,7 @@
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -208,7 +210,7 @@
 }
 
 .alert-item.unread {
-    background: linear-gradient(90deg, #eff6ff 0%, #ffffff 100%);
+    background: linear-gradient(90deg, #eff6ff 0%, #fff 100%);
     border-right: 4px solid #3b82f6;
 }
 
@@ -225,7 +227,7 @@
     height: 8px;
     background: #3b82f6;
     border-radius: 50%;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 10px rgb(59 130 246 / 50%);
 }
 
 /* Alert Header */
@@ -299,7 +301,7 @@
 .btn-respond:hover {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 4px 12px rgb(37 99 235 / 30%);
 }
 
 .btn-dismiss {
@@ -364,7 +366,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgb(0 0 0 / 50%);
     backdrop-filter: blur(4px);
 }
 
@@ -372,7 +374,7 @@
     position: relative;
     background: white;
     border-radius: 16px;
-    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 25px 80px rgb(0 0 0 / 20%);
     width: 90%;
     max-width: 550px;
     max-height: 90vh;
@@ -477,7 +479,7 @@
 .response-form textarea:focus {
     outline: none;
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 /* Quick Responses */
@@ -546,14 +548,14 @@
 .btn-primary:hover {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 4px 12px rgb(37 99 235 / 30%);
 }
 
 /* ============================================
    Responsive Design
    ============================================ */
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .alerts-dropdown {
         width: calc(100vw - 32px);
         max-width: 400px;
@@ -570,7 +572,7 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
     .alerts-dropdown {
         position: fixed;
         top: auto;

@@ -1,4 +1,5 @@
 /* Global Styles */
+
 /* ============== */
 
 /* CSS Reset */
@@ -22,10 +23,10 @@
   --text-color: #202124;
   --text-light: #5f6368;
   --border-color: #dadce0;
-  --bg-color: #ffffff;
+  --bg-color: #fff;
   --bg-light: #f8f9fa;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-  --shadow-hover: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  --shadow: 0 1px 3px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-hover: 0 3px 6px rgb(0 0 0 / 16%), 0 3px 6px rgb(0 0 0 / 23%);
 
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -51,8 +52,8 @@ html {
 }
 
 body {
-  font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: Rubik, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   direction: rtl;
   text-align: right;
   background-color: var(--bg-light);
@@ -111,9 +112,11 @@ body {
 .mt-1 {
   margin-top: var(--spacing-sm);
 }
+
 .mt-2 {
   margin-top: var(--spacing-md);
 }
+
 .mt-3 {
   margin-top: var(--spacing-lg);
 }
@@ -121,9 +124,11 @@ body {
 .mb-1 {
   margin-bottom: var(--spacing-sm);
 }
+
 .mb-2 {
   margin-bottom: var(--spacing-md);
 }
+
 .mb-3 {
   margin-bottom: var(--spacing-lg);
 }
@@ -131,9 +136,11 @@ body {
 .p-1 {
   padding: var(--spacing-sm);
 }
+
 .p-2 {
   padding: var(--spacing-md);
 }
+
 .p-3 {
   padding: var(--spacing-lg);
 }
@@ -147,7 +154,7 @@ body {
 .Toastify__toast {
   direction: rtl;
   text-align: right;
-  font-family: 'Rubik', sans-serif;
+  font-family: Rubik, sans-serif;
 }
 
 /* Loading States */
@@ -155,7 +162,7 @@ body {
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  border: 3px solid rgb(0 0 0 / 10%);
   border-radius: 50%;
   border-top-color: var(--primary-color);
   animation: spin 1s ease-in-out infinite;
@@ -168,7 +175,7 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   html {
     font-size: 14px;
   }

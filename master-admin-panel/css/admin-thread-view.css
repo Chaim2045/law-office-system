@@ -31,8 +31,8 @@
     right: 0;
     bottom: 80px;
     background-image:
-        repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px),
-        repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px);
+        repeating-linear-gradient(45deg, transparent, transparent 35px, rgb(255 255 255 / 3%) 35px, rgb(255 255 255 / 3%) 70px),
+        repeating-linear-gradient(-45deg, transparent, transparent 35px, rgb(255 255 255 / 3%) 35px, rgb(255 255 255 / 3%) 70px);
     pointer-events: none;
     z-index: 0;
 }
@@ -59,17 +59,17 @@
 }
 
 .admin-thread-messages::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgb(0 0 0 / 5%);
     border-radius: 10px;
 }
 
 .admin-thread-messages::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgb(0 0 0 / 20%);
     border-radius: 10px;
 }
 
 .admin-thread-messages::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgb(0 0 0 / 30%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -90,6 +90,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -103,8 +104,8 @@
 
 .admin-thread-message-admin .admin-thread-message-bubble {
     background: #dcf8c6; /* WhatsApp green - admin sends from right */
-    border-radius: 8px 8px 0 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 8px 8px 0;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 /* User messages (left side - white like WhatsApp) - ADMIN PANEL PERSPECTIVE */
@@ -115,7 +116,7 @@
 .admin-thread-message-user .admin-thread-message-bubble {
     background: white; /* User receives on left */
     border-radius: 8px 8px 8px 0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 /* Message Bubble Content */
@@ -144,7 +145,7 @@
 
 .admin-thread-message-time {
     font-size: 10px;
-    color: rgba(0, 0, 0, 0.45);
+    color: rgb(0 0 0 / 45%);
     white-space: nowrap;
 }
 
@@ -152,7 +153,7 @@
     font-size: 13px;
     line-height: 1.4;
     color: #303030;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
     white-space: pre-wrap;
 }
 
@@ -165,7 +166,7 @@
     gap: 10px;
     padding: 12px;
     background: #f0f0f0;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    border-top: 1px solid rgb(0 0 0 / 8%);
     position: relative;
     z-index: 2;
 }
@@ -179,7 +180,7 @@
     font-size: 14px;
     resize: none;
     background: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
     transition: all 0.2s;
     min-height: 38px;
     max-height: 100px;
@@ -187,11 +188,11 @@
 
 .admin-thread-input:focus {
     outline: none;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 
 .admin-thread-input::placeholder {
-    color: rgba(0, 0, 0, 0.4);
+    color: rgb(0 0 0 / 40%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -210,7 +211,7 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
+    box-shadow: 0 2px 6px rgb(37 211 102 / 30%);
     flex-shrink: 0;
     font-size: 0; /* Hide text */
 }
@@ -218,7 +219,7 @@
 .admin-thread-send-btn:hover:not(:disabled) {
     background: #20ba5a;
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+    box-shadow: 0 4px 12px rgb(37 211 102 / 40%);
 }
 
 .admin-thread-send-btn:active {
@@ -246,7 +247,7 @@
     justify-content: center;
     gap: var(--space-3, 12px);
     padding: var(--space-6, 24px);
-    color: rgba(0, 0, 0, 0.5);
+    color: rgb(0 0 0 / 50%);
     font-size: 14px;
 }
 
@@ -257,7 +258,7 @@
 .admin-thread-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(0, 0, 0, 0.1);
+    border: 3px solid rgb(0 0 0 / 10%);
     border-top-color: #25d366;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -274,14 +275,14 @@
 .admin-thread-no-replies {
     text-align: center;
     padding: var(--space-8, 32px);
-    color: rgba(0, 0, 0, 0.4);
+    color: rgb(0 0 0 / 40%);
     font-size: 14px;
 }
 
 .admin-thread-empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: rgba(0, 0, 0, 0.4);
+    color: rgb(0 0 0 / 40%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -314,19 +315,19 @@
 }
 
 .admin-thread-date-separator span {
-    background: rgba(225, 225, 225, 0.9);
+    background: rgb(225 225 225 / 90%);
     padding: 6px 12px;
     border-radius: 8px;
     font-size: 12px;
-    color: rgba(0, 0, 0, 0.6);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: rgb(0 0 0 / 60%);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .admin-thread-container {
         height: 500px;
     }

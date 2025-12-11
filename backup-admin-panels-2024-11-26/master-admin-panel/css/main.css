@@ -96,12 +96,15 @@ body {
   0%, 100% {
     transform: translate(0, 0) scale(1);
   }
+
   25% {
     transform: translate(30px, -30px) scale(1.1);
   }
+
   50% {
     transform: translate(-20px, 20px) scale(0.9);
   }
+
   75% {
     transform: translate(20px, 30px) scale(1.05);
   }
@@ -109,11 +112,11 @@ body {
 
 /* ===== Login Box ===== */
 .login-box {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgb(255 255 255 / 95%);
   backdrop-filter: blur(20px);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgb(255 255 255 / 80%);
   padding: var(--space-10);
   width: 100%;
   max-width: 450px;
@@ -127,6 +130,7 @@ body {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -162,9 +166,10 @@ body {
     transform: scale(1);
     box-shadow: var(--shadow-lg);
   }
+
   50% {
     transform: scale(1.05);
-    box-shadow: 0 12px 32px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 12px 32px rgb(59 130 246 / 30%);
   }
 }
 
@@ -227,7 +232,7 @@ body {
 
 .form-input:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 10%);
 }
 
 .form-input::placeholder {
@@ -311,7 +316,7 @@ body {
 
 /* ===== Error Message ===== */
 .error-message {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgb(239 68 68 / 10%);
   border: 1px solid var(--red);
   border-radius: var(--radius-md);
   padding: var(--space-4);
@@ -330,7 +335,9 @@ body {
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
+
   25% { transform: translateX(-10px); }
+
   75% { transform: translateX(10px); }
 }
 
@@ -355,7 +362,7 @@ body {
 
 .btn-login:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 20px rgb(59 130 246 / 40%);
 }
 
 .btn-login:active {
@@ -489,7 +496,7 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 20px rgb(59 130 246 / 40%);
 }
 
 .btn-primary:active {
@@ -781,7 +788,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0 0 0 / 50%);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -796,7 +803,7 @@ body {
 .spinner-circle {
   width: 60px;
   height: 60px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
+  border: 4px solid rgb(255 255 255 / 30%);
   border-top-color: white;
   border-radius: 50%;
   margin: 0 auto var(--space-4);
@@ -893,7 +900,7 @@ body {
 }
 
 .nav-link.active {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+  background: linear-gradient(135deg, rgb(59 130 246 / 10%), rgb(37 99 235 / 5%));
   color: var(--blue);
   font-weight: var(--font-semibold);
 }
@@ -954,7 +961,7 @@ body {
 
 /* ========== RESPONSIVE ========== */
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .login-box {
     padding: var(--space-8);
     max-width: 100%;
@@ -1065,7 +1072,7 @@ body {
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .login-container {
     padding: var(--space-4);
   }
@@ -1095,6 +1102,7 @@ body {
 
 @keyframes fade-in {
   from { opacity: 0; }
+
   to { opacity: 1; }
 }
 

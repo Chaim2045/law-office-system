@@ -174,7 +174,7 @@
 #feedbackText:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 #feedbackText::placeholder {
@@ -182,7 +182,7 @@
 }
 
 /* רספונסיביות */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .feedback-categories,
   .priority-options,
   .contact-methods {
@@ -242,7 +242,7 @@
   background: #1e293b !important;
   border-color: #1e293b !important;
   transform: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
 }
 
 .popup-overlay .popup-btn-cancel {
@@ -265,7 +265,7 @@
 
 .popup-overlay .popup-btn:hover {
   transform: none !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%) !important;
 }
 
 /* תיקון כיוון טקסט לכל הפופ-אפים */
@@ -408,7 +408,7 @@
   background: #3b82f6;
   color: white;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 8px rgb(59 130 246 / 30%);
 }
 
 .actions-dropdown-btn i {
@@ -433,7 +433,7 @@
   background: white;
   border: 1px solid #ddd;
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   z-index: 10000;
   opacity: 0;
   visibility: hidden;
@@ -445,6 +445,7 @@
   opacity: 1;
   visibility: visible;
 }
+
 /* וודא שהטבלה לא מפריעה */
 .modern-table-container {
   position: relative;
@@ -524,7 +525,7 @@
   border-radius: 12px;
   margin-bottom: 24px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
 }
 
 .modern-cards-title {
@@ -589,7 +590,7 @@
 
 .btn-action:hover {
   transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
 }
 
 /* Container עם שוליים מצומצמים */
@@ -610,14 +611,14 @@
   background: white;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 6%);
   animation: slideInUp 0.5s ease forwards;
   opacity: 0;
   transition: all 0.3s ease;
 }
 
 .premium-day-group:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 10%);
   transform: translateY(-2px);
 }
 
@@ -639,7 +640,7 @@
 .day-icon {
   width: 40px;
   height: 40px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   backdrop-filter: blur(10px);
   border-radius: 10px;
   display: flex;
@@ -659,7 +660,7 @@
 }
 
 .day-time-badge {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   backdrop-filter: blur(10px);
   padding: 8px 16px;
   border-radius: 20px;
@@ -681,8 +682,8 @@
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(102, 126, 234, 0.1);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+  border: 1px solid rgb(102 126 234 / 10%);
   transition: all 0.3s ease;
   animation: slideInUp 0.5s ease forwards;
   opacity: 0;
@@ -691,8 +692,8 @@
 
 .premium-entry-card:hover {
   transform: translateX(-4px);
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
-  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 16px rgb(102 126 234 / 15%);
+  border-color: rgb(102 126 234 / 30%);
 }
 
 .entry-accent-bar {
@@ -715,6 +716,7 @@
     opacity: 1;
     transform: translateY(0);
   }
+
   from {
     opacity: 0;
     transform: translateY(20px);
@@ -722,7 +724,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .timesheet-elite-container {
     padding: 10px;
   }
@@ -756,7 +758,7 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
   border: 1px solid #e5e7eb;
 }
 
@@ -801,7 +803,7 @@
   border-radius: 12px;
   margin-bottom: 20px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
 }
 
 .day-header {
@@ -879,14 +881,14 @@
   background: white;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 6%);
   animation: slideInUp 0.5s ease forwards;
   opacity: 0;
   transition: all 0.3s ease;
 }
 
 .premium-day-group:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 10%);
   transform: translateY(-2px);
 }
 
@@ -908,7 +910,7 @@
 .day-icon {
   width: 40px;
   height: 40px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   backdrop-filter: blur(10px);
   border-radius: 10px;
   display: flex;
@@ -928,7 +930,7 @@
 }
 
 .day-time-badge {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   backdrop-filter: blur(10px);
   padding: 8px 16px;
   border-radius: 20px;
@@ -950,8 +952,8 @@
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(102, 126, 234, 0.1);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+  border: 1px solid rgb(102 126 234 / 10%);
   transition: all 0.3s ease;
   animation: slideInUp 0.5s ease forwards;
   opacity: 0;
@@ -960,8 +962,8 @@
 
 .premium-entry-card:hover {
   transform: translateX(-4px);
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
-  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 16px rgb(102 126 234 / 15%);
+  border-color: rgb(102 126 234 / 30%);
 }
 
 .entry-accent-bar {
@@ -984,6 +986,7 @@
     opacity: 1;
     transform: translateY(0);
   }
+
   from {
     opacity: 0;
     transform: translateY(20px);
@@ -991,7 +994,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .timesheet-elite-container {
     padding: 10px;
   }
@@ -1006,6 +1009,7 @@
     text-align: center;
   }
 }
+
 /* Container עם שוליים מצומצמים */
 .timesheet-elite-container,
 .table-elite-wrapper {
@@ -1021,7 +1025,7 @@
   padding: 20px;
   background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 3%);
 }
 
 .premium-title {
@@ -1073,10 +1077,10 @@
 }
 
 .glass-effect {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgb(255 255 255 / 70%);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
+  border: 1px solid rgb(255 255 255 / 30%);
+  box-shadow: 0 8px 32px rgb(31 38 135 / 7%);
 }
 
 .stat-icon {
@@ -1099,9 +1103,11 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
+
   100% {
     transform: scale(1);
   }
@@ -1117,7 +1123,7 @@
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 4%);
   transition: all 0.3s ease;
   animation: slideInUp 0.5s ease forwards;
   opacity: 0;
@@ -1129,6 +1135,7 @@
     opacity: 1;
     transform: translateY(0);
   }
+
   from {
     opacity: 0;
     transform: translateY(20px);
@@ -1137,7 +1144,7 @@
 
 .premium-entry-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
 }
 
 .entry-accent-bar {
@@ -1219,12 +1226,12 @@
 }
 
 .elite-table tbody tr {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgb(0 0 0 / 5%);
   transition: all 0.2s ease;
 }
 
 .elite-table tbody tr:hover {
-  background: rgba(102, 126, 234, 0.05);
+  background: rgb(102 126 234 / 5%);
 }
 
 .table-row-animated {
@@ -1299,7 +1306,7 @@
 }
 
 .material-stat-card:hover {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 24%);
   transform: translateY(-1px);
 }
 
@@ -1414,7 +1421,7 @@
 }
 
 .entry-content:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
   border-color: #1a73e8;
 }
 
@@ -1475,7 +1482,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .material-container {
     padding: 16px;
   }
@@ -1625,7 +1632,7 @@
 
 .neo-stat-tile:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 10px 30px -10px rgb(59 130 246 / 30%);
   border-color: #3b82f6;
 }
 
@@ -1683,6 +1690,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1767,6 +1775,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -1774,7 +1783,7 @@
 }
 
 .neo-entry-card:hover {
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 10%);
   border-color: #3b82f6;
   transform: translateX(-4px);
 }
@@ -1925,6 +1934,7 @@
     opacity: 0;
     transform: translateX(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -1985,6 +1995,7 @@
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -2040,9 +2051,9 @@
 }
 
 .action-btn:hover {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%);
+  background: linear-gradient(135deg, rgb(79 70 229 / 10%) 0%, rgb(37 99 235 / 10%) 100%);
   color: #1d4ed8;
-  border-color: rgba(37, 99, 235, 0.3);
+  border-color: rgb(37 99 235 / 30%);
   transform: translateY(-1px);
 }
 
@@ -2064,7 +2075,7 @@
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 15%);
 }
 
 /* כל הכפתורים משתמשים באותו צבע כחול-סגול */
@@ -2084,17 +2095,17 @@
 .action-btn.budget-critical,
 .action-btn.deadline-critical {
   color: #ef4444;
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.25);
+  background: rgb(239 68 68 / 8%);
+  border-color: rgb(239 68 68 / 25%);
 }
 
 .action-btn.budget-critical:hover,
 .action-btn.deadline-critical:hover {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgb(239 68 68 / 15%);
   color: #dc2626;
   border-color: #ef4444;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 4px 8px rgb(239 68 68 / 20%);
 }
 
 /* הוסף את הקוד הזה לקובץ style.css הקיים שלך */
@@ -2124,7 +2135,7 @@
 .action-search:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .action-search.has-value {
@@ -2152,7 +2163,7 @@
   overflow-y: auto;
   z-index: 1000;
   display: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -1px rgb(0 0 0 / 6%);
 }
 
 .dropdown-results.show {
@@ -2227,6 +2238,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2253,7 +2265,7 @@
 }
 
 /* עיצוב מותאם למובייל */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .dropdown-results {
     max-height: 200px;
   }
@@ -2286,7 +2298,7 @@
 
   .action-search:focus {
     border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+    box-shadow: 0 0 0 3px rgb(96 165 250 / 10%);
   }
 
   .action-search.has-value {
@@ -2337,7 +2349,7 @@
 
 .action-search.error:focus {
   border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 10%);
 }
 
 /* מצב loading */
@@ -2354,7 +2366,7 @@
 }
 
 /* עיצוב מותאם לטאבלטים */
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (width >= 769px) and (width <= 1024px) {
   .action-search {
     font-size: 15px;
     padding: 12px 14px;

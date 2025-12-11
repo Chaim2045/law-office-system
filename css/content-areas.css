@@ -42,7 +42,7 @@
   gap: var(--space-sm);
   text-align: center;
   padding: var(--space-md);
-  background: rgba(255, 255, 255, 0.8);
+  background: rgb(255 255 255 / 80%);
   border-radius: var(--radius-lg);
   border: 1px solid var(--gray-200);
   box-shadow: var(--shadow-sm);
@@ -64,7 +64,7 @@
   padding: var(--space-xl);
   color: var(--gray-500);
   min-height: 300px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgb(255 255 255 / 70%);
   border-radius: var(--radius-lg);
   border: 2px dashed var(--gray-300);
   backdrop-filter: blur(10px);
@@ -100,7 +100,7 @@
   flex-direction: column;
   justify-content: center;
   min-height: 100vh;
-  padding: 50px 0 20px 0;
+  padding: 50px 0 20px;
   box-sizing: border-box;
 }
 
@@ -115,7 +115,7 @@
   height: auto;
   margin: 0 auto 15px;
   display: block;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 10%));
   animation: logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.2s;
   position: relative;
@@ -128,7 +128,7 @@
   inset: -10px;
   background: radial-gradient(
     circle,
-    rgba(212, 175, 55, 0.3) 0%,
+    rgb(212 175 55 / 30%) 0%,
     transparent 70%
   );
   opacity: 0;
@@ -143,6 +143,7 @@
     opacity: 0;
     transform: translateY(-30px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -153,15 +154,17 @@
   0% {
     opacity: 0;
     transform: scale(0.8) rotateY(-180deg);
-    filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0)) blur(10px);
+    filter: drop-shadow(0 0 0 rgb(0 0 0 / 0%)) blur(10px);
   }
+
   60% {
     transform: scale(1.05) rotateY(0deg);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) rotateY(0deg);
-    filter: drop-shadow(0 8px 20px rgba(212, 175, 55, 0.2));
+    filter: drop-shadow(0 8px 20px rgb(212 175 55 / 20%));
   }
 }
 
@@ -170,10 +173,12 @@
     opacity: 0;
     transform: scale(0.5);
   }
+
   50% {
     opacity: 0.6;
     transform: scale(1.2);
   }
+
   100% {
     opacity: 0;
     transform: scale(1.5);
@@ -185,11 +190,12 @@
   font-weight: 700;
   color: #1f2937;
   margin: 0 0 6px;
+
   /* Enhanced Text Shadow 2025 */
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    0 4px 8px rgba(212, 175, 55, 0.08),
-    0 8px 16px rgba(0, 0, 0, 0.05);
+    0 1px 2px rgb(0 0 0 / 10%),
+    0 4px 8px rgb(212 175 55 / 8%),
+    0 8px 16px rgb(0 0 0 / 5%);
   animation: titleFadeIn 0.8s ease-out 0.4s both;
 }
 
@@ -198,10 +204,11 @@
   color: #6b7280;
   margin: 0;
   font-weight: 500;
+
   /* Enhanced Text Shadow */
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.06),
-    0 2px 4px rgba(0, 0, 0, 0.04);
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 2px 4px rgb(0 0 0 / 4%);
   animation: titleFadeIn 0.8s ease-out 0.6s both;
 }
 
@@ -210,6 +217,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -218,13 +226,13 @@
 
 /* Login card - Simplified Glassmorphism */
 .login-card {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgb(255 255 255 / 35%);
   backdrop-filter: blur(12px);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgb(255 255 255 / 40%);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 8px 32px rgb(0 0 0 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 60%);
   padding: 40px 35px;
   box-sizing: border-box;
   animation: fadeInUp 0.6s ease-out 0.2s both;
@@ -243,37 +251,37 @@
 /* Premium Input Animations 2025 - צבעים כחולים עדינים */
 .login-card input[type="password"] {
   position: relative;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgb(255 255 255 / 60%);
   backdrop-filter: blur(10px);
-  border: 2px solid rgba(59, 130, 246, 0.15);
+  border: 2px solid rgb(59 130 246 / 15%);
   border-radius: 12px;
   padding: 14px 18px;
   font-size: 15px;
   color: var(--gray-800);
   transition: all 0.3s ease;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 2px 8px rgb(0 0 0 / 5%),
+    inset 0 1px 0 rgb(255 255 255 / 60%);
 }
 
 .login-card input[type="password"]:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.8);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: rgb(255 255 255 / 80%);
+  border-color: rgb(59 130 246 / 40%);
   box-shadow:
-    0 4px 12px rgba(59, 130, 246, 0.1),
-    0 0 0 3px rgba(59, 130, 246, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 4px 12px rgb(59 130 246 / 10%),
+    0 0 0 3px rgb(59 130 246 / 6%),
+    inset 0 1px 0 rgb(255 255 255 / 80%);
   transform: translateY(-1px);
 }
 
 .login-card input[type="password"]::placeholder {
-  color: rgba(107, 114, 128, 0.6);
+  color: rgb(107 114 128 / 60%);
   transition: all 0.3s ease;
 }
 
 .login-card input[type="password"]:focus::placeholder {
-  color: rgba(59, 130, 246, 0.5);
+  color: rgb(59 130 246 / 50%);
   transform: translateX(2px);
 }
 
@@ -304,7 +312,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(59, 130, 246, 0.5) 50%,
+    rgb(59 130 246 / 50%) 50%,
     transparent
   );
   transition: all 0.4s ease;
@@ -335,6 +343,7 @@
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -346,6 +355,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -356,6 +366,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

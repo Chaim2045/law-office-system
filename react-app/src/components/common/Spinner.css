@@ -1,4 +1,5 @@
 /* Spinner Component Styles */
+
 /* ======================== */
 
 .spinner {
@@ -33,7 +34,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgb(255 255 255 / 90%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,6 +53,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -78,17 +80,17 @@
 
 /* Colors */
 .spinner-primary .spinner-circle {
-  border-color: rgba(26, 115, 232, 0.2);
+  border-color: rgb(26 115 232 / 20%);
   border-top-color: var(--primary-color);
 }
 
 .spinner-white .spinner-circle {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgb(255 255 255 / 20%);
   border-top-color: white;
 }
 
 .spinner-dark .spinner-circle {
-  border-color: rgba(0, 0, 0, 0.1);
+  border-color: rgb(0 0 0 / 10%);
   border-top-color: var(--text-color);
 }
 

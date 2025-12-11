@@ -15,8 +15,8 @@
     --fluent-neutral-quaternary: #d2d0ce;
     --fluent-neutral-light: #edebe9;
     --fluent-neutral-lighter: #f3f2f1;
-    --fluent-white: #ffffff;
-    --fluent-black: #000000;
+    --fluent-white: #fff;
+    --fluent-black: #000;
 
     /* Semantic Colors */
     --fluent-success: #107c10;
@@ -25,7 +25,7 @@
     --fluent-info: #0078d4;
 
     /* Typography */
-    --fluent-font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --fluent-font-family: 'Segoe UI', 'Inter', -apple-system, blinkmacsystemfont, sans-serif;
     --fluent-font-size-68: 68px;
     --fluent-font-size-42: 42px;
     --fluent-font-size-32: 32px;
@@ -46,10 +46,10 @@
     --fluent-spacing-xxl: 48px;
 
     /* Depth (Shadows) */
-    --fluent-depth-4: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
-    --fluent-depth-8: 0 3.2px 7.2px 0 rgba(0,0,0,0.132), 0 0.6px 1.8px 0 rgba(0,0,0,0.108);
-    --fluent-depth-16: 0 6.4px 14.4px 0 rgba(0,0,0,0.132), 0 1.2px 3.6px 0 rgba(0,0,0,0.108);
-    --fluent-depth-64: 0 25.6px 57.6px 0 rgba(0,0,0,0.22), 0 4.8px 14.4px 0 rgba(0,0,0,0.18);
+    --fluent-depth-4: 0 1.6px 3.6px 0 rgb(0 0 0 / 13.2%), 0 0.3px 0.9px 0 rgb(0 0 0 / 10.8%);
+    --fluent-depth-8: 0 3.2px 7.2px 0 rgb(0 0 0 / 13.2%), 0 0.6px 1.8px 0 rgb(0 0 0 / 10.8%);
+    --fluent-depth-16: 0 6.4px 14.4px 0 rgb(0 0 0 / 13.2%), 0 1.2px 3.6px 0 rgb(0 0 0 / 10.8%);
+    --fluent-depth-64: 0 25.6px 57.6px 0 rgb(0 0 0 / 22%), 0 4.8px 14.4px 0 rgb(0 0 0 / 18%);
 
     /* Borders */
     --fluent-border-radius-small: 2px;
@@ -97,7 +97,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    margin: -24px -24px 24px -24px;
+    margin: -24px -24px 24px;
 }
 
 .command-bar-primary,
@@ -181,7 +181,7 @@
 
 .fluent-search-input:focus {
     border-color: var(--fluent-accent);
-    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.1);
+    box-shadow: 0 0 0 2px rgb(0 120 212 / 10%);
 }
 
 .search-icon {
@@ -349,12 +349,12 @@
 
 .kpi-trend.positive {
     color: var(--fluent-success);
-    background: rgba(16, 124, 16, 0.1);
+    background: rgb(16 124 16 / 10%);
 }
 
 .kpi-trend.negative {
     color: var(--fluent-error);
-    background: rgba(216, 59, 1, 0.1);
+    background: rgb(216 59 1 / 10%);
 }
 
 .kpi-trend.neutral {
@@ -474,7 +474,7 @@
 }
 
 .fluent-table tbody tr.selected {
-    background: rgba(0, 120, 212, 0.05);
+    background: rgb(0 120 212 / 5%);
 }
 
 .fluent-table td {
@@ -541,7 +541,7 @@
 }
 
 .status-badge.active {
-    background: rgba(16, 124, 16, 0.1);
+    background: rgb(16 124 16 / 10%);
     color: var(--fluent-success);
 }
 
@@ -551,7 +551,7 @@
 }
 
 .status-badge.blocked {
-    background: rgba(216, 59, 1, 0.1);
+    background: rgb(216 59 1 / 10%);
     color: var(--fluent-error);
 }
 
@@ -756,6 +756,7 @@
         transform: scale(0);
         opacity: 0.5;
     }
+
     40% {
         transform: scale(1);
         opacity: 1;
@@ -769,7 +770,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgb(255 255 255 / 90%);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -799,7 +800,7 @@
 }
 
 /* ═══ Responsive Design ═══ */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .fluent-container {
         padding: var(--fluent-spacing-m);
     }
@@ -872,7 +873,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+    background: radial-gradient(circle, rgb(255 255 255 / 20%) 0%, transparent 70%);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--fluent-duration-normal);
@@ -889,7 +890,7 @@
 .fluent-context-menu,
 .fluent-data-grid-container {
     backdrop-filter: blur(30px);
-    background: rgba(255, 255, 255, 0.7);
+    background: rgb(255 255 255 / 70%);
 }
 
 @supports not (backdrop-filter: blur(30px)) {

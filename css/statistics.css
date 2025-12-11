@@ -28,7 +28,7 @@
 
 /* ===== Clean Compact Style ===== */
 .stat-compact {
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 8px 12px;
@@ -39,7 +39,7 @@
   transition: all 0.2s ease;
   min-width: auto;
   height: 42px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
   position: relative;
 }
 
@@ -47,7 +47,7 @@
   background: #f9fafb;
   border-color: #d1d5db;
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 8%);
 }
 
 /* ===== Small Icon Style ===== */
@@ -101,7 +101,7 @@
 
 /* Success - הושלמו */
 .stat-compact.stat-success {
-  background: #ffffff;
+  background: #fff;
   border-color: #d1fae5;
 }
 
@@ -116,7 +116,7 @@
 
 /* Urgent - דחופות */
 .stat-compact.stat-urgent {
-  background: #ffffff;
+  background: #fff;
   border-color: #fecaca;
 }
 
@@ -131,9 +131,9 @@
 
 /* Highlight - נבחר */
 .stat-compact.stat-highlight {
-  background: #ffffff;
+  background: #fff;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 10%);
 }
 
 .stat-compact.stat-highlight .stat-icon {
@@ -148,7 +148,7 @@
 
 /* Warning - אזהרה */
 .stat-compact.stat-warning {
-  background: #ffffff;
+  background: #fff;
   border-color: #fed7aa;
 }
 
@@ -164,7 +164,7 @@
 /* ===== Responsive ===== */
 
 /* טאבלטים */
-@media (max-width: 1024px) {
+@media (width <= 1024px) {
   .stats-badge {
     gap: 8px;
   }
@@ -190,7 +190,7 @@
 }
 
 /* מובייל גדול */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .stats-badge {
     gap: var(--space-2);
     overflow-x: auto;
@@ -236,7 +236,7 @@
 }
 
 /* מובייל קטן */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .stats-badge {
     gap: 6px;
   }

@@ -9,6 +9,7 @@
    ========================================================================== */
 
 /* ===== CSS עבור Combobox מקצועי ===== */
+
 /* הוסף את הקוד הזה לקובץ style.css שלך */
 
 /* מיכל עיקרי */
@@ -39,7 +40,7 @@
 
 .combobox-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .combobox-input.selected {
@@ -100,7 +101,7 @@
   border: 1px solid #d1d5db;
   border-top: none;
   border-radius: 0 0 8px 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -2px rgb(0 0 0 / 5%);
   z-index: 1000;
   max-height: 0;
   overflow: hidden;
@@ -294,11 +295,11 @@
 
 .combobox-input.error:focus {
   border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 10%);
 }
 
 /* עיצוב רספונסיבי */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .combobox-input {
     font-size: 16px;
     padding: 14px 16px 14px 45px;
@@ -410,7 +411,7 @@ input[type="hidden"] {
 }
 
 /* עיצוב עבור טאבלטים */
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (width >= 769px) and (width <= 1024px) {
   .combobox-input {
     font-size: 15px;
     padding: 12px 14px 12px 45px;
@@ -420,6 +421,7 @@ input[type="hidden"] {
     max-height: 280px;
   }
 }
+
 /* ===============================================
    🆕 Phase 1: Option C - Elegant Badges (Hi-Tech Style)
    =============================================== */
@@ -486,7 +488,7 @@ input[type="hidden"] {
   font-weight: 600;
   letter-spacing: -0.01em;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
   border: 1px solid transparent;
 }
 
@@ -494,7 +496,7 @@ input[type="hidden"] {
 .elegant-badge.budget-overrun {
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
   color: #b45309;
-  border-color: rgba(251, 191, 36, 0.3);
+  border-color: rgb(251 191 36 / 30%);
 }
 
 .elegant-badge.budget-overrun i {
@@ -503,7 +505,7 @@ input[type="hidden"] {
 }
 
 .elegant-badge.budget-overrun:hover {
-  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.15);
+  box-shadow: 0 2px 4px rgb(245 158 11 / 15%);
   transform: translateY(-1px);
 }
 
@@ -511,7 +513,7 @@ input[type="hidden"] {
 .elegant-badge.deadline-overdue {
   background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
   color: #991b1b;
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: rgb(239 68 68 / 30%);
 }
 
 .elegant-badge.deadline-overdue i {
@@ -520,7 +522,7 @@ input[type="hidden"] {
 }
 
 .elegant-badge.deadline-overdue:hover {
-  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.15);
+  box-shadow: 0 2px 4px rgb(220 38 38 / 15%);
   transform: translateY(-1px);
 }
 
@@ -531,8 +533,8 @@ input[type="hidden"] {
   border-radius: 3px;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 4%);
+  border: 1px solid rgb(0 0 0 / 4%);
 }
 
 .progress-fill-elegant {
@@ -543,7 +545,7 @@ input[type="hidden"] {
   background: linear-gradient(90deg, #34d399 0%, #10b981 100%);
   border-radius: 3px;
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%);
 }
 
 .progress-overage-elegant {
@@ -552,8 +554,8 @@ input[type="hidden"] {
   right: 0;
   height: 100%;
   background: linear-gradient(90deg,
-    rgba(52, 211, 153, 0.4) 0%,
-    rgba(251, 146, 60, 0.7) 40%,
+    rgb(52 211 153 / 40%) 0%,
+    rgb(251 146 60 / 70%) 40%,
     #f97316 100%
   );
   border-radius: 3px;
@@ -568,13 +570,13 @@ input[type="hidden"] {
   gap: 4px;
   padding: 4px 10px;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 1px solid rgba(147, 197, 253, 0.4);
+  border: 1px solid rgb(147 197 253 / 40%);
   border-radius: 6px;
   font-size: 10px;
   color: #1e40af;
   font-weight: 500;
   align-self: flex-start;
-  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.05);
+  box-shadow: 0 1px 2px rgb(59 130 246 / 5%);
   transition: all 0.2s ease;
 }
 
@@ -584,7 +586,7 @@ input[type="hidden"] {
 }
 
 .budget-info-pill:hover {
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 2px 4px rgb(59 130 246 / 10%);
 }
 
 /* כפתור עדכן תקציב בפעולות */
@@ -597,7 +599,7 @@ input[type="hidden"] {
 .linear-action-btn.budget-adjust:hover {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 12px rgb(245 158 11 / 30%);
 }
 
 .budget-adjusted-badge-small {

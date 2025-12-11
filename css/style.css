@@ -96,14 +96,14 @@
   --danger-700: #b91c1c;
 
   /* 🎭 Professional shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 5%);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 10%),
+    0 2px 4px -1px rgb(0 0 0 / 6%);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 10%),
+    0 4px 6px -2px rgb(0 0 0 / 5%);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 10%),
+    0 10px 10px -5px rgb(0 0 0 / 4%);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 25%);
 
   /* ⚡ Transitions and animations */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -136,12 +136,12 @@ body {
   background:
     radial-gradient(
       ellipse at 20% 30%,
-      rgba(59, 130, 246, 0.06) 0%,
+      rgb(59 130 246 / 6%) 0%,
       transparent 50%
     ),
     radial-gradient(
       ellipse at 80% 70%,
-      rgba(139, 92, 246, 0.05) 0%,
+      rgb(139 92 246 / 5%) 0%,
       transparent 50%
     ),
     linear-gradient(135deg, #f8fafc 0%, #e9ecf1 50%, #e2e8f0 100%);
@@ -234,17 +234,17 @@ body.logged-in .main-content::before {
   inset: 0;
   background-image: radial-gradient(
       circle at 20% 20%,
-      rgba(59, 130, 246, 0.03) 0%,
+      rgb(59 130 246 / 3%) 0%,
       transparent 50%
     ),
     radial-gradient(
       circle at 80% 80%,
-      rgba(16, 185, 129, 0.03) 0%,
+      rgb(16 185 129 / 3%) 0%,
       transparent 50%
     ),
     radial-gradient(
       circle at 40% 60%,
-      rgba(245, 158, 11, 0.02) 0%,
+      rgb(245 158 11 / 2%) 0%,
       transparent 50%
     );
   pointer-events: none;
@@ -292,6 +292,7 @@ body.logged-in .main-content::before {
    ========================================================================== */
 
 /* ===== Main Tabs Styles - Moved to tabs.css ===== */
+
 /* כל עיצוב הטאבים הראשיים עבר לקובץ tabs.css */
 
 /* View tabs */
@@ -388,7 +389,7 @@ body.logged-in .main-content::before {
   font-size: 10px;
   font-weight: 700;
   border: 2px solid white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 
 .view-tab::before {
@@ -456,7 +457,7 @@ body.logged-in .main-content::before {
 .notification-bell:hover {
   color: #059669;
   transform: scale(1.1);
-  filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3));
+  filter: drop-shadow(0 4px 8px rgb(16 185 129 / 30%));
 }
 
 /* אנימציית הבהוב אדום כאשר יש התראות */
@@ -467,11 +468,12 @@ body.logged-in .main-content::before {
 @keyframes bellGlowRed {
   0%, 100% {
     color: #ef4444;
-    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+    filter: drop-shadow(0 0 8px rgb(239 68 68 / 60%));
   }
+
   50% {
     color: #dc2626;
-    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.9));
+    filter: drop-shadow(0 0 16px rgb(239 68 68 / 90%));
   }
 }
 
@@ -490,7 +492,7 @@ body.logged-in .main-content::before {
   font-size: 10px;
   font-weight: 700;
   border: 2px solid white;
-  box-shadow: 0 2px 6px rgba(255, 68, 68, 0.5);
+  box-shadow: 0 2px 6px rgb(255 68 68 / 50%);
   animation: pulse 2s infinite;
 }
 
@@ -498,6 +500,7 @@ body.logged-in .main-content::before {
   0%, 100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.1);
   }
@@ -512,7 +515,7 @@ body.logged-in .main-content::before {
   max-height: 540px;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%), 0 2px 8px rgb(0 0 0 / 8%);
   border: 1px solid var(--gray-200);
   opacity: 0;
   transform: translateY(-10px);
@@ -539,7 +542,7 @@ body.logged-in .main-content::before {
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
   border-bottom: 8px solid white;
-  filter: drop-shadow(0 -2px 2px rgba(0, 0, 0, 0.05));
+  filter: drop-shadow(0 -2px 2px rgb(0 0 0 / 5%));
 }
 
 .notifications-header {
@@ -674,13 +677,13 @@ body.logged-in .main-content::before {
   justify-content: center;
   gap: 6px;
   width: 100%;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
 }
 
 .notification-reply-btn:hover {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 8px rgb(59 130 246 / 30%);
 }
 
 .notification-reply-btn:active {
@@ -814,7 +817,7 @@ body.logged-in .main-content::before {
   color: var(--danger-600);
   border-color: var(--danger-200);
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1);
+  box-shadow: 0 2px 4px rgb(239 68 68 / 10%);
 }
 
 .clear-all-btn i {
@@ -845,13 +848,13 @@ body.logged-in .main-content::before {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 2px 4px rgb(239 68 68 / 20%);
 }
 
 .clear-all-btn-mobile:hover {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 8px rgb(239 68 68 / 30%);
 }
 
 .clear-all-btn-mobile:active {
@@ -859,7 +862,7 @@ body.logged-in .main-content::before {
 }
 
 /* Responsive Design for Mobile */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .notifications-dropdown {
     width: calc(100vw - 16px);
     right: 8px;
@@ -912,7 +915,7 @@ body.logged-in .main-content::before {
 }
 
 /* Tablet - גודל בינוני */
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (width >= 769px) and (width <= 1024px) {
   .notifications-dropdown {
     width: 380px;
   }
@@ -930,7 +933,7 @@ body.logged-in .main-content::before {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 16px 20px;
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px rgb(0 0 0 / 10%);
   transform: translateX(400px);
   transition: all 0.3s ease;
   z-index: 9999;
@@ -962,7 +965,7 @@ body.logged-in .main-content::before {
   background: white;
   border-radius: 16px;
   padding: 30px;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 25px 50px rgb(0 0 0 / 15%);
   z-index: 10000;
   max-width: 400px;
   text-align: center;
@@ -972,7 +975,7 @@ body.logged-in .main-content::before {
 .critical-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0 0 0 / 50%);
   z-index: 9999;
 }
 
@@ -996,7 +999,7 @@ body.logged-in .main-content::before {
   font-size: var(--font-xs);
   background: linear-gradient(135deg, var(--gray-50) 0%, #f8fafc 100%);
   border-radius: var(--radius-md);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 2px 8px rgb(59 130 246 / 15%);
   transition: var(--transition-normal);
   display: none; /* מוסתר כברירת מחדל */
 }
@@ -1065,6 +1068,7 @@ body.logged-in .main-footer {
     opacity: 0;
     transform: translateY(-20px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -1087,6 +1091,7 @@ body.logged-in .main-footer {
   from {
     transform: rotate(0turn);
   }
+
   to {
     transform: rotate(1turn);
   }
@@ -1096,6 +1101,7 @@ body.logged-in .main-footer {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -1106,6 +1112,7 @@ body.logged-in .main-footer {
   100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
@@ -1116,6 +1123,7 @@ body.logged-in .main-footer {
   100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.1);
   }
@@ -1127,10 +1135,12 @@ body.logged-in .main-footer {
   100% {
     transform: rotate(0deg);
   }
+
   2%,
   8% {
     transform: rotate(15deg);
   }
+
   4%,
   6% {
     transform: rotate(-15deg);
@@ -1142,6 +1152,7 @@ body.logged-in .main-footer {
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -1152,6 +1163,7 @@ body.logged-in .main-footer {
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.6;
   }
@@ -1162,6 +1174,7 @@ body.logged-in .main-footer {
   100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
@@ -1172,6 +1185,7 @@ body.logged-in .main-footer {
   100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
@@ -1183,6 +1197,7 @@ body.logged-in .main-footer {
     opacity: 1;
     width: 6px;
   }
+
   50% {
     opacity: 0.7;
     width: 8px;
@@ -1193,6 +1208,7 @@ body.logged-in .main-footer {
   0% {
     left: -50%;
   }
+
   100% {
     left: 100%;
   }
@@ -1203,6 +1219,7 @@ body.logged-in .main-footer {
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-5px);
   }
@@ -1213,6 +1230,7 @@ body.logged-in .main-footer {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1224,6 +1242,7 @@ body.logged-in .main-footer {
     opacity: 0;
     transform: scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -1235,6 +1254,7 @@ body.logged-in .main-footer {
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -1343,16 +1363,17 @@ body.logged-in .main-footer {
 .bubble {
   position: absolute;
   bottom: -100px;
+
   /* Simplified gradient */
   background: radial-gradient(
     circle at 30% 30%,
-    rgba(59, 130, 246, 0.15),
-    rgba(139, 92, 246, 0.08)
+    rgb(59 130 246 / 15%),
+    rgb(139 92 246 / 8%)
   );
   border-radius: 50%;
   opacity: 0.5;
   animation: simpleRise linear infinite;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 20px rgb(59 130 246 / 10%);
 }
 
 /* גדלים מגוונים - מקטן עד גדול מאוד */
@@ -1483,12 +1504,15 @@ body.logged-in .main-footer {
     transform: translateX(0) scale(0.9);
     opacity: 0;
   }
+
   10% {
     opacity: 0.5;
   }
+
   90% {
     opacity: 0.5;
   }
+
   100% {
     bottom: 110vh;
     transform: translateX(30px) scale(1.1);
@@ -1512,24 +1536,31 @@ body.logged-in .main-footer {
   position: absolute;
   background: radial-gradient(
     circle,
-    rgba(59, 130, 246, 0.6) 0%,
-    rgba(139, 92, 246, 0.3) 50%,
+    rgb(59 130 246 / 60%) 0%,
+    rgb(139 92 246 / 30%) 50%,
     transparent 100%
   );
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 8px rgb(59 130 246 / 40%);
   animation: particleFloat linear infinite;
   will-change: transform, opacity;
 }
 
 /* גדלים שונים לחלקיקים - מופחת ל-8 */
 .particle:nth-child(1) { width: 3px; height: 3px; top: 10%; left: 15%; animation-duration: 20s; animation-delay: 0s; }
+
 .particle:nth-child(2) { width: 2px; height: 2px; top: 25%; left: 35%; animation-duration: 25s; animation-delay: 2s; }
+
 .particle:nth-child(3) { width: 3px; height: 3px; top: 40%; left: 55%; animation-duration: 22s; animation-delay: 4s; }
+
 .particle:nth-child(4) { width: 2px; height: 2px; top: 55%; left: 75%; animation-duration: 24s; animation-delay: 1s; }
+
 .particle:nth-child(5) { width: 3px; height: 3px; top: 70%; left: 20%; animation-duration: 23s; animation-delay: 3s; }
+
 .particle:nth-child(6) { width: 2px; height: 2px; top: 30%; left: 65%; animation-duration: 21s; animation-delay: 5s; }
+
 .particle:nth-child(7) { width: 3px; height: 3px; top: 50%; left: 85%; animation-duration: 26s; animation-delay: 2.5s; }
+
 .particle:nth-child(8) { width: 2px; height: 2px; top: 15%; left: 45%; animation-duration: 24s; animation-delay: 4.5s; }
 
 /* אנימציית תנועה מרחפת - מופשטת */
@@ -1538,12 +1569,15 @@ body.logged-in .main-footer {
     transform: translate(0, 0);
     opacity: 0;
   }
+
   10% {
     opacity: 0.6;
   }
+
   90% {
     opacity: 0.6;
   }
+
   100% {
     transform: translate(20px, -100vh);
     opacity: 0;

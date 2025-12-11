@@ -9,7 +9,7 @@
 .linear-expanded-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(31, 35, 40, 0.5);
+  background: rgb(31 35 40 / 50%);
   backdrop-filter: blur(4px);
   z-index: var(--z-overlay-card);
   display: flex;
@@ -28,7 +28,7 @@
 .linear-expanded-card {
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
   width: 90%;
   max-width: 550px;
   max-height: 85vh;
@@ -54,6 +54,7 @@
   top: 0;
   z-index: var(--z-sticky-header);
 }
+
 .linear-expanded-title {
   font-size: 18px;
   font-weight: 600;
@@ -159,7 +160,7 @@
 }
 
 /* Responsive למסכים קטנים */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .linear-expanded-card {
     width: 95%;
     max-width: none;
@@ -239,7 +240,7 @@
   background: #eaeef2;
   border-color: #afb8c1;
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 10%);
 }
 
 .linear-action-btn.primary {

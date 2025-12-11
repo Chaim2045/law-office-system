@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0 0 0 / 40%);
   backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
@@ -28,7 +28,7 @@
 .task-approval-dialog {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 15%);
   max-width: 500px;
   width: 90%;
   max-height: 90vh;
@@ -96,7 +96,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 0.625rem 0;
-  border-bottom: 1px solid #eeeeee;
+  border-bottom: 1px solid #eee;
 }
 
 .detail-row:last-child {
@@ -268,19 +268,19 @@
 .btn-approve-full:hover,
 .btn-approve-modified:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 20px rgb(59 130 246 / 40%);
 }
 
 /* כפתור דחייה - אדום */
 .btn-reject {
   background: var(--red);
   color: white;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 2px 4px rgb(239 68 68 / 20%);
 }
 
 .btn-reject:hover {
   background: var(--red-dark);
-  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 8px rgb(239 68 68 / 30%);
   transform: translateY(-1px);
 }
 
@@ -291,7 +291,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgb(255 255 255 / 95%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -324,7 +324,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .task-approval-dialog {
     width: 95%;
     max-height: 95vh;

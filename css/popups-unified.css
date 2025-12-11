@@ -27,7 +27,7 @@
 .task-summary {
   margin-bottom: 15px;
   padding: 12px;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgb(59 130 246 / 5%);
   border-radius: 10px;
   border-left: 4px solid var(--primary-500);
 }
@@ -122,7 +122,7 @@
 .task-info-section {
   margin-bottom: 15px;
   padding: 12px;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgb(59 130 246 / 5%);
   border-radius: 10px;
   border-left: 4px solid var(--primary-500);
 }
@@ -180,7 +180,7 @@
 .form-input:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 /* Task Completion Popup Specific */
@@ -195,7 +195,7 @@
 .completion-overview {
   margin-bottom: 15px;
   padding: 12px;
-  background: rgba(16, 185, 129, 0.05);
+  background: rgb(16 185 129 / 5%);
   border-radius: 10px;
   border-left: 4px solid var(--success-500);
 }
@@ -262,11 +262,11 @@
 .completion-notes textarea:focus {
   outline: none;
   border-color: var(--success-500);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 10%);
 }
 
 .completion-summary {
-  background: rgba(16, 185, 129, 0.05);
+  background: rgb(16 185 129 / 5%);
   border: 1px solid var(--success-200);
   border-radius: 10px;
   padding: 12px;
@@ -316,7 +316,7 @@
 .completion-notes textarea:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
   transform: translateY(-1px);
 }
 
@@ -332,7 +332,7 @@
 
 .popup-btn-success:hover {
   background: linear-gradient(135deg, var(--success-600) 0%, #047857 100%);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 6px 20px rgb(16 185 129 / 40%);
 }
 
 /* Scrollbar styling for history container */
@@ -360,6 +360,7 @@
     opacity: 0;
     transform: translateY(30px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -370,13 +371,14 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
 /* Responsive improvements for new popups */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .task-history-popup,
   .time-entry-popup,
   .task-completion-popup {

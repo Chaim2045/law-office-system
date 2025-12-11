@@ -18,7 +18,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgb(15 23 42 / 40%);
   backdrop-filter: blur(12px);
   z-index: 2000;
   display: flex;
@@ -40,8 +40,8 @@
 .modal {
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.1),
-    0 4px 16px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 0 0 1px rgb(15 23 42 / 5%), 0 1px 3px rgb(15 23 42 / 10%),
+    0 4px 16px rgb(15 23 42 / 10%);
   width: 100%;
   max-width: 680px;
   max-height: 85vh;
@@ -59,11 +59,12 @@
 .modal-overlay:not(.hidden) .modal {
   transform: translateY(0) scale(1);
 }
+
 .popup,
 .modal {
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px rgb(0 0 0 / 10%);
   border: 1px solid #e5e7eb;
   width: 85%;
   max-width: 680px;
@@ -266,7 +267,7 @@
 .modal-section select:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
   transform: none;
 }
 
@@ -305,7 +306,7 @@
 .modal-section select:focus {
   outline: none;
   border-color: var(--primary-400);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 10%);
   transform: translateY(-1px);
 }
 
@@ -392,7 +393,7 @@
   background: #1e293b;
   border-color: #1e293b;
   transform: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
 }
 
 /* Cancel Button - White with border */
@@ -424,7 +425,7 @@
   background: #dc2626;
   border-color: #dc2626;
   transform: none;
-  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 1px 3px rgb(239 68 68 / 20%);
 }
 
 /* Success Button - Green */
@@ -440,7 +441,7 @@
   background: #059669;
   border-color: #059669;
   transform: none;
-  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 1px 3px rgb(16 185 129 / 20%);
 }
 
 /* Remove all ::before effects */
@@ -504,15 +505,15 @@
 .completion-overview {
   background: linear-gradient(
     135deg,
-    rgba(59, 130, 246, 0.03) 0%,
-    rgba(59, 130, 246, 0.08) 100%
+    rgb(59 130 246 / 3%) 0%,
+    rgb(59 130 246 / 8%) 100%
   );
   border: 2px solid var(--primary-100);
   border-right: 6px solid var(--primary-400);
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+  box-shadow: 0 2px 8px rgb(59 130 246 / 8%);
 }
 
 .task-overview h3,
@@ -607,7 +608,7 @@
 
 .form-input:focus {
   border-color: var(--primary-400);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 10%);
   transform: translateY(-1px);
 }
 
@@ -626,13 +627,13 @@
   border-radius: 12px;
   text-align: center;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
 }
 
 .stat-item:hover {
   transform: translateY(-2px);
   border-color: var(--primary-300);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 4px 12px rgb(59 130 246 / 15%);
 }
 
 .stat-label {
@@ -665,13 +666,13 @@
   border-radius: 12px;
   text-align: center;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
 }
 
 .date-section:hover {
   transform: translateY(-2px);
   border-color: var(--primary-300);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 4px 12px rgb(59 130 246 / 15%);
 }
 
 .date-label {
@@ -706,15 +707,15 @@
 .completion-summary {
   background: linear-gradient(
     135deg,
-    rgba(16, 185, 129, 0.03) 0%,
-    rgba(16, 185, 129, 0.08) 100%
+    rgb(16 185 129 / 3%) 0%,
+    rgb(16 185 129 / 8%) 100%
   );
   border: 2px solid var(--success-100);
   border-right: 6px solid var(--success-400);
   padding: 20px;
   border-radius: 12px;
   margin: 20px 0;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  box-shadow: 0 2px 8px rgb(16 185 129 / 8%);
 }
 
 .extension-summary h4,
@@ -774,13 +775,13 @@
   border-radius: 10px;
   margin-bottom: 12px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 5%);
 }
 
 .history-entry:hover {
   transform: translateX(5px);
   border-color: var(--primary-400);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 4px 12px rgb(59 130 246 / 15%);
 }
 
 .history-header {
@@ -851,7 +852,7 @@
 .completion-notes textarea:focus {
   outline: none;
   border-color: var(--success-500);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 10%);
 }
 
 /* Additional utility styles */
@@ -886,7 +887,7 @@
 #budgetModal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgb(0 0 0 / 60%);
   backdrop-filter: blur(8px);
   z-index: 2000;
   display: none;

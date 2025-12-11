@@ -1,4 +1,5 @@
 /* Settings Page Styles */
+
 /* ==================== */
 
 .settings-page {
@@ -16,7 +17,7 @@
   font-size: 2rem;
   font-weight: 700;
   color: var(--text-color);
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -79,6 +80,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -89,7 +91,7 @@
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-color);
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid var(--border-color);
 }
@@ -147,7 +149,7 @@
 .settings-note {
   font-size: 0.875rem;
   color: var(--text-light);
-  margin: 1rem 0 0 0;
+  margin: 1rem 0 0;
   padding: 1rem;
   background: var(--bg-light);
   border-radius: var(--radius-md);
@@ -193,7 +195,7 @@
 
 .preference-item:hover {
   border-color: var(--primary-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .preference-info {
@@ -204,7 +206,7 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-color);
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -247,7 +249,7 @@
   border-radius: 26px;
 }
 
-.toggle-slider:before {
+.toggle-slider::before {
   position: absolute;
   content: '';
   height: 18px;
@@ -263,7 +265,7 @@ input:checked + .toggle-slider {
   background-color: var(--primary-color);
 }
 
-input:checked + .toggle-slider:before {
+input:checked + .toggle-slider::before {
   transform: translateX(24px);
 }
 
@@ -287,13 +289,13 @@ input:disabled + .toggle-slider {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-color);
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.5rem;
 }
 
 .about-description {
   font-size: 1rem;
   color: var(--text-light);
-  margin: 0 0 2rem 0;
+  margin: 0 0 2rem;
 }
 
 .about-info-grid {
@@ -334,7 +336,7 @@ input:disabled + .toggle-slider {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-color);
-  margin: 0 0 1rem 0;
+  margin: 0 0 1rem;
 }
 
 .features-grid {
@@ -356,7 +358,7 @@ input:disabled + .toggle-slider {
 
 .feature-item:hover {
   border-color: var(--primary-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .feature-item i {
@@ -388,7 +390,7 @@ input:disabled + .toggle-slider {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .settings-page {
     padding: 1rem;
   }

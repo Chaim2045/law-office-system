@@ -1,4 +1,5 @@
 /* Main Layout Styles */
+
 /* =================== */
 
 .main-layout {
@@ -21,14 +22,14 @@
 }
 
 /* Desktop - Leave space for sidebar */
-@media (min-width: 769px) {
+@media (width >= 769px) {
   .main-content {
     margin-right: 260px;
   }
 }
 
 /* Mobile - No margin */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .main-content {
     margin-right: 0;
   }

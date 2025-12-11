@@ -33,8 +33,8 @@
   right: 0;
   bottom: 80px; /* Above input */
   background-image:
-    repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px),
-    repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px);
+    repeating-linear-gradient(45deg, transparent, transparent 35px, rgb(255 255 255 / 3%) 35px, rgb(255 255 255 / 3%) 70px),
+    repeating-linear-gradient(-45deg, transparent, transparent 35px, rgb(255 255 255 / 3%) 35px, rgb(255 255 255 / 3%) 70px);
   pointer-events: none;
   z-index: 0;
 }
@@ -50,15 +50,15 @@
   padding: 12px 16px;
   background: #075e54; /* WhatsApp dark green */
   border: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
   position: relative;
   z-index: 2;
 }
 
 .ai-thread-back-btn {
   padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 15%);
+  border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
@@ -70,7 +70,7 @@
 }
 
 .ai-thread-back-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgb(255 255 255 / 25%);
 }
 
 .ai-thread-title {
@@ -103,17 +103,17 @@
 }
 
 .ai-thread-messages::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgb(0 0 0 / 5%);
   border-radius: 10px;
 }
 
 .ai-thread-messages::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgb(0 0 0 / 20%);
   border-radius: 10px;
 }
 
 .ai-thread-messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgb(0 0 0 / 30%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -132,6 +132,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -139,23 +140,25 @@
 }
 
 /* Admin Message (left side - white bubble) - USER PERSPECTIVE */
+
 /* המנהל שלח לי (משמאל, בועה לבנה) */
 .ai-thread-message-admin {
   align-self: flex-start;
   background: white;
   padding: 6px 10px;
   border-radius: 8px 8px 8px 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 /* User Message (right side - green bubble) - USER PERSPECTIVE */
+
 /* אני שלחתי (מימין, בועה ירוקה) */
 .ai-thread-message-user {
   align-self: flex-end;
   background: #dcf8c6; /* WhatsApp green */
   padding: 6px 10px;
-  border-radius: 8px 8px 0 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-radius: 8px 8px 0;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 /* Message Header */
@@ -179,7 +182,7 @@
 
 .ai-thread-message-time {
   font-size: 10px;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgb(0 0 0 / 45%);
   white-space: nowrap;
 }
 
@@ -189,7 +192,7 @@
   line-height: 1.4;
   color: #303030;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -203,14 +206,14 @@
   justify-content: center;
   gap: var(--space-3, 12px);
   padding: var(--space-6, 24px);
-  color: rgba(0, 0, 0, 0.5);
+  color: rgb(0 0 0 / 50%);
   font-size: 14px;
 }
 
 .ai-thread-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  border: 3px solid rgb(0 0 0 / 10%);
   border-top-color: #25d366; /* WhatsApp green */
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -245,7 +248,7 @@
   gap: 10px;
   padding: 12px;
   background: #f0f0f0;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid rgb(0 0 0 / 8%);
   position: relative;
   z-index: 2;
 }
@@ -259,7 +262,7 @@
   font-size: 14px;
   resize: none;
   background: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
   transition: all 0.2s;
   min-height: 38px;
   max-height: 100px;
@@ -267,11 +270,11 @@
 
 .ai-thread-input:focus {
   outline: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 
 .ai-thread-input::placeholder {
-  color: rgba(0, 0, 0, 0.4);
+  color: rgb(0 0 0 / 40%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -290,7 +293,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
+  box-shadow: 0 2px 6px rgb(37 211 102 / 30%);
   flex-shrink: 0;
   font-size: 0; /* Hide text */
 }
@@ -302,7 +305,7 @@
 .ai-thread-send-btn:hover:not(:disabled) {
   background: #20ba5a;
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+  box-shadow: 0 4px 12px rgb(37 211 102 / 40%);
 }
 
 .ai-thread-send-btn:active {
@@ -319,7 +322,7 @@
    RESPONSIVE
    ══════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .ai-thread-message {
     max-width: 80%;
   }

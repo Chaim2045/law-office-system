@@ -1,4 +1,5 @@
 /* Dashboard Page Styles */
+
 /* ===================== */
 
 .dashboard {
@@ -20,7 +21,7 @@
   font-size: 2rem;
   font-weight: 700;
   color: var(--text-color);
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -121,7 +122,7 @@
 .activity-item:hover {
   background: white;
   border-right-color: var(--primary-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .activity-icon {
@@ -205,7 +206,7 @@
 
 .deadline-item:hover {
   background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .deadline-icon {
@@ -270,7 +271,7 @@
 
 .overview-stat:hover {
   background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .overview-label {
@@ -294,7 +295,7 @@
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
+@media (width <= 1024px) {
   .dashboard-header {
     flex-direction: column;
   }
@@ -312,7 +313,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .dashboard {
     padding: 1rem;
   }

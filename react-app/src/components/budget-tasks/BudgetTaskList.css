@@ -1,4 +1,5 @@
 /* Budget Task List Styles */
+
 /* ======================= */
 
 .budget-task-list {
@@ -37,7 +38,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .budget-task-list {
     grid-template-columns: 1fr;
   }

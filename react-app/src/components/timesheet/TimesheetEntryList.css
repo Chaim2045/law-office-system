@@ -1,4 +1,5 @@
 /* Timesheet Entry List Styles */
+
 /* ============================ */
 
 .timesheet-entry-list {
@@ -37,7 +38,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .timesheet-entry-list {
     grid-template-columns: 1fr;
   }

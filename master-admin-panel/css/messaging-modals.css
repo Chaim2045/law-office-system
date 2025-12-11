@@ -45,7 +45,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgb(0 0 0 / 50%);
     backdrop-filter: blur(4px);
 }
 
@@ -57,7 +57,7 @@
     max-width: 700px;
     max-height: 85vh;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
     display: flex;
     flex-direction: column;
 }
@@ -82,7 +82,7 @@
 }
 
 .message-viewer-modal .modal-close-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgb(255 255 255 / 20%);
     border: none;
     color: white;
     width: 36px;
@@ -96,7 +96,7 @@
 }
 
 .message-viewer-modal .modal-close-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgb(255 255 255 / 30%);
     transform: scale(1.1);
 }
 
@@ -180,7 +180,7 @@
 
 .message-viewer-modal .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 40%);
 }
 
 .message-viewer-modal .btn-danger {
@@ -214,7 +214,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgb(0 0 0 / 50%);
     backdrop-filter: blur(4px);
 }
 
@@ -226,7 +226,7 @@
     max-width: 900px;
     height: 85vh;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
     display: flex;
     flex-direction: column;
 }
@@ -265,7 +265,7 @@
     border-radius: 20px;
     font-size: var(--text-xs);
     font-weight: 600;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgb(255 255 255 / 20%);
     color: white;
 }
 
@@ -283,7 +283,7 @@
     max-width: 70%;
     padding: var(--space-3) var(--space-4);
     border-radius: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
 .thread-viewer-modal .my-message {
@@ -349,7 +349,7 @@
 .thread-viewer-modal .message-input:focus {
     outline: none;
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .thread-viewer-modal .input-actions {
@@ -378,7 +378,7 @@
 
 .thread-viewer-modal .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 40%);
 }
 
 .thread-viewer-modal .btn-icon {
@@ -404,7 +404,7 @@
 .messaging-center {
     background: white;
     border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
     overflow: hidden;
 }
 
@@ -505,8 +505,8 @@
     right: 0;
     bottom: 80px;
     background-image:
-        repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px),
-        repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(255,255,255,.03) 35px, rgba(255,255,255,.03) 70px);
+        repeating-linear-gradient(45deg, transparent, transparent 35px, rgb(255 255 255 / 3%) 35px, rgb(255 255 255 / 3%) 70px),
+        repeating-linear-gradient(-45deg, transparent, transparent 35px, rgb(255 255 255 / 3%) 35px, rgb(255 255 255 / 3%) 70px);
     pointer-events: none;
     z-index: 0;
 }
@@ -530,17 +530,17 @@
 }
 
 .admin-thread-messages::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgb(0 0 0 / 5%);
     border-radius: 10px;
 }
 
 .admin-thread-messages::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgb(0 0 0 / 20%);
     border-radius: 10px;
 }
 
 .admin-thread-messages::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgb(0 0 0 / 30%);
 }
 
 /* Message Bubble - Base Styles */
@@ -557,6 +557,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -570,8 +571,8 @@
 
 .admin-thread-message-admin .admin-thread-message-bubble {
     background: #dcf8c6; /* WhatsApp green */
-    border-radius: 8px 8px 0 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 8px 8px 0;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 /* User messages (left side - white like WhatsApp) */
@@ -582,7 +583,7 @@
 .admin-thread-message-user .admin-thread-message-bubble {
     background: white;
     border-radius: 8px 8px 8px 0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 /* Message Bubble Content */
@@ -611,7 +612,7 @@
 
 .admin-thread-message-time {
     font-size: 11px;
-    color: rgba(0, 0, 0, 0.45);
+    color: rgb(0 0 0 / 45%);
     white-space: nowrap;
 }
 
@@ -619,7 +620,7 @@
     font-size: 14px;
     line-height: 1.5;
     color: #303030;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
     white-space: pre-wrap;
 }
 
@@ -629,7 +630,7 @@
     gap: var(--space-3);
     padding: var(--space-4);
     background: #f0f0f0;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    border-top: 1px solid rgb(0 0 0 / 8%);
     position: relative;
     z-index: 2;
 }
@@ -643,7 +644,7 @@
     font-size: 15px;
     resize: none;
     background: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
     transition: all 0.2s;
     min-height: 44px;
     max-height: 120px;
@@ -651,11 +652,11 @@
 
 .admin-thread-input:focus {
     outline: none;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 
 .admin-thread-input::placeholder {
-    color: rgba(0, 0, 0, 0.4);
+    color: rgb(0 0 0 / 40%);
 }
 
 /* Send Button - WhatsApp style */
@@ -671,7 +672,7 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
+    box-shadow: 0 2px 6px rgb(37 211 102 / 30%);
     flex-shrink: 0;
     font-size: 0; /* Hide text */
 }
@@ -679,7 +680,7 @@
 .admin-thread-send-btn:hover {
     background: #20ba5a;
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+    box-shadow: 0 4px 12px rgb(37 211 102 / 40%);
 }
 
 .admin-thread-send-btn:active {
@@ -698,7 +699,7 @@
     justify-content: center;
     gap: var(--space-3);
     padding: var(--space-6);
-    color: rgba(0, 0, 0, 0.5);
+    color: rgb(0 0 0 / 50%);
     font-size: 14px;
 }
 
@@ -709,7 +710,7 @@
 .admin-thread-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(0, 0, 0, 0.1);
+    border: 3px solid rgb(0 0 0 / 10%);
     border-top-color: #25d366;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -723,7 +724,7 @@
 .admin-thread-no-replies {
     text-align: center;
     padding: var(--space-8);
-    color: rgba(0, 0, 0, 0.4);
+    color: rgb(0 0 0 / 40%);
     font-size: 14px;
 }
 
@@ -736,10 +737,10 @@
 }
 
 .admin-thread-date-separator span {
-    background: rgba(225, 225, 225, 0.9);
+    background: rgb(225 225 225 / 90%);
     padding: 6px 12px;
     border-radius: 8px;
     font-size: 12px;
-    color: rgba(0, 0, 0, 0.6);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: rgb(0 0 0 / 60%);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }

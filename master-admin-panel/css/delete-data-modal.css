@@ -344,7 +344,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .delete-data-tabs {
         flex-direction: column;
     }

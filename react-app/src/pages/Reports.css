@@ -1,4 +1,5 @@
 /* Reports Page Styles */
+
 /* ==================== */
 
 .reports-page {
@@ -18,7 +19,7 @@
 
 .reports-title h1 {
   font-size: 2rem;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.5rem;
   color: var(--text-color);
   display: flex;
   align-items: center;
@@ -58,7 +59,7 @@
 .date-filter:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+  box-shadow: 0 0 0 3px rgb(var(--primary-rgb), 0.1);
 }
 
 /* Stats Section */
@@ -70,7 +71,7 @@
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-color);
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -159,7 +160,7 @@
 
 .lawyer-stat-card:hover {
   border-color: var(--primary-color);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
 }
 
 .lawyer-header {
@@ -190,7 +191,7 @@
 }
 
 .lawyer-role {
-  margin: 0.25rem 0 0 0;
+  margin: 0.25rem 0 0;
   font-size: 0.875rem;
   color: var(--text-light);
 }
@@ -290,7 +291,7 @@
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
+@media (width <= 1024px) {
   .reports-header {
     flex-direction: column;
   }
@@ -305,7 +306,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .reports-page {
     padding: 1rem;
   }

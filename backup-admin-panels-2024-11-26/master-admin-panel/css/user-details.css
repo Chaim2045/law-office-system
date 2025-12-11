@@ -275,7 +275,7 @@
 }
 
 .btn-action.btn-warning:hover {
-  background: rgba(234, 179, 8, 0.1);
+  background: rgb(234 179 8 / 10%);
 }
 
 .btn-action.btn-danger {
@@ -284,7 +284,7 @@
 }
 
 .btn-action.btn-danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgb(239 68 68 / 10%);
 }
 
 .btn-action.btn-success {
@@ -293,7 +293,7 @@
 }
 
 .btn-action.btn-success:hover {
-  background: rgba(34, 197, 94, 0.1);
+  background: rgb(34 197 94 / 10%);
 }
 
 /* Empty State */
@@ -452,7 +452,7 @@
 /* Hover effect - subtle and clean */
 .task-card:hover {
   border-color: var(--gray-300);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
   transform: translateY(-1px);
 }
 
@@ -532,6 +532,7 @@
   height: 100%;
   transition: width 0.3s ease;
   border-radius: 3px;
+
   /* Background color set inline via JS - ONLY colored element! */
 }
 
@@ -573,13 +574,13 @@
 .btn-icon.btn-edit-task:hover {
   border-color: var(--blue);
   color: var(--blue);
-  background: rgba(59, 130, 246, 0.05);
+  background: rgb(59 130 246 / 5%);
 }
 
 .btn-icon.btn-delete-task:hover {
   border-color: var(--red);
   color: var(--red);
-  background: rgba(239, 68, 68, 0.05);
+  background: rgb(239 68 68 / 5%);
 }
 
 /* Hours Tab */
@@ -661,7 +662,7 @@
 .month-filter-select:focus {
   outline: none;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 /* Summary Cards - Different Colors */
@@ -713,7 +714,7 @@
 
 .hours-card:hover {
   border-color: var(--gray-300);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
   transform: translateY(-1px);
 }
 
@@ -814,17 +815,17 @@
 }
 
 .hours-billable.yes {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgb(16 185 129 / 10%);
   color: var(--green-dark);
 }
 
 .hours-billable.no {
-  background: rgba(156, 163, 175, 0.1);
+  background: rgb(156 163 175 / 10%);
   color: var(--gray-600);
 }
 
 .hours-invoiced {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgb(59 130 246 / 10%);
   color: var(--blue-dark);
 }
 
@@ -929,7 +930,7 @@
 .view-toggle-btn.active {
   background: white;
   color: var(--blue);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
 }
 
 .view-toggle-btn i {
@@ -1000,7 +1001,7 @@
 .filter-input:focus {
   outline: none;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .filter-select:hover,
@@ -1205,7 +1206,7 @@
 }
 
 .client-badge {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgb(59 130 246 / 10%);
   color: var(--blue-dark);
 }
 
@@ -1214,7 +1215,7 @@
 }
 
 .internal-badge {
-  background: rgba(148, 163, 184, 0.1);
+  background: rgb(148 163 184 / 10%);
   color: var(--gray-700);
 }
 
@@ -1233,7 +1234,7 @@
 }
 
 .billable-badge.billable-yes {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgb(59 130 246 / 10%);
   color: var(--blue-dark);
 }
 
@@ -1242,7 +1243,7 @@
 }
 
 .billable-badge.billable-no {
-  background: rgba(156, 163, 175, 0.1);
+  background: rgb(156 163 175 / 10%);
   color: var(--gray-600);
 }
 
@@ -1277,13 +1278,13 @@
 .btn-table-action.btn-edit-hour:hover {
   border-color: var(--blue);
   color: var(--blue);
-  background: rgba(59, 130, 246, 0.05);
+  background: rgb(59 130 246 / 5%);
 }
 
 .btn-table-action.btn-delete-hour:hover {
   border-color: var(--red);
   color: var(--red);
-  background: rgba(239, 68, 68, 0.05);
+  background: rgb(239 68 68 / 5%);
 }
 
 /* Activity Timeline */
@@ -1331,7 +1332,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .user-details-tabs {
     gap: var(--space-1);
   }

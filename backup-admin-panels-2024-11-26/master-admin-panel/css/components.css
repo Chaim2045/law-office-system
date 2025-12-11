@@ -123,22 +123,22 @@
 }
 
 .stat-card-blue .card-icon {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgb(59 130 246 / 10%);
   color: var(--blue);
 }
 
 .stat-card-green .card-icon {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgb(16 185 129 / 10%);
   color: var(--green);
 }
 
 .stat-card-orange .card-icon {
-  background: rgba(249, 115, 22, 0.1);
+  background: rgb(249 115 22 / 10%);
   color: var(--orange);
 }
 
 .stat-card-red .card-icon {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgb(239 68 68 / 10%);
   color: var(--red);
 }
 
@@ -230,7 +230,7 @@
   outline: none;
   border-color: var(--blue);
   background: white;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .search-clear {
@@ -252,7 +252,7 @@
 
 .search-clear:hover {
   color: var(--red);
-  background: rgba(239, 68, 68, 0.1);
+  background: rgb(239 68 68 / 10%);
 }
 
 .filters-section {
@@ -291,7 +291,7 @@
 .filter-select:focus {
   outline: none;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .btn-filter {
@@ -433,9 +433,13 @@
 }
 
 .avatar-blue { background: var(--blue); }
+
 .avatar-green { background: var(--green); }
+
 .avatar-purple { background: #8b5cf6; }
+
 .avatar-orange { background: var(--orange); }
+
 .avatar-red { background: var(--red); }
 
 /* ===== Badges ===== */
@@ -451,27 +455,27 @@
 }
 
 .badge-admin {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgb(59 130 246 / 10%);
   color: var(--blue);
 }
 
 .badge-user {
-  background: rgba(107, 114, 128, 0.1);
+  background: rgb(107 114 128 / 10%);
   color: var(--gray-700);
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgb(16 185 129 / 10%);
   color: var(--green);
 }
 
 .badge-danger {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgb(239 68 68 / 10%);
   color: var(--red);
 }
 
 .badge-warning {
-  background: rgba(249, 115, 22, 0.1);
+  background: rgb(249 115 22 / 10%);
   color: var(--orange);
 }
 
@@ -540,7 +544,7 @@
 }
 
 .action-item.danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgb(239 68 68 / 10%);
 }
 
 /* ===== Empty State ===== */
@@ -615,7 +619,7 @@
 .pagination-select:focus {
   outline: none;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .pagination-text {
@@ -679,13 +683,13 @@
 
 /* ========== RESPONSIVE ========== */
 
-@media (max-width: 1200px) {
+@media (width <= 1200px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .stats-grid {
     grid-template-columns: 1fr;
   }
@@ -727,7 +731,7 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .stat-card {
     flex-direction: column;
     text-align: center;
@@ -783,7 +787,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0 0 0 / 50%);
   backdrop-filter: blur(4px);
 }
 
@@ -1020,7 +1024,7 @@
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 20px rgb(59 130 246 / 40%);
 }
 
 .btn-secondary {
@@ -1042,7 +1046,7 @@
 .btn-danger:hover:not(:disabled) {
   background: var(--red-dark);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 8px 20px rgb(239 68 68 / 40%);
 }
 
 .btn-success {
@@ -1053,11 +1057,11 @@
 .btn-success:hover:not(:disabled) {
   background: var(--green-dark);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 8px 20px rgb(34 197 94 / 40%);
 }
 
 /* ===== Modal Responsive ===== */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .modal-small,
   .modal-medium,
   .modal-large,
@@ -1159,22 +1163,22 @@
 }
 
 .notification-success .notification-icon {
-  background: rgba(34, 197, 94, 0.1);
+  background: rgb(34 197 94 / 10%);
   color: var(--green);
 }
 
 .notification-error .notification-icon {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgb(239 68 68 / 10%);
   color: var(--red);
 }
 
 .notification-warning .notification-icon {
-  background: rgba(234, 179, 8, 0.1);
+  background: rgb(234 179 8 / 10%);
   color: var(--yellow);
 }
 
 .notification-info .notification-icon {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgb(59 130 246 / 10%);
   color: var(--blue);
 }
 
@@ -1260,7 +1264,7 @@
 }
 
 /* ===== Notifications Responsive ===== */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .notifications-container {
     top: var(--space-4);
     left: var(--space-4);
@@ -1344,7 +1348,7 @@ select.form-input,
 .form-input:focus,
 .form-select:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 10%);
 }
 
 .form-input:read-only {
@@ -1366,7 +1370,7 @@ select.form-input,
 .form-input.input-error:focus,
 .form-select.input-error:focus {
   border-color: var(--red);
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  box-shadow: 0 0 0 4px rgb(239 68 68 / 10%);
 }
 
 /* Form Error Message */
@@ -1429,7 +1433,7 @@ select.form-input,
 }
 
 /* Form Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .user-form {
     gap: var(--space-4);
   }
@@ -1487,18 +1491,18 @@ select.form-input,
   font-weight: var(--font-medium);
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
 }
 
 .btn-add-user:hover {
   background: #2563eb;
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 8px rgb(59 130 246 / 30%);
   transform: translateY(-1px);
 }
 
 .btn-add-user:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 1px 2px rgb(59 130 246 / 20%);
 }
 
 .btn-add-user i {
@@ -1506,7 +1510,7 @@ select.form-input,
 }
 
 /* Mobile responsive */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .action-bar {
     flex-direction: column;
     gap: var(--space-4);

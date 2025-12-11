@@ -27,7 +27,7 @@
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
 }
 
 /* ===== Tab Button - דומה לview-tabs אבל יותר גדול ===== */
@@ -105,10 +105,11 @@
 .tab-button.active i {
   color: white;
   font-size: 20px;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 20%));
 }
 
 /* ===== צבעים ספציפיים לכל טאב ===== */
+
 /* תקצוב משימות - כחול (ברירת מחדל) */
 #budgetTabButton.active::before {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -149,7 +150,7 @@
 }
 
 /* ===== Responsive - Desktop Large ===== */
-@media (min-width: 1440px) {
+@media (width >= 1440px) {
   .main-tabs {
     gap: 14px;
   }
@@ -170,7 +171,7 @@
 }
 
 /* ===== Responsive - Tablet ===== */
-@media (max-width: 1024px) {
+@media (width <= 1024px) {
   .main-tabs-container {
     margin: 12px auto 20px;
   }
@@ -191,7 +192,7 @@
 }
 
 /* ===== Responsive - Mobile Large ===== */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .main-tabs-container {
     margin: 10px auto 16px;
   }
@@ -215,7 +216,7 @@
 }
 
 /* ===== Responsive - Mobile Small ===== */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .main-tabs {
     width: 100%;
     flex-direction: column;
@@ -345,7 +346,7 @@
   color: white;
   font-weight: 700;
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 6px -1px rgb(59 130 246 / 30%);
 }
 
 /* Active Icon - White */
@@ -354,7 +355,7 @@
 .service-type-tab-new.active i,
 .pricing-type-tab.active i {
   color: white;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 20%));
 }
 
 /* Blue Dot Below Active Tab */
@@ -375,7 +376,7 @@
 }
 
 /* Responsive - Mobile */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .mode-tab {
     padding: 10px 24px;
     font-size: 13px;
@@ -406,7 +407,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%) !important;
   outline: none;
 }
 
@@ -427,7 +428,7 @@ textarea:not(:focus) {
 .input-error {
   border-color: #ef4444 !important;
   border-width: 2px !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+  box-shadow: 0 0 0 3px rgb(239 68 68 / 10%) !important;
 }
 
 /* Success State - Green */

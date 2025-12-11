@@ -3,7 +3,7 @@
    ========================================================================== */
 
 /* Mobile small (max-width: 480px) */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   :root {
     --space-xs: 3px;
     --space-sm: 6px;
@@ -125,7 +125,7 @@
 }
 
 /* Mobile (max-width: 768px) */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .minimal-sidebar {
     transform: translateX(100%);
     transition: transform 0.3s ease;
@@ -181,7 +181,7 @@
 }
 
 /* Tablet (max-width: 1024px) */
-@media (max-width: 1024px) {
+@media (width <= 1024px) {
   .cards-grid {
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: var(--space-lg);
@@ -207,7 +207,7 @@
 }
 
 /* Modern table responsive */
-@media (min-width: 2560px) {
+@media (width >= 2560px) {
   .modern-table-container {
     max-width: 95%;
     margin: 32px auto;
@@ -234,7 +234,7 @@
   }
 }
 
-@media (max-width: 2559px) and (min-width: 1920px) {
+@media (width <= 2559px) and (width >= 1920px) {
   .modern-table-container {
     max-width: 100%;
   }
@@ -249,7 +249,7 @@
   }
 }
 
-@media (max-width: 1919px) and (min-width: 1366px) {
+@media (width <= 1919px) and (width >= 1366px) {
   .modern-table-container {
     margin: 20px auto;
   }
@@ -279,7 +279,7 @@
   }
 }
 
-@media (max-width: 1365px) and (min-width: 1024px) {
+@media (width <= 1365px) and (width >= 1024px) {
   .modern-table-header,
   .modern-timesheet-header {
     padding: 20px 24px;
@@ -325,7 +325,7 @@
   }
 }
 
-@media (max-width: 1023px) and (min-width: 768px) {
+@media (width <= 1023px) and (width >= 768px) {
   .modern-table-container {
     margin: 16px auto;
     border-radius: 16px;
@@ -364,7 +364,7 @@
   }
 }
 
-@media (max-width: 767px) {
+@media (width <= 767px) {
   .modern-table-container {
     margin: 12px auto;
     border-radius: 12px;
@@ -432,7 +432,7 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .popup-content,
   .modal-content {
     padding: 15px 18px;
@@ -451,7 +451,7 @@
   }
 }
 
-@media (max-height: 700px) {
+@media (height <= 700px) {
   .popup,
   .modal {
     max-height: 95vh;
@@ -474,7 +474,7 @@
   }
 }
 
-@media (max-height: 500px) {
+@media (height <= 500px) {
   .popup,
   .modal {
     max-height: 98vh;

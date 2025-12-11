@@ -94,7 +94,9 @@
       "Bash(firebase functions:config:set:*)",
       "Bash(git pull:*)",
       "Bash(firebase serve:*)",
-      "Bash(gcloud functions logs read:*)"
+      "Bash(gcloud functions logs read:*)",
+      "Bash(git show:*)",
+      "Bash(npx stylelint:*)"
     ],
     "deny": [],
     "ask": []

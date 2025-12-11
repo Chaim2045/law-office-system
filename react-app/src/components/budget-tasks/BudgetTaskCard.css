@@ -1,4 +1,5 @@
 /* Budget Task Card Styles */
+
 /* ======================= */
 
 .budget-task-card {
@@ -147,7 +148,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .budget-task-header {
     flex-direction: column;
     align-items: flex-start;

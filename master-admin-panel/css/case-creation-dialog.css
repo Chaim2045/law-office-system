@@ -16,7 +16,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgb(15 23 42 / 40%);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -32,7 +32,7 @@
   width: 90%;
   max-height: 90vh;
   overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 24px rgb(0 0 0 / 12%);
   animation: slideUp 0.3s ease-out;
   border: 1px solid #e5e7eb;
 }
@@ -133,7 +133,7 @@
 }
 
 .form-section h3 {
-  margin: 0 0 16px 0;
+  margin: 0 0 16px;
   font-size: 16px;
   font-weight: 600;
   color: #0f172a;
@@ -187,7 +187,7 @@
   background: white;
   color: #0f172a;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 /* ==========================================================================
@@ -199,7 +199,6 @@
 }
 
 .form-label {
-  display: block;
   margin-bottom: 8px;
   font-weight: 500;
   color: #334155;
@@ -244,7 +243,7 @@
 .form-textarea:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .form-input:disabled,
@@ -380,11 +379,11 @@
 
 .stage-container:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
 }
 
 .stage-header {
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
   color: #0f172a;
   font-size: 14px;
   font-weight: 600;
@@ -463,7 +462,7 @@
 
 .btn-primary:hover:not(:disabled) {
   background: #1e293b;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 15%);
 }
 
 /* Secondary button */
@@ -486,6 +485,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -496,6 +496,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -545,7 +546,7 @@
    ========================================================================== */
 
 .help-text {
-  margin: 6px 0 0 0;
+  margin: 6px 0 0;
   font-size: 12px;
   color: #64748b;
   display: flex;
@@ -561,7 +562,7 @@
    15. RESPONSIVE
    ========================================================================== */
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .case-dialog-container {
     width: 95%;
     max-height: 95vh;

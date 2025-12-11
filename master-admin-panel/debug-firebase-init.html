@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Firebase Init Debug</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #00ff00;
+            direction: ltr;
+        }
+        .log {
+            margin: 5px 0;
+            padding: 8px;
+            background: #2d2d2d;
+            border-left: 3px solid #00ff00;
+        }
+        .error {
+            border-left-color: #ff0000;
+            color: #ff6b6b;
+        }
+        .warning {
+            border-left-color: #ffa500;
+            color: #ffb84d;
+        }
+        .success {
+            border-left-color: #00ff00;
+            color: #5eff5e;
+        }
+        .info {
+            border-left-color: #3b82f6;
+            color: #60a5fa;
+        }
+        h1 {
+            color: #60a5fa;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 0.8em;
+        }
+    </style>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+    <!-- Load firebase.js -->
+    <script src="js/core/firebase.js"></script>
+</head>
+<body>
+    <h1>🔍 Firebase Initialization Debug Log</h1>
+    <div id="logs"></div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        let stepNumber = 0;
+
+        function log(message, type = 'info') {
+            stepNumber++;
+            const timestamp = new Date().toLocaleTimeString('he-IL', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            });
+
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span>
+                <strong>Step ${stepNumber}:</strong> ${message}
+            `;
+            logsDiv.appendChild(div);
+            console.log(`[${timestamp}] Step ${stepNumber}: ${message}`);
+        }
+
+        // Override console methods to capture all logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            log(args.join(' '), 'info');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            log('❌ ERROR: ' + args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            log('⚠️ WARNING: ' + args.join(' '), 'warning');
+        };
+
+        // Start debugging
+        log('🚀 Debug script started', 'info');
+
+        // Check 1: Is firebase object available?
+        setTimeout(() => {
+            log('CHECK 1: typeof firebase = ' + typeof firebase,
+                typeof firebase !== 'undefined' ? 'success' : 'error');
+        }, 100);
+
+        // Check 2: Are there any apps?
+        setTimeout(() => {
+            if (typeof firebase !== 'undefined') {
+                log('CHECK 2: firebase.apps.length = ' + firebase.apps.length,
+                    firebase.apps.length > 0 ? 'success' : 'warning');
+
+                if (firebase.apps.length > 0) {
+                    log('CHECK 2.1: First app name = ' + firebase.apps[0].name, 'info');
+                }
+            } else {
+                log('CHECK 2: Firebase not available yet', 'error');
+            }
+        }, 200);
+
+        // Check 3: Is auth available?
+        setTimeout(() => {
+            if (typeof firebase !== 'undefined') {
+                try {
+                    const auth = firebase.auth();
+                    log('CHECK 3: firebase.auth() = ' + typeof auth, 'success');
+                } catch (e) {
+                    log('CHECK 3: firebase.auth() FAILED: ' + e.message, 'error');
+                }
+            }
+        }, 300);
+
+        // Check 4: Listen for firebase:ready event
+        log('CHECK 4: Listening for firebase:ready event...', 'info');
+        window.addEventListener('firebase:ready', () => {
+            log('✅ firebase:ready EVENT RECEIVED!', 'success');
+
+            // Check auth state after event
+            setTimeout(() => {
+                try {
+                    const auth = firebase.auth();
+                    log('POST-EVENT: firebase.auth() works!', 'success');
+
+                    // Try to get current user
+                    firebase.auth().onAuthStateChanged((user) => {
+                        if (user) {
+                            log('✅ User is logged in: ' + user.email, 'success');
+                        } else {
+                            log('⚠️ No user logged in', 'warning');
+                        }
+                    });
+                } catch (e) {
+                    log('POST-EVENT: firebase.auth() FAILED: ' + e.message, 'error');
+                }
+            }, 100);
+        });
+
+        // Check 5: Fallback after 1.5 seconds
+        setTimeout(() => {
+            log('CHECK 5: Fallback check at 1.5s', 'info');
+
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                try {
+                    const auth = firebase.auth();
+                    log('FALLBACK: firebase.auth() works!', 'success');
+                } catch (e) {
+                    log('FALLBACK: firebase.auth() FAILED: ' + e.message, 'error');
+                }
+            } else {
+                log('FALLBACK: Firebase still not ready', 'error');
+            }
+        }, 1500);
+
+        // Check 6: Check window globals
+        setTimeout(() => {
+            log('CHECK 6: Checking window globals...', 'info');
+            log('window.firebaseApp = ' + typeof window.firebaseApp,
+                typeof window.firebaseApp !== 'undefined' ? 'success' : 'warning');
+            log('window.firebaseAuth = ' + typeof window.firebaseAuth,
+                typeof window.firebaseAuth !== 'undefined' ? 'success' : 'warning');
+            log('window.firebaseDB = ' + typeof window.firebaseDB,
+                typeof window.firebaseDB !== 'undefined' ? 'success' : 'warning');
+        }, 400);
+
+        // Final summary after 2 seconds
+        setTimeout(() => {
+            log('═══════════════════════════════════════', 'info');
+            log('📊 FINAL SUMMARY', 'info');
+            log('═══════════════════════════════════════', 'info');
+
+            const checks = {
+                'Firebase SDK loaded': typeof firebase !== 'undefined',
+                'Firebase app initialized': typeof firebase !== 'undefined' && firebase.apps.length > 0,
+                'Auth available': false,
+                'Firestore available': typeof window.firebaseDB !== 'undefined',
+                'Auth instance': typeof window.firebaseAuth !== 'undefined'
+            };
+
+            try {
+                if (typeof firebase !== 'undefined') {
+                    firebase.auth();
+                    checks['Auth available'] = true;
+                }
+            } catch (e) {
+                checks['Auth available'] = false;
+            }
+
+            for (const [check, passed] of Object.entries(checks)) {
+                log(`${passed ? '✅' : '❌'} ${check}`, passed ? 'success' : 'error');
+            }
+
+            log('═══════════════════════════════════════', 'info');
+            log('🎯 Debug complete! Copy these logs and send to Claude.', 'success');
+        }, 2000);
+    </script>
+</body>
+</html>

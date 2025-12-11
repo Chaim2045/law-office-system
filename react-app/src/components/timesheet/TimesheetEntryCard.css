@@ -1,13 +1,26 @@
 /* Timesheet Entry Card Styles */
 .timesheet-entry-card { transition: all 0.3s ease; }
+
 .entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+
 .entry-client { display: flex; align-items: center; gap: 0.5rem; }
+
 .entry-client i { color: var(--primary-color); }
+
 .entry-client-name { font-weight: 600; color: var(--text-color); }
+
 .entry-date { font-size: 0.875rem; color: var(--text-light); }
+
 .entry-body { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
+
 .entry-description { font-size: 0.9375rem; color: var(--text-color); margin: 0; }
+
 .entry-time { display: flex; align-items: center; gap: 0.5rem; color: var(--primary-color); font-weight: 600; }
+
 .entry-notes { font-size: 0.875rem; color: var(--text-light); margin: 0; font-style: italic; }
+
 .entry-actions { display: flex; gap: 0.5rem; }
-@media (max-width: 768px) { .entry-actions { width: 100%; } .entry-actions button { flex: 1; } }
+
+@media (width <= 768px) { .entry-actions { width: 100%; }
+
+ .entry-actions button { flex: 1; } }

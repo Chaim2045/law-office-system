@@ -24,7 +24,7 @@
   transition: transform var(--transition-smooth), opacity var(--transition-smooth);
 
   /* Shadow */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
 .system-announcement-banner.show {
@@ -43,7 +43,7 @@
 }
 
 .system-announcement-banner.info .announcement-icon {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   color: white;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .system-announcement-banner.warning .announcement-icon {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   color: white;
 }
 
@@ -65,7 +65,7 @@
 }
 
 .system-announcement-banner.critical .announcement-icon {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   color: white;
 }
 
@@ -113,8 +113,8 @@
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
 
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgb(255 255 255 / 20%);
+  border: 1px solid rgb(255 255 255 / 30%);
   border-radius: var(--radius-sm);
 
   color: white;
@@ -128,8 +128,8 @@
 }
 
 .announcement-dismiss-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgb(255 255 255 / 30%);
+  border-color: rgb(255 255 255 / 50%);
   transform: scale(1.05);
 }
 
@@ -145,7 +145,7 @@
    Responsive Design
    ═══════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .announcement-content {
     padding: var(--space-3) var(--space-4);
     gap: var(--space-3);
@@ -190,7 +190,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .announcement-dismiss-btn:focus {
-  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline: 2px solid rgb(255 255 255 / 50%);
   outline-offset: 2px;
 }
 

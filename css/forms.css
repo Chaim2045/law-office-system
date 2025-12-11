@@ -17,14 +17,14 @@
     );
   background-origin: border-box;
   background-clip: padding-box, border-box;
-  box-shadow: var(--shadow-md), 0 0 0 1px rgba(59, 130, 246, 0.08);
+  box-shadow: var(--shadow-md), 0 0 0 1px rgb(59 130 246 / 8%);
   transition: var(--transition-normal);
   max-width: 800px;
   position: relative;
 }
 
 .form-section:hover {
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.12);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgb(59 130 246 / 12%);
   transform: translateY(-1px);
 }
 
@@ -104,7 +104,7 @@
 .form-group select:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
   transform: translateY(-1px);
 }
 
@@ -129,6 +129,7 @@
   display: block;
   animation: slideIn 0.4s ease;
 }
+
 /* Compact forms - Ultra-Minimal Hi-Tech */
 .compact-form {
   background: #fafafa;
@@ -138,7 +139,7 @@
   max-width: 720px;
   width: 95%;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
   transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -211,7 +212,7 @@
   font-size: 13px;
   transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
   background: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .compact-form .form-group textarea {
@@ -227,7 +228,7 @@
 .compact-form .form-group select:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%), 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 /* כפתורי שליחה קומפקטיים */
@@ -274,21 +275,21 @@
   font-weight: 400 !important;
   background: white !important;
   color: #171717 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%) !important;
   transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .compact-form .combo-search-input:hover {
   border-color: #d4d4d4 !important;
   background: white !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%) !important;
   transform: none !important;
 }
 
 .compact-form .combo-search-input:focus {
   border-color: #3b82f6 !important;
   background: white !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%), 0 1px 2px rgb(0 0 0 / 5%) !important;
   transform: none !important;
 }
 
@@ -327,7 +328,7 @@
   border: 1px solid #d4d4d4 !important;
   border-radius: 8px !important;
   background: white !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%) !important;
   transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1) !important;
   cursor: pointer;
 }
@@ -335,7 +336,7 @@
 .compact-form input[type="text"]#budgetDeadline:focus,
 .compact-form input[type="text"]#actionDate:focus {
   border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%), 0 1px 2px rgb(0 0 0 / 5%) !important;
 }
 
 .compact-form input[type="text"]#budgetDeadline::placeholder,
@@ -447,7 +448,7 @@
 }
 
 .form-header.active .form-header-icon {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   transform: scale(1.1);
 }
 
@@ -471,7 +472,7 @@
 }
 
 .form-header.active .form-header-text p {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgb(255 255 255 / 90%);
 }
 
 .form-toggle-btn {
@@ -496,13 +497,13 @@
 }
 
 .form-header.active .form-toggle-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgb(255 255 255 / 20%);
+  border-color: rgb(255 255 255 / 30%);
   color: white;
 }
 
 .form-header.active .form-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgb(255 255 255 / 30%);
 }
 
 .form-toggle-icon {
@@ -524,7 +525,7 @@
 
 .collapsible-form.active {
   border-color: var(--primary-500);
-  box-shadow: var(--shadow-xl), 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: var(--shadow-xl), 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 /* Client search */
@@ -546,7 +547,7 @@
 
 .search-input:focus {
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
   transform: translateY(-1px);
 }
 
@@ -674,16 +675,16 @@
     );
   background-origin: border-box;
   background-clip: padding-box, border-box;
-  box-shadow: var(--shadow-md), 0 0 0 1px rgba(59, 130, 246, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-md), 0 0 0 1px rgb(59 130 246 / 10%),
+    inset 0 1px 0 rgb(255 255 255 / 10%);
   transition: var(--transition-normal);
   max-width: 1150px; /* ✅ Increased width for toggle switch */
   position: relative;
 }
 
 .search-and-view-controls:hover {
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgb(59 130 246 / 20%),
+    inset 0 1px 0 rgb(255 255 255 / 20%);
   transform: translateY(-1px);
 }
 
@@ -691,6 +692,7 @@
   display: flex;
   gap: var(--space-md);
   align-items: center;
+
   /* ✅ No wrapping - everything stays in one row */
 }
 
@@ -720,7 +722,7 @@
 .filter-select:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 /* iOS Toggle Switch - בסטייל iPhone מקצועי */
@@ -785,10 +787,10 @@
   background: var(--gray-300);
   border-radius: 34px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 10%);
 }
 
-.ios-slider:before {
+.ios-slider::before {
   position: absolute;
   content: "";
   height: 22px;
@@ -798,19 +800,19 @@
   background: white;
   border-radius: 50%;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
 }
 
 /* כשמסמנים - הזזת הכפתור ושינוי צבע */
 .ios-toggle-switch input:checked + .ios-slider {
   background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15),
-              0 0 10px rgba(59, 130, 246, 0.3);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 15%),
+              0 0 10px rgb(59 130 246 / 30%);
 }
 
-.ios-toggle-switch input:checked + .ios-slider:before {
+.ios-toggle-switch input:checked + .ios-slider::before {
   transform: translateX(24px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
 }
 
 /* Hover effect */
@@ -867,7 +869,7 @@
 .search-box:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
   width: 300px;
 }
 

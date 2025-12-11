@@ -39,7 +39,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.5) 50%,
+    rgb(255 255 255 / 50%) 50%,
     transparent 100%
   );
   animation: shimmerSlide 3s infinite;
@@ -76,7 +76,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.4) 50%,
+    rgb(255 255 255 / 40%) 50%,
     transparent 100%
   );
   animation: shimmerSlide 3s infinite;
@@ -114,7 +114,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.45) 50%,
+    rgb(255 255 255 / 45%) 50%,
     transparent 100%
   );
   animation: shimmerSlide 3s infinite;
@@ -127,6 +127,7 @@
   0% {
     right: -100%;
   }
+
   100% {
     right: 100%;
   }
@@ -153,12 +154,12 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .metric-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
 }
 
 /* Metric Icon */
@@ -201,7 +202,7 @@
 
 /* Planned Card - מינימליסטי */
 .metric-planned {
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   color: #374151;
 }
@@ -213,7 +214,7 @@
 
 /* Actual Card - מינימליסטי */
 .metric-actual {
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   color: #374151;
 }
@@ -225,7 +226,7 @@
 
 /* Overage Card - מינימליסטי */
 .metric-overage {
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   color: #374151;
 }
@@ -239,6 +240,7 @@
   0%, 100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
@@ -255,7 +257,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.4) 50%,
+    rgb(255 255 255 / 40%) 50%,
     transparent 100%
   );
   animation: shimmerSlide 4s infinite;
@@ -302,17 +304,18 @@
   position: relative;
   width: 80px;
   height: 80px;
+
   /* Clean shadow - no glow, just depth */
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08))
-          drop-shadow(0 1px 2px rgba(0, 0, 0, 0.06));
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 8%))
+          drop-shadow(0 1px 2px rgb(0 0 0 / 6%));
   transform: translateZ(0);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 🎯 Hover Effect - Instagram style (micro-interaction) */
 .svg-ring-wrapper:hover {
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.12))
-          drop-shadow(0 2px 6px rgba(0, 0, 0, 0.08));
+  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 12%))
+          drop-shadow(0 2px 6px rgb(0 0 0 / 8%));
   transform: translateY(-2px) translateZ(0);
 }
 
@@ -326,6 +329,7 @@
   0%, 100% {
     transform: scale(1) translateZ(0);
   }
+
   50% {
     transform: scale(1.02) translateZ(0);
   }
@@ -351,7 +355,7 @@
   font-size: 18px;
   font-weight: 700;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgb(255 255 255 / 80%);
 }
 
 /* Ring info (label + value) */
@@ -393,35 +397,35 @@
 /* Budget button - כחול */
 .svg-ring-action-btn.budget-btn {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 2px 6px rgb(59 130 246 / 25%);
 }
 
 .svg-ring-action-btn.budget-btn:hover {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 10px rgb(59 130 246 / 35%);
 }
 
 .svg-ring-action-btn.budget-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
 }
 
 /* Deadline button - כחול */
 .svg-ring-action-btn.deadline-btn {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 2px 6px rgb(59 130 246 / 25%);
 }
 
 .svg-ring-action-btn.deadline-btn:hover {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 10px rgb(59 130 246 / 35%);
 }
 
 .svg-ring-action-btn.deadline-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
 }
 
 .svg-ring-action-btn i {
@@ -473,19 +477,19 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 2px 4px rgb(245 158 11 / 20%);
   white-space: nowrap;
 }
 
 .svg-ring-overage-btn:hover {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 8px rgb(245 158 11 / 30%);
 }
 
 .svg-ring-overage-btn:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 1px 2px rgb(245 158 11 / 20%);
 }
 
 .svg-ring-overage-btn i {
@@ -493,7 +497,7 @@
 }
 
 /* Responsive design */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .svg-rings-dual-layout {
     flex-direction: column;
     gap: 20px;

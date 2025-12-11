@@ -89,7 +89,7 @@
     border-radius: 8px;
     padding: 0.875rem 1rem;
     margin-bottom: 1.25rem;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 .filter-bar {
@@ -128,7 +128,7 @@
 .filter-select:focus {
     outline: none;
     border-color: var(--primary-blue);
-    box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.08);
+    box-shadow: 0 0 0 2px rgb(24 119 242 / 8%);
     background: white;
 }
 
@@ -152,7 +152,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
 }
 
 .table-wrapper {
@@ -218,6 +218,7 @@
 }
 
 /* ===== Modal Styling ===== */
+
 /*
  * Full-Screen Overlay Modal Implementation
  * =========================================
@@ -246,7 +247,7 @@
     bottom: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgb(0 0 0 / 60%);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     display: flex;
@@ -278,12 +279,12 @@
     max-height: 90vh;
     margin: auto;
     overflow-y: auto;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
     position: relative;
 
     /* Custom Scrollbar - Minimal & Clean */
     scrollbar-width: thin; /* Firefox */
-    scrollbar-color: rgba(24, 119, 242, 0.15) transparent; /* Firefox */
+    scrollbar-color: rgb(24 119 242 / 15%) transparent; /* Firefox */
 }
 
 /* Webkit Browsers (Chrome, Safari, Edge) */
@@ -296,13 +297,13 @@
 }
 
 .modal-content::-webkit-scrollbar-thumb {
-    background: rgba(24, 119, 242, 0.15);
+    background: rgb(24 119 242 / 15%);
     border-radius: 3px;
     transition: background 0.2s ease;
 }
 
 .modal-content::-webkit-scrollbar-thumb:hover {
-    background: rgba(24, 119, 242, 0.3);
+    background: rgb(24 119 242 / 30%);
 }
 
 .modal-header {
@@ -482,7 +483,7 @@ select.form-input {
 .form-input:focus {
     outline: none;
     border-color: var(--primary-blue);
-    box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.1);
+    box-shadow: 0 0 0 3px rgb(24 119 242 / 10%);
 }
 
 /* ===== Radio Group ===== */
@@ -607,22 +608,22 @@ select.form-input {
 }
 
 .status-badge.active {
-    background: rgba(5, 150, 105, 0.1);
+    background: rgb(5 150 105 / 10%);
     color: var(--success-green);
 }
 
 .status-badge.blocked {
-    background: rgba(220, 38, 38, 0.1);
+    background: rgb(220 38 38 / 10%);
     color: var(--danger-red);
 }
 
 .status-badge.critical {
-    background: rgba(245, 158, 11, 0.1);
+    background: rgb(245 158 11 / 10%);
     color: var(--warning-yellow);
 }
 
 .status-badge.inactive {
-    background: rgba(107, 114, 128, 0.1);
+    background: rgb(107 114 128 / 10%);
     color: var(--text-secondary);
 }
 
@@ -635,7 +636,7 @@ select.form-input {
     border-radius: 12px;
     font-size: 0.875rem;
     font-weight: 500;
-    background: rgba(24, 119, 242, 0.1);
+    background: rgb(24 119 242 / 10%);
     color: var(--primary-blue);
 }
 
@@ -705,7 +706,7 @@ select.form-input {
 .empty-state h3 {
     font-size: 1.25rem;
     color: var(--text-primary);
-    margin: 1rem 0 0.5rem 0;
+    margin: 1rem 0 0.5rem;
 }
 
 .empty-state p {
@@ -736,7 +737,7 @@ select.form-input {
     background: var(--primary-blue-dark);
     color: white; /* שומר על טקסט לבן */
     transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(24, 119, 242, 0.2);
+    box-shadow: 0 4px 6px rgb(24 119 242 / 20%);
 }
 
 .btn-secondary {
@@ -765,7 +766,7 @@ select.form-input {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgb(0 0 0 / 50%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -809,7 +810,7 @@ select.form-input {
 }
 
 /* ===== Responsive ===== */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .admin-content > * + * {
         margin-top: 1rem;
     }
@@ -900,7 +901,7 @@ select.form-input {
 .management-client-header {
     background: white;
     border-bottom: 3px solid var(--primary-blue);
-    padding: 1.25rem 0 1rem 0;
+    padding: 1.25rem 0 1rem;
     margin-bottom: 1.5rem;
 }
 
@@ -967,7 +968,7 @@ select.form-input {
 }
 
 .management-service-card {
-    background: #ffffff;
+    background: #fff;
     border: 1px solid var(--border-color);
     border-left: 3px solid var(--primary-blue);
     border-radius: 6px;
@@ -976,13 +977,13 @@ select.form-input {
 }
 
 .management-service-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
     border-left-width: 4px;
 }
 
 .management-service-card.expanded {
     border-left-width: 4px;
-    box-shadow: 0 2px 12px rgba(24, 119, 242, 0.1);
+    box-shadow: 0 2px 12px rgb(24 119 242 / 10%);
 }
 
 .management-service-header {
@@ -996,7 +997,7 @@ select.form-input {
 }
 
 .management-service-header:hover {
-    background: rgba(24, 119, 242, 0.02);
+    background: rgb(24 119 242 / 2%);
 }
 
 .management-service-header-left {
@@ -1051,27 +1052,27 @@ select.form-input {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    background: rgba(24, 119, 242, 0.08);
+    background: rgb(24 119 242 / 8%);
     color: var(--primary-blue);
-    border: 1px solid rgba(24, 119, 242, 0.2);
+    border: 1px solid rgb(24 119 242 / 20%);
 }
 
 .management-service-badge.hours {
-    background: rgba(24, 119, 242, 0.08);
+    background: rgb(24 119 242 / 8%);
     color: var(--primary-blue);
-    border-color: rgba(24, 119, 242, 0.2);
+    border-color: rgb(24 119 242 / 20%);
 }
 
 .management-service-badge.legal {
-    background: rgba(24, 119, 242, 0.08);
+    background: rgb(24 119 242 / 8%);
     color: var(--primary-blue);
-    border-color: rgba(24, 119, 242, 0.2);
+    border-color: rgb(24 119 242 / 20%);
 }
 
 .management-service-badge.fixed {
-    background: rgba(24, 119, 242, 0.08);
+    background: rgb(24 119 242 / 8%);
     color: var(--primary-blue);
-    border-color: rgba(24, 119, 242, 0.2);
+    border-color: rgb(24 119 242 / 20%);
 }
 
 .management-service-info {
@@ -1195,7 +1196,7 @@ select.form-input {
     background: var(--primary-blue);
     border-color: var(--primary-blue);
     color: white;
-    box-shadow: 0 0 0 4px rgba(24, 119, 242, 0.1);
+    box-shadow: 0 0 0 4px rgb(24 119 242 / 10%);
 }
 
 .management-stage.pending .management-stage-icon {
@@ -1348,7 +1349,7 @@ select.form-input {
     flex-wrap: wrap;
     margin-top: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px solid rgba(229, 231, 235, 0.7);
+    border-top: 1px solid rgb(229 231 235 / 70%);
 }
 
 .management-service-action-btn {
@@ -1374,7 +1375,7 @@ select.form-input {
 .management-service-action-btn:hover {
     border-color: var(--primary-blue);
     color: var(--primary-blue);
-    background: rgba(24, 119, 242, 0.02);
+    background: rgb(24 119 242 / 2%);
 }
 
 .management-service-action-btn.primary {
@@ -1394,7 +1395,7 @@ select.form-input {
 }
 
 .management-service-action-btn.secondary:hover {
-    background: rgba(24, 119, 242, 0.05);
+    background: rgb(24 119 242 / 5%);
 }
 
 .management-service-action-btn.danger {
@@ -1431,7 +1432,7 @@ select.form-input {
 
 .management-action-btn:hover {
     border-color: var(--primary-blue);
-    background: rgba(24, 119, 242, 0.02);
+    background: rgb(24 119 242 / 2%);
 }
 
 .management-action-btn i {
@@ -1443,7 +1444,7 @@ select.form-input {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: rgba(24, 119, 242, 0.08);
+    background: rgb(24 119 242 / 8%);
     flex-shrink: 0;
 }
 
@@ -1456,17 +1457,17 @@ select.form-input {
 
 .management-action-btn.danger:hover {
     border-color: var(--danger-red);
-    background: rgba(220, 38, 38, 0.02);
+    background: rgb(220 38 38 / 2%);
 }
 
 .management-action-btn.danger i {
     color: var(--text-secondary);
-    background: rgba(107, 114, 128, 0.08);
+    background: rgb(107 114 128 / 8%);
 }
 
 .management-action-btn.danger:hover i {
     color: var(--danger-red);
-    background: rgba(220, 38, 38, 0.08);
+    background: rgb(220 38 38 / 8%);
 }
 
 /* Empty State */
@@ -1519,7 +1520,7 @@ select.form-input {
 
 .fee-agreement-item:hover {
     border-color: var(--primary-color);
-    background: rgba(37, 99, 235, 0.02);
+    background: rgb(37 99 235 / 2%);
 }
 
 .fee-agreement-info {
@@ -1537,7 +1538,7 @@ select.form-input {
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    background: rgba(37, 99, 235, 0.08);
+    background: rgb(37 99 235 / 8%);
     color: var(--primary-color);
     flex-shrink: 0;
 }
@@ -1547,12 +1548,12 @@ select.form-input {
 }
 
 .fee-agreement-icon.pdf {
-    background: rgba(220, 38, 38, 0.08);
+    background: rgb(220 38 38 / 8%);
     color: #dc2626;
 }
 
 .fee-agreement-icon.image {
-    background: rgba(16, 185, 129, 0.08);
+    background: rgb(16 185 129 / 8%);
     color: #10b981;
 }
 
@@ -1611,7 +1612,7 @@ select.form-input {
 .fee-agreement-action-btn:hover {
     border-color: var(--primary-color);
     color: var(--primary-color);
-    background: rgba(37, 99, 235, 0.04);
+    background: rgb(37 99 235 / 4%);
 }
 
 .fee-agreement-action-btn.view:hover {
@@ -1622,7 +1623,7 @@ select.form-input {
 .fee-agreement-action-btn.delete:hover {
     border-color: var(--danger-red);
     color: var(--danger-red);
-    background: rgba(220, 38, 38, 0.04);
+    background: rgb(220 38 38 / 4%);
 }
 
 /* Upload Area */
@@ -1634,13 +1635,13 @@ select.form-input {
     padding: 1.25rem;
     border: 2px dashed var(--border-color);
     border-radius: 8px;
-    background: rgba(107, 114, 128, 0.02);
+    background: rgb(107 114 128 / 2%);
     transition: all 0.2s ease;
 }
 
 .fee-agreement-upload:hover {
     border-color: var(--primary-color);
-    background: rgba(37, 99, 235, 0.02);
+    background: rgb(37 99 235 / 2%);
 }
 
 .fee-agreement-upload-btn {
@@ -1697,7 +1698,7 @@ select.form-input {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: rgba(37, 99, 235, 0.04);
+    background: rgb(37 99 235 / 4%);
     border: 1px solid var(--primary-color);
     border-radius: 8px;
 }
@@ -1714,5 +1715,6 @@ select.form-input {
 
 @keyframes spin {
     from { transform: rotate(0deg); }
+
     to { transform: rotate(360deg); }
 }

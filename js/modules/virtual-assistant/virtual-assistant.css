@@ -22,27 +22,21 @@
     --va-success: #10b981;
     --va-warning: #f59e0b;
     --va-danger: #ef4444;
-
-    --va-bg: #ffffff;
+    --va-bg: #fff;
     --va-bg-secondary: #f9fafb;
     --va-bg-tertiary: #f3f4f6;
-
     --va-text: #1f2937;
     --va-text-secondary: #6b7280;
     --va-text-tertiary: #9ca3af;
-
     --va-border: #e5e7eb;
     --va-border-dark: #d1d5db;
-
-    --va-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --va-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --va-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --va-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-
+    --va-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 5%);
+    --va-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%);
+    --va-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 10%);
+    --va-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 10%);
     --va-radius: 12px;
     --va-radius-sm: 8px;
     --va-radius-lg: 16px;
-
     --va-transition: all 0.2s ease;
     --va-transition-slow: all 0.3s ease;
 }
@@ -62,7 +56,7 @@
 .va-icon svg {
     width: 100%;
     height: 100%;
-    stroke: currentColor;
+    stroke: currentcolor;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -99,7 +93,7 @@
     left: auto;
     right: 20px;
     transform-origin: bottom right;
-    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15), 0 0 0 2px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 8px 32px rgb(59 130 246 / 15%), 0 0 0 2px rgb(59 130 246 / 10%);
 }
 
 .va-container.va-moved-aside::before {
@@ -115,7 +109,7 @@
 /* 📦 Smart Compact Mode: Shrinks height when element is tall */
 .va-container.va-compact-mode {
     max-height: 350px !important;
-    box-shadow: 0 12px 40px rgba(59, 130, 246, 0.2), 0 0 0 3px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 12px 40px rgb(59 130 246 / 20%), 0 0 0 3px rgb(59 130 246 / 15%);
 }
 
 .va-container.va-compact-mode .va-content {
@@ -126,7 +120,7 @@
 .va-container.va-compact-mode .va-header {
     padding: 12px 16px;
     border-bottom: 2px solid var(--va-primary);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%);
+    background: linear-gradient(135deg, rgb(59 130 246 / 5%) 0%, rgb(59 130 246 / 2%) 100%);
 }
 
 .va-container.va-compact-mode .va-header::after {
@@ -137,10 +131,10 @@
     font-size: 10px;
     font-weight: 600;
     color: var(--va-primary);
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(59 130 246 / 10%);
     padding: 3px 8px;
     border-radius: 8px;
-    border: 1px solid rgba(59, 130, 246, 0.2);
+    border: 1px solid rgb(59 130 246 / 20%);
 }
 
 /* Speech Bubble Tail (Arrow pointing to floating button) */
@@ -155,7 +149,7 @@
     border-right: 1px solid var(--va-border);
     border-bottom: 1px solid var(--va-border);
     transform: rotate(45deg);
-    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 2px 2px 4px rgb(0 0 0 / 6%);
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 1;
     z-index: -1;
@@ -180,7 +174,7 @@
     background: #3b82f6;
     color: white;
     border: none;
-    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 8px 24px rgb(59 130 246 / 40%);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -191,7 +185,7 @@
 
 .va-floating-btn:hover {
     transform: scale(1.08);
-    box-shadow: 0 12px 32px rgba(59, 130, 246, 0.6);
+    box-shadow: 0 12px 32px rgb(59 130 246 / 60%);
     background: #2563eb;
 }
 
@@ -222,6 +216,7 @@
 /* Animation for floating button */
 @keyframes va-float {
     0%, 100% { transform: translateY(0); }
+
     50% { transform: translateY(-8px); }
 }
 
@@ -264,7 +259,7 @@
     height: 32px;
     border-radius: 50%;
     border: none;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgb(255 255 255 / 20%);
     color: white;
     font-size: 20px;
     cursor: pointer;
@@ -275,7 +270,7 @@
 }
 
 .va-header-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgb(255 255 255 / 30%);
     transform: scale(1.05);
 }
 
@@ -298,7 +293,7 @@
     align-items: center;
     justify-content: center;
     padding: 0 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
 }
 
 .va-notification-badge:not(:empty) {
@@ -345,7 +340,7 @@
     outline: none;
     border-color: var(--va-primary);
     background: var(--va-bg);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
 }
 
 .va-search-clear {
@@ -481,7 +476,7 @@
 .va-home-context {
     font-size: 14px;
     color: var(--va-text-secondary);
-    margin: 8px 0 0 0;
+    margin: 8px 0 0;
 }
 
 .va-category-section {
@@ -510,7 +505,7 @@
     color: white;
     background: linear-gradient(135deg, var(--va-primary) 0%, var(--va-secondary) 100%);
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 2px 8px rgb(59 130 246 / 20%);
 }
 
 .va-category-icon .va-icon {
@@ -543,14 +538,14 @@
     border-radius: 20px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
     min-height: 110px;
 }
 
 .va-action-card:hover {
     background: #f8fafc;
     border-color: var(--va-primary);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 12%);
     transform: translateY(-2px);
 }
 
@@ -600,7 +595,7 @@
 }
 
 /* Desktop: 3 columns for better space utilization */
-@media (min-width: 500px) {
+@media (width >= 500px) {
     .va-action-cards {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -618,13 +613,13 @@
     font-size: 20px;
     font-weight: 700;
     color: var(--va-text);
-    margin: 0 0 8px 0;
+    margin: 0 0 8px;
 }
 
 .va-search-query {
     font-size: 14px;
     color: var(--va-text-secondary);
-    margin: 0 0 4px 0;
+    margin: 0 0 4px;
 }
 
 .va-search-count {
@@ -852,7 +847,7 @@
     font-size: 20px;
     font-weight: 700;
     color: var(--va-text);
-    margin: 0 0 16px 0;
+    margin: 0 0 16px;
 }
 
 .va-guide-step-description {
@@ -1141,7 +1136,7 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--va-text);
-    margin: 0 0 12px 0;
+    margin: 0 0 12px;
     text-align: center;
 }
 
@@ -1172,7 +1167,7 @@
     color: white;
     border-color: var(--va-primary);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 2px 8px rgb(59 130 246 / 20%);
 }
 
 .va-loading-spinner {
@@ -1198,13 +1193,13 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--va-text);
-    margin: 0 0 8px 0;
+    margin: 0 0 8px;
 }
 
 .va-error-message {
     font-size: 14px;
     color: var(--va-text-secondary);
-    margin: 0 0 16px 0;
+    margin: 0 0 16px;
 }
 
 .va-error-retry-btn {
@@ -1232,17 +1227,18 @@
     pointer-events: none;
     border: 3px solid var(--va-primary);
     border-radius: 8px;
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 20px rgb(59 130 246 / 50%);
     z-index: 10000;
 }
 
 @keyframes va-pulse {
     0%, 100% {
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        box-shadow: 0 0 20px rgb(59 130 246 / 50%);
         transform: scale(1);
     }
+
     50% {
-        box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+        box-shadow: 0 0 30px rgb(59 130 246 / 80%);
         transform: scale(1.02);
     }
 }
@@ -1253,6 +1249,7 @@
 
 @keyframes va-fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
+
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -1285,7 +1282,7 @@
 }
 
 .va-notifications-back-btn:hover {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(59 130 246 / 10%);
 }
 
 .va-notifications-title {
@@ -1310,7 +1307,7 @@
 }
 
 .va-notifications-clear-btn:hover {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgb(239 68 68 / 10%);
 }
 
 /* Empty State */
@@ -1333,7 +1330,7 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--va-text);
-    margin: 0 0 8px 0;
+    margin: 0 0 8px;
 }
 
 .va-notifications-empty-text {
@@ -1380,7 +1377,7 @@
 }
 
 .va-notification-urgent {
-    background: rgba(239, 68, 68, 0.02);
+    background: rgb(239 68 68 / 2%);
 }
 
 /* Close Button */
@@ -1401,7 +1398,7 @@
 }
 
 .va-notification-close:hover {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgb(239 68 68 / 10%);
     color: var(--va-danger);
 }
 
@@ -1420,23 +1417,23 @@
     align-items: center;
     justify-content: center;
     border-radius: 10px;
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(59 130 246 / 10%);
     color: var(--va-primary);
     font-size: 18px;
 }
 
 .va-notification-blocked .va-notification-icon {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgb(239 68 68 / 10%);
     color: var(--va-danger);
 }
 
 .va-notification-critical .va-notification-icon {
-    background: rgba(245, 158, 11, 0.1);
+    background: rgb(245 158 11 / 10%);
     color: var(--va-warning);
 }
 
 .va-notification-urgent .va-notification-icon {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(59 130 246 / 10%);
     color: var(--va-primary);
 }
 
@@ -1518,7 +1515,7 @@
 }
 
 .va-history-back-btn:hover {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(59 130 246 / 10%);
 }
 
 .va-history-title {
@@ -1550,7 +1547,7 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--va-text);
-    margin: 0 0 8px 0;
+    margin: 0 0 8px;
 }
 
 .va-history-empty-text {
@@ -1579,7 +1576,7 @@
     font-size: 14px;
     font-weight: 600;
     color: var(--va-text-secondary);
-    margin: 0 0 12px 0;
+    margin: 0 0 12px;
     padding: 0 4px;
 }
 
@@ -1621,7 +1618,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(59 130 246 / 10%);
     color: var(--va-primary);
 }
 
@@ -1651,8 +1648,8 @@
     font-size: 14px;
     font-weight: 500;
     border-radius: 8px;
-    margin: 0 20px 16px 20px;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    margin: 0 20px 16px;
+    box-shadow: 0 2px 8px rgb(102 126 234 / 20%);
     animation: va-slide-down 0.3s ease-out;
 }
 
@@ -1669,14 +1666,14 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .va-quick-actions {
-    margin: 0 20px 24px 20px;
+    margin: 0 20px 24px;
 }
 
 .va-quick-actions-title {
     font-size: 16px;
     font-weight: 600;
     color: var(--va-text);
-    margin: 0 0 12px 0;
+    margin: 0 0 12px;
 }
 
 .va-quick-actions-grid {
@@ -1703,9 +1700,9 @@
 
 .va-quick-action-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
     border-color: var(--va-primary);
-    background: rgba(59, 130, 246, 0.05);
+    background: rgb(59 130 246 / 5%);
 }
 
 .va-quick-action-btn:active {
@@ -1727,7 +1724,7 @@
 .va-feedback-container {
     margin-top: 24px;
     padding: 16px;
-    background: rgba(249, 250, 255, 0.5);
+    background: rgb(249 250 255 / 50%);
     border-radius: 12px;
     border: 1px solid var(--va-border);
 }
@@ -1762,7 +1759,7 @@
 
 .va-feedback-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
 .va-feedback-positive {
@@ -1771,7 +1768,7 @@
 }
 
 .va-feedback-positive:hover {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgb(16 185 129 / 10%);
 }
 
 .va-feedback-negative {
@@ -1780,7 +1777,7 @@
 }
 
 .va-feedback-negative:hover {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgb(239 68 68 / 10%);
 }
 
 .va-feedback-icon {
@@ -1822,7 +1819,7 @@
     padding: 20px;
     border-radius: 16px;
     text-align: center;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 4px 12px rgb(102 126 234 / 20%);
     transition: transform 0.2s ease;
 }
 
@@ -1844,7 +1841,7 @@
 
 .va-stat-label {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgb(255 255 255 / 90%);
     font-weight: 500;
 }
 
@@ -1852,7 +1849,7 @@
     font-size: 16px;
     font-weight: 600;
     color: var(--va-text);
-    margin: 0 0 16px 0;
+    margin: 0 0 16px;
 }
 
 /* הישגים */
@@ -1871,16 +1868,16 @@
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: rgba(249, 250, 255, 0.5);
+    background: rgb(249 250 255 / 50%);
     border: 1px solid var(--va-border);
     border-radius: 12px;
     transition: all 0.2s ease;
 }
 
 .va-achievement-item:hover {
-    background: rgba(249, 250, 255, 0.8);
+    background: rgb(249 250 255 / 80%);
     transform: translateX(-4px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
 }
 
 .va-achievement-icon {
@@ -1970,6 +1967,7 @@
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1980,6 +1978,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -1989,7 +1988,7 @@
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
     .va-container {
         left: 10px;
         right: 10px;
@@ -2041,7 +2040,7 @@
     }
 
     .va-context-banner {
-        margin: 0 10px 12px 10px;
+        margin: 0 10px 12px;
     }
 }
 
@@ -2089,14 +2088,14 @@
 .va-quick-action-icon-large {
     font-size: 72px;
     margin-bottom: 16px;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    filter: drop-shadow(0 4px 8px rgb(0 0 0 / 10%));
 }
 
 .va-quick-action-title {
     font-size: 26px;
     font-weight: 700;
     margin: 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-shadow: 0 2px 4px rgb(0 0 0 / 10%);
 }
 
 /* Help Text */
@@ -2123,13 +2122,13 @@
     font-weight: 700;
     cursor: pointer;
     transition: var(--va-transition);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 30%);
     font-family: inherit;
 }
 
 .va-quick-action-main-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 8px 20px rgb(59 130 246 / 40%);
 }
 
 .va-quick-action-main-btn:active {
@@ -2139,7 +2138,7 @@
 /* Tips */
 .va-quick-action-tips {
     padding: 20px 30px;
-    background: rgba(59, 130, 246, 0.05);
+    background: rgb(59 130 246 / 5%);
     border-top: 1px solid var(--va-border);
     border-bottom: 1px solid var(--va-border);
 }
@@ -2197,7 +2196,7 @@
 .va-detailed-guide-link:hover {
     border-color: var(--va-primary);
     color: var(--va-primary);
-    background: rgba(59, 130, 246, 0.05);
+    background: rgb(59 130 246 / 5%);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2207,8 +2206,8 @@
 .va-kb-expand-button-container {
     margin: 16px 20px 24px;
     padding: 16px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
-    border: 2px dashed rgba(59, 130, 246, 0.3);
+    background: linear-gradient(135deg, rgb(59 130 246 / 8%) 0%, rgb(139 92 246 / 8%) 100%);
+    border: 2px dashed rgb(59 130 246 / 30%);
     border-radius: var(--va-radius);
     text-align: center;
 }
@@ -2228,13 +2227,13 @@
     font-weight: 600;
     cursor: pointer;
     transition: var(--va-transition);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 30%);
     font-family: inherit;
 }
 
 .va-kb-expand-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 8px 20px rgb(59 130 246 / 40%);
 }
 
 .va-kb-expand-button svg {

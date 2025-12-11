@@ -120,13 +120,13 @@
   color: white;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
-              0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 20%),
+              0 0 0 1px rgb(255 255 255 / 10%) inset;
   font-size: var(--text-sm);
   line-height: 1.5;
   text-align: right;
   direction: rtl;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
@@ -152,7 +152,7 @@
 .description-popover-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0 0 0 / 40%);
   backdrop-filter: blur(4px);
   z-index: var(--z-modal-backdrop);
   display: flex;
@@ -173,8 +173,8 @@
 .description-popover {
   background: white;
   border-radius: var(--radius-md);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
-              0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 15%),
+              0 0 0 1px rgb(0 0 0 / 5%);
   max-width: 500px;
   width: 100%;
   transform: scale(0.95) translateY(8px);
@@ -249,7 +249,7 @@
   font-weight: 500;
   max-height: 400px;
   overflow-y: auto;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   direction: rtl;
   text-align: right;
 }
@@ -349,13 +349,13 @@
   color: white;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
-              0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 20%),
+              0 0 0 1px rgb(255 255 255 / 10%) inset;
   font-size: var(--text-sm);
   line-height: 1.5;
   text-align: right;
   direction: rtl;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   font-weight: 500;
   letter-spacing: -0.01em;
   white-space: normal;
@@ -430,6 +430,7 @@
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -441,6 +442,7 @@
     opacity: 0;
     transform: scale(0.95) translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -451,7 +453,7 @@
    RESPONSIVE
    ======================================== */
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .description-popover {
     max-width: calc(100vw - 32px);
   }
@@ -462,7 +464,7 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .description-popover-header {
     padding: var(--space-3) var(--space-4);
   }
