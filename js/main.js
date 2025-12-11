@@ -446,6 +446,11 @@ class LawOfficeManager {
     await Auth.verifyOTP.call(this);
   }
 
+  // ⚡ Lazy Loading - AI Chat System
+  async initAIChatSystem() {
+    await Auth.initAIChatSystem.call(this);
+  }
+
   /* ========================================
      SECURITY MODULES INTEGRATION
      ======================================== */
