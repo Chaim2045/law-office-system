@@ -196,6 +196,10 @@ class LawOfficeManager {
     // Always show login screen - login only happens on manual button click
     this.showLogin();
 
+    // ✅ CRITICAL: Setup permanent auth state listener for NotificationBell
+    // This ensures NotificationBell starts even if page loads after login
+    this.setupNotificationBellListener();
+
     Logger.log('✅ System initialized');
   }
 
@@ -263,6 +267,41 @@ class LawOfficeManager {
       console.error('❌ Error loading user profile:', error);
       this.showLogin();
     }
+  }
+
+  /**
+   * Setup permanent NotificationBell auth listener
+   * ✅ CRITICAL: This runs ALWAYS, even after page refresh
+   */
+  setupNotificationBellListener() {
+    console.log('🔔 Setting up permanent NotificationBell listener...');
+
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user && this.notificationBell && window.firebaseDB) {
+        console.log('🔔 Auth state changed - User logged in:', user.email);
+        console.log('🔔 Starting NotificationBell listener...');
+
+        try {
+          // Start listening (safe to call multiple times - it checks internally)
+          this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
+          console.log('✅ NotificationBell listener started successfully');
+          console.log('✅ Listener active:', !!this.notificationBell.messagesListener);
+        } catch (error) {
+          console.error('❌ Failed to start NotificationBell listener:', error);
+        }
+      } else if (!user) {
+        console.log('🔔 Auth state changed - User logged out, cleaning up...');
+        if (this.notificationBell) {
+          this.notificationBell.cleanup();
+        }
+      } else {
+        console.warn('⚠️ Cannot start NotificationBell - missing dependencies:', {
+          hasUser: !!user,
+          hasNotificationBell: !!this.notificationBell,
+          hasFirebaseDB: !!window.firebaseDB
+        });
+      }
+    });
   }
 
   /**
