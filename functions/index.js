@@ -16,6 +16,9 @@ const { updateBudgetTask, markNotificationAsRead } = require('./task-update-real
 // ✨ NEW: Import modular deduction system
 const DeductionSystem = require('./src/modules/deduction');
 
+// ✅ NEW: Import case number transaction module
+const { generateCaseNumberWithTransaction } = require('./case-number-transaction');
+
 // אתחול Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
@@ -244,61 +247,17 @@ async function getOrCreateInternalCase(employeeName) {
 // =====================================================================
 
 /**
- * 🎯 יצירת מספר תיק אוטומטי
+ * 🎯 יצירת מספר תיק אוטומטי (WRAPPER)
+ * מפנה ל-Transaction Module החדש
+ *
  * פורמט: שנה + מספר סידורי (2025001, 2025002...)
+ * שימוש ב-Firestore Transaction מבטיח ייחודיות מוחלטת
  *
  * @returns {Promise<string>} - מספר תיק חדש וייחודי
  */
 async function generateCaseNumber() {
-  const currentYear = new Date().getFullYear();
-  const yearPrefix = currentYear.toString();
-
-  try {
-    // קריאת כל הלקוחות כדי למצוא את המספר הגבוה ביותר
-    const clientsSnapshot = await db.collection('clients')
-      .orderBy('caseNumber', 'desc')
-      .limit(1)
-      .get();
-
-    let nextNumber = 1; // ברירת מחדל
-
-    if (!clientsSnapshot.empty) {
-      const lastCaseNumber = clientsSnapshot.docs[0].data().caseNumber;
-
-      if (lastCaseNumber && typeof lastCaseNumber === 'string') {
-        // חילוץ המספר הסידורי (3 הספרות האחרונות)
-        const lastSequential = parseInt(lastCaseNumber.slice(-3));
-
-        // אם המספר מהשנה הנוכחית, נמשיך את הסדרה
-        if (lastCaseNumber.startsWith(yearPrefix)) {
-          nextNumber = lastSequential + 1;
-        }
-        // אחרת (שנה חדשה), נתחיל מ-1
-      }
-    }
-
-    // יצירת מספר תיק: שנה + 3 ספרות סידוריות
-    const caseNumber = `${yearPrefix}${nextNumber.toString().padStart(3, '0')}`;
-
-    // בדיקת ייחודיות (למקרה של race condition)
-    const existingDoc = await db.collection('clients').doc(caseNumber).get();
-    if (existingDoc.exists) {
-      console.warn(`⚠️ מספר תיק ${caseNumber} כבר קיים! מנסה שוב...`);
-      // רקורסיה - ננסה שוב (במקרה נדיר של התנגשות)
-      return await generateCaseNumber();
-    }
-
-    console.log(`✅ נוצר מספר תיק חדש: ${caseNumber}`);
-    return caseNumber;
-
-  } catch (error) {
-    console.error('❌ שגיאה ביצירת מספר תיק:', error);
-
-    // Fallback: שנה + timestamp (למקרה של שגיאה)
-    const fallbackNumber = `${yearPrefix}${Date.now().toString().slice(-3)}`;
-    console.warn(`⚠️ שימוש במספר fallback: ${fallbackNumber}`);
-    return fallbackNumber;
-  }
+  // ✅ שימוש ב-Transaction החדשה
+  return await generateCaseNumberWithTransaction();
 }
 
 // ===============================

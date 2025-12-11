@@ -417,6 +417,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ✅ _system Collection: Internal system data (counters, configs, etc.)
+    // Purpose: Store atomic counters and system-wide configuration
+    // Security: Read-only for admins (debugging), Write-only via Cloud Functions
+    match /_system/{document} {
+      // Read: Only admins can read (for debugging/monitoring)
+      allow read: if isAdmin();
+
+      // Write: Only Cloud Functions (all client writes are denied)
+      allow write: if false;
+    }
+
     // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;

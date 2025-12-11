@@ -246,10 +246,14 @@ return false;
     /**
      * 🎯 קבלת מספר תיק הבא הזמין (עם בדיקת זמינות ב-Firebase)
      * פונקציה חכמה שבודקת בזמן אמת מה המספר האחרון ומוודאת שהמספר החדש פנוי
-     * @param {number} maxRetries - מספר ניסיונות מקסימלי (ברירת מחדל: 10)
-     * @returns {Promise<string>} מספר תיק חדש וזמין
+     *
+     * ⚠️ WARNING: פונקציה זו מיועדת רק להצגת PREVIEW ללקוח
+     * השרת יקצה את המספר הסופי בעת יצירת התיק
+     *
+     * @param {number} maxRetries - מספר ניסיונות מקסימלי (ברירת מחדל: 50)
+     * @returns {Promise<string>} מספר תיק חדש וזמין (preview)
      */
-    async getNextAvailableCaseNumber(maxRetries = 10) {
+    async getNextAvailableCaseNumber(maxRetries = 50) {
       // 🔍 Performance Monitoring - Start
       const opId = window.PerformanceMonitor?.start('case-number-generation', {
         action: 'getNextAvailableCaseNumber',
@@ -257,51 +261,58 @@ return false;
       });
 
       try {
-        Logger.log('🔍 Finding next available case number...');
+        Logger.log('🔍 Finding next available case number (preview)...');
 
         // רענון המספר האחרון מ-Firebase (בזמן אמת)
         await this.updateLastCaseNumber();
 
-        // קבלת מספר מועמד
-        let candidateNumber = this.getNextCaseNumber();
-
-        // בדיקת זמינות עם retry logic
+        // בדיקת זמינות עם retry logic משופר
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
-          Logger.log(`  🔎 Attempt ${attempt}: Checking if ${candidateNumber} is available...`);
+          // קבלת מספר מועמד חדש בכל iteration
+          const candidateNumber = this.getNextCaseNumber();
+
+          Logger.log(`  🔎 Attempt ${attempt}/${maxRetries}: Checking ${candidateNumber}...`);
 
           const exists = await this.caseNumberExists(candidateNumber);
 
           if (!exists) {
             // ✅ מצאנו מספר פנוי!
-            Logger.log(`  ✅ Case number ${candidateNumber} is available!`);
+            Logger.log(`  ✅ Case number ${candidateNumber} is available (preview)!`);
 
-            // עדכון ה-cache כדי למנוע התנגשויות עתידיות
-            this.lastCaseNumber = candidateNumber;
+            // ⚠️ אל תעדכן lastCaseNumber כאן - זה רק preview
+            // השרת יעדכן בעת יצירת התיק בפועל
 
             // 🔍 Performance Monitoring - Success
             window.PerformanceMonitor?.success(opId, {
               caseNumber: candidateNumber,
-              attempts: attempt
+              attempts: attempt,
+              note: 'preview_only'
             });
 
             return candidateNumber;
           }
 
-          // ❌ המספר תפוס, ננסה את הבא
-          Logger.log(`  ⚠️ Case number ${candidateNumber} is taken, trying next...`);
+          // ❌ המספר תפוס, עדכן cache ונסה הבא
+          Logger.log(`  ⚠️ Case ${candidateNumber} taken (attempt ${attempt}/${maxRetries})`);
 
-          // עדכון lastCaseNumber למספר הנוכחי (התפוס) ונסיון הבא
+          // עדכון lastCaseNumber למספר התפוס כדי שהבא יהיה שונה
           this.lastCaseNumber = candidateNumber;
-          candidateNumber = this.getNextCaseNumber();
         }
 
         // אם הגענו לכאן, כל הניסיונות נכשלו
+        console.error(`🚨 CRITICAL: Failed to find available case number after ${maxRetries} attempts!`);
+        console.error('This may indicate:');
+        console.error('1. Too many cases created in sequence');
+        console.error('2. Database query issues');
+        console.error('3. Need to increase maxRetries');
+
         const error = new Error(`Failed to find available case number after ${maxRetries} attempts`);
 
         // 🔍 Performance Monitoring - Failure
         window.PerformanceMonitor?.failure(opId, error);
 
-        throw error;
+        // במקום לזרוק שגיאה, נחזיר null ונתן לשרת לטפל
+        return null;
 
       } catch (error) {
         console.error('❌ Error finding available case number:', error);
@@ -314,12 +325,9 @@ return false;
           }
         }
 
-        // Fallback: מספר עם timestamp
-        const currentYear = new Date().getFullYear();
-        const fallback = `${currentYear}${Math.floor(Math.random() * 900) + 100}`;
-        Logger.log(`⚠️ Using fallback case number: ${fallback}`);
-
-        return fallback;
+        // במקרה של שגיאה, נחזיר null ונתן לשרת לטפל
+        Logger.log('⚠️ Preview failed - server will assign case number');
+        return null;
       }
     }
 
