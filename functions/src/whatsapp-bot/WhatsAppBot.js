@@ -96,6 +96,11 @@ class WhatsAppBot {
             return await this.handleTasksMenuContext(message, session, userInfo);
         }
 
+        // אם המשתמש במצב של אישור העלאת מסמך
+        if (session.context === 'upload_agreement_confirm') {
+            return await this.handleUploadAgreementContext(message, session, userInfo);
+        }
+
         // ═══ זיהוי פקודות מהתפריט ═══
 
         // 1️⃣ משימות לאישור
@@ -1346,6 +1351,406 @@ class WhatsAppBot {
             console.error('❌ Error showing employee tasks:', error);
             return '❌ שגיאה בטעינת משימות.';
         }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * 📎 טיפול בהודעת מדיה (PDF/תמונה)
+     * ═══════════════════════════════════════════════════════════
+     */
+    async handleMediaMessage(phoneNumber, mediaUrl, contentType, caption, userInfo) {
+        try {
+            console.log(`📎 handleMediaMessage: ${contentType}, caption="${caption}"`);
+
+            // בדוק סוג קובץ
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(contentType)) {
+                return `❌ סוג קובץ לא נתמך: ${contentType}\n\nקבצים נתמכים:\n• PDF\n• תמונות (JPEG, PNG, WebP)`;
+            }
+
+            // קבל session נוכחי
+            const session = await this.sessionManager.getSession(phoneNumber);
+
+            // בדוק אם המשתמש בתהליך אישור
+            if (session.context === 'upload_agreement_confirm') {
+                // המשתמש שולח מסמך נוסף בזמן אישור - התעלם
+                return '⚠️ יש לך כבר מסמך הממתין לאישור.\nאשר או דחה אותו קודם.';
+            }
+
+            // חלץ שם לקוח מהכיתוב
+            const clientName = caption.trim();
+            if (!clientName) {
+                return `❌ נא לכלול שם לקוח בכיתוב.\n\nדוגמה:\nשלח PDF עם כיתוב "דוד כהן"`;
+            }
+
+            console.log(`🔍 Searching for client: "${clientName}"`);
+
+            // חפש לקוחות
+            const matchingClients = await this.searchClients(clientName);
+
+            if (matchingClients.length === 0) {
+                return `❌ לא נמצא לקוח בשם "${clientName}"\n\nנסה:\n• שם מלא\n• שם פרטי או משפחה\n• בדוק איות`;
+            }
+
+            // הורד את הקובץ מ-Twilio
+            console.log(`📥 Downloading file from Twilio...`);
+            const fileBuffer = await this.downloadMediaFromTwilio(mediaUrl);
+            const fileSize = fileBuffer.length;
+
+            // בדוק גודל (מקסימום 10MB)
+            const maxSize = 10 * 1024 * 1024;
+            if (fileSize > maxSize) {
+                return `❌ הקובץ גדול מדי: ${(fileSize / 1024 / 1024).toFixed(2)}MB\n\nמקסימום: 10MB`;
+            }
+
+            console.log(`✅ File downloaded: ${fileSize} bytes`);
+
+            // שמור בsession לאישור
+            const originalFileName = `agreement_${Date.now()}.${this.getFileExtension(contentType)}`;
+            await this.sessionManager.updateSession(phoneNumber, {
+                context: 'upload_agreement_confirm',
+                data: {
+                    mediaUrl,
+                    contentType,
+                    originalFileName,
+                    fileBuffer: fileBuffer.toString('base64'), // שמור כ-base64
+                    fileSize,
+                    clientName,
+                    matchingClients: matchingClients.map(c => ({ id: c.id, name: c.name, idNumber: c.idNumber }))
+                }
+            });
+
+            // הצג לקוחות מתאימים
+            let response = `📎 מסמך התקבל!\n\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `📄 סוג: ${this.getFileTypeHebrew(contentType)}\n`;
+            response += `💾 גודל: ${(fileSize / 1024).toFixed(0)}KB\n`;
+            response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            response += `🔍 נמצאו ${matchingClients.length} לקוחות מתאימים:\n\n`;
+
+            matchingClients.forEach((client, index) => {
+                response += `${index + 1}️⃣ ${client.name}\n`;
+                if (client.idNumber) {
+                    response += `   ת.ז. ${client.idNumber}\n`;
+                }
+                if (client.phone) {
+                    response += `   📞 ${client.phone}\n`;
+                }
+                response += `\n`;
+            });
+
+            response += `━━━━━━━━━━━━━━━━━━━━\n`;
+            response += `💡 כתוב מספר לאישור (1-${matchingClients.length})\n`;
+            response += `❌ או כתוב "ביטול" לביטול`;
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Error handling media message:', error);
+            return `❌ שגיאה בטעינת המסמך: ${error.message}`;
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * הורדת מדיה מ-Twilio
+     * ═══════════════════════════════════════════════════════════
+     */
+    async downloadMediaFromTwilio(mediaUrl) {
+        const https = require('https');
+        const http = require('http');
+
+        const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+        const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+
+        if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+            throw new Error('Twilio credentials not configured');
+        }
+
+        return new Promise((resolve, reject) => {
+            const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+            const protocol = mediaUrl.startsWith('https') ? https : http;
+
+            const options = {
+                headers: {
+                    'Authorization': `Basic ${auth}`
+                }
+            };
+
+            protocol.get(mediaUrl, options, (response) => {
+                if (response.statusCode !== 200) {
+                    reject(new Error(`Failed to download: ${response.statusCode}`));
+                    return;
+                }
+
+                const chunks = [];
+                response.on('data', (chunk) => chunks.push(chunk));
+                response.on('end', () => resolve(Buffer.concat(chunks)));
+                response.on('error', reject);
+            }).on('error', reject);
+        });
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * חיפוש לקוחות לפי שם
+     * ═══════════════════════════════════════════════════════════
+     */
+    async searchClients(searchTerm) {
+        try {
+            const searchLower = searchTerm.toLowerCase().trim();
+            console.log(`🔍 Searching clients for: "${searchLower}"`);
+
+            // קבל את כל הלקוחות (בדרך כלל מעט מאות)
+            const snapshot = await this.db.collection('clients')
+                .where('status', '==', 'פעיל')
+                .get();
+
+            const matches = [];
+
+            snapshot.forEach(doc => {
+                const client = doc.data();
+                const clientName = (client.name || '').toLowerCase();
+                const clientId = doc.id;
+
+                // התאמה מדויקת או חלקית
+                // בודק: שם מלא, שם פרטי, שם משפחה
+                if (clientName.includes(searchLower) || searchLower.includes(clientName)) {
+                    matches.push({
+                        id: clientId,
+                        name: client.name,
+                        idNumber: client.idNumber,
+                        phone: client.phone,
+                        email: client.email
+                    });
+                } else {
+                    // בדוק גם מילים נפרדות
+                    const nameParts = clientName.split(/\s+/);
+                    const searchParts = searchLower.split(/\s+/);
+
+                    const hasMatch = searchParts.some(sp =>
+                        nameParts.some(np => np.includes(sp) || sp.includes(np))
+                    );
+
+                    if (hasMatch) {
+                        matches.push({
+                            id: clientId,
+                            name: client.name,
+                            idNumber: client.idNumber,
+                            phone: client.phone,
+                            email: client.email
+                        });
+                    }
+                }
+            });
+
+            console.log(`✅ Found ${matches.length} matching clients`);
+
+            // מיון לפי התאמה - התאמה מדויקת קודם
+            matches.sort((a, b) => {
+                const aName = a.name.toLowerCase();
+                const bName = b.name.toLowerCase();
+
+                // התאמה מדויקת
+                if (aName === searchLower) return -1;
+                if (bName === searchLower) return 1;
+
+                // מתחיל ב
+                if (aName.startsWith(searchLower)) return -1;
+                if (bName.startsWith(searchLower)) return 1;
+
+                // אלפביתי
+                return aName.localeCompare(bName, 'he');
+            });
+
+            // החזר מקסימום 5 תוצאות
+            return matches.slice(0, 5);
+
+        } catch (error) {
+            console.error('❌ Error searching clients:', error);
+            return [];
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * טיפול בהקשר של אישור העלאת מסמך
+     * ═══════════════════════════════════════════════════════════
+     */
+    async handleUploadAgreementContext(message, session, userInfo) {
+        const choice = parseInt(message.trim());
+        const matchingClients = session.data?.matchingClients || [];
+
+        if (isNaN(choice) || choice < 1 || choice > matchingClients.length) {
+            return `❌ בחירה לא תקינה.\nכתוב מספר בין 1-${matchingClients.length}\nאו "ביטול" לביטול`;
+        }
+
+        const selectedClient = matchingClients[choice - 1];
+        console.log(`✅ Client selected: ${selectedClient.name} (${selectedClient.id})`);
+
+        try {
+            // קבל את הנתונים מה-session
+            const {
+                fileBuffer,
+                contentType,
+                originalFileName,
+                fileSize,
+                clientName
+            } = session.data;
+
+            if (!fileBuffer) {
+                throw new Error('File data not found in session');
+            }
+
+            // העלה ל-Firebase Storage
+            console.log(`📤 Uploading to Firebase Storage...`);
+            const agreementData = await this.uploadAgreementToStorage(
+                selectedClient.id,
+                originalFileName,
+                Buffer.from(fileBuffer, 'base64'),
+                contentType,
+                fileSize,
+                userInfo
+            );
+
+            console.log(`✅ Agreement uploaded successfully`);
+
+            // נקה session
+            await this.sessionManager.updateSession(session.phoneNumber, {
+                context: 'menu',
+                data: {}
+            });
+
+            return `✅ הסכם שכ"ט הועלה בהצלחה!
+
+━━━━━━━━━━━━━━━━━━━━
+👤 לקוח: ${selectedClient.name}
+${selectedClient.idNumber ? `🆔 ת.ז. ${selectedClient.idNumber}\n` : ''}📄 קובץ: ${agreementData.fileName}
+💾 גודל: ${(fileSize / 1024).toFixed(0)}KB
+👤 הועלה על ידי: ${userInfo.name}
+━━━━━━━━━━━━━━━━━━━━
+
+המסמך נשמר בכרטיס הלקוח ויופיע באדמין פאנל.
+
+כתוב "תפריט" לחזרה לתפריט ראשי`;
+
+        } catch (error) {
+            console.error('❌ Error uploading agreement:', error);
+
+            // נקה session במקרה של שגיאה
+            await this.sessionManager.updateSession(session.phoneNumber, {
+                context: 'menu',
+                data: {}
+            });
+
+            return `❌ שגיאה בהעלאת המסמך: ${error.message}\n\nכתוב "תפריט" לחזרה`;
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * העלאה ל-Firebase Storage ועדכון Firestore
+     * ═══════════════════════════════════════════════════════════
+     */
+    async uploadAgreementToStorage(clientId, fileName, fileBuffer, contentType, fileSize, userInfo) {
+        try {
+            // יצירת שם קובץ ייחודי
+            const agreementId = `agreement_${Date.now()}`;
+            const fileExtension = this.getFileExtension(contentType);
+            const sanitizedFileName = `${agreementId}.${fileExtension}`;
+
+            // נתיב ב-Storage
+            const storagePath = `clients/${clientId}/agreements/${sanitizedFileName}`;
+
+            console.log(`📤 Uploading to: ${storagePath}`);
+
+            // העלה ל-Storage
+            const bucket = admin.storage().bucket();
+            const file = bucket.file(storagePath);
+
+            await file.save(fileBuffer, {
+                metadata: {
+                    contentType: contentType,
+                    metadata: {
+                        uploadedBy: userInfo.email,
+                        uploadedByName: userInfo.name,
+                        originalName: fileName,
+                        clientId: clientId,
+                        uploadSource: 'whatsapp'
+                    }
+                }
+            });
+
+            // הפוך לציבורי
+            await file.makePublic();
+
+            // קבל URL להורדה
+            const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+
+            // הכן נתוני מסמך
+            const agreementData = {
+                id: agreementId,
+                fileName: sanitizedFileName,
+                originalName: fileName,
+                storagePath: storagePath,
+                downloadUrl: downloadUrl,
+                fileType: contentType,
+                fileSize: fileSize,
+                uploadedAt: admin.firestore.Timestamp.now(),
+                uploadedBy: userInfo.email,
+                uploadedByName: userInfo.name,
+                uploadSource: 'whatsapp'
+            };
+
+            // עדכן ב-Firestore
+            const clientRef = this.db.collection('clients').doc(clientId);
+            const clientDoc = await clientRef.get();
+
+            if (!clientDoc.exists) {
+                throw new Error('Client not found');
+            }
+
+            const existingAgreements = clientDoc.data().feeAgreements || [];
+
+            await clientRef.update({
+                feeAgreements: [...existingAgreements, agreementData],
+                lastModifiedBy: userInfo.name || userInfo.email,
+                lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            console.log(`✅ Firestore updated for client ${clientId}`);
+
+            return agreementData;
+
+        } catch (error) {
+            console.error('❌ Error in uploadAgreementToStorage:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * פונקציות עזר למדיה
+     * ═══════════════════════════════════════════════════════════
+     */
+    getFileExtension(contentType) {
+        const extensions = {
+            'application/pdf': 'pdf',
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp'
+        };
+        return extensions[contentType] || 'bin';
+    }
+
+    getFileTypeHebrew(contentType) {
+        const types = {
+            'application/pdf': 'PDF',
+            'image/jpeg': 'תמונה (JPEG)',
+            'image/png': 'תמונה (PNG)',
+            'image/webp': 'תמונה (WebP)'
+        };
+        return types[contentType] || 'קובץ';
     }
 }
 

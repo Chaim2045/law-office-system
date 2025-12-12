@@ -6248,12 +6248,13 @@ exports.whatsappWebhook = onRequest({
 }, async (req, res) => {
   try {
     // Get message data
-    const { From, Body, MessageSid } = req.body;
+    const { From, Body, MessageSid, NumMedia, MediaUrl0, MediaContentType0 } = req.body;
 
     console.log(`📨 WhatsApp message received from ${From}: "${Body}"`);
+    console.log(`📎 Media: NumMedia=${NumMedia}, Type=${MediaContentType0}`);
 
-    if (!From || !Body) {
-      res.status(400).send('Missing parameters');
+    if (!From) {
+      res.status(400).send('Missing From parameter');
       return;
     }
 
@@ -6276,8 +6277,27 @@ exports.whatsappWebhook = onRequest({
 
     console.log(`✅ Admin identified: ${userInfo.name || userInfo.email}`);
 
-    // Handle the message with the bot
-    const response = await bot.handleMessage(phoneNumber, Body, userInfo);
+    // Check if this is a media message
+    const hasMedia = NumMedia && parseInt(NumMedia) > 0;
+    let response;
+
+    if (hasMedia && MediaUrl0) {
+      // Handle media message (PDF upload)
+      console.log(`📎 Processing media message: ${MediaContentType0}`);
+      response = await bot.handleMediaMessage(
+        phoneNumber,
+        MediaUrl0,
+        MediaContentType0,
+        Body || '',
+        userInfo
+      );
+    } else if (Body) {
+      // Handle regular text message
+      response = await bot.handleMessage(phoneNumber, Body, userInfo);
+    } else {
+      res.status(400).send('Missing Body or Media');
+      return;
+    }
 
     // Send response via Twilio
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
