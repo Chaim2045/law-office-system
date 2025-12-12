@@ -1,18 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════
- * SMART COMBO SELECTOR - INLINE EXPANSION UI
- * קומפוננט UI לבחירת תיאור עבודה - Inline Linear Tags
+ * SMART COMBO SELECTOR - MODE-BASED ARCHITECTURE
+ * קומפוננט UI לבחירת תיאור עבודה - ארכיטקטורה מופרדת לפי מצבים
  * ═══════════════════════════════════════════════════════════════════════
  *
- * Features:
- * - Inline expansion (no dropdowns!)
- * - Linear horizontal tags for categories and items
- * - Context-aware filtering with DIRECT ITEMS MODE
- * - Last-used intelligence
- * - Recent items (only in time dialog, not in budget form)
+ * Architecture:
+ * - Mode determined ONCE at initialization (immutable)
+ * - Separate render/event methods per mode (no if/else in logic)
+ * - No conditional buttons - each mode has its own complete UI
  *
- * @version 3.4.0 - Error-Proof Validation + Category Boundaries
- * @created 2025-01-04
+ * Modes:
+ * 1. DIRECT - Task has fixed category, show only items from that category
+ * 2. FREE   - No restrictions, show all categories and items
+ *
+ * @version 4.0.0 - Clean Mode-Based Architecture
+ * @created 2025-12-12
  */
 
 (function() {
@@ -53,18 +55,25 @@
         showSuggestionBanner: false
       };
 
+      // Mode will be determined after loading context
+      this.mode = null;
+
       this.init();
     }
 
     async init() {
-      Logger.log(`🎯 Initializing SmartComboSelector (v3.2): ${this.containerId}`);
+      Logger.log(`🎯 Initializing SmartComboSelector: ${this.containerId}`);
 
-      // Context-aware filtering
+      // Load context first (if applicable)
       if (this.options.taskId && this.options.contextAware) {
         await this.loadContext();
       }
 
-      // Last-used suggestions
+      // Determine mode ONCE (immutable)
+      this.mode = this._determineMode();
+      Logger.log(`🎯 Mode: ${this.mode}`);
+
+      // Load suggestions
       if (this.options.taskId && this.options.suggestLastUsed) {
         await this.loadSuggestion();
       }
@@ -72,7 +81,23 @@
       this.render();
       this.attachEventListeners();
 
-      Logger.log(`✅ SmartComboSelector initialized (Direct Items: ${this.isDirectItemsMode()})`);
+      Logger.log(`✅ SmartComboSelector initialized (mode: ${this.mode})`);
+    }
+
+    /**
+     * Determine mode ONCE based on context
+     * This mode is IMMUTABLE - never changes during component lifetime
+     */
+    _determineMode() {
+      if (this.state.filteredData?.isError) {
+        return 'ERROR';
+      }
+
+      if (this.options.contextAware && this.state.filteredData?.isFiltered) {
+        return 'DIRECT';
+      }
+
+      return 'FREE';
     }
 
     async loadContext() {
@@ -81,16 +106,14 @@
         this.options.task
       );
 
-      // ✅ Handle error state
       if (this.state.filteredData.isError) {
         Logger.log(`❌ Context error: ${this.state.filteredData.errorMessage}`);
-        return; // Don't auto-select, show error instead
+        return;
       }
 
       if (this.state.filteredData.isFiltered) {
-        // ✅ AUTO-SELECT category for direct items mode
         this.state.selectedCategory = this.state.filteredData.categoryId;
-        Logger.log(`✅ Context loaded (Direct Items): ${this.state.filteredData.reason}`);
+        Logger.log(`✅ Context loaded: ${this.state.filteredData.categoryName}`);
       }
     }
 
@@ -110,81 +133,75 @@
 
     /**
      * ════════════════════════════════════════════════════════════════════
-     * DIRECT ITEMS MODE
-     * ════════════════════════════════════════════════════════════════════
-     */
-
-    /**
-     * Check if we're in "direct items mode"
-     * - Context-aware enabled
-     * - Task ID provided
-     * - Category already selected (from context)
-     * - Item NOT yet selected
-     */
-    isDirectItemsMode() {
-      return this.options.contextAware &&
-             this.state.selectedCategory &&
-             this.state.filteredData?.isFiltered &&
-             !this.state.selectedItem;
-    }
-
-    /**
-     * ════════════════════════════════════════════════════════════════════
-     * RENDERING - INLINE UI
+     * RENDERING - MODE DISPATCHER
      * ════════════════════════════════════════════════════════════════════
      */
 
     render() {
-      // ✅ ERROR STATE: Show error message
-      if (this.state.filteredData?.isError) {
-        this.container.innerHTML = `
-          <div class="smart-combo-selector-inline">
-            ${this.renderErrorState()}
-          </div>
-        `;
-        return;
-      }
-
-      if (this.isDirectItemsMode()) {
-        // ✅ DIRECT ITEMS MODE: Show items immediately, no category selection
-        this.container.innerHTML = `
-          <div class="smart-combo-selector-inline">
-            ${this.renderSuggestionBanner()}
-            ${this.renderSelectedDisplay()}
-            ${this.renderCategoryHeader()}
-            ${this.renderInlineItems()}
-          </div>
-        `;
+      if (this.mode === 'ERROR') {
+        this._renderErrorMode();
+      } else if (this.mode === 'DIRECT') {
+        this._renderDirectMode();
       } else {
-        // ✅ NORMAL MODE: Show categories first, then items
-        this.container.innerHTML = `
-          <div class="smart-combo-selector-inline">
-            ${this.renderSuggestionBanner()}
-            ${this.renderSelectedDisplay()}
-            ${this.renderInlineCategories()}
-            ${this.renderInlineItems()}
-          </div>
-        `;
+        this._renderFreeMode();
       }
     }
 
     /**
-     * ✅ NEW: Render error state when task has no valid category
+     * ERROR MODE - Show error message
      */
-    renderErrorState() {
+    _renderErrorMode() {
       const { errorMessage } = this.state.filteredData;
 
-      return `
-        <div class="inline-error-banner">
-          <div class="inline-error-content">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>${errorMessage}</span>
+      this.container.innerHTML = `
+        <div class="smart-combo-selector-inline">
+          <div class="inline-error-banner">
+            <div class="inline-error-content">
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>${errorMessage}</span>
+            </div>
           </div>
         </div>
       `;
     }
 
-    renderSuggestionBanner() {
+    /**
+     * DIRECT MODE - Fixed category, show only items
+     * No category selection, no "show all", no "clear"
+     */
+    _renderDirectMode() {
+      this.container.innerHTML = `
+        <div class="smart-combo-selector-inline">
+          ${this._renderSuggestionBanner()}
+          ${this._renderSelectedItemDisplay()}
+          ${this._renderCategoryHeader()}
+          ${this._renderDirectItems()}
+        </div>
+      `;
+    }
+
+    /**
+     * FREE MODE - Full category and item selection
+     * All features enabled
+     */
+    _renderFreeMode() {
+      this.container.innerHTML = `
+        <div class="smart-combo-selector-inline">
+          ${this._renderSuggestionBanner()}
+          ${this._renderSelectedItemDisplayWithClear()}
+          ${this._renderCategories()}
+          ${this._renderFreeItems()}
+        </div>
+      `;
+    }
+
+    /**
+     * ════════════════════════════════════════════════════════════════════
+     * RENDERING - COMMON COMPONENTS
+     * ════════════════════════════════════════════════════════════════════
+     */
+
+    _renderSuggestionBanner() {
       if (!this.state.showSuggestionBanner || !this.state.suggestedItem) {
         return '';
       }
@@ -210,7 +227,11 @@
       `;
     }
 
-    renderSelectedDisplay() {
+    /**
+     * DIRECT MODE - Selected display WITH "change item" button
+     * Allows user to select a different item from the same category
+     */
+    _renderSelectedItemDisplay() {
       if (!this.state.selectedCategory || !this.state.selectedItem) {
         return '';
       }
@@ -218,7 +239,40 @@
       const category = window.WorkCategories.getCategoryById(this.state.selectedCategory);
       const item = window.WorkCategories.getItemById(this.state.selectedCategory, this.state.selectedItem);
 
-      if (!category || !item) return '';
+      if (!category || !item) {
+return '';
+}
+
+      return `
+        <div class="inline-selected-display">
+          <div class="inline-selected-content">
+            <i class="fas ${category.icon}"></i>
+            <span class="inline-selected-category">${category.name}</span>
+            <span class="inline-selected-separator">•</span>
+            <span class="inline-selected-item">${item.text}</span>
+          </div>
+          <button class="inline-selected-clear" data-action="change-item" type="button">
+            <i class="fas fa-sync-alt"></i>
+            בחר אחר
+          </button>
+        </div>
+      `;
+    }
+
+    /**
+     * FREE MODE - Selected display WITH clear button
+     */
+    _renderSelectedItemDisplayWithClear() {
+      if (!this.state.selectedCategory || !this.state.selectedItem) {
+        return '';
+      }
+
+      const category = window.WorkCategories.getCategoryById(this.state.selectedCategory);
+      const item = window.WorkCategories.getItemById(this.state.selectedCategory, this.state.selectedItem);
+
+      if (!category || !item) {
+return '';
+}
 
       return `
         <div class="inline-selected-display">
@@ -237,36 +291,69 @@
     }
 
     /**
-     * ✅ NEW: Category Header (for Direct Items Mode)
-     * Shows the category name as a non-clickable header
+     * ════════════════════════════════════════════════════════════════════
+     * RENDERING - DIRECT MODE COMPONENTS
+     * ════════════════════════════════════════════════════════════════════
      */
-    renderCategoryHeader() {
+
+    _renderCategoryHeader() {
       if (!this.state.selectedCategory) {
         return '';
       }
 
       const category = window.WorkCategories.getCategoryById(this.state.selectedCategory);
-      if (!category) return '';
+      if (!category) {
+return '';
+}
 
       return `
         <div class="inline-category-header">
           <div class="inline-category-header-label">
-            <i class="fas ${category.icon}" ></i>
+            <i class="fas ${category.icon}"></i>
             <span>${category.name}</span>
           </div>
         </div>
       `;
     }
 
-    renderInlineCategories() {
-      // Don't show categories if item already selected OR in direct items mode
-      if (this.state.selectedItem || this.isDirectItemsMode()) {
+    _renderDirectItems() {
+      // Don't show items if:
+      // 1. No category selected
+      // 2. Item already selected
+      // 3. Suggestion banner is showing (user should choose "accept" or "reject" first)
+      if (!this.state.selectedCategory || this.state.selectedItem || this.state.showSuggestionBanner) {
         return '';
       }
 
-      // If context filtering is active, show context banner instead
-      if (this.state.filteredData && this.state.filteredData.isFiltered) {
-        return this.renderContextBanner();
+      const category = {
+        id: this.state.filteredData.categoryId,
+        name: this.state.filteredData.categoryName,
+        icon: this.state.filteredData.categoryIcon
+      };
+      const items = this.state.filteredData.items;
+
+      return `
+        <div class="inline-items-section">
+          <div class="inline-tags-container">
+            ${items.sort((a, b) => a.order - b.order).map(item => `
+              <div class="inline-item-tag" data-item="${item.id}">
+                <span class="inline-tag-text">${item.text}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * ════════════════════════════════════════════════════════════════════
+     * RENDERING - FREE MODE COMPONENTS
+     * ════════════════════════════════════════════════════════════════════
+     */
+
+    _renderCategories() {
+      if (this.state.selectedItem) {
+        return '';
       }
 
       const categories = window.WorkCategories.getAllCategories();
@@ -274,7 +361,7 @@
 
       return `
         <div class="inline-categories-section">
-          ${recentItems.length > 0 && this.options.contextAware ? this.renderRecentItems(recentItems) : ''}
+          ${recentItems.length > 0 ? this._renderRecentItems(recentItems) : ''}
 
           <div class="inline-section-label">
             <i class="fas fa-folder"></i>
@@ -285,7 +372,7 @@
             ${categories.map(cat => `
               <div class="inline-category-tag ${this.state.selectedCategory === cat.id ? 'active' : ''}"
                    data-category="${cat.id}">
-                <i class="fas ${cat.icon}" ></i>
+                <i class="fas ${cat.icon}"></i>
                 <span class="inline-tag-text">${cat.name}</span>
                 <span class="inline-tag-count">(${cat.items.length})</span>
               </div>
@@ -295,7 +382,7 @@
       `;
     }
 
-    renderRecentItems(items) {
+    _renderRecentItems(items) {
       return `
         <div class="inline-recent-section">
           <div class="inline-section-label">
@@ -316,72 +403,32 @@
       `;
     }
 
-    renderContextBanner() {
-      const { categoryName, categoryIcon, categoryColor } = this.state.filteredData;
-
-      return `
-        <div class="inline-context-section">
-          <div class="inline-context-banner">
-            <div>
-              <i class="fas fa-filter"></i>
-              <span>מסונן לפי המשימה: <strong>${categoryName}</strong></span>
-            </div>
-            <button class="inline-show-all-btn" data-action="show-all" type="button">
-              <i class="fas fa-expand"></i>
-              הצג הכל
-            </button>
-          </div>
-        </div>
-      `;
-    }
-
-    renderInlineItems() {
-      // Only show items if category is selected AND item is NOT selected
+    _renderFreeItems() {
       if (!this.state.selectedCategory || this.state.selectedItem) {
         return '';
       }
 
-      let category, items;
+      const category = window.WorkCategories.getCategoryById(this.state.selectedCategory);
+      if (!category) {
+return '';
+}
 
-      if (this.state.filteredData && this.state.filteredData.isFiltered) {
-        // Context-aware: use filtered data
-        category = {
-          id: this.state.filteredData.categoryId,
-          name: this.state.filteredData.categoryName,
-          icon: this.state.filteredData.categoryIcon,
-          color: this.state.filteredData.categoryColor
-        };
-        items = this.state.filteredData.items;
-      } else {
-        // Normal mode: get category from WorkCategories
-        category = window.WorkCategories.getCategoryById(this.state.selectedCategory);
-        items = category?.items || [];
-      }
-
-      if (!category) return '';
-
-      // ✅ In direct items mode, don't show section label (already have header)
-      const showSectionLabel = !this.isDirectItemsMode();
+      const items = category.items;
 
       return `
         <div class="inline-items-section">
-          ${showSectionLabel ? `
-            <div class="inline-section-label">
-              <i class="fas ${category.icon}" ></i>
-              <span>בחר ${category.name}:</span>
-              ${!this.state.filteredData?.isFiltered ? `
-                <button class="inline-clear-category-btn" data-action="clear-category" type="button">
-                  <i class="fas fa-arrow-right"></i>
-                  חזור
-                </button>
-              ` : ''}
-            </div>
-          ` : ''}
+          <div class="inline-section-label">
+            <i class="fas ${category.icon}"></i>
+            <span>בחר ${category.name}:</span>
+            <button class="inline-clear-category-btn" data-action="clear-category" type="button">
+              <i class="fas fa-arrow-right"></i>
+              חזור
+            </button>
+          </div>
 
           <div class="inline-tags-container">
             ${items.sort((a, b) => a.order - b.order).map(item => `
-              <div class="inline-item-tag"
-                   data-item="${item.id}">
+              <div class="inline-item-tag" data-item="${item.id}">
                 <span class="inline-tag-text">${item.text}</span>
               </div>
             `).join('')}
@@ -404,8 +451,9 @@
 
     handleClick(e) {
       const target = e.target.closest('[data-action], [data-category], [data-item]');
-
-      if (!target) return;
+      if (!target) {
+return;
+}
 
       const action = target.dataset.action;
 
@@ -417,16 +465,13 @@
         this.clear();
       } else if (action === 'clear-category') {
         this.clearCategory();
-      } else if (action === 'show-all') {
-        this.showAllCategories();
+      } else if (action === 'change-item') {
+        this.changeItem();
       } else if (target.dataset.category && target.dataset.item) {
-        // Recent item clicked
         this.selectItem(target.dataset.category, target.dataset.item);
       } else if (target.dataset.category) {
-        // Category clicked
         this.selectCategory(target.dataset.category);
       } else if (target.dataset.item) {
-        // Item clicked
         this.selectItem(this.state.selectedCategory, target.dataset.item);
       }
     }
@@ -439,7 +484,9 @@
 
     acceptSuggestion() {
       const { suggestedItem } = this.state;
-      if (!suggestedItem) return;
+      if (!suggestedItem) {
+return;
+}
 
       this.state.selectedCategory = suggestedItem.categoryId;
       this.state.selectedItem = suggestedItem.itemId;
@@ -461,6 +508,13 @@
 
     rejectSuggestion() {
       this.state.showSuggestionBanner = false;
+
+      // In DIRECT mode, restore category after rejection
+      if (this.mode === 'DIRECT') {
+        this.state.selectedCategory = this.state.filteredData.categoryId;
+        Logger.log(`✅ Restored category: ${this.state.filteredData.categoryId}`);
+      }
+
       this.render();
       this.attachEventListeners();
       Logger.log('❌ Suggestion rejected');
@@ -495,6 +549,17 @@
       Logger.log('🔙 Returned to categories');
     }
 
+    changeItem() {
+      // Clear only the selected item, keep the category
+      // Used in DIRECT mode to allow selecting a different item from the same category
+      this.state.selectedItem = null;
+      this.updateHiddenInputs();
+      this.emitChangeEvent();
+      this.render();
+      this.attachEventListeners();
+      Logger.log('🔄 Changed item selection (category preserved)');
+    }
+
     clear() {
       this.state.selectedCategory = null;
       this.state.selectedItem = null;
@@ -503,14 +568,6 @@
       this.render();
       this.attachEventListeners();
       Logger.log('🗑️ Selection cleared');
-    }
-
-    showAllCategories() {
-      this.state.filteredData = null;
-      this.state.selectedCategory = null;
-      this.render();
-      this.attachEventListeners();
-      Logger.log('🔓 Showing all categories');
     }
 
     /**
@@ -592,6 +649,6 @@
   // Export to global scope
   window.SmartComboSelector = SmartComboSelector;
 
-  Logger.log('✅ SmartComboSelector class loaded (v3.3.1 - Monochrome + Smart Recent Items)');
+  Logger.log('✅ SmartComboSelector v4.0.0 loaded (Mode-Based Architecture)');
 
 })();
