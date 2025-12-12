@@ -1285,7 +1285,9 @@ serviceTitleField.style.display = 'block';
       ];
 
       serviceTypeTabsNew.forEach(tab => {
-        if (!tab) return;
+        if (!tab) {
+return;
+}
 
         tab.addEventListener('click', () => {
           // עדכן את procedureType
@@ -1308,7 +1310,9 @@ serviceTitleField.style.display = 'block';
       ];
 
       serviceTypeTabs.forEach(tab => {
-        if (!tab) return;
+        if (!tab) {
+return;
+}
 
         tab.addEventListener('click', () => {
           // עדכן את procedureType
@@ -1342,7 +1346,9 @@ serviceTitleField.style.display = 'block';
       ];
 
       pricingTabs.forEach(tab => {
-        if (!tab) return;
+        if (!tab) {
+return;
+}
 
         tab.addEventListener('click', () => {
           // עדכן את pricingType
@@ -2214,9 +2220,9 @@ return;
         dialog.remove();
       }
 
-      // ניקוי selector
+      // ניקוי selector וניתוק listeners
       if (this.clientSelector) {
-        this.clientSelector.clear();
+        this.clientSelector.destroy(); // ✅ מנתק real-time listener
         this.clientSelector = null;
       }
 

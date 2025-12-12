@@ -961,7 +961,7 @@ return;
       const servicesCards = document.getElementById(`${this.containerId}_servicesCards`);
 
       if (!servicesGroup || !servicesCards) {
-        console.error('❌ Services containers not found');
+        // תקין - המודול לא פועל בדף הזה (containers לא קיימים)
         return;
       }
 
