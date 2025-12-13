@@ -107,11 +107,16 @@ return false;
         retries: retries
       });
 
+      // 🎯 Get current year for filtering
+      const currentYear = new Date().getFullYear();
+
       // Retry Loop
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
           const snapshot = await window.firebaseDB
             .collection('clients')
+            .where('caseNumber', '>=', `${currentYear}000`)
+            .where('caseNumber', '<=', `${currentYear}999`)
             .orderBy('caseNumber', 'desc')
             .limit(1)
             .get();
