@@ -404,6 +404,25 @@
             font-weight: 600;
         }
 
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .badge-primary {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
         @media print {
             body {
                 background: white;
@@ -467,6 +486,9 @@
             </div>
         </div>
         ` : ''}
+
+        <!-- Packages Breakdown (if applicable) -->
+        ${this.renderPackagesBreakdown(client, formData)}
 
         <!-- By Employee -->
         ${stats.byEmployee.length > 0 ? `
@@ -1012,6 +1034,189 @@ return '0:00';
             };
 
             return statusMap[status] || status || '-';
+        }
+
+        /**
+         * Render packages breakdown for a stage
+         * פירוט חבילות שעות לשלב
+         */
+        renderPackagesBreakdown(client, formData) {
+            // Only show for legal procedures or hour packages
+            if (formData.service === 'all' || formData.service === 'כל השירותים') {
+                return ''; // Don't show packages breakdown for "all services"
+            }
+
+            // Find the service
+            const service = client.services?.find(s => {
+                return s.name === formData.service ||
+                       s.serviceName === formData.service ||
+                       s.displayName === formData.service;
+            });
+
+            if (!service) {
+                return '';
+            }
+
+            // Parse date range from formData
+            const startDate = formData.startDate ? new Date(formData.startDate) : null;
+            const endDate = formData.endDate ? new Date(formData.endDate) : null;
+
+            // Check if it's a legal procedure
+            if (service.type === 'legal_procedure') {
+                // Find the specific stage
+                const stage = service.stages?.find(s => {
+                    const stageName = s.name || s.id;
+                    return formData.service.includes(stageName) ||
+                           formData.service.includes(s.id);
+                });
+
+                if (!stage || !stage.packages || stage.packages.length === 0) {
+                    return '';
+                }
+
+                // Filter packages by date range
+                const filteredPackages = this.filterPackagesByDateRange(stage.packages, startDate, endDate);
+
+                if (filteredPackages.length === 0) {
+                    return ''; // No packages in this date range
+                }
+
+                return this.renderPackagesTable(filteredPackages, formData.service, startDate, endDate);
+            }
+
+            // For hour packages (non-legal procedures)
+            if (service.packages && service.packages.length > 0) {
+                // Filter packages by date range
+                const filteredPackages = this.filterPackagesByDateRange(service.packages, startDate, endDate);
+
+                if (filteredPackages.length === 0) {
+                    return ''; // No packages in this date range
+                }
+
+                return this.renderPackagesTable(filteredPackages, formData.service, startDate, endDate);
+            }
+
+            return '';
+        }
+
+        /**
+         * Filter packages by date range
+         * סינון חבילות לפי טווח תאריכים
+         */
+        filterPackagesByDateRange(packages, startDate, endDate) {
+            if (!packages || packages.length === 0) {
+                return [];
+            }
+
+            // If no date range specified, return all packages
+            if (!startDate && !endDate) {
+                return packages;
+            }
+
+            return packages.filter(pkg => {
+                // Get package purchase date
+                const pkgDate = pkg.purchaseDate || pkg.createdAt;
+                if (!pkgDate) {
+                    return true; // Include packages without date (shouldn't happen)
+                }
+
+                const packageDate = new Date(pkgDate);
+
+                // Check if package is within date range
+                if (startDate && packageDate < startDate) {
+                    return false; // Package is before start date
+                }
+
+                if (endDate && packageDate > endDate) {
+                    return false; // Package is after end date
+                }
+
+                return true; // Package is within range
+            });
+        }
+
+        /**
+         * Render packages table HTML
+         * יצירת טבלת חבילות
+         */
+        renderPackagesTable(packages, serviceName, startDate, endDate) {
+            if (!packages || packages.length === 0) {
+                return '';
+            }
+
+            // Calculate totals
+            const totalHours = packages.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
+            const totalUsed = packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
+            const totalRemaining = packages.reduce((sum, pkg) => sum + (pkg.hoursRemaining || pkg.hours - (pkg.hoursUsed || 0)), 0);
+
+            // Create date range subtitle
+            let dateRangeText = '';
+            if (startDate && endDate) {
+                dateRangeText = `<small style="color: #6b7280; font-weight: 400;"> (חבילות שנרכשו בין ${this.formatDate(startDate)} - ${this.formatDate(endDate)})</small>`;
+            } else if (startDate) {
+                dateRangeText = `<small style="color: #6b7280; font-weight: 400;"> (חבילות שנרכשו מ-${this.formatDate(startDate)})</small>`;
+            } else if (endDate) {
+                dateRangeText = `<small style="color: #6b7280; font-weight: 400;"> (חבילות שנרכשו עד ${this.formatDate(endDate)})</small>`;
+            }
+
+            return `
+        <div class="section" style="margin-top: 2rem;">
+            <h3 class="section-title">
+                <i class="fas fa-boxes"></i>
+                פירוט חבילות שעות - ${serviceName}${dateRangeText}
+            </h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>תאריך רכישה</th>
+                        <th>סוג חבילה</th>
+                        <th>שעות בחבילה</th>
+                        <th>שעות שנוצלו</th>
+                        <th>שעות נותרות</th>
+                        <th>הערה</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${packages.map(pkg => {
+                        const pkgType = pkg.type === 'initial' || pkg.type === 'חבילה ראשונית' ? 'ראשונית' : 'נוספת';
+                        const pkgHours = pkg.hours || 0;
+                        const pkgUsed = pkg.hoursUsed || 0;
+                        const pkgRemaining = pkg.hoursRemaining !== undefined ? pkg.hoursRemaining : (pkgHours - pkgUsed);
+                        const pkgDate = pkg.purchaseDate || pkg.createdAt || '-';
+                        const pkgDescription = pkg.description || pkg.reason || '-';
+
+                        return `
+                        <tr>
+                            <td>${this.formatDate(pkgDate)}</td>
+                            <td><span class="badge ${pkgType === 'ראשונית' ? 'badge-primary' : 'badge-warning'}">${pkgType}</span></td>
+                            <td class="highlight">${pkgHours.toFixed(1)}</td>
+                            <td>${pkgUsed.toFixed(1)}</td>
+                            <td>${pkgRemaining.toFixed(1)}</td>
+                            <td style="max-width: 200px; word-wrap: break-word;">${pkgDescription}</td>
+                        </tr>
+                        `;
+                    }).join('')}
+
+                    <tr class="summary-row" style="font-weight: bold; background-color: #f8f9fa; border-top: 2px solid #dee2e6;">
+                        <td>סה"כ</td>
+                        <td>${packages.length} חבילות</td>
+                        <td class="highlight">${totalHours.toFixed(1)}</td>
+                        <td>${totalUsed.toFixed(1)}</td>
+                        <td>${totalRemaining.toFixed(1)}</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top: 1rem; padding: 0.75rem; background-color: #e3f2fd; border-right: 4px solid #1877F2; border-radius: 4px;">
+                <p style="margin: 0; font-size: 0.9rem; color: #1976d2;">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>הערה:</strong> חבילות נוספות נוצרות כאשר יש צורך בשעות נוספות מעבר לחבילה הראשונית.
+                    ההערות מפרטות את הסיבה להוספת השעות.
+                </p>
+            </div>
+        </div>
+            `;
         }
     }
 
