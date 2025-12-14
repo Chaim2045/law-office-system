@@ -762,7 +762,7 @@ export function createEditTimesheetDialog(entry) {
                 type="number"
                 id="editMinutes"
                 min="1"
-                max="999"
+                max="99999"
                 value="${entry.minutes}"
                 required
                 placeholder="60"

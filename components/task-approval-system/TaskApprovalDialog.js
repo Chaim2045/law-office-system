@@ -71,7 +71,7 @@ export class TaskApprovalDialog {
                 class="budget-input"
                 value="${requestedMinutes}"
                 min="1"
-                max="480"
+                max="99999"
                 step="15"
               >
               <span class="budget-hint">דקות</span>
@@ -126,7 +126,9 @@ export class TaskApprovalDialog {
     // Close
     this.overlay.querySelector('#closeDialog').addEventListener('click', () => this.hide());
     this.overlay.addEventListener('click', (e) => {
-      if (e.target === this.overlay) this.hide();
+      if (e.target === this.overlay) {
+this.hide();
+}
     });
 
     // Budget presets

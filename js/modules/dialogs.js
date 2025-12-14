@@ -174,7 +174,7 @@ function showAdvancedTimeDialog(taskId, manager) {
           </div>
           <div class="form-group">
             <label for="workMinutes">דקות עבודה</label>
-            <input type="number" id="workMinutes" min="1" max="999" placeholder="60" required>
+            <input type="number" id="workMinutes" min="1" max="99999" placeholder="60" required>
           </div>
           <div class="form-group">
             <label for="workDescriptionSelector">
@@ -638,10 +638,14 @@ function openSmartForm() {
     if (currentForm) {
       if (currentForm.classList.contains('hidden')) {
         currentForm.classList.remove('hidden');
-        if (plusButton) plusButton.classList.add('active');
+        if (plusButton) {
+plusButton.classList.add('active');
+}
       } else {
         currentForm.classList.add('hidden');
-        if (plusButton) plusButton.classList.remove('active');
+        if (plusButton) {
+plusButton.classList.remove('active');
+}
       }
     }
     return;
@@ -653,10 +657,14 @@ function openSmartForm() {
     if (currentForm) {
       if (currentForm.classList.contains('hidden')) {
         currentForm.classList.remove('hidden');
-        if (plusButton) plusButton.classList.add('active');
+        if (plusButton) {
+plusButton.classList.add('active');
+}
       } else {
         currentForm.classList.add('hidden');
-        if (plusButton) plusButton.classList.remove('active');
+        if (plusButton) {
+plusButton.classList.remove('active');
+}
       }
     }
   }

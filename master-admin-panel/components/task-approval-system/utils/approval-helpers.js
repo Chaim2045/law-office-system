@@ -4,7 +4,9 @@
  */
 
 export function formatRelativeTime(date) {
-  if (!date) return '';
+  if (!date) {
+return '';
+}
 
   const now = new Date();
   const diff = now - date;
@@ -13,22 +15,36 @@ export function formatRelativeTime(date) {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (seconds < 60) return 'לפני רגע';
-  if (minutes < 60) return `לפני ${minutes} דקות`;
-  if (hours < 24) return `לפני ${hours} שעות`;
-  if (days < 7) return `לפני ${days} ימים`;
+  if (seconds < 60) {
+return 'לפני רגע';
+}
+  if (minutes < 60) {
+return `לפני ${minutes} דקות`;
+}
+  if (hours < 24) {
+return `לפני ${hours} שעות`;
+}
+  if (days < 7) {
+return `לפני ${days} ימים`;
+}
 
   return date.toLocaleDateString('he-IL');
 }
 
 export function formatMinutesToHoursText(minutes) {
-  if (!minutes) return '0 דקות';
+  if (!minutes) {
+return '0 דקות';
+}
 
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
 
-  if (hours === 0) return `${mins} דקות`;
-  if (mins === 0) return `${hours} שעה${hours > 1 ? '' : ''}`;
+  if (hours === 0) {
+return `${mins} דקות`;
+}
+  if (mins === 0) {
+return `${hours} שעה${hours > 1 ? '' : ''}`;
+}
   return `${hours} שעה ${mins} דקות`;
 }
 
@@ -66,8 +82,10 @@ export function validateApproval(minutes, adminEmail) {
   if (!minutes || minutes <= 0) {
     return 'תקציב חייב להיות גדול מ-0';
   }
-  if (minutes > 480) {
-    return 'תקציב לא יכול לעלות על 8 שעות';
+  // ✅ הסרת מגבלת 8 שעות - מאפשר תקציבים גמישים לפרויקטים ארוכי טווח
+  // מגבלה סבירה: 99,999 דקות = ~1,666 שעות = ~208 ימי עבודה
+  if (minutes > 99999) {
+    return 'תקציב חורג מהמקסימום המותר (99,999 דקות)';
   }
   return null;
 }
@@ -83,12 +101,16 @@ export function validateRejection(reason) {
 }
 
 export function calculateBudgetChange(requested, approved) {
-  if (!requested || !approved) return 0;
+  if (!requested || !approved) {
+return 0;
+}
   return Math.round(((approved - requested) / requested) * 100);
 }
 
 export function filterApprovalsBySearch(approvals, searchTerm) {
-  if (!searchTerm) return approvals;
+  if (!searchTerm) {
+return approvals;
+}
 
   const term = searchTerm.toLowerCase();
   return approvals.filter(approval => {

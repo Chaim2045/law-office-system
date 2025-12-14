@@ -217,7 +217,7 @@ export class AddTaskDialog {
                 id="estimatedTime"
                 placeholder="120"
                 min="1"
-                max="999"
+                max="99999"
                 autocomplete="off"
                 required
               />
