@@ -349,6 +349,24 @@
               תיק
               ${this.options.required ? '<span style="color: #ef4444;">*</span>' : ''}
             </label>
+
+            <!-- Styled Case Display Box (shown when case is selected) -->
+            <div id="${this.containerId}_caseDisplayBox" style="
+              display: none;
+              padding: 8px 12px;
+              background: white;
+              border: 2px solid #3b82f6;
+              border-radius: 8px;
+              font-size: 13px;
+              color: #0f172a;
+              font-weight: 600;
+              width: fit-content;
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+            "></div>
+
+            <!-- Dropdown (shown when multiple cases) -->
             <select
               id="${this.containerId}_caseSelect"
               class="form-control"
@@ -861,7 +879,7 @@ return false;
       });
 
       if (hasActiveServices) {
-        // ✅ יש שירותים - הסתר dropdown של תיקים, הצג רק כרטיסיות
+        // ✅ יש שירותים - הסתר dropdown, הצג styled case display box
 
         // הסתרת ה-dropdown של תיקים
         const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
@@ -869,11 +887,28 @@ return false;
           caseSelect.style.display = 'none';
         }
 
+        // ✅ NEW: הצגת Case Display Box עם עיצוב מסודר
+        const caseDisplayBox = document.getElementById(`${this.containerId}_caseDisplayBox`);
+        if (caseDisplayBox) {
+          const iconClass = caseItem.procedureType === 'legal_procedure' ? 'fa-balance-scale' : 'fa-clock';
+          caseDisplayBox.innerHTML = `
+            <i class="fas ${iconClass}" style="color: #3b82f6; font-size: 12px;"></i>
+            <span>תיק ${this.escapeHtml(caseItem.caseNumber || '')}</span>
+          `;
+          caseDisplayBox.style.display = 'inline-flex';
+        }
+
         this.hideCaseInfo();
         this.renderServiceCards(caseItem);
       } else {
         // ⚠️ אין שירותים - הצג dropdown ומידע על התיק
         Logger.log('ℹ️ No active services - showing case dropdown and caseInfo');
+
+        // הסתרת Case Display Box
+        const caseDisplayBox = document.getElementById(`${this.containerId}_caseDisplayBox`);
+        if (caseDisplayBox) {
+          caseDisplayBox.style.display = 'none';
+        }
 
         // הצגת ה-dropdown של תיקים
         const caseSelect = document.getElementById(`${this.containerId}_caseSelect`);
@@ -1270,7 +1305,14 @@ return;
         const stageName = serviceData.id === 'stage_a' ? "שלב א'" :
                          serviceData.id === 'stage_b' ? "שלב ב'" :
                          serviceData.id === 'stage_c' ? "שלב ג'" : serviceData.name;
-        title = `הליך משפטי - ${stageName}`;
+
+        // 🔧 FIX: Display actual procedure name (ללא שלב בכותרת - השלב יהיה ב-badge)
+        // Uses selectedServiceParent which is set in selectService()
+        // TODO: Consider refactoring to use renderServiceCard() for consistency
+        const procedureName = this.selectedServiceParent?.name ||
+                             this.selectedServiceParent?.displayName ||
+                             'הליך משפטי';
+        title = procedureName; // רק שם ההליך, ללא "- שלב א'"
         subtitle = serviceData.description || serviceData.name;
 
         if (this.selectedServiceParent?.pricingType === 'hourly') {
@@ -1319,7 +1361,7 @@ return;
           statsHtml = `
             <div style="margin-top: 12px;">
               <div style="
-                display: flex;
+                display: inline-flex;
                 align-items: center;
                 gap: 6px;
                 padding: 10px;
@@ -1334,24 +1376,33 @@ return;
         }
       }
 
-      // 🏷️ מספר תיק - Tech Minimalist style
-      const caseNumberBadge = this.selectedCase && this.selectedCase.caseNumber ? `
-        <div style="
-          position: absolute;
-          top: 12px;
-          left: 12px;
-          padding: 5px 10px;
-          background: #f8fafc;
-          border: 1px solid #93c5fd;
-          border-radius: 5px;
-          font-size: 10px;
-          font-weight: 600;
-          color: #3b82f6;
-          letter-spacing: 0.3px;
-        ">
-          תיק ${this.escapeHtml(this.selectedCase.caseNumber)}
-        </div>
-      ` : '';
+      // 🎯 Stage Badge להליכים משפטיים - קומפקטי וקל
+      const stageBadge = type === 'legal_procedure' ? (() => {
+        const stageName = serviceData.id === 'stage_a' ? "שלב א'" :
+                         serviceData.id === 'stage_b' ? "שלב ב'" :
+                         serviceData.id === 'stage_c' ? "שלב ג'" : serviceData.name;
+        return `
+          <div style="
+            position: absolute;
+            top: -6px;
+            left: 12px;
+            padding: 4px 8px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 600;
+            color: white;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+            pointer-events: none;
+          ">
+            ${this.escapeHtml(stageName)}
+          </div>
+        `;
+      })() : '';
+
+      // 🏷️ מספר תיק - Removed (redundant in selected state)
+      const caseNumberBadge = ''; // ✅ FIXED: Don't show case number badge when service is selected
 
       // תצוגה נקייה - Tech Minimalist selected state
       servicesCards.innerHTML = `
@@ -1374,7 +1425,7 @@ return;
 
           <div style="
             padding: 15px;
-            padding-top: 40px;
+            padding-top: 25px;
             background: white;
             border: 2px solid #3b82f6;
             border-radius: 10px;
@@ -1382,20 +1433,21 @@ return;
             position: relative;
           ">
             ${caseNumberBadge}
+            ${stageBadge}
 
             <!-- Icon & Title -->
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
               <div style="
-                width: 36px;
-                height: 36px;
+                width: 32px;
+                height: 32px;
                 background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                border-radius: 8px;
+                border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 flex-shrink: 0;
               ">
-                <i class="fas ${iconClass}" style="color: white; font-size: 16px;"></i>
+                <i class="fas ${iconClass}" style="color: white; font-size: 14px;"></i>
               </div>
               <div style="flex: 1; min-width: 0;">
                 <div style="font-weight: 600; color: #0f172a; font-size: 14px; line-height: 1.3;">

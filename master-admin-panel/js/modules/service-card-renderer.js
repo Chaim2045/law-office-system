@@ -133,7 +133,7 @@ window.calculateHoursUsed = calculateHoursUsed;
   window.renderServiceCard = function(service, type, pricingType = 'hourly', caseItem = null, options = {}) {
     const serviceId = service.id;
     const isReadOnly = options.readOnly === true; // אם true - לא ניתן ללחוץ
-    const showCaseNumber = options.showCaseNumber !== false; // default: true
+    const showCaseNumber = options.showCaseNumber === true; // default: false (UX improvement)
     const clickHandler = options.onClick || '';
 
     let iconClass, title, subtitle, statsHtml;
@@ -192,9 +192,9 @@ window.calculateHoursUsed = calculateHoursUsed;
                        service.id === 'stage_b' ? "שלב ב'" :
                        service.id === 'stage_c' ? "שלב ג'" : service.name;
 
-      // 🔥 FIX: הצג שם ההליך המשפטי + שם השלב
+      // 🔥 FIX: הצג שם ההליך המשפטי (ללא השלב בכותרת - השלב יהיה ב-badge)
       const procedureName = options.procedureName || 'הליך משפטי';
-      title = `${procedureName} - ${stageName}`;
+      title = procedureName; // רק שם ההליך, ללא "- שלב א'"
       subtitle = service.description || service.name;
 
       if (pricingType === 'hourly') {
@@ -251,7 +251,7 @@ window.calculateHoursUsed = calculateHoursUsed;
         statsHtml = `
           <div style="margin-top: 12px;">
             <div style="
-              display: flex;
+              display: inline-flex;
               align-items: center;
               gap: 6px;
               padding: 8px 10px;
@@ -274,7 +274,7 @@ window.calculateHoursUsed = calculateHoursUsed;
       statsHtml = `
         <div style="margin-top: 12px;">
           <div style="
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 8px 10px;
@@ -288,6 +288,28 @@ window.calculateHoursUsed = calculateHoursUsed;
         </div>
       `;
     }
+
+    // 🎯 Stage Badge להליכים משפטיים - קומפקטי וקל
+    const stageBadge = type === 'legal_procedure' ? `
+      <div style="
+        position: absolute;
+        top: -6px;
+        left: 12px;
+        padding: 4px 8px;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 10px;
+        font-size: 9px;
+        font-weight: 600;
+        color: white;
+        letter-spacing: 0.3px;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+        pointer-events: none;
+      ">
+        ${escapeHtml(service.id === 'stage_a' ? "שלב א'" :
+                     service.id === 'stage_b' ? "שלב ב'" :
+                     service.id === 'stage_c' ? "שלב ג'" : service.name)}
+      </div>
+    ` : '';
 
     // מספר תיק - badge בפינה
     const caseNumberBadge = showCaseNumber && caseItem && caseItem.caseNumber ? `
@@ -311,7 +333,7 @@ window.calculateHoursUsed = calculateHoursUsed;
     // עיצוב הכרטיס
     const cardStyle = isReadOnly ? `
       padding: 15px;
-      padding-top: 40px;
+      padding-top: 25px;
       background: white;
       border: 1.5px solid #e2e8f0;
       border-radius: 10px;
@@ -319,7 +341,7 @@ window.calculateHoursUsed = calculateHoursUsed;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     ` : `
       padding: 15px;
-      padding-top: 40px;
+      padding-top: 25px;
       background: white;
       border: 1.5px solid #e2e8f0;
       border-radius: 10px;
@@ -344,20 +366,21 @@ window.calculateHoursUsed = calculateHoursUsed;
         ${hoverEffects}
       >
         ${caseNumberBadge}
+        ${stageBadge}
 
         <!-- Icon & Title -->
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
           <div style="
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            border-radius: 8px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
           ">
-            <i class="fas ${iconClass}" style="color: white; font-size: 16px;"></i>
+            <i class="fas ${iconClass}" style="color: white; font-size: 14px;"></i>
           </div>
           <div style="flex: 1; min-width: 0;">
             <div style="font-weight: 600; color: #0f172a; font-size: 14px; line-height: 1.3;">
