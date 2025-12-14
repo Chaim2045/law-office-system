@@ -1440,6 +1440,354 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * 🎯 הוספת חבילת שעות לשלב במסלול משפטי
+ * ✅ PRODUCTION-READY: Transaction + Validation + Monitoring
+ *
+ * תומך בהוספת שעות נוספות לשלב ספציפי (stage_a, stage_b, stage_c)
+ * במסלול משפטי קיים, עם דיוק אטומי ו-Single Source of Truth
+ *
+ * @param {Object} data
+ * @param {string} data.caseId - מספר תיק (מזהה הלקוח)
+ * @param {string} data.stageId - מזהה השלב (stage_a / stage_b / stage_c)
+ * @param {number} data.hours - כמות שעות להוספה
+ * @param {string} data.reason - סיבה להוספת השעות
+ * @param {string} [data.purchaseDate] - תאריך רכישה (ISO format, אופציונלי)
+ *
+ * @returns {Object} { success, packageId, package, stage, service, client, message }
+ *
+ * @example
+ * const result = await addHoursPackageToStage({
+ *   caseId: "2025001",
+ *   stageId: "stage_a",
+ *   hours: 20,
+ *   reason: "דיונים נוספים",
+ *   purchaseDate: "2025-12-14"
+ * });
+ */
+exports.addHoursPackageToStage = functions.https.onCall(async (data, context) => {
+  try {
+    // 🛡️ Authentication & Authorization
+    const user = await checkUserPermissions(context);
+
+    // ============ Validation ============
+
+    // 1. Validate caseId
+    const caseId = data.caseId || data.clientId;
+    if (!caseId || typeof caseId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מספר תיק חובה'
+      );
+    }
+
+    // 2. Validate stageId
+    const validStageIds = ['stage_a', 'stage_b', 'stage_c'];
+    if (!data.stageId || !validStageIds.includes(data.stageId)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה שלב לא תקין (צריך להיות stage_a, stage_b, או stage_c)'
+      );
+    }
+
+    // 3. Validate hours
+    if (!data.hours || typeof data.hours !== 'number' || data.hours < 1) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'כמות שעות חייבת להיות מספר חיובי'
+      );
+    }
+
+    if (data.hours > 500) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'כמות שעות גבוהה מדי (מקסימום 500 שעות בחבילה)'
+      );
+    }
+
+    // 4. Validate reason (min + max + sanitize)
+    const reason = (data.reason || '').trim();
+
+    if (reason.length < 3) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'הסבר להוספת השעות חייב להיות לפחות 3 תווים'
+      );
+    }
+
+    if (reason.length > 500) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'הסבר להוספת השעות ארוך מדי (מקסימום 500 תווים)'
+      );
+    }
+
+    const sanitizedReason = sanitizeString(reason);
+
+    if (sanitizedReason.length < 3) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'הסבר מכיל תווים לא חוקיים'
+      );
+    }
+
+    // 5. Validate purchaseDate (type + range + format)
+    let purchaseDate;
+
+    if (data.purchaseDate) {
+      const parsed = new Date(data.purchaseDate);
+
+      if (isNaN(parsed.getTime())) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תאריך רכישה לא תקין. פורמט צריך להיות: YYYY-MM-DD'
+        );
+      }
+
+      if (parsed > new Date()) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תאריך רכישה לא יכול להיות בעתיד'
+        );
+      }
+
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+      if (parsed < oneYearAgo) {
+        console.warn(`⚠️ Purchase date is more than 1 year old: ${parsed.toISOString()}`);
+      }
+
+      purchaseDate = parsed.toISOString();
+    }
+
+    // ============ Generate IDs OUTSIDE Transaction ============
+    // 🔥 CRITICAL: Date.now() must be outside Transaction
+    // because Transaction can retry multiple times, and we want
+    // the packageId to be consistent across all attempts
+    const packageId = `pkg_additional_${data.stageId}_${Date.now()}`;
+    const now = new Date().toISOString();
+    if (!purchaseDate) {
+      purchaseDate = now;
+    }
+
+    // ============ Transaction Start ============
+
+    const clientRef = db.collection('clients').doc(caseId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      // 🔒 Step 1: קריאה אטומית של המסמך
+      const clientDoc = await transaction.get(clientRef);
+
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `תיק ${caseId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      // 🔍 Step 2: מציאת ההליך המשפטי
+      const legalProcedureIndex = services.findIndex(s => s.type === 'legal_procedure');
+
+      if (legalProcedureIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'לא נמצא הליך משפטי עבור תיק זה'
+        );
+      }
+
+      const legalProcedure = services[legalProcedureIndex];
+      const stages = legalProcedure.stages || [];
+
+      // 🔍 Step 3: מציאת השלב
+      const stageIndex = stages.findIndex(s => s.id === data.stageId);
+
+      if (stageIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `שלב ${data.stageId} לא נמצא בהליך המשפטי`
+        );
+      }
+
+      const targetStage = stages[stageIndex];
+
+      // ⚠️ Step 4: בדיקה אם השלב completed
+      const stageWasCompleted = targetStage.status === 'completed';
+      if (stageWasCompleted) {
+        console.warn(`⚠️ Adding hours to COMPLETED stage ${data.stageId} for case ${caseId}`);
+      }
+
+      // 📦 Step 5: יצירת החבילה החדשה
+      const newPackage = {
+        id: packageId,  // ← from outside Transaction (consistent ID)
+        type: 'additional',
+        hours: data.hours,
+        hoursUsed: 0,
+        hoursRemaining: data.hours,
+        purchaseDate: purchaseDate,
+        status: targetStage.status === 'active' ? 'active' : 'pending',
+        description: sanitizedReason,
+        createdAt: now,  // ← from outside Transaction
+        createdBy: user.username
+      };
+
+      // 🔄 Step 6: עדכון השלב
+
+      // 🔥 CRITICAL: Validate packages is array
+      if (!Array.isArray(targetStage.packages)) {
+        console.warn(`⚠️ targetStage.packages is not an array for ${data.stageId}, resetting to []`);
+        targetStage.packages = [];
+      }
+
+      targetStage.packages.push(newPackage);
+
+      // ✅ CRITICAL: חישוב כל ה-aggregates מה-packages (Single Source of Truth)
+      targetStage.totalHours = targetStage.packages.reduce((sum, pkg) =>
+        sum + (pkg.hours || 0), 0);
+
+      targetStage.hoursUsed = targetStage.packages.reduce((sum, pkg) =>
+        sum + (pkg.hoursUsed || 0), 0);
+
+      targetStage.hoursRemaining = targetStage.packages.reduce((sum, pkg) =>
+        sum + (pkg.hoursRemaining || 0), 0);
+
+      stages[stageIndex] = targetStage;
+
+      // 🔄 Step 7: עדכון ה-service
+      legalProcedure.stages = stages;
+
+      // ✅ חישוב aggregates של service מחדש מה-stages
+      legalProcedure.totalHours = stages.reduce((sum, stage) =>
+        sum + (stage.totalHours || 0), 0);
+
+      legalProcedure.hoursUsed = stages.reduce((sum, stage) =>
+        sum + (stage.hoursUsed || 0), 0);
+
+      legalProcedure.hoursRemaining = stages.reduce((sum, stage) =>
+        sum + (stage.hoursRemaining || 0), 0);
+
+      services[legalProcedureIndex] = legalProcedure;
+
+      // 🔄 Step 8: עדכון ה-client
+      // ✅ CRITICAL: חישוב aggregates של client מחדש מכל ה-services (Single Source of Truth!)
+      const clientTotalHours = services.reduce((sum, service) =>
+        sum + (service.totalHours || 0), 0);
+
+      const clientHoursUsed = services.reduce((sum, service) =>
+        sum + (service.hoursUsed || 0), 0);
+
+      const clientHoursRemaining = services.reduce((sum, service) =>
+        sum + (service.hoursRemaining || 0), 0);
+
+      // 💾 Step 9: שמירה אטומית
+      transaction.update(clientRef, {
+        services: services,
+        totalHours: clientTotalHours,
+        hoursUsed: clientHoursUsed,
+        hoursRemaining: clientHoursRemaining,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      // ✅ Step 10: החזרת נתונים ל-audit log
+      return {
+        packageId,
+        newPackage,
+        targetStage,
+        legalProcedure,
+        clientTotalHours,
+        clientHoursUsed,
+        clientHoursRemaining,
+        stageWasCompleted
+      };
+    });
+
+    // ============ Audit Log (אחרי Transaction) ============
+
+    try {
+      await logAction('ADD_PACKAGE_TO_STAGE', user.uid, user.username, {
+        caseId: caseId,
+        caseNumber: caseId,
+        stageId: data.stageId,
+        stageName: result.targetStage.name,
+        packageId: result.packageId,
+        hours: data.hours,
+        reason: sanitizedReason,
+        procedureName: result.legalProcedure.name,
+        stageStatusWasCompleted: result.stageWasCompleted
+      });
+    } catch (auditError) {
+      // Audit נכשל אבל הנתונים כבר נשמרו
+      console.error('⚠️ Audit log failed (data saved successfully):', auditError);
+
+      // 🔥 Monitoring: מעקב אחרי audit failures
+      try {
+        await db.collection('monitoring').doc('audit_failures').set({
+          count: admin.firestore.FieldValue.increment(1),
+          lastFailure: admin.firestore.FieldValue.serverTimestamp(),
+          lastError: auditError.message,
+          lastFunction: 'addHoursPackageToStage',
+          lastCaseId: caseId
+        }, { merge: true });
+      } catch (monitorError) {
+        console.error('❌ Failed to log audit failure to monitoring:', monitorError);
+      }
+    }
+
+    console.log(`✅ Added package ${result.packageId} (${data.hours}h) to stage ${data.stageId} for case ${caseId}`);
+
+    // ============ Return Success ============
+
+    return {
+      success: true,
+      packageId: result.packageId,
+      package: result.newPackage,
+
+      stage: {
+        id: result.targetStage.id,
+        name: result.targetStage.name,
+        status: result.targetStage.status,
+        totalHours: result.targetStage.totalHours,
+        hoursUsed: result.targetStage.hoursUsed,
+        hoursRemaining: result.targetStage.hoursRemaining,
+        packagesCount: result.targetStage.packages.length
+      },
+
+      service: {
+        id: result.legalProcedure.id,
+        name: result.legalProcedure.name,
+        totalHours: result.legalProcedure.totalHours,
+        hoursUsed: result.legalProcedure.hoursUsed,
+        hoursRemaining: result.legalProcedure.hoursRemaining
+      },
+
+      client: {
+        caseId: caseId,
+        totalHours: result.clientTotalHours,
+        hoursUsed: result.clientHoursUsed,
+        hoursRemaining: result.clientHoursRemaining
+      },
+
+      message: `חבילה של ${data.hours} שעות נוספה בהצלחה לשלב "${result.targetStage.name}"`
+    };
+
+  } catch (error) {
+    console.error('❌ Error in addHoursPackageToStage:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בהוספת חבילה לשלב: ${error.message}`
+    );
+  }
+});
+
+/**
  * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  * @param {Object} data - פרמטרים
  * @param {boolean} data.includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
@@ -5836,6 +6184,127 @@ exports.approveTaskBudget = functions.https.onCall(async (data, context) => {
     throw error;
   }
 });
+
+/**
+ * ✅ OPTIMIZATION: Firestore Trigger for WhatsApp notifications
+ * Automatically sends WhatsApp when a new approval request is created
+ * This removes the 8-second blocking call from the frontend
+ */
+exports.onApprovalCreated = onDocumentWritten(
+  'pending_task_approvals/{approvalId}',
+  async (event) => {
+    try {
+      const newData = event.data.after.data();
+      const oldData = event.data.before.data();
+
+      // Only trigger on new documents (create), not updates
+      if (oldData) {
+        console.log('⏭️ Skipping - document updated, not created');
+        return null;
+      }
+
+      // Only send WhatsApp for pending approvals
+      if (!newData || newData.status !== 'pending') {
+        console.log('⏭️ Skipping - status is not pending');
+        return null;
+      }
+
+      console.log(`📱 Sending WhatsApp for approval ${event.params.approvalId}`);
+
+      // Get all admins with WhatsApp enabled
+      const adminsSnapshot = await db.collection('employees')
+        .where('role', '==', 'admin')
+        .where('whatsappEnabled', '==', true)
+        .get();
+
+      if (adminsSnapshot.empty) {
+        console.log('⚠️ No admins with WhatsApp enabled');
+        return null;
+      }
+
+      // Initialize Twilio
+      // ✅ Use environment variables (v2 compatible) instead of functions.config()
+      const accountSid = process.env.TWILIO_ACCOUNT_SID || TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN || TWILIO_AUTH_TOKEN;
+      const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER || TWILIO_WHATSAPP_NUMBER;
+
+      if (!accountSid || !authToken) {
+        console.error('❌ Twilio not configured');
+        return null;
+      }
+
+      const twilio = require('twilio');
+      const client = twilio(accountSid, authToken);
+
+      let sentCount = 0;
+
+      // Send to each admin
+      for (const adminDoc of adminsSnapshot.docs) {
+        const admin = adminDoc.data();
+
+        // Format phone number
+        let phone = (admin.phone || '').replace(/\D/g, '');
+        if (phone.startsWith('05')) {
+          phone = '972' + phone.substring(1);
+        } else if (!phone.startsWith('972')) {
+          phone = '972' + phone;
+        }
+        const toNumber = `whatsapp:+${phone}`;
+
+        // Calculate time display
+        const minutes = parseInt(newData.requestedMinutes) || parseInt(newData.taskData?.estimatedMinutes) || 0;
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        const timeStr = hours > 0
+          ? `${hours} שעות${mins > 0 ? ` ו-${mins} דקות` : ''}`
+          : `${mins} דקות`;
+
+        // Create message
+        const message = `🔔 משימה חדשה לאישור
+
+👤 ${newData.requestedByName || newData.requestedBy} מבקש אישור תקציב:
+
+📋 לקוח: ${newData.taskData?.clientName || 'לא צוין'}
+📝 תיאור: ${newData.taskData?.description || 'לא צוין'}
+⏱️ תקציב: ${timeStr} (${minutes} דקות)
+
+━━━━━━━━━━━━━━━━━━━━
+
+📲 לאישור - כתוב:
+✅ "אישור" - לאשר כמו שביקש
+✅ "אישור 90" - לאשר עם 90 דקות
+
+📲 לדחייה - כתוב:
+❌ "דחייה" + סיבה
+דוגמה: "דחייה תקציב גבוה"
+
+💡 כתוב "משימות" לראות הכל
+
+🤖 הודעה אוטומטית ממערכת ניהול`;
+
+        try {
+          await client.messages.create({
+            from: fromNumber,
+            to: toNumber,
+            body: message
+          });
+          sentCount++;
+          console.log(`✅ WhatsApp sent to ${admin.username || admin.name}`);
+        } catch (smsError) {
+          console.error(`❌ Failed to send WhatsApp to ${admin.username}:`, smsError.message);
+        }
+      }
+
+      console.log(`✅ Trigger completed: ${sentCount} WhatsApp messages sent`);
+      return { success: true, sent: sentCount };
+
+    } catch (error) {
+      console.error('❌ Error in onApprovalCreated trigger:', error);
+      // Don't throw - we don't want to fail the approval creation
+      return null;
+    }
+  }
+);
 
 /**
  * Reject task budget request

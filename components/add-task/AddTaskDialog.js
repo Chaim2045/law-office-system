@@ -541,12 +541,10 @@ return;
           this.options.onSuccess(taskData);
         }
 
-        // Refresh manager's budget tasks
-        if (this.manager.refreshBudgetTasks) {
-          await this.manager.refreshBudgetTasks();
-        } else if (this.manager.filterBudgetTasks) {
-          await this.manager.filterBudgetTasks();
-        }
+        // ✅ OPTIMIZATION: No need to manually refresh - Real-time listener handles it
+        // Real-time listener already updates the UI when tasks change
+        // Removed: await this.manager.refreshBudgetTasks()
+        // This saves ~1 second and prevents unnecessary Firestore read
 
         // Close dialog
         this.hide();
