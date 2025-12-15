@@ -22,6 +22,7 @@
   align-items: center;
   height: 68px;
   box-shadow: 0 2px 12px rgb(0 0 0 / 6%);
+  transition: top 0.18s ease; /* Smooth transition for ticker */
 }
 
 /* Wrapper לכפתורי ניווט - ממרכז אותם */
@@ -482,6 +483,12 @@
   top: 60px;
   left: 20px;
   z-index: 1002;
+  transition: top 0.18s ease;
+}
+
+/* כשהטיקר פעיל, תזיז את כפתור הפלוס למטה */
+body.ticker-active .plus-container-new {
+  top: calc(60px + var(--ticker-height, 32px));
 }
 
 .plus-container {

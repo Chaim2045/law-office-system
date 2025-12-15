@@ -270,6 +270,11 @@
   animation: plusButtonPulse 3s ease-in-out infinite;
 }
 
+/* כשהטיקר פעיל, תזיז את כפתור הפלוס למטה */
+body.ticker-active .plus-button-top {
+  top: calc(var(--space-5) + var(--ticker-height, 32px));
+}
+
 .plus-button-top i {
   font-size: 26px;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);

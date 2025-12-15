@@ -281,21 +281,29 @@ class LawOfficeManager {
     console.log('🔔 Setting up permanent NotificationBell listener...');
 
     firebase.auth().onAuthStateChanged((user) => {
-      if (user && this.notificationBell && window.firebaseDB) {
+      if (user && window.firebaseDB) {
         console.log('🔔 Auth state changed - User logged in:', user.email);
-        console.log('🔔 Starting NotificationBell listener...');
 
-        try {
-          // Start listening (safe to call multiple times - it checks internally)
-          this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
-          console.log('✅ NotificationBell listener started successfully');
-          console.log('✅ Listener active:', !!this.notificationBell.messagesListener);
-        } catch (error) {
-          console.error('❌ Failed to start NotificationBell listener:', error);
+        // ✅ Start NotificationBell if available
+        if (this.notificationBell) {
+          console.log('🔔 Starting NotificationBell listener...');
+          try {
+            // Start listening (safe to call multiple times - it checks internally)
+            this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
+            console.log('✅ NotificationBell listener started successfully');
+            console.log('✅ Listener active:', !!this.notificationBell.messagesListener);
+          } catch (error) {
+            console.error('❌ Failed to start NotificationBell listener:', error);
+          }
+        } else {
+          console.log('ℹ️ NotificationBell not yet loaded - will auto-init when ready');
         }
 
-        // ✅ Start System Announcement Ticker
-        if (this.announcementTicker) {
+        // ✅ Start System Announcement Ticker - ONLY if user is inside the app (not on login screen)
+        const interfaceElements = document.getElementById('interfaceElements');
+        const isInApp = interfaceElements && !interfaceElements.classList.contains('hidden');
+
+        if (isInApp && this.announcementTicker) {
           console.log('📢 Starting System Announcement Ticker...');
           try {
             this.announcementTicker.init(user, window.firebaseDB);
@@ -303,6 +311,8 @@ class LawOfficeManager {
           } catch (error) {
             console.error('❌ Failed to initialize System Announcement Ticker:', error);
           }
+        } else if (!isInApp) {
+          console.log('ℹ️ User on login screen - ticker will init after login');
         }
       } else if (!user) {
         console.log('🔔 Auth state changed - User logged out, cleaning up...');
@@ -314,13 +324,28 @@ class LawOfficeManager {
           this.announcementTicker.cleanup();
         }
       } else {
-        console.warn('⚠️ Cannot start NotificationBell - missing dependencies:', {
+        console.warn('⚠️ Cannot start services - missing dependencies:', {
           hasUser: !!user,
-          hasNotificationBell: !!this.notificationBell,
           hasFirebaseDB: !!window.firebaseDB
         });
       }
     });
+  }
+
+  /**
+   * Initialize Ticker - Called from showApp() in authentication.js
+   */
+  initTicker() {
+    const user = firebase.auth().currentUser;
+    if (user && window.firebaseDB && this.announcementTicker) {
+      console.log('📢 Initializing System Announcement Ticker from showApp()...');
+      try {
+        this.announcementTicker.init(user, window.firebaseDB);
+        console.log('✅ System Announcement Ticker initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize System Announcement Ticker:', error);
+      }
+    }
   }
 
   /**

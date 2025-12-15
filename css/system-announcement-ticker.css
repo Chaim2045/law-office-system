@@ -15,36 +15,41 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 40px;
+  height: 32px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 24px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-  z-index: 9999;
-  font-size: 14px;
-  color: white;
-  transition: all 0.3s ease;
+  gap: 10px;
+  padding: 0 20px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  z-index: 100000; /* Above everything - highest priority */
+  font-size: 13px;
+  color: #e2e8f0; /* Soft white - easier on eyes */
+  transition: all 0.18s ease;
 }
 
-/* Default color (info) */
-.ticker-container.ticker-info {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+/* Professional monochrome design with subtle accent colors */
+
+/* Base: Elegant dark slate gradient for all types */
+.ticker-container {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
-/* Success color */
-.ticker-container.ticker-success {
-  background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+/* Type-specific accent colors (only for icon) */
+.ticker-container.ticker-info .ticker-icon {
+  color: #60a5fa; /* Subtle blue accent */
 }
 
-/* Warning color */
-.ticker-container.ticker-warning {
-  background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+.ticker-container.ticker-success .ticker-icon {
+  color: #34d399; /* Subtle green accent */
 }
 
-/* Error color */
-.ticker-container.ticker-error {
-  background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%);
+.ticker-container.ticker-warning .ticker-icon {
+  color: #fbbf24; /* Subtle amber accent */
+}
+
+.ticker-container.ticker-error .ticker-icon {
+  color: #f87171; /* Subtle red accent */
 }
 
 /* ========================================
@@ -78,7 +83,8 @@
   letter-spacing: 0.5px;
   text-transform: uppercase;
   flex-shrink: 0;
-  opacity: 0.95;
+  opacity: 0.85;
+  color: #cbd5e1; /* Slightly muted for hierarchy */
 }
 
 /* ========================================
@@ -87,9 +93,10 @@
 
 .ticker-separator {
   font-size: 18px;
-  opacity: 0.4;
+  opacity: 0.3;
   flex-shrink: 0;
   font-weight: 300;
+  color: #94a3b8; /* Subtle gray separator */
 }
 
 /* ========================================
@@ -106,47 +113,66 @@
   mask-image: linear-gradient(
     to left,
     transparent 0%,
-    black 5%,
-    black 95%,
+    black 3%,
+    black 97%,
     transparent 100%
   );
   -webkit-mask-image: linear-gradient(
     to left,
     transparent 0%,
-    black 5%,
-    black 95%,
+    black 3%,
+    black 97%,
     transparent 100%
   );
 }
 
 /* ========================================
-   TICKER TEXT (SCROLLING TEXT)
+   TICKER TEXT (SCROLLING TEXT) - CONTINUOUS LOOP
    ======================================== */
 
 .ticker-text {
   white-space: nowrap;
-  position: absolute;
-  right: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.4;
-  animation: ticker-scroll 50s linear infinite;
+  line-height: 1.3;
+  display: inline-flex;
+  gap: 80px; /* רווח בין ההודעות החוזרות */
+  animation: ticker-scroll-continuous 20s linear infinite;
+  will-change: transform;
 }
 
-/* Scroll animation - Right to Left (RTL) */
-@keyframes ticker-scroll {
+/* Scroll animation - Continuous loop כמו בחדשות */
+@keyframes ticker-scroll-continuous {
   0% {
-    transform: translateX(100%);
+    transform: translateX(0);
   }
 
   100% {
-    transform: translateX(-100%);
+    transform: translateX(-50%); /* חצי כי יש כפילות */
   }
 }
 
 /* Pause animation on hover */
 .ticker-container:hover .ticker-text {
   animation-play-state: paused;
+}
+
+/* כל הודעה בטיקר */
+.ticker-item {
+  display: inline-block;
+  padding: 0 40px;
+  position: relative;
+}
+
+/* מפריד בין הודעות */
+.ticker-item::after {
+  content: '•';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.5;
+  font-size: 10px;
 }
 
 /* ========================================
@@ -220,12 +246,32 @@
 }
 
 /* ========================================
-   BODY PADDING (PREVENT CONTENT OVERLAP)
+   DYNAMIC LAYOUT - TOP BAR POSITIONING
    ======================================== */
 
+/* When ticker is active, push everything down */
 body.ticker-active {
-  padding-top: 40px !important;
-  transition: padding-top 0.3s ease;
+  --ticker-height: 32px;
+}
+
+/* Target all possible top navigation bars */
+body.ticker-active .top-user-bar,
+body.ticker-active .top-nav,
+body.ticker-active .header-container,
+body.ticker-active header,
+body.ticker-active .main-header,
+body.ticker-active nav[class*="nav"] {
+  top: var(--ticker-height, 32px) !important;
+}
+
+/* Ensure smooth transition on all navigation bars */
+.top-user-bar,
+.top-nav,
+.header-container,
+header,
+.main-header,
+nav[class*="nav"] {
+  transition: top 0.18s ease;
 }
 
 /* ========================================
@@ -235,14 +281,23 @@ body.ticker-active {
 /* Tablets and below */
 @media (width <= 768px) {
   .ticker-container {
-    height: 36px;
+    height: 30px;
     padding: 0 16px;
     gap: 8px;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   body.ticker-active {
-    padding-top: 36px !important;
+    --ticker-height: 30px;
+  }
+
+  body.ticker-active .top-user-bar,
+  body.ticker-active .top-nav,
+  body.ticker-active .header-container,
+  body.ticker-active header,
+  body.ticker-active .main-header,
+  body.ticker-active nav[class*="nav"] {
+    top: 30px !important;
   }
 
   .ticker-icon {
@@ -285,14 +340,23 @@ body.ticker-active {
 /* Mobile phones */
 @media (width <= 480px) {
   .ticker-container {
-    height: 32px;
+    height: 28px;
     padding: 0 12px;
     gap: 6px;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   body.ticker-active {
-    padding-top: 32px !important;
+    --ticker-height: 28px;
+  }
+
+  body.ticker-active .top-user-bar,
+  body.ticker-active .top-nav,
+  body.ticker-active .header-container,
+  body.ticker-active header,
+  body.ticker-active .main-header,
+  body.ticker-active nav[class*="nav"] {
+    top: 28px !important;
   }
 
   .ticker-icon {

@@ -34,10 +34,10 @@
     class SystemAnnouncement {
         constructor(data = {}) {
             this.id = data.id || null;
-            this.title = data.title || '';
+            this.title = data.title || ''; // Optional - for future modal support
             this.message = data.message || '';
             this.type = data.type || ANNOUNCEMENT_TYPES.INFO;
-            this.priority = data.priority || 3; // 1-5
+            this.priority = data.priority || 3; // 1-10
             this.active = data.active !== undefined ? data.active : true;
             this.startDate = data.startDate || new Date();
             this.endDate = data.endDate || null;
@@ -60,10 +60,7 @@
         validate() {
             const errors = [];
 
-            if (!this.title || this.title.trim() === '') {
-                errors.push('כותרת ההודעה חובה');
-            }
-
+            // Message is required (title is optional for ticker-only mode)
             if (!this.message || this.message.trim() === '') {
                 errors.push('תוכן ההודעה חובה');
             }
@@ -72,8 +69,8 @@
                 errors.push('סוג הודעה לא תקין');
             }
 
-            if (this.priority < 1 || this.priority > 5) {
-                errors.push('עדיפות חייבת להיות בין 1 ל-5');
+            if (this.priority < 1 || this.priority > 10) {
+                errors.push('עדיפות חייבת להיות בין 1 ל-10');
             }
 
             if (!Object.values(TARGET_AUDIENCE).includes(this.targetAudience)) {
@@ -121,8 +118,7 @@ return false;
          * @returns {Object}
          */
         toFirestore() {
-            return {
-                title: this.title,
+            const data = {
                 message: this.message,
                 type: this.type,
                 priority: this.priority,
@@ -143,6 +139,13 @@ return false;
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 displaySettings: this.displaySettings
             };
+
+            // Only include title if it exists (for backward compatibility)
+            if (this.title) {
+                data.title = this.title;
+            }
+
+            return data;
         }
 
         /**
@@ -202,8 +205,7 @@ return false;
          * @returns {SystemAnnouncement}
          */
         clone() {
-            return new SystemAnnouncement({
-                title: this.title,
+            const data = {
                 message: this.message,
                 type: this.type,
                 priority: this.priority,
@@ -213,7 +215,14 @@ return false;
                 targetAudience: this.targetAudience,
                 createdBy: this.createdBy,
                 displaySettings: { ...this.displaySettings }
-            });
+            };
+
+            // Only include title if it exists
+            if (this.title) {
+                data.title = this.title;
+            }
+
+            return new SystemAnnouncement(data);
         }
     }
 

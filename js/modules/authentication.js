@@ -342,6 +342,11 @@ bubblesContainer.classList.add('hidden');
   setTimeout(() => {
     updateSidebarUser(this.currentUsername);
   }, 500);
+
+  // ✅ Initialize System Announcement Ticker when entering the app
+  if (window.manager && typeof window.manager.initTicker === 'function') {
+    window.manager.initTicker();
+  }
 }
 
 function logout() {

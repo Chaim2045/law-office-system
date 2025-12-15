@@ -109,36 +109,20 @@ return;
                                         <span>מידע בסיסי</span>
                                     </div>
                                     <div class="card-body">
-                                        <!-- Title -->
+                                        <!-- Message (Ticker Text) -->
                                         <div class="form-group">
                                             <label class="form-label">
-                                                כותרת ההודעה <span class="required">*</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                id="announcementTitle"
-                                                class="form-input"
-                                                placeholder="לדוגמה: עדכון חשוב במערכת"
-                                                required
-                                                maxlength="100"
-                                            />
-                                            <div class="form-hint">עד 100 תווים</div>
-                                        </div>
-
-                                        <!-- Message -->
-                                        <div class="form-group">
-                                            <label class="form-label">
-                                                תוכן ההודעה <span class="required">*</span>
+                                                תוכן ההודעה (טקסט הטיקר) <span class="required">*</span>
                                             </label>
                                             <textarea
                                                 id="announcementMessage"
                                                 class="form-textarea"
-                                                placeholder="הכנס את תוכן ההודעה המלא שיוצג למשתמשים..."
+                                                placeholder="לדוגמה: עדכון מערכת - המערכת תעבור שדרוג ביום ראשון בשעה 22:00..."
                                                 required
-                                                rows="4"
-                                                maxlength="1000"
+                                                rows="3"
+                                                maxlength="500"
                                             ></textarea>
-                                            <div class="form-hint">עד 1000 תווים</div>
+                                            <div class="form-hint">עד 500 תווים - זה הטקסט שיופיע בטיקר הרץ</div>
                                         </div>
                                     </div>
                                 </div>
@@ -170,11 +154,16 @@ return;
                                                     עדיפות <span class="required">*</span>
                                                 </label>
                                                 <select id="announcementPriority" class="form-select" required>
-                                                    <option value="1">1 - נמוכה</option>
-                                                    <option value="2">2 - בינונית</option>
-                                                    <option value="3" selected>3 - רגילה</option>
-                                                    <option value="4">4 - גבוהה</option>
-                                                    <option value="5">5 - קריטית</option>
+                                                    <option value="1">1 - נמוכה מאוד</option>
+                                                    <option value="2">2 - נמוכה</option>
+                                                    <option value="3">3 - בינונית נמוכה</option>
+                                                    <option value="4">4 - בינונית</option>
+                                                    <option value="5" selected>5 - רגילה</option>
+                                                    <option value="6">6 - בינונית גבוהה</option>
+                                                    <option value="7">7 - גבוהה</option>
+                                                    <option value="8">8 - גבוהה מאוד</option>
+                                                    <option value="9">9 - דחופה</option>
+                                                    <option value="10">10 - קריטית</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -350,28 +339,26 @@ return;
         }
 
         /**
-         * Setup character counters for title and message
+         * Setup character counter for message
          */
         setupCharacterCounters() {
-            const titleInput = this.panel.querySelector('#announcementTitle');
             const messageInput = this.panel.querySelector('#announcementMessage');
 
             const updateCounter = (input, maxLength) => {
                 const hint = input.parentElement.querySelector('.form-hint');
                 const remaining = maxLength - input.value.length;
-                hint.textContent = `${remaining} תווים נותרו`;
+                hint.textContent = `${remaining} תווים נותרו - זה הטקסט שיופיע בטיקר הרץ`;
 
-                if (remaining < 20) {
+                if (remaining < 50) {
                     hint.style.color = '#ef4444';
-                } else if (remaining < 50) {
+                } else if (remaining < 100) {
                     hint.style.color = '#f97316';
                 } else {
                     hint.style.color = '#94a3b8';
                 }
             };
 
-            titleInput.addEventListener('input', () => updateCounter(titleInput, 100));
-            messageInput.addEventListener('input', () => updateCounter(messageInput, 1000));
+            messageInput.addEventListener('input', () => updateCounter(messageInput, 500));
         }
 
         /**
@@ -397,7 +384,6 @@ return;
 }
 
             // Basic fields
-            this.panel.querySelector('#announcementTitle').value = announcement.title;
             this.panel.querySelector('#announcementMessage').value = announcement.message;
             this.panel.querySelector('#announcementType').value = announcement.type;
             this.panel.querySelector('#announcementPriority').value = announcement.priority;
@@ -459,7 +445,6 @@ return;
 
                 // Create announcement object
                 const announcementData = {
-                    title: formData.title,
                     message: formData.message,
                     type: formData.type,
                     priority: parseInt(formData.priority),
@@ -538,7 +523,6 @@ return {};
 }
 
             return {
-                title: this.panel.querySelector('#announcementTitle').value.trim(),
                 message: this.panel.querySelector('#announcementMessage').value.trim(),
                 type: this.panel.querySelector('#announcementType').value,
                 priority: this.panel.querySelector('#announcementPriority').value,

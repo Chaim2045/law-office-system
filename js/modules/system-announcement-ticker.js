@@ -17,7 +17,7 @@ class SystemAnnouncementTicker {
 
     // Timers
     this.autoplayInterval = null;      // Auto-advance every 10 seconds
-    this.scrollAnimationDuration = 50; // 50 seconds for full scroll
+    this.scrollAnimationDuration = 15; // 15 seconds for full scroll (faster!)
 
     // DOM elements
     this.container = null;
@@ -95,22 +95,22 @@ return false;
 
   /**
    * Listen to Firestore for active announcements (real-time)
+   * Uses simplified query to avoid index requirement
    */
   listenToAnnouncements() {
     console.log('👂 Setting up Firestore listener...');
 
-    const now = firebase.firestore.Timestamp.now();
-
+    // Simplified query - only filter by active status
+    // Client-side filtering for dates to avoid complex index
     this.unsubscribe = this.db.collection('system_announcements')
       .where('active', '==', true)
-      .where('startDate', '<=', now)
-      .orderBy('startDate', 'desc')
-      .orderBy('priority', 'desc')
       .onSnapshot(
         (snapshot) => {
           console.log(`📊 Received ${snapshot.size} announcements from Firestore`);
 
-          // Map and filter active announcements
+          const now = new Date();
+
+          // Map and filter active announcements (client-side)
           this.announcements = snapshot.docs
             .map(doc => {
               const data = doc.data();
@@ -131,20 +131,33 @@ return false;
                 return false;
               }
 
+              // Filter: check start date
+              if (announcement.startDate && announcement.startDate > now) {
+                return false;
+              }
+
               // Filter: check expiry
-              if (announcement.endDate) {
-                const now = new Date();
-                if (now > announcement.endDate) {
-                  return false;
-                }
+              if (announcement.endDate && announcement.endDate < now) {
+                return false;
               }
 
               return true;
+            })
+            // Client-side sorting by priority and start date
+            .sort((a, b) => {
+              if (b.priority !== a.priority) {
+                return b.priority - a.priority;
+              }
+              return (b.startDate || 0) - (a.startDate || 0);
             });
 
           console.log(`✅ ${this.announcements.length} active announcements to display`);
 
           if (this.announcements.length > 0) {
+            // Render if not already rendered
+            if (!this.container) {
+              this.render();
+            }
             this.show();
             this.currentIndex = 0;
             this.updateDisplay();
@@ -240,6 +253,7 @@ return;
 
   /**
    * Update display with current announcement
+   * News-style continuous ticker - creates duplicate content for seamless loop
    */
   updateDisplay() {
     if (this.announcements.length === 0) {
@@ -248,9 +262,18 @@ return;
 
     const announcement = this.announcements[this.currentIndex];
 
-    // Update text
+    // Update text - Create continuous loop like news ticker
     if (this.textElement) {
-      this.textElement.textContent = announcement.message;
+      // יצירת תוכן כפול לטיקר רציף
+      const message = announcement.message;
+
+      // בניית HTML עם כפילות - 2 עותקים של אותה הודעה
+      const tickerHTML = `
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+      `;
+
+      this.textElement.innerHTML = tickerHTML;
     }
 
     // Update icon based on type
@@ -327,6 +350,7 @@ return;
 
   /**
    * Restart scroll animation
+   * Continuous news-style ticker animation
    */
   restartScrollAnimation() {
     if (!this.textElement) {
@@ -339,8 +363,8 @@ return;
     // Trigger reflow
     void this.textElement.offsetWidth;
 
-    // Re-add animation
-    this.textElement.style.animation = `ticker-scroll ${this.scrollAnimationDuration}s linear infinite`;
+    // Re-add animation - continuous loop
+    this.textElement.style.animation = `ticker-scroll-continuous ${this.scrollAnimationDuration}s linear infinite`;
   }
 
   /**
