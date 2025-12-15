@@ -105,13 +105,13 @@
                     </div>
                 </div>
 
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <div class="stat-card stat-card-clickable" id="needsAttentionStatCard" data-filter="needs-attention">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-label">לקוחות קריטיים</div>
-                        <div class="stat-value" id="criticalClientsStat">-</div>
+                        <div class="stat-label">דורש תשומת לב</div>
+                        <div class="stat-value" id="needsAttentionStat">-</div>
                     </div>
                 </div>
 
@@ -151,7 +151,7 @@
                             <option value="active">פעיל</option>
                             <option value="inactive">לא פעיל</option>
                             <option value="blocked">חסום</option>
-                            <option value="critical">קריטי</option>
+                            <option value="needs-attention">דורש תשומת לב</option>
                         </select>
                     </div>
 
@@ -537,9 +537,10 @@
     <script src="js/managers/ClientsDataManager.js?v=20251205-DATE-FIX"></script>
     <script src="js/managers/ReportGenerator.js?v=20251127v2"></script>
     <script src="js/managers/MessagingManager.js?v=1"></script>
+    <script src="js/ui/Pagination.js?v=20251215"></script>
     <script src="js/ui/ClientReportModal.js?v=20251127v1"></script>
     <script src="js/ui/ClientManagementModal.js?v=20251127-FINAL"></script>
-    <script src="js/ui/ClientsTable.js?v=20251205-DATE-FIX"></script>
+    <script src="js/ui/ClientsTable.js?v=20251215-PAGINATION"></script>
 
     <!-- ===== Shared Components ===== -->
     <script src="js/ui/Notifications.js?v=20251123v1"></script>

@@ -20,6 +20,7 @@
         constructor() {
             this.dataManager = null;
             this.tableBody = null;
+            this.paginationContainer = null;
 
             // DOM Elements
             this.searchInput = null;
@@ -74,6 +75,7 @@
          */
         getDOMElements() {
             this.tableBody = document.getElementById('clientsTableBody');
+            this.paginationContainer = document.getElementById('clientsPaginationContainer');
             this.searchInput = document.getElementById('searchInput');
             this.statusFilter = document.getElementById('statusFilter');
             this.typeFilter = document.getElementById('typeFilter');
@@ -126,6 +128,18 @@
                 });
             }
 
+            // Clickable stat card for needs attention
+            const needsAttentionCard = document.getElementById('needsAttentionStatCard');
+            if (needsAttentionCard) {
+                needsAttentionCard.addEventListener('click', () => {
+                    // הגדר את הפילטר ל"דורש תשומת לב"
+                    if (this.statusFilter) {
+                        this.statusFilter.value = 'needs-attention';
+                        this.dataManager.setStatusFilter('needs-attention');
+                    }
+                });
+            }
+
             // Sort
             if (this.sortSelect) {
                 this.sortSelect.addEventListener('change', (e) => {
@@ -136,6 +150,17 @@
             // Listen to data updates
             window.addEventListener('clients:updated', (e) => {
                 this.render(e.detail);
+            });
+
+            // Listen to pagination events
+            window.addEventListener('pagination:changed', (e) => {
+                const { type, page, itemsPerPage } = e.detail;
+
+                if (type === 'page') {
+                    this.dataManager.setPage(page);
+                } else if (type === 'itemsPerPage') {
+                    this.dataManager.setItemsPerPage(itemsPerPage);
+                }
             });
         }
 
@@ -153,6 +178,7 @@ return;
 
             if (!clients || clients.length === 0) {
                 this.renderEmptyState();
+                this.renderPagination(paginatedData.pagination);
                 return;
             }
 
@@ -160,6 +186,21 @@ return;
 
             // Attach event listeners to action buttons
             this.attachRowEventListeners();
+
+            // Render pagination
+            this.renderPagination(paginatedData.pagination);
+        }
+
+        /**
+         * Render pagination
+         * רינדור פגינציה
+         */
+        renderPagination(paginationData) {
+            if (!this.paginationContainer || !window.PaginationUI) {
+                return;
+            }
+
+            window.PaginationUI.render(this.paginationContainer, paginationData);
         }
 
         /**
@@ -271,14 +312,70 @@ return;
                 progressClass = 'critical';
             }
 
+            // Get warning icon based on hours remaining
+            const warningIcon = this.getHoursWarningIcon(client);
+
             return `
                 <div class="hours-display">
-                    <div class="hours-value">${remaining.toFixed(1)} / ${totalHours}</div>
+                    <div class="hours-value">
+                        ${warningIcon}${remaining.toFixed(1)} / ${totalHours}
+                    </div>
                     <div class="hours-progress">
                         <div class="hours-progress-bar ${progressClass}" style="width: ${percentage}%"></div>
                     </div>
                 </div>
             `;
+        }
+
+        /**
+         * Get hours warning icon
+         * קבלת אייקון התראה לשעות
+         */
+        getHoursWarningIcon(client) {
+            // Only check active, non-blocked clients
+            if (client.status !== 'active' || client.isBlocked) {
+                return '';
+            }
+
+            const hoursRemaining = client.hoursRemaining || 0;
+            const totalHours = client.totalHours || 0;
+
+            // Regular hourly client
+            if (client.procedureType === 'hours') {
+                if (hoursRemaining < 5 || (totalHours > 0 && (hoursRemaining / totalHours) < 0.05)) {
+                    return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות">🔴</span>';
+                }
+                if (hoursRemaining < 10 || (totalHours > 0 && (hoursRemaining / totalHours) < 0.1)) {
+                    return '<span class="hours-warning-icon warning" title="5-10 שעות">🟡</span>';
+                }
+            }
+
+            // Legal procedure - hourly pricing
+            if (client.procedureType === 'legal_procedure' && client.pricingType === 'hourly') {
+                // Check total hours remaining
+                if (hoursRemaining < 5) {
+                    return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות נותרו בהליך">🔴</span>';
+                }
+                if (hoursRemaining < 10) {
+                    return '<span class="hours-warning-icon warning" title="5-10 שעות נותרו בהליך">🟡</span>';
+                }
+
+                // Check current stage hours remaining
+                if (client.services && client.services.length > 0) {
+                    const legalService = client.services.find(s => s.type === 'legal_procedure');
+                    if (legalService && legalService.stages) {
+                        const currentStage = legalService.stages.find(s => s.status === 'active');
+                        if (currentStage) {
+                            const stageRemaining = currentStage.hoursRemaining || 0;
+                            if (stageRemaining < 5) {
+                                return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות בשלב הנוכחי">🔴</span>';
+                            }
+                        }
+                    }
+                }
+            }
+
+            return '';
         }
 
         /**

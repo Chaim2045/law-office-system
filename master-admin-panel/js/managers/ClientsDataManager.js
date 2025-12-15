@@ -313,6 +313,47 @@
         }
 
         /**
+         * Check if client needs attention (low hours/stage ending)
+         * בדיקה אם לקוח דורש תשומת לב (שעות נמוכות/שלב לפני סיום)
+         */
+        needsAttention(client) {
+            // Only check active, non-blocked clients
+            if (client.status !== 'active' || client.isBlocked) {
+                return false;
+            }
+
+            const hoursRemaining = client.hoursRemaining || 0;
+            const totalHours = client.totalHours || 0;
+
+            // Case 1: Regular hourly client - low hours
+            if (client.procedureType === 'hours') {
+                // Less than 10 hours OR less than 10% remaining
+                return hoursRemaining < 10 || (totalHours > 0 && (hoursRemaining / totalHours) < 0.1);
+            }
+
+            // Case 2: Legal procedure - hourly pricing
+            if (client.procedureType === 'legal_procedure' && client.pricingType === 'hourly') {
+                // Check total hours remaining for entire procedure
+                if (hoursRemaining < 10) {
+                    return true;
+                }
+
+                // Check current stage hours remaining
+                if (client.services && client.services.length > 0) {
+                    const legalService = client.services.find(s => s.type === 'legal_procedure');
+                    if (legalService && legalService.stages) {
+                        const currentStage = legalService.stages.find(s => s.status === 'active');
+                        if (currentStage && currentStage.hoursRemaining < 5) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /**
          * Calculate statistics
          * חישוב סטטיסטיקות
          */
@@ -321,7 +362,7 @@
                 total: this.clients.length,
                 active: this.clients.filter(c => c.status === 'active').length,
                 blocked: this.clients.filter(c => c.isBlocked === true).length,
-                critical: this.clients.filter(c => c.isCritical === true && !c.isBlocked).length,
+                needsAttention: this.clients.filter(c => this.needsAttention(c)).length,
                 noAgreement: this.clients.filter(c => !c.feeAgreements || c.feeAgreements.length === 0).length
             };
 
@@ -339,7 +380,12 @@
             document.getElementById('totalClientsStat').textContent = stats.total;
             document.getElementById('activeClientsStat').textContent = stats.active;
             document.getElementById('blockedClientsStat').textContent = stats.blocked;
-            document.getElementById('criticalClientsStat').textContent = stats.critical;
+
+            // עדכון כרטיס דורש תשומת לב (החליף את קריטיים)
+            const needsAttentionStat = document.getElementById('needsAttentionStat');
+            if (needsAttentionStat) {
+                needsAttentionStat.textContent = stats.needsAttention;
+            }
 
             // עדכון כרטיס ללא הסכם שכר טרחה
             const noAgreementStat = document.getElementById('noAgreementClientsStat');
@@ -371,8 +417,8 @@
             if (this.statusFilter !== 'all') {
                 if (this.statusFilter === 'blocked') {
                     filtered = filtered.filter(c => c.isBlocked === true);
-                } else if (this.statusFilter === 'critical') {
-                    filtered = filtered.filter(c => c.isCritical === true && !c.isBlocked);
+                } else if (this.statusFilter === 'needs-attention') {
+                    filtered = filtered.filter(c => this.needsAttention(c));
                 } else {
                     filtered = filtered.filter(c => c.status === this.statusFilter);
                 }
