@@ -136,19 +136,19 @@
   font-weight: 500;
   line-height: 1.3;
   display: inline-flex;
-  gap: 80px; /* רווח בין ההודעות החוזרות */
-  animation: ticker-scroll-continuous 20s linear infinite;
+  gap: 120px; /* רווח גדול יותר בין ההודעות */
+  animation: ticker-scroll-continuous 60s linear infinite;
   will-change: transform;
 }
 
 /* Scroll animation - Continuous loop כמו בחדשות */
 @keyframes ticker-scroll-continuous {
   0% {
-    transform: translateX(0);
+    transform: translateX(100%);
   }
 
   100% {
-    transform: translateX(-50%); /* חצי כי יש כפילות */
+    transform: translateX(-100%); /* גלילה מלאה לגלילה חלקה */
   }
 }
 
