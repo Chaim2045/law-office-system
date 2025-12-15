@@ -530,7 +530,7 @@ return;
         // ✅ Show UPDATED success message - כולל הודעה על אישור
         if (window.NotificationSystem) {
           window.NotificationSystem.show(
-            `✅ המשימה הועברה למנהל לאישור תקציב\n\nתקציב מבוקש: ${taskData.estimatedMinutes} דקות\n\n💬 תקבל התראה באייקון המעטפה כשהמנהל יאשר`,
+            `המשימה הועברה למנהל לאישור תקציב\n\nתקציב מבוקש: ${taskData.estimatedMinutes} דקות\n\nתקבל התראה באייקון המעטפה כשהמנהל יאשר`,
             'success',
             5000 // 5 seconds - longer to read
           );

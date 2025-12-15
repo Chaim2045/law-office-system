@@ -676,12 +676,7 @@ export function createTaskCard(task, options = {}) {
     </span>
   ` : '';
 
-  const pendingApprovalIndicator = isPendingApproval ? `
-    <span class="pending-approval-badge">
-      <i class="fas fa-lock"></i>
-      ממתין לאישור מנהל
-    </span>
-  ` : '';
+  // ✅ REMOVED: pendingApprovalIndicator - not needed in UI
 
   // 🎯 Combined info badge (case + service + stage)
   // Pass serviceId directly - mapping will be done in the popup
@@ -705,7 +700,6 @@ export function createTaskCard(task, options = {}) {
         <h3 class="linear-card-title" title="${safeClientName}">
           ${safeDescription}
           ${completedIndicator}
-          ${pendingApprovalIndicator}
         </h3>
 
         <!-- 🎯 SVG RINGS -->

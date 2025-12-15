@@ -504,7 +504,7 @@ return;
     // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'alert-overlay';
-    overlay.style.cssText = 'position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10001; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); animation: fadeIn 0.2s ease;';
+    overlay.style.cssText = 'position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10001; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); animation: fadeIn 0.15s ease;';
     overlay.setAttribute('role', 'alertdialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'alert-title');
@@ -517,24 +517,24 @@ return;
     const messageHtml = this.parseStructuredAlertMessage(message);
 
     overlay.innerHTML = `
-      <div class="alert-dialog" style="background: white; border-radius: 12px; padding: 0; max-width: 700px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; direction: rtl; text-align: right; border: 1px solid #e5e7eb;">
+      <div class="alert-dialog" style="background: white; border-radius: 10px; padding: 0; max-width: 420px; width: 90%; box-shadow: 0 8px 24px rgba(0,0,0,0.12); animation: slideUp 0.2s ease; direction: rtl; text-align: right; border: 1px solid #e5e7eb;">
 
         <!-- Header -->
-        <div class="alert-header" style="background: white; color: #0f172a; padding: 24px 32px 20px; border-bottom: 1px solid #e2e8f0;">
-          <div style="display: flex; align-items: center; gap: 12px; justify-content: flex-end;">
-            <i class="${icon}" style="color: ${color}; font-size: 20px;"></i>
-            <h2 id="alert-title" style="margin: 0; font-size: 18px; font-weight: 600; color: #0f172a;">${this.escapeHtml(title)}</h2>
+        <div class="alert-header" style="background: white; color: #0f172a; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; border-radius: 10px 10px 0 0;">
+          <div style="display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+            <i class="${icon}" style="color: ${color}; font-size: 18px;"></i>
+            <h2 id="alert-title" style="margin: 0; font-size: 16px; font-weight: 600; color: #0f172a;">${this.escapeHtml(title)}</h2>
           </div>
         </div>
 
         <!-- Content -->
-        <div class="alert-body" style="padding: 32px;">
+        <div class="alert-body" style="padding: 20px;">
           ${messageHtml}
         </div>
 
         <!-- Footer -->
-        <div class="alert-footer" style="padding: 20px 32px 32px 32px; display: flex; gap: 12px; justify-content: flex-end;">
-          <button class="alert-btn alert-btn-ok" type="button" style="padding: 12px 32px; background: ${color}; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='${type === 'success' ? '#2563eb' : color}'" onmouseout="this.style.background='${color}'">
+        <div class="alert-footer" style="padding: 0 20px 16px 20px; display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="alert-btn alert-btn-ok" type="button" style="padding: 10px 24px; background: ${color}; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='${type === 'success' ? '#2563eb' : color}'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='${color}'; this.style.transform='translateY(0)'">
             <i class="fas fa-check"></i>
             ${this.escapeHtml(okText)}
           </button>
@@ -629,25 +629,28 @@ return;
         }
       });
 
-      // Main success message
+      // Main success message - Clean professional style
       if (mainMessage) {
-        html += `<div style="background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 8px; border-right: 3px solid #3b82f6; margin-bottom: 24px;">
-          <div style="font-size: 15px; font-weight: 600; color: #1f2937;">
-            ${this.escapeHtml(mainMessage)}
+        html += `<div style="background: white; padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-check-circle" style="color: #3b82f6; font-size: 14px;"></i>
+            <span style="font-size: 14px; font-weight: 500; color: #1f2937;">
+              ${this.escapeHtml(mainMessage)}
+            </span>
           </div>
         </div>`;
       }
 
-      // Task details in horizontal grid (3 columns)
+      // Task details in compact grid (3 columns) - Clean professional style
       if (taskDetails.length > 0) {
-        html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">';
+        html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;">';
         taskDetails.forEach(detail => {
-          html += `<div style="background: #fafafa; padding: 16px; border-radius: 8px; border: 1px solid #e5e5e5;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-              <i class="fas ${detail.icon}" style="color: #3b82f6; font-size: 14px;"></i>
-              <span style="font-size: 12px; color: #737373; font-weight: 500;">${detail.label}</span>
+          html += `<div style="background: white; padding: 12px; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+              <i class="fas ${detail.icon}" style="color: #3b82f6; font-size: 12px;"></i>
+              <span style="font-size: 11px; color: #6b7280; font-weight: 500;">${detail.label}</span>
             </div>
-            <div style="font-size: 14px; color: #171717; font-weight: 600;">
+            <div style="font-size: 13px; color: #111827; font-weight: 600; line-height: 1.3;">
               ${this.escapeHtml(detail.text)}
             </div>
           </div>`;
@@ -655,24 +658,24 @@ return;
         html += '</div>';
       }
 
-      // Notification message
+      // Notification message - Clean professional style
       if (notificationMessage) {
-        html += `<div style="background: #fef3c7; border-right: 3px solid #f59e0b; padding: 12px 16px; margin-bottom: 12px; border-radius: 8px;">
+        html += `<div style="background: white; padding: 10px 12px; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-bell" style="color: #f59e0b; font-size: 14px;"></i>
-            <span style="font-size: 14px; color: #92400e; font-weight: 500;">
+            <i class="fas fa-bell" style="color: #3b82f6; font-size: 13px;"></i>
+            <span style="font-size: 13px; color: #374151; font-weight: 500; line-height: 1.4;">
               ${this.escapeHtml(notificationMessage)}
             </span>
           </div>
         </div>`;
       }
 
-      // Info message
+      // Info message - Clean professional style
       if (infoMessage) {
-        html += `<div style="background: #f0f9ff; border-right: 3px solid #0ea5e9; padding: 12px 16px; border-radius: 8px;">
+        html += `<div style="background: white; padding: 10px 12px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-lightbulb" style="color: #0ea5e9; font-size: 14px;"></i>
-            <span style="font-size: 13px; color: #075985;">
+            <i class="fas fa-info-circle" style="color: #3b82f6; font-size: 13px;"></i>
+            <span style="font-size: 12px; color: #4b5563; line-height: 1.4;">
               ${this.escapeHtml(infoMessage)}
             </span>
           </div>
