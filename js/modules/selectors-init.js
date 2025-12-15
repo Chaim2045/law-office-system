@@ -100,7 +100,7 @@
 
     // 👂 Listen to client:selected event
     window.EventBus.on('client:selected', (data) => {
-      Logger.log(`👂 [EventBus] client:selected received:`, data);
+      Logger.log('👂 [EventBus] client:selected received:', data);
 
       // Auto-fill file number in timesheet form
       const fileNumberInput = document.getElementById('fileNumber');
@@ -118,7 +118,7 @@
 
     // 👂 Listen to case:selected event
     window.EventBus.on('case:selected', (data) => {
-      Logger.log(`👂 [EventBus] case:selected received:`, data);
+      Logger.log('👂 [EventBus] case:selected received:', data);
       // כאן אפשר להוסיף לוגיקה נוספת כשתיק נבחר
     });
 
@@ -218,6 +218,7 @@
   /**
    * Initialize budget description selector (lazy initialization)
    * Called when budget form is opened
+   * ✅ UPDATED: Using GuidedTextInput instead of SmartComboSelector
    */
   function initializeBudgetDescriptionSelector() {
     // Check if already initialized
@@ -227,21 +228,29 @@
     }
 
     try {
-      const container = document.getElementById('budgetDescriptionSelector');
+      const container = document.getElementById('budgetDescriptionGuided');
       if (!container) {
-        Logger.log('⚠️ Budget description selector container not found');
+        Logger.log('⚠️ Budget description container not found');
         return;
       }
 
-      // Create SmartComboSelector without taskId (new task doesn't have ID yet)
-      window.descriptionSelectors.budget = new SmartComboSelector('budgetDescriptionSelector', {
-        required: true,
-        contextAware: false,  // New task - no context yet
-        suggestLastUsed: false, // New task - no last-used
-        placeholder: 'בחר תיאור עבודה...'
-      });
+      // ✅ NEW: Create GuidedTextInput instead of SmartComboSelector
+      if (window.GuidedTextInput) {
+        window.descriptionSelectors.budget = new window.GuidedTextInput('budgetDescriptionGuided', {
+          maxChars: 50,
+          placeholder: 'תאר את המשימה בקצרה...',
+          required: true,
+          showQuickSuggestions: true,
+          showRecentItems: true
+        });
 
-      Logger.log('✅ Budget description selector initialized');
+        // Store globally for form access
+        window._currentBudgetDescriptionInput = window.descriptionSelectors.budget;
+
+        Logger.log('✅ Budget GuidedTextInput initialized');
+      } else {
+        Logger.log('❌ GuidedTextInput not available');
+      }
 
     } catch (error) {
       console.error('❌ Error initializing Budget description selector:', error);
@@ -255,7 +264,7 @@
   function clearBudgetDescriptionSelector() {
     const selector = window.descriptionSelectors.budget;
     if (selector) {
-      selector.reset();
+      selector.clear();
       // ✅ Remove reference so it can be re-initialized (no last-used for new tasks)
       window.descriptionSelectors.budget = null;
     }

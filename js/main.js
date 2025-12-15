@@ -20,6 +20,9 @@ import STATE_CONFIG from './config/state-config.js';
 // ✅ NEW v2.0: Add Task System - Organized Component
 import { initAddTaskSystem } from '../components/add-task/index.js';
 
+// System Announcement Ticker - News-style ticker for system announcements
+import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
+
 // Notification System
 // NotificationBellSystem is loaded via script tag and available on window.notificationBell
 // No import needed here - it's initialized globally
@@ -130,6 +133,7 @@ class LawOfficeManager {
     this.domCache = new DOMCache();
     this.notificationBell = window.notificationBell; // Use globally initialized instance
     this.clientValidation = new ClientValidation(this); // Pass 'this' as manager
+    this.announcementTicker = new SystemAnnouncementTicker(); // System Announcement Ticker
 
     // Activity Logger & Task Actions (initialized after Firebase)
     this.activityLogger = null;
@@ -289,10 +293,25 @@ class LawOfficeManager {
         } catch (error) {
           console.error('❌ Failed to start NotificationBell listener:', error);
         }
+
+        // ✅ Start System Announcement Ticker
+        if (this.announcementTicker) {
+          console.log('📢 Starting System Announcement Ticker...');
+          try {
+            this.announcementTicker.init(user, window.firebaseDB);
+            console.log('✅ System Announcement Ticker initialized successfully');
+          } catch (error) {
+            console.error('❌ Failed to initialize System Announcement Ticker:', error);
+          }
+        }
       } else if (!user) {
         console.log('🔔 Auth state changed - User logged out, cleaning up...');
         if (this.notificationBell) {
           this.notificationBell.cleanup();
+        }
+        // ✅ Cleanup System Announcement Ticker
+        if (this.announcementTicker) {
+          this.announcementTicker.cleanup();
         }
       } else {
         console.warn('⚠️ Cannot start NotificationBell - missing dependencies:', {
@@ -813,22 +832,33 @@ return false;
       }
 
     // Validate other form fields
-    const description = document.getElementById('budgetDescription')?.value?.trim();
-    const descriptionCategory = document.getElementById('budgetDescriptionCategory')?.value || null;
     const estimatedMinutes = parseInt(document.getElementById('estimatedTime')?.value);
     const deadline = document.getElementById('budgetDeadline')?.value;
 
-    // ✅ Get category name for display purposes
-    let categoryName = null;
-    if (descriptionCategory && window.WorkCategories) {
-      const cat = window.WorkCategories.getCategoryById(descriptionCategory);
-      categoryName = cat?.name || null;
+    // ✅ NEW: Get description from GuidedTextInput
+    let description = '';
+    const guidedInput = window._currentBudgetDescriptionInput;
+
+    if (guidedInput) {
+      // Validate using GuidedTextInput
+      const validation = guidedInput.validate();
+      if (!validation.valid) {
+        this.showNotification(validation.error, 'error');
+        return;
+      }
+      description = guidedInput.getValue();
+    } else {
+      // Fallback to old method
+      description = document.getElementById('budgetDescription')?.value?.trim();
+      if (!description || description.length < 3) {
+        this.showNotification('חובה להזין תיאור משימה (לפחות 3 תווים)', 'error');
+        return;
+      }
     }
 
-    if (!description || description.length < 3) {
-      this.showNotification('חובה להזין תיאור משימה (לפחות 3 תווים)', 'error');
-      return;
-    }
+    // No category with GuidedTextInput
+    const descriptionCategory = null;
+    const categoryName = null;
 
     if (!estimatedMinutes || estimatedMinutes < 1) {
       this.showNotification('חובה להזין זמן משוער', 'error');
@@ -959,6 +989,11 @@ return false;
             );
           }
 
+          // ✅ NEW: Save description to recent items
+          if (guidedInput && guidedInput.saveToRecent) {
+            guidedInput.saveToRecent();
+          }
+
           // Clear form and hide
           Forms.clearBudgetForm(this);
           document.getElementById('budgetFormContainer')?.classList.add('hidden');
@@ -966,8 +1001,8 @@ return false;
           // Remove active class from plus button
           const plusButton = document.getElementById('smartPlusBtn');
           if (plusButton) {
-plusButton.classList.remove('active');
-}
+            plusButton.classList.remove('active');
+          }
 
           // Clear selector
           window.ClientCaseSelectorsManager?.clearBudget();
@@ -1948,7 +1983,26 @@ return;
 
     const workDate = document.getElementById('workDate')?.value;
     const workMinutes = parseInt(document.getElementById('workMinutes')?.value);
-    const workDescription = document.getElementById('workDescription')?.value?.trim();
+
+    // ✅ NEW: Get description from GuidedTextInput
+    const guidedInput = window._currentGuidedInput;
+    let workDescription = '';
+
+    if (guidedInput) {
+      // Validate using GuidedTextInput
+      const validation = guidedInput.validate();
+      if (!validation.valid) {
+        this.showNotification(validation.error, 'error');
+        return;
+      }
+      workDescription = guidedInput.getValue();
+
+      // Save to recent items
+      guidedInput.saveToRecent();
+    } else {
+      // Fallback to old method
+      workDescription = document.getElementById('workDescription')?.value?.trim();
+    }
 
     if (!workDate || !workMinutes || !workDescription) {
       this.showNotification('נא למלא את כל השדות', 'error');

@@ -1,0 +1,329 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * GUIDED TEXT INPUT - STYLES
+ * עיצוב לקומפוננטת קלט טקסט מונחה
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * @version 1.0.0
+ * @created 2025-12-15
+ *
+ * עיצוב תואם למערכת:
+ * - שימוש בצבעי המערכת (#3b82f6, #6b7280, etc.)
+ * - אנימציות עדינות (cubic-bezier(0.4, 0, 0.2, 1))
+ * - RTL support
+ * - Mobile responsive
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MAIN CONTAINER
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-text-input {
+  width: 100%;
+  direction: rtl;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INPUT WRAPPER
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-input-wrapper {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TEXTAREA
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-textarea {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 60px;
+  max-height: 90px;
+  padding: 10px 14px;
+  padding-bottom: 28px; /* Space for counter */
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #374151;
+  background: #fff;
+  resize: vertical;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  direction: rtl;
+  text-align: right;
+  line-height: 1.5;
+}
+
+.guided-textarea::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.guided-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
+  transform: translateY(-1px);
+}
+
+/* Near limit warning */
+.guided-textarea.near-limit {
+  border-color: #f59e0b;
+}
+
+.guided-textarea.near-limit:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgb(245 158 11 / 10%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CHARACTER COUNTER
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-char-counter {
+  position: absolute;
+  bottom: 8px;
+  right: 14px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  direction: ltr;
+  z-index: 1;
+}
+
+.char-count {
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.char-max {
+  color: #d1d5db;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTIONS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-suggestions-section,
+.guided-recent-section {
+  margin-bottom: 16px;
+}
+
+.guided-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.guided-section-label i {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SUGGESTIONS GRID
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-suggestions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  direction: rtl;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SUGGESTION BUTTONS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-suggestion-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  font-family: inherit;
+}
+
+.guided-suggestion-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
+}
+
+.guided-suggestion-btn:active {
+  transform: translateY(0);
+  transition-duration: 0.1s;
+}
+
+.guided-suggestion-btn.selected {
+  background: #eff6ff;
+  border-color: #60a5fa;
+  color: #1e40af;
+  animation: selectPulse 0.3s ease-out;
+}
+
+@keyframes selectPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 15%);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RECENT ITEMS GRID
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-recent-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RECENT BUTTONS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-recent-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: right;
+  font-family: inherit;
+  max-width: fit-content;
+}
+
+.guided-recent-btn i {
+  font-size: 12px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.guided-recent-btn span {
+  flex: 1;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guided-recent-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.guided-recent-btn:hover i {
+  color: #3b82f6;
+}
+
+.guided-recent-btn.selected {
+  background: #eff6ff;
+  border-color: #60a5fa;
+  color: #1e40af;
+  animation: selectPulse 0.3s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE - MOBILE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (width <= 768px) {
+  .guided-textarea {
+    font-size: 16px; /* Prevent iOS zoom */
+    min-height: 100px;
+  }
+
+  .guided-suggestion-btn,
+  .guided-recent-btn {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+
+  .guided-section-label {
+    font-size: 12px;
+  }
+
+  .guided-char-counter {
+    font-size: 10px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-textarea:focus-visible,
+.guided-suggestion-btn:focus-visible,
+.guided-recent-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRINT STYLES
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media print {
+  .guided-suggestion-btn,
+  .guided-recent-btn,
+  .guided-char-counter {
+    display: none !important;
+  }
+
+  .guided-textarea {
+    border: 1px solid #000;
+    background: white;
+    min-height: auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SMOOTH FADE-IN ANIMATION
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.guided-text-input {
+  animation: fadeInContent 0.2s ease-out;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

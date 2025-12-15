@@ -176,15 +176,12 @@ function showAdvancedTimeDialog(taskId, manager) {
             <label for="workMinutes">דקות עבודה</label>
             <input type="number" id="workMinutes" min="1" max="99999" placeholder="60" required>
           </div>
-          <div class="form-group">
-            <label for="workDescriptionSelector">
+          <div class="form-group full-width">
+            <label for="workDescriptionGuided">
               <i class="fas fa-align-right"></i> תיאור העבודה
               <span class="category-required">*</span>
             </label>
-            <div id="workDescriptionSelector"></div>
-            <!-- Hidden inputs for validation -->
-            <input type="hidden" id="workDescription" required>
-            <input type="hidden" id="workDescriptionCategory">
+            <div id="workDescriptionGuided"></div>
           </div>
         </form>
       </div>
@@ -203,30 +200,29 @@ function showAdvancedTimeDialog(taskId, manager) {
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
   setTimeout(() => overlay.classList.add('show'), 10);
 
-  // ✅ Initialize SmartComboSelector with context-aware filtering
-  // This is the KEY feature - selector knows the task's category!
+  // ✅ NEW: Initialize GuidedTextInput instead of SmartComboSelector
   setTimeout(() => {
     try {
-      const descSelector = new SmartComboSelector('workDescriptionSelector', {
-        required: true,
-        taskId: taskId,              // 🎯 KEY: Task ID for context
-        task: task,                  // 🎯 KEY: Task object with categoryId
-        contextAware: true,          // ✅ Enable context filtering
-        suggestLastUsed: true,       // ✅ Enable last-used suggestion
-        autoSelectSuggestion: false, // Don't auto-select, let user confirm
-        placeholder: 'בחר תיאור עבודה...'
-      });
+      if (window.GuidedTextInput) {
+        const guidedInput = new window.GuidedTextInput('workDescriptionGuided', {
+          maxChars: 50,
+          placeholder: 'תאר את העבודה שביצעת היום...',
+          required: true,
+          showQuickSuggestions: true,
+          showRecentItems: true,
+          taskContext: task.description || null
+        });
 
-      // Store for cleanup
-      overlay.descSelector = descSelector;
+        // Store for cleanup and later use
+        overlay.guidedInput = guidedInput;
+        window._currentGuidedInput = guidedInput;
 
-      Logger.log(`✅ Work description selector initialized for task ${taskId}`, {
-        categoryId: task.categoryId,
-        categoryName: task.categoryName
-      });
-
+        Logger.log(`✅ GuidedTextInput initialized for task ${taskId}`);
+      } else {
+        Logger.log('❌ GuidedTextInput not loaded - falling back to simple input');
+      }
     } catch (error) {
-      Logger.log('❌ Error initializing work description selector:', error);
+      Logger.log('❌ Error initializing GuidedTextInput:', error);
     }
   }, 100);
 }

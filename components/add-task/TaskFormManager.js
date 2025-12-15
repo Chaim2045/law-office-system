@@ -200,22 +200,30 @@ export class TaskFormManager {
     // Fill basic fields
     if (draft.branch) {
       const branchInput = this.form.querySelector('#taskBranch');
-      if (branchInput) branchInput.value = draft.branch;
+      if (branchInput) {
+branchInput.value = draft.branch;
+}
     }
 
     if (draft.deadline) {
       const deadlineInput = this.form.querySelector('#taskDeadline');
-      if (deadlineInput) deadlineInput.value = draft.deadline;
+      if (deadlineInput) {
+deadlineInput.value = draft.deadline;
+}
     }
 
     if (draft.estimatedTime) {
       const timeInput = this.form.querySelector('#taskEstimatedTime');
-      if (timeInput) timeInput.value = draft.estimatedTime;
+      if (timeInput) {
+timeInput.value = draft.estimatedTime;
+}
     }
 
     if (draft.description) {
       const descInput = this.form.querySelector('#taskDescription');
-      if (descInput) descInput.value = draft.description;
+      if (descInput) {
+descInput.value = draft.description;
+}
     }
 
     console.log('✅ Form filled with draft data');
@@ -240,8 +248,18 @@ export class TaskFormManager {
     const branch = this.form.querySelector('#taskBranch')?.value || '';
     const deadline = this.form.querySelector('#budgetDeadline')?.value || '';
     const estimatedTime = this.form.querySelector('#estimatedTime')?.value || '';
-    const description = this.form.querySelector('#budgetDescription')?.value || '';
-    const descriptionCategory = this.form.querySelector('#budgetDescriptionCategory')?.value || '';
+
+    // ✅ NEW: Get description from GuidedTextInput
+    let description = '';
+    const guidedInputElement = document.getElementById('taskDescriptionGuided');
+    if (guidedInputElement && window._currentTaskDescriptionInput) {
+      description = window._currentTaskDescriptionInput.getValue();
+    } else {
+      // Fallback to old method
+      description = this.form.querySelector('#budgetDescription')?.value || '';
+    }
+
+    const descriptionCategory = ''; // No category with GuidedTextInput
 
     return {
       // Client & Case

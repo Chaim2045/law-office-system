@@ -157,8 +157,12 @@
     <!-- ===== Navigation Component ===== -->
     <script src="js/ui/Navigation.js"></script>
 
-    <!-- ===== System Announcement Manager ===== -->
-    <script src="js/managers/SystemAnnouncementManager.js"></script>
+    <!-- ===== System Announcements Components ===== -->
+    <script src="js/models/SystemAnnouncement.js"></script>
+    <script src="js/services/AnnouncementService.js"></script>
+    <script src="js/ui/AnnouncementCard.js"></script>
+    <script src="js/ui/AnnouncementEditor.js"></script>
+    <script src="js/ui/SystemAnnouncementsPanel.js"></script>
 
     <!-- ===== Notifications ===== -->
     <script src="js/ui/Notifications.js"></script>
@@ -219,9 +223,10 @@
                     nav.init('announcements');
                 }
 
-                // Initialize System Announcement Manager
-                if (window.SystemAnnouncementManager) {
-                    window.SystemAnnouncementManager.init();
+                // Initialize System Announcements Panel
+                if (window.SystemAnnouncementsPanel) {
+                    const panel = new window.SystemAnnouncementsPanel();
+                    panel.init('announcement-manager-section');
                 }
             }
 

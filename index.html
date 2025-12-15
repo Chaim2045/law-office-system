@@ -140,6 +140,7 @@
     <link rel="stylesheet" href="css/utilities.css?v=1.2.7" />
     <!-- Smart Combo Selector - בורר תיאורים חכם -->
     <link rel="stylesheet" href="css/smart-combo-selector.css?v=3.0.2" />
+    <link rel="stylesheet" href="css/guided-text-input.css?v=1.0.0" />
     <!-- Responsive Design - מדיה queries -->
     <link rel="stylesheet" href="css/responsive.css?v=1.0.0" />
 
@@ -148,6 +149,9 @@
 
     <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
     <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=2.0.8-categories">
+
+    <!-- ===== SYSTEM ANNOUNCEMENT TICKER ===== -->
+    <link rel="stylesheet" href="css/system-announcement-ticker.css?v=1.0.0" />
 
     <!-- ===== SECURITY MODALS STYLES ===== -->
 
@@ -541,25 +545,18 @@
                   </div>
                 </div>
 
-                <!-- תיאור המשימה - Smart Selector -->
+                <!-- תיאור המשימה - Guided Text Input -->
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="budgetDescriptionSelector"
+                  <div class="form-group full-width">
+                    <label for="budgetDescriptionGuided"
                       ><i class="fas fa-align-right"></i> תיאור המשימה
                       <span class="category-required">*</span></label
                     >
-                    <div id="budgetDescriptionSelector"></div>
-                    <!-- Hidden inputs for validation -->
-                    <input type="hidden" id="budgetDescription" required>
-                    <input type="hidden" id="budgetDescriptionCategory">
+                    <div id="budgetDescriptionGuided"></div>
                   </div>
                 </div>
 
                 <div class="form-buttons">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    הוסף לתקצוב
-                  </button>
                   <button
                     type="button"
                     class="btn btn-secondary"
@@ -567,6 +564,10 @@
                   >
                     <i class="fas fa-times"></i>
                     ביטול
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    הוסף לתקצוב
                   </button>
                 </div>
               </form>
@@ -1168,6 +1169,7 @@
     <script src="js/modules/descriptions/category-mapping.js?v=1.0.0"></script>
     <script src="js/modules/descriptions/descriptions-manager.js?v=2.0.0"></script>
     <script src="js/modules/descriptions/smart-combo-selector.js?v=3.4.0"></script>
+    <script src="js/modules/descriptions/GuidedTextInput.js?v=1.0.0"></script>
 
     <!-- ===== Core Utilities Module ===== -->
     <!-- Must load before dialogs.js (provides safeText) -->

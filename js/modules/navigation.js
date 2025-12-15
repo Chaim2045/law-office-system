@@ -10,61 +10,71 @@ import { currentActiveTab } from './core-utils.js';
 // NotificationSystem is available globally on window object
 
 function switchTab(tabName) {
-  const budgetFormContainer = document.getElementById("budgetFormContainer");
+  const budgetFormContainer = document.getElementById('budgetFormContainer');
   const timesheetFormContainer = document.getElementById(
-    "timesheetFormContainer"
+    'timesheetFormContainer'
   );
 
-  if (budgetFormContainer) budgetFormContainer.classList.add("hidden");
-  if (timesheetFormContainer) timesheetFormContainer.classList.add("hidden");
+  if (budgetFormContainer) {
+budgetFormContainer.classList.add('hidden');
+}
+  if (timesheetFormContainer) {
+timesheetFormContainer.classList.add('hidden');
+}
 
-  const plusButton = document.getElementById("smartPlusBtn");
+  const plusButton = document.getElementById('smartPlusBtn');
   if (plusButton) {
-    plusButton.classList.remove("active");
+    plusButton.classList.remove('active');
   }
 
   // הסרת active מכל הכפתורים והתכנים
-  document.querySelectorAll(".tab-button, .top-nav-btn").forEach((btn) => {
-    btn.classList.remove("active");
+  document.querySelectorAll('.tab-button, .top-nav-btn').forEach((btn) => {
+    btn.classList.remove('active');
   });
 
-  document.querySelectorAll(".tab-content").forEach((content) => {
-    content.classList.remove("active");
+  document.querySelectorAll('.tab-content').forEach((content) => {
+    content.classList.remove('active');
   });
 
   // הוספת active לכפתור ולתוכן הנכונים
-  if (tabName === "budget") {
-    const budgetTab = document.getElementById("budgetTab");
-    if (budgetTab) budgetTab.classList.add("active");
+  if (tabName === 'budget') {
+    const budgetTab = document.getElementById('budgetTab');
+    if (budgetTab) {
+budgetTab.classList.add('active');
+}
 
     // הוספת active לכפתור התקצוב (כולל הכפתור בסרגל העליון)
     document.querySelectorAll('.tab-button[onclick*="budget"], .top-nav-btn[onclick*="budget"]').forEach(btn => {
-      btn.classList.add("active");
+      btn.classList.add('active');
     });
-  } else if (tabName === "timesheet") {
-    const timesheetTab = document.getElementById("timesheetTab");
-    if (timesheetTab) timesheetTab.classList.add("active");
+  } else if (tabName === 'timesheet') {
+    const timesheetTab = document.getElementById('timesheetTab');
+    if (timesheetTab) {
+timesheetTab.classList.add('active');
+}
 
     // הוספת active לכפתור השעתון (כולל הכפתור בסרגל העליון)
     document.querySelectorAll('.tab-button[onclick*="timesheet"], .top-nav-btn[onclick*="timesheet"]').forEach(btn => {
-      btn.classList.add("active");
+      btn.classList.add('active');
     });
 
     // Let Flatpickr handle the date field initialization
     // Don't set value directly - it conflicts with Flatpickr
-    const dateField = document.getElementById("actionDate");
+    const dateField = document.getElementById('actionDate');
     if (dateField && window.manager && window.manager.timesheetCalendar) {
       // Use Flatpickr API instead of direct value assignment
       const now = new Date();
       window.manager.timesheetCalendar.setDate(now, false);
     }
-  } else if (tabName === "reports") {
-    const reportsTab = document.getElementById("reportsTab");
-    if (reportsTab) reportsTab.classList.add("active");
+  } else if (tabName === 'reports') {
+    const reportsTab = document.getElementById('reportsTab');
+    if (reportsTab) {
+reportsTab.classList.add('active');
+}
 
     // הוספת active לכפתור הדוחות
     document.querySelectorAll('.tab-button[onclick*="reports"], .nav-item[onclick*="reports"]').forEach(btn => {
-      btn.classList.add("active");
+      btn.classList.add('active');
     });
 
     // הסתרת כפתור הפלוס בטאב דוחות - לא רלוונטי
@@ -100,7 +110,7 @@ function clearAllNotifications() {
   const notificationSystem = window.notificationSystem || new NotificationSystem();
 
   notificationSystem.confirm(
-    "כל ההתראות יימחקו ולא ניתן יהיה לשחזר אותן.",
+    'כל ההתראות יימחקו ולא ניתן יהיה לשחזר אותן.',
     () => {
       // אישור - מחק הכל
       if (window.notificationBell) {
@@ -122,29 +132,35 @@ function clearAllNotifications() {
 }
 
 function openSmartForm() {
-  const plusButton = document.getElementById("smartPlusBtn");
-  const activeTab = document.querySelector(".tab-button.active");
-  if (!activeTab) return;
+  const plusButton = document.getElementById('smartPlusBtn');
+  const activeTab = document.querySelector('.tab-button.active');
+  if (!activeTab) {
+return;
+}
 
   let currentForm;
   let formType; // Track which form we're opening
 
-  if (activeTab.onclick && activeTab.onclick.toString().includes("budget")) {
-    currentForm = document.getElementById("budgetFormContainer");
+  if (activeTab.onclick && activeTab.onclick.toString().includes('budget')) {
+    currentForm = document.getElementById('budgetFormContainer');
     formType = 'budget';
   } else if (
     activeTab.onclick &&
-    activeTab.onclick.toString().includes("timesheet")
+    activeTab.onclick.toString().includes('timesheet')
   ) {
-    currentForm = document.getElementById("timesheetFormContainer");
+    currentForm = document.getElementById('timesheetFormContainer');
     formType = 'timesheet';
   }
 
-  if (!currentForm) return;
+  if (!currentForm) {
+return;
+}
 
-  if (currentForm.classList.contains("hidden")) {
-    currentForm.classList.remove("hidden");
-    if (plusButton) plusButton.classList.add("active");
+  if (currentForm.classList.contains('hidden')) {
+    currentForm.classList.remove('hidden');
+    if (plusButton) {
+plusButton.classList.add('active');
+}
 
     // ✅ Initialize the appropriate ClientCaseSelector when form opens
     if (window.ClientCaseSelectorsManager) {
@@ -158,9 +174,29 @@ function openSmartForm() {
         window.ClientCaseSelectorsManager.initializeTimesheet();
       }
     }
+
+    // ✅ Smooth scroll to form - only if not already visible
+    setTimeout(() => {
+      const formRect = currentForm.getBoundingClientRect();
+      const isVisible = formRect.top >= 0 && formRect.bottom <= window.innerHeight;
+
+      // Only scroll if form is not fully visible
+      if (!isVisible) {
+        // Scroll with offset to account for header/navbar
+        const yOffset = -80; // 80px offset from top
+        const y = currentForm.getBoundingClientRect().top + window.pageYOffset + yOffset;
+
+        window.scrollTo({
+          top: y,
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
   } else {
-    currentForm.classList.add("hidden");
-    if (plusButton) plusButton.classList.remove("active");
+    currentForm.classList.add('hidden');
+    if (plusButton) {
+plusButton.classList.remove('active');
+}
   }
 }
 

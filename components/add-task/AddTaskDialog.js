@@ -224,25 +224,18 @@ export class AddTaskDialog {
             </div>
           </div>
 
-          <!-- תיאור המשימה - Smart Selector -->
+          <!-- תיאור המשימה - Guided Text Input -->
           <div class="form-row">
-            <div class="form-group">
-              <label for="budgetDescriptionSelector">
+            <div class="form-group full-width">
+              <label for="taskDescriptionGuided">
                 <i class="fas fa-align-right"></i> תיאור המשימה
                 <span class="category-required">*</span>
               </label>
-              <div id="budgetDescriptionSelector"></div>
-              <!-- Hidden inputs for validation -->
-              <input type="hidden" id="budgetDescription" required>
-              <input type="hidden" id="budgetDescriptionCategory">
+              <div id="taskDescriptionGuided"></div>
             </div>
           </div>
 
           <div class="form-buttons">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-plus"></i>
-              הוסף לתקצוב
-            </button>
             <button
               type="button"
               class="btn btn-secondary"
@@ -250,6 +243,10 @@ export class AddTaskDialog {
             >
               <i class="fas fa-times"></i>
               ביטול
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              הוסף לתקצוב
             </button>
           </div>
         </form>
@@ -345,31 +342,35 @@ return;
   }
 
   /**
-   * Initialize SmartComboSelector for description
-   * אתחול בוחר חכם לתיאור
+   * Initialize GuidedTextInput for description
+   * אתחול קלט מונחה לתיאור
    */
   async initDescriptionSelector() {
-    if (!window.SmartComboSelector) {
-      console.warn('⚠️ SmartComboSelector not available');
+    if (!window.GuidedTextInput) {
+      console.warn('⚠️ GuidedTextInput not available');
       return;
     }
 
-    const container = document.getElementById('taskDescriptionSelector');
+    const container = document.getElementById('taskDescriptionGuided');
     if (!container) {
-return;
-}
+      return;
+    }
 
     try {
-      this.descriptionSelector = new window.SmartComboSelector('taskDescriptionSelector', {
+      this.descriptionSelector = new window.GuidedTextInput('taskDescriptionGuided', {
+        maxChars: 50,
+        placeholder: 'תאר את המשימה בקצרה...',
         required: true,
-        placeholder: 'בחר או הקלד תיאור עבודה...',
-        suggestLastUsed: true,
-        autoSelectSuggestion: false
+        showQuickSuggestions: true,
+        showRecentItems: true
       });
 
-      console.log('✅ Description selector initialized');
+      // Store globally for TaskFormManager
+      window._currentTaskDescriptionInput = this.descriptionSelector;
+
+      console.log('✅ GuidedTextInput initialized for task description');
     } catch (error) {
-      console.error('❌ Error initializing description selector:', error);
+      console.error('❌ Error initializing GuidedTextInput:', error);
     }
   }
 
@@ -383,6 +384,17 @@ return;
 
       // Get form data
       const formData = this.formManager.getFormData();
+
+      // ✅ NEW: Validate GuidedTextInput
+      if (this.descriptionSelector && this.descriptionSelector.validate) {
+        const descValidation = this.descriptionSelector.validate();
+        if (!descValidation.valid) {
+          if (window.NotificationSystem) {
+            window.NotificationSystem.show(descValidation.error, 'error');
+          }
+          return;
+        }
+      }
 
       // Validate
       const validation = this.validator.validateAll({
@@ -525,6 +537,11 @@ return;
         // Success - clear draft
         if (this.options.enableDrafts) {
           this.formManager.clearDraft();
+        }
+
+        // ✅ NEW: Save description to recent items
+        if (this.descriptionSelector && this.descriptionSelector.saveToRecent) {
+          this.descriptionSelector.saveToRecent();
         }
 
         // ✅ Show UPDATED success message - כולל הודעה על אישור
