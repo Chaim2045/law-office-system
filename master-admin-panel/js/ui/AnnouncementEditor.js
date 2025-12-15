@@ -141,10 +141,10 @@ return;
                                                     סוג הודעה <span class="required">*</span>
                                                 </label>
                                                 <select id="announcementType" class="form-select" required>
-                                                    <option value="info">📢 מידע</option>
-                                                    <option value="success">✅ הצלחה</option>
-                                                    <option value="warning">⚠️ אזהרה</option>
-                                                    <option value="error">🚨 שגיאה</option>
+                                                    <option value="info">ℹ️ מידע</option>
+                                                    <option value="success">✓ הצלחה</option>
+                                                    <option value="warning">⚠ אזהרה</option>
+                                                    <option value="error">✕ שגיאה</option>
                                                 </select>
                                             </div>
 
@@ -174,9 +174,9 @@ return;
                                                 קהל יעד <span class="required">*</span>
                                             </label>
                                             <select id="announcementAudience" class="form-select" required>
-                                                <option value="all">👥 כל המשתמשים</option>
-                                                <option value="employees">👤 עובדים בלבד</option>
-                                                <option value="admins">👨‍💼 מנהלים בלבד</option>
+                                                <option value="all">◉ כל המשתמשים</option>
+                                                <option value="employees">◎ עובדים בלבד</option>
+                                                <option value="admins">◈ מנהלים בלבד</option>
                                             </select>
                                         </div>
                                     </div>

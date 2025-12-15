@@ -137,7 +137,7 @@
   line-height: 1.3;
   display: inline-flex;
   gap: 120px; /* רווח גדול יותר בין ההודעות */
-  animation: ticker-scroll-continuous 60s linear infinite;
+  animation: ticker-scroll-continuous 120s linear infinite; /* 120s = פי 2 יותר איטי מהמקור */
   will-change: transform;
 }
 
@@ -148,7 +148,7 @@
   }
 
   100% {
-    transform: translateX(-100%); /* גלילה מלאה לגלילה חלקה */
+    transform: translateX(-50%); /* חצי תנועה = גלילה איטית יותר */
   }
 }
 
