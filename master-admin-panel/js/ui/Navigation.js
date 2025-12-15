@@ -427,10 +427,13 @@ return;
             const announcementsBtn = document.getElementById('navAnnouncementsBtn');
             if (announcementsBtn) {
                 announcementsBtn.addEventListener('click', () => {
-                    console.log('📢 Switching to Announcements panel');
-                    window.dispatchEvent(new CustomEvent('navigation:change', {
-                        detail: { page: 'announcements' }
-                    }));
+                    console.log('📢 Opening System Announcements Modal');
+                    if (window.AnnouncementsModal) {
+                        window.AnnouncementsModal.open();
+                    } else {
+                        console.error('❌ AnnouncementsModal not found');
+                        alert('מודל הודעות לא נטען כראוי');
+                    }
                 });
             }
 
