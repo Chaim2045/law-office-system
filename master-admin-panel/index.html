@@ -21,7 +21,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Master Admin Panel - ניהול משתמשים">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://*.cloudfunctions.net wss://*.firebaseio.com; frame-ancestors 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://*.cloudfunctions.net wss://*.firebaseio.com; frame-ancestors 'none';">
     <title>🔐 Master Admin Panel | מערכת ניהול</title>
 
     <!-- ===== Firebase SDK ===== -->
@@ -33,6 +33,9 @@
     <!-- ===== Font Awesome Icons ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+    <!-- ===== Chart.js for Performance Tab ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
     <!-- ===== Design System (standalone copy) ===== -->
     <link rel="stylesheet" href="css/design-system.css">
 
@@ -43,6 +46,7 @@
     <link rel="stylesheet" href="css/delete-data-modal.css?v=20250109-PHASE1">
     <link rel="stylesheet" href="css/admin-thread-view.css?v=1.0.0">
     <link rel="stylesheet" href="css/message-categories.css?v=20251208-2050">
+    <link rel="stylesheet" href="css/performance-tab.css?v=3.1.0">
 </head>
 
 <body class="login-page">
@@ -172,6 +176,12 @@
     <!-- ===== Navigation Component ===== -->
     <script src="js/ui/Navigation.js?v=20251204v2"></script>
 
+    <!-- ===== System Announcements Components ===== -->
+    <script src="js/models/SystemAnnouncement.js"></script>
+    <script src="js/services/AnnouncementService.js"></script>
+    <script src="js/ui/AnnouncementEditor.js"></script>
+    <script src="js/ui/AnnouncementsModal.js"></script>
+
     <!-- ===== Phase 2: Data & UI Components ===== -->
     <script src="js/managers/DataManager.js?v=20251208-DAILY-TARGET-FIX"></script>
     <script src="js/ui/StatsCards.js?v=20251123v6"></script>
@@ -239,6 +249,13 @@
                     window.Navigation.init('users');
                 } else {
                     console.error('❌ Navigation not loaded');
+                }
+
+                // Initialize Announcements Modal
+                if (window.AnnouncementsModal) {
+                    window.AnnouncementsModal.init();
+                } else {
+                    console.error('❌ AnnouncementsModal not loaded');
                 }
 
                 // Initialize Dashboard UI

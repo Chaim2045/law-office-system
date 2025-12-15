@@ -590,6 +590,7 @@
                         ${this.renderTabButton('clients', 'fas fa-briefcase', 'לקוחות')}
                         ${this.renderTabButton('tasks', 'fas fa-tasks', 'משימות')}
                         ${this.renderTabButton('hours', 'fas fa-clock', 'שעות')}
+                        ${this.renderTabButton('performance', 'fas fa-chart-line', 'ביצועים יומיים')}
                         ${this.renderTabButton('activity', 'fas fa-history', 'פעילות')}
                     </div>
 
@@ -629,6 +630,8 @@
                     return this.renderTasksTab();
                 case 'hours':
                     return this.renderHoursTab();
+                case 'performance':
+                    return this.renderPerformanceTab();
                 case 'activity':
                     return this.renderActivityTab();
                 default:
@@ -1205,22 +1208,22 @@ return;
                                 <div>
                                     <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">סוג</label>
                                     <select id="typeFilter" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white;">
-                                        <option value="all">הכל</option>
-                                        <option value="client">לקוחות</option>
-                                        <option value="internal">פנימי</option>
+                                        <option value="all" ${this.hoursFilters.type === 'all' ? 'selected' : ''}>הכל</option>
+                                        <option value="client" ${this.hoursFilters.type === 'client' ? 'selected' : ''}>לקוחות</option>
+                                        <option value="internal" ${this.hoursFilters.type === 'internal' ? 'selected' : ''}>פנימי</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">חיוב</label>
                                     <select id="billableFilter" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white;">
-                                        <option value="all">הכל</option>
-                                        <option value="yes">חויב</option>
-                                        <option value="no">לא חויב</option>
+                                        <option value="all" ${this.hoursFilters.billable === 'all' ? 'selected' : ''}>הכל</option>
+                                        <option value="yes" ${this.hoursFilters.billable === 'yes' ? 'selected' : ''}>חויב</option>
+                                        <option value="no" ${this.hoursFilters.billable === 'no' ? 'selected' : ''}>לא חויב</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">חיפוש</label>
-                                    <input type="text" id="searchFilter" placeholder="חפש..." style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                                    <input type="text" id="searchFilter" placeholder="חפש..." value="${this.escapeHtml(this.hoursFilters.searchText || '')}" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                                 </div>
                             </div>
 
@@ -1907,6 +1910,623 @@ return;
             console.log('✅ Messages tab refreshed successfully');
         }
 
+        /* ============================================
+           PERFORMANCE TAB SECTION
+           טאב ביצועים יומיים
+           ============================================ */
+
+        /**
+         * Render Performance Tab
+         * Main entry point for daily performance view
+         *
+         * @returns {string} HTML string for performance tab
+         */
+        renderPerformanceTab() {
+            const user = this.userData || this.currentUser;
+
+            if (!user) {
+                return '<div class="no-data-message">אין נתונים זמינים</div>';
+            }
+
+            // Store user reference for other methods
+            this.user = user;
+
+            // Initialize selected date if not set
+            if (!this.selectedPerformanceDate) {
+                this.selectedPerformanceDate = new Date().toISOString().split('T')[0];
+            }
+
+            return `
+                <div class="performance-container">
+                    ${this.renderDateSelector()}
+                    ${this.renderDailySummary()}
+                    ${this.renderPerformanceCharts()}
+                    ${this.renderDailyHoursBreakdown()}
+                    ${this.renderCompletedTasks()}
+                </div>
+            `;
+        }
+
+        /**
+         * Calculate daily performance metrics
+         * חישוב מדדי ביצועים יומיים
+         *
+         * @param {string} selectedDate - Date in YYYY-MM-DD format
+         * @returns {Object} Performance data for the selected date
+         */
+        calculateDailyPerformance(selectedDate) {
+            const date = new Date(selectedDate);
+            const dateString = date.toISOString().split('T')[0];
+
+            // Get data from userData
+            const user = this.userData || this.currentUser;
+            const allHours = user?.hours || [];
+            const allTasks = user?.tasks || [];
+
+            console.log('📊 Performance Debug:', {
+                selectedDate,
+                dateString,
+                hoursEntriesCount: allHours.length,
+                tasksDataCount: allTasks.length,
+                hasUser: !!user
+            });
+
+            // Filter hours for selected date
+            const dailyHours = allHours.filter(entry => {
+                let entryDate = entry.date;
+
+                // Handle Firebase Timestamp
+                if (entryDate?.toDate && typeof entryDate.toDate === 'function') {
+                    entryDate = entryDate.toDate();
+                }
+
+                const entryDateString = new Date(entryDate).toISOString().split('T')[0];
+                return entryDateString === dateString;
+            });
+
+            // Calculate totals
+            const totalHours = dailyHours.reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+            const clientHours = dailyHours
+                .filter(e => !e.isInternal)
+                .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+            const internalHours = dailyHours
+                .filter(e => e.isInternal)
+                .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+            const billableHours = dailyHours
+                .filter(e => e.billable)
+                .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+
+            // Daily target from user data
+            const dailyTarget = user.dailyHoursTarget || 8.45;
+            const quotaProgress = dailyTarget > 0 ? Math.round((totalHours / dailyTarget) * 100) : 0;
+
+            // Filter completed tasks for selected date
+            const completedToday = allTasks.filter(task => {
+                if (task.status !== 'completed') {
+return false;
+}
+
+                const completedDate = task.completedAt || task.updatedAt;
+                if (!completedDate) {
+return false;
+}
+
+                let taskDate = completedDate;
+                if (taskDate?.toDate && typeof taskDate.toDate === 'function') {
+                    taskDate = taskDate.toDate();
+                }
+
+                const taskDateString = new Date(taskDate).toISOString().split('T')[0];
+                return taskDateString === dateString;
+            });
+
+            // Client breakdown
+            const clientBreakdown = {};
+            dailyHours
+                .filter(e => !e.isInternal)
+                .forEach(entry => {
+                    const client = entry.clientName || 'לא ידוע';
+                    clientBreakdown[client] = (clientBreakdown[client] || 0) + (parseFloat(entry.hours) || 0);
+                });
+
+            return {
+                date: dateString,
+                totalHours: Math.round(totalHours * 10) / 10,
+                clientHours: Math.round(clientHours * 10) / 10,
+                internalHours: Math.round(internalHours * 10) / 10,
+                billableHours: Math.round(billableHours * 10) / 10,
+                dailyTarget,
+                quotaProgress,
+                entriesCount: dailyHours.length,
+                completedTasksCount: completedToday.length,
+                completedTasks: completedToday,
+                entries: dailyHours,
+                clientBreakdown
+            };
+        }
+
+        /**
+         * Render date selector with quick buttons
+         * רינדור בורר תאריכים עם כפתורים מהירים
+         */
+        renderDateSelector() {
+            const today = new Date().toISOString().split('T')[0];
+            const selectedDate = this.selectedPerformanceDate || today;
+
+            return `
+                <div class="date-selector-wrapper">
+                    <div class="quick-dates">
+                        <button class="quick-date-btn" data-offset="0" type="button">היום</button>
+                        <button class="quick-date-btn" data-offset="-1" type="button">אתמול</button>
+                        <button class="quick-date-btn" data-offset="-7" type="button">לפני שבוע</button>
+                    </div>
+
+                    <div class="date-picker-container">
+                        <label for="performanceDate">
+                            <i class="fas fa-calendar-alt"></i>
+                            בחר תאריך:
+                        </label>
+                        <input
+                            type="date"
+                            id="performanceDate"
+                            value="${selectedDate}"
+                            max="${today}"
+                        >
+                    </div>
+
+                    <button class="btn-export-pdf" id="exportPerformancePDF" type="button">
+                        <i class="fas fa-file-pdf"></i>
+                        ייצא דוח PDF
+                    </button>
+                </div>
+            `;
+        }
+
+        /**
+         * Render daily summary cards
+         * רינדור כרטיסי סיכום יומי
+         */
+        renderDailySummary() {
+            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
+            const data = this.calculateDailyPerformance(selectedDate);
+
+            const formattedDate = new Date(selectedDate).toLocaleDateString('he-IL', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            return `
+                <div class="daily-summary-cards">
+                    <h3>סיכום ל-${formattedDate}</h3>
+
+                    <div class="summary-grid">
+                        <!-- Main Card - Total Hours -->
+                        <div class="summary-card main-card">
+                            <div class="card-content">
+                                <div class="card-label">שעות עבודה</div>
+                                <div class="card-value">${data.totalHours} / ${data.dailyTarget}</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${Math.min(data.quotaProgress, 100)}%;"></div>
+                                </div>
+                                <div class="card-subtitle">${data.quotaProgress}% מהתקן היומי</div>
+                            </div>
+                        </div>
+
+                        <!-- Tasks Card -->
+                        <div class="summary-card">
+                            <div class="card-content">
+                                <div class="card-label">משימות הושלמו</div>
+                                <div class="card-value">${data.completedTasksCount}</div>
+                            </div>
+                        </div>
+
+                        <!-- Client Hours Card -->
+                        <div class="summary-card">
+                            <div class="card-content">
+                                <div class="card-label">שעות לקוח</div>
+                                <div class="card-value">${data.clientHours}</div>
+                            </div>
+                        </div>
+
+                        <!-- Internal Hours Card -->
+                        <div class="summary-card">
+                            <div class="card-content">
+                                <div class="card-label">שעות פנימי</div>
+                                <div class="card-value">${data.internalHours}</div>
+                            </div>
+                        </div>
+
+                        <!-- Billable Hours Card -->
+                        <div class="summary-card">
+                            <div class="card-content">
+                                <div class="card-label">שעות חייבות</div>
+                                <div class="card-value">${data.billableHours}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render performance charts
+         * רינדור גרפים
+         */
+        renderPerformanceCharts() {
+            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
+            const data = this.calculateDailyPerformance(selectedDate);
+
+            if (data.totalHours === 0) {
+                return '<div class="no-data-message">אין נתוני שעות ליום זה</div>';
+            }
+
+            // Don't show chart if no client hours
+            const clientCount = Object.keys(data.clientBreakdown).length;
+            if (clientCount === 0) {
+                return '';
+            }
+
+            return `
+                <div class="charts-section">
+                    <h4>פילוח שעות לפי לקוחות (${clientCount} ${clientCount === 1 ? 'לקוח' : 'לקוחות'})</h4>
+                    <div class="chart-container">
+                        <canvas id="clientHoursChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render daily hours breakdown
+         * רינדור פירוט שעות יומי
+         */
+        renderDailyHoursBreakdown() {
+            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
+            const data = this.calculateDailyPerformance(selectedDate);
+
+            if (data.entries.length === 0) {
+                return '';
+            }
+
+            // Sort by created time
+            const sortedEntries = [...data.entries].sort((a, b) => {
+                const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+                const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+                return timeA - timeB;
+            });
+
+            return `
+                <div class="hours-breakdown-section">
+                    <h4>פירוט רשומות שעתון (${data.entries.length})</h4>
+                    <div class="breakdown-list">
+                        ${sortedEntries.map(entry => this.renderHoursEntryRow(entry)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render single hours entry row
+         * רינדור שורת רשומה בודדת
+         */
+        renderHoursEntryRow(entry) {
+            let createdTime = '-';
+            if (entry.createdAt) {
+                let createdDate = entry.createdAt;
+                if (createdDate?.toDate && typeof createdDate.toDate === 'function') {
+                    createdDate = createdDate.toDate();
+                }
+                const date = new Date(createdDate);
+                if (!isNaN(date.getTime())) {
+                    createdTime = date.toLocaleTimeString('he-IL', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            }
+
+            const isClient = !entry.isInternal;
+            const typeLabel = isClient ? 'לקוח' : 'פנימי';
+            const description = entry.taskDescription || entry.action || '-';
+
+            return `
+                <div class="hours-entry-row">
+                    <div class="entry-time">${createdTime}</div>
+                    <div class="entry-icon">${typeLabel}</div>
+                    <div class="entry-details">
+                        <div class="entry-client">${this.escapeHtml(entry.clientName || 'פעילות פנימית')}</div>
+                        <div class="entry-description">${this.escapeHtml(description)}</div>
+                    </div>
+                    <div class="entry-hours">${entry.hours}</div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render completed tasks section
+         * רינדור משימות שהושלמו
+         */
+        renderCompletedTasks() {
+            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
+            const data = this.calculateDailyPerformance(selectedDate);
+
+            if (data.completedTasks.length === 0) {
+                return '';
+            }
+
+            return `
+                <div class="completed-tasks-section">
+                    <h4>משימות שהושלמו (${data.completedTasks.length})</h4>
+                    <div class="tasks-list">
+                        ${data.completedTasks.map(task => `
+                            <div class="completed-task-item">
+                                <i class="fas fa-check-circle"></i>
+                                <div class="task-info">
+                                    <div class="task-title">${this.escapeHtml(task.title || task.description || 'ללא תיאור')}</div>
+                                    <div class="task-meta">
+                                        ${task.clientName ? `<span>לקוח: ${this.escapeHtml(task.clientName)}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Attach event listeners for performance tab
+         * הוספת event listeners לטאב ביצועים
+         */
+        attachPerformanceEventListeners() {
+            const modal = document.getElementById('userDetailsModal');
+            if (!modal) {
+                console.warn('⚠️ Performance: Modal not found');
+                return;
+            }
+
+            console.log('🔧 Attaching performance event listeners...');
+
+            // Date picker change
+            const performanceDatePicker = modal.querySelector('#performanceDate');
+            if (performanceDatePicker) {
+                console.log('✅ Date picker found, attaching listener');
+                performanceDatePicker.addEventListener('change', (e) => {
+                    console.log('📅 Date picker changed:', e.target.value);
+                    this.selectedPerformanceDate = e.target.value;
+                    this.refreshPerformanceTab();
+                });
+            } else {
+                console.warn('⚠️ Date picker not found');
+            }
+
+            // Quick date buttons
+            const quickDateButtons = modal.querySelectorAll('.quick-date-btn');
+            console.log(`🔘 Found ${quickDateButtons.length} quick date buttons`);
+            quickDateButtons.forEach((btn, index) => {
+                console.log(`   Attaching to button ${index}: offset=${btn.getAttribute('data-offset')}`);
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('🖱️ Quick date button clicked!', {
+                        offset: btn.getAttribute('data-offset'),
+                        buttonText: btn.textContent
+                    });
+                    const offset = parseInt(btn.getAttribute('data-offset'));
+                    const date = new Date();
+                    date.setDate(date.getDate() + offset);
+                    this.selectedPerformanceDate = date.toISOString().split('T')[0];
+                    console.log('📅 New selected date:', this.selectedPerformanceDate);
+                    this.refreshPerformanceTab();
+                });
+            });
+
+            // Export PDF button
+            const exportPDFBtn = modal.querySelector('#exportPerformancePDF');
+            if (exportPDFBtn) {
+                console.log('📄 PDF export button found, attaching listener');
+                exportPDFBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    console.log('🖱️ Export PDF button clicked');
+                    await this.exportPerformancePDF();
+                });
+            } else {
+                console.warn('⚠️ PDF export button not found');
+            }
+
+            console.log('✅ Performance event listeners attached');
+        }
+
+        /**
+         * Refresh performance tab content
+         * רענון תוכן טאב ביצועים
+         */
+        async refreshPerformanceTab() {
+            const modal = document.getElementById('userDetailsModal');
+            if (!modal) {
+return;
+}
+
+            const contentContainer = modal.querySelector('.user-details-content');
+            if (!contentContainer) {
+return;
+}
+
+            // Re-render content
+            contentContainer.innerHTML = this.renderPerformanceTab();
+
+            // Re-attach event listeners
+            this.attachPerformanceEventListeners();
+
+            // Re-initialize chart
+            this.initializePerformanceChart();
+        }
+
+        /**
+         * Export performance report as PDF
+         * ייצוא דוח ביצועים ל-PDF
+         */
+        async exportPerformancePDF() {
+            const user = this.userData || this.currentUser;
+            if (!user) {
+                window.NotificationManager.show('לא ניתן לייצא דוח - אין נתוני משתמש', 'error');
+                return;
+            }
+
+            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
+
+            try {
+                console.log('📄 Exporting PDF for:', { email: user.email, date: selectedDate });
+
+                // Show loading notification
+                const loadingNotification = window.NotificationManager.show(
+                    'מייצא דוח PDF... אנא המתן',
+                    'info',
+                    10000
+                );
+
+                // Call Cloud Function
+                const generatePDF = firebase.functions().httpsCallable('generateDailyPerformancePDF');
+                const result = await generatePDF({
+                    email: user.email,
+                    date: selectedDate
+                });
+
+                // Close loading notification
+                loadingNotification.remove();
+
+                if (result.data.success) {
+                    console.log('✅ PDF generated successfully');
+
+                    // Convert base64 to blob
+                    const pdfBlob = this.base64ToBlob(result.data.pdf, 'application/pdf');
+
+                    // Create download link
+                    const url = URL.createObjectURL(pdfBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = result.data.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    window.NotificationManager.show('✅ דוח PDF הורד בהצלחה', 'success');
+                } else {
+                    throw new Error('PDF generation failed');
+                }
+
+            } catch (error) {
+                console.error('❌ PDF export failed:', error);
+                window.NotificationManager.show(
+                    `שגיאה בייצוא PDF: ${error.message}`,
+                    'error'
+                );
+            }
+        }
+
+        /**
+         * Convert base64 string to Blob
+         * המרת מחרוזת base64 ל-Blob
+         */
+        base64ToBlob(base64, contentType = '') {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: contentType });
+        }
+
+        /**
+         * Initialize Chart.js chart for client hours breakdown
+         * אתחול גרף Chart.js לפילוח שעות לקוחות
+         */
+        initializePerformanceChart() {
+            const canvas = document.getElementById('clientHoursChart');
+            if (!canvas) {
+return;
+}
+
+            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
+            const data = this.calculateDailyPerformance(selectedDate);
+
+            const clients = Object.keys(data.clientBreakdown);
+            const hours = Object.values(data.clientBreakdown);
+
+            if (clients.length === 0) {
+return;
+}
+
+            // Destroy existing chart
+            if (this.performanceChart) {
+                this.performanceChart.destroy();
+                this.performanceChart = null;
+            }
+
+            // Create new chart
+            const ctx = canvas.getContext('2d');
+            this.performanceChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: clients,
+                    datasets: [{
+                        data: hours,
+                        backgroundColor: [
+                            '#3b82f6', // Blue
+                            '#10b981', // Green
+                            '#f59e0b', // Amber
+                            '#ef4444', // Red
+                            '#8b5cf6', // Purple
+                            '#ec4899', // Pink
+                            '#14b8a6', // Teal
+                            '#f97316', // Orange
+                            '#06b6d4', // Cyan
+                            '#a855f7'  // Violet
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: true,
+                            labels: {
+                                font: {
+                                    family: 'Assistant, system-ui, sans-serif',
+                                    size: 12
+                                },
+                                padding: 12,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            rtl: true,
+                            textDirection: 'rtl',
+                            bodyFont: {
+                                family: 'Assistant, system-ui, sans-serif'
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} שעות (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
 
         /**
          * Categorize activity logs
@@ -2101,7 +2721,7 @@ return;
 
             // פורמט תאריך יעד (compact)
             // תמיכה ב-Firestore Timestamp, JavaScript Date, String, ו-Number
-            let deadlineText = '';
+            let deadlineText = null; // null = לא להציג כלל
             if (task.deadline) {
                 try {
                     let deadlineDate;
@@ -2123,15 +2743,14 @@ return;
                             month: 'short'
                         });
                     } else {
-                        deadlineText = 'תאריך לא תקין';
-                        console.warn('⚠️ UserDetailsModal: Invalid task deadline date');
+                        // תאריך לא תקין - לא נציג כלל
+                        deadlineText = null;
+                        console.warn('⚠️ UserDetailsModal: Invalid task deadline - hiding date row');
                     }
                 } catch (e) {
                     console.warn('Invalid deadline:', task.deadline, e);
-                    deadlineText = 'תאריך לא תקין';
+                    deadlineText = null; // לא נציג
                 }
-            } else {
-                deadlineText = 'לא הוגדר';
             }
 
             // סטטוס progress - בחירת צבע (רק לבר התקדמות!)
@@ -2153,11 +2772,13 @@ return;
                             <span>${this.escapeHtml(task.clientName)}</span>
                         </div>
 
-                        <!-- תאריך יעד - אייקון אפור -->
+                        <!-- תאריך יעד - אייקון אפור (רק אם תקין) -->
+                        ${deadlineText ? `
                         <div class="task-info-row">
                             <i class="fas fa-calendar-alt"></i>
                             <span>יעד: ${deadlineText}</span>
                         </div>
+                        ` : ''}
 
                         <!-- תקציב - אייקון אפור -->
                         ${task.estimatedHours > 0 ? `
@@ -2190,25 +2811,31 @@ return;
         }
 
         renderHoursCard(entry) {
-            // זיהוי סוג הפעילות
-            const isClientWork = !!entry.clientId;
+            // זיהוי סוג הפעילות - בדיקה אם זה פעילות פנימית
+            const isClientWork = !entry.isInternal;
             const iconClass = isClientWork ? 'fas fa-briefcase' : 'fas fa-building';
             const borderColor = isClientWork ? '#3b82f6' : '#94a3b8';
             const iconColor = isClientWork ? '#3b82f6' : '#64748b';
 
-            // תאריך
-            const date = new Date(entry.date);
-            const formattedDate = date.toLocaleDateString('he-IL', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
+            // תאריך - טיפול ב-Firebase Timestamp
+            let dateValue = entry.date;
+            if (dateValue && dateValue.toDate && typeof dateValue.toDate === 'function') {
+                dateValue = dateValue.toDate();
+            }
+            const date = new Date(dateValue);
+            const formattedDate = !isNaN(date.getTime())
+                ? date.toLocaleDateString('he-IL', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                })
+                : '-';
 
             // לקוח או פעילות פנימית
             const clientName = entry.clientName || 'פעילות פנימית';
 
-            // משימה (מקוצר)
-            let taskDesc = entry.taskDescription || '';
+            // משימה או תיאור פעולה (Fallback: אם אין משימה, הצג action)
+            let taskDesc = entry.taskDescription || entry.action || '';
             if (taskDesc.length > 50) {
                 taskDesc = taskDesc.substring(0, 50) + '...';
             }
@@ -2270,7 +2897,7 @@ return;
                             <i class="fas fa-tasks" style="color: #9ca3af; font-size: 12px; margin-top: 3px;"></i>
                             <div>
                                 <div style="font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-bottom: 3px;">משימה</div>
-                                <span style="color: #4b5563; font-size: 13px; line-height: 1.5;" title="${this.escapeHtml(entry.taskDescription || '')}">${this.escapeHtml(taskDesc)}</span>
+                                <span style="color: #4b5563; font-size: 13px; line-height: 1.5;" title="${this.escapeHtml(entry.taskDescription || entry.action || '')}">${this.escapeHtml(taskDesc)}</span>
                             </div>
                         </div>
                         ` : ''}
@@ -2329,24 +2956,41 @@ return;
          * רינדור שורת טבלה בודדת
          */
         renderHoursTableRow(entry) {
-            // פורמט תאריך
-            const date = new Date(entry.date);
-            const formattedDate = date.toLocaleDateString('he-IL', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
-
-            // יום בשבוע
-            const dayOfWeek = entry.dayOfWeek || date.toLocaleDateString('he-IL', { weekday: 'short' });
-
-            // שעה שנרשם
-            const createdTime = entry.createdAt
-                ? new Date(entry.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+            // פורמט תאריך - טיפול ב-Firebase Timestamp
+            let dateValue = entry.date;
+            if (dateValue && dateValue.toDate && typeof dateValue.toDate === 'function') {
+                dateValue = dateValue.toDate(); // Firebase Timestamp
+            }
+            const date = new Date(dateValue);
+            const formattedDate = !isNaN(date.getTime())
+                ? date.toLocaleDateString('he-IL', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                })
                 : '-';
 
-            // סוג - לקוח או פנימי
-            const isClientWork = entry.clientId;
+            // יום בשבוע
+            const dayOfWeek = entry.dayOfWeek || (!isNaN(date.getTime())
+                ? date.toLocaleDateString('he-IL', { weekday: 'short' })
+                : '-');
+
+            // שעה שנרשם - טיפול ב-Firebase Timestamp
+            let createdAtValue = entry.createdAt;
+            if (createdAtValue && createdAtValue.toDate && typeof createdAtValue.toDate === 'function') {
+                createdAtValue = createdAtValue.toDate();
+            }
+            const createdTime = createdAtValue
+                ? (() => {
+                    const createdDate = new Date(createdAtValue);
+                    return !isNaN(createdDate.getTime())
+                        ? createdDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+                        : '-';
+                })()
+                : '-';
+
+            // סוג - לקוח או פנימי - בדיקה אם זה פעילות פנימית
+            const isClientWork = !entry.isInternal;
             const rowClass = isClientWork ? 'row-client' : 'row-internal';
 
             // חיוב
@@ -2356,8 +3000,8 @@ return;
             // לקוח
             const clientName = entry.clientName || 'פעילות פנימית';
 
-            // משימה
-            const taskDesc = entry.taskDescription || '-';
+            // משימה או תיאור פעולה (Fallback: אם אין משימה, הצג action)
+            const taskDesc = entry.taskDescription || entry.action || '-';
 
             // הערות (קטן עד 50 תווים)
             const notes = entry.notes
@@ -3052,6 +3696,15 @@ return;
             // Re-setup events
             this.setupEvents();
 
+            // Initialize performance chart if switching to performance tab
+            if (tabId === 'performance') {
+                // Use setTimeout to ensure DOM is fully rendered
+                setTimeout(() => {
+                    this.attachPerformanceEventListeners();
+                    this.initializePerformanceChart();
+                }, 100);
+            }
+
             console.log(`✅ Switched to tab: ${tabId}`);
         }
 
@@ -3553,9 +4206,9 @@ return '';
 
             // סינון לפי סוג (לקוח/פנימי)
             if (this.hoursFilters.type === 'client') {
-                filtered = filtered.filter(entry => entry.clientId);
+                filtered = filtered.filter(entry => !entry.isInternal);
             } else if (this.hoursFilters.type === 'internal') {
-                filtered = filtered.filter(entry => !entry.clientId);
+                filtered = filtered.filter(entry => entry.isInternal);
             }
 
             // סינון לפי סטטוס חיוב
@@ -3571,6 +4224,7 @@ return '';
                 filtered = filtered.filter(entry =>
                     entry.clientName?.toLowerCase().includes(searchLower) ||
                     entry.taskDescription?.toLowerCase().includes(searchLower) ||
+                    entry.action?.toLowerCase().includes(searchLower) ||
                     entry.notes?.toLowerCase().includes(searchLower)
                 );
             }
@@ -3626,7 +4280,7 @@ return '';
          * חישוב פירוט לפי לקוחות
          */
         calculateClientBreakdown(hours) {
-            const clientHours = hours.filter(e => e.clientId);
+            const clientHours = hours.filter(e => !e.isInternal);
             const totalClientHours = clientHours.reduce((sum, entry) => sum + (entry.hours || 0), 0);
 
             if (totalClientHours === 0) {
@@ -4352,13 +5006,13 @@ return;
                             <div style="display: flex; flex-direction: column; gap: 8px;">
                                 <label style="font-weight: 600; font-size: 14px; color: #374151; display: flex; align-items: center; gap: 8px;">
                                     <i class="fas fa-tasks" style="color: #f59e0b;"></i>
-                                    תיאור משימה
+                                    תיאור משימה/פעולה
                                 </label>
                                 <input
                                     type="text"
                                     id="edit-hour-description"
-                                    value="${this.escapeHtml(entry.taskDescription || '')}"
-                                    placeholder="תיאור המשימה..."
+                                    value="${this.escapeHtml(entry.taskDescription || entry.action || '')}"
+                                    placeholder="תיאור המשימה או הפעולה..."
                                     style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;"
                                     required
                                 />
@@ -4544,7 +5198,7 @@ return;
                 // הצג דיאלוג אישור
                 if (window.NotificationManager) {
                     window.NotificationManager.confirm(
-                        `האם למחוק רשומה זו?\n\nמשימה: ${entry.taskDescription || 'ללא תיאור'}\nשעות: ${(entry.hours || 0).toFixed(2)}\nתאריך: ${new Date(entry.date).toLocaleDateString('he-IL')}`,
+                        `האם למחוק רשומה זו?\n\nתיאור: ${entry.taskDescription || entry.action || 'ללא תיאור'}\nשעות: ${(entry.hours || 0).toFixed(2)}\nתאריך: ${new Date(entry.date).toLocaleDateString('he-IL')}`,
                         async () => {
                             // אושר - ביצוע מחיקה
                             console.log('✅ Delete confirmed for entry:', entryId);

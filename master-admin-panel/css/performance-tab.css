@@ -1,0 +1,484 @@
+/**
+ * Performance Tab Styles - System-Aligned Professional Design
+ * טאב ביצועים יומיים - עיצוב מקצועי תואם למערכת
+ *
+ * @version 3.0.0
+ * @updated 2025-12-15
+ * @note Uses system CSS variables for consistency
+ */
+
+/* ============================================
+   Container & Layout
+   ============================================ */
+
+.performance-container {
+    padding: var(--space-4);
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* ============================================
+   Date Selector - Clean & Minimal
+   ============================================ */
+
+.date-selector-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+    padding: var(--space-4) var(--space-5);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+}
+
+.quick-dates {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.quick-date-btn {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--gray-300);
+    background: white;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--gray-700);
+    transition: var(--transition-fast);
+}
+
+.quick-date-btn:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+    color: var(--gray-900);
+}
+
+.quick-date-btn:active {
+    background: var(--gray-100);
+}
+
+.date-picker-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.date-picker-container label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--gray-700);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.date-picker-container label i {
+    color: var(--blue);
+}
+
+.date-picker-container input[type="date"] {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    background: white;
+    color: var(--gray-900);
+    transition: var(--transition-fast);
+}
+
+.date-picker-container input[type="date"]:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
+}
+
+.date-picker-container input[type="date"]:hover {
+    border-color: var(--gray-400);
+}
+
+.btn-export-pdf {
+    padding: var(--space-2) var(--space-5);
+    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    transition: var(--transition-fast);
+    box-shadow: 0 2px 8px rgb(59 130 246 / 25%);
+}
+
+.btn-export-pdf:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 35%);
+}
+
+.btn-export-pdf:active {
+    transform: translateY(0);
+}
+
+.btn-export-pdf i {
+    font-size: var(--text-base);
+}
+
+/* ============================================
+   Summary Section - Data Table Style
+   ============================================ */
+
+.daily-summary-cards h3 {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+    margin-bottom: var(--space-4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+}
+
+/* Clean Card Design - SCOPED TO PERFORMANCE TAB */
+.performance-container .summary-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    transition: var(--transition-fast);
+}
+
+.performance-container .summary-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+/* Main Card - Subtle Emphasis */
+.performance-container .summary-card.main-card {
+    grid-column: 1 / -1;
+    background: var(--gray-50);
+    border: 2px solid var(--gray-900);
+}
+
+.performance-container .card-icon {
+    display: none; /* Remove all emojis */
+}
+
+.performance-container .card-content {
+    width: 100%;
+}
+
+.performance-container .card-label {
+    font-size: var(--text-xs);
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-2);
+    font-weight: var(--font-semibold);
+}
+
+.performance-container .card-value {
+    font-size: var(--text-3xl);
+    font-weight: var(--font-bold);
+    color: var(--gray-900);
+    line-height: 1;
+    margin-bottom: var(--space-3);
+}
+
+.performance-container .summary-card.main-card .card-value {
+    font-weight: var(--font-bold);
+}
+
+.performance-container .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin-top: var(--space-2);
+}
+
+/* Clean Progress Bar - SCOPED */
+.performance-container .progress-bar {
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: var(--space-3) 0;
+}
+
+.performance-container .progress-fill {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+/* ============================================
+   Charts Section
+   ============================================ */
+
+.charts-section {
+    margin-top: var(--space-6);
+    padding: var(--space-5);
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+}
+
+.charts-section h4 {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+    margin-bottom: var(--space-5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 0 auto;
+    max-width: 500px;
+}
+
+/* ============================================
+   Hours Breakdown - Table Style
+   ============================================ */
+
+.hours-breakdown-section {
+    margin-top: var(--space-6);
+    padding: var(--space-5);
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+}
+
+.hours-breakdown-section h4 {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+    margin-bottom: var(--space-4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.hours-entry-row {
+    display: grid;
+    grid-template-columns: 70px 3rem 1fr auto;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--gray-100);
+    transition: var(--transition-fast);
+}
+
+.hours-entry-row:hover {
+    background: var(--gray-50);
+}
+
+.hours-entry-row:last-child {
+    border-bottom: none;
+}
+
+.entry-time {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    font-family: monospace;
+    text-align: center;
+}
+
+.entry-icon {
+    font-size: var(--text-xs);
+    text-align: center;
+    color: var(--gray-500);
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.entry-details {
+    min-width: 0;
+}
+
+.entry-client {
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+    color: var(--gray-900);
+    margin-bottom: 2px;
+}
+
+.entry-description {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.entry-hours {
+    font-weight: var(--font-bold);
+    color: var(--blue);
+    font-size: var(--text-base);
+    white-space: nowrap;
+}
+
+/* ============================================
+   Completed Tasks
+   ============================================ */
+
+.completed-tasks-section {
+    margin-top: var(--space-6);
+    padding: var(--space-5);
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+}
+
+.completed-tasks-section h4 {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+    margin-bottom: var(--space-4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tasks-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.completed-task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--gray-100);
+    transition: var(--transition-fast);
+}
+
+.completed-task-item:hover {
+    background: var(--gray-50);
+}
+
+.completed-task-item:last-child {
+    border-bottom: none;
+}
+
+.completed-task-item i {
+    font-size: var(--text-lg);
+    color: var(--green);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.task-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-title {
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+    color: var(--gray-900);
+    margin-bottom: var(--space-1);
+}
+
+.task-meta {
+    font-size: var(--text-xs);
+    color: var(--gray-600);
+    display: flex;
+    gap: var(--space-3);
+}
+
+/* ============================================
+   No Data Message
+   ============================================ */
+
+.no-data-message {
+    padding: var(--space-12);
+    text-align: center;
+    color: var(--gray-500);
+    font-size: var(--text-base);
+    background: var(--gray-50);
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius-lg);
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+
+@media (width <= 768px) {
+    .performance-container {
+        padding: var(--space-3);
+    }
+
+    .date-selector-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .quick-dates {
+        justify-content: center;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hours-entry-row {
+        grid-template-columns: 60px 2rem 1fr;
+        gap: var(--space-2);
+    }
+
+    .entry-hours {
+        grid-column: 3;
+        text-align: left;
+        margin-left: var(--space-8);
+    }
+}
+
+@media (width <= 480px) {
+    .performance-container .card-value {
+        font-size: var(--text-2xl);
+    }
+
+    .performance-container .summary-card {
+        padding: var(--space-4);
+    }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+    .performance-container {
+        background: white;
+    }
+
+    .quick-date-btn {
+        display: none;
+    }
+
+    .performance-container .summary-card,
+    .charts-section,
+    .hours-breakdown-section,
+    .completed-tasks-section {
+        break-inside: avoid;
+        border-color: #000;
+    }
+}

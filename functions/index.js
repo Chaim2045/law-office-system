@@ -7451,4 +7451,10 @@ exports.deleteFeeAgreement = functions.https.onCall(async (data, context) => {
   }
 });
 
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Smart Bot 🤖 + Delete User Data + Delete User Data Selective 🔒 + Fee Agreements 📄)');
+// ===============================
+// 📊 PDF Reports - Generate Professional Reports
+// ===============================
+const { generateDailyPerformancePDF } = require('./reports/generateDailyPerformancePDF');
+exports.generateDailyPerformancePDF = generateDailyPerformancePDF;
+
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Smart Bot 🤖 + Delete User Data + Delete User Data Selective 🔒 + Fee Agreements 📄 + PDF Reports 📊)');
