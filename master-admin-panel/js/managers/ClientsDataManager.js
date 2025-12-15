@@ -29,6 +29,7 @@
             this.searchTerm = '';
             this.statusFilter = 'all';
             this.typeFilter = 'all';
+            this.agreementFilter = 'all'; // פילטר הסכמי שכר טרחה
             this.sortBy = 'name';
             this.sortOrder = 'asc';
 
@@ -320,7 +321,8 @@
                 total: this.clients.length,
                 active: this.clients.filter(c => c.status === 'active').length,
                 blocked: this.clients.filter(c => c.isBlocked === true).length,
-                critical: this.clients.filter(c => c.isCritical === true && !c.isBlocked).length
+                critical: this.clients.filter(c => c.isCritical === true && !c.isBlocked).length,
+                noAgreement: this.clients.filter(c => !c.feeAgreements || c.feeAgreements.length === 0).length
             };
 
             // Update stats cards
@@ -338,6 +340,12 @@
             document.getElementById('activeClientsStat').textContent = stats.active;
             document.getElementById('blockedClientsStat').textContent = stats.blocked;
             document.getElementById('criticalClientsStat').textContent = stats.critical;
+
+            // עדכון כרטיס ללא הסכם שכר טרחה
+            const noAgreementStat = document.getElementById('noAgreementClientsStat');
+            if (noAgreementStat) {
+                noAgreementStat.textContent = stats.noAgreement;
+            }
         }
 
         /**
@@ -373,6 +381,17 @@
             // Type filter
             if (this.typeFilter !== 'all') {
                 filtered = filtered.filter(c => c.type === this.typeFilter);
+            }
+
+            // Agreement filter - בדיקה מדויקת
+            if (this.agreementFilter !== 'all') {
+                if (this.agreementFilter === 'no-agreement') {
+                    // סנן רק לקוחות ללא הסכם שכר טרחה
+                    filtered = filtered.filter(c => !c.feeAgreements || c.feeAgreements.length === 0);
+                } else if (this.agreementFilter === 'has-agreement') {
+                    // סנן רק לקוחות עם הסכם שכר טרחה
+                    filtered = filtered.filter(c => c.feeAgreements && c.feeAgreements.length > 0);
+                }
             }
 
             // Sort
@@ -561,6 +580,17 @@
          */
         setTypeFilter(type) {
             this.typeFilter = type;
+            this.currentPage = 1;
+            this.applyFilters();
+            this.updateUI();
+        }
+
+        /**
+         * Set agreement filter
+         * הגדרת פילטר הסכמי שכר טרחה
+         */
+        setAgreementFilter(filter) {
+            this.agreementFilter = filter;
             this.currentPage = 1;
             this.applyFilters();
             this.updateUI();

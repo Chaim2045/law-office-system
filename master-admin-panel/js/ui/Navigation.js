@@ -20,6 +20,7 @@
         constructor() {
             this.container = null;
             this.currentPage = null;
+            this.approvalCountInterval = null; // Polling interval לספירת אישורים
         }
 
         /**
@@ -36,6 +37,9 @@
             }
 
             this.render();
+
+            // התחל להקשיב למספר האישורים הממתינים
+            this.startApprovalCountListener();
         }
 
         /**
@@ -75,7 +79,8 @@ return;
                             <i class="fas fa-bullhorn"></i>
                             <span>הודעות מערכת</span>
                         </button>
-                        <a href="task-approvals.html" class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" title="אישורי תקציב משימות">
+                        <a href="task-approvals.html" class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" title="אישורי תקציב משימות" style="position: relative;">
+                            <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
                             <i class="fas fa-clipboard-check"></i>
                             <span>אישורי משימות</span>
                         </a>
@@ -279,6 +284,28 @@ return;
                     font-size: 14px;
                 }
 
+                /* Approval Count Badge */
+                .approval-count-badge {
+                    position: absolute;
+                    top: -6px;
+                    left: -6px;
+                    min-width: 20px;
+                    height: 20px;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    color: white;
+                    border-radius: 50px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0 6px;
+                    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+                    border: 2px solid white;
+                    z-index: 10;
+                    pointer-events: none;
+                }
+
                 /* Add margin to main content */
                 body {
                     padding-top: 76px;
@@ -326,6 +353,69 @@ return;
             `;
 
             document.head.appendChild(style);
+        }
+
+        /**
+         * Start polling pending approvals count
+         * התחל polling למספר האישורים הממתינים
+         */
+        startApprovalCountListener() {
+            // וודא ש-Firebase זמין
+            if (!window.firebaseDB) {
+                console.warn('⚠️ Firebase DB not available for approval count');
+                return;
+            }
+
+            // פונקציה לעדכון המונה
+            const updateCount = async () => {
+                try {
+                    const snapshot = await window.firebaseDB
+                        .collection('pending_task_approvals')
+                        .where('status', '==', 'pending')
+                        .get();
+                    this.updateApprovalCountBadge(snapshot.size);
+                } catch (error) {
+                    console.error('❌ Error getting approval count:', error);
+                }
+            };
+
+            // עדכון מיידי
+            updateCount();
+
+            // Polling כל 30 שניות (במקום real-time)
+            this.approvalCountInterval = setInterval(updateCount, 30000);
+
+            console.log('✅ Started approval count polling (every 30s)');
+        }
+
+        /**
+         * Update approval count badge
+         * עדכן מונה אישורים
+         */
+        updateApprovalCountBadge(count) {
+            const badge = document.getElementById('approvalCountBadge');
+            if (!badge) {
+return;
+}
+
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        /**
+         * Stop approval count polling
+         * עצור polling ספירת אישורים
+         */
+        stopApprovalCountListener() {
+            if (this.approvalCountInterval) {
+                clearInterval(this.approvalCountInterval);
+                this.approvalCountInterval = null;
+                console.log('🛑 Stopped approval count polling');
+            }
         }
 
         /**

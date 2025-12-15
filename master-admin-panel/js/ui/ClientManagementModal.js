@@ -129,7 +129,9 @@
          * רינדור כותרת מידע לקוח
          */
         renderClientInfo() {
-            if (!this.currentClient) return;
+            if (!this.currentClient) {
+return;
+}
 
             const client = this.currentClient;
             const createdDate = client.createdAt
@@ -139,10 +141,20 @@
             const totalServices = client.services?.length || 0;
             const activeServices = client.services?.filter(s => s.status === 'active').length || 0;
 
+            // בדיקה - האם חסר הסכם שכר טרחה?
+            const hasAgreement = client.feeAgreements && client.feeAgreements.length > 0;
+            const noAgreementBadge = !hasAgreement ? `
+                <span class="no-agreement-badge">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>חסר הסכם שכ"ט</span>
+                </span>
+            ` : '';
+
             this.clientInfoContainer.innerHTML = `
                 <div class="management-client-name">
                     <i class="fas fa-user-circle"></i>
                     ${this.escapeHtml(client.fullName)}
+                    ${noAgreementBadge}
                 </div>
                 <div class="management-client-meta">
                     <div class="management-client-meta-item">
@@ -166,7 +178,9 @@
          * רינדור רשימת שירותים
          */
         renderServices() {
-            if (!this.currentClient) return;
+            if (!this.currentClient) {
+return;
+}
 
             const services = this.currentClient.services || [];
 
@@ -234,8 +248,9 @@
                         <div class="management-service-header-left">
                             <div class="management-service-title">
                                 <i class="fas ${this.getServiceIcon(service.type)}"></i>
-                                ${this.escapeHtml(service.serviceName || 'שירות')}
+                                שירות
                             </div>
+                            <span class="management-service-badge service-name" title="${service.name || 'ללא שם'}"><i class="fas fa-tag"></i> ${this.escapeHtml(this.truncateServiceName(service.name || 'ללא שם'))}</span>
                             ${typeBadge}
                         </div>
                         <i class="fas fa-chevron-down management-service-toggle"></i>
@@ -391,7 +406,9 @@
          * רינדור שלבים להליך משפטי
          */
         renderStages(stages) {
-            if (!stages || stages.length === 0) return '';
+            if (!stages || stages.length === 0) {
+return '';
+}
 
             // Calculate progress percentage
             const completedCount = stages.filter(s => s.status === 'completed').length;
@@ -468,7 +485,7 @@
          * קבלת פעולות זמינות לשירות
          */
         getServiceActions(service) {
-            let actions = [];
+            const actions = [];
 
             if (service.type === 'hours') {
                 actions.push(`<button class="management-service-action-btn primary" data-service-action="renew" data-service-id="${service.id}">
@@ -693,7 +710,7 @@
             }
 
             // Build service object based on type
-            let newService = {
+            const newService = {
                 id: 'service_' + Date.now(),
                 serviceName: serviceName,
                 serviceType: serviceType,
@@ -854,7 +871,9 @@
             const message = `סטטוס נוכחי: ${currentStatusText}\n\nבחר סטטוס חדש:\n1 - פעיל\n2 - לא פעיל\n3 - חסום\n4 - קריטי`;
             const choice = prompt(message, '1');
 
-            if (!choice) return; // User cancelled
+            if (!choice) {
+return;
+} // User cancelled
 
             const choiceNum = parseInt(choice);
             if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > 4) {
@@ -1325,6 +1344,18 @@
         }
 
         /**
+         * Truncate service name for badge display
+         * קיצור שם שירות לתצוגה בבאדג'
+         */
+        truncateServiceName(name) {
+            const maxLength = 20;
+            if (name.length <= maxLength) {
+                return name;
+            }
+            return name.substring(0, maxLength) + '...';
+        }
+
+        /**
          * Show loading indicator
          * הצגת אינדיקטור טעינה
          */
@@ -1371,15 +1402,26 @@
          */
         renderFeeAgreements() {
             const container = document.getElementById('feeAgreementsList');
-            if (!container) return;
+            if (!container) {
+return;
+}
 
             const agreements = this.currentClient?.feeAgreements || [];
 
             if (agreements.length === 0) {
                 container.innerHTML = `
                     <div class="fee-agreements-empty">
-                        <i class="fas fa-file-contract"></i>
-                        <p>אין הסכמי שכר טרחה</p>
+                        <div class="empty-state-icon">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                        <div class="empty-state-content">
+                            <h4 class="empty-state-title">אין הסכמי שכר טרחה</h4>
+                            <p class="empty-state-text">העלה הסכם שכר טרחה כדי להתחיל</p>
+                            <button class="empty-state-btn" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>העלאת הסכם</span>
+                            </button>
+                        </div>
                     </div>
                 `;
                 return;
@@ -1430,7 +1472,13 @@
                 `;
             }).join('');
 
-            container.innerHTML = agreementsHTML;
+            container.innerHTML = `
+                ${agreementsHTML}
+                <button class="fee-agreement-add-btn" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
+                    <i class="fas fa-plus"></i>
+                    <span>הוסף הסכם נוסף</span>
+                </button>
+            `;
 
             // Attach action listeners
             this.attachFeeAgreementActionListeners();
@@ -1444,7 +1492,9 @@
             const uploadBtn = document.getElementById('uploadFeeAgreementBtn');
             const fileInput = document.getElementById('feeAgreementInput');
 
-            if (!uploadBtn || !fileInput) return;
+            if (!uploadBtn || !fileInput) {
+return;
+}
 
             // Remove existing listeners to prevent duplicates
             uploadBtn.replaceWith(uploadBtn.cloneNode(true));
@@ -1476,7 +1526,9 @@
          */
         attachFeeAgreementActionListeners() {
             const container = document.getElementById('feeAgreementsList');
-            if (!container) return;
+            if (!container) {
+return;
+}
 
             const actionButtons = container.querySelectorAll('[data-action]');
             actionButtons.forEach(button => {
@@ -1538,6 +1590,7 @@
 
                     // Re-render
                     this.renderFeeAgreements();
+                    this.renderClientInfo(); // עדכן את הכותרת כדי להסיר את תג האזהרה
 
                     this.hideLoading();
                     this.showNotification('ההסכם הועלה בהצלחה', 'success');
@@ -1609,6 +1662,7 @@
 
                     // Re-render
                     this.renderFeeAgreements();
+                    this.renderClientInfo(); // עדכן את הכותרת (אם זה היה ההסכם האחרון - יופיע תג אזהרה)
 
                     this.hideLoading();
                     this.showNotification('ההסכם נמחק בהצלחה', 'success');
@@ -1650,7 +1704,9 @@
          * פורמט גודל קובץ
          */
         formatFileSize(bytes) {
-            if (!bytes || bytes === 0) return '0 B';
+            if (!bytes || bytes === 0) {
+return '0 B';
+}
 
             const units = ['B', 'KB', 'MB', 'GB'];
             let unitIndex = 0;

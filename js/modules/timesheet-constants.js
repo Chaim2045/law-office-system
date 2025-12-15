@@ -70,6 +70,17 @@ export const BADGE_STYLES = {
       color: '#0369a1', // כחול כהה
       border: '0.5px solid #bae6fd' // גבול דק וקל
     },
+    pending_approval: {
+      padding: '5px 10px',
+      fontSize: '10px',
+      fontWeight: '500',
+      borderRadius: '16px',
+      background: '#f0f9ff', // רקע כחול בהיר (כמו "פעיל")
+      color: '#0369a1', // כחול כהה
+      border: '0.5px solid #bae6fd', // גבול כחול
+      icon: '🔒',
+      displayText: '' // רק אייקון, ללא טקסט
+    },
     הושלם: {
       padding: '5px 10px',
       fontSize: '10px',
@@ -213,10 +224,11 @@ export function createStatusBadge(status, customStyles = {}) {
     .join('; ');
 
   const icon = style.icon ? `${style.icon} ` : '';
+  const displayText = style.displayText || status; // שימוש ב-displayText אם קיים, אחרת status
 
   return `
     <span style="${styleString}">
-      ${icon}${escapeHtml(status)}
+      ${icon}${escapeHtml(displayText)}
     </span>
   `;
 }
@@ -260,7 +272,9 @@ export function createServiceInfoHeader(caseNumber, serviceName) {
  * @returns {string} Escaped text
  */
 function escapeHtml(text) {
-  if (!text) return '';
+  if (!text) {
+return '';
+}
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;

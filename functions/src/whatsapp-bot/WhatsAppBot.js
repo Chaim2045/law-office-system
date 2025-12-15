@@ -101,6 +101,11 @@ class WhatsAppBot {
             return await this.handleUploadAgreementContext(message, session, userInfo);
         }
 
+        // אם המשתמש במצב של המתנה לשם לקוח להעלאת מסמך
+        if (session.context === 'upload_agreement_awaiting_client') {
+            return await this.handleAwaitingClientNameContext(message, session, userInfo);
+        }
+
         // ═══ זיהוי פקודות מהתפריט ═══
 
         // 1️⃣ משימות לאישור
@@ -1377,10 +1382,49 @@ class WhatsAppBot {
                 return '⚠️ יש לך כבר מסמך הממתין לאישור.\nאשר או דחה אותו קודם.';
             }
 
-            // חלץ שם לקוח מהכיתוב
-            const clientName = caption.trim();
+            // בדוק אם המשתמש בתהליך המתנה לשם לקוח
+            if (session.context === 'upload_agreement_awaiting_client') {
+                return '⚠️ יש לך כבר מסמך שממתין לקבלת שם לקוח.\nענה על השאלה או כתוב "ביטול" לביטול.';
+            }
+
+            // חלץ שם לקוח מהכיתוב והסר סיומות קבצים
+            let clientName = caption.trim();
+
+            // הסר סיומות קבצים נפוצות (.pdf, .jpg, וכו')
+            clientName = clientName
+                .replace(/\.(pdf|jpg|jpeg|png|webp|doc|docx)$/i, '')
+                .trim();
+
+            // אם אין שם לקוח - הורד את הקובץ ושאל את המשתמש
             if (!clientName) {
-                return `❌ נא לכלול שם לקוח בכיתוב.\n\nדוגמה:\nשלח PDF עם כיתוב "דוד כהן"`;
+                console.log(`📥 No client name provided, downloading file and asking user...`);
+
+                // הורד את הקובץ מ-Twilio
+                const fileBuffer = await this.downloadMediaFromTwilio(mediaUrl);
+                const fileSize = fileBuffer.length;
+
+                // בדוק גודל (מקסימום 10MB)
+                const maxSize = 10 * 1024 * 1024;
+                if (fileSize > maxSize) {
+                    return `❌ הקובץ גדול מדי: ${(fileSize / 1024 / 1024).toFixed(2)}MB\n\nמקסימום: 10MB`;
+                }
+
+                console.log(`✅ File downloaded: ${fileSize} bytes, asking for client name...`);
+
+                // שמור את הקובץ בsession וחכה לשם לקוח
+                const originalFileName = `agreement_${Date.now()}.${this.getFileExtension(contentType)}`;
+                await this.sessionManager.updateSession(phoneNumber, {
+                    context: 'upload_agreement_awaiting_client',
+                    data: {
+                        mediaUrl,
+                        contentType,
+                        originalFileName,
+                        fileBuffer: fileBuffer.toString('base64'),
+                        fileSize
+                    }
+                });
+
+                return `📎 מסמך התקבל!\n\n━━━━━━━━━━━━━━━━━━━━\n📄 סוג: ${this.getFileTypeHebrew(contentType)}\n💾 גודל: ${(fileSize / 1024).toFixed(0)}KB\n━━━━━━━━━━━━━━━━━━━━\n\n❓ לאיזה לקוח לצרף את המסמך?\n\n💡 כתוב את שם הלקוח (שם פרטי או משפחה)\n❌ או כתוב "ביטול" לביטול`;
             }
 
             console.log(`🔍 Searching for client: "${clientName}"`);
@@ -1416,7 +1460,19 @@ class WhatsAppBot {
                     fileBuffer: fileBuffer.toString('base64'), // שמור כ-base64
                     fileSize,
                     clientName,
-                    matchingClients: matchingClients.map(c => ({ id: c.id, name: c.name, idNumber: c.idNumber }))
+                    matchingClients: matchingClients.map(c => {
+                        // סנן ערכים undefined כדי למנוע שגיאת Firestore
+                        const clientData = {
+                            id: c.id,
+                            name: c.name,
+                            type: c.type
+                        };
+                        if (c.idNumber) clientData.idNumber = c.idNumber;
+                        if (c.phone) clientData.phone = c.phone;
+                        if (c.email) clientData.email = c.email;
+                        if (c.caseTitle) clientData.caseTitle = c.caseTitle;
+                        return clientData;
+                    })
                 }
             });
 
@@ -1430,11 +1486,18 @@ class WhatsAppBot {
 
             matchingClients.forEach((client, index) => {
                 response += `${index + 1}️⃣ ${client.name}\n`;
-                if (client.idNumber) {
-                    response += `   ת.ז. ${client.idNumber}\n`;
-                }
-                if (client.phone) {
-                    response += `   📞 ${client.phone}\n`;
+
+                // הצג סוג (תיק או לקוח)
+                if (client.type === 'case') {
+                    response += `   📋 תיק: ${client.caseTitle || 'הליך משפטי'}\n`;
+                    response += `   🔢 מספר תיק: ${client.idNumber}\n`;
+                } else {
+                    if (client.idNumber) {
+                        response += `   ת.ז. ${client.idNumber}\n`;
+                    }
+                    if (client.phone) {
+                        response += `   📞 ${client.phone}\n`;
+                    }
                 }
                 response += `\n`;
             });
@@ -1469,64 +1532,85 @@ class WhatsAppBot {
 
         return new Promise((resolve, reject) => {
             const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
-            const protocol = mediaUrl.startsWith('https') ? https : http;
 
-            const options = {
-                headers: {
-                    'Authorization': `Basic ${auth}`
-                }
-            };
-
-            protocol.get(mediaUrl, options, (response) => {
-                if (response.statusCode !== 200) {
-                    reject(new Error(`Failed to download: ${response.statusCode}`));
+            const downloadFromUrl = (url, redirectCount = 0) => {
+                if (redirectCount > 5) {
+                    reject(new Error('Too many redirects'));
                     return;
                 }
 
-                const chunks = [];
-                response.on('data', (chunk) => chunks.push(chunk));
-                response.on('end', () => resolve(Buffer.concat(chunks)));
-                response.on('error', reject);
-            }).on('error', reject);
+                const protocol = url.startsWith('https') ? https : http;
+                const options = {
+                    headers: {
+                        'Authorization': `Basic ${auth}`
+                    }
+                };
+
+                protocol.get(url, options, (response) => {
+                    // טיפול ב-redirects (301, 302, 307, 308)
+                    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                        console.log(`📍 Redirect ${response.statusCode} to: ${response.headers.location}`);
+                        downloadFromUrl(response.headers.location, redirectCount + 1);
+                        return;
+                    }
+
+                    if (response.statusCode !== 200) {
+                        reject(new Error(`Failed to download: ${response.statusCode}`));
+                        return;
+                    }
+
+                    const chunks = [];
+                    response.on('data', (chunk) => chunks.push(chunk));
+                    response.on('end', () => resolve(Buffer.concat(chunks)));
+                    response.on('error', reject);
+                }).on('error', reject);
+            };
+
+            downloadFromUrl(mediaUrl);
         });
     }
 
     /**
      * ═══════════════════════════════════════════════════════════
-     * חיפוש לקוחות לפי שם
+     * חיפוש לקוחות ותיקים לפי שם
      * ═══════════════════════════════════════════════════════════
      */
     async searchClients(searchTerm) {
         try {
-            const searchLower = searchTerm.toLowerCase().trim();
-            console.log(`🔍 Searching clients for: "${searchLower}"`);
-
-            // קבל את כל הלקוחות (בדרך כלל מעט מאות)
-            const snapshot = await this.db.collection('clients')
-                .where('status', '==', 'פעיל')
-                .get();
+            // נרמול החיפוש - הסרת רווחים מיותרים ו-lowercase
+            const searchNormalized = searchTerm.toLowerCase().trim().replace(/\s+/g, ' ');
+            console.log(`🔍 Searching clients and cases for: "${searchNormalized}"`);
 
             const matches = [];
 
-            snapshot.forEach(doc => {
+            // ═══ חיפוש ב-clients ═══
+            // הערה: הסטטוס במערכת הוא 'active' (אנגלית), לא 'פעיל' (עברית)
+            const clientsSnapshot = await this.db.collection('clients')
+                .where('status', '==', 'active')
+                .get();
+
+            clientsSnapshot.forEach(doc => {
                 const client = doc.data();
-                const clientName = (client.name || '').toLowerCase();
+                // השתמש ב-fullName או clientName (השדות שבאמת קיימים ב-Firestore)
+                const name = client.fullName || client.clientName || client.name || '';
+                // נרמול שם הלקוח - הסרת רווחים מיותרים ו-lowercase
+                const clientName = name.toLowerCase().trim().replace(/\s+/g, ' ');
                 const clientId = doc.id;
 
                 // התאמה מדויקת או חלקית
-                // בודק: שם מלא, שם פרטי, שם משפחה
-                if (clientName.includes(searchLower) || searchLower.includes(clientName)) {
+                if (clientName.includes(searchNormalized) || searchNormalized.includes(clientName)) {
                     matches.push({
                         id: clientId,
-                        name: client.name,
+                        name: name,
                         idNumber: client.idNumber,
                         phone: client.phone,
-                        email: client.email
+                        email: client.email,
+                        type: 'client'
                     });
                 } else {
                     // בדוק גם מילים נפרדות
                     const nameParts = clientName.split(/\s+/);
-                    const searchParts = searchLower.split(/\s+/);
+                    const searchParts = searchNormalized.split(/\s+/);
 
                     const hasMatch = searchParts.some(sp =>
                         nameParts.some(np => np.includes(sp) || sp.includes(np))
@@ -1535,29 +1619,37 @@ class WhatsAppBot {
                     if (hasMatch) {
                         matches.push({
                             id: clientId,
-                            name: client.name,
+                            name: name,
                             idNumber: client.idNumber,
                             phone: client.phone,
-                            email: client.email
+                            email: client.email,
+                            type: 'client'
                         });
                     }
                 }
             });
 
-            console.log(`✅ Found ${matches.length} matching clients`);
+            // הערה: במערכת הזו, clients = cases (לאחר מיגרציה)
+            // לכן אין צורך בחיפוש נפרד ב-cases collection
 
-            // מיון לפי התאמה - התאמה מדויקת קודם
+            console.log(`✅ Found ${matches.length} matching clients/cases (${matches.filter(m => m.type === 'client').length} clients, ${matches.filter(m => m.type === 'case').length} cases)`);
+
+            // מיון לפי התאמה - התאמה מדויקת קודם, אחר כך clients לפני cases
             matches.sort((a, b) => {
-                const aName = a.name.toLowerCase();
-                const bName = b.name.toLowerCase();
+                const aName = a.name.toLowerCase().trim().replace(/\s+/g, ' ');
+                const bName = b.name.toLowerCase().trim().replace(/\s+/g, ' ');
 
                 // התאמה מדויקת
-                if (aName === searchLower) return -1;
-                if (bName === searchLower) return 1;
+                if (aName === searchNormalized) return -1;
+                if (bName === searchNormalized) return 1;
 
                 // מתחיל ב
-                if (aName.startsWith(searchLower)) return -1;
-                if (bName.startsWith(searchLower)) return 1;
+                if (aName.startsWith(searchNormalized)) return -1;
+                if (bName.startsWith(searchNormalized)) return 1;
+
+                // clients לפני cases
+                if (a.type === 'client' && b.type === 'case') return -1;
+                if (a.type === 'case' && b.type === 'client') return 1;
 
                 // אלפביתי
                 return aName.localeCompare(bName, 'he');
@@ -1567,9 +1659,81 @@ class WhatsAppBot {
             return matches.slice(0, 5);
 
         } catch (error) {
-            console.error('❌ Error searching clients:', error);
+            console.error('❌ Error searching clients/cases:', error);
             return [];
         }
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════
+     * טיפול בהקשר של המתנה לשם לקוח
+     * ═══════════════════════════════════════════════════════════
+     */
+    async handleAwaitingClientNameContext(message, session, userInfo) {
+        const clientName = message.trim();
+
+        if (!clientName) {
+            return `❌ נא לכתוב שם לקוח.\n\nדוגמה: "דוד כהן"\nאו כתוב "ביטול" לביטול`;
+        }
+
+        console.log(`🔍 Searching for client based on user input: "${clientName}"`);
+
+        // חפש לקוחות
+        const matchingClients = await this.searchClients(clientName);
+
+        if (matchingClients.length === 0) {
+            return `❌ לא נמצא לקוח בשם "${clientName}"\n\nנסה:\n• שם מלא\n• שם פרטי או משפחה\n• בדוק איות\n\n💡 או כתוב "ביטול" לביטול`;
+        }
+
+        // עדכן session עם הלקוחות שנמצאו
+        await this.sessionManager.updateSession(session.phoneNumber, {
+            context: 'upload_agreement_confirm',
+            data: {
+                ...session.data,
+                clientName,
+                matchingClients: matchingClients.map(c => {
+                    // סנן ערכים undefined כדי למנוע שגיאת Firestore
+                    const clientData = {
+                        id: c.id,
+                        name: c.name,
+                        type: c.type
+                    };
+                    if (c.idNumber) clientData.idNumber = c.idNumber;
+                    if (c.phone) clientData.phone = c.phone;
+                    if (c.email) clientData.email = c.email;
+                    if (c.caseTitle) clientData.caseTitle = c.caseTitle;
+                    return clientData;
+                })
+            }
+        });
+
+        // הצג לקוחות מתאימים
+        const { fileSize, contentType } = session.data;
+        let response = `✅ נמצאו ${matchingClients.length} לקוחות מתאימים:\n\n`;
+
+        matchingClients.forEach((client, index) => {
+            response += `${index + 1}️⃣ ${client.name}\n`;
+
+            // הצג סוג (תיק או לקוח)
+            if (client.type === 'case') {
+                response += `   📋 תיק: ${client.caseTitle || 'הליך משפטי'}\n`;
+                response += `   🔢 מספר תיק: ${client.idNumber}\n`;
+            } else {
+                if (client.idNumber) {
+                    response += `   ת.ז. ${client.idNumber}\n`;
+                }
+                if (client.phone) {
+                    response += `   📞 ${client.phone}\n`;
+                }
+            }
+            response += `\n`;
+        });
+
+        response += `━━━━━━━━━━━━━━━━━━━━\n`;
+        response += `💡 כתוב מספר לאישור (1-${matchingClients.length})\n`;
+        response += `❌ או כתוב "ביטול" לביטול`;
+
+        return response;
     }
 
     /**
@@ -1610,7 +1774,8 @@ class WhatsAppBot {
                 Buffer.from(fileBuffer, 'base64'),
                 contentType,
                 fileSize,
-                userInfo
+                userInfo,
+                selectedClient.type  // העבר את הסוג (client או case)
             );
 
             console.log(`✅ Agreement uploaded successfully`);
@@ -1652,17 +1817,18 @@ ${selectedClient.idNumber ? `🆔 ת.ז. ${selectedClient.idNumber}\n` : ''}📄
      * העלאה ל-Firebase Storage ועדכון Firestore
      * ═══════════════════════════════════════════════════════════
      */
-    async uploadAgreementToStorage(clientId, fileName, fileBuffer, contentType, fileSize, userInfo) {
+    async uploadAgreementToStorage(clientId, fileName, fileBuffer, contentType, fileSize, userInfo, entityType = 'client') {
         try {
             // יצירת שם קובץ ייחודי
             const agreementId = `agreement_${Date.now()}`;
             const fileExtension = this.getFileExtension(contentType);
             const sanitizedFileName = `${agreementId}.${fileExtension}`;
 
-            // נתיב ב-Storage
-            const storagePath = `clients/${clientId}/agreements/${sanitizedFileName}`;
+            // נתיב ב-Storage (תומך גם ב-clients וגם ב-cases)
+            const collection = entityType === 'case' ? 'cases' : 'clients';
+            const storagePath = `${collection}/${clientId}/agreements/${sanitizedFileName}`;
 
-            console.log(`📤 Uploading to: ${storagePath}`);
+            console.log(`📤 Uploading to: ${storagePath} (type: ${entityType})`);
 
             // העלה ל-Storage
             const bucket = admin.storage().bucket();
@@ -1675,7 +1841,8 @@ ${selectedClient.idNumber ? `🆔 ת.ז. ${selectedClient.idNumber}\n` : ''}📄
                         uploadedBy: userInfo.email,
                         uploadedByName: userInfo.name,
                         originalName: fileName,
-                        clientId: clientId,
+                        entityId: clientId,
+                        entityType: entityType,
                         uploadSource: 'whatsapp'
                     }
                 }
@@ -1702,23 +1869,23 @@ ${selectedClient.idNumber ? `🆔 ת.ז. ${selectedClient.idNumber}\n` : ''}📄
                 uploadSource: 'whatsapp'
             };
 
-            // עדכן ב-Firestore
-            const clientRef = this.db.collection('clients').doc(clientId);
-            const clientDoc = await clientRef.get();
+            // עדכן ב-Firestore (תומך גם ב-clients וגם ב-cases)
+            const entityRef = this.db.collection(collection).doc(clientId);
+            const entityDoc = await entityRef.get();
 
-            if (!clientDoc.exists) {
-                throw new Error('Client not found');
+            if (!entityDoc.exists) {
+                throw new Error(`${entityType} not found: ${clientId}`);
             }
 
-            const existingAgreements = clientDoc.data().feeAgreements || [];
+            const existingAgreements = entityDoc.data().feeAgreements || [];
 
-            await clientRef.update({
+            await entityRef.update({
                 feeAgreements: [...existingAgreements, agreementData],
                 lastModifiedBy: userInfo.name || userInfo.email,
                 lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            console.log(`✅ Firestore updated for client ${clientId}`);
+            console.log(`✅ Firestore updated for ${entityType} ${clientId}`);
 
             return agreementData;
 

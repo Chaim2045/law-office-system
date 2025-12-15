@@ -25,6 +25,7 @@
             this.searchInput = null;
             this.statusFilter = null;
             this.typeFilter = null;
+            this.agreementFilter = null;
             this.sortSelect = null;
 
             this.isInitialized = false;
@@ -76,6 +77,7 @@
             this.searchInput = document.getElementById('searchInput');
             this.statusFilter = document.getElementById('statusFilter');
             this.typeFilter = document.getElementById('typeFilter');
+            this.agreementFilter = document.getElementById('agreementFilter');
             this.sortSelect = document.getElementById('sortSelect');
         }
 
@@ -102,6 +104,25 @@
             if (this.typeFilter) {
                 this.typeFilter.addEventListener('change', (e) => {
                     this.dataManager.setTypeFilter(e.target.value);
+                });
+            }
+
+            // Agreement filter
+            if (this.agreementFilter) {
+                this.agreementFilter.addEventListener('change', (e) => {
+                    this.dataManager.setAgreementFilter(e.target.value);
+                });
+            }
+
+            // Clickable stat card for no agreement
+            const noAgreementCard = document.getElementById('noAgreementStatCard');
+            if (noAgreementCard) {
+                noAgreementCard.addEventListener('click', () => {
+                    // הגדר את הפילטר ל"ללא הסכם"
+                    if (this.agreementFilter) {
+                        this.agreementFilter.value = 'no-agreement';
+                        this.dataManager.setAgreementFilter('no-agreement');
+                    }
                 });
             }
 
@@ -151,11 +172,13 @@ return;
             const hoursDisplay = this.getHoursDisplay(client);
             const teamMembers = this.getTeamMembers(client);
             const lastLogin = this.getTeamLastLogin(client);
+            const agreementWarning = this.getAgreementWarning(client);
 
             return `
                 <tr data-client-id="${client.id}">
                     <td>
                         <div class="client-name">
+                            ${agreementWarning}
                             <strong>${this.escapeHtml(client.fullName)}</strong>
                         </div>
                     </td>
@@ -255,6 +278,26 @@ return;
                         <div class="hours-progress-bar ${progressClass}" style="width: ${percentage}%"></div>
                     </div>
                 </div>
+            `;
+        }
+
+        /**
+         * Get agreement warning icon
+         * קבלת אייקון אזהרה להסכם שכר טרחה
+         */
+        getAgreementWarning(client) {
+            // בדיקה מדויקת - האם יש הסכם שכר טרחה?
+            const hasAgreement = client.feeAgreements && client.feeAgreements.length > 0;
+
+            if (hasAgreement) {
+                return ''; // יש הסכם - אין צורך באזהרה
+            }
+
+            // אין הסכם - הצג אייקון אזהרה
+            return `
+                <span class="agreement-warning-icon" title="חסר הסכם שכר טרחה">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </span>
             `;
         }
 

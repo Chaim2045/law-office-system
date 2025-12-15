@@ -1461,6 +1461,25 @@
   background: var(--gray-50);
 }
 
+/* ============================================
+   Pending Approval Row - שורה ממתינה לאישור
+   (עיצוב עדין שלא משבש את הטבלה)
+   ============================================ */
+.modern-budget-table tbody tr.pending-approval-row,
+.modern-timesheet-table tbody tr.pending-approval-row {
+  position: relative;
+}
+
+/* כפתורי פעולות יהיו מושבתים */
+.modern-budget-table tbody tr.pending-approval-row .action-btn,
+.modern-budget-table tbody tr.pending-approval-row .table-action-btn,
+.modern-timesheet-table tbody tr.pending-approval-row .action-btn,
+.modern-timesheet-table tbody tr.pending-approval-row .table-action-btn {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* תפריט פשוט ועובד */
 .actions-dropdown-container {
   position: relative;

@@ -42,6 +42,7 @@ export class TaskApprovalPanel {
     this.render();
     this.attachEventListeners();
     this.loadApprovals();
+    // 🎯 התחל listener רק לטאב הראשוני (pending)
     this.startRealtimeListener();
   }
 

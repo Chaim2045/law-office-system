@@ -96,7 +96,17 @@
       "Bash(firebase serve:*)",
       "Bash(gcloud functions logs read:*)",
       "Bash(git show:*)",
-      "Bash(npx stylelint:*)"
+      "Bash(npx stylelint:*)",
+      "Bash(do echo \"=== $hash ===\")",
+      "Bash(git restore:*)",
+      "Bash(Select-Object -Last 30)",
+      "Bash(gcloud firestore documents list:*)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=\"\" FIRESTORE_EMULATOR_HOST=\"\" node:*)",
+      "Bash(firebase login:ci:*)",
+      "Bash(gcloud functions deploy:*)",
+      "Bash(clip:*)",
+      "Bash(git diff:*)",
+      "Bash(netlify api:*)"
     ],
     "deny": [],
     "ask": []

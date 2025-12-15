@@ -114,6 +114,16 @@
                         <div class="stat-value" id="criticalClientsStat">-</div>
                     </div>
                 </div>
+
+                <div class="stat-card stat-card-clickable" id="noAgreementStatCard" data-filter="no-agreement">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">ללא הסכם שכ"ט</div>
+                        <div class="stat-value" id="noAgreementClientsStat">-</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Filter Bar -->
@@ -155,6 +165,19 @@
                             <option value="all">הכל</option>
                             <option value="hours">שעות</option>
                             <option value="fixed">קבוע</option>
+                        </select>
+                    </div>
+
+                    <!-- Agreement Filter -->
+                    <div class="filter-item">
+                        <label for="agreementFilter">
+                            <i class="fas fa-file-contract"></i>
+                            הסכמים
+                        </label>
+                        <select id="agreementFilter" class="filter-select">
+                            <option value="all">הכל</option>
+                            <option value="no-agreement">ללא הסכם שכ"ט</option>
+                            <option value="has-agreement">עם הסכם שכ"ט</option>
                         </select>
                     </div>
 
@@ -380,19 +403,13 @@
                         הסכמי שכר טרחה
                     </h3>
                     <div id="feeAgreementsSection" class="fee-agreements-section">
+                        <!-- Hidden file input and trigger button -->
+                        <input type="file" id="feeAgreementInput" accept=".pdf,image/jpeg,image/png,image/webp" style="display: none;">
+                        <button type="button" id="uploadFeeAgreementBtn" style="display: none;"></button>
+
                         <!-- Agreements List -->
                         <div id="feeAgreementsList" class="fee-agreements-list">
                             <!-- Will be populated by JS -->
-                        </div>
-
-                        <!-- Upload Area -->
-                        <div class="fee-agreement-upload">
-                            <input type="file" id="feeAgreementInput" accept=".pdf,image/jpeg,image/png,image/webp" style="display: none;">
-                            <button type="button" class="fee-agreement-upload-btn" id="uploadFeeAgreementBtn">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <span>העלה הסכם חדש</span>
-                            </button>
-                            <p class="fee-agreement-upload-hint">PDF או תמונה (עד 6MB)</p>
                         </div>
                     </div>
                 </div>
@@ -568,6 +585,9 @@
 
     <!-- ===== Floating Action Button ===== -->
     <script src="js/ui/FloatingActionButton.js?v=2"></script>
+
+    <!-- ===== Add Package to Stage Feature ===== -->
+    <script src="js/features/AddPackageToStage.js?v=1.0.0"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>

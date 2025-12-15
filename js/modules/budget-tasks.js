@@ -790,8 +790,12 @@ export function createTableRow(task, options = {}) {
     deadlineHtml = formatDate ? formatDate(safeTask.deadline) : safeTask.deadline;
   }
 
+  // Check if task is pending approval
+  const isPendingApproval = safeTask.status === 'pending_approval';
+  const rowClass = isPendingApproval ? 'pending-approval-row' : '';
+
   return `
-    <tr data-task-id="${safeTask.id}">
+    <tr data-task-id="${safeTask.id}" class="${rowClass}">
       <td>${safeText ? safeText(safeTask.clientName) : safeTask.clientName}</td>
       <td class="td-description">
         <div class="table-description-with-icons">

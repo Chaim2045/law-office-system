@@ -47,6 +47,13 @@
             this.userData = null; // Full user data from backend
             this.threadListener = null; // Real-time listener for thread updates
 
+            // ✅ Activity tab state (Lazy Loading)
+            this.activityLoaded = false;  // האם פעילות נטענה?
+            this.activityData = [];       // נתוני פעילות
+            this.activityLoading = false; // האם בטעינה?
+            this.activityHasMore = false; // יש עוד לטעון?
+            this.activityLastTimestamp = null; // Timestamp אחרון (pagination)
+
             // Hours tab state
             this.hoursViewMode = 'cards'; // 'cards' or 'table'
             this.selectedMonth = new Date().getMonth() + 1; // Current month (1-12)
@@ -1238,11 +1245,118 @@ return;
         }
 
         /**
+         * ✅ Load Activity Tab (Lazy Loading)
+         * טעינת טאב פעילות - רק כשהמשתמש לוחץ על הטאב
+         */
+        async loadActivityTab() {
+            this.activityLoading = true;
+            this.updateModalContent(); // Show loading state
+
+            try {
+                console.log('📡 Loading activity for:', this.currentUser.email);
+
+                const getUserActivityFunction = firebase.app('master-admin-panel')
+                    .functions()
+                    .httpsCallable('getUserActivity');
+
+                const result = await getUserActivityFunction({
+                    email: this.currentUser.email,
+                    limit: 20
+                });
+
+                console.log('✅ Activity loaded:', result.data);
+
+                this.activityData = result.data.activity || [];
+                this.activityHasMore = result.data.hasMore || false;
+                this.activityLastTimestamp = result.data.lastTimestamp;
+                this.activityLoaded = true;
+
+            } catch (error) {
+                console.error('❌ Error loading activity:', error);
+                this.activityData = [];
+                this.activityLoaded = true; // Don't retry automatically
+
+                if (window.notify) {
+                    window.notify.error('שגיאה בטעינת פעילות');
+                }
+            } finally {
+                this.activityLoading = false;
+                this.updateModalContent();
+            }
+        }
+
+        /**
+         * ✅ Load More Activity (Pagination)
+         * טעינת עוד פעילות - כשלוחצים "טען עוד"
+         */
+        async loadMoreActivity() {
+            if (this.activityLoading || !this.activityHasMore) {
+return;
+}
+
+            this.activityLoading = true;
+
+            // Update button to "Loading..."
+            const btn = document.querySelector('.btn-load-more-activity');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> טוען...';
+                btn.disabled = true;
+            }
+
+            try {
+                const getUserActivityFunction = firebase.app('master-admin-panel')
+                    .functions()
+                    .httpsCallable('getUserActivity');
+
+                const result = await getUserActivityFunction({
+                    email: this.currentUser.email,
+                    limit: 20,
+                    startAfter: this.activityLastTimestamp
+                });
+
+                // Append to existing data
+                this.activityData = [...this.activityData, ...result.data.activity];
+                this.activityHasMore = result.data.hasMore;
+                this.activityLastTimestamp = result.data.lastTimestamp;
+
+                this.updateModalContent();
+
+            } catch (error) {
+                console.error('❌ Error loading more activity:', error);
+                if (window.notify) {
+                    window.notify.error('שגיאה בטעינת פעילות נוספת');
+                }
+            } finally {
+                this.activityLoading = false;
+            }
+        }
+
+        /**
          * Render Activity Tab
          * רינדור טאב פעילות
          */
         renderActivityTab() {
-            const activity = this.userData?.activity || [];
+            // ✅ Loading state
+            if (this.activityLoading && this.activityData.length === 0) {
+                return `
+                    <div class="tab-panel tab-activity">
+                        <div class="activity-loading" style="
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            padding: 60px 20px;
+                            gap: 16px;
+                        ">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #3b82f6;"></i>
+                            <p style="color: #6b7280; font-size: 16px;">טוען פעילות...</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // ✅ Use lazy-loaded data
+            const activity = this.activityData || [];
 
             if (activity.length === 0) {
                 return this.renderEmptyState('fas fa-history', 'אין פעילות', 'אין רישומי פעילות למשתמש זה');
@@ -1277,6 +1391,32 @@ return;
                             <i class="fas fa-info-circle" style="margin-left: 6px;"></i>
                             הוסתרו ${activity.length - filteredActivity.length} צפיות בפרטי משתמש
                         </div>
+                    ` : ''}
+
+                    <!-- ✅ Load More Button (Pagination) -->
+                    ${this.activityHasMore ? `
+                        <button
+                            class="btn-load-more-activity"
+                            onclick="window.userDetailsModal.loadMoreActivity()"
+                            style="
+                                margin-top: 20px;
+                                padding: 12px 24px;
+                                background: white;
+                                border: 2px solid #e5e7eb;
+                                border-radius: 8px;
+                                color: #3b82f6;
+                                font-weight: 600;
+                                cursor: pointer;
+                                width: 100%;
+                                transition: all 0.2s;
+                                font-size: 14px;
+                            "
+                            onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff';"
+                            onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white';"
+                        >
+                            <i class="fas fa-chevron-down" style="margin-left: 8px;"></i>
+                            טען עוד פעילות
+                        </button>
                     ` : ''}
                 </div>
             `;
@@ -2881,6 +3021,13 @@ return;
         async switchTab(tabId) {
             console.log(`🔄 switchTab called: ${this.activeTab} → ${tabId}`);
             this.activeTab = tabId;
+
+            // ✅ Lazy loading: Load activity tab on-demand
+            if (tabId === 'activity' && !this.activityLoaded && !this.activityLoading) {
+                console.log('📡 Activity tab opened for first time - loading data...');
+                await this.loadActivityTab();
+                return; // loadActivityTab() will call updateModalContent()
+            }
 
             // If switching to messages tab, mark user's responses as read by admin
             if (tabId === 'messages' && this.currentUser && window.alertCommManager) {
