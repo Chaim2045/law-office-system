@@ -1,0 +1,407 @@
+/**
+ * System Announcement Ticker Styles
+ * News-style ticker for system announcements
+ *
+ * @version 1.0.0
+ * @created 2025-12-15
+ */
+
+/* ========================================
+   TICKER CONTAINER
+   ======================================== */
+
+.ticker-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  z-index: 9999;
+  font-size: 14px;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+/* Default color (info) */
+.ticker-container.ticker-info {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+/* Success color */
+.ticker-container.ticker-success {
+  background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+}
+
+/* Warning color */
+.ticker-container.ticker-warning {
+  background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+}
+
+/* Error color */
+.ticker-container.ticker-error {
+  background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%);
+}
+
+/* ========================================
+   TICKER ICON
+   ======================================== */
+
+.ticker-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+  animation: ticker-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ticker-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* ========================================
+   TICKER LABEL
+   ======================================== */
+
+.ticker-label {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+/* ========================================
+   SEPARATOR
+   ======================================== */
+
+.ticker-separator {
+  font-size: 18px;
+  opacity: 0.4;
+  flex-shrink: 0;
+  font-weight: 300;
+}
+
+/* ========================================
+   TICKER CONTENT (SCROLLING AREA)
+   ======================================== */
+
+.ticker-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  mask-image: linear-gradient(
+    to left,
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to left,
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
+  );
+}
+
+/* ========================================
+   TICKER TEXT (SCROLLING TEXT)
+   ======================================== */
+
+.ticker-text {
+  white-space: nowrap;
+  position: absolute;
+  right: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  animation: ticker-scroll 50s linear infinite;
+}
+
+/* Scroll animation - Right to Left (RTL) */
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* Pause animation on hover */
+.ticker-container:hover .ticker-text {
+  animation-play-state: paused;
+}
+
+/* ========================================
+   TICKER DOTS (CAROUSEL INDICATORS)
+   ======================================== */
+
+.ticker-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.ticker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 35%);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgb(255 255 255 / 20%);
+}
+
+.ticker-dot:hover {
+  background: rgb(255 255 255 / 60%);
+  transform: scale(1.2);
+}
+
+.ticker-dot.active {
+  background: white;
+  width: 24px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
+}
+
+/* ========================================
+   CLOSE BUTTON
+   ======================================== */
+
+.ticker-close {
+  width: 28px;
+  height: 28px;
+  background: rgb(255 255 255 / 15%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 50%;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+}
+
+.ticker-close:hover {
+  background: rgb(255 255 255 / 25%);
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+}
+
+.ticker-close:active {
+  transform: rotate(90deg) scale(0.95);
+}
+
+.ticker-close i {
+  font-size: 12px;
+}
+
+/* ========================================
+   BODY PADDING (PREVENT CONTENT OVERLAP)
+   ======================================== */
+
+body.ticker-active {
+  padding-top: 40px !important;
+  transition: padding-top 0.3s ease;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* Tablets and below */
+@media (width <= 768px) {
+  .ticker-container {
+    height: 36px;
+    padding: 0 16px;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  body.ticker-active {
+    padding-top: 36px !important;
+  }
+
+  .ticker-icon {
+    font-size: 16px;
+  }
+
+  .ticker-label {
+    font-size: 11px;
+  }
+
+  .ticker-separator {
+    font-size: 14px;
+  }
+
+  .ticker-text {
+    font-size: 13px;
+  }
+
+  .ticker-dots {
+    gap: 4px;
+    padding: 0 4px;
+  }
+
+  .ticker-dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .ticker-dot.active {
+    width: 18px;
+  }
+
+  .ticker-close {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+}
+
+/* Mobile phones */
+@media (width <= 480px) {
+  .ticker-container {
+    height: 32px;
+    padding: 0 12px;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  body.ticker-active {
+    padding-top: 32px !important;
+  }
+
+  .ticker-icon {
+    font-size: 14px;
+  }
+
+  .ticker-label {
+    display: none; /* Hide label on very small screens */
+  }
+
+  .ticker-separator {
+    display: none; /* Hide separator on very small screens */
+  }
+
+  .ticker-text {
+    font-size: 12px;
+  }
+
+  .ticker-dots {
+    gap: 3px;
+    padding: 0 2px;
+  }
+
+  .ticker-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .ticker-dot.active {
+    width: 15px;
+  }
+
+  .ticker-close {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+
+  .ticker-close i {
+    font-size: 10px;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-text {
+    animation: none;
+    position: static;
+    transform: none;
+  }
+
+  .ticker-icon {
+    animation: none;
+  }
+
+  .ticker-dot,
+  .ticker-close {
+    transition: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .ticker-container {
+    border-bottom: 2px solid white;
+  }
+
+  .ticker-dot {
+    border: 2px solid white;
+  }
+
+  .ticker-close {
+    border: 2px solid white;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .ticker-container {
+    display: none !important;
+  }
+
+  body.ticker-active {
+    padding-top: 0 !important;
+  }
+}
+
+/* ========================================
+   ANIMATION PERFORMANCE
+   ======================================== */
+
+/* Use GPU acceleration for smooth animations */
+.ticker-text,
+.ticker-icon,
+.ticker-dot,
+.ticker-close {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize repaints */
+.ticker-content {
+  contain: layout style paint;
+}
