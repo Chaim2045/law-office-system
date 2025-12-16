@@ -162,6 +162,12 @@
     <!-- ===== Navigation Component ===== -->
     <script src="js/ui/Navigation.js?v=2.0.0"></script>
 
+    <!-- ===== System Announcements Components ===== -->
+    <script src="js/models/SystemAnnouncement.js"></script>
+    <script src="js/services/AnnouncementService.js"></script>
+    <script src="js/ui/AnnouncementEditor.js"></script>
+    <script src="js/ui/AnnouncementsModal.js"></script>
+
     <!-- ===== Notifications ===== -->
     <script src="js/ui/Notifications.js?v=2.0.0"></script>
 
@@ -193,6 +199,13 @@
                     window.Navigation.init('approvals');
                 } else {
                     console.error('❌ Navigation not loaded');
+                }
+
+                // Initialize Announcements Modal
+                if (window.AnnouncementsModal) {
+                    window.AnnouncementsModal.init();
+                } else {
+                    console.error('❌ AnnouncementsModal not loaded');
                 }
 
                 // Wait for Firebase to be ready

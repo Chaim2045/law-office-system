@@ -17,7 +17,7 @@ class SystemAnnouncementTicker {
 
     // Timers
     this.autoplayInterval = null;      // Auto-advance every 10 seconds
-    this.scrollAnimationDuration = 15; // 15 seconds for full scroll (faster!)
+    this.scrollAnimationDuration = 120; // 120 seconds (2 minutes) - optimal readable speed
 
     // DOM elements
     this.container = null;
@@ -267,8 +267,12 @@ return;
       // יצירת תוכן כפול לטיקר רציף
       const message = announcement.message;
 
-      // בניית HTML עם כפילות - 4 עותקים לגלילה חלקה
+      // בניית HTML עם כפילות - 8 עותקים לגלילה חלקה מושלמת
       const tickerHTML = `
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
@@ -302,10 +306,10 @@ return;
 }
 
     const icons = {
-      'info': '📢',
-      'success': '✅',
-      'warning': '⚠️',
-      'error': '🚨'
+      'info': 'ℹ️',
+      'success': '✓',
+      'warning': '⚠',
+      'error': '✕'
     };
 
     iconEl.textContent = icons[type] || icons['info'];

@@ -136,19 +136,19 @@
   font-weight: 500;
   line-height: 1.3;
   display: inline-flex;
-  gap: 120px; /* רווח גדול יותר בין ההודעות */
-  animation: ticker-scroll-continuous 120s linear infinite; /* 120s = פי 2 יותר איטי מהמקור */
+  gap: 250px; /* רווח גדול יותר בין ההודעות */
+  animation: ticker-scroll-continuous 120s linear infinite; /* 2 דקות = קצב אופטימלי */
   will-change: transform;
 }
 
-/* Scroll animation - Continuous loop כמו בחדשות */
+/* Scroll animation - Continuous loop חלק לגמרי כמו בחדשות */
 @keyframes ticker-scroll-continuous {
   0% {
-    transform: translateX(100%);
+    transform: translateX(0);
   }
 
   100% {
-    transform: translateX(-50%); /* חצי תנועה = גלילה איטית יותר */
+    transform: translateX(-50%); /* גלילה ל-50% = לופ מושלם עם 8 עותקים */
   }
 }
 
