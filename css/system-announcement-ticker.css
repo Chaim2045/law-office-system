@@ -14,7 +14,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
+  right: 88px; /* Start after sidebar (88px width) */
   height: 32px;
   display: flex;
   align-items: center;
@@ -35,20 +35,24 @@
   border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
-/* Type-specific accent colors (only for icon) */
-.ticker-container.ticker-info .ticker-icon {
+/* Type-specific accent colors (for icon and SVG) */
+.ticker-container.ticker-info .ticker-icon,
+.ticker-container.ticker-info .ticker-icon svg {
   color: #60a5fa; /* Subtle blue accent */
 }
 
-.ticker-container.ticker-success .ticker-icon {
+.ticker-container.ticker-success .ticker-icon,
+.ticker-container.ticker-success .ticker-icon svg {
   color: #34d399; /* Subtle green accent */
 }
 
-.ticker-container.ticker-warning .ticker-icon {
+.ticker-container.ticker-warning .ticker-icon,
+.ticker-container.ticker-warning .ticker-icon svg {
   color: #fbbf24; /* Subtle amber accent */
 }
 
-.ticker-container.ticker-error .ticker-icon {
+.ticker-container.ticker-error .ticker-icon,
+.ticker-container.ticker-error .ticker-icon svg {
   color: #f87171; /* Subtle red accent */
 }
 
@@ -61,6 +65,16 @@
   flex-shrink: 0;
   line-height: 1;
   animation: ticker-pulse 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* SVG icon styling */
+.ticker-icon svg {
+  width: 20px;
+  height: 20px;
+  color: #60a5fa; /* Professional blue color */
 }
 
 @keyframes ticker-pulse {
@@ -136,8 +150,8 @@
   font-weight: 500;
   line-height: 1.3;
   display: inline-flex;
-  gap: 250px; /* רווח גדול יותר בין ההודעות */
-  animation: ticker-scroll-continuous 120s linear infinite; /* 2 דקות = קצב אופטימלי */
+  gap: 40px; /* רווח מינימלי - מבטיח 2-3 עותקים תמיד על המסך */
+  animation: ticker-scroll-continuous 240s linear infinite; /* 4 דקות = קצב איטי וקריא עם 16 עותקים */
   will-change: transform;
 }
 

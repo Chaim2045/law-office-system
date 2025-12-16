@@ -17,7 +17,7 @@ class SystemAnnouncementTicker {
 
     // Timers
     this.autoplayInterval = null;      // Auto-advance every 10 seconds
-    this.scrollAnimationDuration = 120; // 120 seconds (2 minutes) - optimal readable speed
+    this.scrollAnimationDuration = 240; // 240 seconds (4 minutes) - slow readable speed with 16 copies
 
     // DOM elements
     this.container = null;
@@ -269,7 +269,13 @@ return false;
 
     const html = `
       <div id="systemAnnouncementTicker" class="ticker-container" style="display: none;">
-        <div class="ticker-icon" id="tickerIcon">📢</div>
+        <div class="ticker-icon" id="tickerIcon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15.54 8.46C16.4774 9.39764 17.0039 10.6692 17.0039 11.995C17.0039 13.3208 16.4774 14.5924 15.54 15.53" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M19.07 4.93C20.9447 6.80528 21.9979 9.34836 21.9979 12C21.9979 14.6516 20.9447 17.1947 19.07 19.07" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
         <div class="ticker-label">עדכוני מערכת</div>
         <div class="ticker-separator">|</div>
         <div class="ticker-content" id="tickerContent">
@@ -352,8 +358,16 @@ return;
       // יצירת תוכן כפול לטיקר רציף
       const message = announcement.message;
 
-      // בניית HTML עם כפילות - 8 עותקים לגלילה חלקה מושלמת
+      // בניית HTML עם כפילות - 16 עותקים לזרימה רציפה ללא הפסקות
       const tickerHTML = `
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
+        <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
@@ -390,14 +404,9 @@ return;
 return;
 }
 
-    const icons = {
-      'info': 'ℹ️',
-      'success': '✓',
-      'warning': '⚠',
-      'error': '✕'
-    };
-
-    iconEl.textContent = icons[type] || icons['info'];
+    // Update SVG color based on type (colors are defined in CSS)
+    // The CSS will handle the color based on the ticker-container class
+    // No need to change the icon itself - just the container class
   }
 
   /**
