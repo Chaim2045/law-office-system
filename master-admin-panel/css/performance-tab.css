@@ -100,35 +100,6 @@
     border-color: var(--gray-400);
 }
 
-.btn-export-pdf {
-    padding: var(--space-2) var(--space-5);
-    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    transition: var(--transition-fast);
-    box-shadow: 0 2px 8px rgb(59 130 246 / 25%);
-}
-
-.btn-export-pdf:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgb(59 130 246 / 35%);
-}
-
-.btn-export-pdf:active {
-    transform: translateY(0);
-}
-
-.btn-export-pdf i {
-    font-size: var(--text-base);
-}
-
 /* ============================================
    Summary Section - Data Table Style
    ============================================ */

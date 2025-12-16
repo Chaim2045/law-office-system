@@ -2073,11 +2073,6 @@ return false;
                             max="${today}"
                         >
                     </div>
-
-                    <button class="btn-export-pdf" id="exportPerformancePDF" type="button">
-                        <i class="fas fa-file-pdf"></i>
-                        ייצא דוח PDF
-                    </button>
                 </div>
             `;
         }
@@ -2322,19 +2317,6 @@ return false;
                 });
             });
 
-            // Export PDF button
-            const exportPDFBtn = modal.querySelector('#exportPerformancePDF');
-            if (exportPDFBtn) {
-                console.log('📄 PDF export button found, attaching listener');
-                exportPDFBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    console.log('🖱️ Export PDF button clicked');
-                    await this.exportPerformancePDF();
-                });
-            } else {
-                console.warn('⚠️ PDF export button not found');
-            }
-
             console.log('✅ Performance event listeners attached');
         }
 
@@ -2361,83 +2343,6 @@ return;
 
             // Re-initialize chart
             this.initializePerformanceChart();
-        }
-
-        /**
-         * Export performance report as PDF
-         * ייצוא דוח ביצועים ל-PDF
-         */
-        async exportPerformancePDF() {
-            const user = this.userData || this.currentUser;
-            if (!user) {
-                window.NotificationManager.show('לא ניתן לייצא דוח - אין נתוני משתמש', 'error');
-                return;
-            }
-
-            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
-
-            try {
-                console.log('📄 Exporting PDF for:', { email: user.email, date: selectedDate });
-
-                // Show loading notification
-                const loadingNotification = window.NotificationManager.show(
-                    'מייצא דוח PDF... אנא המתן',
-                    'info',
-                    10000
-                );
-
-                // Call Cloud Function
-                const generatePDF = firebase.functions().httpsCallable('generateDailyPerformancePDF');
-                const result = await generatePDF({
-                    email: user.email,
-                    date: selectedDate
-                });
-
-                // Close loading notification
-                loadingNotification.remove();
-
-                if (result.data.success) {
-                    console.log('✅ PDF generated successfully');
-
-                    // Convert base64 to blob
-                    const pdfBlob = this.base64ToBlob(result.data.pdf, 'application/pdf');
-
-                    // Create download link
-                    const url = URL.createObjectURL(pdfBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = result.data.filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-
-                    window.NotificationManager.show('✅ דוח PDF הורד בהצלחה', 'success');
-                } else {
-                    throw new Error('PDF generation failed');
-                }
-
-            } catch (error) {
-                console.error('❌ PDF export failed:', error);
-                window.NotificationManager.show(
-                    `שגיאה בייצוא PDF: ${error.message}`,
-                    'error'
-                );
-            }
-        }
-
-        /**
-         * Convert base64 string to Blob
-         * המרת מחרוזת base64 ל-Blob
-         */
-        base64ToBlob(base64, contentType = '') {
-            const byteCharacters = atob(base64);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            return new Blob([byteArray], { type: contentType });
         }
 
         /**
