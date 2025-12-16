@@ -105,16 +105,17 @@ return false;
     try {
       console.log('👤 Fetching user role from Firestore...');
 
-      if (!this.user || !this.user.uid) {
-        console.warn('⚠️ No user UID available');
+      if (!this.user || !this.user.email) {
+        console.warn('⚠️ No user email available');
         this.userRole = null;
         return;
       }
 
-      const userDoc = await this.db.collection('employees').doc(this.user.uid).get();
+      // Document ID is the email, not UID
+      const userDoc = await this.db.collection('employees').doc(this.user.email).get();
 
       if (!userDoc.exists) {
-        console.warn('⚠️ User document not found in employees collection');
+        console.warn(`⚠️ User document not found: ${this.user.email}`);
         this.userRole = null;
         return;
       }
@@ -122,7 +123,7 @@ return false;
       const userData = userDoc.data();
       this.userRole = userData.role || 'employee'; // Default to 'employee' if role not set
 
-      console.log(`✅ User role fetched: ${this.userRole}`);
+      console.log(`✅ User role fetched: ${this.userRole} (email: ${this.user.email})`);
     } catch (error) {
       console.error('❌ Error fetching user role:', error);
       this.userRole = null;
