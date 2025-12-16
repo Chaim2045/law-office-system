@@ -5,8 +5,18 @@
  *
  * 📅 Created: 31/10/2025
  * 📅 Last Update: 2025-01-17
- * 🎯 Version: 3.1.0 (UX Enhanced - Smooth Screen Transitions)
+ * 🎯 Version: 3.2.0 (UX Bug Fix - Login Box Animation)
  * 📦 Phase: 1 - Foundation
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ * 🐛 BUG FIX (v3.2.0):
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * 1. ✅ FIXED: Login box "drop" visual glitch during login
+ *    - PROBLEM: slide-up animation re-ran during fade-out transition
+ *    - CAUSE: Browser re-renders children when parent opacity changes
+ *    - SOLUTION: Freeze login-box transform before fade-out starts
+ *    - IMPACT: Eliminates annoying visual jump behind loading spinner
  *
  * ════════════════════════════════════════════════════════════════════════════
  * 🎨 UX IMPROVEMENTS (v3.1.0):
@@ -494,10 +504,25 @@ this.passwordInput.value = '';
         async showDashboard() {
             // Step 1: Fade out login screen (if visible)
             if (this.loginScreen && this.loginScreen.style.display !== 'none') {
+                // 🔧 FIX: Freeze login-box position to prevent slide-up animation re-run
+                const loginBox = this.loginScreen.querySelector('.login-box');
+                if (loginBox) {
+                    // Get current computed transform and freeze it
+                    const computedStyle = window.getComputedStyle(loginBox);
+                    loginBox.style.transform = computedStyle.transform;
+                    loginBox.style.animation = 'none'; // Disable animation during fade-out
+                }
+
                 this.loginScreen.classList.add('fade-out');
                 await this.wait(300); // Wait for fade-out animation
                 this.loginScreen.style.display = 'none';
                 this.loginScreen.classList.remove('fade-out');
+
+                // 🔧 FIX: Reset login-box animation for next time
+                if (loginBox) {
+                    loginBox.style.transform = '';
+                    loginBox.style.animation = '';
+                }
             }
 
             // Step 2: Show and fade in dashboard
