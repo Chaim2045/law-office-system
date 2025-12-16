@@ -100,6 +100,35 @@
     border-color: var(--gray-400);
 }
 
+.btn-print-report {
+    padding: var(--space-2) var(--space-5);
+    background: linear-gradient(135deg, var(--green) 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    transition: var(--transition-fast);
+    box-shadow: 0 2px 8px rgb(16 185 129 / 25%);
+}
+
+.btn-print-report:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgb(16 185 129 / 35%);
+}
+
+.btn-print-report:active {
+    transform: translateY(0);
+}
+
+.btn-print-report i {
+    font-size: var(--text-base);
+}
+
 /* ============================================
    Summary Section - Data Table Style
    ============================================ */
@@ -437,19 +466,59 @@
    ============================================ */
 
 @media print {
+    /* Hide navigation and non-essential elements */
+    #sidebar,
+    #mainNav,
+    .modal-close-btn,
+    .quick-date-btn,
+    .btn-print-report,
+    .date-picker-container {
+        display: none !important;
+    }
+
+    /* Full width for modal content */
+    .modal-content {
+        max-width: 100% !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 20px !important;
+    }
+
+    .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Clean background */
+    body,
     .performance-container {
-        background: white;
+        background: white !important;
     }
 
-    .quick-date-btn {
-        display: none;
-    }
-
+    /* Professional borders for print */
     .performance-container .summary-card,
     .charts-section,
     .hours-breakdown-section,
     .completed-tasks-section {
         break-inside: avoid;
-        border-color: #000;
+        break-inside: avoid;
+        border: 1px solid #333 !important;
+        box-shadow: none !important;
+    }
+
+    /* Ensure proper sizing */
+    .performance-header h2 {
+        font-size: 20pt;
+        color: #000;
+    }
+
+    /* Clean print layout */
+    .daily-summary-cards {
+        margin-bottom: 20px;
+    }
+
+    /* Ensure charts print properly */
+    canvas {
+        max-width: 100% !important;
     }
 }

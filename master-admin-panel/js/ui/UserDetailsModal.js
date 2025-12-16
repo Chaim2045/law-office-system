@@ -2073,6 +2073,11 @@ return false;
                             max="${today}"
                         >
                     </div>
+
+                    <button class="btn-print-report" id="printPerformanceReport" type="button">
+                        <i class="fas fa-print"></i>
+                        הדפס דוח
+                    </button>
                 </div>
             `;
         }
@@ -2316,6 +2321,14 @@ return false;
                     this.refreshPerformanceTab();
                 });
             });
+
+            // Print report button
+            const printBtn = modal.querySelector('#printPerformanceReport');
+            if (printBtn) {
+                printBtn.addEventListener('click', () => {
+                    window.print();
+                });
+            }
 
             console.log('✅ Performance event listeners attached');
         }
