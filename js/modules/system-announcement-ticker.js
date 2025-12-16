@@ -28,6 +28,7 @@ class SystemAnnouncementTicker {
     this.unsubscribe = null;           // Real-time listener unsubscribe function
     this.db = null;
     this.user = null;
+    this.userRole = null;              // User role (admin/employee) - fetched from Firestore
 
     console.log('📢 SystemAnnouncementTicker initialized');
   }
@@ -53,6 +54,9 @@ class SystemAnnouncementTicker {
       console.log('ℹ️ Ticker was dismissed by user');
       return;
     }
+
+    // Fetch user role from Firestore
+    await this.fetchUserRole();
 
     // Create DOM
     this.render();
@@ -94,6 +98,77 @@ return false;
   }
 
   /**
+   * Fetch user role from Firestore employees collection
+   * Sets this.userRole to 'admin', 'employee', or null
+   */
+  async fetchUserRole() {
+    try {
+      console.log('👤 Fetching user role from Firestore...');
+
+      if (!this.user || !this.user.uid) {
+        console.warn('⚠️ No user UID available');
+        this.userRole = null;
+        return;
+      }
+
+      const userDoc = await this.db.collection('employees').doc(this.user.uid).get();
+
+      if (!userDoc.exists) {
+        console.warn('⚠️ User document not found in employees collection');
+        this.userRole = null;
+        return;
+      }
+
+      const userData = userDoc.data();
+      this.userRole = userData.role || 'employee'; // Default to 'employee' if role not set
+
+      console.log(`✅ User role fetched: ${this.userRole}`);
+    } catch (error) {
+      console.error('❌ Error fetching user role:', error);
+      this.userRole = null;
+    }
+  }
+
+  /**
+   * Check if announcement should be shown to current user based on target audience
+   * @param {string} targetAudience - 'all', 'employees', or 'admins'
+   * @returns {boolean}
+   */
+  shouldShowToUser(targetAudience) {
+    // If no target audience specified, show to everyone (backward compatibility)
+    if (!targetAudience || targetAudience === 'all') {
+      console.log(`✅ shouldShowToUser: targetAudience='${targetAudience}' → showing to all users`);
+      return true;
+    }
+
+    // If user role is not fetched, show to be safe (backward compatibility)
+    if (!this.userRole) {
+      console.warn(`⚠️ shouldShowToUser: userRole not available → showing by default (targetAudience='${targetAudience}')`);
+      return true;
+    }
+
+    // Check audience match
+    if (targetAudience === 'admins' && this.userRole === 'admin') {
+      console.log('✅ shouldShowToUser: targetAudience=\'admins\', userRole=\'admin\' → SHOW');
+      return true;
+    }
+
+    if (targetAudience === 'employees' && this.userRole === 'employee') {
+      console.log('✅ shouldShowToUser: targetAudience=\'employees\', userRole=\'employee\' → SHOW');
+      return true;
+    }
+
+    // Admins should also see employee announcements
+    if (targetAudience === 'employees' && this.userRole === 'admin') {
+      console.log('✅ shouldShowToUser: targetAudience=\'employees\', userRole=\'admin\' → SHOW (admins see employee announcements)');
+      return true;
+    }
+
+    console.log(`❌ shouldShowToUser: targetAudience='${targetAudience}', userRole='${this.userRole}' → HIDE`);
+    return false;
+  }
+
+  /**
    * Listen to Firestore for active announcements (real-time)
    * Uses simplified query to avoid index requirement
    */
@@ -120,6 +195,7 @@ return false;
                 message: data.message || '',
                 type: data.type || 'info',
                 priority: data.priority || 3,
+                targetAudience: data.targetAudience || 'all', // Add target audience
                 startDate: data.startDate?.toDate(),
                 endDate: data.endDate?.toDate(),
                 displaySettings: data.displaySettings || {}
@@ -128,16 +204,25 @@ return false;
             .filter(announcement => {
               // Filter: must show in header
               if (!announcement.displaySettings.showInHeader) {
+                console.log(`🚫 Announcement ${announcement.id} filtered out: showInHeader = false`);
                 return false;
               }
 
               // Filter: check start date
               if (announcement.startDate && announcement.startDate > now) {
+                console.log(`🚫 Announcement ${announcement.id} filtered out: not started yet`);
                 return false;
               }
 
               // Filter: check expiry
               if (announcement.endDate && announcement.endDate < now) {
+                console.log(`🚫 Announcement ${announcement.id} filtered out: expired`);
+                return false;
+              }
+
+              // Filter: check target audience
+              if (!this.shouldShowToUser(announcement.targetAudience)) {
+                console.log(`🚫 Announcement ${announcement.id} filtered out: targetAudience '${announcement.targetAudience}' doesn't match user role '${this.userRole}'`);
                 return false;
               }
 
