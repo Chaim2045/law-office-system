@@ -102,7 +102,8 @@
             // Admin emails list
             this.adminEmails = [
                 'haim@ghlawoffice.co.il',
-                'uri@ghlawoffice.co.il'
+                'uri@ghlawoffice.co.il',
+                'guy@ghlawoffice.co.il'
             ];
         }
 

@@ -2282,7 +2282,7 @@ return false;
          * הוספת event listeners לטאב ביצועים
          */
         attachPerformanceEventListeners() {
-            const modal = document.getElementById('userDetailsModal');
+            const modal = window.ModalManager.getElement(this.modalId);
             if (!modal) {
                 console.warn('⚠️ Performance: Modal not found');
                 return;
@@ -2339,7 +2339,7 @@ return false;
          * רענון תוכן טאב ביצועים
          */
         async refreshPerformanceTab() {
-            const modal = document.getElementById('userDetailsModal');
+            const modal = window.ModalManager.getElement(this.modalId);
             if (!modal) {
 return;
 }
