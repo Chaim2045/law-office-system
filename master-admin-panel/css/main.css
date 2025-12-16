@@ -38,13 +38,14 @@ body {
 .login-container {
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport height - works better on mobile/different screens */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4) var(--space-6);
+  padding: 1.5rem; /* Reduced padding for smaller screens */
   position: relative;
   z-index: 1;
-  overflow-y: auto; /* Enable scrolling if content is taller than viewport */
 }
 
 /* ===== Background Animation ===== */
@@ -119,12 +120,9 @@ body {
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   border: 1px solid rgb(255 255 255 / 80%);
-  padding: var(--space-10);
+  padding: 2rem 2.5rem; /* Responsive padding - smaller on mobile */
   width: 100%;
   max-width: 450px;
-  max-height: 90vh; /* Prevent box from being taller than viewport */
-  max-height: 90dvh; /* Dynamic viewport height */
-  overflow-y: auto; /* Enable internal scrolling if needed */
   position: relative;
   z-index: 2;
   animation: slide-up 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -970,8 +968,12 @@ body {
 /* ========== RESPONSIVE ========== */
 
 @media (width <= 768px) {
+  .login-container {
+    padding: 1rem;
+  }
+
   .login-box {
-    padding: var(--space-8);
+    padding: 1.5rem 2rem;
     max-width: 100%;
   }
 
@@ -986,6 +988,18 @@ body {
 
   .login-title {
     font-size: var(--text-2xl);
+  }
+
+  .login-header {
+    margin-bottom: var(--space-6);
+  }
+
+  .form-group {
+    gap: var(--space-1);
+  }
+
+  .login-footer {
+    margin-top: var(--space-6);
   }
 
   .dashboard-header {
@@ -1082,19 +1096,154 @@ body {
 
 @media (width <= 480px) {
   .login-container {
-    padding: var(--space-4);
+    padding: 0.75rem;
   }
 
   .login-box {
-    padding: var(--space-6);
+    padding: 1.25rem 1.5rem;
+  }
+
+  .logo-circle {
+    width: 50px;
+    height: 50px;
+    margin-bottom: var(--space-3);
+  }
+
+  .logo-circle i {
+    font-size: 24px;
+  }
+
+  .login-title {
+    font-size: var(--text-xl);
+  }
+
+  .login-header {
+    margin-bottom: var(--space-5);
   }
 
   .form-input {
+    padding: var(--space-3);
     font-size: var(--text-sm);
+  }
+
+  .btn-login {
+    padding: var(--space-3) var(--space-5);
+  }
+
+  .login-footer {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
   }
 
   .orb-1, .orb-2, .orb-3 {
     display: none; /* Hide animations on small screens for performance */
+  }
+}
+
+/* Optimize for short viewport height (landscape phones, small laptops) */
+@media (height <= 700px) {
+  .login-box {
+    padding: 1.5rem 2rem;
+  }
+
+  .login-header {
+    margin-bottom: var(--space-5);
+  }
+
+  .logo-circle {
+    width: 55px;
+    height: 55px;
+    margin-bottom: var(--space-3);
+  }
+
+  .logo-circle i {
+    font-size: 26px;
+  }
+
+  .login-title {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-1);
+  }
+
+  .login-subtitle {
+    font-size: var(--text-sm);
+  }
+
+  .login-form {
+    gap: var(--space-4);
+  }
+
+  .form-input {
+    padding: var(--space-3);
+  }
+
+  .btn-login {
+    padding: var(--space-3) var(--space-5);
+  }
+
+  .login-footer {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+  }
+}
+
+/* Very short screens - ultra compact */
+@media (height <= 600px) {
+  .login-box {
+    padding: 1rem 1.5rem;
+  }
+
+  .login-header {
+    margin-bottom: var(--space-4);
+  }
+
+  .logo-circle {
+    width: 45px;
+    height: 45px;
+    margin-bottom: var(--space-2);
+  }
+
+  .logo-circle i {
+    font-size: 22px;
+  }
+
+  .login-title {
+    font-size: var(--text-lg);
+  }
+
+  .login-subtitle {
+    font-size: var(--text-xs);
+  }
+
+  .login-form {
+    gap: var(--space-3);
+  }
+
+  .form-group {
+    gap: var(--space-1);
+  }
+
+  .form-label {
+    font-size: var(--text-xs);
+  }
+
+  .form-input {
+    padding: 0.5rem;
+    font-size: var(--text-sm);
+  }
+
+  .btn-login {
+    padding: 0.5rem var(--space-4);
+    font-size: var(--text-sm);
+  }
+
+  .login-footer {
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+  }
+
+  .checkbox-group {
+    margin-top: 0;
   }
 }
 
