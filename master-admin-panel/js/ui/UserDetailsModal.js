@@ -1108,9 +1108,10 @@ return;
 
             // חשב סטטיסטיקות מפורטות
             const totalHours = filteredHours.reduce((sum, entry) => sum + (entry.hours || 0), 0);
-            const clientHours = filteredHours.filter(e => e.clientId)
+            // ✅ תיקון: בדיקה לפי isInternal במקום clientId
+            const clientHours = filteredHours.filter(e => !e.isInternal)
                 .reduce((sum, entry) => sum + (entry.hours || 0), 0);
-            const internalHours = filteredHours.filter(e => !e.clientId)
+            const internalHours = filteredHours.filter(e => e.isInternal)
                 .reduce((sum, entry) => sum + (entry.hours || 0), 0);
 
             // חשב אחוזים
@@ -1118,8 +1119,8 @@ return;
             const internalPercentage = totalHours > 0 ? ((internalHours / totalHours) * 100).toFixed(1) : 0;
 
             // ספירת רשומות
-            const clientEntriesCount = filteredHours.filter(e => e.clientId).length;
-            const internalEntriesCount = filteredHours.filter(e => !e.clientId).length;
+            const clientEntriesCount = filteredHours.filter(e => !e.isInternal).length;
+            const internalEntriesCount = filteredHours.filter(e => e.isInternal).length;
 
             // שעות חייבות vs לא חייבות
             const billableHours = filteredHours.filter(e => e.billable)
