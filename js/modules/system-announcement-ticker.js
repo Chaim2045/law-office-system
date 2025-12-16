@@ -359,20 +359,8 @@ return;
       // יצירת תוכן כפול לטיקר רציף
       const message = announcement.message;
 
-      // בניית HTML עם כפילות - 16 עותקים לזרימה רציפה ללא הפסקות
+      // בניית HTML עם כפילות - 4 עותקים בלבד לזרימה רציפה
       const tickerHTML = `
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
         <span class="ticker-item">${message}</span>
