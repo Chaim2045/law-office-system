@@ -60,6 +60,29 @@
   to = "/index.html"
   status = 200
 
+# Cache control for static assets
+# CSS/JS files - always check for updates (cache busting with ?v= parameter)
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, no-cache, must-revalidate"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, no-cache, must-revalidate"
+
+[[headers]]
+  for = "/dist/*"
+  [headers.values]
+    Cache-Control = "public, no-cache, must-revalidate"
+
+# HTML files - never cache, always fetch fresh
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 # Security headers
 [[headers]]
   for = "/*"
