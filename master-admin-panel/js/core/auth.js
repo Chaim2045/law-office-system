@@ -5,50 +5,51 @@
  *
  * 📅 Created: 31/10/2025
  * 📅 Last Security Update: 2025-01-17
- * 🎯 Version: 2.0.0 (Security Enhanced)
+ * 🎯 Version: 3.0.0 (Security Enhanced - Dynamic Admin Management)
  * 📦 Phase: 1 - Foundation
  *
  * ════════════════════════════════════════════════════════════════════════════
- * 🔧 SECURITY CHANGES (v2.0.0):
+ * 🔧 SECURITY CHANGES (v3.0.0):
  * ════════════════════════════════════════════════════════════════════════════
  *
- * 1. ✅ ENHANCED: checkIfAdmin() - Multi-layer verification
+ * 1. ✅ REMOVED: Pre-login adminEmails check
+ *    - Previously blocked login before Firebase Auth check
+ *    - Now allows any authenticated user to attempt login
+ *    - Authorization handled by checkIfAdmin() post-authentication
+ *
+ * 2. ✅ ENHANCED: checkIfAdmin() - Multi-layer verification (unchanged)
  *    - Primary: Firebase Auth Custom Claims (token.role === 'admin')
  *    - Fallback 1: Check adminEmails list (backwards compatibility)
  *    - Fallback 2: Firestore employees collection (if Custom Claims not set)
  *
- * 2. 📝 ADDED: Comprehensive inline documentation
- *    - Security rationale for each method
- *    - Attack vectors and how they're prevented
- *
- * 3. ⚠️ DEPRECATED: adminEmails array (will be removed in v3.0.0)
- *    - Use Custom Claims instead
- *    - Run set-admin-claims.js to migrate
+ * 3. 🎯 BENEFIT: Dynamic admin management
+ *    - Admins can now be added/removed via Admin Panel UI
+ *    - No code changes required (uses Custom Claims + Firestore)
+ *    - Changes take effect immediately after updateUser() call
  *
  * ════════════════════════════════════════════════════════════════════════════
  * 🎯 WHY THESE CHANGES:
  * ════════════════════════════════════════════════════════════════════════════
  *
- * 🚨 Security Issues Addressed:
- * - Client-side email lists can be tampered with (low risk but not ideal)
- * - Custom Claims are cryptographically signed by Firebase (cannot be forged)
- * - Aligns with Firebase best practices and OWASP recommendations
- * - Scales better (no code changes needed to add/remove admins)
+ * 🚨 Problem Solved:
+ * - Previously: Adding admin via UI didn't grant immediate access
+ * - Reason: Pre-login check blocked users not in hardcoded adminEmails array
+ * - Solution: Remove pre-login check, rely on post-auth verification
  *
  * ✅ Security Benefits:
- * - Defense in depth: Multiple verification layers
- * - Token-based verification (industry standard)
- * - Backwards compatible during migration
- * - Graceful degradation if Custom Claims not set
+ * - Defense in depth: Multiple verification layers after authentication
+ * - Token-based verification (industry standard, cannot be forged)
+ * - Dynamic management: Add/remove admins via UI without code deployment
+ * - Aligns with Firebase best practices and OWASP recommendations
  *
  * ════════════════════════════════════════════════════════════════════════════
  * 📊 IMPACT ON SYSTEM:
  * ════════════════════════════════════════════════════════════════════════════
  *
- * ✅ Non-breaking change: Backwards compatible
- * ✅ Improved security: Token-based verification
- * ✅ Better UX: Clear error messages for non-admins
- * ⚠️ Migration required: Run set-admin-claims.js for full security
+ * ✅ Improved UX: Admins added via UI can login immediately
+ * ✅ Improved security: Token-based verification (Custom Claims)
+ * ✅ Better scalability: No code changes needed for admin changes
+ * ⚠️ Note: adminEmails array kept for backwards compatibility only
  *
  * Performance:
  * - Custom Claims: Instant (no database lookup)
@@ -60,7 +61,7 @@
  * ════════════════════════════════════════════════════════════════════════════
  *
  * ✅ Authentication: Firebase Auth (industry standard)
- * ✅ Authorization: Multi-layer admin verification
+ * ✅ Authorization: Multi-layer admin verification (post-authentication)
  * ✅ Session Management: Firebase Session Persistence (SESSION mode)
  * ✅ Password Security: Firebase handles hashing/salting
  * ✅ Rate Limiting: Firebase Auth built-in protection
@@ -256,12 +257,6 @@
                 // Validate email format
                 if (!this.isValidEmail(email)) {
                     this.showError('פורמט אימייל לא תקין');
-                    return;
-                }
-
-                // Check if email is in admin list (pre-check before Firebase call)
-                if (!this.adminEmails.includes(email.toLowerCase())) {
-                    this.showError('אין לך הרשאות גישה למערכת זו. גישה למנהלים בלבד.');
                     return;
                 }
 
