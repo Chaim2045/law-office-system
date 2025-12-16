@@ -354,12 +354,39 @@ return;
 
     const announcement = this.announcements[this.currentIndex];
 
-    // Update text - Single message scrolls once from right to left
+    // Update text - Smart repeat logic based on displayStyle
     if (this.textElement) {
       const message = announcement.message;
 
-      // No copies - just one message that scrolls across once
-      this.textElement.innerHTML = `<span class="ticker-item">${message}</span>`;
+      // Calculate repeat count
+      let repeatCount = 1; // Default: once
+
+      if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
+        // Manual mode - use specified repeat count
+        repeatCount = announcement.displayStyle.repeatCount || 1;
+        console.log(`📊 Manual repeat mode: ${repeatCount}x`);
+      } else {
+        // Auto mode - calculate based on message length
+        const length = message.length;
+        if (length <= 40) {
+          repeatCount = 5; // Short messages repeat 5 times
+          console.log(`📊 Auto mode: Short message (${length} chars) → 5 repeats`);
+        } else if (length <= 100) {
+          repeatCount = 3; // Medium messages repeat 3 times
+          console.log(`📊 Auto mode: Medium message (${length} chars) → 3 repeats`);
+        } else {
+          repeatCount = 1; // Long messages show once
+          console.log(`📊 Auto mode: Long message (${length} chars) → 1 time`);
+        }
+      }
+
+      // Build HTML with repeats
+      let tickerHTML = '';
+      for (let i = 0; i < repeatCount; i++) {
+        tickerHTML += `<span class="ticker-item">${message}</span>`;
+      }
+
+      this.textElement.innerHTML = tickerHTML;
     }
 
     // Update icon based on type
@@ -431,15 +458,12 @@ return;
 
   /**
    * Restart scroll animation
-   * Single-pass animation - when it ends, move to next announcement
+   * Continuous loop animation - if multiple announcements, rotate after duration
    */
   restartScrollAnimation() {
     if (!this.textElement) {
 return;
 }
-
-    // Remove previous animation event listener
-    this.textElement.removeEventListener('animationend', this.onAnimationEnd);
 
     // Remove animation
     this.textElement.style.animation = 'none';
@@ -447,20 +471,10 @@ return;
     // Trigger reflow
     void this.textElement.offsetWidth;
 
-    // Re-add animation - single pass (60s)
-    this.textElement.style.animation = 'ticker-scroll-once 60s linear forwards';
+    // Re-add animation - continuous loop (60s)
+    this.textElement.style.animation = 'ticker-scroll-loop 60s linear infinite';
 
-    // Listen for animation end to move to next announcement
-    this.onAnimationEnd = () => {
-      if (this.announcements.length > 1) {
-        this.nextAnnouncement();
-      } else {
-        // If only one announcement, restart it
-        this.restartScrollAnimation();
-      }
-    };
-
-    this.textElement.addEventListener('animationend', this.onAnimationEnd);
+    console.log('🔄 Animation restarted - continuous loop mode');
   }
 
   /**
@@ -484,13 +498,25 @@ return;
   }
 
   /**
-   * Start autoplay - NOT NEEDED anymore
-   * Animation handles transitions automatically via animationend event
+   * Start autoplay (rotate announcements every 60 seconds)
    */
   startAutoplay() {
-    // No longer needed - animation handles transitions
-    // Each announcement scrolls once, then automatically moves to next
-    console.log('🔄 Autoplay handled by animation events');
+    // Clear existing interval
+    this.stopAutoplay();
+
+    // Only autoplay if more than 1 announcement
+    if (this.announcements.length <= 1) {
+      console.log('🔄 Single announcement - no rotation needed');
+      return;
+}
+
+    this.autoplayInterval = setInterval(() => {
+      if (!this.isPaused) {
+        this.nextAnnouncement();
+      }
+    }, 60000); // 60 seconds - matches animation duration
+
+    console.log('🔄 Autoplay started (60s interval)');
   }
 
   /**

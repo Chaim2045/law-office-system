@@ -225,6 +225,36 @@ return;
                                         <span>אפשרויות תצוגה</span>
                                     </div>
                                     <div class="card-body">
+                                        <!-- Display Style -->
+                                        <div class="form-group">
+                                            <label class="form-label">
+                                                סגנון תצוגה בטיקר <span class="required">*</span>
+                                            </label>
+                                            <select id="displayStyleMode" class="form-select" required>
+                                                <option value="auto" selected>⚙️ אוטומטי (מומלץ) - המערכת תבחר לפי אורך ההודעה</option>
+                                                <option value="manual">🎛️ דריסה ידנית - אני רוצה לבחור בעצמי</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Manual Override (hidden by default) -->
+                                        <div class="form-group" id="manualRepeatGroup" style="display: none;">
+                                            <label class="form-label">
+                                                כמה פעמים להציג? <span class="required">*</span>
+                                            </label>
+                                            <select id="displayStyleRepeat" class="form-select">
+                                                <option value="1">📄 פעם אחת בלבד</option>
+                                                <option value="3" selected>🔄 3 חזרות (מומלץ להודעות בינוניות)</option>
+                                                <option value="5">🔄 5 חזרות (מומלץ להודעות קצרות)</option>
+                                            </select>
+                                            <div class="form-hint">
+                                                <strong>טיפ:</strong> הודעות קצרות (עד 40 תווים) → 5 חזרות |
+                                                בינוניות (40-100) → 3 חזרות |
+                                                ארוכות (100+) → פעם אחת
+                                            </div>
+                                        </div>
+
+                                        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e2e8f0;">
+
                                         <div class="options-list">
                                             <!-- Show on Login -->
                                             <label class="option-item">
@@ -334,6 +364,18 @@ return;
             };
             document.addEventListener('keydown', this.escapeHandler);
 
+            // Display style mode toggle
+            const displayModeSelect = this.panel.querySelector('#displayStyleMode');
+            const manualRepeatGroup = this.panel.querySelector('#manualRepeatGroup');
+
+            displayModeSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'manual') {
+                    manualRepeatGroup.style.display = 'block';
+                } else {
+                    manualRepeatGroup.style.display = 'none';
+                }
+            });
+
             // Character counters
             this.setupCharacterCounters();
         }
@@ -410,6 +452,15 @@ return;
                 announcement.displaySettings.showInHeader;
             this.panel.querySelector('#displayDismissible').checked =
                 announcement.displaySettings.dismissible;
+
+            // Display style (new field - backward compatible)
+            if (announcement.displayStyle) {
+                this.panel.querySelector('#displayStyleMode').value = announcement.displayStyle.mode || 'auto';
+                if (announcement.displayStyle.mode === 'manual' && announcement.displayStyle.repeatCount) {
+                    this.panel.querySelector('#displayStyleRepeat').value = announcement.displayStyle.repeatCount;
+                    this.panel.querySelector('#manualRepeatGroup').style.display = 'block';
+                }
+            }
         }
 
         /**
@@ -456,6 +507,10 @@ return;
                         showOnLogin: formData.showOnLogin,
                         showInHeader: formData.showInHeader,
                         dismissible: formData.dismissible
+                    },
+                    displayStyle: {
+                        mode: formData.displayStyleMode,
+                        repeatCount: formData.displayStyleRepeat
                     }
                 };
 
@@ -522,6 +577,10 @@ return;
 return {};
 }
 
+            const displayMode = this.panel.querySelector('#displayStyleMode').value;
+            const displayRepeat = displayMode === 'manual' ?
+                parseInt(this.panel.querySelector('#displayStyleRepeat').value) : null;
+
             return {
                 message: this.panel.querySelector('#announcementMessage').value.trim(),
                 type: this.panel.querySelector('#announcementType').value,
@@ -532,7 +591,9 @@ return {};
                 active: this.panel.querySelector('#announcementActive').checked,
                 showOnLogin: this.panel.querySelector('#displayShowOnLogin').checked,
                 showInHeader: this.panel.querySelector('#displayShowInHeader').checked,
-                dismissible: this.panel.querySelector('#displayDismissible').checked
+                dismissible: this.panel.querySelector('#displayDismissible').checked,
+                displayStyleMode: displayMode,
+                displayStyleRepeat: displayRepeat
             };
         }
 

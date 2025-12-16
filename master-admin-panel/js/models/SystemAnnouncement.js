@@ -51,6 +51,12 @@
                 showInHeader: data.displaySettings?.showInHeader !== undefined ? data.displaySettings.showInHeader : true,
                 dismissible: data.displaySettings?.dismissible !== undefined ? data.displaySettings.dismissible : true
             };
+
+            // Display style - auto or manual repeat control
+            this.displayStyle = {
+                mode: data.displayStyle?.mode || 'auto', // 'auto' or 'manual'
+                repeatCount: data.displayStyle?.repeatCount || null // null for auto, 1/3/5 for manual
+            };
         }
 
         /**
