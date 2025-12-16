@@ -249,6 +249,97 @@
 }
 
 /* ============================================
+   Client Breakdown Bars - Intuitive Horizontal Bars
+   ============================================ */
+
+.client-breakdown-bars {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.breakdown-bar-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.breakdown-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.breakdown-client-name {
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+    color: var(--gray-900);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.breakdown-hours {
+    font-weight: var(--font-bold);
+    font-size: var(--text-sm);
+    color: var(--gray-700);
+    white-space: nowrap;
+    direction: ltr;
+    text-align: left;
+}
+
+.breakdown-bar-track {
+    height: 32px;
+    background: var(--gray-100);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    position: relative;
+}
+
+.breakdown-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-md);
+    transition: width 0.6s ease-out;
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 10%);
+    position: relative;
+}
+
+/* Animate bars on load */
+@keyframes fillBar {
+    from {
+        width: 0;
+    }
+}
+
+.breakdown-bar-fill {
+    animation: fillBar 0.8s ease-out;
+}
+
+/* Add subtle gradient to bars */
+.breakdown-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 20%), transparent);
+    pointer-events: none;
+}
+
+/* Hover effect */
+.breakdown-bar-item:hover .breakdown-bar-track {
+    background: var(--gray-200);
+}
+
+.breakdown-bar-item:hover .breakdown-bar-fill {
+    filter: brightness(1.1);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 15%);
+}
+
+/* ============================================
    Hours Breakdown - Table Style
    ============================================ */
 
@@ -500,7 +591,6 @@
     .charts-section,
     .hours-breakdown-section,
     .completed-tasks-section {
-        break-inside: avoid;
         break-inside: avoid;
         border: 1px solid #333 !important;
         box-shadow: none !important;

@@ -2152,8 +2152,8 @@ return false;
         }
 
         /**
-         * Render performance charts
-         * רינדור גרפים
+         * Render performance charts - Now using horizontal bar breakdown instead of pie chart
+         * רינדור גרפים - כעת משתמש בפילוח אופקי במקום עוגה
          */
         renderPerformanceCharts() {
             const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
@@ -2164,16 +2164,44 @@ return false;
             }
 
             // Don't show chart if no client hours
-            const clientCount = Object.keys(data.clientBreakdown).length;
+            const clientBreakdown = data.clientBreakdown;
+            const clientCount = Object.keys(clientBreakdown).length;
             if (clientCount === 0) {
                 return '';
             }
 
+            // Sort clients by hours (descending)
+            const sortedClients = Object.entries(clientBreakdown)
+                .sort((a, b) => b[1] - a[1]);
+
+            // Calculate total for percentages
+            const totalClientHours = sortedClients.reduce((sum, [_, hours]) => sum + hours, 0);
+
+            // Generate color palette
+            const colors = [
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+                '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#a855f7'
+            ];
+
             return `
                 <div class="charts-section">
                     <h4>פילוח שעות לפי לקוחות (${clientCount} ${clientCount === 1 ? 'לקוח' : 'לקוחות'})</h4>
-                    <div class="chart-container">
-                        <canvas id="clientHoursChart" width="400" height="300"></canvas>
+                    <div class="client-breakdown-bars">
+                        ${sortedClients.map(([clientName, hours], index) => {
+                            const percentage = Math.round((hours / totalClientHours) * 100);
+                            const color = colors[index % colors.length];
+                            return `
+                                <div class="breakdown-bar-item">
+                                    <div class="breakdown-bar-header">
+                                        <span class="breakdown-client-name">${this.escapeHtml(clientName)}</span>
+                                        <span class="breakdown-hours">${hours} שעות (${percentage}%)</span>
+                                    </div>
+                                    <div class="breakdown-bar-track">
+                                        <div class="breakdown-bar-fill" style="width: ${percentage}%; background-color: ${color};"></div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -2354,96 +2382,19 @@ return;
 
             // Re-attach event listeners
             this.attachPerformanceEventListeners();
-
-            // Re-initialize chart
-            this.initializePerformanceChart();
         }
 
         /**
-         * Initialize Chart.js chart for client hours breakdown
-         * אתחול גרף Chart.js לפילוח שעות לקוחות
+         * Initialize performance visualization (no longer uses Chart.js)
+         * אתחול תצוגת ביצועים (לא משתמש יותר ב-Chart.js)
+         *
+         * Note: This function is kept for backward compatibility but does nothing
+         * since we now use CSS-based horizontal bars instead of Chart.js pie charts.
          */
         initializePerformanceChart() {
-            const canvas = document.getElementById('clientHoursChart');
-            if (!canvas) {
-return;
-}
-
-            const selectedDate = this.selectedPerformanceDate || new Date().toISOString().split('T')[0];
-            const data = this.calculateDailyPerformance(selectedDate);
-
-            const clients = Object.keys(data.clientBreakdown);
-            const hours = Object.values(data.clientBreakdown);
-
-            if (clients.length === 0) {
-return;
-}
-
-            // Destroy existing chart
-            if (this.performanceChart) {
-                this.performanceChart.destroy();
-                this.performanceChart = null;
-            }
-
-            // Create new chart
-            const ctx = canvas.getContext('2d');
-            this.performanceChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: clients,
-                    datasets: [{
-                        data: hours,
-                        backgroundColor: [
-                            '#3b82f6', // Blue
-                            '#10b981', // Green
-                            '#f59e0b', // Amber
-                            '#ef4444', // Red
-                            '#8b5cf6', // Purple
-                            '#ec4899', // Pink
-                            '#14b8a6', // Teal
-                            '#f97316', // Orange
-                            '#06b6d4', // Cyan
-                            '#a855f7'  // Violet
-                        ],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            rtl: true,
-                            labels: {
-                                font: {
-                                    family: 'Assistant, system-ui, sans-serif',
-                                    size: 12
-                                },
-                                padding: 12,
-                                usePointStyle: true
-                            }
-                        },
-                        tooltip: {
-                            rtl: true,
-                            textDirection: 'rtl',
-                            bodyFont: {
-                                family: 'Assistant, system-ui, sans-serif'
-                            },
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = Math.round((value / total) * 100);
-                                    return `${label}: ${value} שעות (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            // No-op: We now render breakdown bars directly in HTML/CSS
+            // instead of using Chart.js canvas
+            console.log('✅ Performance tab uses CSS-based bars (no Chart.js needed)');
         }
 
 
