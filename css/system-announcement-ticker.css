@@ -149,20 +149,19 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 1.3;
-  display: inline-flex;
-  gap: 40px; /* רווח בין הודעות */
-  animation: ticker-scroll-continuous 120s linear infinite; /* 120 שניות (2 דקות) - קצב קריא ונעים */
+  display: inline-block;
+  animation: ticker-scroll-once 60s linear forwards; /* 60 שניות - מהירות בינונית, רק פעם אחת */
   will-change: transform;
 }
 
-/* Scroll animation - Continuous loop חלק לגמרי כמו בחדשות */
-@keyframes ticker-scroll-continuous {
+/* Scroll animation - Single pass from right to left */
+@keyframes ticker-scroll-once {
   0% {
-    transform: translateX(0);
+    transform: translateX(100%); /* מתחיל מחוץ למסך מימין */
   }
 
   100% {
-    transform: translateX(-50%); /* גלילה ל-50% = לופ מושלם עם 4 עותקים (חצי מהתוכן) */
+    transform: translateX(-100%); /* יוצא מחוץ למסך משמאל */
   }
 }
 

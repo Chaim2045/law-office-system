@@ -354,20 +354,12 @@ return;
 
     const announcement = this.announcements[this.currentIndex];
 
-    // Update text - Create continuous loop like news ticker
+    // Update text - Single message scrolls once from right to left
     if (this.textElement) {
-      // יצירת תוכן כפול לטיקר רציף
       const message = announcement.message;
 
-      // בניית HTML עם כפילות - 4 עותקים בלבד לזרימה רציפה
-      const tickerHTML = `
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-        <span class="ticker-item">${message}</span>
-      `;
-
-      this.textElement.innerHTML = tickerHTML;
+      // No copies - just one message that scrolls across once
+      this.textElement.innerHTML = `<span class="ticker-item">${message}</span>`;
     }
 
     // Update icon based on type
@@ -439,12 +431,15 @@ return;
 
   /**
    * Restart scroll animation
-   * Continuous news-style ticker animation
+   * Single-pass animation - when it ends, move to next announcement
    */
   restartScrollAnimation() {
     if (!this.textElement) {
 return;
 }
+
+    // Remove previous animation event listener
+    this.textElement.removeEventListener('animationend', this.onAnimationEnd);
 
     // Remove animation
     this.textElement.style.animation = 'none';
@@ -452,8 +447,20 @@ return;
     // Trigger reflow
     void this.textElement.offsetWidth;
 
-    // Re-add animation - continuous loop
-    this.textElement.style.animation = `ticker-scroll-continuous ${this.scrollAnimationDuration}s linear infinite`;
+    // Re-add animation - single pass (60s)
+    this.textElement.style.animation = 'ticker-scroll-once 60s linear forwards';
+
+    // Listen for animation end to move to next announcement
+    this.onAnimationEnd = () => {
+      if (this.announcements.length > 1) {
+        this.nextAnnouncement();
+      } else {
+        // If only one announcement, restart it
+        this.restartScrollAnimation();
+      }
+    };
+
+    this.textElement.addEventListener('animationend', this.onAnimationEnd);
   }
 
   /**
@@ -477,24 +484,13 @@ return;
   }
 
   /**
-   * Start autoplay (advance to next announcement every 10 seconds)
+   * Start autoplay - NOT NEEDED anymore
+   * Animation handles transitions automatically via animationend event
    */
   startAutoplay() {
-    // Clear existing interval
-    this.stopAutoplay();
-
-    // Only autoplay if more than 1 announcement
-    if (this.announcements.length <= 1) {
-return;
-}
-
-    this.autoplayInterval = setInterval(() => {
-      if (!this.isPaused) {
-        this.nextAnnouncement();
-      }
-    }, 10000); // 10 seconds
-
-    console.log('🔄 Autoplay started (10s interval)');
+    // No longer needed - animation handles transitions
+    // Each announcement scrolls once, then automatically moves to next
+    console.log('🔄 Autoplay handled by animation events');
   }
 
   /**
