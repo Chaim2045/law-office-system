@@ -251,7 +251,7 @@
                     if (isAdmin) {
                         this.currentUser = user;
                         this.isAdmin = true;
-                        await this.showDashboard(); // Wait for transition animation
+                        this.showDashboard();
                     } else {
                         // Not an admin - sign out immediately
                         console.warn('⚠️ Unauthorized access attempt:', user.email);
@@ -262,7 +262,7 @@
                     console.log('👤 No user authenticated');
                     this.currentUser = null;
                     this.isAdmin = false;
-                    await this.showLoginScreen(); // Wait for transition animation
+                    this.showLoginScreen();
                 }
             });
         }
@@ -473,76 +473,30 @@ this.passwordInput.value = '';
         }
 
         /**
-         * Show login screen with smooth fade transition
-         * הצגת מסך כניסה עם אנימציה חלקה
+         * Show login screen
+         * הצגת מסך כניסה
          */
-        async showLoginScreen() {
-            // Step 1: Fade out dashboard (if visible)
-            if (this.dashboardScreen && this.dashboardScreen.style.display !== 'none') {
-                this.dashboardScreen.classList.add('fade-out');
-                await this.wait(300); // Wait for fade-out animation
-                this.dashboardScreen.style.display = 'none';
-                this.dashboardScreen.classList.remove('fade-out');
-            }
-
-            // Step 2: Show and fade in login screen
+        showLoginScreen() {
             if (this.loginScreen) {
                 this.loginScreen.style.display = 'flex';
-                this.loginScreen.classList.remove('fade-out');
-                this.loginScreen.classList.add('fade-in');
-
-                // Remove fade-in class after animation completes
-                setTimeout(() => {
-                    if (this.loginScreen) {
-                        this.loginScreen.classList.remove('fade-in');
-                    }
-                }, 400);
             }
-
+            if (this.dashboardScreen) {
+                this.dashboardScreen.style.display = 'none';
+            }
             this.hideLoading();
             this.setButtonLoading(false);
         }
 
         /**
-         * Show dashboard with smooth fade transition
-         * הצגת דשבורד עם אנימציה חלקה
+         * Show dashboard
+         * הצגת דשבורד
          */
-        async showDashboard() {
-            // Step 1: Fade out login screen (if visible)
-            if (this.loginScreen && this.loginScreen.style.display !== 'none') {
-                // 🔧 FIX: Freeze login-box position to prevent slide-up animation re-run
-                const loginBox = this.loginScreen.querySelector('.login-box');
-                if (loginBox) {
-                    // Get current computed transform and freeze it
-                    const computedStyle = window.getComputedStyle(loginBox);
-                    loginBox.style.transform = computedStyle.transform;
-                    loginBox.style.animation = 'none'; // Disable animation during fade-out
-                }
-
-                this.loginScreen.classList.add('fade-out');
-                await this.wait(300); // Wait for fade-out animation
+        showDashboard() {
+            if (this.loginScreen) {
                 this.loginScreen.style.display = 'none';
-                this.loginScreen.classList.remove('fade-out');
-
-                // 🔧 FIX: Reset login-box animation for next time
-                if (loginBox) {
-                    loginBox.style.transform = '';
-                    loginBox.style.animation = '';
-                }
             }
-
-            // Step 2: Show and fade in dashboard
             if (this.dashboardScreen) {
                 this.dashboardScreen.style.display = 'flex';
-                this.dashboardScreen.classList.remove('fade-out');
-                this.dashboardScreen.classList.add('fade-in');
-
-                // Remove fade-in class after animation completes
-                setTimeout(() => {
-                    if (this.dashboardScreen) {
-                        this.dashboardScreen.classList.remove('fade-in');
-                    }
-                }, 400);
             }
 
             this.hideLoading();
@@ -726,15 +680,6 @@ return;
             return this.isAdmin && this.currentUser !== null;
         }
 
-        /**
-         * Wait utility for smooth transitions
-         * פונקציה עזר להמתנה לאנימציות
-         * @param {number} ms - Milliseconds to wait
-         * @returns {Promise}
-         */
-        wait(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
     }
 
     // Create global instance

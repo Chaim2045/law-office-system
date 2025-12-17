@@ -46,16 +46,6 @@ body {
   padding: 1.5rem; /* Reduced padding for smaller screens */
   position: relative;
   z-index: 1;
-  opacity: 1;
-  transition: opacity 0.3s ease-in-out;
-}
-
-.login-container.fade-out {
-  opacity: 0;
-}
-
-.login-container.fade-in {
-  animation: screen-fade-in 0.4s ease-in-out forwards;
 }
 
 /* ===== Background Animation ===== */
@@ -658,16 +648,6 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  opacity: 1;
-  transition: opacity 0.3s ease-in-out;
-}
-
-.dashboard-container.fade-out {
-  opacity: 0;
-}
-
-.dashboard-container.fade-in {
-  animation: screen-fade-in 0.4s ease-in-out forwards;
 }
 
 /* ===== Dashboard Header ===== */
@@ -1271,37 +1251,6 @@ body {
 
 .hidden {
   display: none !important;
-}
-
-.fade-in {
-  animation: fade-in 0.4s ease-in-out;
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-
-  to { opacity: 1; }
-}
-
-/* Screen transition animations for login/dashboard switch */
-@keyframes screen-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes screen-fade-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
 }
 
 /* ========== PRINT STYLES ========== */
