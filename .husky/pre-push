@@ -14,12 +14,12 @@ echo "Branch: $CURRENT_BRANCH"
 echo "════════════════════════════════════════════════════════════════"
 
 # ════════════════════════════════════════════════════════════════
-# 🚨 בדיקות חובה לפני Push ל-main (PRODUCTION!)
+# 🚨 בדיקות חובה לפני Push ל-production-stable (PRODUCTION!)
 # ════════════════════════════════════════════════════════════════
-if [ "$CURRENT_BRANCH" = "main" ]; then
+if [ "$CURRENT_BRANCH" = "production-stable" ]; then
   echo ""
-  echo "⚠️  WARNING: Pushing to MAIN branch (PRODUCTION!)"
-  echo "⚠️  This will deploy to LIVE site with real users!"
+  echo "🚨 WARNING: Pushing to PRODUCTION-STABLE branch!"
+  echo "🚨 This will deploy to LIVE site with REAL USERS!"
   echo ""
   echo "🔍 Running mandatory checks..."
   echo ""
@@ -30,7 +30,7 @@ if [ "$CURRENT_BRANCH" = "main" ]; then
   if [ $? -ne 0 ]; then
     echo ""
     echo "❌ TypeScript type check FAILED!"
-    echo "❌ Cannot push to main with type errors"
+    echo "❌ Cannot push to production-stable with type errors"
     echo ""
     echo "💡 Fix the errors or push to a different branch"
     echo "💡 To skip (NOT recommended): git push --no-verify"
@@ -45,7 +45,7 @@ if [ "$CURRENT_BRANCH" = "main" ]; then
   if [ $? -ne 0 ]; then
     echo ""
     echo "❌ TypeScript compilation FAILED!"
-    echo "❌ Cannot push to main with compilation errors"
+    echo "❌ Cannot push to production-stable with compilation errors"
     echo ""
     echo "💡 Fix the errors or push to a different branch"
     echo "💡 To skip (NOT recommended): git push --no-verify"
@@ -57,6 +57,27 @@ if [ "$CURRENT_BRANCH" = "main" ]; then
   echo "════════════════════════════════════════════════════════════════"
   echo "✅ All checks passed! Safe to push to PRODUCTION"
   echo "════════════════════════════════════════════════════════════════"
+  echo ""
+
+# ════════════════════════════════════════════════════════════════
+# 🟡 Main Branch - סביבת פיתוח (לא production!)
+# ════════════════════════════════════════════════════════════════
+elif [ "$CURRENT_BRANCH" = "main" ]; then
+  echo ""
+  echo "🟡 Pushing to MAIN branch (Development/Testing)"
+  echo "✅ This is safe - not deploying to real users"
+  echo "💡 Preview URL: https://main--gh-law-office-system.netlify.app"
+  echo ""
+
+  # בדיקה קלה - רק compilation
+  echo "🏗️  TypeScript compilation..."
+  npm run compile-ts > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "⚠️  Warning: TypeScript compilation has errors"
+    echo "⚠️  Continuing anyway (main is for testing)"
+  else
+    echo "✅ Compilation OK"
+  fi
   echo ""
 
 # ════════════════════════════════════════════════════════════════

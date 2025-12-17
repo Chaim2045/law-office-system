@@ -1,14 +1,21 @@
 # ════════════════════════════════════════════════════════════════
 # Law Office Management System - Netlify Configuration (Main App)
 # ════════════════════════════════════════════════════════════════
-# Production URL (LIVE - משתמשים אמיתיים!): https://gh-law-office-system.netlify.app
+# 🔴 PRODUCTION (LIVE - משתמשים אמיתיים!)
+#    Branch: production-stable
+#    URL: https://gh-law-office-system.netlify.app
+#
+# 🟡 DEVELOPMENT/TESTING (ניסויים בטוחים)
+#    Branch: main
+#    URL: https://main--gh-law-office-system.netlify.app
+#
 # Admin Panel URL: https://admin-gh-law-office-system.netlify.app
 # Firebase Backend: law-office-system-e4801.web.app
 # ════════════════════════════════════════════════════════════════
 
 # ════════════════════════════════════════════════════════════════
-# 🚨 PRODUCTION BUILD - עם בדיקות מלאות!
-# אם יש שגיאות - הדפלוי ייכשל (זה טוב!)
+# 🚨 PRODUCTION BUILD (production-stable branch only!)
+# עם בדיקות מלאות - אם יש שגיאות הדפלוי ייכשל
 # ════════════════════════════════════════════════════════════════
 [build]
   publish = "."
@@ -24,13 +31,23 @@
 # 🔬 BRANCH DEPLOYS - סביבות בדיקה בטוחות
 # ════════════════════════════════════════════════════════════════
 
-# Develop Branch - סביבת פיתוח (פחות בדיקות, יותר מהירות)
-[context.develop]
-  command = "npm run compile-ts || echo 'TS compilation skipped in develop'"
+# Main Branch - סביבת פיתוח/ניסויים (אין משתמשים אמיתיים!)
+# URL: https://main--gh-law-office-system.netlify.app
+[context.main]
+  command = "npm run compile-ts || echo 'TS compilation skipped in main preview'"
 
-[context.develop.environment]
+[context.main.environment]
   NODE_VERSION = "18"
-  ENVIRONMENT = "staging"
+  ENVIRONMENT = "development"
+
+# Production-Stable Branch - הייצור האמיתי!
+# URL: https://gh-law-office-system.netlify.app (ה-URL הרגיל)
+[context.production-stable]
+  command = "npm run type-check && npm run compile-ts"
+
+[context.production-stable.environment]
+  NODE_VERSION = "18"
+  ENVIRONMENT = "production"
 
 # Feature Branches - Deploy Previews
 [context.branch-deploy]
