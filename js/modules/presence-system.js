@@ -34,8 +34,10 @@
       this.presenceRef = null;
       this.currentUserId = null;
       this.currentUsername = null;
+      this.currentUserEmail = null; // ✅ NEW: Store email for Firestore updates
       this.sessionId = null;
       this.isConnected = false;
+      this.heartbeatInterval = null; // ✅ NEW: Heartbeat timer
     }
 
     /**
@@ -82,18 +84,30 @@
       let os = 'Unknown';
 
       // זיהוי דפדפן
-      if (ua.includes('Firefox')) browser = 'Firefox';
-      else if (ua.includes('Chrome') && !ua.includes('Edge')) browser = 'Chrome';
-      else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
-      else if (ua.includes('Edge')) browser = 'Edge';
-      else if (ua.includes('MSIE') || ua.includes('Trident/')) browser = 'IE';
+      if (ua.includes('Firefox')) {
+browser = 'Firefox';
+} else if (ua.includes('Chrome') && !ua.includes('Edge')) {
+browser = 'Chrome';
+} else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+browser = 'Safari';
+} else if (ua.includes('Edge')) {
+browser = 'Edge';
+} else if (ua.includes('MSIE') || ua.includes('Trident/')) {
+browser = 'IE';
+}
 
       // זיהוי מערכת הפעלה
-      if (ua.includes('Win')) os = 'Windows';
-      else if (ua.includes('Mac')) os = 'MacOS';
-      else if (ua.includes('Linux')) os = 'Linux';
-      else if (ua.includes('Android')) os = 'Android';
-      else if (ua.includes('iOS')) os = 'iOS';
+      if (ua.includes('Win')) {
+os = 'Windows';
+} else if (ua.includes('Mac')) {
+os = 'MacOS';
+} else if (ua.includes('Linux')) {
+os = 'Linux';
+} else if (ua.includes('Android')) {
+os = 'Android';
+} else if (ua.includes('iOS')) {
+os = 'iOS';
+}
 
       return {
         browser,
@@ -122,6 +136,7 @@
       try {
         this.currentUserId = userId;
         this.currentUsername = username;
+        this.currentUserEmail = email; // ✅ NEW: Store email for heartbeat
         this.sessionId = this.generateSessionId();
         const deviceInfo = this.getDeviceInfo();
 
@@ -160,6 +175,9 @@
         this.isConnected = true;
         Logger.log(`✅ [PresenceSystem] User ${username} is now online (session: ${this.sessionId})`);
 
+        // ✅ NEW: Start heartbeat (updates lastSeen every 5 minutes)
+        this.startHeartbeat();
+
       } catch (error) {
         console.error('[PresenceSystem] Failed to connect:', error);
         throw error;
@@ -187,10 +205,14 @@
 
         Logger.log(`✅ [PresenceSystem] User ${this.currentUsername} disconnected`);
 
+        // ✅ NEW: Stop heartbeat
+        this.stopHeartbeat();
+
         // ניקוי
         this.presenceRef = null;
         this.currentUserId = null;
         this.currentUsername = null;
+        this.currentUserEmail = null;
         this.sessionId = null;
         this.isConnected = false;
 
@@ -211,6 +233,80 @@
         } catch (error) {
           console.warn('[PresenceSystem] Failed to update activity:', error);
         }
+      }
+    }
+
+    /**
+     * ════════════════════════════════════════════════════════════════════
+     * 🆕 NEW: HEARTBEAT SYSTEM
+     * ════════════════════════════════════════════════════════════════════
+     * Purpose: Keep lastSeen updated even when user is idle
+     * Why: Admin can see real-time status (Active Now vs Last Seen 1 week ago)
+     * Frequency: Every 5 minutes (300,000ms)
+     * Cost: ~288 writes/day per user (vs 2,880 with old 30s polling)
+     * ════════════════════════════════════════════════════════════════════
+     */
+
+    /**
+     * Start heartbeat - updates lastSeen every 5 minutes
+     * התחל דופק - מעדכן lastSeen כל 5 דקות
+     */
+    startHeartbeat() {
+      // Clear existing heartbeat if any
+      this.stopHeartbeat();
+
+      // Update immediately
+      this.performHeartbeat();
+
+      // Then update every 5 minutes
+      this.heartbeatInterval = setInterval(() => {
+        this.performHeartbeat();
+      }, 5 * 60 * 1000); // 5 minutes
+
+      Logger.log('✅ [PresenceSystem] Heartbeat started (every 5 minutes)');
+    }
+
+    /**
+     * Stop heartbeat
+     * עצור דופק
+     */
+    stopHeartbeat() {
+      if (this.heartbeatInterval) {
+        clearInterval(this.heartbeatInterval);
+        this.heartbeatInterval = null;
+        Logger.log('✅ [PresenceSystem] Heartbeat stopped');
+      }
+    }
+
+    /**
+     * Perform heartbeat update
+     * בצע עדכון דופק
+     */
+    async performHeartbeat() {
+      if (!this.isConnected || !this.presenceRef) {
+        return;
+      }
+
+      try {
+        // Update Realtime Database
+        await this.presenceRef.update({
+          lastSeen: firebase.database.ServerValue.TIMESTAMP,
+          online: true
+        });
+
+        // Update Firestore (employees collection)
+        if (this.firestore && this.currentUserEmail) {
+          await this.firestore.collection('employees').doc(this.currentUserEmail).update({
+            lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+            isOnline: true
+          });
+        }
+
+        Logger.log('[PresenceSystem] 💓 Heartbeat updated');
+
+      } catch (error) {
+        console.warn('[PresenceSystem] Failed to update heartbeat:', error);
+        // Don't throw - heartbeat is not critical
       }
     }
 

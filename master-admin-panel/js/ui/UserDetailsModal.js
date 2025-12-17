@@ -675,7 +675,7 @@
                                 ${this.renderInfoRow('תפקיד', this.getRoleText(user.role))}
                                 ${this.renderInfoRow('סטטוס', this.getStatusText(user.status))}
                                 ${this.renderInfoRow('תאריך יצירה', this.formatDate(user.createdAt))}
-                                ${this.renderInfoRow('כניסה אחרונה', this.formatDate(user.lastLogin))}
+                                ${this.renderInfoRow('סטטוס פעילות', this.formatLastSeenStatus(user))}
                             </div>
                         </div>
 
@@ -3848,6 +3848,93 @@ return '-';
             } catch (error) {
                 console.error('Error formatting date:', error, date);
                 return '-';
+            }
+        }
+
+        /**
+         * ════════════════════════════════════════════════════════════════════
+         * 🆕 NEW: Real-Time Activity Status Display
+         * ════════════════════════════════════════════════════════════════════
+         * Shows accurate user status based on lastSeen (updated by Heartbeat)
+         * - 🟢 "פעיל עכשיו" if lastSeen < 10 minutes
+         * - 🟡 "פעיל לפני X דקות" if 10-60 minutes
+         * - 🔴 "לא פעיל" if > 60 minutes
+         * ════════════════════════════════════════════════════════════════════
+         */
+
+        /**
+         * Format last seen status with real-time indicator
+         * הצגת סטטוס פעילות אמיתי עם אינדיקטור
+         *
+         * @param {Object} user - User data with lastSeen field
+         * @returns {string} HTML string with status indicator
+         */
+        formatLastSeenStatus(user) {
+            // Try lastSeen first (updated by Heartbeat every 5 min)
+            const lastActivity = user.lastSeen || user.lastLogin;
+
+            if (!lastActivity) {
+                return '<span style="color: #6b7280;">לא ידוע</span>';
+            }
+
+            try {
+                let dateObj;
+
+                // Handle Firestore Timestamp
+                if (lastActivity.toDate && typeof lastActivity.toDate === 'function') {
+                    dateObj = lastActivity.toDate();
+                } else if (lastActivity._seconds !== undefined) {
+                    dateObj = new Date(lastActivity._seconds * 1000);
+                } else if (typeof lastActivity === 'number') {
+                    dateObj = new Date(lastActivity);
+                } else if (lastActivity instanceof Date) {
+                    dateObj = lastActivity;
+                } else {
+                    return '<span style="color: #6b7280;">לא ידוע</span>';
+                }
+
+                // Check if valid date
+                if (isNaN(dateObj.getTime())) {
+                    return '<span style="color: #6b7280;">לא ידוע</span>';
+                }
+
+                const now = Date.now();
+                const diff = now - dateObj.getTime();
+                const minutes = Math.floor(diff / (1000 * 60));
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+                // 🟢 Active NOW (< 10 minutes)
+                if (minutes < 10) {
+                    return '<span style="color: #10b981; font-weight: 600;">🟢 פעיל עכשיו</span>';
+                }
+
+                // 🟡 Active recently (10-60 minutes)
+                if (minutes < 60) {
+                    return `<span style="color: #f59e0b; font-weight: 600;">🟡 פעיל לפני ${minutes} דקות</span>`;
+                }
+
+                // 🔴 Not active (> 1 hour)
+                if (hours < 24) {
+                    return `<span style="color: #ef4444;">🔴 לא פעיל (לפני ${hours} שעות)</span>`;
+                }
+
+                // 🔴 Not active (> 1 day)
+                if (days < 7) {
+                    return `<span style="color: #ef4444;">🔴 לא פעיל (לפני ${days} ימים)</span>`;
+                }
+
+                // 🔴 Not active (> 1 week)
+                const formattedDate = dateObj.toLocaleDateString('he-IL', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                return `<span style="color: #9ca3af;">⚫ לא פעיל מזה ${formattedDate}</span>`;
+
+            } catch (error) {
+                console.error('Error formatting last seen status:', error);
+                return '<span style="color: #6b7280;">לא ידוע</span>';
             }
         }
 

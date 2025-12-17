@@ -115,6 +115,7 @@
             this.currentUser = null;
             this.isAdmin = false;
             this.rememberMe = false;
+            this.idleTimeout = null; // ✅ NEW: Idle timeout manager
 
             // DOM Elements
             this.loginScreen = null;
@@ -541,6 +542,9 @@ this.passwordInput.value = '';
                     hasFirebaseDB: !!window.firebaseDB
                 });
             }
+
+            // ✅ NEW: Initialize Idle Timeout for Admin Panel
+            this.initIdleTimeout();
         }
 
         /**
@@ -678,6 +682,153 @@ return;
          */
         isCurrentUserAdmin() {
             return this.isAdmin && this.currentUser !== null;
+        }
+
+        /**
+         * ════════════════════════════════════════════════════════════════════
+         * 🆕 NEW: IDLE TIMEOUT FOR ADMIN PANEL
+         * ════════════════════════════════════════════════════════════════════
+         * Auto logout after inactivity - same as regular users
+         * Timeout: 15 minutes total (10 min idle + 5 min warning)
+         * ════════════════════════════════════════════════════════════════════
+         */
+
+        /**
+         * Initialize Idle Timeout Manager
+         * אתחול מנהל התנתקות אוטומטית
+         */
+        initIdleTimeout() {
+            if (!window.IdleTimeoutManager) {
+                console.warn('⚠️ [Admin Panel] IdleTimeoutManager not loaded - auto-logout disabled');
+                return;
+            }
+
+            if (this.idleTimeout) {
+                console.log('ℹ️ [Admin Panel] Idle Timeout Manager already initialized');
+                return;
+            }
+
+            this.idleTimeout = new window.IdleTimeoutManager({
+                idleTimeout: 10 * 60 * 1000,      // 10 minutes idle
+                warningTimeout: 5 * 60 * 1000,    // 5 minutes warning
+                enabled: true,                     // Enable auto-logout
+                onWarning: (remainingSeconds) => {
+                    this.showIdleWarning(remainingSeconds);
+                },
+                onLogout: async () => {
+                    console.log('🚪 [Admin Panel] Auto-logout triggered by idle timeout');
+                    await this.handleLogout();
+                }
+            });
+
+            this.idleTimeout.start();
+            console.log('✅ [Admin Panel] Idle Timeout Manager initialized (15 min total)');
+        }
+
+        /**
+         * Show idle warning (Admin Panel version)
+         * הצגת אזהרת Idle
+         */
+        showIdleWarning(remainingSeconds) {
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            const timeText = minutes > 0
+                ? `${minutes}:${seconds.toString().padStart(2, '0')}`
+                : `${seconds} שניות`;
+
+            // Remove existing overlay if any
+            const existingOverlay = document.getElementById('idleWarningOverlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+
+            // Create minimal warning overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'idleWarningOverlay';
+            overlay.style.cssText = 'position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10001; background: rgba(0, 0, 0, 0.15); backdrop-filter: blur(2px);';
+            overlay.innerHTML = `
+              <div style="background: white; border-radius: 8px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); max-width: 320px; width: 90%; border: 1px solid #e2e8f0;">
+                <div style="padding: 18px 20px; text-align: center; border-bottom: 1px solid #f1f5f9;">
+                  <div style="background: #f8fafc; width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-clock" style="font-size: 18px; color: #64748b;"></i>
+                  </div>
+                  <h3 style="color: #1e293b; margin: 0; font-size: 15px; font-weight: 600;">התנתקות אוטומטית</h3>
+                </div>
+                <div style="padding: 20px 18px; text-align: center;">
+                  <p style="color: #64748b; font-size: 12px; margin: 0 0 12px 0;">
+                    לא זוהתה פעילות
+                  </p>
+                  <div id="idleCountdownTimer" style="font-size: 32px; font-weight: 600; color: #334155; margin: 0 0 16px 0; font-family: 'Courier New', monospace;">
+                    ${timeText}
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <button id="idleLogoutBtn" style="flex: 1; padding: 9px 12px; background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;">
+                      התנתק
+                    </button>
+                    <button id="idleStayBtn" style="flex: 1; padding: 9px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">
+                      המשך
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Setup button handlers
+            document.getElementById('idleLogoutBtn').addEventListener('click', () => {
+                overlay.remove();
+                this.handleLogout();
+            });
+
+            document.getElementById('idleStayBtn').addEventListener('click', () => {
+                if (this.idleTimeout) {
+                    this.idleTimeout.resetActivity();
+                }
+                overlay.remove();
+            });
+
+            // Setup countdown update listener
+            this.setupIdleCountdownListener();
+        }
+
+        /**
+         * Setup countdown update listener
+         * הגדרת מאזין לספירה לאחור
+         */
+        setupIdleCountdownListener() {
+            // Remove existing listener if any
+            if (this.idleCountdownListener) {
+                window.removeEventListener('idle:countdown', this.idleCountdownListener);
+            }
+
+            // Add new listener
+            this.idleCountdownListener = (event) => {
+                const remainingSeconds = event.detail.remainingSeconds;
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+                const timeText = minutes > 0
+                    ? `${minutes}:${seconds.toString().padStart(2, '0')}`
+                    : `${seconds} שניות`;
+
+                // Update countdown in modal
+                const countdownElement = document.getElementById('idleCountdownTimer');
+                if (countdownElement) {
+                    countdownElement.textContent = timeText;
+                }
+            };
+
+            window.addEventListener('idle:countdown', this.idleCountdownListener);
+
+            // Listen for warning hide event
+            const hideListener = () => {
+                const overlay = document.getElementById('idleWarningOverlay');
+                if (overlay) {
+                    overlay.remove();
+                }
+                window.removeEventListener('idle:warning-hide', hideListener);
+            };
+
+            window.addEventListener('idle:warning-hide', hideListener);
         }
 
     }

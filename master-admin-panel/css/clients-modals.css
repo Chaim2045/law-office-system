@@ -1,0 +1,1415 @@
+/**
+ * Clients Modals Styles
+ * עיצוב מודלים של לקוחות
+ *
+ * נוצר: 17/12/2025
+ * מטרה: הפרדה נקייה של סטיילים של מודלים מה-CSS הכללי
+ *
+ * מודלים הכלולים:
+ * 1. Client Report Modal - מודל הפקת דוחות
+ * 2. Client Management Modal - מודל ניהול לקוח
+ * 3. Add Service Modal - מודל הוספת שירות
+ * 4. Fee Agreements - הסכמי שכר טרחה
+ */
+
+/* ============================================
+   BASE MODAL STYLES - עיצוב בסיס למודלים
+   ============================================ */
+
+/*
+ * Full-Screen Overlay Modal Implementation
+ * =========================================
+ * Professional approach - Modal covers EVERYTHING including navigation bar
+ *
+ * Z-INDEX HIERARCHY (Application-wide):
+ * - Base content: 0-99
+ * - Navigation: 100
+ * - Dropdowns/Tooltips: 1000-1999
+ * - Modals (standard): 10000-10099
+ * - System modals (case creation, messaging): 10100-10199
+ * - Critical overlays (this modal): 10200
+ *
+ * Key Features:
+ * 1. z-index: 10200 - Above ALL content (highest in app)
+ * 2. Full-screen overlay - Covers entire viewport from edge to edge
+ * 3. Backdrop blur - Professional glassmorphism effect
+ * 4. Centered content - Modal content centered with safe scrolling
+ * 5. Responsive - Works on all screen sizes
+ */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background: rgb(0 0 0 / 60%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10200;
+    padding: 2rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * Modal Content Container
+ * =======================
+ * Centered content box that floats above the blurred overlay
+ *
+ * Design:
+ * - max-height: 90vh - Never taller than 90% of viewport (allows safe scrolling)
+ * - margin: auto - Centered by flexbox parent
+ * - overflow-y: auto - Internal scrolling when content is tall
+ * - box-shadow: Elevated card effect
+ * - border-radius: Modern rounded corners
+ */
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    margin: auto;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
+    position: relative;
+
+    /* Custom Scrollbar - Minimal & Clean */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgb(24 119 242 / 15%) transparent; /* Firefox */
+}
+
+/* Webkit Browsers (Chrome, Safari, Edge) */
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: rgb(24 119 242 / 15%);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgb(24 119 242 / 30%);
+}
+
+/* Modal Header */
+.modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.modal-title i {
+    color: var(--primary-blue);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: 1rem 1.25rem;
+}
+
+.modal-footer {
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.625rem;
+    justify-content: flex-end;
+}
+
+/* ===== Modal Large (for Report & Management Modals) ===== */
+
+/* Override components.css with higher specificity for clients modals */
+#clientReportModal .modal-content.modal-large,
+#clientManagementModal .modal-content.modal-large {
+    max-width: 480px !important;
+    width: 90% !important;
+}
+
+/* Fallback with even higher specificity */
+div#clientReportModal .modal-content.modal-large,
+div#clientManagementModal .modal-content.modal-large {
+    max-width: 480px !important;
+    width: 90% !important;
+}
+
+/* ============================================
+   CLIENT REPORT MODAL - מודל הפקת דוחות
+   ============================================ */
+
+/* Quick Date Buttons */
+.quick-dates {
+    display: flex;
+    gap: 0.375rem;
+    margin-top: 0.25rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.btn-quick-date {
+    padding: 0.5rem 0.875rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--primary-blue);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-quick-date:hover {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+    transform: translateY(-1px);
+}
+
+/* Report Client Info */
+.report-client-info {
+    background: var(--bg-light);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.875rem;
+    border-right: 3px solid var(--primary-blue);
+}
+
+.report-client-info h3 {
+    color: var(--primary-blue);
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.report-client-info p {
+    color: var(--text-secondary);
+    margin: 0;
+    font-size: 0.8125rem;
+}
+
+.report-client-info > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-client-info span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.report-client-info strong {
+    font-weight: 500;
+    margin-left: 0.25rem;
+}
+
+/* Report Form */
+.report-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.form-section h4 {
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-section h4 i {
+    color: var(--primary-blue);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.form-group label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.form-input {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+select.form-input {
+    cursor: pointer;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgb(24 119 242 / 10%);
+}
+
+/* Radio Group */
+.radio-group {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.radio-label:hover {
+    background: var(--bg-light);
+    border-color: var(--primary-blue);
+}
+
+.radio-label input[type="radio"] {
+    display: none;
+}
+
+.radio-custom {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.radio-label input[type="radio"]:checked + .radio-custom {
+    border-color: var(--primary-blue);
+}
+
+.radio-label input[type="radio"]:checked + .radio-custom::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: var(--primary-blue);
+    border-radius: 50%;
+}
+
+.radio-text {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.radio-label input[type="radio"]:checked ~ .radio-text {
+    font-weight: 600;
+    color: var(--primary-blue);
+}
+
+/* ============================================
+   CLIENT MANAGEMENT MODAL - מודל ניהול לקוח
+   ============================================ */
+
+.management-client-header {
+    background: white;
+    border-bottom: 3px solid var(--primary-blue);
+    padding: 1.25rem 0 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.management-client-name {
+    font-size: 1.375rem;
+    font-weight: 600;
+    margin-bottom: 0.625rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--text-primary);
+}
+
+.management-client-name i {
+    color: var(--primary-blue);
+    font-size: 1.25rem;
+}
+
+.management-client-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.management-client-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.management-client-meta-item i {
+    color: var(--primary-blue);
+    font-size: 0.875rem;
+}
+
+.management-section {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.management-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.management-section-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.management-section-title i {
+    color: var(--primary-blue);
+    font-size: 1rem;
+}
+
+/* Services List */
+.management-services-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.management-service-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--primary-blue);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.management-service-card:hover {
+    box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+    border-left-width: 4px;
+}
+
+.management-service-card.expanded {
+    border-left-width: 4px;
+    box-shadow: 0 2px 12px rgb(24 119 242 / 10%);
+}
+
+.management-service-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.625rem 0.875rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.management-service-header:hover {
+    background: rgb(24 119 242 / 2%);
+}
+
+.management-service-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.management-service-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.management-service-toggle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    transition: transform 0.2s;
+}
+
+.management-service-card.expanded .management-service-toggle {
+    transform: rotate(180deg);
+}
+
+.management-service-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.management-service-card.expanded .management-service-body {
+    max-height: 1000px;
+    transition: max-height 0.4s ease-in;
+}
+
+.management-service-content {
+    padding: 0.625rem 0.875rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.management-service-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgb(24 119 242 / 8%);
+    color: var(--primary-blue);
+    border: 1px solid rgb(24 119 242 / 20%);
+}
+
+.management-service-badge.hours {
+    background: rgb(24 119 242 / 8%);
+    color: var(--primary-blue);
+    border-color: rgb(24 119 242 / 20%);
+}
+
+.management-service-badge.legal {
+    background: rgb(24 119 242 / 8%);
+    color: var(--primary-blue);
+    border-color: rgb(24 119 242 / 20%);
+}
+
+.management-service-badge.fixed {
+    background: rgb(24 119 242 / 8%);
+    color: var(--primary-blue);
+    border-color: rgb(24 119 242 / 20%);
+}
+
+.management-service-badge.service-name {
+    background: rgb(24 119 242 / 8%);
+    color: var(--primary-blue);
+    border-color: rgb(24 119 242 / 20%);
+    text-transform: none;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.management-service-badge.service-name:hover {
+    background: rgb(24 119 242 / 15%);
+    border-color: rgb(24 119 242 / 40%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgb(24 119 242 / 20%);
+}
+
+.management-service-info {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+}
+
+.management-service-info-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+}
+
+.management-service-info-label {
+    color: var(--text-secondary);
+}
+
+.management-service-info-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.management-service-info-value.critical {
+    color: var(--warning-yellow);
+}
+
+.management-service-info-value.blocked {
+    color: var(--danger-red);
+}
+
+.management-service-info-value.success {
+    color: var(--success-green);
+}
+
+/* Stages (for legal procedures) - Horizontal Timeline */
+.management-stages {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.management-stages-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Timeline Container */
+.management-stages-timeline {
+    position: relative;
+    padding: 0.5rem 0;
+}
+
+/* Progress Bar Background */
+.management-stages-progress {
+    position: absolute;
+    top: 1.5rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--border-color);
+    z-index: 0;
+}
+
+/* Progress Bar Fill */
+.management-stages-progress-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    transition: width 0.3s ease;
+}
+
+/* Stages List - Horizontal */
+.management-stages-list {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+}
+
+/* Individual Stage */
+.management-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+    position: relative;
+}
+
+.management-stage-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    background: white;
+    border: 2px solid var(--border-color);
+    transition: all 0.2s;
+    z-index: 2;
+}
+
+.management-stage.completed .management-stage-icon {
+    background: var(--success-green);
+    border-color: var(--success-green);
+    color: white;
+}
+
+.management-stage.active .management-stage-icon {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: white;
+    box-shadow: 0 0 0 4px rgb(24 119 242 / 10%);
+}
+
+.management-stage.pending .management-stage-icon {
+    background: white;
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.management-stage-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    text-align: center;
+}
+
+.management-stage-name {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    max-width: 80px;
+    line-height: 1.2;
+}
+
+.management-stage.completed .management-stage-name {
+    color: var(--text-secondary);
+}
+
+.management-stage.active .management-stage-name {
+    color: var(--primary-blue);
+    font-weight: 600;
+}
+
+.management-stage-hours {
+    font-size: 0.625rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.management-stage.active .management-stage-hours {
+    color: var(--primary-blue);
+}
+
+/* ===== Hours Service Progress Bar ===== */
+.management-hours-progress {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.management-hours-progress-title {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.management-hours-progress-title i {
+    font-size: 0.6875rem;
+    color: var(--primary-blue);
+}
+
+.management-hours-progress-bar {
+    position: relative;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.management-hours-progress-fill {
+    height: 100%;
+    transition: width 0.4s ease, background 0.3s ease;
+    border-radius: 3px;
+}
+
+.management-hours-progress-fill.success {
+    background: var(--success-green);
+}
+
+.management-hours-progress-fill.warning {
+    background: var(--warning-yellow);
+}
+
+.management-hours-progress-fill.critical {
+    background: var(--danger-red);
+}
+
+.management-hours-progress-fill.blocked {
+    background: var(--text-secondary);
+}
+
+.management-hours-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.management-hours-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+}
+
+.management-hours-stat-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.management-hours-stat-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.management-hours-stat-value.success {
+    color: var(--success-green);
+}
+
+.management-hours-stat-value.warning {
+    color: var(--warning-yellow);
+}
+
+.management-hours-stat-value.critical {
+    color: var(--danger-red);
+}
+
+.management-hours-stat-value.blocked {
+    color: var(--text-secondary);
+}
+
+.management-hours-percentage {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-right: auto;
+}
+
+/* Service Actions */
+.management-service-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgb(229 231 235 / 70%);
+}
+
+.management-service-action-btn {
+    padding: 0.375rem 0.875rem;
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    background: white;
+    color: var(--text-primary);
+}
+
+.management-service-action-btn i {
+    font-size: 0.75rem;
+}
+
+.management-service-action-btn:hover {
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+    background: rgb(24 119 242 / 2%);
+}
+
+.management-service-action-btn.primary {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+.management-service-action-btn.primary:hover {
+    background: var(--primary-blue-dark);
+}
+
+.management-service-action-btn.secondary {
+    background: white;
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.management-service-action-btn.secondary:hover {
+    background: rgb(24 119 242 / 5%);
+}
+
+.management-service-action-btn.danger {
+    background: white;
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.management-service-action-btn.danger:hover {
+    color: var(--danger-red);
+    border-color: var(--danger-red);
+}
+
+/* Quick Actions - 2 Column Grid Minimalist */
+.management-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.management-action-btn {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.625rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    text-align: center;
+}
+
+.management-action-btn:hover {
+    border-color: var(--primary-blue);
+    background: rgb(24 119 242 / 2%);
+}
+
+.management-action-btn i {
+    font-size: 1.125rem;
+    color: var(--primary-blue);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgb(24 119 242 / 8%);
+    flex-shrink: 0;
+}
+
+.management-action-btn span {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.management-action-btn.danger:hover {
+    border-color: var(--danger-red);
+    background: rgb(220 38 38 / 2%);
+}
+
+.management-action-btn.danger i {
+    color: var(--text-secondary);
+    background: rgb(107 114 128 / 8%);
+}
+
+.management-action-btn.danger:hover i {
+    color: var(--danger-red);
+    background: rgb(220 38 38 / 8%);
+}
+
+/* Empty State */
+.management-empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-secondary);
+}
+
+.management-empty-state i {
+    font-size: 3rem;
+    color: var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.management-empty-state h4 {
+    font-size: 1.125rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.management-empty-state p {
+    font-size: 0.875rem;
+}
+
+/* ============================================
+   FEE AGREEMENTS - הסכמי שכר טרחה
+   ============================================ */
+
+.fee-agreements-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.fee-agreements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Individual Agreement Item */
+.fee-agreement-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-item:hover {
+    border-color: var(--primary-color);
+    background: rgb(37 99 235 / 2%);
+}
+
+.fee-agreement-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.fee-agreement-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgb(37 99 235 / 8%);
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.fee-agreement-icon i {
+    font-size: 1rem;
+}
+
+.fee-agreement-icon.pdf {
+    background: rgb(220 38 38 / 8%);
+    color: #dc2626;
+}
+
+.fee-agreement-icon.image {
+    background: rgb(16 185 129 / 8%);
+    color: #10b981;
+}
+
+.fee-agreement-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.fee-agreement-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fee-agreement-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fee-agreement-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Agreement Actions */
+.fee-agreement-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.fee-agreement-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-action-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgb(37 99 235 / 4%);
+}
+
+.fee-agreement-action-btn.view:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.fee-agreement-action-btn.delete:hover {
+    border-color: var(--danger-red);
+    color: var(--danger-red);
+    background: rgb(220 38 38 / 4%);
+}
+
+/* Add Agreement Button */
+.fee-agreement-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px dashed #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-add-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #475569;
+}
+
+.fee-agreement-add-btn i {
+    font-size: 0.875rem;
+}
+
+/* Upload Area */
+.fee-agreement-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    background: rgb(107 114 128 / 2%);
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-upload:hover {
+    border-color: var(--primary-color);
+    background: rgb(37 99 235 / 2%);
+}
+
+.fee-agreement-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fee-agreement-upload-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.fee-agreement-upload-btn i {
+    font-size: 1rem;
+}
+
+.fee-agreement-upload-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Empty State for Agreements */
+.fee-agreements-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.fee-agreements-empty:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+
+.empty-state-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1rem;
+    background: #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-state-icon i {
+    font-size: 1.5rem;
+    color: #64748b;
+}
+
+.empty-state-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.empty-state-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #475569;
+    margin: 0;
+}
+
+.empty-state-text {
+    font-size: 0.8125rem;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.empty-state-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.empty-state-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.empty-state-btn:active {
+    transform: translateY(0);
+}
+
+.empty-state-btn i {
+    font-size: 0.875rem;
+}
+
+/* Upload Progress */
+.fee-agreement-uploading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgb(37 99 235 / 4%);
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+}
+
+.fee-agreement-uploading i {
+    color: var(--primary-color);
+    animation: spin 1s linear infinite;
+}
+
+.fee-agreement-uploading span {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===== Agreement Warning Icon ===== */
+.agreement-warning-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    margin-left: 8px;
+    cursor: help;
+    box-shadow: 0 2px 4px rgb(249 115 22 / 30%);
+}
+
+.agreement-warning-icon i {
+    font-size: 10px;
+}
+
+.client-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ===== No Agreement Badge in Modal ===== */
+.no-agreement-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffedd5;
+    color: #c2410c;
+    border: 1px solid #fdba74;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-right: 12px;
+}
+
+.no-agreement-badge i {
+    font-size: 0.75rem;
+}
+
+.management-client-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* ============================================
+   RESPONSIVE - התאמה למסכים קטנים
+   ============================================ */
+
+@media (width <= 768px) {
+    .modal {
+        padding: 1rem;
+    }
+
+    .modal-content {
+        max-width: 100%;
+        max-height: 95vh;
+    }
+
+    .modal-large {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-dates {
+        flex-direction: column;
+    }
+
+    .btn-quick-date {
+        width: 100%;
+    }
+
+    .radio-group {
+        flex-direction: column;
+    }
+
+    .radio-label {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .management-actions-grid {
+        grid-template-columns: 1fr;
+    }
+}

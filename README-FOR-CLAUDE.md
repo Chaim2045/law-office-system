@@ -4,6 +4,23 @@
 
 ---
 
+## 🔐 PRODUCTION DEPLOYMENT PROTOCOL
+
+**Deploy to production ONLY when user provides this exact protocol:**
+
+The user will say: **"קלוד, סיימנו עם העבודה"** followed by the full protocol.
+
+The protocol includes 5 steps:
+1. Check for unfamiliar commits (git log analysis)
+2. Analyze changed files (git status + categorization)
+3. Detailed report to user
+4. Wait for explicit approval
+5. Execute deployment (only after approval)
+
+**If the user does NOT provide this protocol → work on main branch only (preview)!**
+
+---
+
 ## ⚠️ CRITICAL: Branch Workflow
 
 This project uses a **two-branch deployment strategy**:
