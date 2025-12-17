@@ -352,6 +352,12 @@
             try {
                 this.showLoading();
 
+                // 🔒 Clear session storage and broadcast logout event to all tabs
+                sessionStorage.removeItem('authState');
+                localStorage.setItem('logoutEvent', Date.now().toString());
+                setTimeout(() => localStorage.removeItem('logoutEvent'), 100);
+                console.log('📢 Logout event broadcasted to all tabs');
+
                 // Log admin logout BEFORE signing out
                 if (window.AuditLogger && window.AuditLogger.initialized) {
                     await window.AuditLogger.logAdminLogout();
@@ -541,6 +547,18 @@ this.passwordInput.value = '';
 
             this.hideLoading();
             this.setButtonLoading(false);
+
+            // 💾 Update auth state in sessionStorage for fast pre-flight checks
+            if (this.currentUser) {
+                const authState = {
+                    isAuthenticated: true,
+                    timestamp: Date.now(),
+                    email: this.currentUser.email,
+                    uid: this.currentUser.uid
+                };
+                sessionStorage.setItem('authState', JSON.stringify(authState));
+                console.log('💾 Auth state saved to sessionStorage');
+            }
 
             // Dispatch dashboard ready event for other components
             window.dispatchEvent(new CustomEvent('dashboard:ready'));

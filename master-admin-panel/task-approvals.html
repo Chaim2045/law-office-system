@@ -173,6 +173,15 @@
 
     <!-- ===== Initialization Script ===== -->
     <script>
+        // Cross-tab logout synchronization
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'logoutEvent') {
+                console.log('🔒 Logout detected in another tab');
+                sessionStorage.removeItem('authState');
+                window.location.replace('index.html');
+            }
+        });
+
         // Initialize when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Task Approvals Panel Loading...');
