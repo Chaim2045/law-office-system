@@ -6843,13 +6843,26 @@ exports.whatsappWebhook = onRequest({
       const twilio = require('twilio');
       const client = twilio(twilioAccountSid, twilioAuthToken);
 
-      await client.messages.create({
-        from: twilioWhatsappNumber,
-        to: From,
-        body: response
-      });
-
-      console.log(`✅ Bot response sent to ${userInfo.name}`);
+      // ═══ בדוק אם צריך לשלוח Template או טקסט רגיל ═══
+      if (typeof response === 'object' && response.useTemplate) {
+        // שלח Content Template עם כפתורים
+        console.log(`📤 Sending template: ${response.templateSid}`);
+        await client.messages.create({
+          from: twilioWhatsappNumber,
+          to: From,
+          contentSid: response.templateSid,
+          contentVariables: JSON.stringify(response.variables)
+        });
+        console.log(`✅ Template sent to ${userInfo.name}`);
+      } else {
+        // שלח הודעת טקסט רגילה
+        await client.messages.create({
+          from: twilioWhatsappNumber,
+          to: From,
+          body: typeof response === 'string' ? response : JSON.stringify(response)
+        });
+        console.log(`✅ Bot response sent to ${userInfo.name}`);
+      }
     }
 
     // Log the interaction
@@ -6858,7 +6871,9 @@ exports.whatsappWebhook = onRequest({
       userId: userInfo.email,
       userName: userInfo.name || userInfo.email,
       message: Body,
-      response: response,
+      response: typeof response === 'object' && response.useTemplate
+        ? `[Template: ${response.templateSid}]`
+        : response,
       messageSid: MessageSid,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });

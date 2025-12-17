@@ -146,7 +146,8 @@
       "Bash(while IFS='|' read hash author email subject)",
       "Bash(do echo \"===\")",
       "Bash(copy clients.css clients.css.BACKUP)",
-      "Bash(netlify api updateSite:*)"
+      "Bash(netlify api updateSite:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Add auto-logout system with idle detection and minimal UI\n\nImplemented comprehensive idle timeout system for enhanced security:\n\n**Core System:**\n- Added IdleTimeoutManager.js with activity detection\n- 15-minute total timeout (10 min idle + 5 min warning)\n- Multi-tab synchronization via localStorage\n- Throttled activity tracking (5s intervals)\n- Visibility change detection\n\n**User Interface:**\n- Ultra-minimal warning popup (320px, clean design)\n- Real-time countdown timer (updates every second)\n- Minimal blue accent (#3b82f6 on CTA only)\n- Responsive design for all devices\n\n**Integration:**\n- Regular users: js/main.js + index.html\n- Admin panel: auth.js + index.html\n- Presence system: Added 5-minute heartbeat\n- Activity status display in UserDetailsModal\n\n**Security Features:**\n- Automatic logout after inactivity\n- Cross-tab synchronization\n- Graceful session cleanup\n- Firebase onDisconnect() integration\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

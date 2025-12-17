@@ -1476,7 +1476,22 @@ class WhatsAppBot {
                 }
             });
 
-            // הצג לקוחות מתאימים
+            // ═══ אם יש לקוח אחד בלבד - שלח Template עם כפתורים ═══
+            if (matchingClients.length === 1) {
+                const client = matchingClients[0];
+
+                // החזר אובייקט מיוחד שמציין לשלוח Template
+                return {
+                    useTemplate: true,
+                    templateSid: 'HXb264a60badeb61ee4b23e8622d4e314f',
+                    variables: {
+                        '1': client.name,
+                        '2': client.idNumber || client.id || 'ללא מספר'
+                    }
+                };
+            }
+
+            // ═══ אם יש יותר מלקוח אחד - הצג רשימה (טקסט רגיל) ═══
             let response = `📎 מסמך התקבל!\n\n`;
             response += `━━━━━━━━━━━━━━━━━━━━\n`;
             response += `📄 סוג: ${this.getFileTypeHebrew(contentType)}\n`;
@@ -1707,7 +1722,22 @@ class WhatsAppBot {
             }
         });
 
-        // הצג לקוחות מתאימים
+        // ═══ אם יש לקוח אחד בלבד - שלח Template עם כפתורים ═══
+        if (matchingClients.length === 1) {
+            const client = matchingClients[0];
+
+            // החזר אובייקט מיוחד שמציין לשלוח Template
+            return {
+                useTemplate: true,
+                templateSid: 'HXb264a60badeb61ee4b23e8622d4e314f',
+                variables: {
+                    '1': client.name,
+                    '2': client.idNumber || client.id || 'ללא מספר'
+                }
+            };
+        }
+
+        // ═══ אם יש יותר מלקוח אחד - הצג רשימה (טקסט רגיל) ═══
         const { fileSize, contentType } = session.data;
         let response = `✅ נמצאו ${matchingClients.length} לקוחות מתאימים:\n\n`;
 
@@ -1742,14 +1772,32 @@ class WhatsAppBot {
      * ═══════════════════════════════════════════════════════════
      */
     async handleUploadAgreementContext(message, session, userInfo) {
-        const choice = parseInt(message.trim());
         const matchingClients = session.data?.matchingClients || [];
+        let selectedClient;
 
-        if (isNaN(choice) || choice < 1 || choice > matchingClients.length) {
-            return `❌ בחירה לא תקינה.\nכתוב מספר בין 1-${matchingClients.length}\nאו "ביטול" לביטול`;
+        // בדוק אם זו תגובה מכפתור (confirm/cancel) או מספר
+        const msgLower = message.trim().toLowerCase();
+
+        if (msgLower === 'confirm' || msgLower === 'אישור') {
+            // לחיצה על כפתור "אישור" - בחר את הלקוח הראשון
+            selectedClient = matchingClients[0];
+        } else if (msgLower === 'cancel' || msgLower === 'ביטול') {
+            // לחיצה על כפתור "ביטול"
+            await this.sessionManager.updateSession(session.phoneNumber, {
+                context: 'menu',
+                data: {}
+            });
+            return `❌ העלאת המסמך בוטלה.\n\nכתוב "תפריט" לחזרה לתפריט הראשי.`;
+        } else {
+            // בחירה מספרית (למקרה של מספר לקוחות)
+            const choice = parseInt(message.trim());
+
+            if (isNaN(choice) || choice < 1 || choice > matchingClients.length) {
+                return `❌ בחירה לא תקינה.\nכתוב מספר בין 1-${matchingClients.length}\nאו "ביטול" לביטול`;
+            }
+
+            selectedClient = matchingClients[choice - 1];
         }
-
-        const selectedClient = matchingClients[choice - 1];
         console.log(`✅ Client selected: ${selectedClient.name} (${selectedClient.id})`);
 
         try {
