@@ -478,10 +478,11 @@ select.form-input {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 1.125rem; /* Increased from 0.625rem 0.875rem */
+    padding: 1.125rem 1.5rem; /* Better spacing with more horizontal padding */
     cursor: pointer;
     user-select: none;
     transition: background 0.15s;
+    width: 100%; /* Use full width */
 }
 
 .management-service-header:hover {
@@ -526,8 +527,9 @@ select.form-input {
 }
 
 .management-service-content {
-    padding: 1rem 1.125rem; /* Increased from 0.625rem 0.875rem */
+    padding: 1.25rem 1.125rem; /* Better vertical spacing, reasonable horizontal padding */
     border-top: 1px solid var(--border-color);
+    width: 100%; /* Ensure content uses full width */
 }
 
 .management-service-badge {
@@ -583,10 +585,12 @@ select.form-input {
 
 .management-service-info {
     display: flex;
-    gap: 1.25rem; /* Increased from 1rem */
+    justify-content: space-between; /* Spread items across full width */
+    gap: 1rem;
     margin-bottom: 0.75rem;
     flex-wrap: wrap;
     font-size: 0.875rem; /* Increased from 0.75rem */
+    width: 100%; /* Use full width */
 }
 
 .management-service-info-item {
@@ -805,7 +809,8 @@ select.form-input {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
+    width: 100%; /* Use full width for better spread */
 }
 
 .management-hours-stat {
