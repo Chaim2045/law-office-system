@@ -1942,20 +1942,8 @@ return;
             // Store user reference for other methods
             this.user = user;
 
-            // Initialize selected date if not set
-            if (!this.selectedPerformanceDate) {
-                this.selectedPerformanceDate = new Date().toISOString().split('T')[0];
-            }
-
-            return `
-                <div class="performance-container">
-                    ${this.renderDateSelector()}
-                    ${this.renderDailySummary()}
-                    ${this.renderPerformanceCharts()}
-                    ${this.renderDailyHoursBreakdown()}
-                    ${this.renderCompletedTasks()}
-                </div>
-            `;
+            // Return empty placeholder - panel opens via switchTab
+            return '<div class="performance-tab-placeholder"></div>';
         }
 
         /**
@@ -2007,9 +1995,15 @@ return;
                 .filter(e => e.billable)
                 .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
 
-            // Daily target from user data
+            // Daily target from user data - automatically uses employee's personal target
             const dailyTarget = user.dailyHoursTarget || 8.45;
             const quotaProgress = dailyTarget > 0 ? Math.round((totalHours / dailyTarget) * 100) : 0;
+
+            // Debug log to verify target is loaded correctly
+            console.log(`📊 Daily Target for ${user.displayName || user.email}: ${dailyTarget} hours`, {
+                hasPersonalTarget: !!user.dailyHoursTarget,
+                source: user.dailyHoursTarget ? 'employee profile' : 'default (8.45)'
+            });
 
             // Filter completed tasks for selected date
             const completedToday = allTasks.filter(task => {
@@ -2298,7 +2292,7 @@ return false;
             return `
                 <div class="completed-tasks-section">
                     <h4>משימות שהושלמו (${data.completedTasks.length})</h4>
-                    <div class="tasks-list">
+                    <div class="completed-tasks-list">
                         ${data.completedTasks.map(task => `
                             <div class="completed-task-item">
                                 <i class="fas fa-check-circle"></i>
@@ -2320,16 +2314,20 @@ return false;
          * הוספת event listeners לטאב ביצועים
          */
         attachPerformanceEventListeners() {
+            // Check if we're in a panel or modal
+            const panel = document.getElementById('performancePanelContent');
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) {
-                console.warn('⚠️ Performance: Modal not found');
+            const container = panel || modal;
+
+            if (!container) {
+                console.warn('⚠️ Performance: Container not found');
                 return;
             }
 
-            console.log('🔧 Attaching performance event listeners...');
+            console.log('🔧 Attaching performance event listeners...', panel ? '(in panel)' : '(in modal)');
 
             // Date picker change
-            const performanceDatePicker = modal.querySelector('#performanceDate');
+            const performanceDatePicker = container.querySelector('#performanceDate');
             if (performanceDatePicker) {
                 console.log('✅ Date picker found, attaching listener');
                 performanceDatePicker.addEventListener('change', (e) => {
@@ -2342,7 +2340,7 @@ return false;
             }
 
             // Quick date buttons
-            const quickDateButtons = modal.querySelectorAll('.quick-date-btn');
+            const quickDateButtons = container.querySelectorAll('.quick-date-btn');
             console.log(`🔘 Found ${quickDateButtons.length} quick date buttons`);
             quickDateButtons.forEach((btn, index) => {
                 console.log(`   Attaching to button ${index}: offset=${btn.getAttribute('data-offset')}`);
@@ -2362,7 +2360,7 @@ return false;
             });
 
             // Print report button
-            const printBtn = modal.querySelector('#printPerformanceReport');
+            const printBtn = container.querySelector('#printPerformanceReport');
             if (printBtn) {
                 printBtn.addEventListener('click', () => {
                     window.print();
@@ -2377,21 +2375,49 @@ return false;
          * רענון תוכן טאב ביצועים
          */
         async refreshPerformanceTab() {
-            const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) {
+            // Check if we're in a panel or modal
+            const panelContent = document.getElementById('performancePanelContent');
+            const panel = document.getElementById('performanceSlideInPanel');
+
+            if (panelContent && panel) {
+                // Update panel content
+                const performanceContainer = panelContent.querySelector('.performance-container');
+                if (performanceContainer) {
+                    performanceContainer.innerHTML = `
+                        ${this.renderDateSelector()}
+                        ${this.renderDailySummary()}
+                        ${this.renderPerformanceCharts()}
+                        ${this.renderDailyHoursBreakdown()}
+                        ${this.renderCompletedTasks()}
+                    `;
+                }
+
+                // Update panel header with new date
+                const panelHeader = panel.querySelector('.tasks-panel-header h3');
+                if (panelHeader) {
+                    panelHeader.textContent = `ביצועים יומיים - ${this.formatHebrewDate(this.selectedPerformanceDate)}`;
+                }
+
+                // Re-attach event listeners
+                this.attachPerformanceEventListeners();
+            } else {
+                // Update modal content
+                const modal = window.ModalManager.getElement(this.modalId);
+                if (!modal) {
 return;
 }
 
-            const contentContainer = modal.querySelector('.user-details-content');
-            if (!contentContainer) {
+                const contentContainer = modal.querySelector('.user-details-content');
+                if (!contentContainer) {
 return;
 }
 
-            // Re-render content
-            contentContainer.innerHTML = this.renderPerformanceTab();
+                // Re-render content
+                contentContainer.innerHTML = this.renderPerformanceTab();
 
-            // Re-attach event listeners
-            this.attachPerformanceEventListeners();
+                // Re-attach event listeners
+                this.attachPerformanceEventListeners();
+            }
         }
 
         /**
@@ -2721,21 +2747,21 @@ return;
             }
 
             return `
-                <div style="background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; border-right: 3px solid ${borderColor}; margin-bottom: 12px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'" data-entry-id="${entry.id}">
+                <div class="hours-card ${isClientWork ? 'client-work' : 'internal-work'}" data-entry-id="${entry.id}">
 
                     <!-- שורה 1: תאריך, שעות, חיוב, פעולות -->
-                    <div style="display: grid; grid-template-columns: auto auto 1fr auto auto; gap: 16px; align-items: center; margin-bottom: 12px;">
+                    <div class="hours-card-row-1">
                         <!-- תאריך -->
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-calendar" style="color: #6b7280; font-size: 13px;"></i>
-                            <span style="font-weight: 600; color: #1f2937; font-size: 14px; white-space: nowrap;">${formattedDate}</span>
+                        <div class="hours-date">
+                            <i class="fas fa-calendar"></i>
+                            <span>${formattedDate}</span>
                         </div>
 
                         <!-- שעות -->
-                        <div style="display: flex; align-items: center; gap: 6px; background: ${borderColor}15; padding: 6px 12px; border-radius: 6px;">
-                            <i class="fas fa-clock" style="color: ${iconColor}; font-size: 13px;"></i>
-                            <span style="font-weight: 700; color: ${iconColor}; font-size: 15px;">${(entry.hours || 0).toFixed(2)}</span>
-                            <span style="color: #6b7280; font-size: 13px;">ש'</span>
+                        <div class="hours-amount ${isClientWork ? 'client-work' : ''}">
+                            <i class="fas fa-clock"></i>
+                            <span class="hours-amount-value">${(entry.hours || 0).toFixed(2)}</span>
+                            <span class="hours-amount-unit">ש'</span>
                         </div>
 
                         <!-- ספייסר -->
@@ -2743,29 +2769,29 @@ return;
 
                         <!-- חיוב -->
                         ${entry.billable !== undefined ? `
-                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: ${entry.billable ? '#eff6ff' : '#f9fafb'}; color: ${entry.billable ? '#3b82f6' : '#6b7280'}; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                        <span class="hours-billable-badge ${entry.billable ? 'billable' : 'not-billable'}">
                             <i class="fas fa-${entry.billable ? 'check' : 'times'}-circle"></i>
                             ${entry.billable ? 'חויב' : 'לא חויב'}
                         </span>
                         ` : '<div></div>'}
 
                         <!-- פעולות -->
-                        <div style="display: flex; gap: 6px;">
-                            <button class="btn-table-action btn-edit-hour" data-entry-id="${entry.id}" title="ערוך" style="padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
-                                <i class="fas fa-edit" style="color: #6b7280;"></i>
+                        <div class="hours-actions">
+                            <button class="btn-icon btn-edit-hour" data-entry-id="${entry.id}" title="ערוך">
+                                <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-table-action btn-delete-hour" data-entry-id="${entry.id}" title="מחק" style="padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fecaca'" onmouseout="this.style.background='white'; this.style.borderColor='#e5e7eb'">
-                                <i class="fas fa-trash" style="color: #6b7280;"></i>
+                            <button class="btn-icon btn-delete-hour" data-entry-id="${entry.id}" title="מחק">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
 
                     <!-- שורה 2: לקוח -->
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: ${borderColor}08; border-radius: 6px; margin-bottom: ${taskDesc || entry.notes ? '12px' : '0'};">
-                        <span style="color: #6b7280; font-size: 13px; font-weight: 600; white-space: nowrap;">לקוח:</span>
-                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                            <i class="${iconClass}" style="color: ${iconColor}; font-size: 14px;"></i>
-                            <span style="font-weight: 600; color: #1f2937; font-size: 14px;" title="${this.escapeHtml(clientName)}">${this.escapeHtml(clientName)}</span>
+                    <div class="hours-client-row ${isClientWork ? 'client-work' : ''}" style="margin-bottom: ${taskDesc || entry.notes ? '12px' : '0'};">
+                        <span class="hours-client-label">לקוח:</span>
+                        <div class="hours-client-name ${isClientWork ? 'client-work' : ''}">
+                            <i class="${iconClass}"></i>
+                            <span title="${this.escapeHtml(clientName)}">${this.escapeHtml(clientName)}</span>
                         </div>
                     </div>
 
@@ -2944,10 +2970,20 @@ return;
                 return '<p class="no-results">אין רשומות שעות המתאימות לפילטרים</p>';
             }
 
+            // Show first 3 hours entries
+            const displayedHours = hours.slice(0, 3);
+            const hasMoreHours = hours.length > 3;
+
             return `
                 <div class="hours-list">
-                    ${hours.map(entry => this.renderHoursCard(entry)).join('')}
+                    ${displayedHours.map(entry => this.renderHoursCard(entry)).join('')}
                 </div>
+                ${hasMoreHours ? `
+                    <button class="show-all-hours-btn" data-action="show-all-hours">
+                        <i class="fas fa-clock"></i>
+                        <span>הצג את כל רשומות השעות (${hours.length})</span>
+                    </button>
+                ` : ''}
             `;
         }
 
@@ -3544,6 +3580,14 @@ return;
                 });
             }
 
+            // ========== SHOW ALL HOURS BUTTON ==========
+            const showAllHoursBtn = modal.querySelector('.show-all-hours-btn');
+            if (showAllHoursBtn) {
+                showAllHoursBtn.addEventListener('click', () => {
+                    this.openHoursPanel();
+                });
+            }
+
         }
 
         /**
@@ -3584,12 +3628,11 @@ return;
             // Re-setup events
             this.setupEvents();
 
-            // Initialize performance chart if switching to performance tab
+            // Open performance panel if switching to performance tab
             if (tabId === 'performance') {
-                // Use setTimeout to ensure DOM is fully rendered
+                // Open panel directly
                 setTimeout(() => {
-                    this.attachPerformanceEventListeners();
-                    this.initializePerformanceChart();
+                    this.openPerformancePanel();
                 }, 100);
             }
 
@@ -5287,6 +5330,28 @@ return;
                 // Focus on search input
                 setTimeout(() => searchInput.focus(), 100);
             }
+
+            // ========== EVENT DELEGATION FOR TASK BUTTONS IN PANEL ==========
+            // Same functionality as in regular tasks tab
+            const panelGrid = document.getElementById('tasksPanelGrid');
+            if (panelGrid) {
+                panelGrid.addEventListener('click', (e) => {
+                    const editBtn = e.target.closest('.btn-edit-task');
+                    const deleteBtn = e.target.closest('.btn-delete-task');
+
+                    if (editBtn) {
+                        const taskId = editBtn.getAttribute('data-task-id');
+                        this.editTask(taskId);
+                    }
+
+                    if (deleteBtn) {
+                        const taskId = deleteBtn.getAttribute('data-task-id');
+                        // Note: deleteTask functionality would go here if it exists
+                        console.log('🗑️ Delete task clicked:', taskId);
+                        alert('פונקציית מחיקה טרם מוכנה');
+                    }
+                });
+            }
         }
 
         /**
@@ -5314,6 +5379,170 @@ overlay.remove();
 panel.remove();
 }
             }, 400);
+        }
+
+        /**
+         * Open Hours Panel
+         * פתיחת פאנל שעות - slide-in מהצד
+         */
+        openHoursPanel() {
+            const hours = this.userData?.hours || [];
+            const filteredHours = this.filterAndSortHours(hours);
+
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'tasks-panel-overlay';
+            overlay.id = 'hoursPanelOverlay';
+
+            // Create panel
+            const panel = document.createElement('div');
+            panel.className = 'tasks-slide-in-panel';
+            panel.id = 'hoursSlideInPanel';
+
+            // Panel HTML
+            panel.innerHTML = `
+                <div class="tasks-panel-header">
+                    <div class="tasks-panel-title-row">
+                        <h3>כל רשומות השעות של ${this.escapeHtml(this.userData.displayName || this.userData.email)}</h3>
+                        <span class="tasks-count-badge">${filteredHours.length} רשומות</span>
+                    </div>
+                    <button class="tasks-panel-close" id="hoursPanelClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="tasks-panel-search">
+                    <i class="fas fa-search"></i>
+                    <input
+                        type="text"
+                        id="hoursPanelSearch"
+                        placeholder="חפש רשומת שעות..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="tasks-panel-body">
+                    <div class="tasks-panel-grid" id="hoursPanelGrid">
+                        ${filteredHours.map(entry => this.renderHoursCard(entry)).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Append to body
+            document.body.appendChild(overlay);
+            document.body.appendChild(panel);
+
+            // Trigger animation
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                panel.classList.add('active');
+            });
+
+            // Setup close handlers
+            const closeBtn = document.getElementById('hoursPanelClose');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    this.closeHoursPanel();
+                });
+            }
+
+            // Close on overlay click
+            overlay.addEventListener('click', () => {
+                this.closeHoursPanel();
+            });
+
+            // Close on ESC key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    this.closeHoursPanel();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+
+            // Setup search
+            const searchInput = document.getElementById('hoursPanelSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    this.filterHoursInPanel(e.target.value);
+                });
+
+                // Focus on search input
+                setTimeout(() => searchInput.focus(), 100);
+            }
+
+            // ========== EVENT DELEGATION FOR HOUR BUTTONS IN PANEL ==========
+            const hoursPanelGrid = document.getElementById('hoursPanelGrid');
+            if (hoursPanelGrid) {
+                hoursPanelGrid.addEventListener('click', (e) => {
+                    const editBtn = e.target.closest('.btn-edit-hour');
+                    const deleteBtn = e.target.closest('.btn-delete-hour');
+
+                    if (editBtn) {
+                        const entryId = editBtn.getAttribute('data-entry-id');
+                        this.editHourEntry(entryId);
+                    }
+
+                    if (deleteBtn) {
+                        const entryId = deleteBtn.getAttribute('data-entry-id');
+                        this.deleteHourEntry(entryId);
+                    }
+                });
+            }
+        }
+
+        /**
+         * Close Hours Panel
+         * סגירת פאנל שעות
+         */
+        closeHoursPanel() {
+            const overlay = document.getElementById('hoursPanelOverlay');
+            const panel = document.getElementById('hoursSlideInPanel');
+
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+
+            if (panel) {
+                panel.classList.remove('active');
+            }
+
+            // Remove from DOM after animation
+            setTimeout(() => {
+                if (overlay && overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+                if (panel && panel.parentNode) {
+                    panel.parentNode.removeChild(panel);
+                }
+            }, 400);
+        }
+
+        /**
+         * Filter Hours in Panel (Search)
+         * סינון שעות בפאנל
+         */
+        filterHoursInPanel(searchText) {
+            const hours = this.userData?.hours || [];
+            const filteredHours = this.filterAndSortHours(hours);
+
+            const lowerSearch = searchText.toLowerCase();
+            const filtered = filteredHours.filter(entry => {
+                return (
+                    (entry.clientName && entry.clientName.toLowerCase().includes(lowerSearch)) ||
+                    (entry.description && entry.description.toLowerCase().includes(lowerSearch)) ||
+                    (entry.taskTitle && entry.taskTitle.toLowerCase().includes(lowerSearch))
+                );
+            });
+
+            const grid = document.getElementById('hoursPanelGrid');
+            if (grid) {
+                if (filtered.length === 0) {
+                    grid.innerHTML = '<p class="no-results" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #9ca3af;">לא נמצאו תוצאות</p>';
+                } else {
+                    grid.innerHTML = filtered.map(entry => this.renderHoursCard(entry)).join('');
+                }
+            }
         }
 
         /**
@@ -5367,6 +5596,117 @@ return true;
                     </div>
                 `;
             }
+        }
+
+        /**
+         * Open Performance Panel
+         * פתיחת פאנל ביצועים - slide-in מהצד
+         */
+        openPerformancePanel() {
+            // Initialize selected date if not set
+            if (!this.selectedPerformanceDate) {
+                this.selectedPerformanceDate = new Date().toISOString().split('T')[0];
+            }
+
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'tasks-panel-overlay';
+            overlay.id = 'performancePanelOverlay';
+
+            // Create slide-in panel
+            const panel = document.createElement('div');
+            panel.className = 'tasks-slide-in-panel';
+            panel.id = 'performanceSlideInPanel';
+            panel.innerHTML = `
+                <div class="tasks-panel-header">
+                    <div class="tasks-panel-title-row">
+                        <h3>ביצועים יומיים - ${this.formatHebrewDate(this.selectedPerformanceDate)}</h3>
+                    </div>
+                    <button class="tasks-panel-close" id="performancePanelClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="tasks-panel-body" id="performancePanelContent">
+                    <div class="performance-container">
+                        ${this.renderDateSelector()}
+                        ${this.renderDailySummary()}
+                        ${this.renderPerformanceCharts()}
+                        ${this.renderDailyHoursBreakdown()}
+                        ${this.renderCompletedTasks()}
+                    </div>
+                </div>
+            `;
+
+            // Append to body
+            document.body.appendChild(overlay);
+            document.body.appendChild(panel);
+
+            // Animate panel in
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                panel.classList.add('active');
+            });
+
+            // Setup close handlers
+            const closeBtn = document.getElementById('performancePanelClose');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    this.closePerformancePanel();
+                });
+            }
+
+            // Close on overlay click
+            overlay.addEventListener('click', () => {
+                this.closePerformancePanel();
+            });
+
+            // Close on ESC key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    this.closePerformancePanel();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+
+            // Re-attach performance event listeners
+            setTimeout(() => {
+                this.attachPerformanceEventListeners();
+            }, 100);
+        }
+
+        /**
+         * Close Performance Panel
+         * סגירת פאנל ביצועים
+         */
+        closePerformancePanel() {
+            const overlay = document.getElementById('performancePanelOverlay');
+            const panel = document.getElementById('performanceSlideInPanel');
+
+            if (panel && overlay) {
+                panel.style.transform = 'translateX(100%)';
+                overlay.style.opacity = '0';
+
+                setTimeout(() => {
+                    panel.remove();
+                    overlay.remove();
+                }, 300);
+            }
+        }
+
+        /**
+         * Format date to Hebrew
+         * פורמט תאריך לעברית
+         */
+        formatHebrewDate(dateString) {
+            const date = new Date(dateString);
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+            return date.toLocaleDateString('he-IL', options);
         }
     }
 

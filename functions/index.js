@@ -40,6 +40,72 @@ const corsHeaders = {
 };
 
 // ===============================
+// TEMPORARY: Migration Function
+// ===============================
+/**
+ * פונקציה זמנית לתיקון isInternal ברשומות קיימות
+ * DRY RUN: עובד במצב READ-ONLY, רק מראה מה ישתנה
+ */
+exports.migrateIsInternalDryRun = functions.https.onCall(async (data, context) => {
+  try {
+    console.log('🔍 Starting isInternal migration DRY RUN...');
+
+    // קריאת כל הרשומות
+    const allEntries = await db.collection('timesheet_entries').get();
+    console.log(`📊 Total entries: ${allEntries.size}`);
+
+    let correctCount = 0;
+    let needsFixCount = 0;
+    let internalOfficeCount = 0;
+    const needsFix = [];
+
+    allEntries.docs.forEach(doc => {
+      const data = doc.data();
+      const isInternalOffice = data.clientId === 'internal_office';
+
+      if (isInternalOffice) {
+        internalOfficeCount++;
+      }
+
+      const shouldBeInternal = isInternalOffice;
+      const currentIsInternal = data.isInternal === true;
+
+      if (shouldBeInternal === currentIsInternal) {
+        correctCount++;
+      } else {
+        needsFixCount++;
+        needsFix.push({
+          id: doc.id,
+          clientId: data.clientId,
+          currentIsInternal: data.isInternal,
+          shouldBeInternal: shouldBeInternal,
+          employee: data.employee,
+          date: data.date,
+          hours: data.hours
+        });
+      }
+    });
+
+    console.log(`✅ Correct entries: ${correctCount}`);
+    console.log(`🔧 Need fix: ${needsFixCount}`);
+    console.log(`🏢 Internal office entries: ${internalOfficeCount}`);
+
+    return {
+      success: true,
+      totalEntries: allEntries.size,
+      correctCount,
+      needsFixCount,
+      internalOfficeCount,
+      examples: needsFix.slice(0, 10)
+    };
+
+  } catch (error) {
+    console.error('❌ Migration DRY RUN failed:', error);
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});
+
+// ===============================
 // Helper Functions - פונקציות עזר
 // ===============================
 

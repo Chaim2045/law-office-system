@@ -561,6 +561,19 @@ return null;
          * הגדרת מאזינים לזמן אמת לשינויים במשתמשים
          */
         setupRealtimeListeners() {
+            // ════════════════════════════════════════════════════════════════════════
+            // 🔧 GUARD ADDED (2025-12-17) - Prevent duplicate listeners
+            // ════════════════════════════════════════════════════════════════════════
+            // If listener already active, skip setup to prevent:
+            // - Multiple listeners on same collection
+            // - Duplicate real-time callbacks
+            // - QUIC Protocol Errors from too many concurrent connections
+            // - Memory leaks from unmanaged listeners
+            if (this.unsubscribe) {
+                console.warn('⚠️ DataManager: Real-time listeners already active, skipping setup');
+                return;
+            }
+
             if (!this.db) {
                 console.warn('⚠️ DataManager: Cannot setup listeners - DB not initialized');
                 return;

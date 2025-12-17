@@ -125,6 +125,12 @@ body {
   max-width: 450px;
   position: relative;
   z-index: 2;
+
+  /* Animation removed from base class - now only on .first-load */
+}
+
+/* ✅ FIX (2025-12-17): Animation only on first page load, not on logout */
+.login-box.first-load {
   animation: slide-up 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

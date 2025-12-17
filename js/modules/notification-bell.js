@@ -66,6 +66,19 @@ class NotificationBellSystem {
    * @param {Object} db - Firestore database instance
    */
   startListeningToAdminMessages(user, db) {
+    // ════════════════════════════════════════════════════════════════════════
+    // 🔧 GUARD ADDED (2025-12-17) - Prevent duplicate listeners
+    // ════════════════════════════════════════════════════════════════════════
+    // If listeners already active, skip setup to prevent:
+    // - Multiple listeners on user_messages collection
+    // - Duplicate notification callbacks
+    // - Excessive Firestore reads (cost optimization)
+    // - Memory leaks from unmanaged listeners
+    if (this.messagesListener || this.taskApprovalListener) {
+      console.warn('⚠️ NotificationBell: Listeners already active, skipping setup');
+      return;
+    }
+
     if (!user || !db) {
       console.warn('NotificationBell: Cannot listen to messages - user or db missing');
       return;

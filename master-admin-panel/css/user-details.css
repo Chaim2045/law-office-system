@@ -600,8 +600,8 @@
 
 .tasks-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
   max-width: 100%;
 }
 
@@ -609,13 +609,13 @@
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  padding: 16px;
-  padding-bottom: 50px;
+  padding: 14px;
+  padding-bottom: 48px;
   min-height: 220px;
   max-height: 220px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 10px;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
@@ -635,13 +635,13 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--space-3);
-  padding-bottom: var(--space-3);
+  gap: 10px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--gray-100);
 }
 
 .task-title {
-  font-size: var(--text-base);
+  font-size: 14px;
   font-weight: var(--font-semibold);
   color: var(--gray-900);
   margin: 0;
@@ -651,9 +651,9 @@
 
 /* Status Badge - Rounded with colored background */
 .task-status-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: var(--text-xs);
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
   font-weight: var(--font-semibold);
   color: white;
   white-space: nowrap;
@@ -666,23 +666,23 @@
 .task-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 /* Info Rows - Gray icons only */
 .task-info-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
+  gap: 8px;
+  font-size: 13px;
   color: var(--gray-700);
 }
 
 .task-info-row i {
   flex-shrink: 0;
   color: var(--gray-500); /* ALL icons gray - no color */
-  font-size: var(--text-sm);
-  width: 16px;
+  font-size: 12px;
+  width: 14px;
   text-align: center;
 }
 
@@ -690,13 +690,13 @@
 .task-progress-row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .task-progress-bar {
   flex: 1;
-  height: 6px;
+  height: 5px;
   background: var(--gray-200);
   border-radius: 3px;
   overflow: hidden;
@@ -711,10 +711,10 @@
 }
 
 .task-progress-text {
-  font-size: var(--text-sm);
+  font-size: 12px;
   font-weight: var(--font-bold);
   color: var(--gray-900);
-  min-width: 45px;
+  min-width: 40px;
   text-align: left;
 }
 
@@ -722,21 +722,26 @@
 .task-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-2);
-  padding-top: var(--space-3);
+  gap: 6px;
+  padding-top: 10px;
   border-top: 1px solid var(--gray-100);
-  margin-top: var(--space-2);
+  margin-top: 8px;
 }
 
 .btn-icon {
-  background: none;
+  background: white;
   border: 1px solid var(--gray-200);
   color: var(--gray-600);
   cursor: pointer;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
-  font-size: var(--text-sm);
+  padding: 6px 9px;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
 }
 
 .btn-icon:hover {
@@ -745,13 +750,20 @@
   color: var(--gray-900);
 }
 
-.btn-icon.btn-edit-task:hover {
+.btn-icon i {
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.btn-icon.btn-edit-task:hover,
+.btn-icon.btn-edit-hour:hover {
   border-color: var(--blue);
   color: var(--blue);
   background: rgb(59 130 246 / 5%);
 }
 
-.btn-icon.btn-delete-task:hover {
+.btn-icon.btn-delete-task:hover,
+.btn-icon.btn-delete-hour:hover {
   border-color: var(--red);
   color: var(--red);
   background: rgb(239 68 68 / 5%);
@@ -850,8 +862,8 @@
 
 .hours-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
   max-width: 100%;
 }
 
@@ -859,37 +871,155 @@
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
+  padding: 14px;
+  min-height: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 10px;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
 }
 
-.hours-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 4px;
-  height: 100%;
-  background: var(--blue);
-}
-
-.hours-card.client-work::before {
-  background: var(--green);
-}
-
-.hours-card.internal-work::before {
-  background: var(--orange);
-}
+/* NO border-right accent - clean minimal design like tasks */
 
 .hours-card:hover {
   border-color: var(--gray-300);
   box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
   transform: translateY(-1px);
+}
+
+/* Hours card internal layout - clean minimal design */
+.hours-card-row-1 {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.hours-date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hours-date i {
+  color: var(--gray-600);
+  font-size: 12px;
+}
+
+.hours-date span {
+  font-weight: var(--font-semibold);
+  color: var(--gray-900);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hours-amount {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--gray-100);
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+.hours-amount.client-work {
+  background: rgb(59 130 246 / 10%);
+}
+
+.hours-amount i {
+  color: var(--gray-600);
+  font-size: 12px;
+}
+
+.hours-amount.client-work i {
+  color: #3b82f6;
+}
+
+.hours-amount-value {
+  font-weight: var(--font-bold);
+  color: var(--gray-700);
+  font-size: 14px;
+}
+
+.hours-amount.client-work .hours-amount-value {
+  color: #3b82f6;
+}
+
+.hours-amount-unit {
+  color: var(--gray-600);
+  font-size: 12px;
+}
+
+.hours-billable-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: var(--font-semibold);
+  white-space: nowrap;
+}
+
+.hours-billable-badge.billable {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.hours-billable-badge.not-billable {
+  background: var(--gray-50);
+  color: var(--gray-600);
+}
+
+.hours-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.hours-client-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--gray-50);
+  border-radius: 5px;
+  margin-bottom: 8px;
+}
+
+.hours-client-row.client-work {
+  background: rgb(59 130 246 / 5%);
+}
+
+.hours-client-label {
+  color: var(--gray-600);
+  font-size: 12px;
+  font-weight: var(--font-semibold);
+  white-space: nowrap;
+}
+
+.hours-client-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.hours-client-name i {
+  color: var(--gray-600);
+  font-size: 13px;
+}
+
+.hours-client-name.client-work i {
+  color: #3b82f6;
+}
+
+.hours-client-name span {
+  font-weight: var(--font-semibold);
+  color: var(--gray-900);
+  font-size: 13px;
 }
 
 .hours-header {
@@ -1054,11 +1184,7 @@
   font-size: 10px;
 }
 
-.hours-actions {
-  display: flex;
-  gap: var(--space-2);
-  flex-shrink: 0;
-}
+/* .hours-actions is defined above at line 975 */
 
 .no-results {
   grid-column: 1 / -1;
@@ -1543,41 +1669,48 @@
    Show All Tasks Button & Slide-in Panel
    ============================================ */
 
-/* Button to trigger panel */
-.show-all-tasks-btn {
-  margin-top: 24px;
-  padding: 14px 28px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: var(--text-base);
+/* Button to trigger panel - Clean Professional Design */
+.show-all-tasks-btn,
+.show-all-hours-btn {
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: white;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: var(--font-semibold);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 7px;
   width: 100%;
-  max-width: 400px;
+  max-width: 280px;
   margin-left: auto;
   margin-right: auto;
-  box-shadow: 0 4px 12px rgb(59 130 246 / 30%);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
 }
 
-.show-all-tasks-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgb(59 130 246 / 40%);
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+.show-all-tasks-btn:hover,
+.show-all-hours-btn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+  color: var(--gray-900);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
-.show-all-tasks-btn:active {
+.show-all-tasks-btn:active,
+.show-all-hours-btn:active {
   transform: translateY(0);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
 }
 
-.show-all-tasks-btn i {
-  font-size: 18px;
+.show-all-tasks-btn i,
+.show-all-hours-btn i {
+  font-size: 13px;
+  color: var(--gray-500);
 }
 
 /* Overlay backdrop */
@@ -1718,7 +1851,7 @@
 /* Grid layout for tasks */
 .tasks-panel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--space-5);
 }
 
