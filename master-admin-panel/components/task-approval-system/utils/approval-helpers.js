@@ -35,17 +35,7 @@ export function formatMinutesToHoursText(minutes) {
   if (!minutes) {
 return '0 דקות';
 }
-
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-
-  if (hours === 0) {
-return `${mins} דקות`;
-}
-  if (mins === 0) {
-return `${hours} שעה${hours > 1 ? '' : ''}`;
-}
-  return `${hours} שעה ${mins} דקות`;
+  return `${minutes} דקות`;
 }
 
 export function getStatusColor(status) {

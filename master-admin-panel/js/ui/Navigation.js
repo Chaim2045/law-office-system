@@ -79,11 +79,11 @@ return;
                             <i class="fas fa-bullhorn"></i>
                             <span>הודעות מערכת</span>
                         </button>
-                        <a href="task-approvals.html" class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" title="אישורי תקציב משימות" style="position: relative;">
+                        <button class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" id="navApprovalsBtn" title="אישורי תקציב משימות" style="position: relative;">
                             <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
                             <i class="fas fa-clipboard-check"></i>
                             <span>אישורי משימות</span>
-                        </a>
+                        </button>
                         <button class="btn-logout" id="navLogoutBtn">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>יציאה</span>
@@ -433,6 +433,24 @@ return;
                     } else {
                         console.error('❌ AnnouncementsModal not found');
                         alert('מודל הודעות לא נטען כראוי');
+                    }
+                });
+            }
+
+            // Approvals button - open side panel
+            const approvalsBtn = document.getElementById('navApprovalsBtn');
+            if (approvalsBtn) {
+                approvalsBtn.addEventListener('click', async () => {
+                    console.log('📋 Opening Task Approval Side Panel');
+                    if (window.taskApprovalSidePanel) {
+                        // Initialize if not initialized
+                        if (!window.taskApprovalSidePanel.taskApprovalService) {
+                            await window.taskApprovalSidePanel.init();
+                        }
+                        window.taskApprovalSidePanel.open();
+                    } else {
+                        console.error('❌ TaskApprovalSidePanel not found');
+                        alert('פאנל אישורים לא נטען כראוי');
                     }
                 });
             }
