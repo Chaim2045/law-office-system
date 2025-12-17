@@ -1087,11 +1087,21 @@ return;
                 return this.renderEmptyState('fas fa-tasks', 'אין משימות', 'משתמש זה לא מקושר למשימות פעילות');
             }
 
+            // Show first 3 tasks
+            const displayedTasks = tasks.slice(0, 3);
+            const hasMoreTasks = tasks.length > 3;
+
             return `
                 <div class="tab-panel tab-tasks">
                     <div class="tasks-list">
-                        ${tasks.map(task => this.renderTaskCard(task)).join('')}
+                        ${displayedTasks.map(task => this.renderTaskCard(task)).join('')}
                     </div>
+                    ${hasMoreTasks ? `
+                        <button class="show-all-tasks-btn" data-action="show-all-tasks">
+                            <i class="fas fa-list"></i>
+                            <span>הצג את כל המשימות (${tasks.length})</span>
+                        </button>
+                    ` : ''}
                 </div>
             `;
         }
@@ -3526,6 +3536,14 @@ return;
                 console.warn('⚠️ Messages tab content not found - event delegation not attached');
             }
 
+            // ========== SHOW ALL TASKS BUTTON ==========
+            const showAllTasksBtn = modal.querySelector('.show-all-tasks-btn');
+            if (showAllTasksBtn) {
+                showAllTasksBtn.addEventListener('click', () => {
+                    this.openTasksPanel();
+                });
+            }
+
         }
 
         /**
@@ -5178,6 +5196,176 @@ return;
                         console.error('❌ Failed to send message:', error);
                         alert('שגיאה בשליחת ההודעה. נסה שוב.');
                     });
+            }
+        }
+
+        /**
+         * Open Tasks Slide-in Panel
+         * פתיחת פאנל הזזה עם כל המשימות
+         */
+        openTasksPanel() {
+            const tasks = this.userData?.tasks || [];
+
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'tasks-panel-overlay';
+            overlay.id = 'tasksPanelOverlay';
+
+            // Create panel
+            const panel = document.createElement('div');
+            panel.className = 'tasks-slide-in-panel';
+            panel.id = 'tasksSlideInPanel';
+
+            // Panel HTML
+            panel.innerHTML = `
+                <div class="tasks-panel-header">
+                    <div class="tasks-panel-title-row">
+                        <h3>כל המשימות של ${this.escapeHtml(this.userData.displayName || this.userData.email)}</h3>
+                        <span class="tasks-count-badge">${tasks.length} משימות</span>
+                    </div>
+                    <button class="tasks-panel-close" id="tasksPanelClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="tasks-panel-search">
+                    <i class="fas fa-search"></i>
+                    <input
+                        type="text"
+                        id="tasksPanelSearch"
+                        placeholder="חפש משימה..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="tasks-panel-body">
+                    <div class="tasks-panel-grid" id="tasksPanelGrid">
+                        ${tasks.map(task => this.renderTaskCard(task)).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Append to body
+            document.body.appendChild(overlay);
+            document.body.appendChild(panel);
+
+            // Trigger animation
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                panel.classList.add('active');
+            });
+
+            // Setup close handlers
+            const closeBtn = document.getElementById('tasksPanelClose');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    this.closeTasksPanel();
+                });
+            }
+
+            // Close on overlay click
+            overlay.addEventListener('click', () => {
+                this.closeTasksPanel();
+            });
+
+            // Close on ESC key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    this.closeTasksPanel();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+
+            // Setup search
+            const searchInput = document.getElementById('tasksPanelSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    this.filterTasksInPanel(e.target.value);
+                });
+
+                // Focus on search input
+                setTimeout(() => searchInput.focus(), 100);
+            }
+        }
+
+        /**
+         * Close Tasks Panel
+         * סגירת פאנל משימות
+         */
+        closeTasksPanel() {
+            const overlay = document.getElementById('tasksPanelOverlay');
+            const panel = document.getElementById('tasksSlideInPanel');
+
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+
+            if (panel) {
+                panel.classList.remove('active');
+            }
+
+            // Remove elements after animation
+            setTimeout(() => {
+                if (overlay) {
+overlay.remove();
+}
+                if (panel) {
+panel.remove();
+}
+            }, 400);
+        }
+
+        /**
+         * Filter Tasks in Panel
+         * סינון משימות בפאנל
+         */
+        filterTasksInPanel(searchText) {
+            const tasks = this.userData?.tasks || [];
+            const grid = document.getElementById('tasksPanelGrid');
+
+            if (!grid) {
+return;
+}
+
+            // Filter tasks
+            const filteredTasks = tasks.filter(task => {
+                const searchLower = searchText.toLowerCase();
+
+                // Search in title
+                if (task.title?.toLowerCase().includes(searchLower)) {
+return true;
+}
+
+                // Search in description
+                if (task.description?.toLowerCase().includes(searchLower)) {
+return true;
+}
+
+                // Search in client name
+                if (task.clientName?.toLowerCase().includes(searchLower)) {
+return true;
+}
+
+                // Search in status
+                if (task.status?.toLowerCase().includes(searchLower)) {
+return true;
+}
+
+                return false;
+            });
+
+            // Update grid
+            if (filteredTasks.length > 0) {
+                grid.innerHTML = filteredTasks.map(task => this.renderTaskCard(task)).join('');
+            } else {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--gray-500);">
+                        <i class="fas fa-search" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                        <p style="font-size: var(--text-lg); font-weight: var(--font-medium);">לא נמצאו משימות</p>
+                        <p style="font-size: var(--text-sm); margin-top: 8px;">נסה לחפש משהו אחר</p>
+                    </div>
+                `;
             }
         }
     }
