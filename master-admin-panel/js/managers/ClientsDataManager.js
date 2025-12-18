@@ -243,7 +243,8 @@
                     email: doc.data().email || doc.id,
                     username: doc.data().username || doc.data().name || '',
                     role: doc.data().role || 'employee',
-                    lastLogin: doc.data().lastLogin || null
+                    lastLogin: doc.data().lastLogin || null,
+                    lastSeen: doc.data().lastSeen || null  // ✅ NEW: For real-time activity status
                 }));
 
                 console.log(`✅ Loaded ${this.employees.length} employees`);

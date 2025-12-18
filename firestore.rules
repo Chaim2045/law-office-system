@@ -147,11 +147,12 @@ service cloud.firestore {
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Audit Log: Read-only for authenticated users
-    // Note: Sensitive operations logged server-side only
-    // Future: Restrict to admin-only with custom claims
+    // 🔐 SECURITY FIX: Audit Log - Admin-only access
+    // Previous: All authenticated users could read audit logs (SECURITY RISK)
+    // Current: Only admins can view sensitive audit trail
+    // Reason: Audit logs contain sensitive deletion records and admin actions
     match /audit_log/{logId} {
-      allow read: if isAuthenticated();
+      allow read: if isAdmin(); // ✅ FIXED: Admin-only
       allow write: if false; // Only through Cloud Functions
     }
 
@@ -168,26 +169,35 @@ service cloud.firestore {
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Sessions: Admin dashboard tracking (authenticated admins only)
-    // TODO: Replace with Realtime DB Presence in the future
+    // 🔐 SECURITY FIX: Sessions - User can only modify their own session
+    // Previous: Any authenticated user could modify any session (SECURITY RISK)
+    // Current: Users can only write to sessions containing their UID
+    // Admins can read all sessions for dashboard monitoring
     match /sessions/{sessionId} {
-      allow read, write: if isAuthenticated();
+      // Users can read/write only their own session (sessionId must contain their UID)
+      allow read, write: if isAuthenticated() &&
+                            sessionId.matches('.*' + request.auth.uid + '.*');
+
+      // Admins can read all sessions (for dashboard)
+      allow read: if isAdmin();
     }
 
-    // ✅ Function Monitor Logs: System monitoring data
-    // Read: All authenticated users (for analytics dashboard)
-    // Write: Authenticated users (client-side monitor auto-saves)
+    // 🔐 SECURITY FIX: Function Monitor Logs - Admin-only
+    // Previous: All users could read/write monitor logs (SECURITY RISK - data pollution)
+    // Current: Only Cloud Functions write, only admins read
+    // Reason: System monitoring should not be user-accessible
     match /function_monitor_logs/{logId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAdmin(); // ✅ FIXED: Admin-only
+      allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Function Monitor Errors: Critical error tracking
-    // Read: All authenticated users
-    // Write: Authenticated users (automatic error reporting)
+    // 🔐 SECURITY FIX: Function Monitor Errors - Admin-only
+    // Previous: All users could read/write error logs (SECURITY RISK - reveals system internals)
+    // Current: Only Cloud Functions write, only admins read
+    // Reason: Error logs may expose sensitive system information
     match /function_monitor_errors/{errorId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAdmin(); // ✅ FIXED: Admin-only
+      allow write: if false; // Only through Cloud Functions
     }
 
     // ✅ Messages: Admin-to-user messaging system
