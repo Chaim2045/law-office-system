@@ -722,6 +722,27 @@ export function createTaskCard(task, options = {}) {
         ` : ''}
       </div>
 
+      <!-- ⚡ Quick Actions - הוספת זמן מהירה -->
+      ${!isCompleted ? `
+      <div class="quick-time-actions">
+        <button class="quick-time-btn"
+                onclick="manager.addQuickTime('${safeTask.id}', 30, event)"
+                title="הוסף 30 דקות">
+          +30ד
+        </button>
+        <button class="quick-time-btn"
+                onclick="manager.addQuickTime('${safeTask.id}', 60, event)"
+                title="הוסף שעה">
+          +1ש
+        </button>
+        <button class="quick-time-btn"
+                onclick="manager.addQuickTime('${safeTask.id}', 120, event)"
+                title="הוסף שעתיים">
+          +2ש
+        </button>
+      </div>
+      ` : ''}
+
       <button class="linear-expand-btn" onclick="manager.expandTaskCard('${
         safeTask.id
       }', event)" title="הרחב פרטים">
