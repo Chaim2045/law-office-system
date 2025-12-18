@@ -395,17 +395,19 @@ return;
                 const pricingText = service.pricingType === 'hourly' ? 'שעתי' : 'קבוע';
 
                 return `
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">התקדמות:</span>
-                        <span class="management-service-info-value">${completedStages}/${totalStages} שלבים</span>
-                    </div>
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">שלב נוכחי:</span>
-                        <span class="management-service-badge ${activeStage ? 'active-stage' : ''}">${activeStage ? activeStage.name : 'אין'}</span>
-                    </div>
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">תמחור:</span>
-                        <span class="management-service-badge ${pricingBadgeClass}"><i class="fas ${pricingIcon}"></i> ${pricingText}</span>
+                    <div class="management-service-info">
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">התקדמות:</span>
+                            <span class="management-service-info-value">${completedStages}/${totalStages} שלבים</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">שלב נוכחי:</span>
+                            <span class="management-service-badge ${activeStage ? 'active-stage' : ''}">${activeStage ? activeStage.name : 'אין'}</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">תמחור:</span>
+                            <span class="management-service-badge ${pricingBadgeClass}"><i class="fas ${pricingIcon}"></i> ${pricingText}</span>
+                        </div>
                     </div>
                 `;
             } else if (service.type === 'fixed') {
