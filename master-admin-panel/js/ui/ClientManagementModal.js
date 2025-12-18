@@ -300,6 +300,20 @@ return;
         }
 
         /**
+         * Get status text in Hebrew
+         * קבלת טקסט סטטוס בעברית
+         */
+        getStatusText(statusClass) {
+            const statusTexts = {
+                'success': 'תקין',
+                'warning': 'אזהרה',
+                'critical': 'קריטי',
+                'blocked': 'חסום'
+            };
+            return statusTexts[statusClass] || 'לא ידוע';
+        }
+
+        /**
          * Get service info
          * קבלת מידע שירות
          */
@@ -338,6 +352,10 @@ return;
                             <span class="management-service-info-label">תאריך פתיחה:</span>
                             <span class="management-service-info-value">${dateDisplay || 'לא זמין'}</span>
                         </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">סטטוס:</span>
+                            <span class="management-service-badge ${statusClass}"><i class="fas fa-circle"></i> ${this.getStatusText(statusClass)}</span>
+                        </div>
                     </div>
 
                     <div class="management-hours-progress">
@@ -372,18 +390,22 @@ return;
                 const completedStages = stages.filter(s => s.status === 'completed').length;
                 const activeStage = stages.find(s => s.status === 'active');
 
+                const pricingBadgeClass = service.pricingType === 'hourly' ? 'hours' : 'fixed';
+                const pricingIcon = service.pricingType === 'hourly' ? 'fa-clock' : 'fa-dollar-sign';
+                const pricingText = service.pricingType === 'hourly' ? 'שעתי' : 'קבוע';
+
                 return `
                     <div class="management-service-info-item">
-                        <span class="management-service-info-label">התקדמות</span>
+                        <span class="management-service-info-label">התקדמות:</span>
                         <span class="management-service-info-value">${completedStages}/${totalStages} שלבים</span>
                     </div>
                     <div class="management-service-info-item">
-                        <span class="management-service-info-label">שלב נוכחי</span>
-                        <span class="management-service-info-value">${activeStage ? activeStage.name : 'אין'}</span>
+                        <span class="management-service-info-label">שלב נוכחי:</span>
+                        <span class="management-service-badge ${activeStage ? 'active-stage' : ''}">${activeStage ? activeStage.name : 'אין'}</span>
                     </div>
                     <div class="management-service-info-item">
-                        <span class="management-service-info-label">תמחור</span>
-                        <span class="management-service-info-value">${service.pricingType === 'hourly' ? 'שעתי' : 'קבוע'}</span>
+                        <span class="management-service-info-label">תמחור:</span>
+                        <span class="management-service-badge ${pricingBadgeClass}"><i class="fas ${pricingIcon}"></i> ${pricingText}</span>
                     </div>
                 `;
             } else if (service.type === 'fixed') {
