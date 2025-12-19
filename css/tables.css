@@ -1876,55 +1876,6 @@
   transform: translateY(-1px);
 }
 
-/* ⚡ Quick Time Actions - הוספת זמן מהירה */
-.quick-time-actions {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  display: flex;
-  gap: 6px;
-  z-index: 2;
-  direction: rtl;
-}
-
-.quick-time-btn {
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
-  white-space: nowrap;
-}
-
-.quick-time-btn:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgb(59 130 246 / 30%);
-}
-
-.quick-time-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
-}
-
-/* אנימציה על לחיצה */
-@keyframes quickTimePress {
-  0% { transform: scale(1); }
-
-  50% { transform: scale(0.95); }
-
-  100% { transform: scale(1); }
-}
-
-.quick-time-btn:active {
-  animation: quickTimePress 0.2s ease;
-}
-
 /* מטא-נתונים משופרים של הכרטיס - מוצמד לתחתית */
 .linear-card-meta {
   position: absolute; /* מוצמד לתחתית כמו הכפתור */
