@@ -71,11 +71,11 @@
                     this.storage = this.app.storage();
                 }
 
-                // CRITICAL: Set persistence to SESSION for Master Admin
-                // זה מונע שיתוף session בין טאבים - כל משתמש בכרטיסייה נפרדת (מונע ערבוב משתמשים)
-                this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+                // CRITICAL: Set persistence to LOCAL for Master Admin
+                // זה מאפשר שיתוף session בין טאבים של האדמין (אבל מבודד מהאפליקציה הראשית)
+                this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
                     .then(() => {
-                        console.log('✅ Master Admin: Using SESSION persistence (isolated tabs - prevents user mixing)');
+                        console.log('✅ Master Admin: Using LOCAL persistence (shared between admin tabs)');
                     })
                     .catch((error) => {
                         console.warn('⚠️ Failed to set persistence:', error);
@@ -96,7 +96,7 @@
                 console.log('✅ Firebase initialized successfully (MASTER ADMIN ISOLATED INSTANCE)');
                 console.log('📦 Project:', firebaseConfig.projectId);
                 console.log('🔒 App Name:', appName);
-                console.log('🔐 Persistence: SESSION (isolated tabs - prevents user mixing)');
+                console.log('🔐 Persistence: LOCAL (shared between admin tabs, isolated from main app)');
 
                 // Make instances globally available
                 window.firebaseApp = this.app;

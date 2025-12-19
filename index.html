@@ -47,16 +47,6 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // 🔐 CRITICAL: Set persistence to SESSION to prevent user mixing across tabs
-        // Each tab gets isolated session - prevents cross-tab identity confusion
-        auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
-          .then(() => {
-            console.log('✅ User Interface: Using SESSION persistence (isolated tabs)');
-          })
-          .catch((error) => {
-            console.warn('⚠️ Failed to set persistence:', error);
-          });
-
         // אופטימיזציות ביצועים + דיכוי לוגים
         db.settings({
           cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, // Unlimited cache for offline support
@@ -119,49 +109,49 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
     <!-- ===== DESIGN SYSTEM - Must be loaded first ===== -->
-    <link rel="stylesheet" href="css/design-system.css?v=d894491" />
-    <link rel="stylesheet" href="css/style.css?v=d894491" />
-    <link rel="stylesheet" href="css/header.css?v=d894491" />
-    <link rel="stylesheet" href="css/content-areas.css?v=d894491" />
-    <link rel="stylesheet" href="css/buttons.css?v=d894491" />
-    <link rel="stylesheet" href="css/forms.css?v=d894491" />
-    <link rel="stylesheet" href="css/tables.css?v=d894491" />
-    <link rel="stylesheet" href="css/timesheet-cards.css?v=d894491" />
-    <link rel="stylesheet" href="css/modals.css?v=d894491" />
-    <link rel="stylesheet" href="css/quick-actions-extend-deadline.css?v=d894491" />
-    <link rel="stylesheet" href="css/case-creation-dialog.css?v=d894491" />
-    <link rel="stylesheet" href="css/popups-unified.css?v=d894491" />
-    <link rel="stylesheet" href="css/popups-rtl.css?v=d894491" />
-    <link rel="stylesheet" href="css/expanded-cards.css?v=d894491" />
-    <link rel="stylesheet" href="css/advanced-popups.css?v=d894491" />
-    <link rel="stylesheet" href="css/info-popups.css?v=d894491" />
-    <link rel="stylesheet" href="css/description-tooltips.css?v=d894491" />
-    <link rel="stylesheet" href="css/cards.css?v=d894491" />
-    <link rel="stylesheet" href="css/combobox.css?v=d894491" />
-    <link rel="stylesheet" href="css/user-alerts.css?v=d894491" />
-    <link rel="stylesheet" href="css/thread-view.css?v=d894491" />
-    <link rel="stylesheet" href="css/style-hitech-addon.css?v=d894491" />
-    <link rel="stylesheet" href="css/tabs.css?v=d894491" />
-    <link rel="stylesheet" href="css/statistics.css?v=d894491" />
-    <link rel="stylesheet" href="css/sort.css?v=d894491" />
+    <link rel="stylesheet" href="css/design-system.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/style.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/header.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/content-areas.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/buttons.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/forms.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/tables.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/timesheet-cards.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/modals.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/quick-actions-extend-deadline.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/case-creation-dialog.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/popups-unified.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/popups-rtl.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/expanded-cards.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/advanced-popups.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/info-popups.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/description-tooltips.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/cards.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/combobox.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/user-alerts.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/thread-view.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/style-hitech-addon.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/tabs.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/statistics.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/sort.css?v=a0d7a8c" />
     <link rel="stylesheet" href="css/reports.css" />
-    <link rel="stylesheet" href="css/pagination.css?v=d894491" />
+    <link rel="stylesheet" href="css/pagination.css?v=a0d7a8c" />
     <!-- Utility Classes - כלי עזר -->
-    <link rel="stylesheet" href="css/utilities.css?v=d894491" />
+    <link rel="stylesheet" href="css/utilities.css?v=a0d7a8c" />
     <!-- Smart Combo Selector - בורר תיאורים חכם -->
-    <link rel="stylesheet" href="css/smart-combo-selector.css?v=d894491" />
-    <link rel="stylesheet" href="css/guided-text-input.css?v=d894491" />
+    <link rel="stylesheet" href="css/smart-combo-selector.css?v=a0d7a8c" />
+    <link rel="stylesheet" href="css/guided-text-input.css?v=a0d7a8c" />
     <!-- Responsive Design - מדיה queries -->
-    <link rel="stylesheet" href="css/responsive.css?v=d894491" />
+    <link rel="stylesheet" href="css/responsive.css?v=a0d7a8c" />
 
     <!-- Virtual Assistant Styles - TEMPORARILY DISABLED -->
-    <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=d894491" /> -->
+    <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=a0d7a8c" /> -->
 
     <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
-    <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=d894491">
+    <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=a0d7a8c">
 
     <!-- ===== SYSTEM ANNOUNCEMENT TICKER ===== -->
-    <link rel="stylesheet" href="css/system-announcement-ticker.css?v=d894491" />
+    <link rel="stylesheet" href="css/system-announcement-ticker.css?v=a0d7a8c" />
 
     <!-- ===== SECURITY MODALS STYLES ===== -->
 
@@ -1080,57 +1070,57 @@
     <!-- SCRIPTS AND STYLES -->
     <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
-    <script src="js/modules/logger.js?v=d894491"></script>
+    <script src="js/modules/logger.js?v=a0d7a8c"></script>
 
     <!-- ===== ⚡ Lazy Loader - Dynamic Script Loading ===== -->
     <!-- טעינה דינמית של סקריפטים - שיפור ביצועים -->
-    <script src="js/modules/lazy-loader.js?v=d894491"></script>
+    <script src="js/modules/lazy-loader.js?v=a0d7a8c"></script>
 
-    <script src="js/modules/dates.js?v=d894491"></script>
-    <script defer src="js/modules/statistics.js?v=d894491"></script>
-    <script src="js/modules/pagination.js?v=d894491"></script>
-    <script src="js/modules/activity-logger.js?v=d894491"></script>
+    <script src="js/modules/dates.js?v=a0d7a8c"></script>
+    <script defer src="js/modules/statistics.js?v=a0d7a8c"></script>
+    <script src="js/modules/pagination.js?v=a0d7a8c"></script>
+    <script src="js/modules/activity-logger.js?v=a0d7a8c"></script>
 
     <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Event-Driven System ===== -->
     <!-- Type-safe Event Bus + Firebase Facade -->
-    <script type="module" src="dist/js/core/event-bus.js?v=d894491"></script>
-    <script type="module" src="dist/js/services/firebase-service.js?v=d894491"></script>
+    <script type="module" src="dist/js/core/event-bus.js?v=a0d7a8c"></script>
+    <script type="module" src="dist/js/services/firebase-service.js?v=a0d7a8c"></script>
 
     <!-- ✨ NEW: Modular Deduction System -->
     <!-- Shared library for hours calculation and deduction logic -->
-    <script type="module" src="src/modules/deduction/index.js?v=d894491"></script>
+    <script type="module" src="src/modules/deduction/index.js?v=a0d7a8c"></script>
 
-    <script src="js/modules/task-actions.js?v=d894491"></script>
+    <script src="js/modules/task-actions.js?v=a0d7a8c"></script>
     <!-- ✨ NEW: Task Completion Validation System -->
     <!-- Industry-standard task completion with time gap validation -->
-    <script src="js/modules/task-completion-validation.js?v=d894491"></script>
-    <script type="module" src="js/modules/firebase-pagination.js?v=d894491"></script>
-    <script src="js/modules/integration-manager.js?v=d894491"></script>
+    <script src="js/modules/task-completion-validation.js?v=a0d7a8c"></script>
+    <script type="module" src="js/modules/firebase-pagination.js?v=a0d7a8c"></script>
+    <script src="js/modules/integration-manager.js?v=a0d7a8c"></script>
     <!-- Firebase Functions Migration - Server-side Integration -->
-    <script src="js/modules/api-client-v2.js?v=d894491"></script>
-    <script src="js/modules/firebase-server-adapter.js?v=d894491"></script>
+    <script src="js/modules/api-client-v2.js?v=a0d7a8c"></script>
+    <script src="js/modules/firebase-server-adapter.js?v=a0d7a8c"></script>
     <!-- Employees Management System - ניהול עובדים -->
-    <script type="module" src="js/modules/employees-manager.js?v=d894491"></script>
+    <script type="module" src="js/modules/employees-manager.js?v=a0d7a8c"></script>
     <!-- ✅ Presence System - מעקב משתמשים בזמן אמת (Realtime Database) -->
-    <script src="js/modules/presence-system.js?v=d894491"></script>
+    <script src="js/modules/presence-system.js?v=a0d7a8c"></script>
     <!-- ✅ NEW: Idle Timeout Manager - התנתקות אוטומטית אחרי חוסר פעילות -->
-    <script src="js/modules/idle-timeout-manager.js?v=d894491"></script>
+    <script src="js/modules/idle-timeout-manager.js?v=a0d7a8c"></script>
 
     <!-- Cases Management System - ניהול תיקים -->
-    <script src="js/cases.js?v=d894491"></script>
-    <script src="js/cases-integration.js?v=d894491"></script>
+    <script src="js/cases.js?v=a0d7a8c"></script>
+    <script src="js/cases-integration.js?v=a0d7a8c"></script>
     <!-- Legal Procedures System - ניהול הליכים משפטיים -->
-    <script src="js/legal-procedures.js?v=d894491"></script>
+    <script src="js/legal-procedures.js?v=a0d7a8c"></script>
 
     <!-- ===== Lottie Animations Configuration ===== -->
     <!-- MUST BE LOADED BEFORE NotificationSystem -->
-    <script src="js/modules/lottie-animations.js?v=d894491"></script>
-    <script src="js/modules/lottie-manager.js?v=d894491"></script>
+    <script src="js/modules/lottie-animations.js?v=a0d7a8c"></script>
+    <script src="js/modules/lottie-manager.js?v=a0d7a8c"></script>
 
     <!-- ===== Notification System ===== -->
     <!-- Toast notifications with Lottie animations -->
-    <script src="js/modules/notification-messages.js?v=d894491"></script>
-    <script src="js/modules/notification-system.js?v=d894491"></script>
+    <script src="js/modules/notification-messages.js?v=a0d7a8c"></script>
+    <script src="js/modules/notification-system.js?v=a0d7a8c"></script>
 
     <!-- ===== 🎯 NEW: Unified UI System - Step 1: Load Components ===== -->
     <!-- Feature Flags - Controls whether to use new or legacy system -->
@@ -1148,57 +1138,57 @@
 
     <!-- ===== NEW: Modals Manager System ===== -->
     <!-- Centralized modal management -->
-    <script src="js/modules/modals-manager.js?v=d894491"></script>
+    <script src="js/modules/modals-manager.js?v=a0d7a8c"></script>
     <!-- Compatibility layer for smooth migration -->
-    <script src="js/modules/modals-compat.js?v=d894491"></script>
+    <script src="js/modules/modals-compat.js?v=a0d7a8c"></script>
 
     <!-- ===== Shared Service Card Renderer ===== -->
     <!-- Prevents code duplication between modules -->
-    <script src="js/modules/service-card-renderer.js?v=d894491"></script>
+    <script src="js/modules/service-card-renderer.js?v=a0d7a8c"></script>
 
     <!-- ===== Shared Client Search Component ===== -->
     <!-- Unified client search and filtering logic -->
-    <script src="js/modules/ui/client-search.js?v=d894491"></script>
+    <script src="js/modules/ui/client-search.js?v=a0d7a8c"></script>
 
     <!-- ===== NEW: Client-Case Selector Component ===== -->
     <!-- Unified two-step client→case selection -->
-    <script src="js/modules/client-case-selector.js?v=d894491"></script>
+    <script src="js/modules/client-case-selector.js?v=a0d7a8c"></script>
     <!-- Client-Case Selectors Initialization -->
-    <script src="js/modules/selectors-init.js?v=d894491"></script>
+    <script src="js/modules/selectors-init.js?v=a0d7a8c"></script>
 
     <!-- ===== 🔍 Performance Monitoring System ===== -->
     <!-- Real-time performance tracking for critical operations -->
-    <script src="js/modules/monitoring/performance-monitor.js?v=d894491"></script>
+    <script src="js/modules/monitoring/performance-monitor.js?v=a0d7a8c"></script>
 
     <!-- ===== 🧪 TESTING: New Case Creation Module ===== -->
     <!-- Modern modular case creation system - currently in testing -->
-    <script src="js/modules/case-creation/case-number-generator.js?v=d894491"></script>
-    <script src="js/modules/case-creation/case-form-validator.js?v=d894491"></script>
-    <script src="js/modules/case-creation/case-creation-dialog.js?v=d894491"></script>
+    <script src="js/modules/case-creation/case-number-generator.js?v=a0d7a8c"></script>
+    <script src="js/modules/case-creation/case-form-validator.js?v=a0d7a8c"></script>
+    <script src="js/modules/case-creation/case-creation-dialog.js?v=a0d7a8c"></script>
 
     <!-- ===== Smart Descriptions System ===== -->
     <!-- Structured descriptions manager for tasks and work entries -->
-    <script src="js/modules/descriptions/category-mapping.js?v=d894491"></script>
-    <script src="js/modules/descriptions/descriptions-manager.js?v=d894491"></script>
-    <script src="js/modules/descriptions/smart-combo-selector.js?v=d894491"></script>
-    <script src="js/modules/descriptions/GuidedTextInput.js?v=d894491"></script>
+    <script src="js/modules/descriptions/category-mapping.js?v=a0d7a8c"></script>
+    <script src="js/modules/descriptions/descriptions-manager.js?v=a0d7a8c"></script>
+    <script src="js/modules/descriptions/smart-combo-selector.js?v=a0d7a8c"></script>
+    <script src="js/modules/descriptions/GuidedTextInput.js?v=a0d7a8c"></script>
 
     <!-- ===== Core Utilities Module ===== -->
     <!-- Must load before dialogs.js (provides safeText) -->
-    <script type="module" src="js/modules/core-utils.js?v=d894491"></script>
+    <script type="module" src="js/modules/core-utils.js?v=a0d7a8c"></script>
 
     <!-- ===== Dialogs Module ===== -->
     <!-- Task completion, advanced dialogs, and other modals + Smart Descriptions -->
-    <script src="js/modules/dialogs.js?v=d894491"></script>
+    <script src="js/modules/dialogs.js?v=a0d7a8c"></script>
 
     <!-- ===== System Diagnostics & Snapshot Tool ===== -->
     <!-- Full system state comparison for debugging -->
-    <script defer src="js/modules/system-snapshot.js?v=d894491"></script>
+    <script defer src="js/modules/system-snapshot.js?v=a0d7a8c"></script>
     <!-- Event Flow Analyzer - ניתוח מערך האירועים -->
-    <script defer src="js/modules/event-analyzer.js?v=d894491"></script>
+    <script defer src="js/modules/event-analyzer.js?v=a0d7a8c"></script>
 
     <!-- ===== SVG RINGS MODULE ===== -->
-    <script src="js/modules/svg-rings.js?v=d894491"></script>
+    <script src="js/modules/svg-rings.js?v=a0d7a8c"></script>
 
     <!-- ===== INLINE EXPANSION POPOVER (CSS-only) ===== -->
     <!-- popover-positioning.js removed - file does not exist -->
@@ -1206,20 +1196,20 @@
     <!-- ===== Messaging System ===== -->
     <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
     <!-- Modern modular architecture with ActionFlowManager + Smart Descriptions -->
-    <script type="module" src="js/main.js?v=d894491"></script>
-    <script type="module" src="js/modules/description-tooltips.js?v=d894491"></script>
+    <script type="module" src="js/main.js?v=a0d7a8c"></script>
+    <script type="module" src="js/modules/description-tooltips.js?v=a0d7a8c"></script>
 
     <!-- ===== SYSTEM ANNOUNCEMENT TICKER ===== -->
     <!-- Loaded as module by main.js -->
 
     <!-- Work Hours Calculator - Smart Calendar System -->
-    <script src="js/modules/work-hours-calculator.js?v=d894491"></script>
+    <script src="js/modules/work-hours-calculator.js?v=a0d7a8c"></script>
 
     <!-- ===== 🔍 FUNCTION MONITOR - POC ===== -->
     <!-- Advanced monitoring and debugging system -->
-    <script defer src="js/modules/function-monitor.js?v=d894491"></script>
-    <script defer src="js/modules/function-monitor-dashboard.js?v=d894491"></script>
-    <script defer src="js/modules/function-monitor-init.js?v=d894491"></script>
+    <script defer src="js/modules/function-monitor.js?v=a0d7a8c"></script>
+    <script defer src="js/modules/function-monitor-dashboard.js?v=a0d7a8c"></script>
+    <script defer src="js/modules/function-monitor-init.js?v=a0d7a8c"></script>
 
     <!-- ===== KNOWLEDGE BASE 1.0.0 - מרכז עזרה וידע ===== -->
     <!-- 🎓 NEW: Knowledge Base / FAQ System - Simple and Clear -->
@@ -1229,25 +1219,25 @@
     <!-- 💡 Click "עזרה" or the floating 💡 button to open -->
 
     <!-- CSS -->
-    <link rel="stylesheet" href="js/modules/knowledge-base/knowledge-base.css?v=d894491">
+    <link rel="stylesheet" href="js/modules/knowledge-base/knowledge-base.css?v=a0d7a8c">
 
     <!-- Icons System -->
-    <script defer src="js/modules/knowledge-base/kb-icons.js?v=d894491"></script>
+    <script defer src="js/modules/knowledge-base/kb-icons.js?v=a0d7a8c"></script>
 
     <!-- Analytics System -->
-    <script defer src="js/modules/knowledge-base/kb-analytics.js?v=d894491"></script>
+    <script defer src="js/modules/knowledge-base/kb-analytics.js?v=a0d7a8c"></script>
 
     <!-- Data -->
-    <script defer src="js/modules/knowledge-base/kb-data.js?v=d894491"></script>
+    <script defer src="js/modules/knowledge-base/kb-data.js?v=a0d7a8c"></script>
 
     <!-- Search Engine -->
-    <script defer src="js/modules/knowledge-base/kb-search.js?v=d894491"></script>
+    <script defer src="js/modules/knowledge-base/kb-search.js?v=a0d7a8c"></script>
 
     <!-- Main Logic -->
-    <script defer src="js/modules/knowledge-base/knowledge-base.js?v=d894491"></script>
+    <script defer src="js/modules/knowledge-base/knowledge-base.js?v=a0d7a8c"></script>
 
     <!-- ===== Virtual Assistant 3.9.0 - TEMPORARILY DISABLED ===== -->
-    <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=d894491"></script> -->
+    <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=a0d7a8c"></script> -->
 
     <!-- ===== AI CHAT SYSTEM (NEW) - LAZY LOADED ===== -->
     <!-- ⚡ NotificationBell is also lazy-loaded (requires authenticated user) -->
@@ -1257,19 +1247,19 @@
     <!-- See: authentication.js -> initAIChatSystem() -->
 
     <!-- OLD: Legacy FAQ Bot (backup) -->
-    <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=d894491"></script> -->
+    <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=a0d7a8c"></script> -->
 
     <!-- ===== OLD: Legacy script.js (DEPRECATED - will be removed) ===== -->
-    <!-- <script src="script.js?v=d894491"></script> -->
+    <!-- <script src="script.js?v=a0d7a8c"></script> -->
 
     <!-- 🔧 Admin Migration Tools (Console-based) -->
-    <script src="js/admin-migration-tools.js?v=d894491"></script>
+    <script src="js/admin-migration-tools.js?v=a0d7a8c"></script>
 
     <!-- 🔍 Validation Script (Post-Migration Testing) -->
-    <script src="js/validation-script.js?v=d894491"></script>
+    <script src="js/validation-script.js?v=a0d7a8c"></script>
 
     <!-- 🔧 Fix Old Clients Tool -->
-    <script src="js/fix-old-clients.js?v=d894491"></script>
+    <script src="js/fix-old-clients.js?v=a0d7a8c"></script>
 
     <!-- Additional CSS for animations -->
     <style>
