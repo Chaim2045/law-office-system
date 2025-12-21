@@ -2214,6 +2214,8 @@ return;
     // Clear previous errors (scoped to popup for performance)
     dateInput?.classList.remove('error');
     minutesInput?.classList.remove('error');
+    const guidedTextarea = document.querySelector('.guided-textarea');
+    guidedTextarea?.classList.remove('error');
     const popup = document.querySelector('.popup-overlay.show .popup');
     if (popup) {
       popup.querySelectorAll('.error-message').forEach(el => el.remove());
@@ -2247,15 +2249,23 @@ return;
       const validation = guidedInput.validate();
       if (!validation.valid) {
         hasErrors = true;
-        // Add visual error styling to GuidedTextInput
-        const guidedTextarea = document.querySelector('.guided-text-input');
+        // Add visual error styling to the textarea only (not the suggestions)
+        const guidedTextarea = document.querySelector('.guided-textarea');
         if (guidedTextarea) {
           guidedTextarea.classList.add('error');
+        }
+        // Add error message below the input
+        const guidedInputWrapper = document.querySelector('.guided-input-wrapper');
+        if (guidedInputWrapper && !guidedInputWrapper.querySelector('.error-message')) {
+          const errorMsg = document.createElement('span');
+          errorMsg.className = 'error-message';
+          errorMsg.textContent = 'נא למלא תיאור';
+          guidedInputWrapper.appendChild(errorMsg);
         }
       } else {
         workDescription = guidedInput.getValue();
         // Remove error styling if valid
-        const guidedTextarea = document.querySelector('.guided-text-input');
+        const guidedTextarea = document.querySelector('.guided-textarea');
         if (guidedTextarea) {
           guidedTextarea.classList.remove('error');
         }
