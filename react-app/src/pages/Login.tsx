@@ -56,13 +56,6 @@ export const Login: React.FC = () => {
 
   return (
     <div className="login-page">
-      {/* Floating Bubbles Animation */}
-      <div className="bubbles-container">
-        {[...Array(15)].map((_, index) => (
-          <div key={index} className="bubble"></div>
-        ))}
-      </div>
-
       {/* Login Container */}
       <div className="login-wrapper">
         {/* Logo */}
