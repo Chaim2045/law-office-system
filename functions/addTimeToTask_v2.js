@@ -286,9 +286,21 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
     // מצא את השירות המבוקש
     const service = clientData.services.find(s => s.id === taskData.serviceId);
 
+    console.log(`🔍 [OVERDRAFT DEBUG] Service found:`, {
+      serviceId: service?.id,
+      serviceType: service?.type,
+      hasPackages: !!service?.packages?.length
+    });
+
     if (service && service.type !== 'legal_procedure') {
       // שירות רגיל עם חבילות (לא הליך משפטי)
       const activePackage = getActivePackage(service);
+
+      console.log(`🔍 [OVERDRAFT DEBUG] Active package:`, {
+        hasActivePackage: !!activePackage,
+        hoursRemaining: activePackage?.hoursRemaining,
+        packageStatus: activePackage?.status
+      });
 
       if (activePackage) {
         // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז

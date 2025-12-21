@@ -68,11 +68,11 @@ function getActivePackage(stage, allowOverdraft = true) {
   // זה פותר את הבאג שבו stage_b.status='active' אבל package.status='pending'
   if (stage.status === 'active' || stage.status === 'completed') {
     return stage.packages.find(pkg => {
-      const isActiveOrPending = !pkg.status || pkg.status === 'active' || pkg.status === 'pending' || pkg.status === 'overdraft';
+      const isActiveOrPending = !pkg.status || pkg.status === 'active' || pkg.status === 'pending' || pkg.status === 'overdraft' || pkg.status === 'depleted';
       const hoursRemaining = pkg.hoursRemaining || 0;
 
       if (allowOverdraft) {
-        // ✅ אפשר חריגה עד -10 שעות
+        // ✅ אפשר חריגה עד -10 שעות (כולל חבילות depleted)
         return isActiveOrPending && hoursRemaining > -10;
       } else {
         // התנהגות מקורית - רק חבילות עם שעות חיוביות
@@ -84,7 +84,7 @@ function getActivePackage(stage, allowOverdraft = true) {
   // Backward compatibility: packages ישנים ללא stage.status
   // Find first package with status 'active' (or no status) and hoursRemaining > 0
   return stage.packages.find(pkg => {
-    const isActive = !pkg.status || pkg.status === 'active' || pkg.status === 'overdraft';
+    const isActive = !pkg.status || pkg.status === 'active' || pkg.status === 'overdraft' || pkg.status === 'depleted';
     const hoursRemaining = pkg.hoursRemaining || 0;
 
     if (allowOverdraft) {
@@ -133,7 +133,7 @@ function calculateRemainingHours(entity) {
 function deductHoursFromPackage(pkg, hours) {
   // Calculate new values
   const newHoursUsed = (pkg.hoursUsed || 0) + hours;
-  const newHoursRemaining = Math.max(0, (pkg.hoursRemaining || 0) - hours);
+  const newHoursRemaining = (pkg.hoursRemaining || 0) - hours;  // ✅ Allow negative values for overdraft
 
   // Determine new status
   let newStatus = pkg.status || 'active';
@@ -146,9 +146,11 @@ function deductHoursFromPackage(pkg, hours) {
     status: newStatus
   };
 
-  // ✅ Only add closedDate if package is depleted (avoid undefined in Firestore)
-  if (newHoursRemaining <= 0) {
-    updatedPackage.status = 'depleted';
+  // ✅ Update status based on remaining hours
+  if (newHoursRemaining < 0 && newHoursRemaining >= -10) {
+    updatedPackage.status = 'overdraft';  // In overdraft range
+  } else if (newHoursRemaining <= 0) {
+    updatedPackage.status = 'depleted';  // Depleted or beyond overdraft
     updatedPackage.closedDate = new Date().toISOString();
   }
 
