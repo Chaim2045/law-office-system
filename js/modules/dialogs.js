@@ -179,17 +179,6 @@ function showAdvancedTimeDialog(taskId, manager) {
             <input type="date" id="workDate" required value="${
               new Date().toISOString().split('T')[0]
             }">
-            <div class="date-shortcuts">
-              <button type="button" class="date-shortcut-btn" onclick="window.setQuickDate(0)">
-                היום<i class="fas fa-calendar-day"></i>
-              </button>
-              <button type="button" class="date-shortcut-btn" onclick="window.setQuickDate(-1)">
-                אתמול<i class="fas fa-calendar-minus"></i>
-              </button>
-              <button type="button" class="date-shortcut-btn" onclick="window.setQuickDate(-2)">
-                שלשום<i class="fas fa-calendar-alt"></i>
-              </button>
-            </div>
           </div>
           <div class="form-group">
             <label for="workMinutes">
@@ -263,19 +252,6 @@ return;
       badge.classList.add('future');
       badge.innerHTML = `<i class="fas fa-calendar-plus"></i> בעוד ${Math.abs(diffDays)} ימים`;
     }
-  };
-
-  // ✅ Quick Date Buttons
-  window.setQuickDate = function(daysOffset) {
-    const dateInput = document.getElementById('workDate');
-    if (!dateInput) {
-return;
-}
-
-    const date = new Date();
-    date.setDate(date.getDate() + daysOffset);
-    dateInput.value = date.toISOString().split('T')[0];
-    window.updateDateBadge();
   };
 
   // Add event listener for date changes
