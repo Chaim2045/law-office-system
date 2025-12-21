@@ -216,7 +216,11 @@ return;
             const agreementWarning = this.getAgreementWarning(client);
 
             // ✅ בדיקה אם הלקוח במינוס (חריגה)
-            const isOverdraft = (client.hoursRemaining || 0) < 0;
+            // בודק אם יש שירות אחד לפחות במינוס, או שהסכום הכולל במינוס
+            const hasOverdraftService = client.services?.some(s =>
+                (s.hoursRemaining || 0) < 0
+            );
+            const isOverdraft = hasOverdraftService || (client.hoursRemaining || 0) < 0;
             const rowClass = isOverdraft ? 'client-row-overdraft' : '';
 
             return `
