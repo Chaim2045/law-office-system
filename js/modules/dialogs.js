@@ -283,11 +283,16 @@ return;
     clearErrorOnInput(dateInput);
     clearErrorOnInput(minutesInput);
 
-    // ✅ NEW: Clear error on GuidedTextInput
-    const guidedTextarea = document.querySelector('.guided-text-input');
+    // ✅ NEW: Clear error on GuidedTextInput textarea
+    const guidedTextarea = document.querySelector('.guided-textarea');
     if (guidedTextarea) {
       guidedTextarea.addEventListener('input', () => {
         guidedTextarea.classList.remove('error');
+        // Also remove error message if exists
+        const errorMsg = guidedTextarea.closest('.guided-input-wrapper')?.querySelector('.error-message');
+        if (errorMsg) {
+          errorMsg.remove();
+        }
       });
     }
   }, 150);
