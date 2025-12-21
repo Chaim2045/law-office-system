@@ -409,12 +409,17 @@ async function confirmLogout() {
 interfaceElements.classList.add('hidden');
 }
 
-  // Show goodbye notification using new system
+  // Show goodbye notification using new system with custom icon
   if (window.NotificationSystem) {
-    window.NotificationSystem.info('מתנתק מהמערכת... להתראות! 👋', 3000);
+    const notification = window.NotificationSystem.info('מתנתק מהמערכת... להתראות', 3000);
+    // Replace default info icon with power-off icon
+    const iconElement = notification.querySelector('.notification-icon i');
+    if (iconElement) {
+      iconElement.className = 'fas fa-power-off';
+    }
   } else if (window.manager) {
     // Fallback to old system if new one not loaded
-    window.manager.showNotification('מתנתק מהמערכת... להתראות! 👋', 'info');
+    window.manager.showNotification('מתנתק מהמערכת... להתראות', 'info');
   }
 
   // ✅ Track logout with Presence System

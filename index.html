@@ -167,6 +167,152 @@
     <link rel="stylesheet" href="css/system-announcement-ticker.css?v=018f886" />
 
     <!-- ===== SECURITY MODALS STYLES ===== -->
+    <!-- Google Fonts - Inter for Linear-style Idle Warning -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      /* ═══════════════════════════════════════════════════════════
+         IDLE WARNING - LINEAR-INSPIRED DESIGN
+         ═══════════════════════════════════════════════════════════ */
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .idle-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        animation: fadeIn 0.15s ease;
+      }
+
+      .idle-dialog {
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        max-width: 400px;
+        width: 90%;
+        padding: 28px 24px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        animation: slideUp 0.2s ease;
+      }
+
+      .idle-header {
+        margin-bottom: 4px;
+      }
+
+      .idle-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #18181b;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .idle-title i {
+        font-size: 18px;
+        color: #71717a;
+      }
+
+      .idle-message {
+        color: #71717a;
+        font-size: 14px;
+        margin: 0 0 24px 0;
+        line-height: 1.5;
+        font-weight: 400;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .idle-message strong {
+        color: #18181b;
+        font-weight: 600;
+      }
+
+      .idle-countdown {
+        font-size: 40px;
+        font-weight: 600;
+        color: #18181b;
+        margin: 24px 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1;
+        letter-spacing: -0.025em;
+        font-feature-settings: 'tnum';
+        font-variant-numeric: tabular-nums;
+      }
+
+      .idle-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .idle-btn {
+        flex: 1;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        transition: all 0.15s ease;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+
+      .idle-btn-secondary {
+        background: transparent;
+        color: #52525b;
+        border: 1px solid #e4e4e7;
+      }
+
+      .idle-btn-secondary:hover {
+        background: #fafafa;
+        border-color: #d4d4d8;
+      }
+
+      .idle-btn-secondary:active {
+        background: #f4f4f5;
+      }
+
+      .idle-btn-primary {
+        background: #3b82f6;
+        color: white;
+        border: 1px solid #3b82f6;
+        font-weight: 500;
+      }
+
+      .idle-btn-primary:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+
+      .idle-btn-primary:active {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+      }
+    </style>
 
   </head>
 
