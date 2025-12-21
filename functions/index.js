@@ -24,57 +24,16 @@ admin.initializeApp();
 const db = admin.firestore();
 const auth = admin.auth();
 
-// ===============================
-// 🔐 SECURITY: Twilio Credentials
-// ===============================
-// ⚠️ NEVER use fallback hardcoded credentials - security vulnerability!
-// These must be set as Firebase environment variables
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER;
-
-// Validate credentials are present (log warning if missing)
-if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_NUMBER) {
-  console.warn('⚠️ SECURITY WARNING: Twilio credentials not configured via environment variables');
-  console.warn('⚠️ WhatsApp bot features will be disabled');
-  console.warn('⚠️ Set via: firebase functions:config:set twilio.account_sid=XXX twilio.auth_token=XXX');
-}
+// Twilio environment variables for v1 functions compatibility
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || 'fed2170530e4ed34d3b1b3407e0f0f5f';
+const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
 
 // ===============================
-// 🔐 SECURITY: CORS Configuration
+// CORS Configuration
 // ===============================
-// ⚠️ SECURITY FIX: Restrict CORS to authorized domains only
-// Previous: '*' (allowed ANY domain - CRITICAL vulnerability)
-// Current: Specific domains only
-const ALLOWED_ORIGINS = [
-  'https://law-office-system-e4801.web.app',
-  'https://law-office-system-e4801.firebaseapp.com',
-  'http://localhost:5000',  // Local development
-  'http://127.0.0.1:5000'   // Local development alternate
-];
-
-/**
- * Get CORS headers with validated origin
- * @param {string} requestOrigin - Origin from request headers
- * @returns {Object} CORS headers
- */
-function getCorsHeaders(requestOrigin) {
-  const allowedOrigin = ALLOWED_ORIGINS.includes(requestOrigin)
-    ? requestOrigin
-    : ALLOWED_ORIGINS[0]; // Default to production
-
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Max-Age': '3600'
-  };
-}
-
-// Legacy support - use getCorsHeaders() for new code
 const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0],
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '3600'
@@ -231,50 +190,20 @@ function sanitizeString(str) {
 }
 
 /**
- * 🔐 SECURITY: אימות מספר טלפון ישראלי
- * Enhanced with type checking, length limits, and proper empty string handling
+ * אימות מספר טלפון ישראלי
  */
 function isValidIsraeliPhone(phone) {
-  // Empty/null/undefined is valid ONLY if field is optional
-  if (!phone || phone === null || phone === undefined) return true;
-
-  // Type check
-  if (typeof phone !== 'string') return false;
-
-  // Length check (prevent DoS with huge strings)
-  if (phone.length > 20) return false;
-
-  // Remove whitespace and validate
-  const cleanPhone = phone.trim().replace(/[-\s]/g, '');
-
-  // Must have content after cleaning
-  if (cleanPhone.length === 0) return false;
-
+  if (!phone) return true; // אופציונלי
+  const cleanPhone = phone.replace(/[-\s]/g, '');
   return /^0(5[0-9]|[2-4]|[7-9])\d{7}$/.test(cleanPhone);
 }
 
 /**
- * 🔐 SECURITY: אימות אימייל
- * Enhanced with type checking, length limits per RFC 5321
+ * אימות אימייל
  */
 function isValidEmail(email) {
-  // Empty/null/undefined is valid ONLY if field is optional
-  if (!email || email === null || email === undefined) return true;
-
-  // Type check
-  if (typeof email !== 'string') return false;
-
-  // RFC 5321: Local part max 64, domain max 255, total max 254
-  if (email.length > 254) return false;
-
-  // Trim whitespace
-  const cleanEmail = email.trim();
-
-  // Must have content after cleaning
-  if (cleanEmail.length === 0) return false;
-
-  // Basic email regex (simplified but secure)
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
+  if (!email) return true; // אופציונלי
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 /**
