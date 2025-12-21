@@ -196,6 +196,20 @@
     border-bottom: none;
 }
 
+/* ===== Overdraft Client Highlighting ===== */
+.client-row-overdraft {
+    background: rgb(220 38 38 / 8%) !important;
+    border-right: 4px solid var(--danger-red);
+}
+
+.client-row-overdraft:hover {
+    background: rgb(220 38 38 / 12%) !important;
+}
+
+.client-row-overdraft td {
+    border-bottom-color: rgb(220 38 38 / 20%);
+}
+
 .loading-row {
     text-align: center;
     padding: 3rem 1rem;
