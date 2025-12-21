@@ -1,0 +1,314 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * Edge Polish - Modal & Dialog Improvements
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * Professional modal styling inspired by Notion, Linear, Stripe
+ *
+ * Features:
+ * - Smooth animations with scale + slide
+ * - Professional shadows and borders
+ * - Close button X (minimalist)
+ * - Enhanced form inputs
+ * - Dynamic date badge
+ * - Quick date buttons
+ *
+ * @version 1.0.0
+ * @date 2025-12-19
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   Enhanced Popup Animation
+   ═══════════════════════════════════════════════════════════════ */
+
+.popup-overlay.show .popup {
+  animation: modalSlideScale 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes modalSlideScale {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Professional Modal Styling
+   ═══════════════════════════════════════════════════════════════ */
+
+.popup {
+  border-radius: 16px !important;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 5%),
+    0 20px 60px rgb(0 0 0 / 15%),
+    0 50px 100px rgb(0 0 0 / 10%) !important;
+}
+
+.popup-header {
+  padding: 28px 32px 24px !important;
+  border-bottom: 1px solid rgb(0 0 0 / 6%) !important;
+  font-size: 21px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.3px !important;
+  color: #0f172a !important;
+}
+
+.popup-header i {
+  font-size: 22px !important;
+}
+
+.popup-content {
+  padding: 32px !important;
+  background: #fafbfc !important;
+}
+
+.popup-buttons {
+  padding: 24px 32px !important;
+  border-top: 1px solid rgb(0 0 0 / 6%) !important;
+  background: white !important;
+  border-radius: 0 0 16px 16px !important;
+  gap: 10px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Close Button X (Minimalist)
+   ═══════════════════════════════════════════════════════════════ */
+
+.popup-close-btn {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  color: #94a3b8;
+  font-size: 19px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.popup-close-btn:hover {
+  background: rgb(0 0 0 / 4%);
+  color: #64748b;
+}
+
+.popup-close-btn:active {
+  transform: scale(0.92);
+  background: rgb(0 0 0 / 6%);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Enhanced Form Inputs
+   ═══════════════════════════════════════════════════════════════ */
+
+.form-group {
+  margin-bottom: 24px !important;
+}
+
+.form-group label {
+  margin-bottom: 10px !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  font-size: 13.5px !important;
+  letter-spacing: -0.1px !important;
+}
+
+.popup .form-group input[type="date"],
+.popup .form-group input[type="number"],
+.popup .form-group input[type="text"],
+.popup .form-group textarea {
+  padding: 11px 14px !important;
+  border: 1.5px solid #e1e4e8 !important;
+  border-radius: 10px !important;
+  font-size: 14.5px !important;
+  transition: all 0.15s ease !important;
+  background: white !important;
+  color: #1e293b !important;
+}
+
+.popup .form-group input[type="date"]:hover,
+.popup .form-group input[type="number"]:hover,
+.popup .form-group input[type="text"]:hover,
+.popup .form-group textarea:hover {
+  border-color: #cbd5e1 !important;
+}
+
+.popup .form-group input[type="date"]:focus,
+.popup .form-group input[type="number"]:focus,
+.popup .form-group input[type="text"]:focus,
+.popup .form-group textarea:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  background: white !important;
+  box-shadow:
+    0 0 0 3px rgb(59 130 246 / 8%),
+    0 1px 2px rgb(0 0 0 / 4%) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Professional Buttons
+   ═══════════════════════════════════════════════════════════════ */
+
+.popup-btn {
+  padding: 11px 22px !important;
+  border-radius: 9px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  letter-spacing: -0.1px !important;
+}
+
+.popup-btn-confirm {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 15%) !important;
+}
+
+.popup-btn-confirm:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow:
+    0 4px 12px rgb(59 130 246 / 35%),
+    inset 0 1px 0 rgb(255 255 255 / 20%) !important;
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+}
+
+.popup-btn-confirm:active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+
+.popup-btn-confirm:disabled {
+  background: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+}
+
+.popup-btn-cancel {
+  background: white !important;
+  color: #64748b !important;
+  border: 1.5px solid #e1e4e8 !important;
+}
+
+.popup-btn-cancel:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Dynamic Date Badge
+   ═══════════════════════════════════════════════════════════════ */
+
+.badge-date {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-date.today {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-date.yesterday {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-date.tomorrow {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-date.past {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-date.future {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-date.old {
+  background: #fecaca;
+  color: #7f1d1d;
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; }
+
+  50% { opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Quick Date Buttons
+   ═══════════════════════════════════════════════════════════════ */
+
+.date-shortcuts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.date-shortcut-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1.5px solid #e1e4e8;
+  border-radius: 6px;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-shortcut-btn:hover {
+  background: #f8fafc;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.date-shortcut-btn:active {
+  transform: scale(0.95);
+}
+
+.date-shortcut-btn i {
+  margin-left: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Helper Text
+   ═══════════════════════════════════════════════════════════════ */
+
+.hint-text {
+  font-weight: 400 !important;
+  font-size: 12px !important;
+  color: #64748b !important;
+  margin-right: 8px !important;
+}
+
+.helper-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
