@@ -49,13 +49,17 @@
  * Finds the active package in a stage
  *
  * @param {Object} stage - Stage object with packages array
+ * @param {boolean} allowOverdraft - Allow packages with negative hours (up to -10)
  * @returns {Object|null} Active package or null if not found
  *
  * 🔥 FIX (2025-12-01): במבנה החדש של Legal Procedure v2.0,
  * כאשר stage.status === 'active', החבילה הראשונה צריכה להיות active
  * גם אם package.status === 'pending' (זה מצב תקין!)
+ *
+ * ✅ UPGRADE (2025-12-21): תמיכה ב-overdraft עד -10 שעות
+ * כדי למנוע הפרעה למהלך העבודה התקין
  */
-function getActivePackage(stage) {
+function getActivePackage(stage, allowOverdraft = true) {
   if (!stage || !stage.packages || stage.packages.length === 0) {
     return null;
   }
@@ -63,15 +67,31 @@ function getActivePackage(stage) {
   // 🔥 FIX: אם השלב הוא active, קח את החבילה הראשונה עם שעות
   // זה פותר את הבאג שבו stage_b.status='active' אבל package.status='pending'
   if (stage.status === 'active' || stage.status === 'completed') {
-    return stage.packages.find(pkg => (pkg.hoursRemaining || 0) > 0) || null;
+    return stage.packages.find(pkg => {
+      const isActiveOrPending = !pkg.status || pkg.status === 'active' || pkg.status === 'pending' || pkg.status === 'overdraft';
+      const hoursRemaining = pkg.hoursRemaining || 0;
+
+      if (allowOverdraft) {
+        // ✅ אפשר חריגה עד -10 שעות
+        return isActiveOrPending && hoursRemaining > -10;
+      } else {
+        // התנהגות מקורית - רק חבילות עם שעות חיוביות
+        return isActiveOrPending && hoursRemaining > 0;
+      }
+    }) || null;
   }
 
   // Backward compatibility: packages ישנים ללא stage.status
   // Find first package with status 'active' (or no status) and hoursRemaining > 0
   return stage.packages.find(pkg => {
-    const isActive = !pkg.status || pkg.status === 'active';
-    const hasHours = (pkg.hoursRemaining || 0) > 0;
-    return isActive && hasHours;
+    const isActive = !pkg.status || pkg.status === 'active' || pkg.status === 'overdraft';
+    const hoursRemaining = pkg.hoursRemaining || 0;
+
+    if (allowOverdraft) {
+      return isActive && hoursRemaining > -10;
+    } else {
+      return isActive && hoursRemaining > 0;
+    }
   }) || null;
 }
 
