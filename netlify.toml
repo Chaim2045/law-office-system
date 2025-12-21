@@ -129,7 +129,8 @@
         https://*.googleapis.com
         https://identitytoolkit.googleapis.com
         https://securetoken.googleapis.com
-        https://*.cloudfunctions.net;
+        https://*.cloudfunctions.net
+        https://assets9.lottiefiles.com;
       frame-src 'self'
         https://*.firebaseapp.com
         https://law-office-system-e4801.firebaseapp.com;
