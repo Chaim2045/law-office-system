@@ -209,7 +209,7 @@ function showAdvancedTimeDialog(taskId, manager) {
         </form>
       </div>
       <div class="popup-buttons">
-        <button class="popup-btn popup-btn-confirm" onclick="manager.submitTimeEntry('${taskId}')">
+        <button class="popup-btn popup-btn-confirm is-disabled" id="saveTimeBtn" onclick="manager.submitTimeEntry('${taskId}')">
           <i class="fas fa-save"></i> שמור
         </button>
         <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
@@ -222,6 +222,26 @@ function showAdvancedTimeDialog(taskId, manager) {
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
   setTimeout(() => overlay.classList.add('show'), 10);
+
+  // ✅ Validate form and enable/disable save button
+  window.validateTimeEntryForm = function() {
+    const workMinutes = document.getElementById('workMinutes')?.value;
+    const workDescription = window._currentGuidedInput?.getValue() || '';
+    const saveBtn = document.getElementById('saveTimeBtn');
+
+    if (!saveBtn) {
+return;
+}
+
+    // Enable button only if both fields are filled
+    if (workMinutes && workMinutes > 0 && workDescription && workDescription.trim().length > 0) {
+      saveBtn.classList.remove('is-disabled');
+      saveBtn.disabled = false;
+    } else {
+      saveBtn.classList.add('is-disabled');
+      saveBtn.disabled = true;
+    }
+  };
 
   // ✅ Dynamic Date Badge - Updates based on selected date
   window.updateDateBadge = function() {
@@ -265,19 +285,6 @@ return;
     }
   };
 
-  // ✅ Quick Date Buttons
-  window.setQuickDate = function(daysOffset) {
-    const dateInput = document.getElementById('workDate');
-    if (!dateInput) {
-return;
-}
-
-    const date = new Date();
-    date.setDate(date.getDate() + daysOffset);
-    dateInput.value = date.toISOString().split('T')[0];
-    window.updateDateBadge();
-  };
-
   // Add event listener for date changes
   setTimeout(() => {
     const dateInput = document.getElementById('workDate');
@@ -308,6 +315,14 @@ return;
         // Store for cleanup and later use
         overlay.guidedInput = guidedInput;
         window._currentGuidedInput = guidedInput;
+
+        // Add event listener to the textarea for validation
+        setTimeout(() => {
+          const textarea = document.getElementById('workDescriptionGuided_input');
+          if (textarea) {
+            textarea.addEventListener('input', window.validateTimeEntryForm);
+          }
+        }, 200);
 
         Logger.log(`✅ GuidedTextInput initialized for task ${taskId}`);
       } else {
