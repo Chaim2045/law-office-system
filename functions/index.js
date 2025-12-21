@@ -2859,9 +2859,32 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
             const activePackage = DeductionSystem.getActivePackage(service);
 
             if (activePackage) {
+              // ✅ בדיקת חריגה לפני הקיזוז
+              const currentRemaining = activePackage.hoursRemaining || 0;
+              const afterDeduction = currentRemaining - hoursWorked;
+
+              // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
+              if (afterDeduction < -10) {
+                throw new functions.https.HttpsError(
+                  'resource-exhausted',
+                  'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                  {
+                    clientId: clientData.caseNumber,
+                    currentRemaining,
+                    requestedHours: hoursWorked,
+                    wouldBe: afterDeduction
+                  }
+                );
+              }
+
               // קיזוז מהחבילה הפעילה
               DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
+
+              // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
+              if (afterDeduction < 0 && afterDeduction >= -10) {
+                activePackage.status = 'overdraft';
+              }
 
               // עדכון הלקוח
               await clientDoc.ref.update({
@@ -2871,7 +2894,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                 lastActivity: admin.firestore.FieldValue.serverTimestamp()
               });
 
-              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id} (${activePackage.hoursUsed}/${activePackage.hours})`);
+              console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} של שירות ${service.name || service.id} (${activePackage.hoursUsed}/${activePackage.hours}, נותר: ${afterDeduction.toFixed(2)})`);
             } else {
               console.warn(`⚠️ לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
             }
@@ -2897,9 +2920,32 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                 const activePackage = DeductionSystem.getActivePackage(currentStage);
 
                 if (activePackage) {
+                  // ✅ בדיקת חריגה לפני הקיזוז
+                  const currentRemaining = activePackage.hoursRemaining || 0;
+                  const afterDeduction = currentRemaining - hoursWorked;
+
+                  // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
+                  if (afterDeduction < -10) {
+                    throw new functions.https.HttpsError(
+                      'resource-exhausted',
+                      'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                      {
+                        clientId: clientData.caseNumber,
+                        currentRemaining,
+                        requestedHours: hoursWorked,
+                        wouldBe: afterDeduction
+                      }
+                    );
+                  }
+
                   // קיזוז מהחבילה הפעילה
                   DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
                   updatedPackageId = activePackage.id;
+
+                  // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
+                  if (afterDeduction < 0 && afterDeduction >= -10) {
+                    activePackage.status = 'overdraft';
+                  }
 
                   // עדכון השלב
                   stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
@@ -2916,7 +2962,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                     lastActivity: admin.firestore.FieldValue.serverTimestamp()
                   });
 
-                  console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} של ${service.name}, חבילה ${activePackage.id}`);
+                  console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} של ${service.name}, חבילה ${activePackage.id} (נותר: ${afterDeduction.toFixed(2)})`);
                 } else {
                   console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
                 }
@@ -2943,9 +2989,32 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
               const activePackage = DeductionSystem.getActivePackage(currentStage);
 
               if (activePackage) {
+                // ✅ בדיקת חריגה לפני הקיזוז
+                const currentRemaining = activePackage.hoursRemaining || 0;
+                const afterDeduction = currentRemaining - hoursWorked;
+
+                // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
+                if (afterDeduction < -10) {
+                  throw new functions.https.HttpsError(
+                    'resource-exhausted',
+                    'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                    {
+                      clientId: clientData.caseNumber,
+                      currentRemaining,
+                      requestedHours: hoursWorked,
+                      wouldBe: afterDeduction
+                    }
+                  );
+                }
+
                 // קיזוז מהחבילה הפעילה
                 DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
                 updatedPackageId = activePackage.id;
+
+                // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
+                if (afterDeduction < 0 && afterDeduction >= -10) {
+                  activePackage.status = 'overdraft';
+                }
 
                 // עדכון השלב
                 stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
@@ -2959,7 +3028,7 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
                   lastActivity: admin.firestore.FieldValue.serverTimestamp()
                 });
 
-                console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}, חבילה ${activePackage.id}`);
+                console.log(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}, חבילה ${activePackage.id} (נותר: ${afterDeduction.toFixed(2)})`);
               } else {
                 console.warn(`⚠️ ${currentStage.name} אין חבילה פעילה! (אזלו כל החבילות)`);
               }

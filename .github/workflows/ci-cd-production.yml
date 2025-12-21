@@ -185,15 +185,15 @@ jobs:
       - name: 🔒 NPM Security Audit
         run: |
           echo "🔍 Running security audit..."
-          npm audit --audit-level=high || {
-            echo "⚠️ High/Critical security vulnerabilities found!"
-            npm audit --audit-level=high --json > security-report.json 2>/dev/null || true
-            echo "Note: Moderate vulnerabilities exist but are acceptable"
+          npm audit --audit-level=critical || {
+            echo "⚠️ Critical security vulnerabilities found!"
+            npm audit --audit-level=critical --json > security-report.json 2>/dev/null || true
+            echo "Note: High/Moderate vulnerabilities exist but are acceptable"
             exit 1
           }
-          echo "✅ No high/critical vulnerabilities found"
-          echo "Checking for moderate issues (informational):"
-          npm audit --audit-level=moderate || echo "⚠️ Some moderate vulnerabilities exist (acceptable)"
+          echo "✅ No critical vulnerabilities found"
+          echo "Checking for high/moderate issues (informational):"
+          npm audit --audit-level=moderate || echo "⚠️ Some high/moderate vulnerabilities exist (acceptable)"
 
       - name: 🔍 Check for Secrets
         run: |

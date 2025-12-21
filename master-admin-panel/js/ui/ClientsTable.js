@@ -215,11 +215,20 @@ return;
             const lastLogin = this.getTeamLastLogin(client);
             const agreementWarning = this.getAgreementWarning(client);
 
+            // ✅ בדיקה אם הלקוח במינוס (חריגה)
+            // בודק אם יש שירות אחד לפחות במינוס, או שהסכום הכולל במינוס
+            const hasOverdraftService = client.services?.some(s =>
+                (s.hoursRemaining || 0) < 0
+            );
+            const isOverdraft = hasOverdraftService || (client.hoursRemaining || 0) < 0;
+            const rowClass = isOverdraft ? 'client-row-overdraft' : '';
+
             return `
-                <tr data-client-id="${client.id}">
+                <tr data-client-id="${client.id}" class="${rowClass}">
                     <td>
                         <div class="client-name">
                             ${agreementWarning}
+                            ${isOverdraft ? '<i class="fas fa-exclamation-triangle" style="color: var(--danger-red); margin-left: 0.5rem;" title="לקוח בחריגה"></i>' : ''}
                             <strong>${this.escapeHtml(client.fullName)}</strong>
                         </div>
                     </td>

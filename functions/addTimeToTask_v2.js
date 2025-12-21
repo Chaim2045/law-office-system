@@ -203,8 +203,32 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           const activePackage = getActivePackage(currentStage);
 
           if (activePackage) {
+            // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
+            const currentRemaining = activePackage.hoursRemaining || 0;
+            const afterDeduction = currentRemaining - hoursWorked;
+
+            // ❌ חסימה אם החריגה תעבור -10 שעות
+            if (afterDeduction < -10) {
+              throw new functions.https.HttpsError(
+                'resource-exhausted',
+                'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                {
+                  serviceId: targetService.id,
+                  stageId: currentStage.id,
+                  currentRemaining,
+                  requestedHours: hoursWorked,
+                  wouldBe: afterDeduction
+                }
+              );
+            }
+
             // ✅ v2.2.0 - Immutable: Get new package object
             const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
+
+            // ✅ עדכון סטטוס ל-overdraft אם במינוס
+            if (afterDeduction < 0 && afterDeduction >= -10) {
+              updatedPackage.status = 'overdraft';
+            }
 
             // ✅ Immutable: Update packages array in stage
             const updatedStagePackages = currentStage.packages.map(pkg =>
@@ -267,8 +291,31 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(service);
 
       if (activePackage) {
+        // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
+        const currentRemaining = activePackage.hoursRemaining || 0;
+        const afterDeduction = currentRemaining - hoursWorked;
+
+        // ❌ חסימה אם החריגה תעבור -10 שעות
+        if (afterDeduction < -10) {
+          throw new functions.https.HttpsError(
+            'resource-exhausted',
+            'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+            {
+              serviceId: service.id,
+              currentRemaining,
+              requestedHours: hoursWorked,
+              wouldBe: afterDeduction
+            }
+          );
+        }
+
         // ✅ v2.2.0 - Immutable: Get new package object
         const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
+
+        // ✅ עדכון סטטוס ל-overdraft אם במינוס
+        if (afterDeduction < 0 && afterDeduction >= -10) {
+          updatedPackage.status = 'overdraft';
+        }
 
         // ✅ Immutable: Update packages array in service
         const updatedServicePackages = service.packages.map(pkg =>
@@ -310,8 +357,31 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(service);
 
       if (activePackage) {
+        // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
+        const currentRemaining = activePackage.hoursRemaining || 0;
+        const afterDeduction = currentRemaining - hoursWorked;
+
+        // ❌ חסימה אם החריגה תעבור -10 שעות
+        if (afterDeduction < -10) {
+          throw new functions.https.HttpsError(
+            'resource-exhausted',
+            'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+            {
+              serviceId: service.id,
+              currentRemaining,
+              requestedHours: hoursWorked,
+              wouldBe: afterDeduction
+            }
+          );
+        }
+
         // ✅ v2.2.0 - Immutable: Get new package object
         const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
+
+        // ✅ עדכון סטטוס ל-overdraft אם במינוס
+        if (afterDeduction < 0 && afterDeduction >= -10) {
+          updatedPackage.status = 'overdraft';
+        }
 
         // ✅ Immutable: Update packages array in service
         const updatedServicePackages = service.packages.map(pkg =>
@@ -356,8 +426,31 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(currentStage);
 
       if (activePackage) {
+        // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
+        const currentRemaining = activePackage.hoursRemaining || 0;
+        const afterDeduction = currentRemaining - hoursWorked;
+
+        // ❌ חסימה אם החריגה תעבור -10 שעות
+        if (afterDeduction < -10) {
+          throw new functions.https.HttpsError(
+            'resource-exhausted',
+            'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+            {
+              stageId: currentStage.id,
+              currentRemaining,
+              requestedHours: hoursWorked,
+              wouldBe: afterDeduction
+            }
+          );
+        }
+
         // ✅ v2.2.0 - Immutable: Get new package object
         const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
+
+        // ✅ עדכון סטטוס ל-overdraft אם במינוס
+        if (afterDeduction < 0 && afterDeduction >= -10) {
+          updatedPackage.status = 'overdraft';
+        }
 
         // ✅ Immutable: Update packages array in stage
         const updatedStagePackages = currentStage.packages.map(pkg =>
