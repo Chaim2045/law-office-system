@@ -116,7 +116,8 @@
         https://www.gstatic.com
         https://cdnjs.cloudflare.com
         https://cdn.jsdelivr.net
-        https://apis.google.com;
+        https://apis.google.com
+        https://*.firebaseio.com;
       style-src 'self' 'unsafe-inline'
         https://cdnjs.cloudflare.com
         https://fonts.googleapis.com;
