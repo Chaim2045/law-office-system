@@ -210,6 +210,32 @@
     border-bottom-color: rgb(220 38 38 / 20%);
 }
 
+/* ===== Overdraft Badges ===== */
+.badge-warning {
+    background: rgb(234 179 8 / 15%);
+    color: rgb(161 98 7);
+    border: 1px solid rgb(234 179 8 / 30%);
+}
+
+.badge-danger {
+    background: rgb(220 38 38 / 15%);
+    color: rgb(185 28 28);
+    border: 1px solid rgb(220 38 38 / 30%);
+}
+
+.badge-critical {
+    background: rgb(127 29 29 / 20%);
+    color: rgb(127 29 29);
+    border: 1px solid rgb(127 29 29 / 40%);
+    font-weight: 600;
+}
+
+.badge-success {
+    background: rgb(22 163 74 / 15%);
+    color: rgb(21 128 61);
+    border: 1px solid rgb(22 163 74 / 30%);
+}
+
 .loading-row {
     text-align: center;
     padding: 3rem 1rem;

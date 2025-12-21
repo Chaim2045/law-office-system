@@ -215,26 +215,23 @@ return;
             const lastLogin = this.getTeamLastLogin(client);
             const agreementWarning = this.getAgreementWarning(client);
 
-            // ✅ בדיקה אם הלקוח במינוס (חריגה)
-            // בודק אם יש שירות אחד לפחות במינוס, או שהסכום הכולל במינוס
-            const hasOverdraftService = client.services?.some(s =>
-                (s.hoursRemaining || 0) < 0
-            );
-            const isOverdraft = hasOverdraftService || (client.hoursRemaining || 0) < 0;
-            const rowClass = isOverdraft ? 'client-row-overdraft' : '';
+            // ✅ בדיקת חריגה חכמה
+            const overdraftInfo = this.getOverdraftInfo(client);
+            const rowClass = overdraftInfo.isOverdraft ? 'client-row-overdraft' : '';
 
             return `
                 <tr data-client-id="${client.id}" class="${rowClass}">
                     <td>
                         <div class="client-name">
                             ${agreementWarning}
-                            ${isOverdraft ? '<i class="fas fa-exclamation-triangle" style="color: var(--danger-red); margin-left: 0.5rem;" title="לקוח בחריגה"></i>' : ''}
+                            ${overdraftInfo.icon}
                             <strong>${this.escapeHtml(client.fullName)}</strong>
                         </div>
                     </td>
                     <td>${this.escapeHtml(client.caseNumber || '-')}</td>
                     <td>${typeBadge}</td>
                     <td>${hoursDisplay}</td>
+                    <td>${overdraftInfo.badge}</td>
                     <td>${statusBadge}</td>
                     <td>${teamMembers}</td>
                     <td>${lastLogin}</td>
@@ -252,6 +249,71 @@ return;
                     </td>
                 </tr>
             `;
+        }
+
+        /**
+         * Get overdraft info (smart logic)
+         * מידע על חריגה - לוגיקה חכמה
+         */
+        getOverdraftInfo(client) {
+            // בדיקת שירותים במינוס
+            const overdraftServices = (client.services || []).filter(s => {
+                const remaining = s.hoursRemaining || 0;
+                return remaining < 0;
+            });
+
+            const hasOverdraft = overdraftServices.length > 0 || (client.hoursRemaining || 0) < 0;
+
+            if (!hasOverdraft) {
+                return {
+                    isOverdraft: false,
+                    icon: '',
+                    badge: '<span class="badge badge-success"><i class="fas fa-check"></i> תקין</span>'
+                };
+            }
+
+            // חישוב סה"כ חריגה
+            const totalOverdraft = overdraftServices.reduce((sum, s) => sum + Math.abs(s.hoursRemaining || 0), 0);
+
+            // מציאת השירות בחריגה הגבוהה ביותר
+            const worstService = overdraftServices.reduce((worst, s) => {
+                const remaining = s.hoursRemaining || 0;
+                return remaining < (worst?.hoursRemaining || 0) ? s : worst;
+            }, null);
+
+            const worstOverdraft = Math.abs(worstService?.hoursRemaining || 0);
+
+            // קביעת רמת חומרה
+            let severity = 'warning'; // צהוב
+            let severityText = 'חריגה קלה';
+
+            if (worstOverdraft > 20) {
+                severity = 'critical'; // אדום כהה
+                severityText = 'חריגה חמורה';
+            } else if (worstOverdraft > 10) {
+                severity = 'danger'; // אדום
+                severityText = 'חריגה משמעותית';
+            }
+
+            // יצירת tooltip מפורט
+            const tooltipLines = [];
+            tooltipLines.push(`סה"כ חריגה: ${totalOverdraft.toFixed(1)} שעות`);
+            if (overdraftServices.length > 1) {
+                tooltipLines.push(`${overdraftServices.length} שירותים במינוס`);
+            }
+            if (worstService) {
+                tooltipLines.push(`החמור ביותר: ${worstService.name || 'שירות'} (${worstOverdraft.toFixed(1)} שעות)`);
+            }
+            const tooltip = tooltipLines.join('&#10;');
+
+            return {
+                isOverdraft: true,
+                icon: `<i class="fas fa-exclamation-triangle" style="color: var(--danger-red); margin-left: 0.5rem;" title="${tooltip}"></i>`,
+                badge: `<span class="badge badge-${severity}" title="${tooltip}">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${severityText} (-${worstOverdraft.toFixed(1)} שעות)
+                </span>`
+            };
         }
 
         /**
