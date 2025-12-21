@@ -183,7 +183,7 @@ function showAdvancedTimeDialog(taskId, manager) {
           <div class="form-group">
             <label for="workMinutes">
               דקות עבודה
-              <span class="hint-text">💡 1 שעה = 60 דקות</span>
+              <span class="hint-text"><i class="fas fa-lightbulb"></i> 1 שעה = 60 דקות</span>
             </label>
             <input type="number" id="workMinutes" min="1" max="99999" placeholder="60" required>
             <small class="helper-text">לדוגמה: 30, 60, 120</small>
@@ -393,7 +393,7 @@ function showAdjustBudgetDialog(taskId, manager) {
               = <span id="newBudgetHours">${Math.round((Math.max(actualMinutes + 30, currentEstimate + 30)) / 60 * 10) / 10}</span> שעות
             </div>
             <div style="font-size: 12px; color: #059669; margin-top: 8px; font-weight: 500;">
-              💡 מומלץ: ${Math.max(actualMinutes + 30, currentEstimate + 30)} דק' (הנוכחי + 30 דק')
+              <i class="fas fa-lightbulb"></i> מומלץ: ${Math.max(actualMinutes + 30, currentEstimate + 30)} דק' (הנוכחי + 30 דק')
             </div>
           </div>
 
