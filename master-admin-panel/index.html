@@ -30,6 +30,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
 
+    <!-- 🛡️ DOMPurify - XSS Protection: Sanitizes HTML to prevent script injection -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+
     <!-- ===== Font Awesome Icons ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
@@ -41,12 +44,12 @@
 
     <!-- ===== Master Admin Panel Styles ===== -->
     <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/components.css?v=a0d7a8c">
-    <link rel="stylesheet" href="css/user-details.css?v=a0d7a8c">
-    <link rel="stylesheet" href="css/delete-data-modal.css?v=a0d7a8c">
-    <link rel="stylesheet" href="css/admin-thread-view.css?v=a0d7a8c">
-    <link rel="stylesheet" href="css/message-categories.css?v=a0d7a8c">
-    <link rel="stylesheet" href="css/performance-tab.css?v=a0d7a8c">
+    <link rel="stylesheet" href="css/components.css?v=018f886">
+    <link rel="stylesheet" href="css/user-details.css?v=018f886">
+    <link rel="stylesheet" href="css/delete-data-modal.css?v=018f886">
+    <link rel="stylesheet" href="css/admin-thread-view.css?v=018f886">
+    <link rel="stylesheet" href="css/message-categories.css?v=018f886">
+    <link rel="stylesheet" href="css/performance-tab.css?v=018f886">
     <link rel="stylesheet" href="css/task-approval-side-panel.css">
     <link rel="stylesheet" href="components/task-approval-system/styles/task-approval-dialog.css">
 </head>
@@ -171,16 +174,16 @@
     </div>
 
     <!-- ===== Core Scripts ===== -->
-    <script src="js/core/firebase.js?v=a0d7a8c"></script>
+    <script src="js/core/firebase.js?v=018f886"></script>
     <!-- ✅ Load dependencies BEFORE auth.js -->
-    <script src="../js/modules/logger.js?v=a0d7a8c"></script>
-    <script src="../js/modules/presence-system.js?v=a0d7a8c"></script>
-    <script src="../js/modules/idle-timeout-manager.js?v=a0d7a8c"></script>
-    <script src="js/core/auth.js?v=a0d7a8c"></script>
-    <script src="js/core/constants.js?v=a0d7a8c"></script>
+    <script src="../js/modules/logger.js?v=018f886"></script>
+    <script src="../js/modules/presence-system.js?v=018f886"></script>
+    <script src="../js/modules/idle-timeout-manager.js?v=018f886"></script>
+    <script src="js/core/auth.js?v=018f886"></script>
+    <script src="js/core/constants.js?v=018f886"></script>
 
     <!-- ===== Navigation Component ===== -->
-    <script src="js/ui/Navigation.js?v=a0d7a8c"></script>
+    <script src="js/ui/Navigation.js?v=018f886"></script>
 
     <!-- ===== System Announcements Components ===== -->
     <script src="js/models/SystemAnnouncement.js"></script>
@@ -189,34 +192,34 @@
     <script src="js/ui/AnnouncementsModal.js"></script>
 
     <!-- ===== Phase 2: Data & UI Components ===== -->
-    <script src="js/managers/DataManager.js?v=a0d7a8c"></script>
-    <script src="js/ui/StatsCards.js?v=a0d7a8c"></script>
-    <script src="js/ui/UsersTable.js?v=a0d7a8c"></script>
-    <script src="js/ui/FilterBar.js?v=a0d7a8c"></script>
-    <script src="js/ui/Pagination.js?v=a0d7a8c"></script>
-    <script src="js/ui/DashboardUI.js?v=a0d7a8c"></script>
+    <script src="js/managers/DataManager.js?v=018f886"></script>
+    <script src="js/ui/StatsCards.js?v=018f886"></script>
+    <script src="js/ui/UsersTable.js?v=018f886"></script>
+    <script src="js/ui/FilterBar.js?v=018f886"></script>
+    <script src="js/ui/Pagination.js?v=018f886"></script>
+    <script src="js/ui/DashboardUI.js?v=018f886"></script>
 
     <!-- ===== Phase 3: User Management Logic ===== -->
-    <script src="js/managers/AuditLogger.js?v=a0d7a8c"></script>
-    <script src="js/ui/Modals.js?v=a0d7a8c"></script>
-    <script src="js/ui/Notifications.js?v=a0d7a8c"></script>
-    <script src="js/ui/UserForm.js?v=a0d7a8c"></script>
-    <script src="js/ui/UserDetailsModal.js?v=a0d7a8c"></script>
-    <script src="js/ui/DeleteDataModal.js?v=a0d7a8c"></script>
-    <script src="js/managers/UsersActions.js?v=a0d7a8c"></script>
+    <script src="js/managers/AuditLogger.js?v=018f886"></script>
+    <script src="js/ui/Modals.js?v=018f886"></script>
+    <script src="js/ui/Notifications.js?v=018f886"></script>
+    <script src="js/ui/UserForm.js?v=018f886"></script>
+    <script src="js/ui/UserDetailsModal.js?v=018f886"></script>
+    <script src="js/ui/DeleteDataModal.js?v=018f886"></script>
+    <script src="js/managers/UsersActions.js?v=018f886"></script>
 
     <!-- ===== Alert Communication System ===== -->
-    <script src="js/managers/AlertEngine.js?v=a0d7a8c"></script>
+    <script src="js/managers/AlertEngine.js?v=018f886"></script>
 
     <!-- ===== WhatsApp Messaging System ===== -->
-    <script src="js/managers/WhatsAppMessageDialog.js?v=a0d7a8c"></script>
+    <script src="js/managers/WhatsAppMessageDialog.js?v=018f886"></script>
 
-    <script src="js/config/message-categories.js?v=a0d7a8c"></script>
-    <script src="js/managers/AlertCommunicationManager.js?v=a0d7a8c"></script>
-    <script src="js/ui/UserAlertsPanel.js?v=a0d7a8c"></script>
-    <script src="js/ui/QuickMessageDialog.js?v=a0d7a8c"></script>
-    <script src="js/ui/MessagesFullscreenModal.js?v=a0d7a8c"></script>
-    <script src="js/ui/AdminThreadView.js?v=a0d7a8c"></script>
+    <script src="js/config/message-categories.js?v=018f886"></script>
+    <script src="js/managers/AlertCommunicationManager.js?v=018f886"></script>
+    <script src="js/ui/UserAlertsPanel.js?v=018f886"></script>
+    <script src="js/ui/QuickMessageDialog.js?v=018f886"></script>
+    <script src="js/ui/MessagesFullscreenModal.js?v=018f886"></script>
+    <script src="js/ui/AdminThreadView.js?v=018f886"></script>
 
     <!-- ===== Task Approval System (for Side Panel) ===== -->
     <script type="module">
@@ -232,7 +235,7 @@
     <script src="js/ui/TaskApprovalSidePanel.js"></script>
 
     <!-- ✅ NotificationBell - For admins who are also users -->
-    <script src="/js/modules/notification-bell.js?v=a0d7a8c"></script>
+    <script src="/js/modules/notification-bell.js?v=018f886"></script>
     <script>
         // NotificationBell is already initialized by the module itself
         // Just verify it's available
@@ -244,7 +247,7 @@
     </script>
 
     <!-- ===== Floating Action Button ===== -->
-    <script src="js/ui/FloatingActionButton.js?v=a0d7a8c"></script>
+    <script src="js/ui/FloatingActionButton.js?v=018f886"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>

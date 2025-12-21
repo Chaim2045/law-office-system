@@ -160,6 +160,9 @@ function showAdvancedTimeDialog(taskId, manager) {
   overlay.className = 'popup-overlay';
   overlay.innerHTML = `
     <div class="popup" style="max-width: 500px;">
+      <button class="popup-close-btn" onclick="this.closest('.popup-overlay').remove()" aria-label="סגור">
+        <i class="fas fa-times"></i>
+      </button>
       <div class="popup-header">
         <i class="fas fa-clock"></i>
         הוספת זמן למשימה
@@ -167,14 +170,23 @@ function showAdvancedTimeDialog(taskId, manager) {
       <div class="popup-content">
         <form id="advancedTimeForm">
           <div class="form-group">
-            <label for="workDate">תאריך העבודה</label>
+            <label for="workDate">
+              תאריך העבודה
+              <span class="badge-date today" id="dateBadge">
+                <i class="fas fa-calendar-day"></i> היום
+              </span>
+            </label>
             <input type="date" id="workDate" required value="${
               new Date().toISOString().split('T')[0]
             }">
           </div>
           <div class="form-group">
-            <label for="workMinutes">דקות עבודה</label>
+            <label for="workMinutes">
+              דקות עבודה
+              <span class="hint-text"><i class="fas fa-lightbulb"></i> 1 שעה = 60 דקות</span>
+            </label>
             <input type="number" id="workMinutes" min="1" max="99999" placeholder="60" required>
+            <small class="helper-text">לדוגמה: 30, 60, 120</small>
           </div>
           <div class="form-group full-width">
             <label for="workDescriptionGuided">
@@ -199,6 +211,86 @@ function showAdvancedTimeDialog(taskId, manager) {
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
   setTimeout(() => overlay.classList.add('show'), 10);
+
+  // ✅ Dynamic Date Badge - Updates based on selected date
+  window.updateDateBadge = function() {
+    const dateInput = document.getElementById('workDate');
+    const badge = document.getElementById('dateBadge');
+    if (!dateInput || !badge) {
+return;
+}
+
+    const selectedDate = new Date(dateInput.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.floor((today - selectedDate) / (1000 * 60 * 60 * 24));
+
+    // Reset classes
+    badge.className = 'badge-date';
+
+    if (diffDays === 0) {
+      badge.classList.add('today');
+      badge.innerHTML = '<i class="fas fa-calendar-day"></i> היום';
+    } else if (diffDays === 1) {
+      badge.classList.add('yesterday');
+      badge.innerHTML = '<i class="fas fa-calendar-minus"></i> אתמול';
+    } else if (diffDays === 2) {
+      badge.classList.add('yesterday');
+      badge.innerHTML = '<i class="fas fa-calendar-alt"></i> שלשום';
+    } else if (diffDays > 2 && diffDays <= 7) {
+      badge.classList.add('past');
+      badge.innerHTML = `<i class="fas fa-calendar-times"></i> לפני ${diffDays} ימים`;
+    } else if (diffDays > 7) {
+      badge.classList.add('old');
+      badge.innerHTML = `<i class="fas fa-exclamation-triangle"></i> לפני ${diffDays} ימים`;
+    } else if (diffDays === -1) {
+      badge.classList.add('tomorrow');
+      badge.innerHTML = '<i class="fas fa-calendar-plus"></i> מחר';
+    } else if (diffDays < -1) {
+      badge.classList.add('future');
+      badge.innerHTML = `<i class="fas fa-calendar-plus"></i> בעוד ${Math.abs(diffDays)} ימים`;
+    }
+  };
+
+  // Add event listener for date changes
+  setTimeout(() => {
+    const dateInput = document.getElementById('workDate');
+    if (dateInput) {
+      dateInput.addEventListener('change', window.updateDateBadge);
+    }
+
+    // Auto-focus on minutes field
+    const minutesInput = document.getElementById('workMinutes');
+    if (minutesInput) {
+      minutesInput.focus();
+    }
+
+    // ✅ NEW: Clear error state on input
+    const clearErrorOnInput = (input) => {
+      if (input) {
+        input.addEventListener('input', () => {
+          input.classList.remove('error');
+          const errorMsg = input.parentElement?.querySelector('.error-message');
+          if (errorMsg) {
+            errorMsg.remove();
+          }
+        });
+      }
+    };
+
+    clearErrorOnInput(dateInput);
+    clearErrorOnInput(minutesInput);
+
+    // ✅ NEW: Clear error on GuidedTextInput
+    const guidedTextarea = document.querySelector('.guided-text-input');
+    if (guidedTextarea) {
+      guidedTextarea.addEventListener('input', () => {
+        guidedTextarea.classList.remove('error');
+      });
+    }
+  }, 150);
 
   // ✅ NEW: Initialize GuidedTextInput instead of SmartComboSelector
   setTimeout(() => {
@@ -309,7 +401,7 @@ function showAdjustBudgetDialog(taskId, manager) {
               = <span id="newBudgetHours">${Math.round((Math.max(actualMinutes + 30, currentEstimate + 30)) / 60 * 10) / 10}</span> שעות
             </div>
             <div style="font-size: 12px; color: #059669; margin-top: 8px; font-weight: 500;">
-              💡 מומלץ: ${Math.max(actualMinutes + 30, currentEstimate + 30)} דק' (הנוכחי + 30 דק')
+              <i class="fas fa-lightbulb"></i> מומלץ: ${Math.max(actualMinutes + 30, currentEstimate + 30)} דק' (הנוכחי + 30 דק')
             </div>
           </div>
 
