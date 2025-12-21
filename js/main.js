@@ -536,94 +536,60 @@ class LawOfficeManager {
   }
 
   /**
-   * Show idle warning modal
+   * Show idle warning modal - Linear-inspired Design
    * הצגת התראת אזהרה לפני התנתקות
    *
    * @param {number} remainingSeconds - Seconds until auto-logout
    * @private
    */
   showIdleWarning(remainingSeconds) {
-    // Use NotificationSystem if available (modern)
-    if (window.NotificationSystem && typeof window.NotificationSystem.confirm === 'function') {
-      this.showModernIdleWarning(remainingSeconds);
-    } else {
-      this.showLegacyIdleWarning(remainingSeconds);
-    }
-  }
+    // Get username for personalization
+    const userName = this.currentUsername ||
+                     localStorage.getItem('userName') ||
+                     'משתמש';
 
-  /**
-   * Show modern idle warning using NotificationSystem
-   * @private
-   */
-  showModernIdleWarning(remainingSeconds) {
+    // Calculate time display
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
-    const timeText = minutes > 0
-      ? `${minutes}:${seconds.toString().padStart(2, '0')}`
-      : `${seconds} שניות`;
+    const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-    window.NotificationSystem.confirm(
-      `⏰ זמן ההתחברות עומד להסתיים\n\nלא זוהתה פעילות במערכת.\nהמערכת תנתק אותך אוטומטית בעוד ${timeText}.`,
-      () => {
-        // User clicked "Stay logged in"
-        if (this.idleTimeout) {
-          this.idleTimeout.resetActivity();
-        }
-      },
-      null,
-      {
-        title: 'התנתקות אוטומטית',
-        confirmText: 'אני כאן! המשך את ההתחברות',
-        cancelText: 'התנתק עכשיו',
-        type: 'warning'
-      }
-    );
-
-    // Setup countdown update listener
-    this.setupIdleCountdownListener();
-  }
-
-  /**
-   * Show legacy idle warning (fallback)
-   * @private
-   */
-  showLegacyIdleWarning(remainingSeconds) {
-    const minutes = Math.floor(remainingSeconds / 60);
-    const seconds = remainingSeconds % 60;
-    const timeText = minutes > 0
-      ? `${minutes}:${seconds.toString().padStart(2, '0')}`
-      : `${seconds} שניות`;
-
+    // Create overlay
     const overlay = document.createElement('div');
-    overlay.className = 'popup-overlay idle-warning-overlay show';
+    overlay.className = 'idle-overlay';
     overlay.id = 'idleWarningOverlay';
-    overlay.style.cssText = 'position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10001; background: rgba(0, 0, 0, 0.15); backdrop-filter: blur(2px);';
+
     overlay.innerHTML = `
-      <div style="background: white; border-radius: 8px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); max-width: 320px; width: 90%; border: 1px solid #e2e8f0;">
-        <div style="padding: 18px 20px; text-align: center; border-bottom: 1px solid #f1f5f9;">
-          <div style="background: #f8fafc; width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
-            <i class="fas fa-clock" style="font-size: 18px; color: #64748b;"></i>
+      <div class="idle-dialog">
+        <!-- Header -->
+        <div class="idle-header">
+          <div class="idle-title">
+            <i class="fas fa-clock"></i>
+            <span>התנתקות אוטומטית</span>
           </div>
-          <h3 style="color: #1e293b; margin: 0; font-size: 15px; font-weight: 600;">התנתקות אוטומטית</h3>
         </div>
-        <div style="padding: 20px 18px; text-align: center;">
-          <p style="color: #64748b; font-size: 12px; margin: 0 0 12px 0;">
-            לא זוהתה פעילות
-          </p>
-          <div id="idleCountdownTimer" style="font-size: 32px; font-weight: 600; color: #334155; margin: 0 0 16px 0; font-family: 'Courier New', monospace;">
-            ${timeText}
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button onclick="window.manager.handleIdleLogout()" style="flex: 1; padding: 9px 12px; background: white; color: #64748b; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;">
-              התנתק
-            </button>
-            <button onclick="window.manager.handleIdleStayLoggedIn()" style="flex: 1; padding: 9px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">
-              המשך
-            </button>
-          </div>
+
+        <!-- Message -->
+        <p class="idle-message">
+          היי <strong>${userName}</strong>, המערכת זיהתה שאין פעילות
+        </p>
+
+        <!-- Countdown -->
+        <div class="idle-countdown" id="idleCountdownTimer">
+          ${timeText}
+        </div>
+
+        <!-- Buttons -->
+        <div class="idle-buttons">
+          <button class="idle-btn idle-btn-secondary" onclick="window.manager.handleIdleLogout()">
+            התנתק
+          </button>
+          <button class="idle-btn idle-btn-primary" onclick="window.manager.handleIdleStayLoggedIn()">
+            המשך
+          </button>
         </div>
       </div>
     `;
+
     document.body.appendChild(overlay);
 
     // Setup countdown update listener
