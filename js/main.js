@@ -2211,10 +2211,13 @@ return;
     const minutesInput = document.getElementById('workMinutes');
     const guidedInput = window._currentGuidedInput;
 
-    // Clear previous errors
+    // Clear previous errors (scoped to popup for performance)
     dateInput?.classList.remove('error');
     minutesInput?.classList.remove('error');
-    document.querySelectorAll('.error-message').forEach(el => el.remove());
+    const popup = document.querySelector('.popup-overlay.show .popup');
+    if (popup) {
+      popup.querySelectorAll('.error-message').forEach(el => el.remove());
+    }
 
     let hasErrors = false;
 
