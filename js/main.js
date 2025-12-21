@@ -2204,32 +2204,82 @@ return;
 return;
 }
 
+    // ✅ NEW: Visual validation with field highlighting - FIRST!
     const workDate = document.getElementById('workDate')?.value;
     const workMinutes = parseInt(document.getElementById('workMinutes')?.value);
-
-    // ✅ NEW: Get description from GuidedTextInput
+    const dateInput = document.getElementById('workDate');
+    const minutesInput = document.getElementById('workMinutes');
     const guidedInput = window._currentGuidedInput;
-    let workDescription = '';
 
+    // Clear previous errors
+    dateInput?.classList.remove('error');
+    minutesInput?.classList.remove('error');
+    document.querySelectorAll('.error-message').forEach(el => el.remove());
+
+    let hasErrors = false;
+
+    // Validate date
+    if (!workDate) {
+      hasErrors = true;
+      dateInput?.classList.add('error');
+      const errorMsg = document.createElement('span');
+      errorMsg.className = 'error-message';
+      errorMsg.textContent = 'נא לבחור תאריך';
+      dateInput?.parentElement.appendChild(errorMsg);
+    }
+
+    // Validate minutes
+    if (!workMinutes || workMinutes <= 0) {
+      hasErrors = true;
+      minutesInput?.classList.add('error');
+      const errorMsg = document.createElement('span');
+      errorMsg.className = 'error-message';
+      errorMsg.textContent = 'נא להזין מספר דקות תקין';
+      minutesInput?.parentElement.appendChild(errorMsg);
+    }
+
+    // Validate description
+    let workDescription = '';
     if (guidedInput) {
-      // Validate using GuidedTextInput
       const validation = guidedInput.validate();
       if (!validation.valid) {
-        this.showNotification(validation.error, 'error');
-        return;
+        hasErrors = true;
+        // Add visual error styling to GuidedTextInput
+        const guidedTextarea = document.querySelector('.guided-text-input');
+        if (guidedTextarea) {
+          guidedTextarea.classList.add('error');
+        }
+      } else {
+        workDescription = guidedInput.getValue();
+        // Remove error styling if valid
+        const guidedTextarea = document.querySelector('.guided-text-input');
+        if (guidedTextarea) {
+          guidedTextarea.classList.remove('error');
+        }
       }
-      workDescription = guidedInput.getValue();
-
-      // Save to recent items
-      guidedInput.saveToRecent();
     } else {
       // Fallback to old method
       workDescription = document.getElementById('workDescription')?.value?.trim();
+      if (!workDescription) {
+        hasErrors = true;
+        const descInput = document.getElementById('workDescription');
+        descInput?.classList.add('error');
+        const errorMsg = document.createElement('span');
+        errorMsg.className = 'error-message';
+        errorMsg.textContent = 'נא להזין תיאור';
+        descInput?.parentElement.appendChild(errorMsg);
+      }
     }
 
-    if (!workDate || !workMinutes || !workDescription) {
-      this.showNotification('נא למלא את כל השדות', 'error');
+    // If any errors, show notification and stop
+    if (hasErrors) {
+      this.showNotification('נא למלא את כל השדות הנדרשים', 'error');
       return;
+    }
+
+    // Save to recent items if using GuidedTextInput
+    if (guidedInput) {
+      guidedInput.saveToRecent();
     }
 
     // Direct call to Cloud Function - clean and simple with NotificationMessages
