@@ -282,6 +282,14 @@ return;
 
     clearErrorOnInput(dateInput);
     clearErrorOnInput(minutesInput);
+
+    // ✅ NEW: Clear error on GuidedTextInput
+    const guidedTextarea = document.querySelector('.guided-text-input');
+    if (guidedTextarea) {
+      guidedTextarea.addEventListener('input', () => {
+        guidedTextarea.classList.remove('error');
+      });
+    }
   }, 150);
 
   // ✅ NEW: Initialize GuidedTextInput instead of SmartComboSelector

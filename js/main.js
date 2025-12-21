@@ -2238,15 +2238,24 @@ return;
       minutesInput?.parentElement.appendChild(errorMsg);
     }
 
-    // Validate description - GuidedTextInput handles its own visual errors
+    // Validate description
     let workDescription = '';
     if (guidedInput) {
       const validation = guidedInput.validate();
       if (!validation.valid) {
         hasErrors = true;
-        // GuidedTextInput already shows error visually
+        // Add visual error styling to GuidedTextInput
+        const guidedTextarea = document.querySelector('.guided-text-input');
+        if (guidedTextarea) {
+          guidedTextarea.classList.add('error');
+        }
       } else {
         workDescription = guidedInput.getValue();
+        // Remove error styling if valid
+        const guidedTextarea = document.querySelector('.guided-text-input');
+        if (guidedTextarea) {
+          guidedTextarea.classList.remove('error');
+        }
       }
     } else {
       // Fallback to old method

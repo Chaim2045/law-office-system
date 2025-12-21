@@ -161,13 +161,15 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .popup .form-group input.error,
-.popup .form-group textarea.error {
+.popup .form-group textarea.error,
+.popup .guided-text-input.error {
   border-color: #ef4444 !important;
   background: #fef2f2 !important;
 }
 
 .popup .form-group input.error:focus,
-.popup .form-group textarea.error:focus {
+.popup .form-group textarea.error:focus,
+.popup .guided-text-input.error:focus {
   border-color: #dc2626 !important;
   box-shadow:
     0 0 0 3px rgb(239 68 68 / 10%),
