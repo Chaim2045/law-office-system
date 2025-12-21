@@ -266,6 +266,22 @@ return;
     if (minutesInput) {
       minutesInput.focus();
     }
+
+    // ✅ NEW: Clear error state on input
+    const clearErrorOnInput = (input) => {
+      if (input) {
+        input.addEventListener('input', () => {
+          input.classList.remove('error');
+          const errorMsg = input.parentElement?.querySelector('.error-message');
+          if (errorMsg) {
+            errorMsg.remove();
+          }
+        });
+      }
+    };
+
+    clearErrorOnInput(dateInput);
+    clearErrorOnInput(minutesInput);
   }, 150);
 
   // ✅ NEW: Initialize GuidedTextInput instead of SmartComboSelector

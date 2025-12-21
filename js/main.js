@@ -2227,8 +2227,49 @@ return;
       workDescription = document.getElementById('workDescription')?.value?.trim();
     }
 
-    if (!workDate || !workMinutes || !workDescription) {
-      this.showNotification('נא למלא את כל השדות', 'error');
+    // ✅ NEW: Visual validation with field highlighting
+    let hasErrors = false;
+    const dateInput = document.getElementById('workDate');
+    const minutesInput = document.getElementById('workMinutes');
+
+    // Clear previous errors
+    dateInput?.classList.remove('error');
+    minutesInput?.classList.remove('error');
+    document.querySelectorAll('.error-message').forEach(el => el.remove());
+
+    if (!workDate) {
+      hasErrors = true;
+      dateInput?.classList.add('error');
+      const errorMsg = document.createElement('span');
+      errorMsg.className = 'error-message';
+      errorMsg.textContent = 'נא לבחור תאריך';
+      dateInput?.parentElement.appendChild(errorMsg);
+    }
+
+    if (!workMinutes || workMinutes <= 0) {
+      hasErrors = true;
+      minutesInput?.classList.add('error');
+      const errorMsg = document.createElement('span');
+      errorMsg.className = 'error-message';
+      errorMsg.textContent = 'נא להזין מספר דקות תקין';
+      minutesInput?.parentElement.appendChild(errorMsg);
+    }
+
+    if (!workDescription) {
+      hasErrors = true;
+      // GuidedTextInput handles its own error display
+      if (!guidedInput) {
+        const descInput = document.getElementById('workDescription');
+        descInput?.classList.add('error');
+        const errorMsg = document.createElement('span');
+        errorMsg.className = 'error-message';
+        errorMsg.textContent = 'נא להזין תיאור';
+        descInput?.parentElement.appendChild(errorMsg);
+      }
+    }
+
+    if (hasErrors) {
+      this.showNotification('נא למלא את כל השדות הנדרשים', 'error');
       return;
     }
 
