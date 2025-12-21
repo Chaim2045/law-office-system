@@ -2204,39 +2204,21 @@ return;
 return;
 }
 
+    // ✅ NEW: Visual validation with field highlighting - FIRST!
     const workDate = document.getElementById('workDate')?.value;
     const workMinutes = parseInt(document.getElementById('workMinutes')?.value);
-
-    // ✅ NEW: Get description from GuidedTextInput
-    const guidedInput = window._currentGuidedInput;
-    let workDescription = '';
-
-    if (guidedInput) {
-      // Validate using GuidedTextInput
-      const validation = guidedInput.validate();
-      if (!validation.valid) {
-        this.showNotification(validation.error, 'error');
-        return;
-      }
-      workDescription = guidedInput.getValue();
-
-      // Save to recent items
-      guidedInput.saveToRecent();
-    } else {
-      // Fallback to old method
-      workDescription = document.getElementById('workDescription')?.value?.trim();
-    }
-
-    // ✅ NEW: Visual validation with field highlighting
-    let hasErrors = false;
     const dateInput = document.getElementById('workDate');
     const minutesInput = document.getElementById('workMinutes');
+    const guidedInput = window._currentGuidedInput;
 
     // Clear previous errors
     dateInput?.classList.remove('error');
     minutesInput?.classList.remove('error');
     document.querySelectorAll('.error-message').forEach(el => el.remove());
 
+    let hasErrors = false;
+
+    // Validate date
     if (!workDate) {
       hasErrors = true;
       dateInput?.classList.add('error');
@@ -2246,6 +2228,7 @@ return;
       dateInput?.parentElement.appendChild(errorMsg);
     }
 
+    // Validate minutes
     if (!workMinutes || workMinutes <= 0) {
       hasErrors = true;
       minutesInput?.classList.add('error');
@@ -2255,10 +2238,21 @@ return;
       minutesInput?.parentElement.appendChild(errorMsg);
     }
 
-    if (!workDescription) {
-      hasErrors = true;
-      // GuidedTextInput handles its own error display
-      if (!guidedInput) {
+    // Validate description - GuidedTextInput handles its own visual errors
+    let workDescription = '';
+    if (guidedInput) {
+      const validation = guidedInput.validate();
+      if (!validation.valid) {
+        hasErrors = true;
+        // GuidedTextInput already shows error visually
+      } else {
+        workDescription = guidedInput.getValue();
+      }
+    } else {
+      // Fallback to old method
+      workDescription = document.getElementById('workDescription')?.value?.trim();
+      if (!workDescription) {
+        hasErrors = true;
         const descInput = document.getElementById('workDescription');
         descInput?.classList.add('error');
         const errorMsg = document.createElement('span');
@@ -2268,9 +2262,15 @@ return;
       }
     }
 
+    // If any errors, show notification and stop
     if (hasErrors) {
       this.showNotification('נא למלא את כל השדות הנדרשים', 'error');
       return;
+    }
+
+    // Save to recent items if using GuidedTextInput
+    if (guidedInput) {
+      guidedInput.saveToRecent();
     }
 
     // Direct call to Cloud Function - clean and simple with NotificationMessages
