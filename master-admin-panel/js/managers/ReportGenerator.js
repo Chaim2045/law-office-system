@@ -530,7 +530,6 @@
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות מצטבר</th>' : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות נותרות</th>' : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>שעות נותרות</th>' : ''}
-                        <th>הערות</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -870,13 +869,12 @@ return true;
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.taskDescription || entry.description || '-'}</td>
+                        <td>${entry.notes || '-'}</td>
                         <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
                         <td class="highlight">${minutes}</td>
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td>${accumulatedMinutes}</td>` : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
-                        <td>${entry.notes || '-'}</td>
                     </tr>
                 `;
             });
