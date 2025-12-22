@@ -211,8 +211,7 @@ return;
             const statusBadge = this.getStatusBadge(client);
             const typeBadge = this.getTypeBadge(client);
             const hoursDisplay = this.getHoursDisplay(client);
-            const teamMembers = this.getTeamMembers(client);
-            const lastLogin = this.getTeamLastLogin(client);
+            const creatorName = this.getCreatorName(client);
             const agreementWarning = this.getAgreementWarning(client);
 
             // ✅ בדיקה אם הלקוח במינוס (חריגה)
@@ -222,6 +221,11 @@ return;
             );
             const isOverdraft = hasOverdraftService || (client.hoursRemaining || 0) < 0;
             const rowClass = isOverdraft ? 'client-row-overdraft' : '';
+
+            // תג חריגה
+            const overdraftBadge = isOverdraft
+                ? '<span class="status-badge blocked"><i class="fas fa-exclamation-triangle"></i> חריגה</span>'
+                : '<span class="status-badge active"><i class="fas fa-check-circle"></i> תקין</span>';
 
             return `
                 <tr data-client-id="${client.id}" class="${rowClass}">
@@ -235,9 +239,9 @@ return;
                     <td>${this.escapeHtml(client.caseNumber || '-')}</td>
                     <td>${typeBadge}</td>
                     <td>${hoursDisplay}</td>
+                    <td>${overdraftBadge}</td>
                     <td>${statusBadge}</td>
-                    <td>${teamMembers}</td>
-                    <td>${lastLogin}</td>
+                    <td>${creatorName}</td>
                     <td>
                         <div class="table-actions">
                             <button class="btn-action btn-action-primary" data-action="manage" data-client-id="${client.id}">
@@ -405,6 +409,19 @@ return;
                     <i class="fas fa-exclamation-triangle"></i>
                 </span>
             `;
+        }
+
+        /**
+         * Get creator name
+         * קבלת שם היוצר
+         */
+        getCreatorName(client) {
+            if (!client.createdBy) {
+                return '<span class="creator-name">-</span>';
+            }
+
+            const creatorName = this.dataManager.getEmployeeName(client.createdBy);
+            return `<span class="creator-name">${this.escapeHtml(creatorName)}</span>`;
         }
 
         /**
