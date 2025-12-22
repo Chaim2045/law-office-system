@@ -289,10 +289,11 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 filtered = filtered.filter(approval => {
-                    const approvalDate = approval.createdAt?.toDate?.() || approval.requestedAt?.toDate?.();
+                    // Get date - already converted to Date object by service
+                    const approvalDate = approval.createdAt || approval.requestedAt;
                     if (!approvalDate) {
-return false;
-}
+                        return false;
+                    }
                     const checkDate = new Date(approvalDate);
                     checkDate.setHours(0, 0, 0, 0);
                     return checkDate.getTime() === today.getTime();
