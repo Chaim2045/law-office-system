@@ -356,7 +356,10 @@ return;
          */
         renderApprovalCard(approval) {
             const statusClass = approval.status;
-            const statusText = this.getStatusText(approval.status);
+            // ✅ Check if auto-approved
+            const statusText = approval.autoApproved
+                ? '✅ אושר אוטומטית'
+                : this.getStatusText(approval.status);
             const minutes = approval.taskData?.estimatedMinutes || 0;
             const timeAgo = this.formatRelativeTime(approval.requestedAt);
 
