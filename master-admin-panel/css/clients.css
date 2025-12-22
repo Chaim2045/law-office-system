@@ -380,6 +380,24 @@
     background: var(--danger-red);
 }
 
+/* ===== Creator Name ===== */
+.creator-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--bg-light);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.creator-name::before {
+    content: '👤';
+    font-size: 0.75rem;
+}
+
 /* ===== Team Members ===== */
 .team-members {
     display: flex;

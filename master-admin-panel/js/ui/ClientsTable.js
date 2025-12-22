@@ -211,7 +211,7 @@ return;
             const statusBadge = this.getStatusBadge(client);
             const typeBadge = this.getTypeBadge(client);
             const hoursDisplay = this.getHoursDisplay(client);
-            const teamMembers = this.getTeamMembers(client);
+            const createdBy = this.getCreatedBy(client);
             const agreementWarning = this.getAgreementWarning(client);
 
             // ✅ בדיקת חריגה חכמה
@@ -232,7 +232,7 @@ return;
                     <td>${hoursDisplay}</td>
                     <td>${overdraftInfo.badge}</td>
                     <td>${statusBadge}</td>
-                    <td>${teamMembers}</td>
+                    <td>${createdBy}</td>
                     <td>
                         <div class="table-actions">
                             <button class="btn-action btn-action-primary" data-action="manage" data-client-id="${client.id}">
@@ -468,6 +468,20 @@ return;
         }
 
         /**
+         * Get created by
+         * קבלת מי יצר את התיק
+         */
+        getCreatedBy(client) {
+            if (!client.createdBy) {
+                return '<span>-</span>';
+            }
+
+            // Get employee name from data manager
+            const name = this.dataManager.getEmployeeName(client.createdBy);
+            return `<span class="creator-name">${this.escapeHtml(name)}</span>`;
+        }
+
+        /**
          * Get team members
          * קבלת חברי צוות
          */
@@ -693,7 +707,7 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
             }
 
             // Convert to CSV
-            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'חריגה', 'סטטוס', 'צוות'];
+            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'חריגה', 'סטטוס', 'נוצר על ידי'];
             const rows = clients.map(client => {
                 const overdraftInfo = this.getOverdraftInfo(client);
                 const overdraftText = overdraftInfo.isOverdraft
@@ -707,7 +721,7 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
                     client.type === 'hours' ? client.hoursRemaining || 0 : '-',
                     overdraftText,
                     client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
-                    client.assignedTo ? client.assignedTo.join(', ') : ''
+                    client.createdBy ? this.dataManager.getEmployeeName(client.createdBy) : '-'
                 ];
             });
 
