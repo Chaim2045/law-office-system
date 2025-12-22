@@ -212,7 +212,6 @@ return;
             const typeBadge = this.getTypeBadge(client);
             const hoursDisplay = this.getHoursDisplay(client);
             const teamMembers = this.getTeamMembers(client);
-            const lastLogin = this.getTeamLastLogin(client);
             const agreementWarning = this.getAgreementWarning(client);
 
             // ✅ בדיקת חריגה חכמה
@@ -234,7 +233,6 @@ return;
                     <td>${overdraftInfo.badge}</td>
                     <td>${statusBadge}</td>
                     <td>${teamMembers}</td>
-                    <td>${lastLogin}</td>
                     <td>
                         <div class="table-actions">
                             <button class="btn-action btn-action-primary" data-action="manage" data-client-id="${client.id}">
@@ -695,16 +693,23 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
             }
 
             // Convert to CSV
-            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'סטטוס', 'צוות', 'כניסה אחרונה'];
-            const rows = clients.map(client => [
-                client.fullName,
-                client.caseNumber || '',
-                client.type === 'hours' ? 'שעות' : 'קבוע',
-                client.type === 'hours' ? client.hoursRemaining || 0 : '-',
-                client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
-                client.assignedTo ? client.assignedTo.join(', ') : '',
-                this.getTeamLastLogin(client)
-            ]);
+            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'חריגה', 'סטטוס', 'צוות'];
+            const rows = clients.map(client => {
+                const overdraftInfo = this.getOverdraftInfo(client);
+                const overdraftText = overdraftInfo.isOverdraft
+                    ? `כן (${overdraftInfo.badge.includes('חריגה קלה') ? 'קלה' : overdraftInfo.badge.includes('חריגה משמעותית') ? 'משמעותית' : 'חמורה'})`
+                    : 'לא';
+
+                return [
+                    client.fullName,
+                    client.caseNumber || '',
+                    client.type === 'hours' ? 'שעות' : 'קבוע',
+                    client.type === 'hours' ? client.hoursRemaining || 0 : '-',
+                    overdraftText,
+                    client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
+                    client.assignedTo ? client.assignedTo.join(', ') : ''
+                ];
+            });
 
             let csv = headers.join(',') + '\n';
             csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
