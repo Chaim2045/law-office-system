@@ -2170,9 +2170,8 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       budgetAdjustments: [],
       deadlineExtensions: [],
 
-      status: data.status || 'פעיל',  // ✅ Use provided status or default to 'פעיל'
-      requestedMinutes: data.requestedMinutes || null,  // ✅ For approval workflow
-      approvedMinutes: data.approvedMinutes || null,  // ✅ For approval workflow
+      status: 'פעיל',  // ✅ Always active - no approval needed
+      // Removed: requestedMinutes, approvedMinutes - no longer needed
       deadline: deadlineTimestamp,
       employee: user.email, // ✅ EMAIL for security rules and queries
       lawyer: user.username, // ✅ Username for display
@@ -2184,6 +2183,26 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
     };
 
     const docRef = await db.collection('budget_tasks').add(taskData);
+
+    // ✅ Create approval history record (for tracking/FYI)
+    const approvalRecord = {
+      taskId: docRef.id,
+      requestedBy: user.email,
+      requestedByName: user.employee.name || user.username,  // ✅ Hebrew name preferred
+      requestedMinutes: estimatedMinutes,
+      taskData: {
+        description: taskData.description,
+        clientName: taskData.clientName,
+        clientId: clientId,
+        estimatedMinutes: estimatedMinutes
+      },
+      status: 'auto_approved',  // ✅ Auto-approved - no manual approval needed
+      autoApproved: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection('pending_task_approvals').add(approvalRecord);
+    console.log(`✅ Created approval history record for task ${docRef.id}`);
 
     // Audit log
     await logAction('CREATE_TASK', user.uid, user.username, {
@@ -6395,9 +6414,9 @@ exports.onApprovalCreated = onDocumentWritten(
           : `${mins} דקות`;
 
         // Create message
-        const message = `🔔 משימה חדשה לאישור
+        const message = `🔔 משימה חדשה נוספה
 
-👤 ${newData.requestedByName || newData.requestedBy} מבקש אישור תקציב:
+👤 ${newData.requestedByName || newData.requestedBy} הוסיף משימה:
 
 📋 לקוח: ${newData.taskData?.clientName || 'לא צוין'}
 📝 תיאור: ${newData.taskData?.description || 'לא צוין'}
@@ -6405,15 +6424,8 @@ exports.onApprovalCreated = onDocumentWritten(
 
 ━━━━━━━━━━━━━━━━━━━━
 
-📲 לאישור - כתוב:
-✅ "אישור" - לאשר כמו שביקש
-✅ "אישור 90" - לאשר עם 90 דקות
-
-📲 לדחייה - כתוב:
-❌ "דחייה" + סיבה
-דוגמה: "דחייה תקציב גבוה"
-
-💡 כתוב "משימות" לראות הכל
+ℹ️ לידיעה בלבד
+המשימה כבר פעילה והמשתמש יכול להתחיל לעבוד
 
 🤖 הודעה אוטומטית ממערכת ניהול`;
 
@@ -6526,6 +6538,37 @@ exports.rejectTaskBudget = functions.https.onCall(async (data, context) => {
     console.error('❌ Error rejecting task:', error);
     throw error;
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEPRECATED FUNCTIONS - Tasks are now auto-approved
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * @deprecated Tasks are now auto-approved - no manual approval needed
+ * This function is kept for backward compatibility only
+ * Tasks created with status: 'פעיל' automatically
+ */
+exports.approveTaskBudget_DEPRECATED = exports.approveTaskBudget;
+exports.approveTaskBudget = functions.https.onCall(async (data, context) => {
+  console.warn('⚠️ approveTaskBudget is deprecated - tasks are auto-approved');
+  throw new functions.https.HttpsError(
+    'unimplemented',
+    'פונקציה זו אינה בשימוש יותר - משימות מאושרות אוטומטית'
+  );
+});
+
+/**
+ * @deprecated Tasks are now auto-approved - no manual rejection needed
+ * This function is kept for backward compatibility only
+ */
+exports.rejectTaskBudget_DEPRECATED = exports.rejectTaskBudget;
+exports.rejectTaskBudget = functions.https.onCall(async (data, context) => {
+  console.warn('⚠️ rejectTaskBudget is deprecated - tasks are auto-approved');
+  throw new functions.https.HttpsError(
+    'unimplemented',
+    'פונקציה זו אינה בשימוש יותר - משימות מאושרות אוטומטית'
+  );
 });
 
 // ===============================

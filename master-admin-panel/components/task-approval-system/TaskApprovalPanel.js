@@ -20,6 +20,9 @@ export class TaskApprovalPanel {
     this.searchTerm = '';
     this.sortBy = 'date-desc';
     this.realtimeUnsubscribe = null;
+    // ✅ Pagination for performance
+    this.currentLimit = 5;  // Default: 5 items
+    this.hasMore = false;
   }
 
   init() {
@@ -112,12 +115,23 @@ export class TaskApprovalPanel {
 
   async loadApprovals() {
     try {
-      this.approvals = await taskApprovalService.getApprovalsByStatus(this.currentFilter);
+      // ✅ Load with pagination limit
+      this.approvals = await taskApprovalService.getApprovalsByStatus(
+        this.currentFilter,
+        this.currentLimit
+      );
+      this.hasMore = this.approvals.length >= this.currentLimit;
       this.applyFiltersAndSort();
     } catch (error) {
       console.error('Error loading approvals:', error);
       this.renderError();
     }
+  }
+
+  // ✅ NEW: Load more items
+  async loadMore() {
+    this.currentLimit += 10;
+    await this.loadApprovals();
   }
 
   applyFiltersAndSort() {
@@ -155,7 +169,7 @@ export class TaskApprovalPanel {
     }, {});
 
     // Render user groups
-    listContainer.innerHTML = Object.values(groupedByUser).map(userGroup => `
+    let html = Object.values(groupedByUser).map(userGroup => `
       <div class="user-group">
         <div class="user-group-header">
           <div class="user-info">
@@ -180,12 +194,12 @@ export class TaskApprovalPanel {
           </thead>
           <tbody>
             ${userGroup.requests.map(approval => `
-              <tr data-id="${approval.id}" class="approval-row">
+              <tr data-id="${approval.id}" class="approval-row ${approval.autoApproved ? 'auto-approved' : ''}">
                 <td class="task-desc">${approval.taskData.description}</td>
                 <td class="task-client">${approval.taskData.clientName}</td>
                 <td class="task-budget">${helpers.formatMinutesToHoursText(approval.taskData.estimatedMinutes)}</td>
-                <td class="task-time">${helpers.formatRelativeTime(approval.requestedAt)}</td>
-                <td><span class="task-status ${approval.status}">${helpers.getStatusText(approval.status)}</span></td>
+                <td class="task-time">${helpers.formatRelativeTime(approval.createdAt || approval.requestedAt)}</td>
+                <td><span class="task-status ${approval.status}">${approval.autoApproved ? '✅ אושר אוטומטית' : helpers.getStatusText(approval.status)}</span></td>
               </tr>
             `).join('')}
           </tbody>
@@ -193,16 +207,26 @@ export class TaskApprovalPanel {
       </div>
     `).join('');
 
-    // Attach click handlers
-    this.container.querySelectorAll('.approval-row').forEach(row => {
-      row.addEventListener('click', () => {
-        const id = row.dataset.id;
-        const approval = this.filteredApprovals.find(a => a.id === id);
-        if (approval && approval.status === 'pending') {
-          this.dialog.show(approval);
-        }
-      });
-    });
+    // ✅ Add "Load More" button if there are more items
+    if (this.hasMore) {
+      html += `
+        <div class="load-more-container" style="text-align: center; margin: 20px 0;">
+          <button id="loadMoreBtn" class="btn btn-secondary" style="padding: 10px 30px;">
+            <i class="fas fa-chevron-down"></i> טען עוד
+          </button>
+        </div>
+      `;
+    }
+
+    listContainer.innerHTML = html;
+
+    // Attach load more handler
+    const loadMoreBtn = this.container.querySelector('#loadMoreBtn');
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', () => this.loadMore());
+    }
+
+    // ✅ Removed: Click handlers for approval rows - no longer needed (view only)
   }
 
   renderError() {

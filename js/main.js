@@ -1117,23 +1117,7 @@ return false;
           }
 
           const taskId = result.data?.taskId;
-          Logger.log('✅ Task created with pending_approval status:', taskId);
-
-          // ✅ Create approval request
-          try {
-            const { taskApprovalService } = await import('../components/task-approval-system/services/task-approval-service.js');
-            taskApprovalService.init(window.firebaseDB, { email: this.currentUser });
-
-            await taskApprovalService.createApprovalRequest(
-              taskId,
-              taskData,
-              this.currentUser,
-              this.currentUser.split('@')[0]
-            );
-            Logger.log('✅ Approval request created for task:', taskId);
-          } catch (approvalError) {
-            console.error('❌ Error creating approval request:', approvalError);
-          }
+          Logger.log('✅ Task created:', taskId);
 
           // Emit EventBus event
           window.EventBus.emit('task:created', {
@@ -1142,7 +1126,7 @@ return false;
             clientName: taskData.clientName,
             employee: taskData.employee,
             originalEstimate: taskData.estimatedMinutes,
-            status: 'pending_approval'
+            status: 'פעיל'
           });
           Logger.log('  🚀 [v2.0] EventBus: task:created emitted');
 
