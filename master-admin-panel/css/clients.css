@@ -11,16 +11,31 @@
  */
 
 :root {
-    --primary-blue: #1877F2;       /* כחול פייסבוק - צבע ראשי */
-    --primary-blue-dark: #0A66C2;  /* כחול כהה - צבע משני */
-    --primary-blue-light: #4E9FF6; /* כחול בהיר */
-    --success-green: #059669;
-    --warning-yellow: #f59e0b;
-    --danger-red: #dc2626;
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-    --bg-light: #f9fafb;
-    --border-color: #e5e7eb;
+    /* ===== Primary Colors (Minimal Usage) ===== */
+    --primary-blue: #2563eb;       /* כחול מחודד - פעולות בלבד */
+    --primary-blue-dark: #1d4ed8;  /* כחול כהה - hover */
+    --primary-blue-light: #3b82f6; /* כחול בהיר - subtle */
+
+    /* ===== Critical Only ===== */
+    --critical-red: #dc2626;       /* אדום - רק למצבי חירום */
+
+    /* ===== Neutral Gray Scale (Primary Usage) ===== */
+    --gray-50: #fafafa;            /* רקעים עדינים */
+    --gray-100: #f5f5f5;           /* רקעים קלים */
+    --gray-200: #e5e5e5;           /* גבולות עדינים */
+    --gray-300: #d4d4d4;           /* גבולות בינוניים */
+    --gray-400: #a3a3a3;           /* טקסט משני בהיר */
+    --gray-500: #737373;           /* טקסט משני */
+    --gray-600: #525252;           /* טקסט משני כהה */
+    --gray-700: #404040;           /* טקסט ראשי בהיר */
+    --gray-800: #262626;           /* טקסט ראשי */
+    --gray-900: #171717;           /* טקסט ראשי כהה */
+
+    /* ===== Semantic Aliases ===== */
+    --text-primary: var(--gray-900);
+    --text-secondary: var(--gray-500);
+    --bg-light: var(--gray-50);
+    --border-color: var(--gray-200);
 }
 
 /* ===== Layout & Spacing ===== */
@@ -119,19 +134,19 @@
 .search-input,
 .filter-select {
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--gray-300);
     border-radius: 6px;
     font-size: 0.813rem;
     width: 100%;
     transition: all 0.2s;
-    background: #fafbfc;
+    background: var(--gray-50);
 }
 
 .search-input:focus,
 .filter-select:focus {
     outline: none;
     border-color: var(--primary-blue);
-    box-shadow: 0 0 0 2px rgb(24 119 242 / 8%);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 8%);
     background: white;
 }
 
@@ -168,7 +183,7 @@
 }
 
 .data-table thead {
-    background: var(--bg-light);
+    background: var(--gray-50);
 }
 
 .data-table th {
@@ -176,10 +191,10 @@
     text-align: right;
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--gray-600);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--gray-200);
 }
 
 .data-table td {
@@ -196,18 +211,18 @@
     border-bottom: none;
 }
 
-/* ===== Overdraft Client Highlighting ===== */
+/* ===== Overdraft Client Highlighting (Subtle Red Accent) ===== */
 .client-row-overdraft {
-    background: rgb(220 38 38 / 8%) !important;
-    border-right: 4px solid var(--danger-red);
+    background: var(--gray-50) !important;
+    border-right: 3px solid var(--critical-red);
 }
 
 .client-row-overdraft:hover {
-    background: rgb(220 38 38 / 12%) !important;
+    background: var(--gray-100) !important;
 }
 
 .client-row-overdraft td {
-    border-bottom-color: rgb(220 38 38 / 20%);
+    border-bottom-color: var(--gray-200);
 }
 
 .loading-row {
@@ -287,23 +302,23 @@
 }
 
 .status-badge.active {
-    background: rgb(5 150 105 / 10%);
-    color: var(--success-green);
+    background: var(--gray-100);
+    color: var(--gray-700);
 }
 
 .status-badge.blocked {
     background: rgb(220 38 38 / 10%);
-    color: var(--danger-red);
+    color: var(--critical-red);
 }
 
 .status-badge.critical {
-    background: rgb(245 158 11 / 10%);
-    color: var(--warning-yellow);
+    background: var(--gray-100);
+    color: var(--gray-700);
 }
 
 .status-badge.inactive {
-    background: rgb(107 114 128 / 10%);
-    color: var(--text-secondary);
+    background: var(--gray-100);
+    color: var(--gray-500);
 }
 
 /* ===== Client Type Badge ===== */
@@ -334,7 +349,7 @@
 .hours-progress {
     width: 100%;
     height: 4px;
-    background: var(--bg-light);
+    background: var(--gray-200);
     border-radius: 2px;
     margin-top: 0.25rem;
     overflow: hidden;
@@ -342,16 +357,16 @@
 
 .hours-progress-bar {
     height: 100%;
-    background: var(--primary-blue);
+    background: var(--gray-400);
     transition: width 0.3s;
 }
 
 .hours-progress-bar.critical {
-    background: var(--warning-yellow);
+    background: var(--gray-400);
 }
 
 .hours-progress-bar.blocked {
-    background: var(--danger-red);
+    background: var(--critical-red);
 }
 
 /* ===== Team Members ===== */
@@ -362,11 +377,11 @@
 }
 
 .team-member {
-    background: var(--bg-light);
+    background: var(--gray-100);
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
     font-size: 0.875rem;
-    color: var(--text-secondary);
+    color: var(--gray-600);
 }
 
 /* ===== Empty State ===== */
