@@ -659,24 +659,28 @@ return;
                     // Fallback: No active stage found, show all (shouldn't happen in production)
                     console.warn('⚠️ No active stage found for legal procedure client. Showing all stages as fallback.');
                 }
-            } else {
-                // For hour package clients: Add "All Services" option
-                if (servicesMap.size > 1) {
-                    servicesMap.set('כל השירותים', {
-                        displayName: 'כל השירותים',
-                        totalHours: 0, // Will be calculated in report
-                        remainingHours: 0,
-                        usedHours: 0,
-                        type: 'all',
-                        stage: null,
-                        status: 'active'
-                    });
-                    console.log('📋 Hour package: Added "All Services" option');
-                }
             }
 
+            // 🚫 REMOVED "All Services" option as per user request
+            // Previously: Added "כל השירותים" option for hour package clients
+            // Reason for removal: User requested to remove this feature entirely
+
+            console.log(`📦 DEBUG: servicesMap size = ${servicesMap.size}`);
+            console.log('📦 DEBUG: servicesMap contents:', Array.from(servicesMap.entries()));
+
             // Create service cards with proper info
+            if (servicesMap.size === 0) {
+                console.error('❌ ERROR: servicesMap is EMPTY! No service cards will be created!');
+                console.error('Client data:', {
+                    fullName: client.fullName,
+                    type: client.type,
+                    services: client.services,
+                    hasServices: client.services?.length > 0
+                });
+            }
+
             Array.from(servicesMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([serviceKey, serviceInfo], index) => {
+                console.log(`📋 Creating card ${index + 1}:`, { serviceKey, serviceInfo });
                 const card = this.createServiceCard(serviceInfo, index);
                 this.serviceCardsContainer.appendChild(card);
             });
@@ -714,6 +718,9 @@ return;
             card.dataset.serviceName = serviceInfo.displayName;
             card.dataset.serviceIndex = index;
             card.dataset.serviceType = serviceInfo.type;
+
+            // 🎯 Detect Fixed Price services (pricingType = 'fixed')
+            const isFixedPrice = serviceInfo.pricingType === 'fixed';
 
             // Calculate progress percentage
             const progressPercent = serviceInfo.totalHours > 0

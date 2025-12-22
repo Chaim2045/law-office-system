@@ -566,6 +566,9 @@
         </div>
         ` : ''}
 
+        <!-- Final Summary Section -->
+        ${this.renderFinalSummary(client, formData, timesheetEntries)}
+
         <!-- Footer -->
         <div class="footer">
             <p>דוח זה הופק אוטומטית במערכת ניהול משרד עו"ד גיא הרשקוביץ</p>
@@ -878,6 +881,145 @@ return true;
                     </tr>
                 `;
             });
+        }
+
+        /**
+         * Render final summary section
+         * רינדור סיכום סופי של הדוח
+         */
+        renderFinalSummary(client, formData, timesheetEntries) {
+            // Only show summary for hour-based services
+            if (client.type !== 'hours' && client.type !== 'legal_procedure' && client.procedureType !== 'legal_procedure') {
+                return '';
+            }
+
+            // Calculate service totals (same logic as renderServiceInfo)
+            let serviceTotalHours = 0;
+            let serviceUsedHours = 0;
+            let serviceRemainingHours = 0;
+
+            if (formData.service === 'all' || formData.service === 'כל השירותים') {
+                if (client.services && client.services.length > 0) {
+                    serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
+                    serviceUsedHours = client.services.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
+                    serviceRemainingHours = client.services.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
+                } else {
+                    serviceTotalHours = client.totalHours || 0;
+                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
+                    serviceRemainingHours = client.hoursRemaining || 0;
+                }
+            } else {
+                const selectedService = client.services?.find(s => {
+                    if (s.name === formData.service) {
+return true;
+}
+                    if (s.serviceName === formData.service) {
+return true;
+}
+                    if (s.displayName === formData.service) {
+return true;
+}
+                    if (s.stage && formData.service.includes(s.stage)) {
+return true;
+}
+                    if (s.displayName && s.displayName.includes(formData.service)) {
+return true;
+}
+                    return false;
+                });
+
+                if (selectedService) {
+                    serviceTotalHours = selectedService.totalHours || selectedService.hours || selectedService.allocatedHours || selectedService.stageHours || 0;
+                    serviceRemainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
+                    serviceUsedHours = serviceTotalHours - serviceRemainingHours;
+                } else {
+                    serviceTotalHours = client.totalHours || 0;
+                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
+                    serviceRemainingHours = client.hoursRemaining || 0;
+                }
+            }
+
+            const hasOverdraft = serviceRemainingHours < 0;
+            const overdraftAmount = Math.abs(serviceRemainingHours);
+            const usagePercent = serviceTotalHours > 0 ? ((serviceUsedHours / serviceTotalHours) * 100).toFixed(1) : 0;
+
+            return `
+        <div class="section summary-section" style="background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e5e7eb; margin-top: 2rem;">
+            <h3 class="section-title" style="color: #1877F2; border-bottom: 2px solid #1877F2; padding-bottom: 0.5rem;">
+                <i class="fas fa-chart-line"></i> סיכום מצב תקציב
+            </h3>
+
+            <div class="info-grid" style="margin-bottom: 1.5rem;">
+                <div class="info-item">
+                    <span class="info-label" style="font-weight: 600;">תקציב מקורי</span>
+                    <span class="info-value" style="font-size: 1.1rem; color: #059669;">${serviceTotalHours.toFixed(1)} שעות</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label" style="font-weight: 600;">שעות שבוצעו</span>
+                    <span class="info-value" style="font-size: 1.1rem; color: #1877F2;">${serviceUsedHours.toFixed(1)} שעות</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label" style="font-weight: 600;">שיעור ניצול</span>
+                    <span class="info-value" style="font-size: 1.1rem; color: ${hasOverdraft ? '#dc2626' : '#059669'};">${usagePercent}%</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label" style="font-weight: 600;">יתרה נוכחית</span>
+                    <span class="info-value ${hasOverdraft ? 'danger' : 'success'}" style="font-size: 1.1rem;">
+                        ${hasOverdraft ? '<i class="fas fa-exclamation-circle"></i> ' : ''}${serviceRemainingHours.toFixed(1)} שעות
+                    </span>
+                </div>
+            </div>
+
+            ${hasOverdraft ? `
+            <div style="background: linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(220, 38, 38, 0.08) 100%);
+                        border: 2px solid #dc2626;
+                        border-radius: 8px;
+                        padding: 1.25rem;
+                        margin-top: 1.5rem;
+                        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
+                    <i class="fas fa-exclamation-triangle" style="color: #dc2626; font-size: 1.5rem;"></i>
+                    <h4 style="color: #991b1b; margin: 0; font-size: 1.1rem; font-weight: 700;">התראת חריגה</h4>
+                </div>
+                <p style="margin: 0.5rem 0; color: #7f1d1d; font-size: 1rem; line-height: 1.6;">
+                    <strong>בוצעו ${overdraftAmount.toFixed(1)} שעות נוספות</strong> מעבר לתקציב המקורי של ${serviceTotalHours.toFixed(1)} שעות.
+                </p>
+                <p style="margin: 0.5rem 0 0 0; color: #7f1d1d; font-size: 0.95rem;">
+                    סה"כ שעות שבוצעו: <strong>${serviceUsedHours.toFixed(1)} שעות</strong> (${usagePercent}% מהתקציב)
+                </p>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(220, 38, 38, 0.3);">
+                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem; font-style: italic;">
+                        💡 לשאלות או הבהרות בנוגע לחריגה, אנא פנו למשרד.
+                    </p>
+                </div>
+            </div>
+            ` : `
+            <div style="background: linear-gradient(135deg, rgba(5, 150, 105, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%);
+                        border: 2px solid #059669;
+                        border-radius: 8px;
+                        padding: 1.25rem;
+                        margin-top: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <i class="fas fa-check-circle" style="color: #059669; font-size: 1.5rem;"></i>
+                    <div>
+                        <h4 style="color: #047857; margin: 0 0 0.25rem 0; font-size: 1.1rem; font-weight: 700;">מצב תקין</h4>
+                        <p style="margin: 0; color: #065f46; font-size: 0.95rem;">
+                            נותרו <strong>${serviceRemainingHours.toFixed(1)} שעות</strong> מתוך התקציב המקורי של ${serviceTotalHours.toFixed(1)} שעות
+                        </p>
+                    </div>
+                </div>
+            </div>
+            `}
+
+            <div style="margin-top: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 6px; border-right: 4px solid #1877F2;">
+                <p style="margin: 0; color: #475569; font-size: 0.9rem; line-height: 1.6;">
+                    <i class="fas fa-info-circle" style="color: #1877F2; margin-left: 0.5rem;"></i>
+                    <strong>הערה:</strong> דוח זה מציג את הפעילות והשעות שבוצעו בתקופה הנבחרת.
+                    לשאלות נוספות או הבהרות, אנא פנו למשרד.
+                </p>
+            </div>
+        </div>
+            `;
         }
 
         /**
