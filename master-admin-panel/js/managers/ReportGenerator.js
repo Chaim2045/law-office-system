@@ -778,6 +778,12 @@ return true;
          * רינדור שורות שעתון עם יתרה רצה
          */
         renderTimesheetRows(timesheetEntries, client, formData) {
+            // DEBUG: Log first entry to see what fields we have
+            if (timesheetEntries.length > 0) {
+                console.log('🔍 DEBUG: First timesheet entry:', timesheetEntries[0]);
+                console.log('🔍 DEBUG: Entry keys:', Object.keys(timesheetEntries[0]));
+            }
+
             // Sort entries by date (oldest first)
             const sortedEntries = [...timesheetEntries].sort((a, b) => {
                 const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
