@@ -214,10 +214,11 @@ export function showEditTimesheetDialog(manager, entryId) {
                 type="text"
                 class="search-input"
                 id="editClientSearch"
-                placeholder="התחל להקליד שם לקוח..."
+                placeholder="לא ניתן לשנות שם לקוח"
                 value="${safeText(entry.clientName)}"
                 autocomplete="off"
-                oninput="manager.searchClientsForEdit(this.value)"
+                disabled
+                readonly
                 style="
                   width: 100%;
                   padding: 12px 16px;
@@ -226,26 +227,11 @@ export function showEditTimesheetDialog(manager, entryId) {
                   font-size: 14px;
                   font-weight: 500;
                   transition: all 0.2s ease;
+                  background: #f3f4f6;
+                  cursor: not-allowed;
+                  color: #6b7280;
                 "
               />
-              <div
-                class="search-results"
-                id="editClientSearchResults"
-                style="
-                  position: absolute;
-                  top: 100%;
-                  left: 0;
-                  right: 0;
-                  background: white;
-                  border: 1px solid #d1d5db;
-                  border-top: none;
-                  border-radius: 0 0 8px 8px;
-                  max-height: 200px;
-                  overflow-y: auto;
-                  z-index: 1000;
-                  display: none;
-                "
-              ></div>
               <input
                 type="hidden"
                 id="editClientSelect"
@@ -253,9 +239,9 @@ export function showEditTimesheetDialog(manager, entryId) {
                 required
               />
             </div>
-            <small class="form-help">
-              <i class="fas fa-search"></i>
-              התחל להקליד לחיפוש לקוחות קיימים
+            <small class="form-help" style="color: #6b7280;">
+              <i class="fas fa-lock"></i>
+              שם הלקוח לא ניתן לשינוי - ניתן לערוך רק תאריך וזמן
             </small>
           </div>
 

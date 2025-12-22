@@ -121,6 +121,10 @@ class NotificationMessages {
         message: 'שומר פעילות פנימית...',
         animationType: 'saving'
       }),
+      updating: () => ({
+        message: 'מעדכן רשומת שעתון...',
+        animationType: 'syncing'
+      }),
       delete: () => ({
         message: 'מוחק רשומה...',
         animationType: 'deleting'
@@ -133,6 +137,8 @@ class NotificationMessages {
         `${minutes} דקות נרשמו עבור ${clientName}`,
       internalCreated: (minutes) =>
         `${minutes} דקות פעילות פנימית נרשמו`,
+      updated: (minutes) =>
+        `רשומת שעתון עודכנה בהצלחה (${minutes} דקות)`,
       deleted: () =>
         'הרשומה נמחקה בהצלחה'
     },
@@ -140,6 +146,7 @@ class NotificationMessages {
     // Error messages
     error: {
       createFailed: (error) => `שגיאה ברישום זמן: ${error}`,
+      updateFailed: (error) => `שגיאה בעדכון רשומה: ${error}`,
       deleteFailed: (error) => `שגיאה במחיקת רשומה: ${error}`,
       loadFailed: () => 'שגיאה בטעינת נתוני שעתון'
     },
@@ -149,7 +156,8 @@ class NotificationMessages {
       noDate: () => 'חובה לבחור תאריך',
       noMinutes: () => 'חובה להזין זמן בדקות',
       noAction: () => 'חובה להזין תיאור פעולה (לפחות 3 תווים)',
-      noClient: () => 'חובה לבחור לקוח ותיק'
+      noClient: () => 'חובה לבחור לקוח ותיק',
+      noEditReason: () => 'חובה להזין סיבת עריכה (לפחות 5 תווים)'
     }
   };
 
