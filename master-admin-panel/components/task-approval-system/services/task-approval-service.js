@@ -55,19 +55,47 @@ export class TaskApprovalService {
         query = query.where('status', '==', status);
       }
 
-      query = query.orderBy('requestedAt', 'desc').limit(limit);
+      // ✅ Order by createdAt (newer field) or requestedAt (fallback)
+      // Note: Firestore will use the most recent timestamp field available
+      query = query.orderBy('createdAt', 'desc').limit(limit);
       const snapshot = await query.get();
 
       const approvals = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        requestedAt: doc.data().requestedAt?.toDate() || null,
-        reviewedAt: doc.data().reviewedAt?.toDate() || null
+        requestedAt: doc.data().requestedAt?.toDate() || doc.data().createdAt?.toDate() || null,
+        reviewedAt: doc.data().reviewedAt?.toDate() || null,
+        createdAt: doc.data().createdAt?.toDate() || null
       }));
 
       return approvals;
     } catch (error) {
       console.error('❌ Error loading approvals:', error);
+      // ✅ Fallback: try with requestedAt if createdAt index doesn't exist
+      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+        console.warn('⚠️ Falling back to requestedAt ordering');
+        try {
+          let fallbackQuery = this.db.collection('pending_task_approvals');
+          if (status !== 'all') {
+            fallbackQuery = fallbackQuery.where('status', '==', status);
+          }
+          fallbackQuery = fallbackQuery.orderBy('requestedAt', 'desc').limit(limit);
+          const fallbackSnapshot = await fallbackQuery.get();
+
+          const approvals = fallbackSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            requestedAt: doc.data().requestedAt?.toDate() || doc.data().createdAt?.toDate() || null,
+            reviewedAt: doc.data().reviewedAt?.toDate() || null,
+            createdAt: doc.data().createdAt?.toDate() || null
+          }));
+
+          return approvals;
+        } catch (fallbackError) {
+          console.error('❌ Fallback query also failed:', fallbackError);
+          throw fallbackError;
+        }
+      }
       throw error;
     }
   }
@@ -87,7 +115,7 @@ export class TaskApprovalService {
         adminNotes
       });
 
-      console.log(`✅ Task approved via Cloud Function:`, result.data);
+      console.log('✅ Task approved via Cloud Function:', result.data);
       return result.data;
     } catch (error) {
       console.error('❌ Error approving request:', error);
@@ -109,7 +137,7 @@ export class TaskApprovalService {
         rejectionReason
       });
 
-      console.log(`✅ Task rejected via Cloud Function:`, result.data);
+      console.log('✅ Task rejected via Cloud Function:', result.data);
       return result.data;
     } catch (error) {
       console.error('❌ Error rejecting request:', error);
