@@ -544,7 +544,6 @@
         <!-- By Service -->
         ${stats.byService.length > 0 ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-box"></i> פירוט לפי שירות</h3>
             <table>
                 <thead>
                     <tr>
