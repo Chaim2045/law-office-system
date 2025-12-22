@@ -20,10 +20,11 @@
             this.searchTerm = '';
             this.realtimeUnsubscribe = null;
             this.approvalDialog = null;
-            // ✅ Pagination settings
-            this.currentPage = 1;
-            this.itemsPerPage = 5; // Start with 5 items
-            this.loadMoreIncrement = 10; // Load 10 more each time
+            // ✅ Cursor-based pagination settings
+            this.initialLimit = 5; // Initial load: 5 items
+            this.loadMoreIncrement = 10; // Load more: 10 items each time
+            this.lastDocument = null; // Firestore cursor for pagination
+            this.hasMoreData = true; // Flag to indicate if more data exists
         }
 
         /**
@@ -210,7 +211,8 @@
                     this.currentFilter = e.currentTarget.dataset.filter;
 
                     // ✅ Reset pagination when changing filters
-                    this.itemsPerPage = 5;
+                    this.lastDocument = null;
+                    this.hasMoreData = true;
 
                     // Update realtime listener
                     if (this.realtimeUnsubscribe) {
@@ -233,8 +235,8 @@
         }
 
         /**
-         * Load approvals from Firestore
-         * טעינת אישורים מ-Firestore
+         * Load approvals from Firestore (initial load)
+         * טעינת אישורים מ-Firestore (טעינה ראשונית)
          */
         async loadApprovals() {
             if (!this.taskApprovalService) {
@@ -250,7 +252,24 @@
             }
 
             try {
-                this.approvals = await this.taskApprovalService.getApprovalsByStatus(this.currentFilter);
+                // ✅ Reset pagination state for initial load
+                this.approvals = [];
+                this.lastDocument = null;
+                this.hasMoreData = true;
+
+                // ✅ Fetch initial batch (5 items)
+                const result = await this.taskApprovalService.getApprovalsByStatus(
+                    this.currentFilter,
+                    this.initialLimit,
+                    null
+                );
+
+                console.log(`✅ Initial load: ${result.approvals.length} approvals (hasMore: ${result.hasMore})`);
+
+                this.approvals = result.approvals;
+                this.lastDocument = result.lastDocument;
+                this.hasMoreData = result.hasMore;
+
                 this.applyFiltersAndRender();
             } catch (error) {
                 console.error('❌ Error loading approvals:', error);
@@ -330,10 +349,9 @@ return false;
                 return;
             }
 
-            // ✅ Apply pagination - show only first N items
-            const displayLimit = this.itemsPerPage;
-            const displayedApprovals = this.filteredApprovals.slice(0, displayLimit);
-            const hasMore = this.filteredApprovals.length > displayLimit;
+            // ✅ Display all loaded approvals (already paginated by Firestore)
+            const displayedApprovals = this.filteredApprovals;
+            const hasMore = this.hasMoreData;
 
             // Group by user
             const groupedByUser = displayedApprovals.reduce((groups, approval) => {
@@ -369,15 +387,14 @@ return false;
                 </div>
             `).join('');
 
-            // ✅ Add "Load More" button if there are more items
+            // ✅ Add "Load More" button if there are more items in Firestore
             if (hasMore) {
-                const remainingCount = this.filteredApprovals.length - displayLimit;
                 html += `
                     <div class="approval-load-more-container">
                         <button class="approval-load-more-btn" id="approvalLoadMoreBtn">
                             <i class="fas fa-arrow-down"></i>
-                            <span>טען עוד ${Math.min(this.loadMoreIncrement, remainingCount)} משימות</span>
-                            <span class="approval-remaining-count">(נותרו ${remainingCount})</span>
+                            <span>טען עוד ${this.loadMoreIncrement} משימות</span>
+                            <span class="approval-remaining-count">(עוד רשומות זמינות)</span>
                         </button>
                     </div>
                 `;
@@ -396,12 +413,37 @@ return false;
         }
 
         /**
-         * Load more items
-         * טען עוד פריטים
+         * Load more items from Firestore
+         * טען עוד פריטים מ-Firestore
          */
-        loadMore() {
-            this.itemsPerPage += this.loadMoreIncrement;
-            this.renderApprovals();
+        async loadMore() {
+            if (!this.hasMoreData || !this.lastDocument) {
+                console.log('⚠️ No more data to load');
+                return;
+            }
+
+            try {
+                console.log('📥 Loading more approvals...');
+
+                // ✅ Fetch next batch (10 items) using cursor
+                const result = await this.taskApprovalService.getApprovalsByStatus(
+                    this.currentFilter,
+                    this.loadMoreIncrement,
+                    this.lastDocument
+                );
+
+                console.log(`✅ Loaded ${result.approvals.length} more approvals (hasMore: ${result.hasMore})`);
+
+                // ✅ Append new approvals to existing list
+                this.approvals = [...this.approvals, ...result.approvals];
+                this.lastDocument = result.lastDocument;
+                this.hasMoreData = result.hasMore;
+
+                this.applyFiltersAndRender();
+            } catch (error) {
+                console.error('❌ Error loading more approvals:', error);
+                window.notify?.error('שגיאה בטעינת נתונים נוספים', 'שגיאה');
+            }
         }
 
         /**
