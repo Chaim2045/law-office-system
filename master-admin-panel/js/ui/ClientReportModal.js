@@ -659,24 +659,28 @@ return;
                     // Fallback: No active stage found, show all (shouldn't happen in production)
                     console.warn('⚠️ No active stage found for legal procedure client. Showing all stages as fallback.');
                 }
-            } else {
-                // For hour package clients: Add "All Services" option
-                if (servicesMap.size > 1) {
-                    servicesMap.set('כל השירותים', {
-                        displayName: 'כל השירותים',
-                        totalHours: 0, // Will be calculated in report
-                        remainingHours: 0,
-                        usedHours: 0,
-                        type: 'all',
-                        stage: null,
-                        status: 'active'
-                    });
-                    console.log('📋 Hour package: Added "All Services" option');
-                }
             }
 
+            // 🚫 REMOVED "All Services" option as per user request
+            // Previously: Added "כל השירותים" option for hour package clients
+            // Reason for removal: User requested to remove this feature entirely
+
+            console.log(`📦 DEBUG: servicesMap size = ${servicesMap.size}`);
+            console.log('📦 DEBUG: servicesMap contents:', Array.from(servicesMap.entries()));
+
             // Create service cards with proper info
+            if (servicesMap.size === 0) {
+                console.error('❌ ERROR: servicesMap is EMPTY! No service cards will be created!');
+                console.error('Client data:', {
+                    fullName: client.fullName,
+                    type: client.type,
+                    services: client.services,
+                    hasServices: client.services?.length > 0
+                });
+            }
+
             Array.from(servicesMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([serviceKey, serviceInfo], index) => {
+                console.log(`📋 Creating card ${index + 1}:`, { serviceKey, serviceInfo });
                 const card = this.createServiceCard(serviceInfo, index);
                 this.serviceCardsContainer.appendChild(card);
             });
@@ -714,6 +718,9 @@ return;
             card.dataset.serviceName = serviceInfo.displayName;
             card.dataset.serviceIndex = index;
             card.dataset.serviceType = serviceInfo.type;
+
+            // 🎯 Detect Fixed Price services (pricingType = 'fixed')
+            const isFixedPrice = serviceInfo.pricingType === 'fixed';
 
             // Calculate progress percentage
             const progressPercent = serviceInfo.totalHours > 0
@@ -830,8 +837,11 @@ return;
             const hasOverage = parseFloat(serviceInfo.usedHours) > parseFloat(serviceInfo.totalHours);
             const overageText = hasOverage ? ' ⚠️ חריגה' : '';
 
-            if (serviceInfo.type === 'legal_procedure') {
-                // For legal procedures, show stage-specific hours
+            if (isFixedPrice) {
+                // 🎯 Fixed Price: Show ONLY hours worked, NO total, NO overdraft warning
+                hoursText.textContent = `עבדו ${serviceInfo.usedHours} שעות`;
+            } else if (serviceInfo.type === 'legal_procedure') {
+                // For legal procedures with hourly pricing, show stage-specific hours
                 if (serviceInfo.totalHours > 0) {
                     hoursText.textContent = `${serviceInfo.usedHours} מתוך ${serviceInfo.totalHours} שעות בשלב${overageText}`;
                 } else {
@@ -846,8 +856,8 @@ return;
                 }
             }
 
-            // 🔥 Change color if overage
-            if (hasOverage) {
+            // 🔥 Change color if overage (but NOT for Fixed Price)
+            if (hasOverage && !isFixedPrice) {
                 hoursLeft.style.color = '#ef4444'; // Red
             }
 
@@ -859,8 +869,38 @@ return;
             percentText.textContent = serviceInfo.totalHours > 0 ? `${progressPercent}%` : '';
 
             infoContainer.appendChild(hoursLeft);
-            if (serviceInfo.totalHours > 0) {
+            // Show percentage ONLY for Hourly/Legal Procedure services, NOT for Fixed Price
+            if (serviceInfo.totalHours > 0 && !isFixedPrice) {
                 infoContainer.appendChild(percentText);
+            }
+
+            // 🎯 Overdraft Warning Box - ONLY for Hourly/Legal Procedure with negative hours
+            const overdraftWarning = document.createElement('div');
+            if (!isFixedPrice && hasOverage && serviceInfo.totalHours > 0) {
+                const overdraftAmount = (parseFloat(serviceInfo.usedHours) - parseFloat(serviceInfo.totalHours)).toFixed(1);
+                overdraftWarning.style.cssText = `
+                    background: rgba(239, 68, 68, 0.1);
+                    border: 1px solid rgba(239, 68, 68, 0.3);
+                    border-radius: 6px;
+                    padding: 0.5rem 0.75rem;
+                    margin-top: 0.6rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                `;
+
+                const warningIcon = document.createElement('i');
+                warningIcon.className = 'fas fa-exclamation-triangle';
+                warningIcon.style.cssText = 'color: #ef4444; font-size: 0.85rem;';
+
+                const warningText = document.createElement('span');
+                warningText.style.cssText = 'color: #dc2626; font-size: 0.75rem; font-weight: 600;';
+                warningText.textContent = `חריגה: +${overdraftAmount} שעות מעבר לתקציב`;
+
+                overdraftWarning.appendChild(warningIcon);
+                overdraftWarning.appendChild(warningText);
+            } else {
+                overdraftWarning.style.display = 'none';
             }
 
             // Selected indicator - minimal checkmark
@@ -885,6 +925,7 @@ return;
             cardInner.appendChild(header);
             cardInner.appendChild(progressContainer);
             cardInner.appendChild(infoContainer);
+            cardInner.appendChild(overdraftWarning); // Add overdraft warning box
             card.appendChild(cardInner);
             card.appendChild(selectedBadge);
 

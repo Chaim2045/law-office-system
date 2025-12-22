@@ -530,7 +530,6 @@
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות מצטבר</th>' : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות נותרות</th>' : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>שעות נותרות</th>' : ''}
-                        <th>הערות</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -544,7 +543,6 @@
         <!-- By Service -->
         ${stats.byService.length > 0 ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-box"></i> פירוט לפי שירות</h3>
             <table>
                 <thead>
                     <tr>
@@ -565,6 +563,9 @@
             </table>
         </div>
         ` : ''}
+
+        <!-- Final Summary Section -->
+        ${this.renderFinalSummary(client, formData, timesheetEntries)}
 
         <!-- Footer -->
         <div class="footer">
@@ -868,16 +869,86 @@ return true;
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.taskDescription || entry.description || '-'}</td>
+                        <td>${entry.action || entry.taskDescription || entry.description || '-'}</td>
                         <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
                         <td class="highlight">${minutes}</td>
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td>${accumulatedMinutes}</td>` : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
-                        <td>${entry.notes || '-'}</td>
                     </tr>
                 `;
             });
+        }
+
+        /**
+         * Render final summary section
+         * רינדור סיכום סופי של הדוח
+         */
+        renderFinalSummary(client, formData, timesheetEntries) {
+            // Only show summary for hour-based services
+            if (client.type !== 'hours' && client.type !== 'legal_procedure' && client.procedureType !== 'legal_procedure') {
+                return '';
+            }
+
+            // Calculate service totals (same logic as renderServiceInfo)
+            let serviceTotalHours = 0;
+            let serviceUsedHours = 0;
+            let serviceRemainingHours = 0;
+
+            if (formData.service === 'all' || formData.service === 'כל השירותים') {
+                if (client.services && client.services.length > 0) {
+                    serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
+                    serviceUsedHours = client.services.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
+                    serviceRemainingHours = client.services.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
+                } else {
+                    serviceTotalHours = client.totalHours || 0;
+                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
+                    serviceRemainingHours = client.hoursRemaining || 0;
+                }
+            } else {
+                const selectedService = client.services?.find(s => {
+                    if (s.name === formData.service) {
+return true;
+}
+                    if (s.serviceName === formData.service) {
+return true;
+}
+                    if (s.displayName === formData.service) {
+return true;
+}
+                    if (s.stage && formData.service.includes(s.stage)) {
+return true;
+}
+                    if (s.displayName && s.displayName.includes(formData.service)) {
+return true;
+}
+                    return false;
+                });
+
+                if (selectedService) {
+                    serviceTotalHours = selectedService.totalHours || selectedService.hours || selectedService.allocatedHours || selectedService.stageHours || 0;
+                    serviceRemainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
+                    serviceUsedHours = serviceTotalHours - serviceRemainingHours;
+                } else {
+                    serviceTotalHours = client.totalHours || 0;
+                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
+                    serviceRemainingHours = client.hoursRemaining || 0;
+                }
+            }
+
+            const hasOverdraft = serviceRemainingHours < 0;
+            const overdraftAmount = Math.abs(serviceRemainingHours);
+            const usagePercent = serviceTotalHours > 0 ? ((serviceUsedHours / serviceTotalHours) * 100).toFixed(1) : 0;
+
+            // Minimalist summary - simple line at bottom
+            return `
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #374151;">
+                <span style="font-weight: 500;">סיכום:</span>
+                <span>תקציב ${serviceTotalHours.toFixed(1)} שעות | בוצעו ${serviceUsedHours.toFixed(1)} שעות | יתרה ${serviceRemainingHours.toFixed(1)} שעות${hasOverdraft ? ' (חריגה)' : ''}</span>
+            </div>
+        </div>
+            `;
         }
 
         /**
@@ -924,7 +995,7 @@ return true;
             csv += 'פירוט שעות:\n';
             csv += 'תאריך,חבר צוות,שירות,זמן (דקות),תיאור\n';
             timesheetEntries.forEach(entry => {
-                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.description || ''}"\n`;
+                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.action || entry.taskDescription || entry.description || ''}"\n`;
             });
             csv += '\n';
 

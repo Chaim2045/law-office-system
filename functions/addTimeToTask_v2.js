@@ -203,30 +203,12 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           const activePackage = getActivePackage(currentStage);
 
           if (activePackage) {
-            // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
-            const currentRemaining = activePackage.hoursRemaining || 0;
-            const afterDeduction = currentRemaining - hoursWorked;
-
-            // ❌ חסימה אם החריגה תעבור -10 שעות
-            if (afterDeduction < -10) {
-              throw new functions.https.HttpsError(
-                'resource-exhausted',
-                'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-                {
-                  serviceId: targetService.id,
-                  stageId: currentStage.id,
-                  currentRemaining,
-                  requestedHours: hoursWorked,
-                  wouldBe: afterDeduction
-                }
-              );
-            }
-
             // ✅ v2.2.0 - Immutable: Get new package object
             const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-            // ✅ עדכון סטטוס ל-overdraft אם במינוס
-            if (afterDeduction < 0 && afterDeduction >= -10) {
+            // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
+            const afterDeduction = updatedPackage.hoursRemaining;
+            if (afterDeduction < 0) {
               updatedPackage.status = 'overdraft';
             }
 
@@ -286,34 +268,29 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
     // מצא את השירות המבוקש
     const service = clientData.services.find(s => s.id === taskData.serviceId);
 
+    console.log(`🔍 [OVERDRAFT DEBUG] Service found:`, {
+      serviceId: service?.id,
+      serviceType: service?.type,
+      hasPackages: !!service?.packages?.length
+    });
+
     if (service && service.type !== 'legal_procedure') {
       // שירות רגיל עם חבילות (לא הליך משפטי)
       const activePackage = getActivePackage(service);
 
+      console.log(`🔍 [OVERDRAFT DEBUG] Active package:`, {
+        hasActivePackage: !!activePackage,
+        hoursRemaining: activePackage?.hoursRemaining,
+        packageStatus: activePackage?.status
+      });
+
       if (activePackage) {
-        // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
-        const currentRemaining = activePackage.hoursRemaining || 0;
-        const afterDeduction = currentRemaining - hoursWorked;
-
-        // ❌ חסימה אם החריגה תעבור -10 שעות
-        if (afterDeduction < -10) {
-          throw new functions.https.HttpsError(
-            'resource-exhausted',
-            'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-            {
-              serviceId: service.id,
-              currentRemaining,
-              requestedHours: hoursWorked,
-              wouldBe: afterDeduction
-            }
-          );
-        }
-
         // ✅ v2.2.0 - Immutable: Get new package object
         const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-        // ✅ עדכון סטטוס ל-overdraft אם במינוס
-        if (afterDeduction < 0 && afterDeduction >= -10) {
+        // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
+        const afterDeduction = updatedPackage.hoursRemaining;
+        if (afterDeduction < 0) {
           updatedPackage.status = 'overdraft';
         }
 
@@ -357,29 +334,12 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(service);
 
       if (activePackage) {
-        // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
-        const currentRemaining = activePackage.hoursRemaining || 0;
-        const afterDeduction = currentRemaining - hoursWorked;
-
-        // ❌ חסימה אם החריגה תעבור -10 שעות
-        if (afterDeduction < -10) {
-          throw new functions.https.HttpsError(
-            'resource-exhausted',
-            'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-            {
-              serviceId: service.id,
-              currentRemaining,
-              requestedHours: hoursWorked,
-              wouldBe: afterDeduction
-            }
-          );
-        }
-
         // ✅ v2.2.0 - Immutable: Get new package object
         const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-        // ✅ עדכון סטטוס ל-overdraft אם במינוס
-        if (afterDeduction < 0 && afterDeduction >= -10) {
+        // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
+        const afterDeduction = updatedPackage.hoursRemaining;
+        if (afterDeduction < 0) {
           updatedPackage.status = 'overdraft';
         }
 
@@ -426,29 +386,12 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       const activePackage = getActivePackage(currentStage);
 
       if (activePackage) {
-        // ✅ OVERDRAFT CHECK: בדיקת חריגה לפני קיזוז
-        const currentRemaining = activePackage.hoursRemaining || 0;
-        const afterDeduction = currentRemaining - hoursWorked;
-
-        // ❌ חסימה אם החריגה תעבור -10 שעות
-        if (afterDeduction < -10) {
-          throw new functions.https.HttpsError(
-            'resource-exhausted',
-            'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-            {
-              stageId: currentStage.id,
-              currentRemaining,
-              requestedHours: hoursWorked,
-              wouldBe: afterDeduction
-            }
-          );
-        }
-
         // ✅ v2.2.0 - Immutable: Get new package object
         const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
 
-        // ✅ עדכון סטטוס ל-overdraft אם במינוס
-        if (afterDeduction < 0 && afterDeduction >= -10) {
+        // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
+        const afterDeduction = updatedPackage.hoursRemaining;
+        if (afterDeduction < 0) {
           updatedPackage.status = 'overdraft';
         }
 

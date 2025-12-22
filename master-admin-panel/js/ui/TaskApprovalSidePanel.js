@@ -16,10 +16,15 @@
             this.panel = null;
             this.approvals = [];
             this.filteredApprovals = [];
-            this.currentFilter = 'pending';
+            this.currentFilter = 'all'; // ✅ Changed from 'pending' to 'all' (auto-approval system)
             this.searchTerm = '';
             this.realtimeUnsubscribe = null;
             this.approvalDialog = null;
+            // ✅ Cursor-based pagination settings
+            this.initialLimit = 5; // Initial load: 5 items
+            this.loadMoreIncrement = 10; // Load more: 10 items each time
+            this.lastDocument = null; // Firestore cursor for pagination
+            this.hasMoreData = true; // Flag to indicate if more data exists
         }
 
         /**
@@ -153,21 +158,17 @@
                 </div>
 
                 <div class="approval-panel-filters">
-                    <button class="approval-filter-btn active" data-filter="pending">
-                        <i class="fas fa-clock"></i>
-                        <span>ממתין</span>
-                    </button>
-                    <button class="approval-filter-btn" data-filter="approved">
-                        <i class="fas fa-check-circle"></i>
-                        <span>אושר</span>
-                    </button>
-                    <button class="approval-filter-btn" data-filter="rejected">
-                        <i class="fas fa-times-circle"></i>
-                        <span>נדחה</span>
-                    </button>
-                    <button class="approval-filter-btn" data-filter="all">
+                    <button class="approval-filter-btn active" data-filter="all">
                         <i class="fas fa-list"></i>
                         <span>הכל</span>
+                    </button>
+                    <button class="approval-filter-btn" data-filter="auto_approved">
+                        <i class="fas fa-check-circle"></i>
+                        <span>אושרו אוטומטית</span>
+                    </button>
+                    <button class="approval-filter-btn" data-filter="today">
+                        <i class="fas fa-calendar-day"></i>
+                        <span>היום</span>
                     </button>
                 </div>
 
@@ -209,6 +210,10 @@
                     e.currentTarget.classList.add('active');
                     this.currentFilter = e.currentTarget.dataset.filter;
 
+                    // ✅ Reset pagination when changing filters
+                    this.lastDocument = null;
+                    this.hasMoreData = true;
+
                     // Update realtime listener
                     if (this.realtimeUnsubscribe) {
                         this.realtimeUnsubscribe();
@@ -230,8 +235,8 @@
         }
 
         /**
-         * Load approvals from Firestore
-         * טעינת אישורים מ-Firestore
+         * Load approvals from Firestore (initial load)
+         * טעינת אישורים מ-Firestore (טעינה ראשונית)
          */
         async loadApprovals() {
             if (!this.taskApprovalService) {
@@ -247,7 +252,24 @@
             }
 
             try {
-                this.approvals = await this.taskApprovalService.getApprovalsByStatus(this.currentFilter);
+                // ✅ Reset pagination state for initial load
+                this.approvals = [];
+                this.lastDocument = null;
+                this.hasMoreData = true;
+
+                // ✅ Fetch initial batch (5 items)
+                const result = await this.taskApprovalService.getApprovalsByStatus(
+                    this.currentFilter,
+                    this.initialLimit,
+                    null
+                );
+
+                console.log(`✅ Initial load: ${result.approvals.length} approvals (hasMore: ${result.hasMore})`);
+
+                this.approvals = result.approvals;
+                this.lastDocument = result.lastDocument;
+                this.hasMoreData = result.hasMore;
+
                 this.applyFiltersAndRender();
             } catch (error) {
                 console.error('❌ Error loading approvals:', error);
@@ -261,6 +283,21 @@
          */
         applyFiltersAndRender() {
             let filtered = [...this.approvals];
+
+            // ✅ Filter by "today" if selected
+            if (this.currentFilter === 'today') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                filtered = filtered.filter(approval => {
+                    const approvalDate = approval.createdAt?.toDate?.() || approval.requestedAt?.toDate?.();
+                    if (!approvalDate) {
+return false;
+}
+                    const checkDate = new Date(approvalDate);
+                    checkDate.setHours(0, 0, 0, 0);
+                    return checkDate.getTime() === today.getTime();
+                });
+            }
 
             // Search filter
             if (this.searchTerm) {
@@ -292,8 +329,8 @@
         renderApprovals() {
             const bodyEl = this.panel.querySelector('#approvalPanelBody');
             if (!bodyEl) {
-return;
-}
+                return;
+            }
 
             // Update count badge
             const countBadge = this.panel.querySelector('#approvalCountPanelBadge');
@@ -306,14 +343,18 @@ return;
                 bodyEl.innerHTML = `
                     <div class="approval-panel-empty">
                         <i class="fas fa-inbox"></i>
-                        <p>אין בקשות אישור ${this.currentFilter === 'pending' ? 'ממתינות' : ''}</p>
+                        <p>אין משימות ${this.getFilterEmptyText()}</p>
                     </div>
                 `;
                 return;
             }
 
+            // ✅ Display all loaded approvals (already paginated by Firestore)
+            const displayedApprovals = this.filteredApprovals;
+            const hasMore = this.hasMoreData;
+
             // Group by user
-            const groupedByUser = this.filteredApprovals.reduce((groups, approval) => {
+            const groupedByUser = displayedApprovals.reduce((groups, approval) => {
                 const user = approval.requestedBy;
                 if (!groups[user]) {
                     groups[user] = {
@@ -327,7 +368,7 @@ return;
             }, {});
 
             // Render groups
-            bodyEl.innerHTML = Object.values(groupedByUser).map(userGroup => `
+            let html = Object.values(groupedByUser).map(userGroup => `
                 <div class="approval-user-group">
                     <div class="approval-user-header">
                         <div class="approval-user-info">
@@ -346,8 +387,85 @@ return;
                 </div>
             `).join('');
 
+            // ✅ Add "Load More" button if there are more items in Firestore
+            if (hasMore) {
+                html += `
+                    <div class="approval-load-more-container">
+                        <button class="approval-load-more-btn" id="approvalLoadMoreBtn">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>טען עוד ${this.loadMoreIncrement} משימות</span>
+                            <span class="approval-remaining-count">(עוד רשומות זמינות)</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            bodyEl.innerHTML = html;
+
             // Attach click handlers
             this.attachApprovalClickHandlers();
+
+            // ✅ Attach load more handler
+            const loadMoreBtn = bodyEl.querySelector('#approvalLoadMoreBtn');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', () => this.loadMore());
+            }
+        }
+
+        /**
+         * Load more items from Firestore
+         * טען עוד פריטים מ-Firestore
+         */
+        async loadMore() {
+            if (!this.hasMoreData || !this.lastDocument) {
+                console.log('⚠️ No more data to load');
+                return;
+            }
+
+            try {
+                console.log('📥 Loading more approvals...');
+
+                // ✅ Fetch next batch (10 items) using cursor
+                const result = await this.taskApprovalService.getApprovalsByStatus(
+                    this.currentFilter,
+                    this.loadMoreIncrement,
+                    this.lastDocument
+                );
+
+                console.log(`✅ Loaded ${result.approvals.length} more approvals (hasMore: ${result.hasMore})`);
+
+                // ✅ Append new approvals to existing list
+                this.approvals = [...this.approvals, ...result.approvals];
+                this.lastDocument = result.lastDocument;
+                this.hasMoreData = result.hasMore;
+
+                // ✅ Update realtime listener to match new loaded count
+                if (this.realtimeUnsubscribe) {
+                    this.realtimeUnsubscribe();
+                }
+                this.startRealtimeListener();
+
+                this.applyFiltersAndRender();
+            } catch (error) {
+                console.error('❌ Error loading more approvals:', error);
+                window.notify?.error('שגיאה בטעינת נתונים נוספים', 'שגיאה');
+            }
+        }
+
+        /**
+         * Get empty state text based on filter
+         * קבלת טקסט מצב ריק לפי פילטר
+         */
+        getFilterEmptyText() {
+            switch (this.currentFilter) {
+                case 'auto_approved':
+                    return 'שאושרו אוטומטית';
+                case 'today':
+                    return 'מהיום';
+                case 'all':
+                default:
+                    return '';
+            }
         }
 
         /**
@@ -356,7 +474,10 @@ return;
          */
         renderApprovalCard(approval) {
             const statusClass = approval.status;
-            const statusText = this.getStatusText(approval.status);
+            // ✅ Check if auto-approved
+            const statusText = approval.autoApproved
+                ? '✅ אושר אוטומטית'
+                : this.getStatusText(approval.status);
             const minutes = approval.taskData?.estimatedMinutes || 0;
             const timeAgo = this.formatRelativeTime(approval.requestedAt);
 
@@ -431,8 +552,8 @@ return;
         }
 
         /**
-         * Start realtime listener
-         * התחל מאזין בזמן אמת
+         * Start realtime listener (with dynamic limit based on loaded data)
+         * התחל מאזין בזמן אמת (עם limit דינמי לפי הנתונים שנטענו)
          */
         startRealtimeListener() {
             if (!this.taskApprovalService) {
@@ -446,13 +567,22 @@ return;
                 this.taskApprovalService.init(window.firebaseDB, currentUser);
             }
 
+            // ✅ Calculate dynamic limit based on currently loaded approvals
+            // Listen to AT LEAST what we already loaded, or initialLimit if nothing loaded yet
+            const currentLoadedCount = this.approvals.length || this.initialLimit;
+
             this.realtimeUnsubscribe = this.taskApprovalService.listenToAllApprovals(
                 (approvals) => {
-                    console.log(`🔥 Real-time update: ${approvals.length} approvals`);
-                    this.approvals = approvals;
-                    this.applyFiltersAndRender();
+                    console.log(`🔥 Real-time update: ${approvals.length} approvals (limit: ${currentLoadedCount})`);
+
+                    // ✅ Only update if we got meaningful data
+                    if (approvals.length > 0 || this.approvals.length === 0) {
+                        this.approvals = approvals;
+                        this.applyFiltersAndRender();
+                    }
                 },
-                this.currentFilter
+                this.currentFilter,
+                currentLoadedCount // ✅ Pass dynamic limit
             );
         }
 

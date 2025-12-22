@@ -466,20 +466,11 @@ return;
    */
   async saveTask(taskData) {
     try {
-      console.log('💾 Saving task with approval request...', taskData);
-
-      // ✅ שלב 1: שמור את המשימה עם סטטוס pending_approval
-      const taskDataWithApproval = {
-        ...taskData,
-        status: 'pending_approval', // ❗ שינוי סטטוס
-        requestedMinutes: taskData.estimatedMinutes, // שמור תקציב מקורי
-        approvedMinutes: null, // יעודכן אחרי אישור
-        approvalId: null // יעודכן אחרי יצירת בקשה
-      };
+      console.log('💾 Saving task...', taskData);
 
       // Use FirebaseService if available
       if (window.FirebaseService) {
-        const result = await window.FirebaseService.call('createBudgetTask', taskDataWithApproval, {
+        const result = await window.FirebaseService.call('createBudgetTask', taskData, {
           retries: 3,
           timeout: 15000
         });
@@ -489,39 +480,7 @@ return;
         }
 
         const taskId = result.data?.taskId;
-        console.log('✅ Task created with pending_approval status:', taskId);
-
-        // ✅ שלב 2: צור בקשת אישור ב-pending_task_approvals
-        try {
-          // Import TaskApprovalService dynamically
-          const { taskApprovalService } = await import('../task-approval-system/services/task-approval-service.js');
-
-          // Initialize if needed
-          if (window.firebaseDB && this.manager.currentUser) {
-            taskApprovalService.init(window.firebaseDB, this.manager.currentUser);
-          }
-
-          // Create approval request
-          const approvalId = await taskApprovalService.createApprovalRequest(
-            taskId,
-            taskData,
-            this.manager.currentUser.email || this.manager.currentUser,
-            this.manager.currentUser.displayName || this.manager.currentUser.email || 'משתמש'
-          );
-
-          console.log('✅ Approval request created:', approvalId);
-
-          // Update task with approvalId
-          if (window.firebaseDB) {
-            await window.firebaseDB.collection('budget_tasks').doc(taskId).update({
-              approvalId: approvalId
-            });
-          }
-
-        } catch (approvalError) {
-          console.error('⚠️ Error creating approval request:', approvalError);
-          // Continue anyway - המשימה נוצרה, רק בקשת האישור נכשלה
-        }
+        console.log('✅ Task created:', taskId);
 
         // Emit EventBus event if available
         if (window.EventBus) {
@@ -530,7 +489,7 @@ return;
             clientId: taskData.clientId,
             clientName: taskData.clientName,
             employee: taskData.employee,
-            status: 'pending_approval'
+            status: 'פעיל'
           });
         }
 
@@ -544,12 +503,11 @@ return;
           this.descriptionSelector.saveToRecent();
         }
 
-        // ✅ Show UPDATED success message - כולל הודעה על אישור
+        // ✅ Simple success message
         if (window.NotificationSystem) {
           window.NotificationSystem.show(
-            `המשימה הועברה למנהל לאישור תקציב\n\nתקציב מבוקש: ${taskData.estimatedMinutes} דקות\n\nתקבל התראה באייקון המעטפה כשהמנהל יאשר`,
-            'success',
-            5000 // 5 seconds - longer to read
+            'המשימה נוספה בהצלחה',
+            'success'
           );
         }
 
