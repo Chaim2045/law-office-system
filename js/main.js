@@ -1602,7 +1602,7 @@ plusButton.classList.remove('active');
     const paginationStatus = {
       currentPage: this.currentTimesheetPage,
       totalPages: Math.ceil(this.filteredTimesheetEntries.length / 20),
-      hasMore: false,
+      hasMore: this.integrationManager?.firebasePagination?.hasMore?.timesheet_entries || false,
       displayedItems: this.filteredTimesheetEntries.length,
       filteredItems: this.filteredTimesheetEntries.length
     };
@@ -1788,6 +1788,47 @@ plusButton.classList.remove('active');
         }
       }
     });
+  }
+
+  /**
+   * טעינת רשומות שעתון נוספות (פגינציה)
+   * Load more timesheet entries from Firebase
+   */
+  async loadMoreTimesheetEntries() {
+    if (!this.integrationManager) {
+      this.showNotification('מנהל אינטגרציה לא זמין', 'error');
+      return;
+    }
+
+    try {
+      // Show loading state
+      this.showNotification('טוען רשומות נוספות...', 'info');
+
+      // Store old count BEFORE loading new entries
+      const oldCount = this.timesheetEntries.length;
+
+      // ✅ Load 20 MORE from Firebase (not all!)
+      const newEntries = await this.integrationManager.loadMoreTimesheet(
+        this.currentUser,
+        this.timesheetEntries
+      );
+
+      // Update local data
+      this.timesheetEntries = newEntries;
+      this.filterTimesheetEntries();
+
+      // Calculate how many were actually added
+      const addedCount = newEntries.length - oldCount;
+      this.showNotification(
+        addedCount > 0
+          ? `נטענו ${addedCount} רשומות נוספות`
+          : 'אין רשומות נוספות',
+        addedCount > 0 ? 'success' : 'info'
+      );
+    } catch (error) {
+      console.error('❌ Error loading more timesheet:', error);
+      this.showNotification('שגיאה בטעינת רשומות נוספות', 'error');
+    }
   }
 
   /* ========================================
