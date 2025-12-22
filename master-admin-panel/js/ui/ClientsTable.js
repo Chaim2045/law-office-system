@@ -211,28 +211,33 @@ return;
             const statusBadge = this.getStatusBadge(client);
             const typeBadge = this.getTypeBadge(client);
             const hoursDisplay = this.getHoursDisplay(client);
-            const createdBy = this.getCreatedBy(client);
+            const teamMembers = this.getTeamMembers(client);
+            const lastLogin = this.getTeamLastLogin(client);
             const agreementWarning = this.getAgreementWarning(client);
 
-            // ✅ בדיקת חריגה חכמה
-            const overdraftInfo = this.getOverdraftInfo(client);
-            const rowClass = overdraftInfo.isOverdraft ? 'client-row-overdraft' : '';
+            // ✅ בדיקה אם הלקוח במינוס (חריגה)
+            // בודק אם יש שירות אחד לפחות במינוס, או שהסכום הכולל במינוס
+            const hasOverdraftService = client.services?.some(s =>
+                (s.hoursRemaining || 0) < 0
+            );
+            const isOverdraft = hasOverdraftService || (client.hoursRemaining || 0) < 0;
+            const rowClass = isOverdraft ? 'client-row-overdraft' : '';
 
             return `
                 <tr data-client-id="${client.id}" class="${rowClass}">
                     <td>
                         <div class="client-name">
                             ${agreementWarning}
-                            ${overdraftInfo.icon}
+                            ${isOverdraft ? '<i class="fas fa-exclamation-triangle" style="color: var(--danger-red); margin-left: 0.5rem;" title="לקוח בחריגה"></i>' : ''}
                             <strong>${this.escapeHtml(client.fullName)}</strong>
                         </div>
                     </td>
                     <td>${this.escapeHtml(client.caseNumber || '-')}</td>
                     <td>${typeBadge}</td>
                     <td>${hoursDisplay}</td>
-                    <td>${overdraftInfo.badge}</td>
                     <td>${statusBadge}</td>
-                    <td>${createdBy}</td>
+                    <td>${teamMembers}</td>
+                    <td>${lastLogin}</td>
                     <td>
                         <div class="table-actions">
                             <button class="btn-action btn-action-primary" data-action="manage" data-client-id="${client.id}">
@@ -247,71 +252,6 @@ return;
                     </td>
                 </tr>
             `;
-        }
-
-        /**
-         * Get overdraft info (smart logic)
-         * מידע על חריגה - לוגיקה חכמה
-         */
-        getOverdraftInfo(client) {
-            // בדיקת שירותים במינוס
-            const overdraftServices = (client.services || []).filter(s => {
-                const remaining = s.hoursRemaining || 0;
-                return remaining < 0;
-            });
-
-            const hasOverdraft = overdraftServices.length > 0 || (client.hoursRemaining || 0) < 0;
-
-            if (!hasOverdraft) {
-                return {
-                    isOverdraft: false,
-                    icon: '',
-                    badge: '<span class="badge badge-success"><i class="fas fa-check"></i> תקין</span>'
-                };
-            }
-
-            // חישוב סה"כ חריגה
-            const totalOverdraft = overdraftServices.reduce((sum, s) => sum + Math.abs(s.hoursRemaining || 0), 0);
-
-            // מציאת השירות בחריגה הגבוהה ביותר
-            const worstService = overdraftServices.reduce((worst, s) => {
-                const remaining = s.hoursRemaining || 0;
-                return remaining < (worst?.hoursRemaining || 0) ? s : worst;
-            }, null);
-
-            const worstOverdraft = Math.abs(worstService?.hoursRemaining || 0);
-
-            // קביעת רמת חומרה
-            let severity = 'warning'; // צהוב
-            let severityText = 'חריגה קלה';
-
-            if (worstOverdraft > 20) {
-                severity = 'critical'; // אדום כהה
-                severityText = 'חריגה חמורה';
-            } else if (worstOverdraft > 10) {
-                severity = 'danger'; // אדום
-                severityText = 'חריגה משמעותית';
-            }
-
-            // יצירת tooltip מפורט
-            const tooltipLines = [];
-            tooltipLines.push(`סה"כ חריגה: ${totalOverdraft.toFixed(1)} שעות`);
-            if (overdraftServices.length > 1) {
-                tooltipLines.push(`${overdraftServices.length} שירותים במינוס`);
-            }
-            if (worstService) {
-                tooltipLines.push(`החמור ביותר: ${worstService.name || 'שירות'} (${worstOverdraft.toFixed(1)} שעות)`);
-            }
-            const tooltip = tooltipLines.join('&#10;');
-
-            return {
-                isOverdraft: true,
-                icon: `<i class="fas fa-exclamation-triangle" style="color: var(--danger-red); margin-left: 0.5rem;" title="${tooltip}"></i>`,
-                badge: `<span class="badge badge-${severity}" title="${tooltip}">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    ${severityText} (-${worstOverdraft.toFixed(1)} שעות)
-                </span>`
-            };
         }
 
         /**
@@ -465,20 +405,6 @@ return;
                     <i class="fas fa-exclamation-triangle"></i>
                 </span>
             `;
-        }
-
-        /**
-         * Get created by
-         * קבלת מי יצר את התיק
-         */
-        getCreatedBy(client) {
-            if (!client.createdBy) {
-                return '<span>-</span>';
-            }
-
-            // Get employee name from data manager
-            const name = this.dataManager.getEmployeeName(client.createdBy);
-            return `<span class="creator-name">${this.escapeHtml(name)}</span>`;
         }
 
         /**
@@ -707,23 +633,16 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
             }
 
             // Convert to CSV
-            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'חריגה', 'סטטוס', 'נוצר על ידי'];
-            const rows = clients.map(client => {
-                const overdraftInfo = this.getOverdraftInfo(client);
-                const overdraftText = overdraftInfo.isOverdraft
-                    ? `כן (${overdraftInfo.badge.includes('חריגה קלה') ? 'קלה' : overdraftInfo.badge.includes('חריגה משמעותית') ? 'משמעותית' : 'חמורה'})`
-                    : 'לא';
-
-                return [
-                    client.fullName,
-                    client.caseNumber || '',
-                    client.type === 'hours' ? 'שעות' : 'קבוע',
-                    client.type === 'hours' ? client.hoursRemaining || 0 : '-',
-                    overdraftText,
-                    client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
-                    client.createdBy ? this.dataManager.getEmployeeName(client.createdBy) : '-'
-                ];
-            });
+            const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'סטטוס', 'צוות', 'כניסה אחרונה'];
+            const rows = clients.map(client => [
+                client.fullName,
+                client.caseNumber || '',
+                client.type === 'hours' ? 'שעות' : 'קבוע',
+                client.type === 'hours' ? client.hoursRemaining || 0 : '-',
+                client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
+                client.assignedTo ? client.assignedTo.join(', ') : '',
+                this.getTeamLastLogin(client)
+            ]);
 
             let csv = headers.join(',') + '\n';
             csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');

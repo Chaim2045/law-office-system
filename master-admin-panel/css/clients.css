@@ -11,31 +11,16 @@
  */
 
 :root {
-    /* ===== Primary Colors (Minimal Usage) ===== */
-    --primary-blue: #2563eb;       /* כחול מחודד - פעולות בלבד */
-    --primary-blue-dark: #1d4ed8;  /* כחול כהה - hover */
-    --primary-blue-light: #3b82f6; /* כחול בהיר - subtle */
-
-    /* ===== Critical Only ===== */
-    --critical-red: #dc2626;       /* אדום - רק למצבי חירום */
-
-    /* ===== Neutral Gray Scale (Primary Usage) ===== */
-    --gray-50: #fafafa;            /* רקעים עדינים */
-    --gray-100: #f5f5f5;           /* רקעים קלים */
-    --gray-200: #e5e5e5;           /* גבולות עדינים */
-    --gray-300: #d4d4d4;           /* גבולות בינוניים */
-    --gray-400: #a3a3a3;           /* טקסט משני בהיר */
-    --gray-500: #737373;           /* טקסט משני */
-    --gray-600: #525252;           /* טקסט משני כהה */
-    --gray-700: #404040;           /* טקסט ראשי בהיר */
-    --gray-800: #262626;           /* טקסט ראשי */
-    --gray-900: #171717;           /* טקסט ראשי כהה */
-
-    /* ===== Semantic Aliases ===== */
-    --text-primary: var(--gray-900);
-    --text-secondary: var(--gray-500);
-    --bg-light: var(--gray-50);
-    --border-color: var(--gray-200);
+    --primary-blue: #1877F2;       /* כחול פייסבוק - צבע ראשי */
+    --primary-blue-dark: #0A66C2;  /* כחול כהה - צבע משני */
+    --primary-blue-light: #4E9FF6; /* כחול בהיר */
+    --success-green: #059669;
+    --warning-yellow: #f59e0b;
+    --danger-red: #dc2626;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --bg-light: #f9fafb;
+    --border-color: #e5e7eb;
 }
 
 /* ===== Layout & Spacing ===== */
@@ -134,19 +119,19 @@
 .search-input,
 .filter-select {
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--gray-300);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 0.813rem;
     width: 100%;
     transition: all 0.2s;
-    background: var(--gray-50);
+    background: #fafbfc;
 }
 
 .search-input:focus,
 .filter-select:focus {
     outline: none;
     border-color: var(--primary-blue);
-    box-shadow: 0 0 0 3px rgb(37 99 235 / 8%);
+    box-shadow: 0 0 0 2px rgb(24 119 242 / 8%);
     background: white;
 }
 
@@ -183,7 +168,7 @@
 }
 
 .data-table thead {
-    background: var(--gray-50);
+    background: var(--bg-light);
 }
 
 .data-table th {
@@ -191,10 +176,10 @@
     text-align: right;
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--gray-600);
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 2px solid var(--gray-200);
+    border-bottom: 2px solid var(--border-color);
 }
 
 .data-table td {
@@ -211,44 +196,18 @@
     border-bottom: none;
 }
 
-/* ===== Overdraft Client Highlighting (Subtle Red Accent) ===== */
+/* ===== Overdraft Client Highlighting ===== */
 .client-row-overdraft {
-    background: var(--gray-50) !important;
-    border-right: 3px solid var(--critical-red);
+    background: rgb(220 38 38 / 8%) !important;
+    border-right: 4px solid var(--danger-red);
 }
 
 .client-row-overdraft:hover {
-    background: var(--gray-100) !important;
+    background: rgb(220 38 38 / 12%) !important;
 }
 
 .client-row-overdraft td {
-    border-bottom-color: var(--gray-200);
-}
-
-/* ===== Overdraft Badges (Minimalist Gray) ===== */
-.badge-warning {
-    background: var(--gray-100);
-    color: var(--gray-700);
-    border: 1px solid var(--gray-300);
-}
-
-.badge-danger {
-    background: var(--gray-100);
-    color: var(--gray-700);
-    border: 1px solid var(--gray-300);
-}
-
-.badge-critical {
-    background: rgb(220 38 38 / 10%);
-    color: var(--critical-red);
-    border: 1px solid rgb(220 38 38 / 30%);
-    font-weight: 600;
-}
-
-.badge-success {
-    background: var(--gray-100);
-    color: var(--gray-700);
-    border: 1px solid var(--gray-300);
+    border-bottom-color: rgb(220 38 38 / 20%);
 }
 
 .loading-row {
@@ -316,7 +275,7 @@
     color: white;
 }
 
-/* ===== Status Badges (Neutral Gray) ===== */
+/* ===== Status Badges ===== */
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -328,23 +287,23 @@
 }
 
 .status-badge.active {
-    background: var(--gray-100);
-    color: var(--gray-700);
+    background: rgb(5 150 105 / 10%);
+    color: var(--success-green);
 }
 
 .status-badge.blocked {
     background: rgb(220 38 38 / 10%);
-    color: var(--critical-red);
+    color: var(--danger-red);
 }
 
 .status-badge.critical {
-    background: var(--gray-100);
-    color: var(--gray-700);
+    background: rgb(245 158 11 / 10%);
+    color: var(--warning-yellow);
 }
 
 .status-badge.inactive {
-    background: var(--gray-100);
-    color: var(--gray-500);
+    background: rgb(107 114 128 / 10%);
+    color: var(--text-secondary);
 }
 
 /* ===== Client Type Badge ===== */
@@ -360,7 +319,7 @@
     color: var(--primary-blue);
 }
 
-/* ===== Hours Display (Neutral Progress) ===== */
+/* ===== Hours Display ===== */
 .hours-display {
     display: flex;
     flex-direction: column;
@@ -375,7 +334,7 @@
 .hours-progress {
     width: 100%;
     height: 4px;
-    background: var(--gray-200);
+    background: var(--bg-light);
     border-radius: 2px;
     margin-top: 0.25rem;
     overflow: hidden;
@@ -383,37 +342,19 @@
 
 .hours-progress-bar {
     height: 100%;
-    background: var(--gray-400);
+    background: var(--primary-blue);
     transition: width 0.3s;
 }
 
 .hours-progress-bar.critical {
-    background: var(--gray-400);
+    background: var(--warning-yellow);
 }
 
 .hours-progress-bar.blocked {
-    background: var(--critical-red);
+    background: var(--danger-red);
 }
 
-/* ===== Creator Name (Refined) ===== */
-.creator-name {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    background: var(--gray-100);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-    color: var(--gray-700);
-    font-weight: 500;
-}
-
-.creator-name::before {
-    content: '👤';
-    font-size: 0.75rem;
-}
-
-/* ===== Team Members (Refined) ===== */
+/* ===== Team Members ===== */
 .team-members {
     display: flex;
     gap: 0.5rem;
@@ -421,11 +362,11 @@
 }
 
 .team-member {
-    background: var(--gray-100);
+    background: var(--bg-light);
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
     font-size: 0.875rem;
-    color: var(--gray-600);
+    color: var(--text-secondary);
 }
 
 /* ===== Empty State ===== */
