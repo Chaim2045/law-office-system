@@ -16,10 +16,14 @@
             this.panel = null;
             this.approvals = [];
             this.filteredApprovals = [];
-            this.currentFilter = 'pending';
+            this.currentFilter = 'all'; // ✅ Changed from 'pending' to 'all' (auto-approval system)
             this.searchTerm = '';
             this.realtimeUnsubscribe = null;
             this.approvalDialog = null;
+            // ✅ Pagination settings
+            this.currentPage = 1;
+            this.itemsPerPage = 5; // Start with 5 items
+            this.loadMoreIncrement = 10; // Load 10 more each time
         }
 
         /**
@@ -153,21 +157,17 @@
                 </div>
 
                 <div class="approval-panel-filters">
-                    <button class="approval-filter-btn active" data-filter="pending">
-                        <i class="fas fa-clock"></i>
-                        <span>ממתין</span>
-                    </button>
-                    <button class="approval-filter-btn" data-filter="approved">
-                        <i class="fas fa-check-circle"></i>
-                        <span>אושר</span>
-                    </button>
-                    <button class="approval-filter-btn" data-filter="rejected">
-                        <i class="fas fa-times-circle"></i>
-                        <span>נדחה</span>
-                    </button>
-                    <button class="approval-filter-btn" data-filter="all">
+                    <button class="approval-filter-btn active" data-filter="all">
                         <i class="fas fa-list"></i>
                         <span>הכל</span>
+                    </button>
+                    <button class="approval-filter-btn" data-filter="auto_approved">
+                        <i class="fas fa-check-circle"></i>
+                        <span>אושרו אוטומטית</span>
+                    </button>
+                    <button class="approval-filter-btn" data-filter="today">
+                        <i class="fas fa-calendar-day"></i>
+                        <span>היום</span>
                     </button>
                 </div>
 
@@ -208,6 +208,9 @@
                     filterBtns.forEach(b => b.classList.remove('active'));
                     e.currentTarget.classList.add('active');
                     this.currentFilter = e.currentTarget.dataset.filter;
+
+                    // ✅ Reset pagination when changing filters
+                    this.itemsPerPage = 5;
 
                     // Update realtime listener
                     if (this.realtimeUnsubscribe) {
@@ -262,6 +265,21 @@
         applyFiltersAndRender() {
             let filtered = [...this.approvals];
 
+            // ✅ Filter by "today" if selected
+            if (this.currentFilter === 'today') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                filtered = filtered.filter(approval => {
+                    const approvalDate = approval.createdAt?.toDate?.() || approval.requestedAt?.toDate?.();
+                    if (!approvalDate) {
+return false;
+}
+                    const checkDate = new Date(approvalDate);
+                    checkDate.setHours(0, 0, 0, 0);
+                    return checkDate.getTime() === today.getTime();
+                });
+            }
+
             // Search filter
             if (this.searchTerm) {
                 const term = this.searchTerm.toLowerCase();
@@ -292,8 +310,8 @@
         renderApprovals() {
             const bodyEl = this.panel.querySelector('#approvalPanelBody');
             if (!bodyEl) {
-return;
-}
+                return;
+            }
 
             // Update count badge
             const countBadge = this.panel.querySelector('#approvalCountPanelBadge');
@@ -306,14 +324,19 @@ return;
                 bodyEl.innerHTML = `
                     <div class="approval-panel-empty">
                         <i class="fas fa-inbox"></i>
-                        <p>אין בקשות אישור ${this.currentFilter === 'pending' ? 'ממתינות' : ''}</p>
+                        <p>אין משימות ${this.getFilterEmptyText()}</p>
                     </div>
                 `;
                 return;
             }
 
+            // ✅ Apply pagination - show only first N items
+            const displayLimit = this.itemsPerPage;
+            const displayedApprovals = this.filteredApprovals.slice(0, displayLimit);
+            const hasMore = this.filteredApprovals.length > displayLimit;
+
             // Group by user
-            const groupedByUser = this.filteredApprovals.reduce((groups, approval) => {
+            const groupedByUser = displayedApprovals.reduce((groups, approval) => {
                 const user = approval.requestedBy;
                 if (!groups[user]) {
                     groups[user] = {
@@ -327,7 +350,7 @@ return;
             }, {});
 
             // Render groups
-            bodyEl.innerHTML = Object.values(groupedByUser).map(userGroup => `
+            let html = Object.values(groupedByUser).map(userGroup => `
                 <div class="approval-user-group">
                     <div class="approval-user-header">
                         <div class="approval-user-info">
@@ -346,8 +369,55 @@ return;
                 </div>
             `).join('');
 
+            // ✅ Add "Load More" button if there are more items
+            if (hasMore) {
+                const remainingCount = this.filteredApprovals.length - displayLimit;
+                html += `
+                    <div class="approval-load-more-container">
+                        <button class="approval-load-more-btn" id="approvalLoadMoreBtn">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>טען עוד ${Math.min(this.loadMoreIncrement, remainingCount)} משימות</span>
+                            <span class="approval-remaining-count">(נותרו ${remainingCount})</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            bodyEl.innerHTML = html;
+
             // Attach click handlers
             this.attachApprovalClickHandlers();
+
+            // ✅ Attach load more handler
+            const loadMoreBtn = bodyEl.querySelector('#approvalLoadMoreBtn');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', () => this.loadMore());
+            }
+        }
+
+        /**
+         * Load more items
+         * טען עוד פריטים
+         */
+        loadMore() {
+            this.itemsPerPage += this.loadMoreIncrement;
+            this.renderApprovals();
+        }
+
+        /**
+         * Get empty state text based on filter
+         * קבלת טקסט מצב ריק לפי פילטר
+         */
+        getFilterEmptyText() {
+            switch (this.currentFilter) {
+                case 'auto_approved':
+                    return 'שאושרו אוטומטית';
+                case 'today':
+                    return 'מהיום';
+                case 'all':
+                default:
+                    return '';
+            }
         }
 
         /**

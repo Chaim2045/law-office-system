@@ -778,12 +778,6 @@ return true;
          * רינדור שורות שעתון עם יתרה רצה
          */
         renderTimesheetRows(timesheetEntries, client, formData) {
-            // DEBUG: Log first entry to see what fields we have
-            if (timesheetEntries.length > 0) {
-                console.log('🔍 DEBUG: First timesheet entry:', timesheetEntries[0]);
-                console.log('🔍 DEBUG: Entry keys:', Object.keys(timesheetEntries[0]));
-            }
-
             // Sort entries by date (oldest first)
             const sortedEntries = [...timesheetEntries].sort((a, b) => {
                 const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
@@ -875,7 +869,7 @@ return true;
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.description || '-'}</td>
+                        <td>${entry.action || entry.description || '-'}</td>
                         <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
                         <td class="highlight">${minutes}</td>
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td>${accumulatedMinutes}</td>` : ''}
@@ -1001,7 +995,7 @@ return true;
             csv += 'פירוט שעות:\n';
             csv += 'תאריך,חבר צוות,שירות,זמן (דקות),תיאור\n';
             timesheetEntries.forEach(entry => {
-                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.description || ''}"\n`;
+                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.action || entry.description || ''}"\n`;
             });
             csv += '\n';
 
