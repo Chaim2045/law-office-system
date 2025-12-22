@@ -439,6 +439,12 @@ return false;
                 this.lastDocument = result.lastDocument;
                 this.hasMoreData = result.hasMore;
 
+                // ✅ Update realtime listener to match new loaded count
+                if (this.realtimeUnsubscribe) {
+                    this.realtimeUnsubscribe();
+                }
+                this.startRealtimeListener();
+
                 this.applyFiltersAndRender();
             } catch (error) {
                 console.error('❌ Error loading more approvals:', error);
@@ -546,8 +552,8 @@ return false;
         }
 
         /**
-         * Start realtime listener
-         * התחל מאזין בזמן אמת
+         * Start realtime listener (with dynamic limit based on loaded data)
+         * התחל מאזין בזמן אמת (עם limit דינמי לפי הנתונים שנטענו)
          */
         startRealtimeListener() {
             if (!this.taskApprovalService) {
@@ -561,13 +567,22 @@ return false;
                 this.taskApprovalService.init(window.firebaseDB, currentUser);
             }
 
+            // ✅ Calculate dynamic limit based on currently loaded approvals
+            // Listen to AT LEAST what we already loaded, or initialLimit if nothing loaded yet
+            const currentLoadedCount = this.approvals.length || this.initialLimit;
+
             this.realtimeUnsubscribe = this.taskApprovalService.listenToAllApprovals(
                 (approvals) => {
-                    console.log(`🔥 Real-time update: ${approvals.length} approvals`);
-                    this.approvals = approvals;
-                    this.applyFiltersAndRender();
+                    console.log(`🔥 Real-time update: ${approvals.length} approvals (limit: ${currentLoadedCount})`);
+
+                    // ✅ Only update if we got meaningful data
+                    if (approvals.length > 0 || this.approvals.length === 0) {
+                        this.approvals = approvals;
+                        this.applyFiltersAndRender();
+                    }
                 },
-                this.currentFilter
+                this.currentFilter,
+                currentLoadedCount // ✅ Pass dynamic limit
             );
         }
 
