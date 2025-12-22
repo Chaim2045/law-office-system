@@ -1804,6 +1804,9 @@ plusButton.classList.remove('active');
       // Show loading state
       this.showNotification('טוען רשומות נוספות...', 'info');
 
+      // Store old count BEFORE loading new entries
+      const oldCount = this.timesheetEntries.length;
+
       // ✅ Load 20 MORE from Firebase (not all!)
       const newEntries = await this.integrationManager.loadMoreTimesheet(
         this.currentUser,
@@ -1814,7 +1817,8 @@ plusButton.classList.remove('active');
       this.timesheetEntries = newEntries;
       this.filterTimesheetEntries();
 
-      const addedCount = newEntries.length - this.timesheetEntries.length;
+      // Calculate how many were actually added
+      const addedCount = newEntries.length - oldCount;
       this.showNotification(
         addedCount > 0
           ? `נטענו ${addedCount} רשומות נוספות`
