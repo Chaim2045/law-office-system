@@ -869,7 +869,7 @@ return true;
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.action || entry.description || '-'}</td>
+                        <td>${entry.action || entry.taskDescription || entry.description || '-'}</td>
                         <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
                         <td class="highlight">${minutes}</td>
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td>${accumulatedMinutes}</td>` : ''}
@@ -995,7 +995,7 @@ return true;
             csv += 'פירוט שעות:\n';
             csv += 'תאריך,חבר צוות,שירות,זמן (דקות),תיאור\n';
             timesheetEntries.forEach(entry => {
-                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.action || entry.description || ''}"\n`;
+                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.action || entry.taskDescription || entry.description || ''}"\n`;
             });
             csv += '\n';
 
