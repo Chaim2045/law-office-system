@@ -257,9 +257,15 @@
                 this.lastDocument = null;
                 this.hasMoreData = true;
 
+                // ✅ Map client-side filters to Firestore filters
+                // 'today' and 'auto_approved' are client-side only, so fetch 'all'
+                const firestoreFilter = ['today', 'auto_approved'].includes(this.currentFilter)
+                    ? 'all'
+                    : this.currentFilter;
+
                 // ✅ Fetch initial batch (5 items)
                 const result = await this.taskApprovalService.getApprovalsByStatus(
-                    this.currentFilter,
+                    firestoreFilter,
                     this.initialLimit,
                     null
                 );
@@ -426,9 +432,14 @@
             try {
                 console.log('📥 Loading more approvals...');
 
+                // ✅ Map client-side filters to Firestore filters
+                const firestoreFilter = ['today', 'auto_approved'].includes(this.currentFilter)
+                    ? 'all'
+                    : this.currentFilter;
+
                 // ✅ Fetch next batch (10 items) using cursor
                 const result = await this.taskApprovalService.getApprovalsByStatus(
-                    this.currentFilter,
+                    firestoreFilter,
                     this.loadMoreIncrement,
                     this.lastDocument
                 );
@@ -572,6 +583,11 @@
             // Listen to AT LEAST what we already loaded, or initialLimit if nothing loaded yet
             const currentLoadedCount = this.approvals.length || this.initialLimit;
 
+            // ✅ Map client-side filters to Firestore filters
+            const firestoreFilter = ['today', 'auto_approved'].includes(this.currentFilter)
+                ? 'all'
+                : this.currentFilter;
+
             this.realtimeUnsubscribe = this.taskApprovalService.listenToAllApprovals(
                 (approvals) => {
                     console.log(`🔥 Real-time update: ${approvals.length} approvals (limit: ${currentLoadedCount})`);
@@ -582,7 +598,7 @@
                         this.applyFiltersAndRender();
                     }
                 },
-                this.currentFilter,
+                firestoreFilter,
                 currentLoadedCount // ✅ Pass dynamic limit
             );
         }
