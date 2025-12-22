@@ -830,8 +830,11 @@ return;
             const hasOverage = parseFloat(serviceInfo.usedHours) > parseFloat(serviceInfo.totalHours);
             const overageText = hasOverage ? ' ⚠️ חריגה' : '';
 
-            if (serviceInfo.type === 'legal_procedure') {
-                // For legal procedures, show stage-specific hours
+            if (isFixedPrice) {
+                // 🎯 Fixed Price: Show ONLY hours worked, NO total, NO overdraft warning
+                hoursText.textContent = `עבדו ${serviceInfo.usedHours} שעות`;
+            } else if (serviceInfo.type === 'legal_procedure') {
+                // For legal procedures with hourly pricing, show stage-specific hours
                 if (serviceInfo.totalHours > 0) {
                     hoursText.textContent = `${serviceInfo.usedHours} מתוך ${serviceInfo.totalHours} שעות בשלב${overageText}`;
                 } else {
@@ -846,8 +849,8 @@ return;
                 }
             }
 
-            // 🔥 Change color if overage
-            if (hasOverage) {
+            // 🔥 Change color if overage (but NOT for Fixed Price)
+            if (hasOverage && !isFixedPrice) {
                 hoursLeft.style.color = '#ef4444'; // Red
             }
 
@@ -859,8 +862,38 @@ return;
             percentText.textContent = serviceInfo.totalHours > 0 ? `${progressPercent}%` : '';
 
             infoContainer.appendChild(hoursLeft);
-            if (serviceInfo.totalHours > 0) {
+            // Show percentage ONLY for Hourly/Legal Procedure services, NOT for Fixed Price
+            if (serviceInfo.totalHours > 0 && !isFixedPrice) {
                 infoContainer.appendChild(percentText);
+            }
+
+            // 🎯 Overdraft Warning Box - ONLY for Hourly/Legal Procedure with negative hours
+            const overdraftWarning = document.createElement('div');
+            if (!isFixedPrice && hasOverage && serviceInfo.totalHours > 0) {
+                const overdraftAmount = (parseFloat(serviceInfo.usedHours) - parseFloat(serviceInfo.totalHours)).toFixed(1);
+                overdraftWarning.style.cssText = `
+                    background: rgba(239, 68, 68, 0.1);
+                    border: 1px solid rgba(239, 68, 68, 0.3);
+                    border-radius: 6px;
+                    padding: 0.5rem 0.75rem;
+                    margin-top: 0.6rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                `;
+
+                const warningIcon = document.createElement('i');
+                warningIcon.className = 'fas fa-exclamation-triangle';
+                warningIcon.style.cssText = 'color: #ef4444; font-size: 0.85rem;';
+
+                const warningText = document.createElement('span');
+                warningText.style.cssText = 'color: #dc2626; font-size: 0.75rem; font-weight: 600;';
+                warningText.textContent = `חריגה: +${overdraftAmount} שעות מעבר לתקציב`;
+
+                overdraftWarning.appendChild(warningIcon);
+                overdraftWarning.appendChild(warningText);
+            } else {
+                overdraftWarning.style.display = 'none';
             }
 
             // Selected indicator - minimal checkmark
@@ -885,6 +918,7 @@ return;
             cardInner.appendChild(header);
             cardInner.appendChild(progressContainer);
             cardInner.appendChild(infoContainer);
+            cardInner.appendChild(overdraftWarning); // Add overdraft warning box
             card.appendChild(cardInner);
             card.appendChild(selectedBadge);
 
