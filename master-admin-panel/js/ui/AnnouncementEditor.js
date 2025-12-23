@@ -242,14 +242,14 @@ return;
                                                 כמה פעמים להציג? <span class="required">*</span>
                                             </label>
                                             <select id="displayStyleRepeat" class="form-select">
-                                                <option value="1">📄 פעם אחת בלבד</option>
-                                                <option value="3" selected>🔄 3 חזרות (מומלץ להודעות בינוניות)</option>
-                                                <option value="5">🔄 5 חזרות (מומלץ להודעות קצרות)</option>
+                                                <option value="2">📄 פעמיים (הודעות ארוכות)</option>
+                                                <option value="3" selected>🔄 3 חזרות (הודעות בינוניות)</option>
+                                                <option value="5">🔄 5 חזרות (הודעות קצרות)</option>
                                             </select>
                                             <div class="form-hint">
                                                 <strong>טיפ:</strong> הודעות קצרות (עד 40 תווים) → 5 חזרות |
                                                 בינוניות (40-100) → 3 חזרות |
-                                                ארוכות (100+) → פעם אחת
+                                                ארוכות (100+) → פעמיים (מינימום לאנימציה חלקה)
                                             </div>
                                         </div>
 

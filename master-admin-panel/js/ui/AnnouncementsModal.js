@@ -386,7 +386,7 @@ return;
             this.editor.open(announcement, {
                 onSave: async (updatedAnnouncement, mode) => {
                     try {
-                        await this.service.update(id, updatedAnnouncement);
+                        await this.service.update(id, updatedAnnouncement.toFirestore());
                         await this.loadAnnouncements();
                         this.showNotification('ההודעה עודכנה בהצלחה', 'success');
                     } catch (error) {
