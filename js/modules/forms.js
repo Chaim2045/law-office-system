@@ -162,22 +162,24 @@ export function showEditTimesheetDialog(manager, entryId) {
         </div>
 
         <form id="editTimesheetForm">
-          <div class="form-group">
-            <label for="editDate">
-              תאריך <span class="required">*</span>
-              <span class="badge-date today" id="editDateBadge" style="margin-right: 8px;">
-                <i class="fas fa-calendar-day"></i> היום
-              </span>
-            </label>
-            <input type="date" id="editDate" value="${entryDateForInput}" required>
-          </div>
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+              <label for="editDate">
+                תאריך <span class="required">*</span>
+                <span class="badge-date today" id="editDateBadge" style="margin-right: 8px;">
+                  <i class="fas fa-calendar-day"></i> היום
+                </span>
+              </label>
+              <input type="date" id="editDate" value="${entryDateForInput}" required>
+            </div>
 
-          <div class="form-group">
-            <label for="editMinutes">
-              זמן (דקות) <span class="required">*</span>
-              <span class="hint-text"><i class="fas fa-lightbulb"></i> 1 שעה = 60 דקות</span>
-            </label>
-            <input type="number" id="editMinutes" min="1" max="99999" value="${entry.minutes}" placeholder="60" required>
+            <div class="form-group">
+              <label for="editMinutes">
+                זמן (דקות) <span class="required">*</span>
+                <span class="hint-text"><i class="fas fa-lightbulb"></i> 1 שעה = 60 דקות</span>
+              </label>
+              <input type="number" id="editMinutes" min="1" max="99999" value="${entry.minutes}" placeholder="60" required>
+            </div>
           </div>
 
           <div class="form-group">
