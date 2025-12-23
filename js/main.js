@@ -1720,7 +1720,11 @@ existingError.remove();
       errorMsg.style.fontSize = '13px';
       errorMsg.style.marginTop = '6px';
       errorMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-      field.parentElement.appendChild(errorMsg);
+
+      // ✅ FIX: Add null safety check before appendChild
+      if (field.parentElement) {
+        field.parentElement.appendChild(errorMsg);
+      }
 
       // Focus on the field
       field.focus();
@@ -1729,19 +1733,22 @@ existingError.remove();
       this.showNotification(message, 'error');
     };
 
+    // ✅ Use NotificationMessages for validation (Single Source of Truth)
+    const validationMsgs = window.NotificationMessages.timesheet.validation;
+
     // Validation with visual feedback
     if (!newDate) {
-      showFieldError('editDate', 'חובה לבחור תאריך');
+      showFieldError('editDate', validationMsgs.noDate());
       return;
     }
 
     if (!newMinutes || newMinutes < 1) {
-      showFieldError('editMinutes', 'חובה להזין זמן בדקות (מינימום 1)');
+      showFieldError('editMinutes', validationMsgs.noMinutes());
       return;
     }
 
     if (!editReason || editReason.length < 5) {
-      showFieldError('editReason', 'חובה להזין סיבת עריכה (לפחות 5 תווים)');
+      showFieldError('editReason', validationMsgs.noEditReason());
       return;
     }
 
