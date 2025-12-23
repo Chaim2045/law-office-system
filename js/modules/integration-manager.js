@@ -19,6 +19,7 @@
   const FEATURE_CONFIG = {
     USE_FIREBASE_PAGINATION: true, // ✅ מופעל - Keyset Pagination
     PAGINATION_PAGE_SIZE: 20,
+    USE_REAL_TIME_TIMESHEET: false, // ✅ מושבת - Real-Time דורס Pagination
     SKELETON_DELAY_MS: 800,
     ENABLE_SCROLL_PRESERVATION: true,
     DEBUG_MODE: false // מצב פרודקשן - ללא הדפסות

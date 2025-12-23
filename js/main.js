@@ -876,27 +876,31 @@ return false;
         }
       );
 
-      // ✅ Real-time listener for timesheet
-      Timesheet.startRealTimeTimesheet(
-        this.currentUser,
-        (entries) => {
-          Logger.log(`📡 Timesheet updated: ${entries.length} entries`);
+      // ✅ Real-time listener for timesheet (conditionally)
+      if (this.integrationManager?.config?.USE_REAL_TIME_TIMESHEET !== false) {
+        Timesheet.startRealTimeTimesheet(
+          this.currentUser,
+          (entries) => {
+            Logger.log(`📡 Timesheet updated: ${entries.length} entries`);
 
-          // Invalidate cache
-          this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
+            // Invalidate cache
+            this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
 
-          // Update local data
-          this.timesheetEntries = entries;
-          window.timesheetEntries = entries;
+            // Update local data
+            this.timesheetEntries = entries;
+            window.timesheetEntries = entries;
 
-          // Re-filter and render
-          this.filterTimesheetEntries();
-          this.renderTimesheetView(); // ✅ Fixed: was renderTimesheet()
-        },
-        (error) => {
-          console.error('❌ Timesheet listener error:', error);
-        }
-      );
+            // Re-filter and render
+            this.filterTimesheetEntries();
+            this.renderTimesheetView(); // ✅ Fixed: was renderTimesheet()
+          },
+          (error) => {
+            console.error('❌ Timesheet listener error:', error);
+          }
+        );
+      } else {
+        Logger.log('⚠️ Real-Time timesheet listener disabled (pagination mode)');
+      }
 
       Logger.log('✅ Real-time listeners started');
     } catch (error) {
