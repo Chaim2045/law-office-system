@@ -171,6 +171,7 @@ return false;
     /**
      * הקמת listener לעדכונים בזמן אמת
      * 🛡️ עם Authentication Guard
+     * 🎯 מסנן רק תיקים מהשנה הנוכחית (למניעת התערבות תיקים פנימיים)
      */
     setupRealtimeListener() {
       // 🛡️ Authentication Guard
@@ -179,10 +180,15 @@ return false;
         return;
       }
 
-      // מאזין רק ליצירת לקוחות חדשים
+      // 🎯 Get current year for filtering (same as updateLastCaseNumber)
+      const currentYear = new Date().getFullYear();
+
+      // מאזין רק ליצירת לקוחות חדשים מהשנה הנוכחית
       this.updateListener = window.firebaseDB
         .collection('clients')
-        .orderBy('createdAt', 'desc')
+        .where('caseNumber', '>=', `${currentYear}000`)
+        .where('caseNumber', '<=', `${currentYear}999`)
+        .orderBy('caseNumber', 'desc')
         .limit(1)
         .onSnapshot(
           (snapshot) => {
