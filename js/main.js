@@ -876,27 +876,31 @@ return false;
         }
       );
 
-      // ✅ Real-time listener for timesheet
-      Timesheet.startRealTimeTimesheet(
-        this.currentUser,
-        (entries) => {
-          Logger.log(`📡 Timesheet updated: ${entries.length} entries`);
+      // ✅ Real-time listener for timesheet (conditionally)
+      if (this.integrationManager?.config?.USE_REAL_TIME_TIMESHEET !== false) {
+        Timesheet.startRealTimeTimesheet(
+          this.currentUser,
+          (entries) => {
+            Logger.log(`📡 Timesheet updated: ${entries.length} entries`);
 
-          // Invalidate cache
-          this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
+            // Invalidate cache
+            this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
 
-          // Update local data
-          this.timesheetEntries = entries;
-          window.timesheetEntries = entries;
+            // Update local data
+            this.timesheetEntries = entries;
+            window.timesheetEntries = entries;
 
-          // Re-filter and render
-          this.filterTimesheetEntries();
-          this.renderTimesheetView(); // ✅ Fixed: was renderTimesheet()
-        },
-        (error) => {
-          console.error('❌ Timesheet listener error:', error);
-        }
-      );
+            // Re-filter and render
+            this.filterTimesheetEntries();
+            this.renderTimesheetView(); // ✅ Fixed: was renderTimesheet()
+          },
+          (error) => {
+            console.error('❌ Timesheet listener error:', error);
+          }
+        );
+      } else {
+        Logger.log('⚠️ Real-Time timesheet listener disabled (pagination mode)');
+      }
 
       Logger.log('✅ Real-time listeners started');
     } catch (error) {
@@ -1602,9 +1606,10 @@ plusButton.classList.remove('active');
     const paginationStatus = {
       currentPage: this.currentTimesheetPage,
       totalPages: Math.ceil(this.filteredTimesheetEntries.length / 20),
-      hasMore: false,
+      hasMore: this.integrationManager?.firebasePagination?.hasMore?.timesheet_entries || false,
       displayedItems: this.filteredTimesheetEntries.length,
-      filteredItems: this.filteredTimesheetEntries.length
+      filteredItems: this.filteredTimesheetEntries.length,
+      pageSize: this.integrationManager?.config?.PAGINATION_PAGE_SIZE || 20
     };
 
     // Find the parent div that contains timesheetContainer and timesheetTableContainer
@@ -1665,6 +1670,170 @@ plusButton.classList.remove('active');
 
   selectClientForEdit(clientName, fileNumber) {
     Forms.selectClientForEdit(this, clientName, fileNumber);
+  }
+
+  /**
+   * Submit Advanced Timesheet Edit
+   * עדכון רשומת שעתון עם מעקב אחר היסטוריית עריכה
+   * @param {string} entryId - מזהה רשומת שעתון
+   */
+  async submitAdvancedTimesheetEdit(entryId) {
+    // Find the entry
+    const entry = this.timesheetEntries.find(
+      (e) =>
+        (e.id && e.id.toString() === entryId.toString()) ||
+        (e.entryId && e.entryId.toString() === entryId.toString())
+    );
+
+    if (!entry) {
+      this.showNotification('רשומת שעתון לא נמצאה', 'error');
+      return;
+    }
+
+    // Get form values
+    const newDate = document.getElementById('editDate')?.value;
+    const newMinutes = parseInt(document.getElementById('editMinutes')?.value);
+    const editReason = document.getElementById('editReason')?.value?.trim();
+
+    // Validation
+    if (!newDate) {
+      this.showNotification('חובה לבחור תאריך', 'error');
+      return;
+    }
+
+    if (!newMinutes || newMinutes < 1) {
+      this.showNotification('חובה להזין זמן בדקות (מינימום 1)', 'error');
+      return;
+    }
+
+    if (!editReason || editReason.length < 5) {
+      this.showNotification('חובה להזין סיבת עריכה (לפחות 5 תווים)', 'error');
+      return;
+    }
+
+    // Calculate changes
+    const oldMinutes = entry.minutes;
+    const minutesDiff = newMinutes - oldMinutes;
+
+    // Use ActionFlowManager for consistent UX
+    const msgs = window.NotificationMessages.timesheet;
+
+    await ActionFlowManager.execute({
+      ...msgs.loading.updating(),
+      action: async () => {
+        // Prepare edit history entry
+        const editHistoryEntry = {
+          editedAt: new Date().toISOString(),
+          editedBy: this.currentUsername || this.currentUser,
+          reason: editReason,
+          changes: {
+            oldDate: entry.date,
+            newDate: newDate,
+            oldMinutes: oldMinutes,
+            newMinutes: newMinutes
+          }
+        };
+
+        // Prepare update data
+        const updateData = {
+          entryId: entry.id || entry.entryId,
+          date: newDate,
+          minutes: newMinutes,
+          editHistory: entry.editHistory ? [...entry.editHistory, editHistoryEntry] : [editHistoryEntry],
+          isInternal: entry.isInternal || false,
+          autoGenerated: entry.autoGenerated || false,
+          taskId: entry.taskId || null,
+          clientId: entry.clientId || null,
+          serviceId: entry.serviceId || null,
+          minutesDiff: minutesDiff
+        };
+
+        Logger.log('📝 Updating timesheet entry:', updateData);
+
+        // Call Firebase Function to update entry
+        const result = await window.FirebaseService.call('updateTimesheetEntry', updateData, {
+          retries: 3,
+          timeout: 15000
+        });
+
+        if (!result.success) {
+          throw new Error(result.error || 'שגיאה בעדכון רשומת שעתון');
+        }
+
+        // Invalidate cache to force fresh data on next load
+        this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
+
+        // Reload entries with cache (will fetch fresh because invalidated)
+        this.timesheetEntries = await this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
+          this.integrationManager?.loadTimesheet(this.currentUser)
+            || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
+        );
+        this.filterTimesheetEntries();
+
+        // Emit EventBus event
+        window.EventBus.emit('timesheet:entry-updated', {
+          entryId: updateData.entryId,
+          oldDate: entry.date,
+          newDate: newDate,
+          oldMinutes: oldMinutes,
+          newMinutes: newMinutes,
+          minutesDiff: minutesDiff,
+          employee: this.currentUser,
+          editReason: editReason
+        });
+        Logger.log('  🚀 [v2.0] EventBus: timesheet:entry-updated emitted');
+      },
+      successMessage: msgs.success.updated(newMinutes),
+      errorMessage: msgs.error.updateFailed,
+      onSuccess: () => {
+        // Close dialog
+        const overlay = document.querySelector('.popup-overlay');
+        if (overlay) {
+          overlay.remove();
+        }
+      }
+    });
+  }
+
+  /**
+   * טעינת רשומות שעתון נוספות (פגינציה)
+   * Load more timesheet entries from Firebase
+   */
+  async loadMoreTimesheetEntries() {
+    if (!this.integrationManager) {
+      this.showNotification('מנהל אינטגרציה לא זמין', 'error');
+      return;
+    }
+
+    try {
+      // Show loading state
+      this.showNotification('טוען רשומות נוספות...', 'info');
+
+      // Store old count BEFORE loading new entries
+      const oldCount = this.timesheetEntries.length;
+
+      // ✅ Load 20 MORE from Firebase (not all!)
+      const newEntries = await this.integrationManager.loadMoreTimesheet(
+        this.currentUser,
+        this.timesheetEntries
+      );
+
+      // Update local data
+      this.timesheetEntries = newEntries;
+      this.filterTimesheetEntries();
+
+      // Calculate how many were actually added
+      const addedCount = newEntries.length - oldCount;
+      this.showNotification(
+        addedCount > 0
+          ? `נטענו ${addedCount} רשומות נוספות`
+          : 'אין רשומות נוספות',
+        addedCount > 0 ? 'success' : 'info'
+      );
+    } catch (error) {
+      console.error('❌ Error loading more timesheet:', error);
+      this.showNotification('שגיאה בטעינת רשומות נוספות', 'error');
+    }
   }
 
   /* ========================================
