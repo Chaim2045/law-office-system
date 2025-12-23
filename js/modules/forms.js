@@ -114,7 +114,7 @@ export function showValidationErrors(manager, errors) {
 }
 
 /**
- * דיאלוג עריכת שעתון מורחב
+ * דיאלוג עריכת שעתון מורחב - Linear Style
  * @param {Object} manager - אובייקט Manager
  * @param {string} entryId - מזהה רשומת שעתון
  */
@@ -144,104 +144,63 @@ export function showEditTimesheetDialog(manager, entryId) {
   overlay.className = 'popup-overlay';
 
   overlay.innerHTML = `
-    <div class="popup edit-timesheet-popup" style="max-width: 600px;">
+    <div class="popup edit-timesheet-popup" style="max-width: 500px;">
+      <button class="popup-close-btn" onclick="this.closest('.popup-overlay').remove()" aria-label="סגור">
+        <i class="fas fa-times"></i>
+      </button>
       <div class="popup-header">
         <i class="fas fa-edit"></i>
         ערוך רשומת שעתון
       </div>
       <div class="popup-content">
-        <div class="task-overview">
-          <h3>
-            <i class="fas fa-info-circle"></i>
-            רשומה מקורית
-          </h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 13px; color: #6b7280; background: #f9fafb; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-            <p><strong>תאריך מקורי:</strong> ${formatDate(entry.date)}</p>
-            <p><strong>לקוח מקורי:</strong> ${safeText(entry.clientName)}</p>
-            <p><strong>זמן מקורי:</strong> ${entry.minutes} דקות</p>
-            <p><strong>פעולה:</strong> ${safeText(entry.action)}</p>
+        <!-- Original Entry - Compact -->
+        <div style="background: rgba(59, 130, 246, 0.05); padding: 12px 16px; border-radius: 8px; border-right: 3px solid #3b82f6; margin-bottom: 20px;">
+          <div style="font-size: 13px; color: #6b7280;">
+            <strong style="color: #1f2937;">מקורי:</strong>
+            ${formatDate(entry.date)} • ${safeText(entry.clientName)} • ${entry.minutes} דקות
           </div>
         </div>
 
         <form id="editTimesheetForm">
-          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div class="form-group">
-              <label for="editDate">תאריך <span class="required">*</span></label>
-              <input
-                type="date"
-                id="editDate"
-                value="${entryDateForInput}"
-                required
-                style="
-                  width: 100%;
-                  padding: 10px 12px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 14px;
-                  transition: all 0.2s ease;
-                "
-              >
-            </div>
+          <div class="form-group">
+            <label for="editDate">
+              תאריך <span class="required">*</span>
+              <span class="badge-date today" id="editDateBadge" style="margin-right: 8px;">
+                <i class="fas fa-calendar-day"></i> היום
+              </span>
+            </label>
+            <input type="date" id="editDate" value="${entryDateForInput}" required>
+          </div>
 
-            <div class="form-group">
-              <label for="editMinutes">זמן (דקות) <span class="required">*</span></label>
-              <input
-                type="number"
-                id="editMinutes"
-                min="1"
-                max="99999"
-                value="${entry.minutes}"
-                required
-                placeholder="60"
-                style="
-                  width: 100%;
-                  padding: 10px 12px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 16px;
-                  font-weight: 600;
-                  text-align: center;
-                  transition: all 0.2s ease;
-                "
-              >
-            </div>
+          <div class="form-group">
+            <label for="editMinutes">
+              זמן (דקות) <span class="required">*</span>
+              <span class="hint-text"><i class="fas fa-lightbulb"></i> 1 שעה = 60 דקות</span>
+            </label>
+            <input type="number" id="editMinutes" min="1" max="99999" value="${entry.minutes}" placeholder="60" required>
           </div>
 
           <div class="form-group">
             <label for="editClientName">שם לקוח <span class="required">*</span></label>
-            <div class="modern-client-search">
-              <input
-                type="text"
-                class="search-input"
-                id="editClientSearch"
-                placeholder="לא ניתן לשנות שם לקוח"
-                value="${safeText(entry.clientName)}"
-                autocomplete="off"
-                disabled
-                readonly
-                style="
-                  width: 100%;
-                  padding: 12px 16px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 14px;
-                  font-weight: 500;
-                  transition: all 0.2s ease;
-                  background: #f3f4f6;
-                  cursor: not-allowed;
-                  color: #6b7280;
-                "
-              />
-              <input
-                type="hidden"
-                id="editClientSelect"
-                value="${safeText(entry.clientName)}"
-                required
-              />
-            </div>
-            <small class="form-help" style="color: #6b7280;">
-              <i class="fas fa-lock"></i>
-              שם הלקוח לא ניתן לשינוי - ניתן לערוך רק תאריך וזמן
+            <input
+              type="text"
+              id="editClientSearch"
+              value="${safeText(entry.clientName)}"
+              disabled
+              readonly
+              style="
+                width: 100%;
+                padding: 10px 12px;
+                border: 2px solid #e1e5e9;
+                border-radius: 8px;
+                font-size: 14px;
+                background: #f9fafb;
+                cursor: not-allowed;
+                color: #6b7280;
+              "
+            />
+            <small class="form-help" style="color: #9ca3af; font-size: 12px;">
+              <i class="fas fa-lock"></i> לא ניתן לשינוי
             </small>
           </div>
 
@@ -250,27 +209,17 @@ export function showEditTimesheetDialog(manager, entryId) {
             <textarea
               id="editReason"
               rows="3"
-              placeholder="הסבר מדוע אתה משנה את הפרטים (חובה למעקב)"
+              placeholder="הסבר מדוע אתה משנה את הפרטים..."
               required
-              style="
-                width: 100%;
-                padding: 10px 12px;
-                border: 2px solid #e1e5e9;
-                border-radius: 8px;
-                font-size: 14px;
-                resize: vertical;
-                transition: all 0.2s ease;
-              "
             ></textarea>
-            <small class="form-help">
-              <i class="fas fa-exclamation-circle"></i>
-              סיבת העריכה נדרשת למעקב ובקרה
+            <small class="form-help" style="color: #9ca3af; font-size: 12px;">
+              <i class="fas fa-info-circle"></i> נדרש למעקב
             </small>
           </div>
         </form>
       </div>
       <div class="popup-buttons">
-        <button class="popup-btn popup-btn-confirm" onclick="manager.submitAdvancedTimesheetEdit('${entryId}')" style="min-width: 140px;">
+        <button class="popup-btn popup-btn-confirm" onclick="manager.submitAdvancedTimesheetEdit('${entryId}')">
           <i class="fas fa-save"></i> שמור שינויים
         </button>
         <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
@@ -285,9 +234,62 @@ export function showEditTimesheetDialog(manager, entryId) {
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
   setTimeout(() => overlay.classList.add('show'), 10);
 
-  // הוספת עיצוב focus למקומות שנערכים
+  // ✅ Dynamic Date Badge - Updates based on selected date
+  window.updateEditDateBadge = function() {
+    const dateInput = document.getElementById('editDate');
+    const badge = document.getElementById('editDateBadge');
+    if (!dateInput || !badge) {
+return;
+}
+
+    const selectedDate = new Date(dateInput.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.floor((today - selectedDate) / (1000 * 60 * 60 * 24));
+
+    // Reset classes
+    badge.className = 'badge-date';
+
+    if (diffDays === 0) {
+      badge.classList.add('today');
+      badge.innerHTML = '<i class="fas fa-calendar-day"></i> היום';
+    } else if (diffDays === 1) {
+      badge.classList.add('yesterday');
+      badge.innerHTML = '<i class="fas fa-calendar-minus"></i> אתמול';
+    } else if (diffDays === 2) {
+      badge.classList.add('yesterday');
+      badge.innerHTML = '<i class="fas fa-calendar-alt"></i> שלשום';
+    } else if (diffDays > 2 && diffDays <= 7) {
+      badge.classList.add('past');
+      badge.innerHTML = `<i class="fas fa-calendar-times"></i> לפני ${diffDays} ימים`;
+    } else if (diffDays > 7) {
+      badge.classList.add('old');
+      badge.innerHTML = `<i class="fas fa-exclamation-triangle"></i> לפני ${diffDays} ימים`;
+    } else if (diffDays === -1) {
+      badge.classList.add('tomorrow');
+      badge.innerHTML = '<i class="fas fa-calendar-plus"></i> מחר';
+    } else if (diffDays < -1) {
+      badge.classList.add('future');
+      badge.innerHTML = `<i class="fas fa-calendar-plus"></i> בעוד ${Math.abs(diffDays)} ימים`;
+    }
+  };
+
+  // Add event listeners
   setTimeout(() => {
-    const editInputs = overlay.querySelectorAll('input, textarea');
+    const dateInput = document.getElementById('editDate');
+    const minutesInput = document.getElementById('editMinutes');
+    const reasonField = document.getElementById('editReason');
+
+    // Date badge update
+    if (dateInput) {
+      dateInput.addEventListener('change', window.updateEditDateBadge);
+      window.updateEditDateBadge(); // Initial update
+    }
+
+    // Blue focus states
+    const editInputs = overlay.querySelectorAll('input:not([disabled]), textarea');
     editInputs.forEach((input) => {
       input.addEventListener('focus', function () {
         this.style.borderColor = '#3b82f6';
@@ -300,8 +302,47 @@ export function showEditTimesheetDialog(manager, entryId) {
       });
     });
 
-    // פוקוס על שדה הזמן
-    const minutesInput = document.getElementById('editMinutes');
+    // Clear error on input (for validation feedback)
+    if (reasonField) {
+      reasonField.addEventListener('input', () => {
+        reasonField.classList.remove('error');
+        reasonField.style.borderColor = '#e1e5e9';
+        reasonField.style.boxShadow = 'none';
+
+        const errorMsg = reasonField.parentElement?.querySelector('.error-message');
+        if (errorMsg) {
+errorMsg.remove();
+}
+      });
+    }
+
+    if (dateInput) {
+      dateInput.addEventListener('input', () => {
+        dateInput.classList.remove('error');
+        dateInput.style.borderColor = '#e1e5e9';
+        dateInput.style.boxShadow = 'none';
+
+        const errorMsg = dateInput.parentElement?.querySelector('.error-message');
+        if (errorMsg) {
+errorMsg.remove();
+}
+      });
+    }
+
+    if (minutesInput) {
+      minutesInput.addEventListener('input', () => {
+        minutesInput.classList.remove('error');
+        minutesInput.style.borderColor = '#e1e5e9';
+        minutesInput.style.boxShadow = 'none';
+
+        const errorMsg = minutesInput.parentElement?.querySelector('.error-message');
+        if (errorMsg) {
+errorMsg.remove();
+}
+      });
+    }
+
+    // Auto-focus on minutes field
     if (minutesInput) {
       minutesInput.select();
       minutesInput.focus();

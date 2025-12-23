@@ -1695,19 +1695,53 @@ plusButton.classList.remove('active');
     const newMinutes = parseInt(document.getElementById('editMinutes')?.value);
     const editReason = document.getElementById('editReason')?.value?.trim();
 
-    // Validation
+    // ✅ Helper function to show field error with visual feedback
+    const showFieldError = (fieldId, message) => {
+      const field = document.getElementById(fieldId);
+      if (!field) {
+return;
+}
+
+      // Add error styling
+      field.classList.add('error');
+      field.style.borderColor = '#ef4444';
+      field.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+
+      // Remove existing error message if any
+      const existingError = field.parentElement?.querySelector('.error-message');
+      if (existingError) {
+existingError.remove();
+}
+
+      // Add error message
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'error-message';
+      errorMsg.style.color = '#ef4444';
+      errorMsg.style.fontSize = '13px';
+      errorMsg.style.marginTop = '6px';
+      errorMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+      field.parentElement.appendChild(errorMsg);
+
+      // Focus on the field
+      field.focus();
+
+      // Also show notification
+      this.showNotification(message, 'error');
+    };
+
+    // Validation with visual feedback
     if (!newDate) {
-      this.showNotification('חובה לבחור תאריך', 'error');
+      showFieldError('editDate', 'חובה לבחור תאריך');
       return;
     }
 
     if (!newMinutes || newMinutes < 1) {
-      this.showNotification('חובה להזין זמן בדקות (מינימום 1)', 'error');
+      showFieldError('editMinutes', 'חובה להזין זמן בדקות (מינימום 1)');
       return;
     }
 
     if (!editReason || editReason.length < 5) {
-      this.showNotification('חובה להזין סיבת עריכה (לפחות 5 תווים)', 'error');
+      showFieldError('editReason', 'חובה להזין סיבת עריכה (לפחות 5 תווים)');
       return;
     }
 
