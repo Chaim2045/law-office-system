@@ -375,8 +375,8 @@ return;
           repeatCount = 3; // Medium messages repeat 3 times
           console.log(`📊 Auto mode: Medium message (${length} chars) → 3 repeats`);
         } else {
-          repeatCount = 1; // Long messages show once
-          console.log(`📊 Auto mode: Long message (${length} chars) → 1 time`);
+          repeatCount = 2; // Long messages show twice (minimum for smooth animation)
+          console.log(`📊 Auto mode: Long message (${length} chars) → 2 repeats`);
         }
       }
 
