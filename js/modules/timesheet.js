@@ -318,7 +318,7 @@ export function renderTimesheetCards(entries, stats, paginationStatus, currentSo
     <div class="pagination-controls">
       <button class="load-more-btn" onclick="window.manager.loadMoreTimesheetEntries()">
         <i class="fas fa-chevron-down"></i>
-        טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
+        טען עוד (עד ${paginationStatus.pageSize || 20} רשומות נוספות)
       </button>
       <div class="pagination-info">
         מציג ${paginationStatus.displayedItems} מתוך ${paginationStatus.filteredItems} רשומות
@@ -623,7 +623,7 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
     <div class="pagination-controls">
       <button class="load-more-btn" onclick="window.manager.loadMoreTimesheetEntries()">
         <i class="fas fa-chevron-down"></i>
-        טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
+        טען עוד (עד ${paginationStatus.pageSize || 20} רשומות נוספות)
       </button>
       <div class="pagination-info">
         מציג ${paginationStatus.displayedItems} מתוך ${paginationStatus.filteredItems} רשומות
