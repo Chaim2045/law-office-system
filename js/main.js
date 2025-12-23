@@ -1604,7 +1604,8 @@ plusButton.classList.remove('active');
       totalPages: Math.ceil(this.filteredTimesheetEntries.length / 20),
       hasMore: this.integrationManager?.firebasePagination?.hasMore?.timesheet_entries || false,
       displayedItems: this.filteredTimesheetEntries.length,
-      filteredItems: this.filteredTimesheetEntries.length
+      filteredItems: this.filteredTimesheetEntries.length,
+      pageSize: this.integrationManager?.config?.PAGINATION_PAGE_SIZE || 20
     };
 
     // Find the parent div that contains timesheetContainer and timesheetTableContainer
