@@ -322,7 +322,6 @@ return false;
           .collection('clients')
           .where('caseNumber', '>=', `${yearPrefix}000`)
           .where('caseNumber', '<=', `${yearPrefix}999`)
-          .select('caseNumber') // ⚡ טוען רק את השדה caseNumber!
           .get();
 
         Logger.log(`  📊 Loaded ${snapshot.size} case numbers`);
