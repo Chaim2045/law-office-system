@@ -352,54 +352,64 @@ return;
 return;
 }
 
-    const announcement = this.announcements[this.currentIndex];
-
-    // Update text - Smart repeat logic based on displayStyle
+    // ✅ NEW: Combine ALL announcements in one continuous loop
     if (this.textElement) {
-      const message = announcement.message;
-
-      // Calculate repeat count
-      let repeatCount = 1; // Default: once
-
-      if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
-        // Manual mode - use specified repeat count
-        repeatCount = announcement.displayStyle.repeatCount || 1;
-        console.log(`📊 Manual repeat mode: ${repeatCount}x`);
-      } else {
-        // Auto mode - calculate based on message length
-        const length = message.length;
-        if (length <= 40) {
-          repeatCount = 5; // Short messages repeat 5 times
-          console.log(`📊 Auto mode: Short message (${length} chars) → 5 repeats`);
-        } else if (length <= 100) {
-          repeatCount = 3; // Medium messages repeat 3 times
-          console.log(`📊 Auto mode: Medium message (${length} chars) → 3 repeats`);
-        } else {
-          repeatCount = 2; // Long messages show twice (minimum for smooth animation)
-          console.log(`📊 Auto mode: Long message (${length} chars) → 2 repeats`);
-        }
-      }
-
-      // Build HTML with repeats
       let tickerHTML = '';
-      for (let i = 0; i < repeatCount; i++) {
-        tickerHTML += `<span class="ticker-item">${message}</span>`;
-      }
+
+      // Loop through ALL announcements
+      this.announcements.forEach((announcement, index) => {
+        const message = announcement.message;
+        const repeatCount = this.calculateRepeatCount(announcement, message);
+
+        console.log(`📊 Announcement ${index + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
+
+        // Add this announcement's repeats to the ticker
+        for (let i = 0; i < repeatCount; i++) {
+          tickerHTML += `<span class="ticker-item">${message}</span>`;
+        }
+      });
 
       this.textElement.innerHTML = tickerHTML;
+      console.log(`✅ Combined ${this.announcements.length} announcements into seamless ticker`);
     }
 
+    // Use the first announcement for icon/color (or we could mix, but keeping simple)
+    const firstAnnouncement = this.announcements[0];
+
     // Update icon based on type
-    this.updateIcon(announcement.type);
+    this.updateIcon(firstAnnouncement.type);
 
     // Update background color based on type
-    this.updateColor(announcement.type);
+    this.updateColor(firstAnnouncement.type);
 
     // Update dots
     this.updateDots();
 
     // Restart scroll animation
     this.restartScrollAnimation();
+  }
+
+  /**
+   * Calculate repeat count for an announcement based on its display style
+   * @param {Object} announcement - The announcement object
+   * @param {string} message - The message text
+   * @returns {number} - Number of times to repeat this announcement
+   */
+  calculateRepeatCount(announcement, message) {
+    if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
+      // Manual mode - use specified repeat count (minimum 2 for smooth animation)
+      return Math.max(2, announcement.displayStyle.repeatCount || 2);
+    }
+
+    // Auto mode - calculate based on message length
+    const length = message.length;
+    if (length <= 40) {
+      return 5; // Short messages repeat 5 times
+    } else if (length <= 100) {
+      return 3; // Medium messages repeat 3 times
+    } else {
+      return 2; // Long messages show twice (minimum for smooth animation)
+    }
   }
 
   /**
@@ -499,24 +509,30 @@ return;
 
   /**
    * Start autoplay (rotate announcements every 60 seconds)
+   * ⚠️ DISABLED: All announcements now displayed together in continuous loop
    */
   startAutoplay() {
+    // ✅ NEW BEHAVIOR: No rotation needed - all announcements shown together
+    console.log('🔄 Autoplay disabled - all announcements displayed in continuous seamless loop');
+    return;
+
+    // OLD CODE (disabled):
     // Clear existing interval
-    this.stopAutoplay();
-
-    // Only autoplay if more than 1 announcement
-    if (this.announcements.length <= 1) {
-      console.log('🔄 Single announcement - no rotation needed');
-      return;
-}
-
-    this.autoplayInterval = setInterval(() => {
-      if (!this.isPaused) {
-        this.nextAnnouncement();
-      }
-    }, 60000); // 60 seconds - matches animation duration
-
-    console.log('🔄 Autoplay started (60s interval)');
+    // this.stopAutoplay();
+    //
+    // // Only autoplay if more than 1 announcement
+    // if (this.announcements.length <= 1) {
+    //   console.log('🔄 Single announcement - no rotation needed');
+    //   return;
+    // }
+    //
+    // this.autoplayInterval = setInterval(() => {
+    //   if (!this.isPaused) {
+    //     this.nextAnnouncement();
+    //   }
+    // }, 60000); // 60 seconds - matches animation duration
+    //
+    // console.log('🔄 Autoplay started (60s interval)');
   }
 
   /**
