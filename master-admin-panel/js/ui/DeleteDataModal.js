@@ -147,7 +147,7 @@ return;
         async fetchUserTasks() {
             try {
                 const snapshot = await window.firebaseDB.collection('budget_tasks')
-                    .where('employeeEmail', '==', this.userEmail)
+                    .where('assignedTo', 'array-contains', this.userEmail)
                     .orderBy('createdAt', 'desc')
                     .get();
 
@@ -168,7 +168,7 @@ return;
         async fetchUserTimesheets() {
             try {
                 const snapshot = await window.firebaseDB.collection('timesheet_entries')
-                    .where('employeeEmail', '==', this.userEmail)
+                    .where('employee', '==', this.userEmail)
                     .orderBy('date', 'desc')
                     .get();
 
