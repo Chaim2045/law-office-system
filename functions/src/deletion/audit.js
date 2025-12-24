@@ -27,7 +27,7 @@ async function logDeletionAttempt(db, {
       // Metadata
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       action: 'delete_user_data_selective',
-      phase: 'phase_1_readonly', // ← יעודכן בהמשך
+      phase: 'phase_3_limited', // ← Phase 3: Limited (50 items max)
 
       // Who
       adminEmail,
