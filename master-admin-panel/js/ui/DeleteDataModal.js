@@ -557,14 +557,23 @@ return;
          * עדכון תוכן
          */
         updateContent() {
+            console.log('🔄 updateContent called');
             const modal = window.ModalManager.getElement(this.modalId);
+            console.log('   Modal element:', modal ? 'Found' : 'NOT FOUND');
             if (!modal) {
-return;
-}
+                console.error('❌ Modal element not found!');
+                return;
+            }
 
             const contentEl = modal.querySelector('.modal-body');
+            console.log('   Content element (.modal-body):', contentEl ? 'Found' : 'NOT FOUND');
             if (contentEl) {
-                contentEl.innerHTML = this.renderContent();
+                const renderedContent = this.renderContent();
+                console.log('   Rendered content length:', renderedContent.length);
+                contentEl.innerHTML = renderedContent;
+                console.log('✅ Content updated successfully');
+            } else {
+                console.error('❌ .modal-body not found in modal!');
             }
 
             this.updateFooter();
