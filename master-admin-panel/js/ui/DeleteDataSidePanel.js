@@ -261,10 +261,31 @@
                     .orderBy('createdAt', 'desc')
                     .get();
 
-                return snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+                const valid = [];
+                const invalid = [];
+
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const task = { id: doc.id, ...data };
+
+                    // Validate: must have employee match AND have serviceName or title
+                    if (data.employee === this.userEmail && (data.serviceName || data.title)) {
+                        valid.push(task);
+                    } else {
+                        invalid.push({
+                            id: doc.id,
+                            employee: data.employee,
+                            serviceName: data.serviceName,
+                            title: data.title
+                        });
+                    }
+                });
+
+                if (invalid.length > 0) {
+                    console.warn(`⚠️ DeleteDataSidePanel: Found ${invalid.length} invalid/corrupted tasks for ${this.userEmail}:`, invalid);
+                }
+
+                return valid;
             } catch (error) {
                 console.error('❌ Error fetching tasks:', error);
                 return [];
@@ -282,10 +303,30 @@
                     .orderBy('date', 'desc')
                     .get();
 
-                return snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+                const valid = [];
+                const invalid = [];
+
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const timesheet = { id: doc.id, ...data };
+
+                    // Validate: must have employee match AND have date
+                    if (data.employee === this.userEmail && data.date) {
+                        valid.push(timesheet);
+                    } else {
+                        invalid.push({
+                            id: doc.id,
+                            employee: data.employee,
+                            date: data.date
+                        });
+                    }
+                });
+
+                if (invalid.length > 0) {
+                    console.warn(`⚠️ DeleteDataSidePanel: Found ${invalid.length} invalid/corrupted timesheets for ${this.userEmail}:`, invalid);
+                }
+
+                return valid;
             } catch (error) {
                 console.error('❌ Error fetching timesheets:', error);
                 return [];
@@ -303,10 +344,29 @@
                     .orderBy('createdAt', 'desc')
                     .get();
 
-                return snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+                const valid = [];
+                const invalid = [];
+
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const approval = { id: doc.id, ...data };
+
+                    // Validate: must have requestedBy match
+                    if (data.requestedBy === this.userEmail) {
+                        valid.push(approval);
+                    } else {
+                        invalid.push({
+                            id: doc.id,
+                            requestedBy: data.requestedBy
+                        });
+                    }
+                });
+
+                if (invalid.length > 0) {
+                    console.warn(`⚠️ DeleteDataSidePanel: Found ${invalid.length} invalid/corrupted approvals for ${this.userEmail}:`, invalid);
+                }
+
+                return valid;
             } catch (error) {
                 console.error('❌ Error fetching approvals:', error);
                 return [];
