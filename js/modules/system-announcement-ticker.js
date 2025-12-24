@@ -352,54 +352,96 @@ return;
 return;
 }
 
-    const announcement = this.announcements[this.currentIndex];
-
-    // Update text - Smart repeat logic based on displayStyle
+    // ✅ DYNAMIC: Build content that adapts to ANY screen size
     if (this.textElement) {
-      const message = announcement.message;
+      // Step 1: Build a single loop of all announcements
+      let singleLoopHTML = '';
+      this.announcements.forEach((announcement, index) => {
+        const message = announcement.message;
+        const repeatCount = this.calculateRepeatCount(announcement, message);
 
-      // Calculate repeat count
-      let repeatCount = 1; // Default: once
+        console.log(`📊 Announcement ${index + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
 
-      if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
-        // Manual mode - use specified repeat count
-        repeatCount = announcement.displayStyle.repeatCount || 1;
-        console.log(`📊 Manual repeat mode: ${repeatCount}x`);
-      } else {
-        // Auto mode - calculate based on message length
-        const length = message.length;
-        if (length <= 40) {
-          repeatCount = 5; // Short messages repeat 5 times
-          console.log(`📊 Auto mode: Short message (${length} chars) → 5 repeats`);
-        } else if (length <= 100) {
-          repeatCount = 3; // Medium messages repeat 3 times
-          console.log(`📊 Auto mode: Medium message (${length} chars) → 3 repeats`);
-        } else {
-          repeatCount = 1; // Long messages show once
-          console.log(`📊 Auto mode: Long message (${length} chars) → 1 time`);
+        for (let i = 0; i < repeatCount; i++) {
+          singleLoopHTML += `<span class="ticker-item">${message}</span>`;
         }
-      }
+      });
 
-      // Build HTML with repeats
-      let tickerHTML = '';
-      for (let i = 0; i < repeatCount; i++) {
-        tickerHTML += `<span class="ticker-item">${message}</span>`;
-      }
+      // Step 2: Measure the content width AFTER DOM renders
+      this.textElement.innerHTML = singleLoopHTML;
 
-      this.textElement.innerHTML = tickerHTML;
+      // Wait for browser to render before measuring
+      requestAnimationFrame(() => {
+        const contentWidth = this.textElement.scrollWidth;
+        const containerWidth = this.container.offsetWidth;
+
+        // Step 3: Calculate how many duplications needed for smooth loop
+        // We need at least 2x container width for translateX(-50%) to work smoothly
+        const minRequiredWidth = containerWidth * 2;
+        const duplicationsNeeded = Math.max(2, Math.ceil(minRequiredWidth / contentWidth));
+
+        console.log(`📐 Container: ${containerWidth}px | Content: ${contentWidth}px | Duplications: ${duplicationsNeeded}x`);
+
+        // Step 4: Duplicate content to ensure seamless loop
+        let finalHTML = '';
+        for (let i = 0; i < duplicationsNeeded; i++) {
+          finalHTML += singleLoopHTML;
+        }
+
+        this.textElement.innerHTML = finalHTML;
+
+        // Step 5: Calculate animation duration based on content width
+        // Formula: ~100px per second for comfortable reading speed
+        requestAnimationFrame(() => {
+          const finalWidth = this.textElement.scrollWidth;
+          const durationSeconds = Math.max(30, Math.round(finalWidth / 100)); // At least 30s, ~100px/s
+
+          console.log(`✅ Final content width: ${finalWidth}px (${(finalWidth / containerWidth).toFixed(1)}x container)`);
+          console.log(`⏱️ Animation duration: ${durationSeconds}s (${Math.round(finalWidth / durationSeconds)}px/s)`);
+
+          // Apply dynamic animation duration
+          this.textElement.style.animationDuration = `${durationSeconds}s`;
+        });
+      });
     }
 
+    // Use the first announcement for icon/color (or we could mix, but keeping simple)
+    const firstAnnouncement = this.announcements[0];
+
     // Update icon based on type
-    this.updateIcon(announcement.type);
+    this.updateIcon(firstAnnouncement.type);
 
     // Update background color based on type
-    this.updateColor(announcement.type);
+    this.updateColor(firstAnnouncement.type);
 
     // Update dots
     this.updateDots();
 
     // Restart scroll animation
     this.restartScrollAnimation();
+  }
+
+  /**
+   * Calculate repeat count for an announcement based on its display style
+   * @param {Object} announcement - The announcement object
+   * @param {string} message - The message text
+   * @returns {number} - Number of times to repeat this announcement
+   */
+  calculateRepeatCount(announcement, message) {
+    if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
+      // Manual mode - use specified repeat count (minimum 2 for smooth animation)
+      return Math.max(2, announcement.displayStyle.repeatCount || 2);
+    }
+
+    // Auto mode - calculate based on message length
+    const length = message.length;
+    if (length <= 40) {
+      return 5; // Short messages repeat 5 times
+    } else if (length <= 100) {
+      return 3; // Medium messages repeat 3 times
+    } else {
+      return 2; // Long messages show twice (minimum for smooth animation)
+    }
   }
 
   /**
@@ -499,24 +541,30 @@ return;
 
   /**
    * Start autoplay (rotate announcements every 60 seconds)
+   * ⚠️ DISABLED: All announcements now displayed together in continuous loop
    */
   startAutoplay() {
+    // ✅ NEW BEHAVIOR: No rotation needed - all announcements shown together
+    console.log('🔄 Autoplay disabled - all announcements displayed in continuous seamless loop');
+    return;
+
+    // OLD CODE (disabled):
     // Clear existing interval
-    this.stopAutoplay();
-
-    // Only autoplay if more than 1 announcement
-    if (this.announcements.length <= 1) {
-      console.log('🔄 Single announcement - no rotation needed');
-      return;
-}
-
-    this.autoplayInterval = setInterval(() => {
-      if (!this.isPaused) {
-        this.nextAnnouncement();
-      }
-    }, 60000); // 60 seconds - matches animation duration
-
-    console.log('🔄 Autoplay started (60s interval)');
+    // this.stopAutoplay();
+    //
+    // // Only autoplay if more than 1 announcement
+    // if (this.announcements.length <= 1) {
+    //   console.log('🔄 Single announcement - no rotation needed');
+    //   return;
+    // }
+    //
+    // this.autoplayInterval = setInterval(() => {
+    //   if (!this.isPaused) {
+    //     this.nextAnnouncement();
+    //   }
+    // }, 60000); // 60 seconds - matches animation duration
+    //
+    // console.log('🔄 Autoplay started (60s interval)');
   }
 
   /**

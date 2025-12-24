@@ -35,7 +35,7 @@ function validateEmail(email) {
  * Validate array of IDs
  * בדיקת מערך של IDs
  */
-function validateIds(ids, fieldName, maxCount = 500) {
+function validateIds(ids, fieldName, maxCount = 50) { // ← Phase 3: 50 max
   // אם לא נשלח או ריק - זה OK (אומר שלא רוצים למחוק מסוג זה)
   if (!ids || ids.length === 0) {
     return [];
@@ -111,10 +111,12 @@ function validateDeletionRequest(data) {
     errors.push(`Approvals: ${error.message}`);
   }
 
-  // 5. בדיקה שיש לפחות משהו למחוק
+  // 5. בדיקה שיש לפחות משהו למחוק + מגבלת Phase 3
   const totalItems = taskIds.length + timesheetIds.length + approvalIds.length;
   if (totalItems === 0) {
     errors.push('לא נבחרו פריטים למחיקה');
+  } else if (totalItems > 50) {
+    errors.push(`Phase 3: מקסימום 50 פריטים למחיקה. נבחרו ${totalItems}`);
   }
 
   // 6. בדיקת dryRun flag
