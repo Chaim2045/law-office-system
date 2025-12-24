@@ -352,20 +352,20 @@ return;
 return;
 }
 
-    // ✅ SIMPLE APPROACH: Just duplicate content exactly 2 times for translateX(-50%)
+    // ✅ SIMPLE APPROACH: Show ONLY current announcement, duplicate exactly 2x for translateX(-50%)
     if (this.textElement) {
-      // Step 1: Build all announcements
+      // Step 1: Get current announcement only
+      const currentAnnouncement = this.announcements[this.currentIndex];
+      const message = currentAnnouncement.message;
+      const repeatCount = this.calculateRepeatCount(currentAnnouncement, message);
+
+      console.log(`📊 Showing announcement ${this.currentIndex + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
+
+      // Build content for current announcement only
       let contentHTML = '';
-      this.announcements.forEach((announcement, index) => {
-        const message = announcement.message;
-        const repeatCount = this.calculateRepeatCount(announcement, message);
-
-        console.log(`📊 Announcement ${index + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
-
-        for (let i = 0; i < repeatCount; i++) {
-          contentHTML += `<span class="ticker-item">${message}</span>`;
-        }
-      });
+      for (let i = 0; i < repeatCount; i++) {
+        contentHTML += `<span class="ticker-item">${message}</span>`;
+      }
 
       // Step 2: Duplicate EXACTLY 2 times for translateX(-50%) animation
       // This is the ONLY way to get a perfect seamless loop
@@ -375,14 +375,14 @@ return;
       console.log('✅ Content duplicated exactly 2x for seamless loop');
     }
 
-    // Use the first announcement for icon/color (or we could mix, but keeping simple)
-    const firstAnnouncement = this.announcements[0];
+    // Use the current announcement for icon/color
+    const currentAnnouncement = this.announcements[this.currentIndex];
 
     // Update icon based on type
-    this.updateIcon(firstAnnouncement.type);
+    this.updateIcon(currentAnnouncement.type);
 
     // Update background color based on type
-    this.updateColor(firstAnnouncement.type);
+    this.updateColor(currentAnnouncement.type);
 
     // Update dots
     this.updateDots();
