@@ -14,6 +14,9 @@
       this.lastCaseNumber = null;
       this.isInitialized = false;
       this.updateListener = null;
+      // 🚀 Cache for intelligent gap finder
+      this.gapCache = null;
+      this.gapCacheExpiry = 0;
     }
 
     /**
@@ -255,64 +258,159 @@ return false;
     }
 
     /**
-     * 🎯 קבלת מספר תיק הבא הזמין (עם בדיקת זמינות ב-Firebase)
-     * פונקציה חכמה שבודקת בזמן אמת מה המספר האחרון ומוודאת שהמספר החדש פנוי
-     * @param {number} maxRetries - מספר ניסיונות מקסימלי (ברירת מחדל: 10)
-     * @returns {Promise<string>} מספר תיק חדש וזמין
+     * 🧠 Intelligent Gap Finder - Ultimate Edition
+     * מוצא מספר תיק פנוי בצורה חכמה ומהירה
+     *
+     * Phase 1: Quick Check - בודק 10 מספרים אחרי האחרון (1-2 queries)
+     * Phase 2: Smart Scan - טוען את כל המספרים ומוצא gap (1 query)
+     * Cache: תוקף 30 שניות
+     *
+     * @returns {Promise<string>} מספר תיק פנוי
      */
-    async getNextAvailableCaseNumber(maxRetries = 10) {
+    async findFirstAvailableNumberIntelligent() {
+      const currentYear = new Date().getFullYear();
+      const yearPrefix = currentYear.toString();
+
+      // 🚀 Cache Check
+      if (this.gapCache && Date.now() < this.gapCacheExpiry) {
+        Logger.log('⚡ Using cached gap:', this.gapCache);
+        return this.gapCache;
+      }
+
+      const opId = window.PerformanceMonitor?.start('intelligent-gap-finder');
+
+      try {
+        // 🎯 PHASE 1: Quick Check - בדוק אם יש מקום ליד המספר האחרון
+        Logger.log('🎯 Phase 1: Quick check near last number...');
+
+        const lastNum = parseInt(this.lastCaseNumber?.slice(-3) || '0');
+
+        // בדוק את 10 המספרים הבאים
+        for (let i = lastNum + 1; i <= Math.min(lastNum + 10, 999); i++) {
+          const candidate = `${yearPrefix}${i.toString().padStart(3, '0')}`;
+          const exists = await this.caseNumberExists(candidate);
+
+          if (!exists) {
+            Logger.log(`  ✅ Found quickly: ${candidate}`);
+
+            // שמור ב-cache
+            this.gapCache = candidate;
+            this.gapCacheExpiry = Date.now() + 30000; // 30 שניות
+
+            window.PerformanceMonitor?.success(opId, {
+              method: 'quick',
+              candidate,
+              queries: i - lastNum
+            });
+
+            return candidate;
+          }
+        }
+
+        Logger.log('  ⚠️ No quick match, moving to smart search...');
+
+        // 🧠 PHASE 2: Smart Scan - טען את כל המספרים (קל!) ומצא gaps
+        Logger.log('🧠 Phase 2: Smart scan...');
+
+        const snapshot = await window.firebaseDB
+          .collection('clients')
+          .where('caseNumber', '>=', `${yearPrefix}000`)
+          .where('caseNumber', '<=', `${yearPrefix}999`)
+          .get();
+
+        Logger.log(`  📦 Loaded ${snapshot.size} case numbers`);
+
+        // בנה Set של המספרים הקיימים (מהיר!)
+        const usedNumbers = new Set();
+        snapshot.forEach(doc => {
+          const num = parseInt(doc.data().caseNumber.slice(-3));
+          usedNumbers.add(num);
+        });
+
+        // מצא את הראשון שחסר
+        for (let i = 1; i <= 999; i++) {
+          if (!usedNumbers.has(i)) {
+            const result = `${yearPrefix}${i.toString().padStart(3, '0')}`;
+            Logger.log(`  ✅ Found via smart scan: ${result}`);
+
+            // שמור ב-cache
+            this.gapCache = result;
+            this.gapCacheExpiry = Date.now() + 30000;
+
+            window.PerformanceMonitor?.success(opId, {
+              method: 'smart',
+              result,
+              totalCases: snapshot.size,
+              queries: 11 // 10 quick + 1 smart
+            });
+
+            return result;
+          }
+        }
+
+        // 🚨 PHASE 3: Emergency - אין מספרים פנויים!
+        Logger.log('🚨 Phase 3: No available numbers (999 limit reached)');
+
+        const error = new Error('All case numbers (1-999) are taken. Please contact administrator.');
+        window.PerformanceMonitor?.failure(opId, error);
+        throw error;
+
+      } catch (error) {
+        console.error('❌ Intelligent gap finder error:', error);
+        window.PerformanceMonitor?.failure(opId, error);
+        throw error;
+      }
+    }
+
+    /**
+     * 🎯 קבלת מספר תיק הבא הזמין (עם בדיקת זמינות ב-Firebase)
+     * 🚀 גרסה חכמה: משתמשת באלגוריתם דו-שלבי (Quick Check + Smart Scan)
+     *
+     * ⚠️ WARNING: פונקציה זו מיועדת רק להצגת PREVIEW ללקוח
+     * השרת יקצה את המספר הסופי בעת יצירת התיק
+     *
+     * @returns {Promise<string>} מספר תיק חדש וזמין (preview)
+     */
+    async getNextAvailableCaseNumber() {
       // 🔍 Performance Monitoring - Start
       const opId = window.PerformanceMonitor?.start('case-number-generation', {
-        action: 'getNextAvailableCaseNumber',
-        maxRetries: maxRetries
+        action: 'getNextAvailableCaseNumber (Intelligent)',
+        method: 'Multi-phase with cache'
       });
 
       try {
-        Logger.log('🔍 Finding next available case number...');
+        Logger.log('🔍 Finding next available case number (intelligent mode)...');
 
         // רענון המספר האחרון מ-Firebase (בזמן אמת)
         await this.updateLastCaseNumber();
 
-        // קבלת מספר מועמד
-        let candidateNumber = this.getNextCaseNumber();
+        // 🚀 שימוש באלגוריתם החכם עם Cache
+        const availableNumber = await this.findFirstAvailableNumberIntelligent();
 
-        // בדיקת זמינות עם retry logic
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-          Logger.log(`  🔎 Attempt ${attempt}: Checking if ${candidateNumber} is available...`);
+        if (availableNumber) {
+          // ✅ מצאנו מספר פנוי!
+          Logger.log(`  ✅ Case number ${availableNumber} is available (preview)!`);
 
-          const exists = await this.caseNumberExists(candidateNumber);
+          // 🔍 Performance Monitoring - Success
+          window.PerformanceMonitor?.success(opId, {
+            caseNumber: availableNumber,
+            method: 'intelligent_finder',
+            note: 'preview_only'
+          });
 
-          if (!exists) {
-            // ✅ מצאנו מספר פנוי!
-            Logger.log(`  ✅ Case number ${candidateNumber} is available!`);
-
-            // עדכון ה-cache כדי למנוע התנגשויות עתידיות
-            this.lastCaseNumber = candidateNumber;
-
-            // 🔍 Performance Monitoring - Success
-            window.PerformanceMonitor?.success(opId, {
-              caseNumber: candidateNumber,
-              attempts: attempt
-            });
-
-            return candidateNumber;
-          }
-
-          // ❌ המספר תפוס, ננסה את הבא
-          Logger.log(`  ⚠️ Case number ${candidateNumber} is taken, trying next...`);
-
-          // עדכון lastCaseNumber למספר הנוכחי (התפוס) ונסיון הבא
-          this.lastCaseNumber = candidateNumber;
-          candidateNumber = this.getNextCaseNumber();
+          return availableNumber;
         }
 
-        // אם הגענו לכאן, כל הניסיונות נכשלו
-        const error = new Error(`Failed to find available case number after ${maxRetries} attempts`);
+        // 🚨 לא נמצא מספר זמין (מאוד לא סביר)
+        console.error('🚨 CRITICAL: No available case numbers found (reached limit?)');
+
+        const error = new Error('No available case numbers found');
 
         // 🔍 Performance Monitoring - Failure
         window.PerformanceMonitor?.failure(opId, error);
 
-        throw error;
+        // במקום לזרוק שגיאה, נחזיר null ונתן לשרת לטפל
+        return null;
 
       } catch (error) {
         console.error('❌ Error finding available case number:', error);
@@ -325,12 +423,9 @@ return false;
           }
         }
 
-        // Fallback: מספר עם timestamp
-        const currentYear = new Date().getFullYear();
-        const fallback = `${currentYear}${Math.floor(Math.random() * 900) + 100}`;
-        Logger.log(`⚠️ Using fallback case number: ${fallback}`);
-
-        return fallback;
+        // במקרה של שגיאה, נחזיר null ונתן לשרת לטפל
+        Logger.log('⚠️ Preview failed - server will assign case number');
+        return null;
       }
     }
 
