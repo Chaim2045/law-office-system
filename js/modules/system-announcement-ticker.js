@@ -367,27 +367,42 @@ return;
         }
       });
 
-      // Step 2: Measure the content width
+      // Step 2: Measure the content width AFTER DOM renders
       this.textElement.innerHTML = singleLoopHTML;
-      const contentWidth = this.textElement.scrollWidth;
-      const containerWidth = this.container.offsetWidth;
 
-      // Step 3: Calculate how many duplications needed for smooth loop
-      // We need at least 2x container width for translateX(-50%) to work smoothly
-      const minRequiredWidth = containerWidth * 2;
-      const duplicationsNeeded = Math.max(2, Math.ceil(minRequiredWidth / contentWidth));
+      // Wait for browser to render before measuring
+      requestAnimationFrame(() => {
+        const contentWidth = this.textElement.scrollWidth;
+        const containerWidth = this.container.offsetWidth;
 
-      console.log(`📐 Container: ${containerWidth}px | Content: ${contentWidth}px | Duplications: ${duplicationsNeeded}x`);
+        // Step 3: Calculate how many duplications needed for smooth loop
+        // We need at least 2x container width for translateX(-50%) to work smoothly
+        const minRequiredWidth = containerWidth * 2;
+        const duplicationsNeeded = Math.max(2, Math.ceil(minRequiredWidth / contentWidth));
 
-      // Step 4: Duplicate content to ensure seamless loop
-      let finalHTML = '';
-      for (let i = 0; i < duplicationsNeeded; i++) {
-        finalHTML += singleLoopHTML;
-      }
+        console.log(`📐 Container: ${containerWidth}px | Content: ${contentWidth}px | Duplications: ${duplicationsNeeded}x`);
 
-      this.textElement.innerHTML = finalHTML;
-      const finalWidth = this.textElement.scrollWidth;
-      console.log(`✅ Final content width: ${finalWidth}px (${(finalWidth / containerWidth).toFixed(1)}x container)`);
+        // Step 4: Duplicate content to ensure seamless loop
+        let finalHTML = '';
+        for (let i = 0; i < duplicationsNeeded; i++) {
+          finalHTML += singleLoopHTML;
+        }
+
+        this.textElement.innerHTML = finalHTML;
+
+        // Step 5: Calculate animation duration based on content width
+        // Formula: ~100px per second for comfortable reading speed
+        requestAnimationFrame(() => {
+          const finalWidth = this.textElement.scrollWidth;
+          const durationSeconds = Math.max(30, Math.round(finalWidth / 100)); // At least 30s, ~100px/s
+
+          console.log(`✅ Final content width: ${finalWidth}px (${(finalWidth / containerWidth).toFixed(1)}x container)`);
+          console.log(`⏱️ Animation duration: ${durationSeconds}s (${Math.round(finalWidth / durationSeconds)}px/s)`);
+
+          // Apply dynamic animation duration
+          this.textElement.style.animationDuration = `${durationSeconds}s`;
+        });
+      });
     }
 
     // Use the first announcement for icon/color (or we could mix, but keeping simple)
