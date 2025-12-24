@@ -399,13 +399,14 @@ return;
    */
   calculateRepeatCount(announcement, message) {
     if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
-      // Manual mode - use specified repeat count (minimum 1 since we duplicate 2x later)
-      return Math.max(1, announcement.displayStyle.repeatCount || 1);
+      // Manual mode - use specified repeat count (minimum 2 since we duplicate 2x later)
+      return Math.max(2, announcement.displayStyle.repeatCount || 2);
     }
 
-    // Auto mode - show each message only ONCE
-    // The 2x duplication happens in updateDisplay() for the seamless loop
-    return 1;
+    // Auto mode - show each message TWICE before duplication
+    // This helps achieve closer to 2.0x ratio accounting for CSS gaps/padding
+    // Result: 2 repeats × 2 duplication = 4 items total
+    return 2;
   }
 
   /**
