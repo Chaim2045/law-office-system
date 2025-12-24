@@ -352,25 +352,42 @@ return;
 return;
 }
 
-    // ✅ NEW: Combine ALL announcements in one continuous loop
+    // ✅ DYNAMIC: Build content that adapts to ANY screen size
     if (this.textElement) {
-      let tickerHTML = '';
-
-      // Loop through ALL announcements
+      // Step 1: Build a single loop of all announcements
+      let singleLoopHTML = '';
       this.announcements.forEach((announcement, index) => {
         const message = announcement.message;
         const repeatCount = this.calculateRepeatCount(announcement, message);
 
         console.log(`📊 Announcement ${index + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
 
-        // Add this announcement's repeats to the ticker
         for (let i = 0; i < repeatCount; i++) {
-          tickerHTML += `<span class="ticker-item">${message}</span>`;
+          singleLoopHTML += `<span class="ticker-item">${message}</span>`;
         }
       });
 
-      this.textElement.innerHTML = tickerHTML;
-      console.log(`✅ Combined ${this.announcements.length} announcements into seamless ticker`);
+      // Step 2: Measure the content width
+      this.textElement.innerHTML = singleLoopHTML;
+      const contentWidth = this.textElement.scrollWidth;
+      const containerWidth = this.container.offsetWidth;
+
+      // Step 3: Calculate how many duplications needed for smooth loop
+      // We need at least 2x container width for translateX(-50%) to work smoothly
+      const minRequiredWidth = containerWidth * 2;
+      const duplicationsNeeded = Math.max(2, Math.ceil(minRequiredWidth / contentWidth));
+
+      console.log(`📐 Container: ${containerWidth}px | Content: ${contentWidth}px | Duplications: ${duplicationsNeeded}x`);
+
+      // Step 4: Duplicate content to ensure seamless loop
+      let finalHTML = '';
+      for (let i = 0; i < duplicationsNeeded; i++) {
+        finalHTML += singleLoopHTML;
+      }
+
+      this.textElement.innerHTML = finalHTML;
+      const finalWidth = this.textElement.scrollWidth;
+      console.log(`✅ Final content width: ${finalWidth}px (${(finalWidth / containerWidth).toFixed(1)}x container)`);
     }
 
     // Use the first announcement for icon/color (or we could mix, but keeping simple)
