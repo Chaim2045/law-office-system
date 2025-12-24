@@ -809,7 +809,7 @@ return;
             window.notify.info('שולח בקשה לשרת...');
 
             try {
-                const deleteFunction = window.firebase.functions().httpsCallable('deleteUserDataSelective');
+                const deleteFunction = window.firebaseFunctions.httpsCallable('deleteUserDataSelective');
 
                 const result = await deleteFunction({
                     userEmail: this.userEmail,
@@ -893,7 +893,7 @@ return;
             window.notify.info('מוחק נתונים...');
 
             try {
-                const deleteFunction = window.firebase.functions().httpsCallable('deleteUserDataSelective');
+                const deleteFunction = window.firebaseFunctions.httpsCallable('deleteUserDataSelective');
 
                 const result = await deleteFunction({
                     userEmail: this.userEmail,
