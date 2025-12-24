@@ -50,6 +50,9 @@
 
             // Current view
             this.activeTab = 'tasks'; // tasks | timesheets | approvals
+
+            // Phase 3 limit
+            this.PHASE_3_MAX_ITEMS = 50;
         }
 
         /**
@@ -110,7 +113,9 @@
                 console.log('📥 Loading user data...');
 
                 const modal = window.ModalManager.getElement(this.modalId);
-                if (!modal) return;
+                if (!modal) {
+return;
+}
 
                 // Load in parallel
                 const [tasks, timesheets, approvals] = await Promise.all([
@@ -222,10 +227,10 @@
 
             return `
                 <div class="delete-data-modal">
-                    <!-- Phase 1 Warning -->
+                    <!-- Phase 3 Warning -->
                     <div class="phase-warning">
                         <i class="fas fa-info-circle"></i>
-                        <span><strong>🔒 Phase 1: Read-Only Mode</strong> - הצגת תצוגה מקדימה בלבד, לא תתבצע מחיקה אמיתית</span>
+                        <span><strong>🚀 Phase 3: Limited Delete Mode</strong> - מקסימום 50 פריטים למחיקה</span>
                     </div>
 
                     <!-- User Info -->
@@ -552,12 +557,23 @@
          * עדכון תוכן
          */
         updateContent() {
+            console.log('🔄 updateContent called');
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            console.log('   Modal element:', modal ? 'Found' : 'NOT FOUND');
+            if (!modal) {
+                console.error('❌ Modal element not found!');
+                return;
+            }
 
-            const contentEl = modal.querySelector('.modal-content-inner');
+            const contentEl = modal.querySelector('.modal-body');
+            console.log('   Content element (.modal-body):', contentEl ? 'Found' : 'NOT FOUND');
             if (contentEl) {
-                contentEl.innerHTML = this.renderContent();
+                const renderedContent = this.renderContent();
+                console.log('   Rendered content length:', renderedContent.length);
+                contentEl.innerHTML = renderedContent;
+                console.log('✅ Content updated successfully');
+            } else {
+                console.error('❌ .modal-body not found in modal!');
             }
 
             this.updateFooter();
@@ -569,13 +585,26 @@
          */
         updateFooter() {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             const previewBtn = modal.querySelector('#previewDeleteBtn');
             if (previewBtn) {
                 const totalSelected = this.selectedTaskIds.size + this.selectedTimesheetIds.size + this.selectedApprovalIds.size;
-                previewBtn.disabled = totalSelected === 0;
-                previewBtn.querySelector('span').textContent = `תצוגה מקדימה (${totalSelected})`;
+
+                // Phase 3: בדיקת מגבלה
+                const overLimit = totalSelected > this.PHASE_3_MAX_ITEMS;
+
+                previewBtn.disabled = totalSelected === 0 || overLimit;
+
+                if (overLimit) {
+                    previewBtn.querySelector('span').textContent = `❌ מקסימום ${this.PHASE_3_MAX_ITEMS} פריטים (נבחרו ${totalSelected})`;
+                    previewBtn.classList.add('btn-danger');
+                } else {
+                    previewBtn.querySelector('span').textContent = `תצוגה מקדימה (${totalSelected})`;
+                    previewBtn.classList.remove('btn-danger');
+                }
             }
         }
 
@@ -595,7 +624,9 @@
          */
         attachEventListeners() {
             const modal = window.ModalManager.getElement(this.modalId);
-            if (!modal) return;
+            if (!modal) {
+return;
+}
 
             // Tab buttons
             modal.querySelectorAll('.tab-btn').forEach(btn => {
@@ -781,7 +812,7 @@
                     taskIds: Array.from(this.selectedTaskIds),
                     timesheetIds: Array.from(this.selectedTimesheetIds),
                     approvalIds: Array.from(this.selectedApprovalIds),
-                    dryRun: true // ← Phase 1: תמיד true
+                    dryRun: true // ← Preview mode
                 });
 
                 window.notify.hide(loadingId);
@@ -802,17 +833,18 @@
          * הצגת מודאל תצוגה מקדימה
          */
         showPreviewModal(result) {
+            const self = this;
             const previewModalId = window.ModalManager.create({
                 title: '<i class="fas fa-eye"></i> תצוגה מקדימה - מה ימחק?',
                 content: `
                     <div class="preview-modal">
-                        <!-- Phase 1 Notice -->
-                        <div class="phase-notice">
-                            <i class="fas fa-shield-alt"></i>
+                        <!-- Phase 3 Notice -->
+                        <div class="phase-notice ${result.dryRun ? 'info' : 'warning'}">
+                            <i class="fas fa-${result.dryRun ? 'shield-alt' : 'exclamation-triangle'}"></i>
                             <div>
-                                <strong>🔒 Phase 1: Read-Only Mode</strong>
+                                <strong>${result.dryRun ? '🔒 Phase 3: Preview Mode' : '⚠️ מחיקה אמיתית!'}</strong>
                                 <p>${result.message}</p>
-                                <p class="phase-status">Deletion Enabled: ${result.deletionEnabled ? 'Yes' : 'No'}</p>
+                                <p class="phase-status">Max Items: 50 | Deletion Enabled: ${result.deletionEnabled ? 'Yes' : 'No'}</p>
                             </div>
                         </div>
 
@@ -823,6 +855,7 @@
                                 <li><strong>משימות:</strong> ${result.deletedCounts.tasks} פריטים</li>
                                 <li><strong>שעתונים:</strong> ${result.deletedCounts.timesheets} פריטים</li>
                                 <li><strong>אישורים:</strong> ${result.deletedCounts.approvals} פריטים</li>
+                                ${result.deletedCounts.orphanedApprovals ? `<li class="orphaned"><strong>Orphaned Approvals:</strong> ${result.deletedCounts.orphanedApprovals} (cascade)</li>` : ''}
                                 <li class="total"><strong>סה"כ:</strong> ${result.deletedCounts.total} פריטים</li>
                             </ul>
                         </div>
@@ -839,16 +872,86 @@
                         <i class="fas fa-times"></i>
                         <span>סגור</span>
                     </button>
+                    ${result.dryRun && result.deletionEnabled ? `
+                        <button class="btn btn-danger" id="confirmRealDeleteBtn">
+                            <i class="fas fa-trash"></i>
+                            <span>⚠️ אני בטוח - מחק ${result.deletedCounts.total} פריטים</span>
+                        </button>
+                    ` : ''}
                 `,
                 size: 'medium',
                 onOpen: () => {
                     const previewModal = window.ModalManager.getElement(previewModalId);
+
                     const closeBtn = previewModal.querySelector('#closePreviewBtn');
                     closeBtn.addEventListener('click', () => {
                         window.ModalManager.close(previewModalId);
                     });
+
+                    // Real delete button
+                    const confirmBtn = previewModal.querySelector('#confirmRealDeleteBtn');
+                    if (confirmBtn) {
+                        confirmBtn.addEventListener('click', async () => {
+                            await self.executeRealDeletion();
+                            window.ModalManager.close(previewModalId);
+                        });
+                    }
                 }
             });
+        }
+
+        /**
+         * Execute real deletion
+         * ביצוע מחיקה אמיתית
+         */
+        async executeRealDeletion() {
+            const totalSelected = this.selectedTaskIds.size + this.selectedTimesheetIds.size + this.selectedApprovalIds.size;
+
+            if (totalSelected === 0) {
+                window.notify.warning('לא נבחרו פריטים למחיקה');
+                return;
+            }
+
+            if (totalSelected > this.PHASE_3_MAX_ITEMS) {
+                window.notify.error(`מקסימום ${this.PHASE_3_MAX_ITEMS} פריטים. נבחרו ${totalSelected}`);
+                return;
+            }
+
+            console.log('🗑️ Executing REAL deletion...');
+
+            try {
+                const deleteFunction = window.firebaseFunctions.httpsCallable('deleteUserDataSelective');
+
+                const loadingId = window.notify.loading(`מוחק ${totalSelected} פריטים...`);
+
+                const result = await deleteFunction({
+                    userEmail: this.userEmail,
+                    taskIds: Array.from(this.selectedTaskIds),
+                    timesheetIds: Array.from(this.selectedTimesheetIds),
+                    approvalIds: Array.from(this.selectedApprovalIds),
+                    dryRun: false // ← REAL DELETION!
+                });
+
+                window.notify.hide(loadingId);
+
+                console.log('✅ Real deletion result:', result.data);
+
+                if (result.data.success) {
+                    window.notify.success(`✅ נמחקו ${result.data.deletedCounts.total} פריטים`);
+
+                    // Close modal
+                    window.ModalManager.close(this.modalId);
+
+                    // Optional: refresh user data
+                    if (window.DataManager && window.DataManager.refreshUsers) {
+                        await window.DataManager.refreshUsers();
+                    }
+                }
+
+            } catch (error) {
+                console.error('❌ Error executing real deletion:', error);
+                window.notify.error(error.message || 'שגיאה במחיקת נתונים');
+            }
         }
 
         /**
@@ -856,7 +959,9 @@
          * עזר: escape HTML
          */
         escapeHtml(text) {
-            if (!text) return '';
+            if (!text) {
+return '';
+}
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
@@ -867,7 +972,9 @@
          * עזר: פורמט תאריך
          */
         formatDate(date) {
-            if (!date) return 'N/A';
+            if (!date) {
+return 'N/A';
+}
 
             let dateObj;
             if (date.toDate && typeof date.toDate === 'function') {
@@ -889,7 +996,7 @@
     // Create global instance
     window.DeleteDataModal = new DeleteDataModal();
 
-    console.log('✅ DeleteDataModal loaded (Phase 1: Read-Only)');
+    console.log('✅ DeleteDataModal loaded (Phase 3: Limited Delete - 50 items max)');
 
 })();
 

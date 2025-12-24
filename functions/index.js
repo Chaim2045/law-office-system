@@ -7392,7 +7392,7 @@ const { logDeletionAttempt, checkSuspiciousActivity } = require('./src/deletion/
  * 6. Transaction Safety - מחיקה מאובטחת
  * 7. Audit Logging - רישום מלא
  *
- * 🚨 PHASE 1: READ-ONLY - לא מוחק בפועל!
+ * 🚀 PHASE 3: LIMITED DELETE - מחיקה מוגבלת (50 items max)
  */
 exports.deleteUserDataSelective = functions.https.onCall(async (data, context) => {
   const startTime = Date.now();
@@ -7400,7 +7400,7 @@ exports.deleteUserDataSelective = functions.https.onCall(async (data, context) =
   try {
     console.log('🚀 =================================');
     console.log('🗑️  DELETE USER DATA SELECTIVE');
-    console.log('🚨 PHASE 1: READ-ONLY MODE');
+    console.log('🚀 PHASE 3: LIMITED DELETE (50 items max)');
     console.log('🚀 =================================');
 
     // ============================================
@@ -7502,11 +7502,11 @@ exports.deleteUserDataSelective = functions.https.onCall(async (data, context) =
     return {
       success: true,
       dryRun: validatedData.dryRun,
-      phase: 'phase_1_readonly',
+      phase: 'phase_3_limited',
       deletionEnabled: DELETION_ENABLED,
       message: validatedData.dryRun
         ? `✅ Preview: ${result.deletedCounts.total} פריטים יימחקו`
-        : `🚨 Phase 1: מחיקה אמיתית עדיין לא זמינה`,
+        : `✅ נמחקו ${result.deletedCounts.total} פריטים${result.deletedCounts.orphanedApprovals ? ` (כולל ${result.deletedCounts.orphanedApprovals} orphaned approvals)` : ''}`,
       deletedCounts: result.deletedCounts,
       preview: result.preview,
       executionTime: `${executionTime}ms`

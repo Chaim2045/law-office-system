@@ -61,6 +61,19 @@
     font-weight: 600;
 }
 
+.selection-count.over-limit {
+    background: var(--red);
+    color: white;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+
+    50% { opacity: 0.7; }
+}
+
 /* Tabs */
 .delete-data-tabs {
     display: flex;
@@ -333,6 +346,12 @@
     margin-top: 8px;
     padding-top: 12px;
     border-top: 2px solid var(--gray-300);
+}
+
+.preview-summary li.orphaned {
+    color: var(--orange);
+    font-style: italic;
+    font-size: 13px;
 }
 
 .execution-time,
