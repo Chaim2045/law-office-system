@@ -562,7 +562,7 @@ return;
 return;
 }
 
-            const contentEl = modal.querySelector('.modal-content-inner');
+            const contentEl = modal.querySelector('.modal-body');
             if (contentEl) {
                 contentEl.innerHTML = this.renderContent();
             }
