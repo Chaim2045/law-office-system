@@ -352,10 +352,10 @@ return;
 return;
 }
 
-    // ✅ DYNAMIC: Build content that adapts to ANY screen size
+    // ✅ SIMPLE APPROACH: Just duplicate content exactly 2 times for translateX(-50%)
     if (this.textElement) {
-      // Step 1: Build a single loop of all announcements
-      let singleLoopHTML = '';
+      // Step 1: Build all announcements
+      let contentHTML = '';
       this.announcements.forEach((announcement, index) => {
         const message = announcement.message;
         const repeatCount = this.calculateRepeatCount(announcement, message);
@@ -363,46 +363,16 @@ return;
         console.log(`📊 Announcement ${index + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
 
         for (let i = 0; i < repeatCount; i++) {
-          singleLoopHTML += `<span class="ticker-item">${message}</span>`;
+          contentHTML += `<span class="ticker-item">${message}</span>`;
         }
       });
 
-      // Step 2: Measure the content width AFTER DOM renders
-      this.textElement.innerHTML = singleLoopHTML;
+      // Step 2: Duplicate EXACTLY 2 times for translateX(-50%) animation
+      // This is the ONLY way to get a perfect seamless loop
+      const finalHTML = contentHTML + contentHTML;
+      this.textElement.innerHTML = finalHTML;
 
-      // Wait for browser to render before measuring
-      requestAnimationFrame(() => {
-        const contentWidth = this.textElement.scrollWidth;
-        const containerWidth = this.container.offsetWidth;
-
-        // Step 3: Calculate how many duplications needed for smooth loop
-        // We need at least 2x container width for translateX(-50%) to work smoothly
-        const minRequiredWidth = containerWidth * 2;
-        const duplicationsNeeded = Math.max(2, Math.ceil(minRequiredWidth / contentWidth));
-
-        console.log(`📐 Container: ${containerWidth}px | Content: ${contentWidth}px | Duplications: ${duplicationsNeeded}x`);
-
-        // Step 4: Duplicate content to ensure seamless loop
-        let finalHTML = '';
-        for (let i = 0; i < duplicationsNeeded; i++) {
-          finalHTML += singleLoopHTML;
-        }
-
-        this.textElement.innerHTML = finalHTML;
-
-        // Step 5: Calculate animation duration based on content width
-        // Formula: ~100px per second for comfortable reading speed
-        requestAnimationFrame(() => {
-          const finalWidth = this.textElement.scrollWidth;
-          const durationSeconds = Math.max(30, Math.round(finalWidth / 100)); // At least 30s, ~100px/s
-
-          console.log(`✅ Final content width: ${finalWidth}px (${(finalWidth / containerWidth).toFixed(1)}x container)`);
-          console.log(`⏱️ Animation duration: ${durationSeconds}s (${Math.round(finalWidth / durationSeconds)}px/s)`);
-
-          // Apply dynamic animation duration
-          this.textElement.style.animationDuration = `${durationSeconds}s`;
-        });
-      });
+      console.log('✅ Content duplicated exactly 2x for seamless loop');
     }
 
     // Use the first announcement for icon/color (or we could mix, but keeping simple)
