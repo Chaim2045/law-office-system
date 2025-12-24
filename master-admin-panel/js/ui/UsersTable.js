@@ -27,7 +27,7 @@
                 { key: 'clientsCount', title: 'לקוחות', sortable: true },
                 { key: 'tasksCount', title: 'משימות', sortable: true },
                 { key: 'hoursThisMonth', title: 'שעות (חודש)', sortable: true },
-                { key: 'lastLogin', title: 'כניסה אחרונה', sortable: true },
+                { key: 'lastLogin', title: 'פעיל לאחרונה', sortable: true },
                 { key: 'messages', title: 'הודעות', sortable: false, width: '90px' },
                 { key: 'actions', title: 'פעולות', sortable: false, width: '120px' }
             ];
@@ -191,7 +191,7 @@
                     <td>${user.clientsCount || 0}</td>
                     <td>${user.tasksCount || 0}</td>
                     <td>${this.renderHours(user.hoursThisMonth)}</td>
-                    <td>${this.renderDate(user.lastLogin)}</td>
+                    <td>${this.renderLastActivity(user)}</td>
                     <td class="user-messages-badge-cell">${this.renderMessageBadge(user.email)}</td>
                     <td>${this.renderActions(user)}</td>
                 </tr>
@@ -360,6 +360,87 @@ return '-';
                     month: 'short',
                     day: 'numeric'
                 });
+            }
+        }
+
+        /**
+         * Render last activity with real-time status
+         * הצגת פעילות אחרונה עם סטטוס בזמן אמת
+         *
+         * Format: "פעיל עכשיו" / "לפני 5 דקות" / "לפני שעה" / "היום" / "אתמול"
+         *
+         * ✅ NEW: Uses lastSeen (updated every 5 min) instead of just lastLogin
+         */
+        renderLastActivity(user) {
+            // Try lastSeen first (updated every 5 min by Heartbeat)
+            const lastActivity = user.lastSeen || user.lastLogin;
+
+            if (!lastActivity) {
+                return '<span style="color: #9ca3af;">לא ידוע</span>';
+            }
+
+            try {
+                let dateObj;
+
+                // Handle Firestore Timestamp
+                if (lastActivity.toDate && typeof lastActivity.toDate === 'function') {
+                    dateObj = lastActivity.toDate();
+                } else if (lastActivity._seconds !== undefined) {
+                    dateObj = new Date(lastActivity._seconds * 1000);
+                } else if (typeof lastActivity === 'number') {
+                    dateObj = new Date(lastActivity);
+                } else if (lastActivity instanceof Date) {
+                    dateObj = lastActivity;
+                } else {
+                    return '<span style="color: #9ca3af;">לא ידוע</span>';
+                }
+
+                // Check if valid date
+                if (isNaN(dateObj.getTime())) {
+                    return '<span style="color: #9ca3af;">לא ידוע</span>';
+                }
+
+                const now = Date.now();
+                const diff = now - dateObj.getTime();
+                const minutes = Math.floor(diff / (1000 * 60));
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+                // 🟢 Active NOW (< 10 minutes)
+                if (minutes < 10) {
+                    return '<span style="color: #10b981; font-weight: 600;">🟢 פעיל עכשיו</span>';
+                }
+
+                // 🟡 Active recently (10-60 minutes)
+                if (minutes < 60) {
+                    return `<span style="color: #f59e0b;">לפני ${minutes} דקות</span>`;
+                }
+
+                // Less than 24 hours
+                if (hours < 24) {
+                    return `<span style="color: #6b7280;">לפני ${hours} שעות</span>`;
+                }
+
+                // Yesterday
+                if (days === 1) {
+                    return '<span style="color: #9ca3af;">אתמול</span>';
+                }
+
+                // Less than a week
+                if (days < 7) {
+                    return `<span style="color: #9ca3af;">לפני ${days} ימים</span>`;
+                }
+
+                // More than a week - show date
+                const formattedDate = dateObj.toLocaleDateString('he-IL', {
+                    day: 'numeric',
+                    month: 'short'
+                });
+                return `<span style="color: #9ca3af;">${formattedDate}</span>`;
+
+            } catch (error) {
+                console.error('Error formatting last activity:', error);
+                return '<span style="color: #9ca3af;">שגיאה</span>';
             }
         }
 

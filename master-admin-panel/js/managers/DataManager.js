@@ -129,6 +129,8 @@
                         status: userData.status || 'active',
                         createdAt: userData.createdAt || null,
                         lastLogin: userData.lastLogin || null,
+                        lastSeen: userData.lastSeen || null,        // ✅ NEW: Real-time activity (updated every 5 min)
+                        isOnline: userData.isOnline || false,       // ✅ NEW: Online status
                         phoneNumber: userData.phoneNumber || '',
                         phone: userData.phone || '',  // WhatsApp Bot field
                         whatsappEnabled: userData.whatsappEnabled || false,  // WhatsApp Bot toggle
