@@ -399,19 +399,13 @@ return;
    */
   calculateRepeatCount(announcement, message) {
     if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
-      // Manual mode - use specified repeat count (minimum 2 for smooth animation)
-      return Math.max(2, announcement.displayStyle.repeatCount || 2);
+      // Manual mode - use specified repeat count (minimum 1 since we duplicate 2x later)
+      return Math.max(1, announcement.displayStyle.repeatCount || 1);
     }
 
-    // Auto mode - calculate based on message length
-    const length = message.length;
-    if (length <= 40) {
-      return 5; // Short messages repeat 5 times
-    } else if (length <= 100) {
-      return 3; // Medium messages repeat 3 times
-    } else {
-      return 2; // Long messages show twice (minimum for smooth animation)
-    }
+    // Auto mode - show each message only ONCE
+    // The 2x duplication happens in updateDisplay() for the seamless loop
+    return 1;
   }
 
   /**
