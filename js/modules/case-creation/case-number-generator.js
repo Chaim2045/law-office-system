@@ -316,7 +316,6 @@ return false;
           .collection('clients')
           .where('caseNumber', '>=', `${yearPrefix}000`)
           .where('caseNumber', '<=', `${yearPrefix}999`)
-          .select('caseNumber')  // ✅ רק המספר (lightweight!)
           .get();
 
         Logger.log(`  📦 Loaded ${snapshot.size} case numbers`);
