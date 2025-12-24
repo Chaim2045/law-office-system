@@ -151,7 +151,7 @@
   line-height: 1.3;
   display: inline-flex;
   gap: 80px; /* רווח בין החזרות */
-  animation: ticker-scroll-loop 90s linear infinite; /* 90 שניות - מהירות איטית ונוחה לקריאה */
+  animation: ticker-scroll-loop 60s linear infinite; /* 60 שניות - מהירות בינונית, לופ אינסופי */
   will-change: transform;
 }
 
