@@ -348,17 +348,17 @@
                     throw new Error('משתמש לא נמצא');
                 }
 
-                // Open new DeleteDataModal with selective deletion
-                if (window.DeleteDataModal) {
-                    window.DeleteDataModal.open(user);
+                // Open new DeleteDataSidePanel with selective deletion
+                if (window.DeleteDataSidePanel) {
+                    window.DeleteDataSidePanel.open(user);
                 } else {
-                    console.error('❌ DeleteDataModal not loaded');
+                    console.error('❌ DeleteDataSidePanel not loaded');
                     window.notify.error('מודול מחיקה לא נטען');
                 }
 
             } catch (error) {
-                console.error('❌ Error opening delete data modal:', error);
-                window.notify.error(error.message || 'שגיאה בפתיחת מודאל מחיקה');
+                console.error('❌ Error opening delete data side panel:', error);
+                window.notify.error(error.message || 'שגיאה בפתיחת פאנל מחיקה');
             }
         }
 

@@ -49,12 +49,12 @@ async function verifyTaskOwnership(db, userEmail, taskIds) {
       const taskData = taskDoc.data();
 
       // בדיקה שהמשימה שייכת למשתמש הנכון
-      if (taskData.employeeEmail !== userEmail) {
-        console.warn(`⚠️ Task ${taskId} belongs to ${taskData.employeeEmail}, not ${userEmail}`);
+      if (taskData.employee !== userEmail) {
+        console.warn(`⚠️ Task ${taskId} belongs to ${taskData.employee}, not ${userEmail}`);
         rejected.push({
           id: taskId,
-          reason: `שייך למשתמש ${taskData.employeeEmail}`,
-          actualOwner: taskData.employeeEmail
+          reason: `שייך למשתמש ${taskData.employee}`,
+          actualOwner: taskData.employee
         });
         continue;
       }
@@ -110,12 +110,12 @@ async function verifyTimesheetOwnership(db, userEmail, timesheetIds) {
       const timesheetData = timesheetDoc.data();
 
       // בדיקה שהשעתון שייך למשתמש הנכון
-      if (timesheetData.employeeEmail !== userEmail) {
-        console.warn(`⚠️ Timesheet ${timesheetId} belongs to ${timesheetData.employeeEmail}, not ${userEmail}`);
+      if (timesheetData.employee !== userEmail) {
+        console.warn(`⚠️ Timesheet ${timesheetId} belongs to ${timesheetData.employee}, not ${userEmail}`);
         rejected.push({
           id: timesheetId,
-          reason: `שייך למשתמש ${timesheetData.employeeEmail}`,
-          actualOwner: timesheetData.employeeEmail
+          reason: `שייך למשתמש ${timesheetData.employee}`,
+          actualOwner: timesheetData.employee
         });
         continue;
       }
