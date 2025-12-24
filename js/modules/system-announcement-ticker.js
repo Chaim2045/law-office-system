@@ -362,11 +362,9 @@ return;
       console.log(`📊 Showing announcement ${this.currentIndex + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
 
       // Build content for current announcement only
-      // Add spacing using non-breaking spaces for visual separation
-      const separator = '\u00A0\u00A0\u00A0\u2022\u00A0\u00A0\u00A0'; // "   •   " with non-breaking spaces
       let contentHTML = '';
       for (let i = 0; i < repeatCount; i++) {
-        contentHTML += `<span class="ticker-item">${separator}${message}${separator}</span>`;
+        contentHTML += `<span class="ticker-item">${message}</span>`;
       }
 
       // Step 2: Duplicate EXACTLY 2 times for translateX(-50%) animation
