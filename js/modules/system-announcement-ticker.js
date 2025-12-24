@@ -362,9 +362,11 @@ return;
       console.log(`📊 Showing announcement ${this.currentIndex + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
 
       // Build content for current announcement only
+      // Add spacing using non-breaking spaces for visual separation
+      const separator = '\u00A0\u00A0\u00A0\u2022\u00A0\u00A0\u00A0'; // "   •   " with non-breaking spaces
       let contentHTML = '';
       for (let i = 0; i < repeatCount; i++) {
-        contentHTML += `<span class="ticker-item">${message}</span>`;
+        contentHTML += `<span class="ticker-item">${separator}${message}${separator}</span>`;
       }
 
       // Step 2: Duplicate EXACTLY 2 times for translateX(-50%) animation
@@ -399,14 +401,14 @@ return;
    */
   calculateRepeatCount(announcement, message) {
     if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
-      // Manual mode - use specified repeat count (minimum 2 since we duplicate 2x later)
-      return Math.max(2, announcement.displayStyle.repeatCount || 2);
+      // Manual mode - use specified repeat count (minimum 1 since we duplicate 2x later)
+      return Math.max(1, announcement.displayStyle.repeatCount || 1);
     }
 
-    // Auto mode - show each message TWICE before duplication
-    // This helps achieve closer to 2.0x ratio accounting for CSS gaps/padding
-    // Result: 2 repeats × 2 duplication = 4 items total
-    return 2;
+    // Auto mode - show each message ONCE before duplication
+    // With zero gap and zero padding, this creates perfect 2.0x ratio
+    // Result: 1 repeat × 2 duplication = 2 items total
+    return 1;
   }
 
   /**
