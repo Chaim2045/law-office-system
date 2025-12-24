@@ -352,67 +352,37 @@ return;
 return;
 }
 
-    // ✅ DYNAMIC: Build content that adapts to ANY screen size
+    // ✅ SIMPLE APPROACH: Show ONLY current announcement, duplicate exactly 2x for translateX(-50%)
     if (this.textElement) {
-      // Step 1: Build a single loop of all announcements
-      let singleLoopHTML = '';
-      this.announcements.forEach((announcement, index) => {
-        const message = announcement.message;
-        const repeatCount = this.calculateRepeatCount(announcement, message);
+      // Step 1: Get current announcement only
+      const currentAnnouncement = this.announcements[this.currentIndex];
+      const message = currentAnnouncement.message;
+      const repeatCount = this.calculateRepeatCount(currentAnnouncement, message);
 
-        console.log(`📊 Announcement ${index + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
+      console.log(`📊 Showing announcement ${this.currentIndex + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
 
-        for (let i = 0; i < repeatCount; i++) {
-          singleLoopHTML += `<span class="ticker-item">${message}</span>`;
-        }
-      });
+      // Build content for current announcement only
+      let contentHTML = '';
+      for (let i = 0; i < repeatCount; i++) {
+        contentHTML += `<span class="ticker-item">${message}</span>`;
+      }
 
-      // Step 2: Measure the content width AFTER DOM renders
-      this.textElement.innerHTML = singleLoopHTML;
+      // Step 2: Duplicate EXACTLY 2 times for translateX(-50%) animation
+      // This is the ONLY way to get a perfect seamless loop
+      const finalHTML = contentHTML + contentHTML;
+      this.textElement.innerHTML = finalHTML;
 
-      // Wait for browser to render before measuring
-      requestAnimationFrame(() => {
-        const contentWidth = this.textElement.scrollWidth;
-        const containerWidth = this.container.offsetWidth;
-
-        // Step 3: Calculate how many duplications needed for smooth loop
-        // We need at least 2x container width for translateX(-50%) to work smoothly
-        const minRequiredWidth = containerWidth * 2;
-        const duplicationsNeeded = Math.max(2, Math.ceil(minRequiredWidth / contentWidth));
-
-        console.log(`📐 Container: ${containerWidth}px | Content: ${contentWidth}px | Duplications: ${duplicationsNeeded}x`);
-
-        // Step 4: Duplicate content to ensure seamless loop
-        let finalHTML = '';
-        for (let i = 0; i < duplicationsNeeded; i++) {
-          finalHTML += singleLoopHTML;
-        }
-
-        this.textElement.innerHTML = finalHTML;
-
-        // Step 5: Calculate animation duration based on content width
-        // Formula: ~100px per second for comfortable reading speed
-        requestAnimationFrame(() => {
-          const finalWidth = this.textElement.scrollWidth;
-          const durationSeconds = Math.max(30, Math.round(finalWidth / 100)); // At least 30s, ~100px/s
-
-          console.log(`✅ Final content width: ${finalWidth}px (${(finalWidth / containerWidth).toFixed(1)}x container)`);
-          console.log(`⏱️ Animation duration: ${durationSeconds}s (${Math.round(finalWidth / durationSeconds)}px/s)`);
-
-          // Apply dynamic animation duration
-          this.textElement.style.animationDuration = `${durationSeconds}s`;
-        });
-      });
+      console.log('✅ Content duplicated exactly 2x for seamless loop');
     }
 
-    // Use the first announcement for icon/color (or we could mix, but keeping simple)
-    const firstAnnouncement = this.announcements[0];
+    // Use the current announcement for icon/color
+    const currentAnnouncement = this.announcements[this.currentIndex];
 
     // Update icon based on type
-    this.updateIcon(firstAnnouncement.type);
+    this.updateIcon(currentAnnouncement.type);
 
     // Update background color based on type
-    this.updateColor(firstAnnouncement.type);
+    this.updateColor(currentAnnouncement.type);
 
     // Update dots
     this.updateDots();
@@ -429,19 +399,14 @@ return;
    */
   calculateRepeatCount(announcement, message) {
     if (announcement.displayStyle && announcement.displayStyle.mode === 'manual') {
-      // Manual mode - use specified repeat count (minimum 2 for smooth animation)
-      return Math.max(2, announcement.displayStyle.repeatCount || 2);
+      // Manual mode - use specified repeat count (minimum 1 since we duplicate 2x later)
+      return Math.max(1, announcement.displayStyle.repeatCount || 1);
     }
 
-    // Auto mode - calculate based on message length
-    const length = message.length;
-    if (length <= 40) {
-      return 5; // Short messages repeat 5 times
-    } else if (length <= 100) {
-      return 3; // Medium messages repeat 3 times
-    } else {
-      return 2; // Long messages show twice (minimum for smooth animation)
-    }
+    // Auto mode - show each message ONCE before duplication
+    // With zero gap and zero padding, this creates perfect 2.0x ratio
+    // Result: 1 repeat × 2 duplication = 2 items total
+    return 1;
   }
 
   /**
