@@ -575,11 +575,9 @@
 /* ========== PAGINATION ========== */
 
 .pagination-container {
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 0;
 }
 
 .pagination-wrapper {
