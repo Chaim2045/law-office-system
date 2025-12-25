@@ -1,0 +1,429 @@
+/**
+ * Phone Call Timer Styles
+ * ========================
+ * עיצוב מודרני ומהודק לטיימר שיחות טלפון
+ *
+ * @version 1.0.0
+ * @created 2025-12-25
+ *
+ * סגנון: Vercel/Linear inspired - clean, minimal, modern
+ */
+
+/* ========================================
+   TIMER BUTTON IN SIDEBAR
+   ======================================== */
+
+.nav-item.phone-call-btn {
+  position: relative;
+  background: #10b981; /* Green */
+  color: white;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.nav-item.phone-call-btn:hover {
+  background: #059669;
+  transform: translateX(-2px);
+}
+
+/* Active state (timer running) */
+.nav-item.phone-call-btn.active {
+  background: #ef4444; /* Red */
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.nav-item.phone-call-btn.active:hover {
+  background: #dc2626;
+}
+
+/* Pulse animation for active state */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 70%);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgb(239 68 68 / 0%);
+  }
+}
+
+/* Timer display */
+.nav-item .timer-display {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-item .timer-text,
+.nav-item .timer-display {
+  transition: opacity 0.2s ease;
+}
+
+/* ========================================
+   PHONE CALL POPUP/MODAL
+   ======================================== */
+
+.phone-call-overlay {
+  z-index: 3000; /* Higher than regular popups */
+}
+
+.phone-call-popup {
+  max-width: 560px;
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   TIMER SUMMARY SECTION
+   ======================================== */
+
+.timer-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 1px solid #bbf7d0;
+}
+
+.timer-icon {
+  width: 56px;
+  height: 56px;
+  background: #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.timer-icon i {
+  font-size: 24px;
+  color: white;
+}
+
+.timer-duration {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.duration-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #065f46;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.duration-label {
+  font-size: 14px;
+  color: #047857;
+  font-weight: 500;
+}
+
+/* ========================================
+   CALL TYPE SELECTION
+   ======================================== */
+
+.call-type-section {
+  margin-bottom: 24px;
+}
+
+.section-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.call-type-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.call-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.call-type-btn:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.call-type-btn.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+
+.call-type-btn i {
+  font-size: 24px;
+}
+
+.call-type-btn.active i {
+  color: #3b82f6;
+}
+
+/* ========================================
+   CLIENT SELECTION SECTION
+   ======================================== */
+
+.client-selection-section {
+  display: block;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.client-selection-section .form-group {
+  margin-bottom: 16px;
+}
+
+.client-selection-section .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Client Search Results */
+.client-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+}
+
+.client-result-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.client-result-item:last-child {
+  border-bottom: none;
+}
+
+.client-result-item:hover {
+  background: #f9fafb;
+}
+
+.client-name {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.client-file {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.no-results {
+  padding: 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* ========================================
+   FORM ELEMENTS
+   ======================================== */
+
+.phone-call-popup .form-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.phone-call-popup .form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.phone-call-popup .form-group label i {
+  margin-left: 6px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.phone-call-popup .required {
+  color: #ef4444;
+  margin-right: 4px;
+}
+
+/* Modern Input */
+.modern-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  background: white;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.modern-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #fafbfc;
+}
+
+.modern-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Modern Select */
+.modern-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  background: white;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.modern-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #fafbfc;
+}
+
+.modern-select:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Modern Textarea */
+.modern-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  background: white;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modern-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #fafbfc;
+}
+
+.modern-textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Time Input - Special styling */
+.time-input {
+  text-align: center;
+  font-weight: 600;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Form Help Text */
+.form-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.form-help i {
+  margin-left: 4px;
+  font-size: 11px;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (width <= 640px) {
+  .phone-call-popup {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .call-type-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .timer-summary {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .duration-value {
+    font-size: 48px;
+  }
+}
+
+/* ========================================
+   UTILITIES
+   ======================================== */
+
+.hidden {
+  display: none !important;
+}
+
+/* Smooth transitions */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}

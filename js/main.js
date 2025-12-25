@@ -61,6 +61,9 @@ import { ActionFlowManager } from './modules/ui-components.js';
 // Debug Tools (Development Only)
 import * as DebugTools from './modules/debug-tools.js';
 
+// Phone Call Timer
+import PhoneCallTimer from './modules/phone-call-timer.js';
+
 
 /* ========================================
    MAIN APPLICATION CLASS
@@ -83,6 +86,9 @@ class LawOfficeManager {
 
     // ✅ NEW v2.0: Add Task Dialog System
     this.addTaskDialog = null;
+
+    // ✅ NEW: Phone Call Timer
+    this.phoneCallTimer = null;
 
     // View State - ✅ Managed by STATE_CONFIG (config/state-config.js)
     // Session-only (resets on page load): taskFilter, timesheetFilter
@@ -262,6 +268,9 @@ class LawOfficeManager {
 
         // ✅ NEW v2.0: Initialize Add Task System after login
         this.initializeAddTaskSystem();
+
+        // ✅ NEW: Initialize Phone Call Timer
+        this.initializePhoneCallTimer();
       } else {
         // User not found in employees - sign out
         await firebase.auth().signOut();
@@ -1003,6 +1012,26 @@ return false;
     } catch (error) {
       console.error('❌ Error initializing Add Task System:', error);
       // System will fallback to old method automatically
+    }
+  }
+
+  /**
+   * Initialize Phone Call Timer
+   * אתחול טיימר שיחות טלפון
+   */
+  initializePhoneCallTimer() {
+    try {
+      console.log('📞 Initializing Phone Call Timer...');
+
+      this.phoneCallTimer = new PhoneCallTimer(this);
+      this.phoneCallTimer.init();
+
+      // Make globally accessible for onclick handlers
+      window.phoneCallTimer = this.phoneCallTimer;
+
+      console.log('✅ Phone Call Timer initialized');
+    } catch (error) {
+      console.error('❌ Error initializing Phone Call Timer:', error);
     }
   }
 
