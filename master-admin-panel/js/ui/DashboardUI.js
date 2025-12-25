@@ -110,12 +110,6 @@
                         <!-- Statistics Cards -->
                         <div id="statsContainer" class="stats-container" style="display: none;"></div>
 
-                        <!-- Action Bar -->
-                        <div id="actionBar" class="action-bar" style="display: none;">
-                            <h2 class="section-title">ניהול עובדים</h2>
-                            <!-- Add User button moved to FilterBar to avoid duplicate IDs -->
-                        </div>
-
                         <!-- Filter Bar -->
                         <div id="filterContainer" class="filter-container" style="display: none;"></div>
 
@@ -387,7 +381,6 @@ return;
         showContainers() {
             const containers = [
                 'statsContainer',
-                'actionBar',
                 'filterContainer',
                 'tableContainer',
                 'paginationContainer'
@@ -396,8 +389,8 @@ return;
             containers.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
-el.style.display = id === 'actionBar' ? 'flex' : 'block';
-}
+                    el.style.display = 'block';
+                }
             });
         }
 
@@ -408,7 +401,6 @@ el.style.display = id === 'actionBar' ? 'flex' : 'block';
         hideContainers() {
             const containers = [
                 'statsContainer',
-                'actionBar',
                 'filterContainer',
                 'tableContainer',
                 'paginationContainer'
