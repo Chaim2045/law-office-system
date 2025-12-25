@@ -731,6 +731,24 @@
                         console.error('❌ Error in clients listener:', error);
                     }
                 );
+
+            // ✅ NEW: Listen to employees collection changes
+            // This enables real-time activity status updates (lastSeen/isOnline)
+            this.employeesListener = this.db.collection('employees')
+                .onSnapshot(
+                    (snapshot) => {
+                        console.log('🔄 Employees collection updated');
+                        this.loadEmployees().then(() => {
+                            // רק נרענן את הטבלה, לא צריך לחשב סטטיסטיקות מחדש
+                            this.updateUI();
+                        });
+                    },
+                    (error) => {
+                        console.error('❌ Error in employees listener:', error);
+                    }
+                );
+
+            console.log('✅ Real-time listeners active: clients + employees');
         }
 
         /**
@@ -742,6 +760,12 @@
             if (this.clientsListener) {
                 this.clientsListener();
                 this.clientsListener = null;
+            }
+
+            // ✅ NEW: Clean up employees listener
+            if (this.employeesListener) {
+                this.employeesListener();
+                this.employeesListener = null;
             }
 
             console.log('🗑️ ClientsDataManager: Destroyed');
