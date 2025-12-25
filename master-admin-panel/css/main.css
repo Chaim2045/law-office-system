@@ -768,7 +768,8 @@ body {
 .dashboard-content {
   max-width: 1600px;
   margin: 0 auto;
-  padding: var(--space-6); /* Padding moved here so scroll reaches the bottom */
+  padding: var(--space-6);
+  padding-bottom: calc(var(--space-6) * 2); /* Extra padding at bottom so pagination is fully visible */
 }
 
 .welcome-message {
