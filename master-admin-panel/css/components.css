@@ -582,7 +582,7 @@
 
 .pagination-wrapper {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: var(--space-4);
   flex-wrap: wrap;
