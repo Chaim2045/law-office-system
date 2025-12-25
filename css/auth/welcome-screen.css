@@ -1,0 +1,281 @@
+/**
+ * WelcomeScreen Component Styles
+ *
+ * Styles for welcome screen with:
+ * - Welcome message
+ * - Last login info
+ * - Progress bar (auto-redirect)
+ * - Choice cards (admin)
+ */
+
+/* Welcome Content Container */
+.welcome-content {
+    text-align: center;
+    animation: fadeIn 0.4s ease;
+}
+
+/* Welcome Title */
+.welcome-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0 0 0.5rem;
+    animation: fadeInScale 0.5s ease;
+}
+
+/* Welcome Subtitle (Last Login) */
+.welcome-subtitle {
+    font-size: 1rem;
+    color: #64748B;
+    margin: 0 0 2rem;
+    animation: fadeIn 0.6s ease;
+}
+
+/* Progress Section */
+.progress-section {
+    margin-top: 2rem;
+    animation: fadeIn 0.7s ease;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #E2E8F0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 100%);
+    border-radius: 10px;
+    animation: progress 2.5s ease-in-out;
+    box-shadow: 0 0 10px rgb(59 130 246 / 50%);
+}
+
+.progress-message {
+    font-size: 0.875rem;
+    color: #64748B;
+    margin: 0;
+}
+
+/* Progress Animation */
+@keyframes progress {
+    0% {
+        width: 0%;
+    }
+
+    100% {
+        width: 100%;
+    }
+}
+
+/* Choice Section (Admin) */
+.choice-section {
+    margin-top: 2rem;
+    animation: fadeIn 0.5s ease;
+}
+
+.choice-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0 0 1.5rem;
+}
+
+/* Choice Cards Container */
+.choice-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+}
+
+/* Choice Card */
+.choice-card {
+    background: white;
+    border: 2px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 1.75rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Shine Effect on Hover */
+.choice-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 40%), transparent);
+    transition: left 0.6s ease;
+}
+
+.choice-card:hover::before {
+    left: 100%;
+}
+
+.choice-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 12px 40px rgb(59 130 246 / 20%);
+    border-color: #3B82F6;
+}
+
+.choice-card:active {
+    transform: translateY(-4px) scale(1.01);
+}
+
+/* Focus State for Accessibility */
+.choice-card:focus {
+    outline: 3px solid #3B82F6;
+    outline-offset: 2px;
+}
+
+/* Admin Card - Special Styling */
+.choice-card.admin {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border-color: #3B82F6;
+    box-shadow: 0 4px 15px rgb(59 130 246 / 15%);
+}
+
+/* Employee Card */
+.choice-card.employee {
+    background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+}
+
+.choice-card.employee:hover {
+    background: linear-gradient(135deg, #FFF 0%, #F8FAFC 100%);
+}
+
+/* Card Header */
+.choice-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Card Icon */
+.choice-card-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 80%);
+    flex-shrink: 0;
+}
+
+.choice-card-icon i {
+    font-size: 1.5rem;
+}
+
+.choice-card.admin .choice-card-icon {
+    background: rgb(59 130 246 / 10%);
+}
+
+.choice-card.admin .choice-card-icon i {
+    color: #3B82F6;
+}
+
+.choice-card.employee .choice-card-icon i {
+    color: #64748B;
+}
+
+/* Card Title */
+.choice-card-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1E293B;
+    line-height: 1.3;
+    flex: 1;
+}
+
+/* Admin Badge */
+.choice-badge {
+    display: inline-block;
+    background: #3B82F6;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.25rem 0.625rem;
+    border-radius: 20px;
+    margin-right: 0.5rem;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+}
+
+/* Card Description */
+.choice-card-description {
+    font-size: 0.875rem;
+    color: #64748B;
+    line-height: 1.6;
+    margin-top: auto;
+}
+
+.choice-card-description i {
+    font-size: 0.8rem;
+    margin-left: 0.25rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Responsive */
+@media (width <= 768px) {
+    .welcome-title {
+        font-size: 1.5rem;
+    }
+
+    .choice-cards {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .choice-card {
+        padding: 1.5rem 1.25rem;
+        min-height: 140px;
+    }
+
+    .choice-card-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .choice-card-icon i {
+        font-size: 1.25rem;
+    }
+
+    .choice-card-title {
+        font-size: 1rem;
+    }
+}
