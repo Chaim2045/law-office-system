@@ -696,7 +696,8 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
         loginCount: employeeData.loginCount || 0,
         photoURL: authUserData?.photoURL || null,
         emailVerified: authUserData?.emailVerified || false,
-        authUID: employeeData.authUID // ✅ הוספת authUID למשתמש
+        authUID: employeeData.authUID, // ✅ הוספת authUID למשתמש
+        dailyHoursTarget: employeeData.dailyHoursTarget || null // ✅ תקן שעות יומי אישי
       },
       clients: clients,
       tasks: tasks,
