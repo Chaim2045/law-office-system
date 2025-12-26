@@ -62,7 +62,7 @@ import { ActionFlowManager } from './modules/ui-components.js';
 import * as DebugTools from './modules/debug-tools.js';
 
 // Phone Call Timer
-import { PhoneCallTimer } from './modules/phone-call-timer.js';
+import PhoneCallTimer from './modules/phone-call-timer.js';
 
 
 /* ========================================
