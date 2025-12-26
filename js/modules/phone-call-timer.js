@@ -194,130 +194,105 @@ return;
     const overlay = document.createElement('div');
     overlay.className = 'popup-overlay phone-call-overlay';
     overlay.innerHTML = `
-      <div class="popup phone-call-popup">
+      <div class="popup phone-call-popup" style="max-width: 500px;">
+        <button class="popup-close-btn" onclick="phoneCallTimer.cancelDialog()" aria-label="סגור">
+          <i class="fas fa-times"></i>
+        </button>
         <div class="popup-header">
           <i class="fas fa-phone"></i>
-          שיחת טלפון הסתיימה
+          הוספת שיחת טלפון
         </div>
 
         <div class="popup-content">
-          <!-- Timer Summary -->
-          <div class="timer-summary">
-            <div class="timer-icon">
-              <i class="fas fa-stopwatch"></i>
-            </div>
-            <div class="timer-duration">
-              <span class="duration-value">${elapsedMinutes}</span>
-              <span class="duration-label">דקות</span>
-            </div>
-          </div>
+          <form id="phoneCallForm">
+            <!-- Type + Time in grid -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>
+                  סוג השיחה
+                  <span class="required">*</span>
+                </label>
+                <select id="phoneCallType" class="modern-select" onchange="phoneCallTimer.selectCallType(this.value)">
+                  <option value="client">שיחה עם לקוח</option>
+                  <option value="internal">רישום פנימי</option>
+                </select>
+              </div>
 
-          <!-- Call Type Selection -->
-          <div class="call-type-section">
-            <label class="section-label">סוג השיחה</label>
-            <div class="call-type-buttons">
-              <button
-                class="call-type-btn active"
-                data-type="client"
-                onclick="phoneCallTimer.selectCallType('client')"
-              >
-                <i class="fas fa-user"></i>
-                <span>שיחה עם לקוח</span>
-              </button>
-              <button
-                class="call-type-btn"
-                data-type="internal"
-                onclick="phoneCallTimer.selectCallType('internal')"
-              >
-                <i class="fas fa-building"></i>
-                <span>רישום פנימי</span>
-              </button>
+              <div class="form-group">
+                <label for="phoneCallMinutes">
+                  זמן (דקות)
+                  <span class="hint-text"><i class="fas fa-stopwatch"></i> ${elapsedMinutes} דק'</span>
+                </label>
+                <input
+                  type="number"
+                  id="phoneCallMinutes"
+                  value="${elapsedMinutes}"
+                  min="1"
+                  max="999"
+                  required
+                />
+                <small class="helper-text">ניתן לעדכן במידת הצורך</small>
+              </div>
             </div>
-          </div>
 
-          <!-- Client Selection (shown only for client calls) -->
-          <div class="client-selection-section" id="clientSelectionSection">
-            <div class="form-group">
-              <label for="phoneCallClient">
-                <i class="fas fa-user"></i>
-                בחר לקוח
+            <!-- Client + Service in grid (shown only for client calls) -->
+            <div id="clientSelectionSection">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="phoneCallClient">
+                    <i class="fas fa-user"></i> בחר לקוח
+                    <span class="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="phoneCallClient"
+                    placeholder="התחל להקליד שם לקוח..."
+                    autocomplete="off"
+                  />
+                  <div class="client-search-results" id="phoneCallClientResults"></div>
+                </div>
+
+                <div class="form-group">
+                  <label for="phoneCallService">
+                    <i class="fas fa-briefcase"></i> בחר שירות
+                    <span class="required">*</span>
+                  </label>
+                  <select id="phoneCallService" disabled>
+                    <option value="">בחר תחילה לקוח</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description - full width -->
+            <div class="form-group full-width">
+              <label for="phoneCallDescription">
+                <i class="fas fa-align-right"></i> תיאור השיחה
                 <span class="required">*</span>
               </label>
-              <input
-                type="text"
-                id="phoneCallClient"
-                class="modern-input"
-                placeholder="התחל להקליד שם לקוח..."
-                autocomplete="off"
-              />
-              <div class="client-search-results" id="phoneCallClientResults"></div>
+              <textarea
+                id="phoneCallDescription"
+                rows="3"
+                placeholder="למשל: בירור לגבי..."
+                required
+              ></textarea>
+              <small class="helper-text">יישמר כ: "שיחת טלפון עם לקוח בעניין: ..."</small>
             </div>
-
-            <div class="form-group">
-              <label for="phoneCallService">
-                <i class="fas fa-briefcase"></i>
-                בחר שירות
-                <span class="required">*</span>
-              </label>
-              <select id="phoneCallService" class="modern-select" disabled>
-                <option value="">בחר תחילה לקוח</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Description -->
-          <div class="form-group">
-            <label for="phoneCallDescription">
-              <i class="fas fa-align-right"></i>
-              תיאור השיחה
-              <span class="required">*</span>
-            </label>
-            <textarea
-              id="phoneCallDescription"
-              class="modern-textarea"
-              rows="3"
-              placeholder="למשל: בירור לגבי..."
-              required
-            ></textarea>
-            <small class="form-help">
-              התיאור יישמר כ: "שיחת טלפון עם לקוח בעניין: ..."
-            </small>
-          </div>
-
-          <!-- Time Adjustment -->
-          <div class="form-group">
-            <label for="phoneCallMinutes">
-              <i class="fas fa-clock"></i>
-              זמן (דקות)
-            </label>
-            <input
-              type="number"
-              id="phoneCallMinutes"
-              class="modern-input time-input"
-              value="${elapsedMinutes}"
-              min="1"
-              max="999"
-            />
-            <small class="form-help">
-              ניתן לעדכן את הזמן במידת הצורך
-            </small>
-          </div>
+          </form>
         </div>
 
         <div class="popup-buttons">
           <button
-            class="popup-btn popup-btn-secondary"
-            onclick="phoneCallTimer.cancelDialog()"
-          >
-            <i class="fas fa-times"></i>
-            ביטול
-          </button>
-          <button
-            class="popup-btn popup-btn-primary"
+            class="popup-btn popup-btn-confirm"
             onclick="phoneCallTimer.saveToTimesheet()"
           >
-            <i class="fas fa-save"></i>
-            שמור לשעתון
+            <i class="fas fa-save"></i> שמור
+          </button>
+          <button
+            class="popup-btn popup-btn-cancel"
+            onclick="phoneCallTimer.cancelDialog()"
+          >
+            <i class="fas fa-times"></i> ביטול
           </button>
         </div>
       </div>
@@ -345,16 +320,6 @@ return;
    */
   selectCallType(type) {
     this.currentCallType = type;
-
-    // Update buttons
-    const buttons = document.querySelectorAll('.call-type-btn');
-    buttons.forEach(btn => {
-      if (btn.dataset.type === type) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
 
     // Show/hide client selection
     const clientSection = document.getElementById('clientSelectionSection');
