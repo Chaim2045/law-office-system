@@ -202,6 +202,24 @@
         const welcomeScreen = new WelcomeScreen(welcomeContainer, {
             autoRedirectDelay: 2500,
             onNavigate: (destination) => {
+                // ═══════════════════════════════════════════════════════════
+                // 🔑 Unified Login System - Set session flag
+                // ═══════════════════════════════════════════════════════════
+                // This flag tells the destination interface (employee or admin)
+                // to skip showing their login screen since user just logged in
+                //
+                // Security:
+                // - Session-only (cleared on browser close)
+                // - One-time use (destination interface clears it)
+                // - Expires after 1 minute
+                // - Only works with valid Firebase session
+                //
+                // Without this flag, destination interfaces would show their
+                // own login screens (by design, for security when accessed directly)
+                // ═══════════════════════════════════════════════════════════
+                sessionStorage.setItem('unifiedLoginComplete', 'true');
+                sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
+
                 const url = destination === 'admin'
                     ? 'master-admin-panel/index.html'
                     : 'index.html';

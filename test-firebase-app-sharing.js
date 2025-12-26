@@ -125,7 +125,35 @@
     }
     console.log('');
 
-    // 8. Summary
+    // 8. Check Unified Login Flags (New)
+    console.log('8️⃣ Unified Login System:');
+    const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
+    const loginTime = sessionStorage.getItem('unifiedLoginTime');
+
+    if (unifiedLogin === 'true' && loginTime) {
+        const timeSinceLogin = Date.now() - parseInt(loginTime);
+        const secondsRemaining = Math.max(0, Math.floor((60000 - timeSinceLogin) / 1000));
+
+        console.log('   🔑 Unified login flag PRESENT:');
+        console.log(`      Flag value: ${unifiedLogin}`);
+        console.log(`      Login time: ${new Date(parseInt(loginTime)).toLocaleTimeString()}`);
+        console.log(`      Time since: ${Math.floor(timeSinceLogin / 1000)} seconds ago`);
+        console.log(`      Expires in: ${secondsRemaining} seconds`);
+
+        if (timeSinceLogin > 60000) {
+            console.log('   ⚠️ Flag expired (>60 seconds) - would show login screen');
+        } else {
+            console.log('   ✅ Flag valid - would skip login screen');
+        }
+    } else {
+        console.log('   ℹ️ No unified login flag (normal for direct access)');
+        console.log('   This page was either:');
+        console.log('      • Accessed directly (security: shows login)');
+        console.log('      • Refreshed after unified login (flag cleared)');
+    }
+    console.log('');
+
+    // 9. Summary
     console.log('╔════════════════════════════════════════════════════════════════╗');
     console.log('║       📋 SUMMARY                                              ║');
     console.log('╚════════════════════════════════════════════════════════════════╝\n');

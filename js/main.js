@@ -62,7 +62,7 @@ import { ActionFlowManager } from './modules/ui-components.js';
 import * as DebugTools from './modules/debug-tools.js';
 
 // Phone Call Timer
-import PhoneCallTimer from './modules/phone-call-timer.js';
+import { PhoneCallTimer } from './modules/phone-call-timer.js';
 
 
 /* ========================================
@@ -188,6 +188,43 @@ class LawOfficeManager {
     // 🛡️ המתן ל-Firebase Auth להיות מוכן
     Logger.log('⏳ Waiting for Firebase Auth...');
     const user = await this.waitForAuthReady();
+
+    // ═══════════════════════════════════════════════════════════
+    // 🔑 Unified Login System - Check for unified login flag
+    // ═══════════════════════════════════════════════════════════
+    // If user came from login-v2.html, skip the login screen
+    // and automatically enter the system
+    //
+    // Security: Flag is one-time use, expires after 1 minute,
+    // and only works with valid Firebase session
+    // ═══════════════════════════════════════════════════════════
+    const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
+    const loginTime = sessionStorage.getItem('unifiedLoginTime');
+    const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
+
+    if (user && unifiedLogin === 'true' && isRecent) {
+      Logger.log('🔑 Unified login detected - auto-entering system');
+
+      // Clear flags (one-time use)
+      sessionStorage.removeItem('unifiedLoginComplete');
+      sessionStorage.removeItem('unifiedLoginTime');
+
+      // 🔒 Set flag to prevent showLogin() from being called by other code
+      window.isInWelcomeScreen = true;
+
+      // Auto-login from saved session
+      await this.handleAuthenticatedUser(user);
+
+      // Clear the flag after successful login
+      window.isInWelcomeScreen = false;
+
+      // ✅ CRITICAL: Setup permanent auth state listener for NotificationBell
+      this.setupNotificationBellListener();
+
+      Logger.log('✅ System initialized (unified login)');
+      return;
+    }
+    // ═══════════════════════════════════════════════════════════
 
     // 🔒 SECURITY FIX: Always show login screen, even if user has saved session
     // This matches banking systems behavior - browser can fill password but user must click login
