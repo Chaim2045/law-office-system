@@ -358,6 +358,17 @@ class LawOfficeManager {
   }
 
   /**
+   * Ensure Phone Timer is initialized - Called from showApp()
+   * Fallback for cases where user was already authenticated before code deployment
+   */
+  ensurePhoneTimerInitialized() {
+    if (!this.phoneCallTimer && typeof PhoneCallTimer !== 'undefined') {
+      console.log('📞 Phone timer not initialized - initializing now...');
+      this.initializePhoneCallTimer();
+    }
+  }
+
+  /**
    * Setup all event listeners
    */
   setupEventListeners() {

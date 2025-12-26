@@ -347,6 +347,11 @@ bubblesContainer.classList.add('hidden');
   if (window.manager && typeof window.manager.initTicker === 'function') {
     window.manager.initTicker();
   }
+
+  // ✅ Ensure Phone Call Timer is initialized (fallback for existing sessions)
+  if (window.manager && typeof window.manager.ensurePhoneTimerInitialized === 'function') {
+    window.manager.ensurePhoneTimerInitialized();
+  }
 }
 
 function logout() {
