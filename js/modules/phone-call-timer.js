@@ -1,17 +1,16 @@
 /**
- * Phone Call Timer Module
+ * Phone Call Timer Module - REFACTORED
  * ========================
  * מודול לניהול טיימר שיחות טלפון עם רישום אוטומטי לשעתון
  *
- * @version 1.0.0
- * @created 2025-12-25
+ * @version 2.0.0
+ * @updated 2025-12-26
  *
- * תכונות:
- * - טיימר התחלה/עצירה
- * - שמירה ב-localStorage למקרה סגירת דפדפן
- * - מודל לבחירת לקוח/פנימי
- * - רישום אוטומטי לשעתון
- * - עיצוב מודרני ומהודק
+ * שינויים בגרסה 2.0:
+ * - שימוש ב-ClientCaseSelector במקום קוד מותאם אישי
+ * - תמיכה במשימות "שיחות טלפון" אוטומטיות
+ * - רישום נכון על לקוחות (מקזז שעות)
+ * - תמיכה ברישומים פנימיים (ללא קיזוז)
  */
 
 /* ========================================
@@ -33,6 +32,11 @@ class PhoneCallTimer {
     // Storage key
     this.STORAGE_KEY = 'phoneCallTimer';
 
+    // Selection state
+    this.clientCaseSelector = null;
+    this.currentCallType = 'client';
+    this.currentOverlay = null;
+
     // Bind methods
     this.handleButtonClick = this.handleButtonClick.bind(this);
     this.updateDisplay = this.updateDisplay.bind(this);
@@ -50,59 +54,44 @@ class PhoneCallTimer {
   }
 
   /**
-   * Create the timer button in the sidebar
+   * Create timer button in sidebar
    */
   createButton() {
-    const sidebar = document.getElementById('minimalSidebar');
+    const sidebar = document.querySelector('.sidebar nav');
     if (!sidebar) {
       console.error('❌ Sidebar not found');
       return;
     }
 
-    const nav = sidebar.querySelector('.sidebar-nav');
-    if (!nav) {
-      console.error('❌ Sidebar nav not found');
-      return;
-    }
-
-    // Find the divider before logout button
-    const divider = nav.querySelector('.nav-divider');
-
     // Create button HTML
-    const buttonHTML = `
-      <button
-        class="nav-item phone-call-btn"
-        id="phoneCallTimerBtn"
-        title="התחל/עצור שיחת טלפון"
-      >
+    const buttonHtml = `
+      <button class="nav-item phone-call-btn" id="phoneCallTimerBtn">
         <i class="fas fa-phone"></i>
         <span class="timer-text">שיחה</span>
-        <span class="timer-display hidden">00:00</span>
+        <span class="timer-display" style="display: none;">00:00</span>
       </button>
     `;
 
-    // Insert before divider
-    if (divider) {
-      divider.insertAdjacentHTML('beforebegin', buttonHTML);
+    // Insert before the first nav item
+    const firstItem = sidebar.querySelector('.nav-item');
+    if (firstItem) {
+      firstItem.insertAdjacentHTML('beforebegin', buttonHtml);
     } else {
-      nav.insertAdjacentHTML('beforeend', buttonHTML);
+      sidebar.insertAdjacentHTML('afterbegin', buttonHtml);
     }
 
     // Get references
     this.button = document.getElementById('phoneCallTimerBtn');
     this.timerDisplay = this.button.querySelector('.timer-display');
 
-    // Add event listener
+    // Attach click listener
     this.button.addEventListener('click', this.handleButtonClick);
   }
 
   /**
-   * Handle button click - start or stop timer
+   * Handle button click
    */
-  handleButtonClick(event) {
-    event.preventDefault();
-    event.stopPropagation();
-
+  handleButtonClick() {
     if (this.isRunning) {
       this.stop();
     } else {
@@ -111,56 +100,52 @@ class PhoneCallTimer {
   }
 
   /**
-   * Start the timer
+   * Start timer
    */
   start() {
-    this.startTime = Date.now();
     this.isRunning = true;
+    this.startTime = Date.now();
     this.elapsedSeconds = 0;
 
     // Update UI
     this.button.classList.add('active');
-    this.button.querySelector('.timer-text').classList.add('hidden');
-    this.timerDisplay.classList.remove('hidden');
+    this.button.querySelector('.timer-text').style.display = 'none';
+    this.timerDisplay.style.display = 'inline';
 
     // Start interval
     this.intervalId = setInterval(this.updateDisplay, 1000);
 
-    // Save to localStorage
+    // Save to storage
     this.saveToStorage();
 
-    // Show notification
-    if (window.NotificationSystem) {
-      window.NotificationSystem.show('⏱️ שיחת טלפון התחילה', 'success');
-    }
-
-    console.log('✅ Phone call timer started');
+    console.log('📞 Timer started');
   }
 
   /**
-   * Stop the timer and show dialog
+   * Stop timer
    */
   stop() {
-    // Stop interval
-    clearInterval(this.intervalId);
-    this.intervalId = null;
-
-    // Calculate elapsed time
-    const elapsedMs = Date.now() - this.startTime;
-    const elapsedMinutes = Math.ceil(elapsedMs / 60000); // Round up to minutes
-
-    // Reset timer state
     this.isRunning = false;
+
+    // Stop interval
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
 
     // Update UI
     this.button.classList.remove('active');
-    this.button.querySelector('.timer-text').classList.remove('hidden');
-    this.timerDisplay.classList.add('hidden');
+    this.button.querySelector('.timer-text').style.display = 'inline';
+    this.timerDisplay.style.display = 'none';
+    this.timerDisplay.textContent = '00:00';
 
-    // Clear localStorage
+    // Clear storage
     this.clearStorage();
 
-    console.log(`✅ Phone call timer stopped - ${elapsedMinutes} minutes`);
+    // Calculate elapsed minutes
+    const elapsedMinutes = Math.max(1, Math.round(this.elapsedSeconds / 60));
+
+    console.log(`📞 Timer stopped - ${elapsedMinutes} minutes`);
 
     // Show completion dialog
     this.showCompletionDialog(elapsedMinutes);
@@ -171,8 +156,8 @@ class PhoneCallTimer {
    */
   updateDisplay() {
     if (!this.isRunning) {
-return;
-}
+      return;
+    }
 
     this.elapsedSeconds++;
     const minutes = Math.floor(this.elapsedSeconds / 60);
@@ -181,10 +166,8 @@ return;
     const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     this.timerDisplay.textContent = display;
 
-    // Update storage every 5 seconds
-    if (this.elapsedSeconds % 5 === 0) {
-      this.saveToStorage();
-    }
+    // Update storage
+    this.saveToStorage();
   }
 
   /**
@@ -237,36 +220,9 @@ return;
               </div>
             </div>
 
-            <!-- Client + Service in grid (shown only for client calls) -->
+            <!-- Client + Service selector (using ClientCaseSelector) -->
             <div id="clientSelectionSection">
-              <div class="tailwind-form-row">
-                <div class="tailwind-form-group">
-                  <label for="phoneCallClient" class="tailwind-label">
-                    <i class="fas fa-user"></i>
-                    בחר לקוח
-                    <span class="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="phoneCallClient"
-                    class="tailwind-input"
-                    placeholder="התחל להקליד שם לקוח..."
-                    autocomplete="off"
-                  />
-                  <div class="client-search-results" id="phoneCallClientResults"></div>
-                </div>
-
-                <div class="tailwind-form-group">
-                  <label for="phoneCallService" class="tailwind-label">
-                    <i class="fas fa-briefcase"></i>
-                    בחר שירות
-                    <span class="required">*</span>
-                  </label>
-                  <select id="phoneCallService" class="tailwind-select" disabled>
-                    <option value="">בחר תחילה לקוח</option>
-                  </select>
-                </div>
-              </div>
+              <div id="phoneCallClientSelector"></div>
             </div>
 
             <!-- Description - full width -->
@@ -311,11 +267,10 @@ return;
 
     // Initialize with "client" type selected
     this.currentCallType = 'client';
-    this.selectedClient = null;
-    this.selectedService = null;
+    this.clientCaseSelector = null;
 
-    // Add client search functionality
-    this.initClientSearch();
+    // Initialize ClientCaseSelector for client/service selection
+    this.initClientCaseSelector();
 
     // Show overlay
     setTimeout(() => overlay.classList.add('show'), 10);
@@ -334,126 +289,75 @@ return;
     const clientSection = document.getElementById('clientSelectionSection');
     if (type === 'client') {
       clientSection.style.display = 'block';
+      // Re-initialize ClientCaseSelector if needed
+      if (!this.clientCaseSelector) {
+        this.initClientCaseSelector();
+      }
     } else {
       clientSection.style.display = 'none';
     }
   }
 
   /**
-   * Initialize client search
+   * Initialize ClientCaseSelector
    */
-  initClientSearch() {
-    const clientInput = document.getElementById('phoneCallClient');
-    const resultsDiv = document.getElementById('phoneCallClientResults');
+  initClientCaseSelector() {
+    // Check if ClientCaseSelector is available
+    if (typeof window.ClientCaseSelector === 'undefined') {
+      console.error('❌ ClientCaseSelector not loaded');
+      return;
+    }
 
-    if (!clientInput) {
-return;
-}
-
-    clientInput.addEventListener('input', (e) => {
-      const searchTerm = e.target.value.trim();
-
-      if (searchTerm.length < 2) {
-        resultsDiv.innerHTML = '';
-        resultsDiv.style.display = 'none';
-        return;
-      }
-
-      // Get clients from manager
-      const clients = this.manager.clients || [];
-      const filtered = clients.filter(client =>
-        client.fullName && client.fullName.includes(searchTerm)
-      );
-
-      if (filtered.length === 0) {
-        resultsDiv.innerHTML = '<div class="no-results">לא נמצאו לקוחות</div>';
-        resultsDiv.style.display = 'block';
-        return;
-      }
-
-      // Render results
-      resultsDiv.innerHTML = filtered
-        .slice(0, 5)
-        .map(client => `
-          <div
-            class="client-result-item"
-            onclick="phoneCallTimer.selectClient('${client.id}', '${client.fullName}')"
-          >
-            <div class="client-name">${client.fullName}</div>
-            <div class="client-file">${client.fileNumber || ''}</div>
-          </div>
-        `)
-        .join('');
-
-      resultsDiv.style.display = 'block';
-    });
-
-    // Close results when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!clientInput.contains(e.target) && !resultsDiv.contains(e.target)) {
-        resultsDiv.style.display = 'none';
-      }
+    // Initialize selector
+    this.clientCaseSelector = new window.ClientCaseSelector('phoneCallClientSelector', {
+      placeholder: 'חפש לקוח...',
+      required: true,
+      hideServiceCards: false // Show service cards for selection
     });
   }
 
   /**
-   * Select a client from search results
+   * Get or create "Phone Calls" task for service
    */
-  selectClient(clientId, clientName) {
-    this.selectedClient = { id: clientId, name: clientName };
-
-    const clientInput = document.getElementById('phoneCallClient');
-    const resultsDiv = document.getElementById('phoneCallClientResults');
-    const serviceSelect = document.getElementById('phoneCallService');
-
-    clientInput.value = clientName;
-    resultsDiv.style.display = 'none';
-
-    // Load client services
-    this.loadClientServices(clientId, serviceSelect);
-  }
-
-  /**
-   * Load services for selected client
-   */
-  async loadClientServices(clientId, serviceSelect) {
-    serviceSelect.disabled = true;
-    serviceSelect.innerHTML = '<option value="">טוען שירותים...</option>';
-
+  async getOrCreatePhoneTask(serviceId, serviceName) {
     try {
       const db = window.firebaseDB;
-      const snapshot = await db
-        .collection('services')
-        .where('clientId', '==', clientId)
-        .where('isActive', '==', true)
+
+      // Search for existing "Phone Calls" task for this service
+      const tasksSnapshot = await db.collection('budget_tasks')
+        .where('serviceId', '==', serviceId)
+        .where('description', '==', 'שיחות טלפון')
+        .where('status', '!=', 'הושלם')
+        .limit(1)
         .get();
 
-      if (snapshot.empty) {
-        serviceSelect.innerHTML = '<option value="">לא נמצאו שירותים פעילים</option>';
-        return;
+      if (!tasksSnapshot.empty) {
+        const existingTask = tasksSnapshot.docs[0];
+        console.log(`✅ Found existing phone task: ${existingTask.id}`);
+        return existingTask.id;
       }
 
-      const services = [];
-      snapshot.forEach(doc => {
-        services.push({ id: doc.id, ...doc.data() });
+      // No existing task - create new one
+      console.log(`📞 Creating new phone task for service ${serviceId}...`);
+
+      const result = await window.callFunction('createBudgetTask', {
+        serviceId: serviceId,
+        serviceName: serviceName,
+        description: 'שיחות טלפון',
+        estimatedMinutes: 30, // Default estimate
+        category: 'תקשורת'
       });
 
-      serviceSelect.innerHTML = '<option value="">בחר שירות</option>' +
-        services.map(service =>
-          `<option value="${service.id}">${service.serviceName || service.name}</option>`
-        ).join('');
-
-      serviceSelect.disabled = false;
-
-      // Add change listener
-      serviceSelect.addEventListener('change', (e) => {
-        const selectedService = services.find(s => s.id === e.target.value);
-        this.selectedService = selectedService || null;
-      });
+      if (result && result.taskId) {
+        console.log(`✅ Created phone task: ${result.taskId}`);
+        return result.taskId;
+      } else {
+        throw new Error('Failed to create phone task');
+      }
 
     } catch (error) {
-      console.error('❌ Error loading services:', error);
-      serviceSelect.innerHTML = '<option value="">שגיאה בטעינת שירותים</option>';
+      console.error('❌ Error getting/creating phone task:', error);
+      throw error;
     }
   }
 
@@ -472,93 +376,91 @@ return;
       return;
     }
 
-    if (this.currentCallType === 'client') {
-      if (!this.selectedClient) {
-        if (window.NotificationSystem) {
-          window.NotificationSystem.show('נא לבחור לקוח', 'error');
-        }
-        return;
+    if (!minutes || minutes < 1) {
+      if (window.NotificationSystem) {
+        window.NotificationSystem.show('זמן לא תקין', 'error');
       }
-
-      if (!this.selectedService) {
-        if (window.NotificationSystem) {
-          window.NotificationSystem.show('נא לבחור שירות', 'error');
-        }
-        return;
-      }
+      return;
     }
-
-    // Build timesheet entry
-    const timesheetData = {
-      employee: this.manager.currentUser,
-      date: new Date().toISOString(),
-      minutes: minutes,
-      action: `שיחת טלפון עם לקוח בעניין: ${description}`,
-      notes: '',
-      isPhoneCall: true,
-      createdAt: new Date()
-    };
-
-    // Add client data if applicable
-    if (this.currentCallType === 'client') {
-      timesheetData.clientName = this.selectedClient.name;
-      timesheetData.serviceName = this.selectedService.serviceName || this.selectedService.name;
-      timesheetData.serviceId = this.selectedService.id;
-      timesheetData.clientId = this.selectedClient.id;
-    } else {
-      timesheetData.clientName = 'רישום פנימי';
-      timesheetData.action = `פעילות פנימית: ${description}`;
-    }
-
-    // Show loading
-    const saveBtn = this.currentOverlay.querySelector('.popup-btn-primary');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
 
     try {
-      // Save to Firebase
-      await this.saveTimesheetEntry(timesheetData);
+      let timesheetData;
+
+      if (this.currentCallType === 'client') {
+        // Client call - must select client and service
+        if (!this.clientCaseSelector) {
+          if (window.NotificationSystem) {
+            window.NotificationSystem.show('שגיאה: בורר לקוח לא זמין', 'error');
+          }
+          return;
+        }
+
+        const selected = this.clientCaseSelector.getSelectedValues();
+
+        if (!selected.clientId || !selected.serviceId) {
+          if (window.NotificationSystem) {
+            window.NotificationSystem.show('נא לבחור לקוח ושירות', 'error');
+          }
+          return;
+        }
+
+        // Get or create "Phone Calls" task for this service
+        const taskId = await this.getOrCreatePhoneTask(selected.serviceId, selected.serviceName);
+
+        // Build timesheet entry for client
+        timesheetData = {
+          clientId: selected.clientId,
+          clientName: selected.clientName,
+          caseNumber: selected.caseNumber,
+          serviceId: selected.serviceId,
+          serviceName: selected.serviceName,
+          serviceType: selected.serviceType,
+          parentServiceId: selected.parentServiceId,
+          taskId: taskId, // ✅ Phone task ID
+          date: new Date().toISOString().split('T')[0],
+          minutes: minutes,
+          action: `שיחת טלפון עם לקוח בעניין: ${description}`,
+          isInternal: false, // ✅ Client call - counts towards hours
+          isPhoneCall: true
+        };
+
+      } else {
+        // Internal call - no client/service needed
+        timesheetData = {
+          date: new Date().toISOString().split('T')[0],
+          minutes: minutes,
+          action: `שיחה פנימית: ${description}`,
+          isInternal: true, // ✅ Internal - does NOT count towards client hours
+          isPhoneCall: true
+        };
+      }
+
+      // Show loading
+      if (window.NotificationSystem) {
+        window.NotificationSystem.show('שומר...', 'info', 1000);
+      }
+
+      // Save to Firestore
+      await window.callFunction('createTimesheetEntry', timesheetData);
 
       // Success
       if (window.NotificationSystem) {
-        window.NotificationSystem.show('✅ נשמר בהצלחה לשעתון', 'success');
+        window.NotificationSystem.show('✅ שיחה נרשמה בהצלחה', 'success');
       }
 
       // Close dialog
       this.cancelDialog();
 
-      // Refresh timesheet if on that tab
-      if (this.manager.currentTab === 'timesheet') {
-        await this.manager.loadTimesheetEntries();
+      // Refresh timesheet if visible
+      if (window.timesheetManager && typeof window.timesheetManager.loadData === 'function') {
+        await window.timesheetManager.loadData();
       }
 
     } catch (error) {
-      console.error('❌ Error saving to timesheet:', error);
-
+      console.error('❌ Error saving phone call:', error);
       if (window.NotificationSystem) {
-        window.NotificationSystem.show('שגיאה בשמירה: ' + error.message, 'error');
+        window.NotificationSystem.show(`שגיאה: ${error.message}`, 'error');
       }
-
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = '<i class="fas fa-save"></i> שמור לשעתון';
-    }
-  }
-
-  /**
-   * Save timesheet entry to Firebase
-   */
-  async saveTimesheetEntry(entryData) {
-    try {
-      const result = await callFunction('createTimesheetEntry', entryData);
-
-      if (!result.success) {
-        throw new Error(result.message || 'שגיאה בשמירת שעתון');
-      }
-
-      return result.entryId;
-    } catch (error) {
-      console.error('Firebase error:', error);
-      throw error;
     }
   }
 
@@ -570,18 +472,18 @@ return;
       this.currentOverlay.remove();
       this.currentOverlay = null;
     }
+    this.clientCaseSelector = null;
   }
 
   /**
-   * Save timer state to localStorage
+   * Save state to localStorage
    */
   saveToStorage() {
     const state = {
-      startTime: this.startTime,
       isRunning: this.isRunning,
+      startTime: this.startTime,
       elapsedSeconds: this.elapsedSeconds
     };
-
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
   }
 
@@ -591,8 +493,8 @@ return;
   restoreFromStorage() {
     const saved = localStorage.getItem(this.STORAGE_KEY);
     if (!saved) {
-return;
-}
+      return;
+    }
 
     try {
       const state = JSON.parse(saved);
@@ -602,45 +504,34 @@ return;
         return;
       }
 
-      // Calculate elapsed time since start
+      // Check if timer is too old (> 4 hours)
       const now = Date.now();
       const elapsed = now - state.startTime;
-      const elapsedSeconds = Math.floor(elapsed / 1000);
+      const maxAge = 4 * 60 * 60 * 1000; // 4 hours
 
-      // Check if more than 4 hours passed (probably forgotten)
-      if (elapsedSeconds > 4 * 60 * 60) {
+      if (elapsed > maxAge) {
+        console.warn('⚠️ Timer too old, clearing');
         this.clearStorage();
-        if (window.NotificationSystem) {
-          window.NotificationSystem.show(
-            'טיימר שיחה ישן נמחק (יותר מ-4 שעות)',
-            'warning'
-          );
-        }
         return;
       }
 
       // Ask user if they want to continue
-      const shouldContinue = confirm(
-        `נמצאה שיחת טלפון פעילה (${Math.floor(elapsedSeconds / 60)} דקות).\n\nהאם להמשיך?`
-      );
+      const continueTimer = confirm('נמצאה שיחה פעילה. להמשיך?');
 
-      if (shouldContinue) {
+      if (continueTimer) {
         this.startTime = state.startTime;
-        this.elapsedSeconds = elapsedSeconds;
+        this.elapsedSeconds = state.elapsedSeconds;
         this.isRunning = true;
 
         // Update UI
         this.button.classList.add('active');
-        this.button.querySelector('.timer-text').classList.add('hidden');
-        this.timerDisplay.classList.remove('hidden');
+        this.button.querySelector('.timer-text').style.display = 'none';
+        this.timerDisplay.style.display = 'inline';
 
         // Start interval
         this.intervalId = setInterval(this.updateDisplay, 1000);
-        this.updateDisplay();
 
-        if (window.NotificationSystem) {
-          window.NotificationSystem.show('⏱️ שיחת טלפון התחדשה', 'success');
-        }
+        console.log('📞 Timer restored from storage');
       } else {
         this.clearStorage();
       }
@@ -657,34 +548,28 @@ return;
   clearStorage() {
     localStorage.removeItem(this.STORAGE_KEY);
   }
-
-  /**
-   * Cleanup - called when user logs out
-   */
-  cleanup() {
-    if (this.isRunning) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-
-    this.clearStorage();
-
-    if (this.button) {
-      this.button.removeEventListener('click', this.handleButtonClick);
-    }
-
-    if (this.currentOverlay) {
-      this.currentOverlay.remove();
-    }
-  }
 }
 
 /* ========================================
-   EXPORT & GLOBAL ACCESS
+   INITIALIZATION
    ======================================== */
 
-// Export for module usage
-export default PhoneCallTimer;
+// Create global instance
+window.phoneCallTimer = null;
 
-// Make available globally for onclick handlers
-window.PhoneCallTimer = PhoneCallTimer;
+// Initialize when DOM is ready and user is authenticated
+document.addEventListener('DOMContentLoaded', () => {
+  // Wait for authentication
+  window.addEventListener('userAuthenticated', (e) => {
+    const manager = e.detail;
+
+    if (!window.phoneCallTimer) {
+      window.phoneCallTimer = new PhoneCallTimer(manager);
+      window.phoneCallTimer.init();
+      console.log('✅ Phone Call Timer initialized');
+    }
+  });
+});
+
+// Export for module usage
+export { PhoneCallTimer };
