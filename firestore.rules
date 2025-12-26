@@ -103,6 +103,14 @@ service cloud.firestore {
       allow write: if isAdmin(); // ✅ Only admins can create/update/delete
     }
 
+    // ✅ Services: READ for all authenticated, WRITE for admins only
+    // Reason: Users need to see services to select for phone calls and tasks
+    // Security: Only admins can create/update/delete services
+    match /services/{serviceId} {
+      allow read: if isAuthenticated(); // ✅ All authenticated users can read
+      allow write: if isAdmin(); // ✅ Only admins can create/update/delete
+    }
+
     // 🔒 Cases: ADMIN-ONLY ACCESS (SECURITY ENHANCEMENT)
     // Changed from: All authenticated users
     // Changed to: Admins only
