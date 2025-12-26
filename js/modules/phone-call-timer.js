@@ -572,4 +572,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Export for module usage
-export { PhoneCallTimer };
+export default PhoneCallTimer;
