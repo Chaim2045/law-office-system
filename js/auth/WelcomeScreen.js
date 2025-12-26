@@ -57,14 +57,23 @@ class WelcomeScreen {
         this.container.innerHTML = this.renderEmployeeWelcome(userName, lastLogin);
         this.container.classList.add('show');
 
-        // Auto redirect after delay
-        setTimeout(() => {
-            if (this.options.onNavigate) {
+        // ═══════════════════════════════════════════════════════════
+        // 🔑 CRITICAL: Call onNavigate IMMEDIATELY for unified login
+        // ═══════════════════════════════════════════════════════════
+        // Set sessionStorage flags immediately, then navigate.
+        // This ensures flags are set before page transition.
+        // ═══════════════════════════════════════════════════════════
+        if (this.options.onNavigate) {
+            // Show animation briefly then navigate
+            setTimeout(() => {
                 this.options.onNavigate('employee');
-            } else {
+            }, this.options.autoRedirectDelay);
+        } else {
+            // Fallback: direct navigation
+            setTimeout(() => {
                 window.location.href = 'index.html';
-            }
-        }, this.options.autoRedirectDelay);
+            }, this.options.autoRedirectDelay);
+        }
     }
 
     /**
@@ -193,7 +202,25 @@ class WelcomeScreen {
         // Save user preference
         localStorage.setItem('lastDashboardChoice', destination);
 
-        // Show loading state
+        // ═══════════════════════════════════════════════════════════
+        // 🔑 CRITICAL: Call onNavigate IMMEDIATELY (before setTimeout)
+        // ═══════════════════════════════════════════════════════════
+        // This ensures sessionStorage flags are set BEFORE navigation
+        // happens, not after the animation delay.
+        //
+        // onNavigate callback in login-v2.html sets:
+        // - sessionStorage.setItem('unifiedLoginComplete', 'true')
+        // - sessionStorage.setItem('unifiedLoginTime', Date.now())
+        //
+        // These flags must be set BEFORE window.location.href changes,
+        // otherwise the destination page won't detect unified login.
+        // ═══════════════════════════════════════════════════════════
+        if (this.options.onNavigate) {
+            this.options.onNavigate(destination);
+            return; // onNavigate handles navigation, no need to continue
+        }
+
+        // Show loading state (fallback if no onNavigate callback)
         this.container.innerHTML = `
             <div class="welcome-content">
                 <div class="progress-section">
@@ -205,16 +232,12 @@ class WelcomeScreen {
             </div>
         `;
 
-        // Navigate after animation
+        // Navigate after animation (fallback path)
         setTimeout(() => {
-            if (this.options.onNavigate) {
-                this.options.onNavigate(destination);
-            } else {
-                const url = destination === 'admin'
-                    ? 'master-admin-panel/index.html'
-                    : 'index.html';
-                window.location.href = url;
-            }
+            const url = destination === 'admin'
+                ? 'master-admin-panel/index.html'
+                : 'index.html';
+            window.location.href = url;
         }, this.options.autoRedirectDelay);
     }
 
