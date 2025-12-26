@@ -194,70 +194,75 @@ return;
     const overlay = document.createElement('div');
     overlay.className = 'popup-overlay phone-call-overlay';
     overlay.innerHTML = `
-      <div class="popup phone-call-popup" style="max-width: 500px;">
-        <button class="popup-close-btn" onclick="phoneCallTimer.cancelDialog()" aria-label="סגור">
-          <i class="fas fa-times"></i>
-        </button>
-        <div class="popup-header">
-          <i class="fas fa-phone"></i>
-          הוספת שיחת טלפון
+      <div class="popup phone-call-popup tailwind-modal">
+        <div class="tailwind-header">
+          <h3>
+            <i class="fas fa-phone" style="color: #3b82f6;"></i>
+            הוספת שיחת טלפון
+          </h3>
+          <button class="tailwind-close-btn" onclick="phoneCallTimer.cancelDialog()" aria-label="סגור">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
 
-        <div class="popup-content">
+        <div class="tailwind-content">
           <form id="phoneCallForm">
             <!-- Type + Time in grid -->
-            <div class="form-row">
-              <div class="form-group">
-                <label>
+            <div class="tailwind-form-row">
+              <div class="tailwind-form-group">
+                <label class="tailwind-label">
                   סוג השיחה
                   <span class="required">*</span>
                 </label>
-                <select id="phoneCallType" class="modern-select" onchange="phoneCallTimer.selectCallType(this.value)">
+                <select id="phoneCallType" class="tailwind-select" onchange="phoneCallTimer.selectCallType(this.value)">
                   <option value="client">שיחה עם לקוח</option>
                   <option value="internal">רישום פנימי</option>
                 </select>
               </div>
 
-              <div class="form-group">
-                <label for="phoneCallMinutes">
+              <div class="tailwind-form-group">
+                <label for="phoneCallMinutes" class="tailwind-label">
                   זמן (דקות)
-                  <span class="hint-text"><i class="fas fa-stopwatch"></i> ${elapsedMinutes} דק'</span>
                 </label>
                 <input
                   type="number"
                   id="phoneCallMinutes"
+                  class="tailwind-input"
                   value="${elapsedMinutes}"
                   min="1"
                   max="999"
                   required
                 />
-                <small class="helper-text">ניתן לעדכן במידת הצורך</small>
+                <small class="tailwind-helper">ניתן לעדכן במידת הצורך</small>
               </div>
             </div>
 
             <!-- Client + Service in grid (shown only for client calls) -->
             <div id="clientSelectionSection">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="phoneCallClient">
-                    <i class="fas fa-user"></i> בחר לקוח
+              <div class="tailwind-form-row">
+                <div class="tailwind-form-group">
+                  <label for="phoneCallClient" class="tailwind-label">
+                    <i class="fas fa-user"></i>
+                    בחר לקוח
                     <span class="required">*</span>
                   </label>
                   <input
                     type="text"
                     id="phoneCallClient"
+                    class="tailwind-input"
                     placeholder="התחל להקליד שם לקוח..."
                     autocomplete="off"
                   />
                   <div class="client-search-results" id="phoneCallClientResults"></div>
                 </div>
 
-                <div class="form-group">
-                  <label for="phoneCallService">
-                    <i class="fas fa-briefcase"></i> בחר שירות
+                <div class="tailwind-form-group">
+                  <label for="phoneCallService" class="tailwind-label">
+                    <i class="fas fa-briefcase"></i>
+                    בחר שירות
                     <span class="required">*</span>
                   </label>
-                  <select id="phoneCallService" disabled>
+                  <select id="phoneCallService" class="tailwind-select" disabled>
                     <option value="">בחר תחילה לקוח</option>
                   </select>
                 </div>
@@ -265,34 +270,38 @@ return;
             </div>
 
             <!-- Description - full width -->
-            <div class="form-group full-width">
-              <label for="phoneCallDescription">
-                <i class="fas fa-align-right"></i> תיאור השיחה
+            <div class="tailwind-form-group full-width">
+              <label for="phoneCallDescription" class="tailwind-label">
+                <i class="fas fa-align-right"></i>
+                תיאור השיחה
                 <span class="required">*</span>
               </label>
               <textarea
                 id="phoneCallDescription"
+                class="tailwind-textarea"
                 rows="3"
                 placeholder="למשל: בירור לגבי..."
                 required
               ></textarea>
-              <small class="helper-text">יישמר כ: "שיחת טלפון עם לקוח בעניין: ..."</small>
+              <small class="tailwind-helper">יישמר כ: "שיחת טלפון עם לקוח בעניין: ..."</small>
             </div>
           </form>
         </div>
 
-        <div class="popup-buttons">
+        <div class="tailwind-footer">
           <button
-            class="popup-btn popup-btn-confirm"
+            class="tailwind-btn tailwind-btn-primary"
             onclick="phoneCallTimer.saveToTimesheet()"
           >
-            <i class="fas fa-save"></i> שמור
+            <i class="fas fa-save"></i>
+            שמור
           </button>
           <button
-            class="popup-btn popup-btn-cancel"
+            class="tailwind-btn tailwind-btn-secondary"
             onclick="phoneCallTimer.cancelDialog()"
           >
-            <i class="fas fa-times"></i> ביטול
+            <i class="fas fa-times"></i>
+            ביטול
           </button>
         </div>
       </div>
