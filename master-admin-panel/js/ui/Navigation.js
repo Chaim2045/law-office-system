@@ -356,8 +356,8 @@ return;
         }
 
         /**
-         * Start polling pending approvals count
-         * התחל polling למספר האישורים הממתינים
+         * Start polling auto-approved tasks count
+         * התחל polling למספר משימות שאושרו אוטומטית ולא נצפו
          */
         startApprovalCountListener() {
             // וודא ש-Firebase זמין
@@ -369,20 +369,47 @@ return;
             // פונקציה לעדכון המונה
             const updateCount = async () => {
                 try {
+                    const currentUser = window.currentUser || window.firebaseAuth?.currentUser;
+                    if (!currentUser) {
+                        this.updateApprovalCountBadge(0);
+                        return;
+                    }
+
+                    // קבל lastViewedAt של המשתמש
+                    const userDoc = await window.firebaseDB
+                        .collection('employees')
+                        .doc(currentUser.email)
+                        .get();
+                    const lastViewedAt = userDoc.data()?.approvalsPanelLastViewed?.toDate() || new Date(0);
+
+                    // תאריך היום (00:00)
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    // קבל כל משימות autoApproved מהיום
                     const snapshot = await window.firebaseDB
                         .collection('pending_task_approvals')
-                        .where('status', '==', 'pending')
+                        .where('autoApproved', '==', true)
+                        .where('createdAt', '>=', today)
                         .get();
-                    this.updateApprovalCountBadge(snapshot.size);
+
+                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה
+                    const unviewedCount = snapshot.docs.filter(doc => {
+                        const createdAt = doc.data().createdAt?.toDate();
+                        return createdAt && createdAt > lastViewedAt;
+                    }).length;
+
+                    this.updateApprovalCountBadge(unviewedCount);
                 } catch (error) {
                     console.error('❌ Error getting approval count:', error);
+                    this.updateApprovalCountBadge(0);
                 }
             };
 
             // עדכון מיידי
             updateCount();
 
-            // Polling כל 30 שניות (במקום real-time)
+            // Polling כל 30 שניות
             this.approvalCountInterval = setInterval(updateCount, 30000);
 
             console.log('✅ Started approval count polling (every 30s)');
