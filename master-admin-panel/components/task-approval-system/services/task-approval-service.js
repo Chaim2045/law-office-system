@@ -84,17 +84,7 @@ export class TaskApprovalService {
         requestedAt: doc.data().requestedAt?.toDate() || doc.data().createdAt?.toDate() || null,
         reviewedAt: doc.data().reviewedAt?.toDate() || null,
         createdAt: doc.data().createdAt?.toDate() || null
-      }))
-      // ✅ Filter out old pending approvals (before auto-approval system)
-      // Only show: auto-approved, rejected, or approved tasks
-      .filter(approval => {
-        // If status is 'pending', only show if it has autoApproved flag
-        if (approval.status === 'pending') {
-          return approval.autoApproved === true;
-        }
-        // Show all approved/rejected
-        return true;
-      });
+      }));
 
       // ✅ Get last document for next pagination
       const lastDocument = docs.length > 0 ? docs[docs.length - 1] : null;
@@ -134,14 +124,7 @@ export class TaskApprovalService {
             requestedAt: doc.data().requestedAt?.toDate() || doc.data().createdAt?.toDate() || null,
             reviewedAt: doc.data().reviewedAt?.toDate() || null,
             createdAt: doc.data().createdAt?.toDate() || null
-          }))
-          // ✅ Filter out old pending approvals (before auto-approval system)
-          .filter(approval => {
-            if (approval.status === 'pending') {
-              return approval.autoApproved === true;
-            }
-            return true;
-          });
+          }));
 
           const lastDocument = docs.length > 0 ? docs[docs.length - 1] : null;
 
@@ -240,14 +223,7 @@ export class TaskApprovalService {
         ...doc.data(),
         requestedAt: doc.data().requestedAt?.toDate() || null,
         reviewedAt: doc.data().reviewedAt?.toDate() || null
-      }))
-      // ✅ Filter out old pending approvals (before auto-approval system)
-      .filter(approval => {
-        if (approval.status === 'pending') {
-          return approval.autoApproved === true;
-        }
-        return true;
-      });
+      }));
       callback(approvals);
     }, error => {
       console.error('❌ Real-time listener error:', error);

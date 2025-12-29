@@ -21,8 +21,8 @@
             this.realtimeUnsubscribe = null;
             this.approvalDialog = null;
             // ✅ Cursor-based pagination settings
-            this.initialLimit = 5; // Initial load: 5 items
-            this.loadMoreIncrement = 10; // Load more: 10 items each time
+            this.initialLimit = 4; // Initial load: 4 items
+            this.loadMoreIncrement = 20; // Load more: 20 items each time
             this.lastDocument = null; // Firestore cursor for pagination
             this.hasMoreData = true; // Flag to indicate if more data exists
         }
@@ -77,6 +77,22 @@
             }
 
             console.log('🔓 Opening Task Approval Side Panel...');
+
+            // Update lastViewedAt timestamp
+            const currentUser = window.currentUser || window.firebaseAuth?.currentUser;
+            if (currentUser && window.firebaseDB) {
+                try {
+                    await window.firebaseDB
+                        .collection('employees')
+                        .doc(currentUser.email)
+                        .set({
+                            approvalsPanelLastViewed: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    console.log('✅ Updated lastViewedAt timestamp');
+                } catch (error) {
+                    console.error('❌ Error updating lastViewedAt:', error);
+                }
+            }
 
             // Create overlay and panel
             this.createPanel();
