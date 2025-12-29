@@ -216,9 +216,14 @@ return;
 
             // ✅ בדיקה אם הלקוח במינוס (חריגה)
             // בודק אם יש שירות אחד לפחות במינוס, או שהסכום הכולל במינוס
-            const hasOverdraftService = client.services?.some(s =>
-                (s.hoursRemaining || 0) < 0
-            );
+            // IMPORTANT: דלג על שירותים שהחריגה שלהם הוסדרה
+            const hasOverdraftService = client.services?.some(s => {
+                // אם השירות הוסדר, לא לספור אותו כחריגה
+                if (s.overdraftResolved?.isResolved) {
+                    return false;
+                }
+                return (s.hoursRemaining || 0) < 0;
+            });
             const isOverdraft = hasOverdraftService || (client.hoursRemaining || 0) < 0;
             const rowClass = isOverdraft ? 'client-row-overdraft' : '';
 
