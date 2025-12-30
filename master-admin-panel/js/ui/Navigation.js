@@ -20,7 +20,8 @@
         constructor() {
             this.container = null;
             this.currentPage = null;
-            this.approvalCountInterval = null; // Polling interval לספירת אישורים
+            this.approvalCountUnsubscribe = null; // Real-time listener למסמך המשתמש
+            this.approvalsCountUnsubscribe = null; // Real-time listener למשימות אישור
         }
 
         /**
@@ -356,8 +357,8 @@ return;
         }
 
         /**
-         * Start polling auto-approved tasks count
-         * התחל polling למספר משימות שאושרו אוטומטית ולא נצפו
+         * Start real-time listener for auto-approved tasks count
+         * התחל listener בזמן אמת למספר משימות שאושרו אוטומטית ולא נצפו
          */
         startApprovalCountListener() {
             // וודא ש-Firebase זמין
@@ -366,22 +367,15 @@ return;
                 return;
             }
 
+            const currentUser = window.currentUser || window.firebaseAuth?.currentUser;
+            if (!currentUser) {
+                console.warn('⚠️ No current user for approval count');
+                return;
+            }
+
             // פונקציה לעדכון המונה
-            const updateCount = async () => {
+            const updateCount = async (lastViewedAt) => {
                 try {
-                    const currentUser = window.currentUser || window.firebaseAuth?.currentUser;
-                    if (!currentUser) {
-                        this.updateApprovalCountBadge(0);
-                        return;
-                    }
-
-                    // קבל lastViewedAt של המשתמש
-                    const userDoc = await window.firebaseDB
-                        .collection('employees')
-                        .doc(currentUser.email)
-                        .get();
-                    const lastViewedAt = userDoc.data()?.approvalsPanelLastViewed?.toDate() || new Date(0);
-
                     // תאריך היום (00:00)
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -406,13 +400,51 @@ return;
                 }
             };
 
-            // עדכון מיידי
-            updateCount();
+            // ✅ Real-time listener על המסמך של המשתמש
+            // כל שינוי ב-lastViewedAt יעדכן את המונה אוטומטית
+            this.approvalCountUnsubscribe = window.firebaseDB
+                .collection('employees')
+                .doc(currentUser.email)
+                .onSnapshot(
+                    (doc) => {
+                        if (doc.exists) {
+                            const lastViewedAt = doc.data()?.approvalsPanelLastViewed?.toDate() || new Date(0);
+                            console.log('🔄 User lastViewedAt changed, updating counter...');
+                            updateCount(lastViewedAt);
+                        }
+                    },
+                    (error) => {
+                        console.error('❌ Error in user listener:', error);
+                        this.updateApprovalCountBadge(0);
+                    }
+                );
 
-            // Polling כל 30 שניות
-            this.approvalCountInterval = setInterval(updateCount, 30000);
+            // ✅ Real-time listener על pending_task_approvals
+            // כל משימה חדשה תעדכן את המונה אוטומטית
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-            console.log('✅ Started approval count polling (every 30s)');
+            this.approvalsCountUnsubscribe = window.firebaseDB
+                .collection('pending_task_approvals')
+                .where('autoApproved', '==', true)
+                .where('createdAt', '>=', today)
+                .onSnapshot(
+                    async () => {
+                        console.log('🔄 New approval task detected, updating counter...');
+                        // קבל lastViewedAt עדכני
+                        const userDoc = await window.firebaseDB
+                            .collection('employees')
+                            .doc(currentUser.email)
+                            .get();
+                        const lastViewedAt = userDoc.data()?.approvalsPanelLastViewed?.toDate() || new Date(0);
+                        updateCount(lastViewedAt);
+                    },
+                    (error) => {
+                        console.error('❌ Error in approvals listener:', error);
+                    }
+                );
+
+            console.log('✅ Started real-time approval count listeners (user doc + approvals collection)');
         }
 
         /**
@@ -434,14 +466,19 @@ return;
         }
 
         /**
-         * Stop approval count polling
-         * עצור polling ספירת אישורים
+         * Stop approval count listeners
+         * עצור listeners ספירת אישורים
          */
         stopApprovalCountListener() {
-            if (this.approvalCountInterval) {
-                clearInterval(this.approvalCountInterval);
-                this.approvalCountInterval = null;
-                console.log('🛑 Stopped approval count polling');
+            if (this.approvalCountUnsubscribe) {
+                this.approvalCountUnsubscribe();
+                this.approvalCountUnsubscribe = null;
+                console.log('🛑 Stopped user approval count listener');
+            }
+            if (this.approvalsCountUnsubscribe) {
+                this.approvalsCountUnsubscribe();
+                this.approvalsCountUnsubscribe = null;
+                console.log('🛑 Stopped approvals collection listener');
             }
         }
 
