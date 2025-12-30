@@ -69,16 +69,16 @@
       frame-ancestors 'none';
     """
 
-# Cache control for static assets
+# Cache control for static assets - NO CACHE for JS/CSS to ensure updates
 [[headers]]
   for = "/css/*"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "public, no-cache, must-revalidate"
 
 [[headers]]
   for = "/js/*"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "public, no-cache, must-revalidate"
 
 # Prevent caching of HTML
 [[headers]]
