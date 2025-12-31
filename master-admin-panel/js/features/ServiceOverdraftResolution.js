@@ -507,7 +507,7 @@
                     resolvedBadge.style.cssText = `
                         position: absolute;
                         top: 0.5rem;
-                        left: 0.5rem;
+                        right: 0.5rem;
                         background: #10b981;
                         color: white;
                         font-size: 10px;

@@ -518,7 +518,8 @@ return;
                         usedHours: usedHours,
                         type: serviceType,
                         stage: stage,
-                        status: service.status || 'active'
+                        status: service.status || 'active',
+                        overdraftResolved: service.overdraftResolved // ✅ Pass overdraft resolution data
                     });
                 });
             }
@@ -1049,6 +1050,16 @@ return '';
             if (this.endDateInput) {
                 this.endDateInput.value = this.formatDateForInput(endDate);
             }
+
+            // Update active state on buttons
+            const quickButtons = document.querySelectorAll('.btn-quick-date');
+            quickButtons.forEach(btn => {
+                if (btn.getAttribute('data-range') === range) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
         }
 
         /**
