@@ -466,85 +466,89 @@
 
         /**
          * עדכון מודאל הדוח להתחשב בשירותים מוסדרים
+         *
+         * FIX: Added early returns to prevent infinite loop
+         * - ClientReportModal may not exist on all pages (e.g., index.html)
+         * - createServiceCard is the actual function name, not renderServiceCards
          */
         patchReportModal() {
-            // בדיקה ש-ClientReportModal קיים ויש לו את המתודה renderServiceCards
-            if (!window.ClientReportModal || typeof window.ClientReportModal.renderServiceCards !== 'function') {
-                console.warn('⚠️ ClientReportModal.renderServiceCards not ready, will retry...');
-                setTimeout(() => this.patchReportModal(), 500);
+            // Early return - אם ClientReportModal לא קיים (למשל בדף index.html)
+            if (!window.ClientReportModal) {
+                console.log('ℹ️ ClientReportModal not available on this page - skipping patch');
                 return;
             }
 
-            console.log('🔧 Patching ClientReportModal...');
-
-            // שמירת הפונקציה המקורית של renderServiceCards
-            const originalRenderServiceCards = window.ClientReportModal.renderServiceCards;
-
-            // בדיקה כפולה - לא צריכה להיות אפשרית אבל לבטיחות
-            if (!originalRenderServiceCards) {
-                console.error('❌ renderServiceCards not found (double check failed)');
-                setTimeout(() => this.patchReportModal(), 500);
+            // Early return - אם createServiceCard לא קיים
+            if (typeof window.ClientReportModal.createServiceCard !== 'function') {
+                console.log('ℹ️ createServiceCard not found - report modal uses different structure');
                 return;
             }
 
-            // Patch את renderServiceCards כדי להעביר את overdraftResolved
-            window.ClientReportModal.renderServiceCards = function(client) {
+            console.log('🔧 Patching ClientReportModal.createServiceCard...');
+
+            // שמירת הפונקציה המקורית של createServiceCard
+            const originalCreateServiceCard = window.ClientReportModal.createServiceCard;
+
+            // Patch את createServiceCard כדי להוסיף badge לשירותים מוסדרים
+            window.ClientReportModal.createServiceCard = function(serviceInfo, index) {
                 // קריאה לפונקציה המקורית
-                const result = originalRenderServiceCards.call(this, client);
+                const cardElement = originalCreateServiceCard.call(this, serviceInfo, index);
 
-                // המתן שהכרטיסים יירנדרו ב-DOM ואז עדכן אותם
-                setTimeout(() => {
-                    if (client.services && Array.isArray(client.services)) {
-                        client.services.forEach(service => {
-                            // בדיקה אם השירות הוסדר
-                            if (service.overdraftResolved?.isResolved) {
-                                // מצא את הכרטיס המתאים
-                                const serviceCards = document.querySelectorAll('#serviceCardsContainer > div');
-                                serviceCards.forEach(card => {
-                                    const serviceName = card.querySelector('h5')?.textContent;
-                                    if (serviceName && serviceName.includes(service.name)) {
-                                        // בדוק אם כבר יש badge (למנוע כפילויות)
-                                        if (card.querySelector('.resolved-service-badge')) {
-                                            return;
-                                        }
-
-                                        // הוסף badge "הוסדר"
-                                        const resolvedBadge = document.createElement('div');
-                                        resolvedBadge.className = 'resolved-service-badge';
-                                        resolvedBadge.style.cssText = `
-                                            position: absolute;
-                                            top: 0.5rem;
-                                            left: 0.5rem;
-                                            background: #10b981;
-                                            color: white;
-                                            font-size: 10px;
-                                            padding: 3px 8px;
-                                            border-radius: 4px;
-                                            font-weight: 600;
-                                            display: flex;
-                                            align-items: center;
-                                            gap: 4px;
-                                            z-index: 1;
-                                        `;
-                                        resolvedBadge.innerHTML = '<i class="fas fa-check-circle" style="font-size: 9px;"></i> הוסדר';
-                                        card.style.position = 'relative';
-                                        card.insertBefore(resolvedBadge, card.firstChild);
-
-                                        // שנה את הצבע האדום לאפור
-                                        card.style.borderColor = '#e5e7eb';
-
-                                        console.log(`✅ Added "הוסדר" badge to: ${service.name}`);
-                                    }
-                                });
-                            }
-                        });
+                // אם השירות הוסדר - הוסף badge
+                if (serviceInfo.overdraftResolved?.isResolved) {
+                    // בדוק אם כבר יש badge (למנוע כפילויות)
+                    if (cardElement.querySelector('.resolved-service-badge')) {
+                        return cardElement;
                     }
-                }, 100); // המתן 100ms שהכרטיסים יירנדרו
 
-                return result;
+                    // הוסף badge "הוסדר"
+                    const resolvedBadge = document.createElement('div');
+                    resolvedBadge.className = 'resolved-service-badge';
+                    resolvedBadge.style.cssText = `
+                        position: absolute;
+                        top: 0.5rem;
+                        left: 0.5rem;
+                        background: #10b981;
+                        color: white;
+                        font-size: 10px;
+                        padding: 3px 8px;
+                        border-radius: 4px;
+                        font-weight: 600;
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                        z-index: 1;
+                    `;
+                    resolvedBadge.innerHTML = '<i class="fas fa-check-circle" style="font-size: 9px;"></i> הוסדר';
+
+                    cardElement.style.position = 'relative';
+                    cardElement.insertBefore(resolvedBadge, cardElement.firstChild);
+
+                    // שנה את הצבע האדום לאפור
+                    cardElement.style.borderColor = '#e5e7eb';
+
+                    // שנה את צבע ה-progress bar מאדום לכחול/אפור
+                    const progressBar = cardElement.querySelector('[style*="background"]');
+                    if (progressBar && progressBar.style.background.includes('ef4444')) {
+                        // אם זה אדום (חריגה) - שנה לכחול רגיל
+                        progressBar.style.background = '#3b82f6';
+                    }
+
+                    // שנה גם את צבע הטקסט של האחוזים אם הוא אדום
+                    const allElements = cardElement.querySelectorAll('*');
+                    allElements.forEach(el => {
+                        if (el.style.color && (el.style.color.includes('dc2626') || el.style.color.includes('ef4444'))) {
+                            el.style.color = '#64748b'; // אפור נייטרלי
+                        }
+                    });
+
+                    console.log(`✅ Added "הוסדר" badge to: ${serviceInfo.name}`);
+                }
+
+                return cardElement;
             };
 
-            console.log('✅ ClientReportModal patched');
+            console.log('✅ ClientReportModal.createServiceCard patched successfully');
         }
 
         /**
