@@ -48,14 +48,16 @@
                     throw new Error('Firebase SDK לא נטען. ודא שהספריות נטענו לפני הסקריפט.');
                 }
 
-                // Use DEFAULT Firebase App (shared with login-v2.html and index.html)
-                // זה מאפשר שיתוף של auth state בין כל חלקי המערכת
+                // Initialize Firebase App with SEPARATE NAME for Master Admin
+                // זה מונע שיתוף של auth state עם הממשק הרגיל
+                const appName = 'master-admin-panel';
 
-                // Check if default app already initialized
-                if (firebase.apps.length > 0) {
-                    this.app = firebase.app(); // Get default app
+                // Check if already initialized
+                const existingApp = firebase.apps.find(app => app.name === appName);
+                if (existingApp) {
+                    this.app = existingApp;
                 } else {
-                    this.app = firebase.initializeApp(firebaseConfig); // Initialize default app
+                    this.app = firebase.initializeApp(firebaseConfig, appName);
                 }
 
                 // Initialize Services
@@ -69,11 +71,11 @@
                     this.storage = this.app.storage();
                 }
 
-                // CRITICAL: Set persistence to SESSION for production security
-                // זה מבטיח התנתקות אוטומטית בסגירת הדפדפן (בטוח לייצור)
-                this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+                // CRITICAL: Set persistence to LOCAL for Master Admin
+                // זה מאפשר שיתוף session בין טאבים של האדמין (אבל מבודד מהאפליקציה הראשית)
+                this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
                     .then(() => {
-                        console.log('✅ Master Admin: Using SESSION persistence (logout on browser close)');
+                        console.log('✅ Master Admin: Using LOCAL persistence (shared between admin tabs)');
                     })
                     .catch((error) => {
                         console.warn('⚠️ Failed to set persistence:', error);
@@ -91,10 +93,10 @@
 
                 this.initialized = true;
 
-                console.log('✅ Firebase initialized successfully (SHARED DEFAULT APP)');
+                console.log('✅ Firebase initialized successfully (MASTER ADMIN ISOLATED INSTANCE)');
                 console.log('📦 Project:', firebaseConfig.projectId);
-                console.log('🔒 App Name:', this.app.name || '[DEFAULT]');
-                console.log('🔐 Persistence: SESSION (logout on browser close - PRODUCTION SECURITY)');
+                console.log('🔒 App Name:', appName);
+                console.log('🔐 Persistence: LOCAL (shared between admin tabs, isolated from main app)');
 
                 // Make instances globally available
                 window.firebaseApp = this.app;
