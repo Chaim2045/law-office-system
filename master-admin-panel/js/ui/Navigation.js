@@ -54,7 +54,8 @@ return;
 
             const navItems = [
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
-                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' }
+                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
+                { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' }
             ];
 
             this.container.innerHTML = `
