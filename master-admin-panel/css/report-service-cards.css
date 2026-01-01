@@ -1,0 +1,408 @@
+/**
+ * Report Service Cards - Soft Minimal Design
+ * עיצוב כרטיסי שירות במודל דוח
+ *
+ * נוצר: 2025-12-31
+ * גרסה: 1.0.0
+ * סגנון: Soft Minimal (inspired by Linear)
+ *
+ * עקרונות עיצוב:
+ * - Monochromatic: שחור-לבן-אפור + צבע רק לסטטוס
+ * - Breathing room: Spacing נדיב (24px padding)
+ * - Soft corners: Border radius 12px
+ * - Subtle shadows: עדינים מאוד
+ * - Line height: 1.6 לנשימה
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   SERVICE CARDS CONTAINER
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Container for service cards in report modal */
+#serviceCardsContainer,
+#reportServiceCards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 עמודות קבועות */
+    gap: 16px;
+    margin-top: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SERVICE CARD - SOFT MINIMAL
+   ═══════════════════════════════════════════════════════════════ */
+
+.report-service-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    min-height: 160px;
+}
+
+.report-service-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+    transform: translateY(-1px);
+}
+
+/* Accent line - soft, appears on hover */
+.report-service-card::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #18181b;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border-radius: 0 12px 12px 0;
+}
+
+.report-service-card:hover::after {
+    opacity: 0.15;
+}
+
+/* Selected state */
+.report-service-card.selected {
+    border-color: #3b82f6;
+    background: #f8fafc;
+}
+
+.report-service-card.selected::after {
+    background: #3b82f6;
+    opacity: 0.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CARD VARIANTS (overdraft, resolved, fixed)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Overdraft variant */
+.report-service-card.overdraft::after {
+    background: #dc2626;
+}
+
+.report-service-card.overdraft:hover::after {
+    opacity: 0.3;
+}
+
+/* Resolved variant */
+.report-service-card.resolved::after {
+    background: #10b981;
+}
+
+.report-service-card.resolved:hover::after {
+    opacity: 0.3;
+}
+
+/* Fixed pricing variant */
+.report-service-card.fixed::after {
+    background: #8b5cf6;
+}
+
+.report-service-card.fixed:hover::after {
+    opacity: 0.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CARD HEADER
+   ═══════════════════════════════════════════════════════════════ */
+
+.report-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.report-card-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-card-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #18181b;
+    margin-bottom: 3px;
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+
+    /* Text truncation for long names */
+    max-height: 2.8em; /* 2 lines max */
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.report-card-meta {
+    font-size: 0.75rem;
+    color: #a1a1aa;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.report-card-meta i {
+    font-size: 0.5rem;
+    color: #3b82f6;
+    opacity: 0.8;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BADGES
+   ═══════════════════════════════════════════════════════════════ */
+
+.report-card-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.report-card-badge.overdraft {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.report-card-badge.resolved {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.report-card-badge.fixed {
+    background: #faf5ff;
+    color: #7c3aed;
+}
+
+.report-card-badge.current-stage {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+/* Selection indicator (checkmark) */
+.report-card-selected-indicator {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #3b82f6;
+    color: white;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    box-shadow: 0 2px 4px rgb(59 130 246 / 30%);
+}
+
+.report-service-card.selected .report-card-selected-indicator {
+    display: flex;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATS GRID
+   ═══════════════════════════════════════════════════════════════ */
+
+.report-card-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid #f1f5f9;
+    margin-top: auto; /* Push to bottom in flexbox */
+    text-align: center; /* Center align all text */
+}
+
+.report-card-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+}
+
+.report-card-stat-label {
+    font-size: 0.6875rem;
+    color: #a1a1aa;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.report-card-stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #18181b;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.report-card-stat-unit {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #a1a1aa;
+    margin-right: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROGRESS BAR
+   ═══════════════════════════════════════════════════════════════ */
+
+.report-card-progress {
+    margin-top: auto; /* Align at bottom if no stats grid */
+    padding-top: 12px;
+}
+
+.report-card-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.report-card-progress-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.report-card-progress-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #18181b;
+    font-variant-numeric: tabular-nums;
+}
+
+.report-card-progress-track {
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.report-card-progress-bar {
+    height: 100%;
+    background: #18181b;
+    border-radius: 999px;
+    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Progress bar variants */
+.report-service-card.overdraft .report-card-progress-bar {
+    background: #dc2626;
+}
+
+.report-service-card.resolved .report-card-progress-bar {
+    background: #10b981;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TIME TRACKER (FOR FIXED PRICING)
+   ═══════════════════════════════════════════════════════════════ */
+
+.report-card-time-tracker {
+    background: #f9fafb;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: auto; /* Push to bottom like stats */
+}
+
+.report-card-time-tracker-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.report-card-time-tracker-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: #18181b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.6875rem;
+}
+
+.report-card-time-tracker-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.report-card-time-tracker-value {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.report-card-time-tracker-hours {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #18181b;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+.report-card-time-tracker-unit {
+    font-size: 0.875rem;
+    color: #71717a;
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (width <= 640px) {
+    #serviceCardsContainer,
+    #reportServiceCards {
+        grid-template-columns: 1fr; /* עמודה אחת במובייל */
+    }
+
+    .report-service-card {
+        padding: 14px; /* פדינג קטן יותר במובייל */
+    }
+
+    .report-card-stats {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        text-align: right; /* יישור לימין במובייל */
+    }
+
+    .report-card-stat {
+        align-items: flex-start; /* יישור לשמאל במובייל */
+    }
+
+    .report-card-stat-value {
+        font-size: 1.125rem;
+    }
+
+    .report-card-time-tracker-hours {
+        font-size: 1.5rem;
+    }
+}

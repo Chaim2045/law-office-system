@@ -157,14 +157,14 @@
 /* Override components.css with higher specificity for clients modals */
 #clientReportModal .modal-content.modal-large,
 #clientManagementModal .modal-content.modal-large {
-    max-width: 700px !important;
+    max-width: 850px !important;
     width: 90% !important;
 }
 
 /* Fallback with even higher specificity */
 div#clientReportModal .modal-content.modal-large,
 div#clientManagementModal .modal-content.modal-large {
-    max-width: 700px !important;
+    max-width: 850px !important;
     width: 90% !important;
 }
 

@@ -82,6 +82,7 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/clients.css?v=20251127-HOURS-COMPACT">
     <link rel="stylesheet" href="css/clients-modals.css?v=20251217-MODAL-FIX">
+    <link rel="stylesheet" href="css/report-service-cards.css?v=20251231-SOFT-MINIMAL">
     <link rel="stylesheet" href="css/messaging.css?v=1">
     <link rel="stylesheet" href="css/task-approval-side-panel.css">
     <link rel="stylesheet" href="components/task-approval-system/styles/task-approval-dialog.css">
@@ -346,14 +347,9 @@
                         </h4>
 
                         <!-- Service Cards Container -->
-                        <div id="reportServiceCards" style="
-                            display: grid;
-                            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                            gap: 0.75rem;
-                            margin-top: 1rem;
-                            max-width: 900px;
-                        ">
-                            <!-- Service cards will be populated dynamically -->
+                        <div id="reportServiceCards">
+                            <!-- Service cards will be populated dynamically by ClientReportModal.js -->
+                            <!-- Styling in report-service-cards.css -->
                         </div>
 
                         <!-- Hidden input to store selected service -->
