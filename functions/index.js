@@ -7832,10 +7832,4 @@ exports.deleteFeeAgreement = functions.https.onCall(async (data, context) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-// 📊 Workload Analytics Functions - Performance Optimized
-// ═══════════════════════════════════════════════════════════════
-const { getTeamWorkloadData } = require('./workload-analytics');
-exports.getTeamWorkloadData = getTeamWorkloadData;
-
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Smart Bot 🤖 + Delete User Data + Delete User Data Selective 🔒 + Fee Agreements 📄 + Workload Analytics 📊)');
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Smart Bot 🤖 + Delete User Data + Delete User Data Selective 🔒 + Fee Agreements 📄)');

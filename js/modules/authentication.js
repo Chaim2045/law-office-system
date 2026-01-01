@@ -16,17 +16,6 @@ import { updateUserDisplay, updateSidebarUser } from './ui-components.js';
  */
 
 function showLogin() {
-  // ═══════════════════════════════════════════════════════════
-  // 🔑 Unified Login System - Skip if in unified login flow
-  // ═══════════════════════════════════════════════════════════
-  // If user is coming from login-v2.html (unified login),
-  // don't show the login screen - they're already authenticated
-  // ═══════════════════════════════════════════════════════════
-  if (window.isInWelcomeScreen) {
-    console.log('🔑 Skipping showLogin() - unified login in progress');
-    return;
-  }
-
   const loginSection = document.getElementById('loginSection');
   const forgotPasswordSection = document.getElementById('forgotPasswordSection');
   const welcomeScreen = document.getElementById('welcomeScreen');
@@ -357,11 +346,6 @@ bubblesContainer.classList.add('hidden');
   // ✅ Initialize System Announcement Ticker when entering the app
   if (window.manager && typeof window.manager.initTicker === 'function') {
     window.manager.initTicker();
-  }
-
-  // ✅ Ensure Phone Call Timer is initialized (fallback for existing sessions)
-  if (window.manager && typeof window.manager.ensurePhoneTimerInitialized === 'function') {
-    window.manager.ensurePhoneTimerInitialized();
   }
 }
 

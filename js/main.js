@@ -61,9 +61,6 @@ import { ActionFlowManager } from './modules/ui-components.js';
 // Debug Tools (Development Only)
 import * as DebugTools from './modules/debug-tools.js';
 
-// Phone Call Timer
-import PhoneCallTimer from './modules/phone-call-timer.js';
-
 
 /* ========================================
    MAIN APPLICATION CLASS
@@ -86,9 +83,6 @@ class LawOfficeManager {
 
     // ✅ NEW v2.0: Add Task Dialog System
     this.addTaskDialog = null;
-
-    // ✅ NEW: Phone Call Timer
-    this.phoneCallTimer = null;
 
     // View State - ✅ Managed by STATE_CONFIG (config/state-config.js)
     // Session-only (resets on page load): taskFilter, timesheetFilter
@@ -189,43 +183,6 @@ class LawOfficeManager {
     Logger.log('⏳ Waiting for Firebase Auth...');
     const user = await this.waitForAuthReady();
 
-    // ═══════════════════════════════════════════════════════════
-    // 🔑 Unified Login System - Check for unified login flag
-    // ═══════════════════════════════════════════════════════════
-    // If user came from login-v2.html, skip the login screen
-    // and automatically enter the system
-    //
-    // Security: Flag is one-time use, expires after 1 minute,
-    // and only works with valid Firebase session
-    // ═══════════════════════════════════════════════════════════
-    const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
-    const loginTime = sessionStorage.getItem('unifiedLoginTime');
-    const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
-
-    if (user && unifiedLogin === 'true' && isRecent) {
-      Logger.log('🔑 Unified login detected - auto-entering system');
-
-      // Clear flags (one-time use)
-      sessionStorage.removeItem('unifiedLoginComplete');
-      sessionStorage.removeItem('unifiedLoginTime');
-
-      // 🔒 Set flag to prevent showLogin() from being called by other code
-      window.isInWelcomeScreen = true;
-
-      // Auto-login from saved session
-      await this.handleAuthenticatedUser(user);
-
-      // Clear the flag after successful login
-      window.isInWelcomeScreen = false;
-
-      // ✅ CRITICAL: Setup permanent auth state listener for NotificationBell
-      this.setupNotificationBellListener();
-
-      Logger.log('✅ System initialized (unified login)');
-      return;
-    }
-    // ═══════════════════════════════════════════════════════════
-
     // 🔒 SECURITY FIX: Always show login screen, even if user has saved session
     // This matches banking systems behavior - browser can fill password but user must click login
     if (user) {
@@ -305,9 +262,6 @@ class LawOfficeManager {
 
         // ✅ NEW v2.0: Initialize Add Task System after login
         this.initializeAddTaskSystem();
-
-        // ✅ NEW: Initialize Phone Call Timer
-        this.initializePhoneCallTimer();
       } else {
         // User not found in employees - sign out
         await firebase.auth().signOut();
@@ -391,17 +345,6 @@ class LawOfficeManager {
       } catch (error) {
         console.error('❌ Failed to initialize System Announcement Ticker:', error);
       }
-    }
-  }
-
-  /**
-   * Ensure Phone Timer is initialized - Called from showApp()
-   * Fallback for cases where user was already authenticated before code deployment
-   */
-  ensurePhoneTimerInitialized() {
-    if (!this.phoneCallTimer && typeof PhoneCallTimer !== 'undefined') {
-      console.log('📞 Phone timer not initialized - initializing now...');
-      this.initializePhoneCallTimer();
     }
   }
 
@@ -1060,26 +1003,6 @@ return false;
     } catch (error) {
       console.error('❌ Error initializing Add Task System:', error);
       // System will fallback to old method automatically
-    }
-  }
-
-  /**
-   * Initialize Phone Call Timer
-   * אתחול טיימר שיחות טלפון
-   */
-  initializePhoneCallTimer() {
-    try {
-      console.log('📞 Initializing Phone Call Timer...');
-
-      this.phoneCallTimer = new PhoneCallTimer(this);
-      this.phoneCallTimer.init();
-
-      // Make globally accessible for onclick handlers
-      window.phoneCallTimer = this.phoneCallTimer;
-
-      console.log('✅ Phone Call Timer initialized');
-    } catch (error) {
-      console.error('❌ Error initializing Phone Call Timer:', error);
     }
   }
 

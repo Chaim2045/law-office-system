@@ -712,213 +712,243 @@ return;
          * Create service card with security
          * יצירת כרטיס שירות מאובטח
          */
-        /**
-         * Create service card - Soft Minimal Design
-         * יצירת כרטיס שירות - עיצוב מינימליסטי רך
-         *
-         * Uses CSS classes from report-service-cards.css (no inline styles!)
-         */
         createServiceCard(serviceInfo, index) {
-            // 🎯 Validate and sanitize data
-            const usedHours = parseFloat(serviceInfo.usedHours) || 0;
-            const totalHours = parseFloat(serviceInfo.totalHours) || 0;
-
-            // 🎯 Detect service type
-            const isFixedPrice = serviceInfo.pricingType === 'fixed';
-            const hasOverdraft = serviceInfo.overdraftResolved?.isResolved !== true &&
-                                usedHours > totalHours && totalHours > 0;
-
-            // Calculate progress percentage
-            const progressPercent = totalHours > 0
-                ? Math.round((usedHours / totalHours) * 100)
-                : 0;
-
-            // ═══════════════════════════════════════
-            // CARD CONTAINER
-            // ═══════════════════════════════════════
             const card = document.createElement('div');
-            card.className = 'report-service-card';
 
-            // Add variant classes
-            if (isFixedPrice) {
-card.classList.add('fixed');
-}
-            if (hasOverdraft) {
-card.classList.add('overdraft');
-}
-            if (serviceInfo.overdraftResolved?.isResolved) {
-card.classList.add('resolved');
-}
-
-            // Data attributes for selection
+            // Security: Use data attributes instead of inline onclick
             card.dataset.serviceName = serviceInfo.displayName;
             card.dataset.serviceIndex = index;
             card.dataset.serviceType = serviceInfo.type;
 
-            // ═══════════════════════════════════════
-            // CARD HEADER
-            // ═══════════════════════════════════════
-            const header = document.createElement('div');
-            header.className = 'report-card-header';
+            // 🎯 Detect Fixed Price services (pricingType = 'fixed')
+            const isFixedPrice = serviceInfo.pricingType === 'fixed';
 
-            const mainSection = document.createElement('div');
-            mainSection.className = 'report-card-main';
+            // Calculate progress percentage
+            const progressPercent = serviceInfo.totalHours > 0
+                ? Math.round((parseFloat(serviceInfo.usedHours) / serviceInfo.totalHours) * 100)
+                : 0;
 
-            const cardName = document.createElement('div');
-            cardName.className = 'report-card-name';
-            cardName.textContent = serviceInfo.displayName;
+            // Minimalist design - subtle grays with single accent
+            let statusColor = '#64748b'; // Neutral gray
+            let iconClass = 'fas fa-briefcase'; // Default icon
+            let progressColor = '#e2e8f0'; // Light gray for progress
+            let borderColor = '#e2e8f0'; // Default border
+            let currentStageBadge = ''; // Badge for current stage
 
-            const cardMeta = document.createElement('div');
-            cardMeta.className = 'report-card-meta';
-            cardMeta.innerHTML = `
-                <i class="fas fa-circle"></i>
-                <span>${isFixedPrice ? 'תמחור פיקס' : serviceInfo.type === 'legal_procedure' ? 'הליך משפטי' : 'שירות שעות'}</span>
+            if (serviceInfo.type === 'legal_procedure') {
+                iconClass = 'fas fa-balance-scale'; // Legal icon
+                statusColor = '#475569'; // Darker gray for legal procedures
+
+                // ✅ Highlight current stage
+                if (serviceInfo.isCurrentStage) {
+                    borderColor = '#3b82f6'; // Blue border for current stage
+                    currentStageBadge = '<span style="position: absolute; top: 0.5rem; right: 0.5rem; background: #3b82f6; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;">שלב נוכחי</span>';
+                }
+            }
+
+            // Use blue as default with color accents for critical states
+            if (serviceInfo.totalHours > 0) {
+                if (progressPercent >= 90) {
+                    progressColor = '#ef4444'; // Red for critical
+                    statusColor = '#dc2626'; // Red text
+                } else if (progressPercent >= 75) {
+                    progressColor = '#f97316'; // Orange for warning
+                    statusColor = '#ea580c'; // Orange text
+                } else {
+                    progressColor = '#3b82f6'; // Blue - default color
+                }
+            } else {
+                // For services without total hours, use light blue
+                progressColor = '#60a5fa';
+            }
+
+            card.style.cssText = `
+                border: 2px solid ${borderColor};
+                border-radius: 6px;
+                padding: 0.75rem;
+                background: white;
+                cursor: pointer;
+                transition: all 0.15s ease;
+                position: relative;
+                min-height: 100px;
+                ${serviceInfo.isCurrentStage ? 'box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);' : ''}
             `;
 
-            mainSection.appendChild(cardName);
-            mainSection.appendChild(cardMeta);
-            header.appendChild(mainSection);
+            // Create card content with textContent for security
+            const cardInner = document.createElement('div');
 
-            // ═══════════════════════════════════════
-            // BADGES
-            // ═══════════════════════════════════════
-            // Priority order: resolved > overdraft > fixed > current-stage
-            if (serviceInfo.overdraftResolved?.isResolved) {
-                // אם הוסדר - זה בעדיפות הכי גבוהה (גם אם יש עדיין חריגה טכנית)
-                const badge = document.createElement('div');
-                badge.className = 'report-card-badge resolved';
-                badge.textContent = 'הוסדר';
-                header.appendChild(badge);
-            } else if (hasOverdraft) {
-                // רק אם יש חריגה ולא הוסדר
-                const badge = document.createElement('div');
-                badge.className = 'report-card-badge overdraft';
-                badge.textContent = 'חריגה';
-                header.appendChild(badge);
-            } else if (isFixedPrice) {
-                const badge = document.createElement('div');
-                badge.className = 'report-card-badge fixed';
-                badge.textContent = 'פיקס';
-                header.appendChild(badge);
-            } else if (serviceInfo.isCurrentStage) {
-                const badge = document.createElement('div');
-                badge.className = 'report-card-badge current-stage';
+            // Service name header
+            const header = document.createElement('div');
+            header.style.cssText = 'margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;';
+
+            const leftSide = document.createElement('div');
+            leftSide.style.cssText = 'display: flex; align-items: center;';
+
+            const icon = document.createElement('i');
+            icon.className = iconClass;
+            icon.style.cssText = `color: ${statusColor}; margin-left: 0.4rem; font-size: 0.9rem;`;
+
+            const title = document.createElement('h5');
+            title.textContent = serviceInfo.displayName; // Security: textContent prevents XSS
+            title.style.cssText = 'font-weight: 600; font-size: 0.85rem; margin: 0; display: inline-block;';
+
+            leftSide.appendChild(icon);
+            leftSide.appendChild(title);
+            header.appendChild(leftSide);
+
+            // ✅ Add current stage badge
+            if (serviceInfo.isCurrentStage) {
+                const badge = document.createElement('span');
                 badge.textContent = 'שלב נוכחי';
+                badge.style.cssText = 'background: #3b82f6; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;';
                 header.appendChild(badge);
             }
 
-            card.appendChild(header);
+            // Progress bar
+            const progressContainer = document.createElement('div');
+            progressContainer.style.cssText = `
+                background: #f1f5f9;
+                height: 6px;
+                border-radius: 3px;
+                overflow: hidden;
+                margin: 0.6rem 0;
+            `;
 
-            // ═══════════════════════════════════════
-            // TIME TRACKER (Fixed Price Only)
-            // ═══════════════════════════════════════
+            const progressBar = document.createElement('div');
+            progressBar.style.cssText = `
+                height: 100%;
+                background: ${progressColor};
+                width: ${progressPercent}%;
+                transition: width 0.3s ease;
+            `;
+            progressContainer.appendChild(progressBar);
+
+            // Hours info
+            const infoContainer = document.createElement('div');
+            infoContainer.style.cssText = 'display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;';
+
+            const hoursLeft = document.createElement('div');
+            hoursLeft.style.cssText = `color: ${statusColor}; font-weight: 600; font-size: 0.75rem;`;
+
+            const clockIcon = document.createElement('i');
+            clockIcon.className = 'fas fa-clock';
+            clockIcon.style.cssText = 'margin-left: 0.2rem; font-size: 0.65rem;';
+
+            const hoursText = document.createElement('span');
+            const hasOverage = parseFloat(serviceInfo.usedHours) > parseFloat(serviceInfo.totalHours);
+            const overageText = hasOverage ? ' ⚠️ חריגה' : '';
+
             if (isFixedPrice) {
-                const timeTracker = document.createElement('div');
-                timeTracker.className = 'report-card-time-tracker';
-
-                const trackerHeader = document.createElement('div');
-                trackerHeader.className = 'report-card-time-tracker-header';
-                trackerHeader.innerHTML = `
-                    <div class="report-card-time-tracker-icon">
-                        <i class="fas fa-stopwatch"></i>
-                    </div>
-                    <div class="report-card-time-tracker-label">מעקב זמן</div>
-                `;
-
-                const trackerValue = document.createElement('div');
-                trackerValue.className = 'report-card-time-tracker-value';
-                trackerValue.innerHTML = `
-                    <div class="report-card-time-tracker-hours">${usedHours.toFixed(1)}</div>
-                    <div class="report-card-time-tracker-unit">שעות עבודה</div>
-                `;
-
-                timeTracker.appendChild(trackerHeader);
-                timeTracker.appendChild(trackerValue);
-                card.appendChild(timeTracker);
+                // 🎯 Fixed Price: Show ONLY hours worked, NO total, NO overdraft warning
+                hoursText.textContent = `עבדו ${serviceInfo.usedHours} שעות`;
+            } else if (serviceInfo.type === 'legal_procedure') {
+                // For legal procedures with hourly pricing, show stage-specific hours
+                if (serviceInfo.totalHours > 0) {
+                    hoursText.textContent = `${serviceInfo.usedHours} מתוך ${serviceInfo.totalHours} שעות בשלב${overageText}`;
+                } else {
+                    hoursText.textContent = `${serviceInfo.usedHours} שעות בשימוש בשלב`;
+                }
+            } else {
+                // For regular hour packages
+                if (serviceInfo.totalHours > 0) {
+                    hoursText.textContent = `${serviceInfo.usedHours} מתוך ${serviceInfo.totalHours} שעות${overageText}`;
+                } else {
+                    hoursText.textContent = `${serviceInfo.usedHours} שעות בשימוש`;
+                }
             }
 
-            // ═══════════════════════════════════════
-            // STATS GRID (For non-fixed pricing)
-            // ═══════════════════════════════════════
-            if (!isFixedPrice && totalHours > 0) {
-                const stats = document.createElement('div');
-                stats.className = 'report-card-stats';
-
-                const statTotal = document.createElement('div');
-                statTotal.className = 'report-card-stat';
-                statTotal.innerHTML = `
-                    <div class="report-card-stat-label">סה״כ שעות</div>
-                    <div class="report-card-stat-value">
-                        ${totalHours.toFixed(1)}<span class="report-card-stat-unit">שע׳</span>
-                    </div>
-                `;
-
-                const statUsed = document.createElement('div');
-                statUsed.className = 'report-card-stat';
-                statUsed.innerHTML = `
-                    <div class="report-card-stat-label">בשימוש</div>
-                    <div class="report-card-stat-value">
-                        ${usedHours.toFixed(1)}<span class="report-card-stat-unit">שע׳</span>
-                    </div>
-                `;
-
-                const remaining = totalHours - usedHours;
-                const statRemaining = document.createElement('div');
-                statRemaining.className = 'report-card-stat';
-                statRemaining.innerHTML = `
-                    <div class="report-card-stat-label">${hasOverdraft ? 'חריגה' : 'נותר'}</div>
-                    <div class="report-card-stat-value">
-                        ${Math.abs(remaining).toFixed(1)}<span class="report-card-stat-unit">שע׳</span>
-                    </div>
-                `;
-
-                stats.appendChild(statTotal);
-                stats.appendChild(statUsed);
-                stats.appendChild(statRemaining);
-                card.appendChild(stats);
+            // 🔥 Change color if overage (but NOT for Fixed Price)
+            if (hasOverage && !isFixedPrice) {
+                hoursLeft.style.color = '#ef4444'; // Red
             }
 
-            // ═══════════════════════════════════════
-            // PROGRESS BAR (For non-fixed pricing)
-            // ═══════════════════════════════════════
-            if (!isFixedPrice && totalHours > 0) {
-                const progress = document.createElement('div');
-                progress.className = 'report-card-progress';
+            hoursLeft.appendChild(clockIcon);
+            hoursLeft.appendChild(hoursText);
 
-                const progressHeader = document.createElement('div');
-                progressHeader.className = 'report-card-progress-header';
-                progressHeader.innerHTML = `
-                    <div class="report-card-progress-label">התקדמות</div>
-                    <div class="report-card-progress-value">${progressPercent}%</div>
-                `;
+            const percentText = document.createElement('div');
+            percentText.style.cssText = 'color: #64748b; font-size: 0.65rem;';
+            percentText.textContent = serviceInfo.totalHours > 0 ? `${progressPercent}%` : '';
 
-                const progressTrack = document.createElement('div');
-                progressTrack.className = 'report-card-progress-track';
-
-                const progressBar = document.createElement('div');
-                progressBar.className = 'report-card-progress-bar';
-                progressBar.style.width = `${Math.min(progressPercent, 100)}%`;
-
-                progressTrack.appendChild(progressBar);
-                progress.appendChild(progressHeader);
-                progress.appendChild(progressTrack);
-                card.appendChild(progress);
+            infoContainer.appendChild(hoursLeft);
+            // Show percentage ONLY for Hourly/Legal Procedure services, NOT for Fixed Price
+            if (serviceInfo.totalHours > 0 && !isFixedPrice) {
+                infoContainer.appendChild(percentText);
             }
 
-            // ═══════════════════════════════════════
-            // SELECTION INDICATOR
-            // ═══════════════════════════════════════
-            const selectedIndicator = document.createElement('div');
-            selectedIndicator.className = 'report-card-selected-indicator';
-            selectedIndicator.innerHTML = '<i class="fas fa-check"></i>';
-            card.appendChild(selectedIndicator);
+            // 🎯 Overdraft Warning Box - ONLY for Hourly/Legal Procedure with negative hours
+            const overdraftWarning = document.createElement('div');
+            if (!isFixedPrice && hasOverage && serviceInfo.totalHours > 0) {
+                const overdraftAmount = (parseFloat(serviceInfo.usedHours) - parseFloat(serviceInfo.totalHours)).toFixed(1);
+                overdraftWarning.style.cssText = `
+                    background: rgba(239, 68, 68, 0.1);
+                    border: 1px solid rgba(239, 68, 68, 0.3);
+                    border-radius: 6px;
+                    padding: 0.5rem 0.75rem;
+                    margin-top: 0.6rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                `;
 
-            // ═══════════════════════════════════════
-            // EVENT HANDLERS
-            // ═══════════════════════════════════════
+                const warningIcon = document.createElement('i');
+                warningIcon.className = 'fas fa-exclamation-triangle';
+                warningIcon.style.cssText = 'color: #ef4444; font-size: 0.85rem;';
+
+                const warningText = document.createElement('span');
+                warningText.style.cssText = 'color: #dc2626; font-size: 0.75rem; font-weight: 600;';
+                warningText.textContent = `חריגה: +${overdraftAmount} שעות מעבר לתקציב`;
+
+                overdraftWarning.appendChild(warningIcon);
+                overdraftWarning.appendChild(warningText);
+            } else {
+                overdraftWarning.style.display = 'none';
+            }
+
+            // Selected indicator - minimal checkmark
+            const selectedBadge = document.createElement('div');
+            selectedBadge.className = 'selected-badge';
+            selectedBadge.style.cssText = `
+                position: absolute;
+                top: 0.4rem;
+                left: 0.4rem;
+                background: #3b82f6;
+                color: white;
+                border-radius: 3px;
+                width: 16px;
+                height: 16px;
+                display: none;
+                align-items: center;
+                justify-content: center;
+            `;
+            selectedBadge.innerHTML = '<i class="fas fa-check" style="font-size: 0.5rem;"></i>';
+
+            // Assemble card
+            cardInner.appendChild(header);
+            cardInner.appendChild(progressContainer);
+            cardInner.appendChild(infoContainer);
+            cardInner.appendChild(overdraftWarning); // Add overdraft warning box
+            card.appendChild(cardInner);
+            card.appendChild(selectedBadge);
+
+            // Add secure click handler
             card.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.selectServiceCard(card, serviceInfo.displayName);
+            });
+
+            // Add subtle hover effect
+            card.addEventListener('mouseenter', () => {
+                if (!card.classList.contains('selected')) {
+                    card.style.borderColor = '#cbd5e1';
+                    card.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+                }
+            });
+
+            card.addEventListener('mouseleave', () => {
+                if (!card.classList.contains('selected')) {
+                    card.style.borderColor = '#e2e8f0';
+                    card.style.boxShadow = 'none';
+                }
             });
 
             return card;
@@ -929,14 +959,26 @@ card.classList.add('resolved');
          * בחירת כרטיס שירות
          */
         selectServiceCard(card, serviceName) {
-            // Remove selection from all cards (using CSS class only)
-            const allCards = this.serviceCardsContainer.querySelectorAll('.report-service-card');
+            // Remove selection from all cards
+            const allCards = this.serviceCardsContainer.querySelectorAll('div[data-service-name]');
             allCards.forEach(c => {
                 c.classList.remove('selected');
+                c.style.borderColor = '#e5e7eb';
+                c.style.backgroundColor = 'white';
+                const badge = c.querySelector('.selected-badge');
+                if (badge) {
+badge.style.display = 'none';
+}
             });
 
-            // Mark this card as selected (CSS will handle styling)
+            // Mark this card as selected with subtle styling
             card.classList.add('selected');
+            card.style.borderColor = '#94a3b8';
+            card.style.backgroundColor = '#f8fafc';
+            const badge = card.querySelector('.selected-badge');
+            if (badge) {
+badge.style.display = 'flex';
+}
 
             // Update hidden input with sanitized value
             this.selectedServiceInput.value = this.sanitizeInput(serviceName);
