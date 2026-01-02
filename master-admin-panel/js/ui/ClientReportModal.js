@@ -290,7 +290,8 @@ return;
                             usedHours: 0,
                             type: 'legal_procedure',
                             stage: stageName,
-                            status: stageData.status || 'active'
+                            status: stageData.status || 'active',
+                            pricingType: client.pricingType || stageData.pricingType || (totalHours > 0 ? 'hourly' : 'fixed')
                         });
 
                         console.log(`📋 Found stage ${stageName} with ${totalHours} hours`);
@@ -312,7 +313,8 @@ return;
                                 usedHours: 0,
                                 type: 'legal_procedure',
                                 stage: stageName,
-                                status: 'active'
+                                status: 'active',
+                                pricingType: client.pricingType || (typeof stageData === 'object' ? stageData.pricingType : null) || (totalHours > 0 ? 'hourly' : 'fixed')
                             });
 
                             console.log(`📋 Found stage ${stageName} directly with ${totalHours} hours`);
@@ -387,7 +389,8 @@ return;
                                     status: stage.status,
                                     isCurrentStage: isCurrentStage,
                                     serviceName: service.name,
-                                    serviceId: service.id
+                                    serviceId: service.id,
+                                    pricingType: service.pricingType || client.pricingType || (totalHours > 0 ? 'hourly' : 'fixed')
                                 });
 
                                 console.log(`📋 Legal procedure stage ${stage.id}:`, {
@@ -518,7 +521,8 @@ return;
                         usedHours: usedHours,
                         type: serviceType,
                         stage: stage,
-                        status: service.status || 'active'
+                        status: service.status || 'active',
+                        pricingType: service.pricingType || (serviceType === 'legal_procedure' && totalHours > 0 ? 'hourly' : service.pricingType || null)
                     });
                 });
             }
@@ -722,8 +726,11 @@ return;
             const usedHours = parseFloat(serviceInfo.usedHours) || 0;
             const totalHours = parseFloat(serviceInfo.totalHours) || 0;
 
-            // 🎯 Detect service type
+            // 🎯 Detect service type and pricing
+            const isLegalProcedure = serviceInfo.type === 'legal_procedure';
             const isFixedPrice = serviceInfo.pricingType === 'fixed';
+            const isHourlyBased = !isFixedPrice; // שעתי או הליך משפטי שעתי
+
             const hasOverdraft = serviceInfo.overdraftResolved?.isResolved !== true &&
                                 usedHours > totalHours && totalHours > 0;
 
@@ -769,9 +776,22 @@ card.classList.add('resolved');
 
             const cardMeta = document.createElement('div');
             cardMeta.className = 'report-card-meta';
+
+            // Determine service description
+            let serviceDescription = '';
+            if (isLegalProcedure && isFixedPrice) {
+                serviceDescription = 'הליך משפטי • פיקס';
+            } else if (isLegalProcedure && isHourlyBased) {
+                serviceDescription = 'הליך משפטי • שעתי';
+            } else if (isFixedPrice) {
+                serviceDescription = 'תמחור פיקס';
+            } else {
+                serviceDescription = 'שירות שעות';
+            }
+
             cardMeta.innerHTML = `
                 <i class="fas fa-circle"></i>
-                <span>${isFixedPrice ? 'תמחור פיקס' : serviceInfo.type === 'legal_procedure' ? 'הליך משפטי' : 'שירות שעות'}</span>
+                <span>${serviceDescription}</span>
             `;
 
             mainSection.appendChild(cardName);
@@ -781,30 +801,53 @@ card.classList.add('resolved');
             // ═══════════════════════════════════════
             // BADGES
             // ═══════════════════════════════════════
-            // Priority order: resolved > overdraft > fixed > current-stage
+            // Create badges container
+            const badgesContainer = document.createElement('div');
+            badgesContainer.style.display = 'flex';
+            badgesContainer.style.gap = '0.5rem';
+            badgesContainer.style.flexWrap = 'wrap';
+
+            // Badge priority order: resolved > overdraft > pricing-type > current-stage
+
+            // 1. Status badges (highest priority)
             if (serviceInfo.overdraftResolved?.isResolved) {
-                // אם הוסדר - זה בעדיפות הכי גבוהה (גם אם יש עדיין חריגה טכנית)
                 const badge = document.createElement('div');
                 badge.className = 'report-card-badge resolved';
                 badge.textContent = 'הוסדר';
-                header.appendChild(badge);
+                badgesContainer.appendChild(badge);
             } else if (hasOverdraft) {
-                // רק אם יש חריגה ולא הוסדר
                 const badge = document.createElement('div');
                 badge.className = 'report-card-badge overdraft';
                 badge.textContent = 'חריגה';
-                header.appendChild(badge);
+                badgesContainer.appendChild(badge);
+            }
+
+            // 2. Pricing type badge (ALWAYS show - this is critical info!)
+            const pricingBadge = document.createElement('div');
+            if (isLegalProcedure && isFixedPrice) {
+                pricingBadge.className = 'report-card-badge fixed';
+                pricingBadge.innerHTML = '<i class="fas fa-gavel"></i> פיקס';
+            } else if (isLegalProcedure && isHourlyBased) {
+                pricingBadge.className = 'report-card-badge legal-hourly';
+                pricingBadge.innerHTML = '<i class="fas fa-gavel"></i> שעתי';
             } else if (isFixedPrice) {
-                const badge = document.createElement('div');
-                badge.className = 'report-card-badge fixed';
-                badge.textContent = 'פיקס';
-                header.appendChild(badge);
-            } else if (serviceInfo.isCurrentStage) {
+                pricingBadge.className = 'report-card-badge fixed';
+                pricingBadge.innerHTML = '<i class="fas fa-dollar-sign"></i> פיקס';
+            } else {
+                pricingBadge.className = 'report-card-badge hours';
+                pricingBadge.innerHTML = '<i class="fas fa-clock"></i> שעות';
+            }
+            badgesContainer.appendChild(pricingBadge);
+
+            // 3. Current stage indicator (lowest priority)
+            if (serviceInfo.isCurrentStage && !hasOverdraft && !serviceInfo.overdraftResolved?.isResolved) {
                 const badge = document.createElement('div');
                 badge.className = 'report-card-badge current-stage';
                 badge.textContent = 'שלב נוכחי';
-                header.appendChild(badge);
+                badgesContainer.appendChild(badge);
             }
+
+            header.appendChild(badgesContainer);
 
             card.appendChild(header);
 
@@ -839,7 +882,7 @@ card.classList.add('resolved');
             // ═══════════════════════════════════════
             // STATS GRID (For non-fixed pricing)
             // ═══════════════════════════════════════
-            if (!isFixedPrice && totalHours > 0) {
+            if (!isFixedPrice) {
                 const stats = document.createElement('div');
                 stats.className = 'report-card-stats';
 
@@ -880,7 +923,7 @@ card.classList.add('resolved');
             // ═══════════════════════════════════════
             // PROGRESS BAR (For non-fixed pricing)
             // ═══════════════════════════════════════
-            if (!isFixedPrice && totalHours > 0) {
+            if (!isFixedPrice) {
                 const progress = document.createElement('div');
                 progress.className = 'report-card-progress';
 

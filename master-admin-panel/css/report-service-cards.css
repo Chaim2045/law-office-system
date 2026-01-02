@@ -136,7 +136,6 @@
     letter-spacing: -0.01em;
     line-height: 1.4;
     overflow-wrap: break-word;
-    overflow-wrap: break-word;
 
     /* Text truncation for long names */
     max-height: 2.8em; /* 2 lines max */
@@ -193,6 +192,21 @@
 .report-card-badge.current-stage {
     background: #eff6ff;
     color: #3b82f6;
+}
+
+.report-card-badge.hours {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.report-card-badge.legal-hourly {
+    background: #f0fdfa;
+    color: #0d9488;
+}
+
+.report-card-badge i {
+    font-size: 0.625rem;
+    margin-left: 4px;
 }
 
 /* Selection indicator (checkmark) */
