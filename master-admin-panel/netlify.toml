@@ -14,7 +14,8 @@
 # ════════════════════════════════════════════════════════════════
 
 [build]
-  # Publish only the master-admin-panel directory
+  # Base directory is set in Netlify Dashboard: master-admin-panel
+  # Publish from current directory (we're already in master-admin-panel)
   publish = "."
   command = "echo 'Admin panel build complete'"
 

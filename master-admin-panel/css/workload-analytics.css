@@ -1,0 +1,1577 @@
+/**
+ * Workload Analytics Styles
+ * עיצוב מודול ניתוח עומס עבודה
+ *
+ * נוצר: 2025-12-30
+ * גרסה: 3.0.0 - Linear & Compact Design
+ *
+ * עקרונות עיצוב:
+ * - ✨ Linear & Compact: מהודק, צר, עיגולים מינימליים (3-4px)
+ * - 🎨 Minimal Colors: כחול יוקרתי לאייקונים, אדום להתראות בלבד
+ * - 📏 Tight Spacing: padding/margin קטנים, פונטים קטנים יותר
+ * - 🔲 Flat Design: ללא shadows כבדים, ללא gradients
+ * - 📊 Progressive Disclosure: תוכן קריטי גלוי, שאר מתקפל
+ *
+ * פלטת צבעים:
+ * - Gray Scale: #1e293b, #475569, #64748b, #94a3b8, #cbd5e1, #e2e8f0, #f1f5f9, #fafbfc
+ * - Premium Blue: #3b82f6 (כחול יוקרתי) - לאייקונים ונקודות דגש
+ * - Alert Red: #ef4444 (אדום) - רק להתראות קריטיות
+ * - ❌ לא בשימוש: ירוק, כתום (מבטלים עומס ויזואלי)
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   Loading & Error States
+   ═══════════════════════════════════════════════════════════════ */
+
+.workload-loading,
+.workload-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: #64748b;
+}
+
+.workload-loading .loading-spinner-small {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #64748b;  /* v3.0: Gray */
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.workload-error {
+    color: #ef4444;
+}
+
+.workload-error i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Main Dashboard Card
+   ═══════════════════════════════════════════════════════════════ */
+
+.workload-dashboard-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+    margin-bottom: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Header Section
+   ═══════════════════════════════════════════════════════════════ */
+
+.workload-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.workload-title-section {
+    flex: 1;
+}
+
+.workload-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.workload-title i {
+    color: #3b82f6;  /* Premium Blue */
+    font-size: 1.25rem;
+}
+
+.workload-subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.workload-view-toggle {
+    display: flex;
+    gap: 8px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.view-toggle-btn {
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.view-toggle-btn:hover {
+    background: rgb(255 255 255 / 50%);
+    color: #1e293b;
+}
+
+.view-toggle-btn.active {
+    background: white;
+    color: #1e293b;  /* v3.0: Dark gray */
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Team Stats Grid
+   ═══════════════════════════════════════════════════════════════ */
+
+.team-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.team-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+}
+
+.team-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 0.813rem;
+    color: #64748b;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Employees Grid
+   ═══════════════════════════════════════════════════════════════ */
+
+.workload-employees-container {
+    margin-bottom: 24px;
+}
+
+.workload-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+/* List View */
+.workload-grid.workload-list-view {
+    grid-template-columns: 1fr;
+}
+
+.workload-grid.workload-list-view .employee-workload-card {
+    display: grid;
+    grid-template-columns: 300px 1fr auto;
+    gap: 20px;
+    align-items: start;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Employee Card
+   ═══════════════════════════════════════════════════════════════ */
+
+.employee-workload-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.employee-workload-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #e2e8f0, #cbd5e1);
+    transition: background 0.3s;
+}
+
+/* v3.0: רק גווני אפור, רק קריטי אדום */
+.employee-workload-card[data-level="low"]::before {
+    background: #cbd5e1;  /* Light gray */
+}
+
+.employee-workload-card[data-level="medium"]::before {
+    background: #94a3b8;  /* Medium gray */
+}
+
+.employee-workload-card[data-level="high"]::before {
+    background: #64748b;  /* Dark gray */
+}
+
+.employee-workload-card[data-level="critical"]::before {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.employee-workload-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+    transform: translateY(-4px);
+}
+
+/* Card Header */
+.employee-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.employee-info {
+    flex: 1;
+}
+
+.employee-name {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.employee-role {
+    font-size: 0.813rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.workload-badge {
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+}
+
+/* Workload Bar */
+.workload-bar-container {
+    margin-bottom: 20px;
+}
+
+.workload-bar {
+    height: 12px;
+    background: #f1f5f9;
+    border-radius: 50px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.workload-fill {
+    height: 100%;
+    border-radius: 50px;
+    transition: width 0.6s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.workload-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        90deg,
+        rgb(255 255 255 / 0%) 0%,
+        rgb(255 255 255 / 30%) 50%,
+        rgb(255 255 255 / 0%) 100%
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+
+    100% { transform: translateX(100%); }
+}
+
+.workload-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Details Section */
+.workload-details {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.detail-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.875rem;
+}
+
+.detail-row i {
+    width: 16px;
+    text-align: center;
+}
+
+.detail-label {
+    color: #64748b;
+    flex: 1;
+}
+
+.detail-value {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Alert row for overload */
+.detail-row-alert {
+    background: #fef2f2;
+    padding: 8px;
+    margin: -4px -8px;
+    border-radius: 6px;
+    border-right: 3px solid #ef4444;
+}
+
+.overload-indicator {
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-right: 6px;
+    color: #ef4444;
+}
+
+/* Alerts - עיצוב מינימליסטי */
+.workload-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.workload-alert {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-right: 3px solid #e2e8f0;
+}
+
+.alert-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.alert-content i {
+    margin-top: 2px;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.alert-message {
+    flex: 1;
+    color: #334155;
+    line-height: 1.5;
+}
+
+/* Critical - אדום בולט */
+.workload-alert.alert-critical {
+    border-right-color: #dc2626;
+}
+
+.workload-alert.alert-critical i {
+    color: #dc2626;
+}
+
+/* Warning - אפור כהה */
+.workload-alert.alert-warning {
+    border-right-color: #64748b;
+}
+
+.workload-alert.alert-warning i {
+    color: #64748b;
+}
+
+/* Info - v3.0: אפור בלבד */
+.workload-alert.alert-info {
+    border-right-color: #cbd5e1;
+}
+
+.workload-alert.alert-info i {
+    color: #64748b;
+}
+
+/* v2.1.1: Alert Tips - נקי וברור */
+.alert-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-top: 4px;
+    background: #f8fafc;
+    border-radius: 4px;
+    font-size: 0.813rem;
+    color: #475569;
+    line-height: 1.6;
+}
+
+.alert-tip i {
+    color: #64748b;  /* v3.0: Gray */
+    font-size: 0.875rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Risky Tasks - עיצוב מינימליסטי */
+.risky-tasks-section {
+    margin-bottom: 20px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px 16px;
+}
+
+.risky-tasks-header {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.risky-tasks-header i {
+    color: #dc2626;
+    font-size: 1rem;
+}
+
+.risky-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.risky-task-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 4px;
+    font-size: 0.813rem;
+    border-right: 2px solid #e2e8f0;
+}
+
+.risky-task-info {
+    flex: 1;
+}
+
+.risky-task-desc {
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.risky-task-meta {
+    color: #64748b;
+    font-size: 0.75rem;
+    display: flex;
+    gap: 8px;
+}
+
+.risky-task-meta .overdue {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+/* v2.1.1: Task Quality Section - עיצוב נקי */
+.task-quality-section {
+    margin-bottom: 20px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px 16px;
+}
+
+.task-quality-header {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-quality-header i {
+    color: #64748b;  /* v3.0: Gray */
+    font-size: 1rem;
+}
+
+.quality-badge {
+    background: #94a3b8;  /* v3.0: Gray */
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.688rem;
+    font-weight: 600;
+}
+
+.quality-info-icon {
+    margin-right: auto;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    cursor: help;
+    transition: color 0.2s;
+}
+
+.quality-info-icon:hover {
+    color: #64748b;  /* v3.0: Gray */
+}
+
+.task-quality-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.quality-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    border-radius: 4px;
+    font-size: 0.813rem;
+    color: #475569;
+    border-right: 2px solid #e2e8f0;
+}
+
+.quality-item i {
+    flex-shrink: 0;
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+/* Critical - אדום בולט */
+.quality-critical {
+    color: #dc2626;
+    font-weight: 600;
+    border-right-color: #dc2626;
+}
+
+.quality-critical i {
+    color: #dc2626;
+}
+
+/* Card Actions */
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-card-action {
+    flex: 1;
+    padding: 10px 16px;
+    background: #64748b;  /* v3.0: Gray */
+    color: white;
+    border: none;
+    border-radius: 4px;  /* v3.0: Minimal rounding */
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-card-action:hover {
+    background: #475569;  /* v3.0: Darker gray */
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Bottom Actions
+   ═══════════════════════════════════════════════════════════════ */
+
+.workload-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    padding-top: 20px;
+    border-top: 2px solid #f1f5f9;
+}
+
+.btn-workload-refresh,
+.btn-workload-details {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid #e2e8f0;
+}
+
+.btn-workload-refresh {
+    background: white;
+    color: #64748b;  /* v3.0: Gray */
+}
+
+.btn-workload-refresh:hover {
+    background: #64748b;  /* v3.0: Gray */
+    color: white;
+    border-color: #64748b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+.btn-workload-details {
+    background: #475569;  /* v3.0: Gray */
+    color: white;
+    border-color: transparent;
+}
+
+.btn-workload-details:hover {
+    background: #1e293b;  /* v3.0: Darker gray */
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v2.1: Weekly Breakdown Section
+   ═══════════════════════════════════════════════════════════════ */
+
+.weekly-breakdown-section {
+    margin-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 12px;
+}
+
+.breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.breakdown-header:hover {
+    background: #f1f5f9;
+}
+
+.breakdown-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.breakdown-title i {
+    color: #64748b;  /* v3.0: Gray */
+}
+
+.breakdown-toggle-icon {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    transition: transform 0.3s;
+}
+
+.breakdown-content {
+    margin-top: 12px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Bar Chart - מינימליסטי */
+.breakdown-chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+    height: 120px;
+    padding: 16px 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.daily-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.daily-bar {
+    width: 100%;
+    min-height: 4px;
+    background: #94a3b8;  /* v3.0: Gray */
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    transition: all 0.25s;
+    cursor: pointer;
+}
+
+.daily-bar.overloaded {
+    background: #ef4444;  /* v3.0: Red for critical only */
+}
+
+.daily-bar:hover {
+    opacity: 0.75;
+}
+
+.daily-bar-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.daily-bar-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+/* Task Breakdown - עיצוב מינימליסטי */
+.breakdown-tasks {
+    background: #f8fafc;
+    border-radius: 6px;
+    padding: 14px;
+}
+
+.breakdown-tasks-header {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breakdown-tasks-header i {
+    color: #64748b;  /* v3.0: Gray */
+    font-size: 1rem;
+}
+
+.breakdown-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.breakdown-task-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: white;
+    border-radius: 4px;
+    border-right: 2px solid #e2e8f0;
+    font-size: 0.813rem;
+    transition: all 0.2s;
+}
+
+.breakdown-task-item:hover {
+    box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+    border-right-color: #cbd5e1;  /* v3.0: Gray */
+}
+
+.breakdown-task-item.overdue {
+    border-right-color: #ef4444;  /* v3.0: Red */
+}
+
+/* v2.1.1: Hidden tasks (show more functionality) */
+.breakdown-task-item.breakdown-task-hidden {
+    display: none;
+}
+
+.breakdown-task-icon {
+    color: #64748b;
+    margin-top: 2px;
+    font-size: 0.875rem;
+}
+
+.breakdown-task-info {
+    flex: 1;
+}
+
+.breakdown-task-client {
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.breakdown-task-desc {
+    color: #64748b;
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+}
+
+.breakdown-task-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.breakdown-task-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.breakdown-task-meta i {
+    font-size: 0.688rem;
+}
+
+.breakdown-task-hours {
+    color: #1e293b;  /* v3.0: Dark gray */
+    font-weight: 600;
+}
+
+.breakdown-more-tasks {
+    text-align: center;
+    padding: 10px;
+    margin-top: 8px;
+    color: #64748b;  /* v3.0: Gray */
+    font-size: 0.813rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.breakdown-more-tasks:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;  /* v3.0: Gray */
+}
+
+.breakdown-more-tasks i {
+    color: #64748b;  /* v3.0: Gray */
+    font-size: 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Responsive Design
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (width <= 768px) {
+    .workload-dashboard-card {
+        padding: 16px;
+    }
+
+    .workload-header {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .team-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .workload-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .workload-grid.workload-list-view .employee-workload-card {
+        grid-template-columns: 1fr;
+    }
+
+    .workload-actions {
+        flex-direction: column;
+    }
+
+    .btn-workload-refresh,
+    .btn-workload-details {
+        width: 100%;
+    }
+
+    /* v2.1: Breakdown responsive */
+    .breakdown-chart {
+        height: 100px;
+        padding: 12px 8px;
+    }
+
+    .breakdown-task-item {
+        font-size: 0.75rem;
+        padding: 8px;
+    }
+
+    .breakdown-task-meta {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+@media (width <= 480px) {
+    .team-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .employee-name {
+        font-size: 1rem;
+    }
+
+    .workload-badge {
+        padding: 6px 12px;
+        font-size: 0.875rem;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v3.0: Hybrid Professional Design
+   גרסה 3.0 - עיצוב מקצועי עם קטגוריות
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Employee Card - New Layout (Linear & Compact)
+   ───────────────────────────────────────────────────────────── */
+
+.employee-workload-card.v3 {
+    background: white;
+    border-radius: 8px;
+    padding: 0;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.employee-workload-card.v3:hover {
+    border-color: #cbd5e1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Header Section (Compact & Linear)
+   ───────────────────────────────────────────────────────────── */
+
+.employee-card-header-v3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.employee-identity {
+    flex: 1;
+}
+
+.employee-name-v3 {
+    font-size: 0.938rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.employee-role-v3 {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 400;
+}
+
+.workload-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid;
+}
+
+.badge-score {
+    font-size: 0.938rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.badge-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Quick Metrics Row (Compact & Minimal)
+   ───────────────────────────────────────────────────────────── */
+
+.quick-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.quick-metric {
+    background: white;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border-left: 1px solid #f1f5f9;
+    transition: background 0.15s;
+    cursor: help;
+}
+
+.quick-metric:first-child {
+    border-left: none;
+}
+
+.quick-metric:hover {
+    background: #fafbfc;
+}
+
+.quick-metric i {
+    font-size: 0.875rem;
+    color: #3b82f6;  /* Premium Blue for icons */
+}
+
+.qm-value {
+    font-size: 0.938rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1;
+}
+
+.qm-label {
+    font-size: 0.625rem;
+    color: #64748b;
+    font-weight: 500;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* v3.0: Removed color emphasis - רק אפור */
+.quick-metric.urgent .qm-value,
+.quick-metric.peak-alert .qm-value,
+.quick-metric.available .qm-value {
+    color: #1e293b;  /* Gray, no color coding */
+    font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Critical Alerts Section (Compact & Minimal)
+   ───────────────────────────────────────────────────────────── */
+
+.critical-alerts-section {
+    margin: 0;
+    padding: 12px 18px;
+    background: #fef2f2;
+    border-bottom: 1px solid #fecaca;
+}
+
+.critical-alerts-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.813rem;
+    font-weight: 600;
+    color: #991b1b;
+    margin-bottom: 8px;
+}
+
+.critical-alerts-header i {
+    color: #dc2626;
+    font-size: 0.875rem;
+}
+
+.critical-alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.critical-alert-item {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: white;
+    border-radius: 4px;
+    border-left: 2px solid #dc2626;
+}
+
+.critical-alert-item i {
+    color: #dc2626;
+    margin-top: 1px;
+    font-size: 0.875rem;
+}
+
+.alert-text {
+    flex: 1;
+}
+
+.alert-message {
+    font-size: 0.75rem;
+    color: #1e293b;
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.alert-tip-text {
+    font-size: 0.688rem;
+    color: #64748b;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Workload Categories (Compact & Linear)
+   ───────────────────────────────────────────────────────────── */
+
+.workload-categories {
+    padding: 0;
+}
+
+.workload-category {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.workload-category:last-child {
+    border-bottom: none;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.category-header:hover {
+    background: #fafbfc;
+}
+
+.category-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.813rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.category-title i {
+    color: #3b82f6;  /* Premium Blue for category icons */
+    font-size: 0.875rem;
+}
+
+.category-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+}
+
+.summary-text {
+    color: #64748b;
+    font-weight: 400;
+}
+
+.summary-badge {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.688rem;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.category-toggle-icon {
+    color: #94a3b8;
+    font-size: 0.688rem;
+    margin-left: 6px;
+    transition: transform 0.2s;
+}
+
+.category-content {
+    padding: 0 18px 12px;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Help Icons (Minimal)
+   ───────────────────────────────────────────────────────────── */
+
+.help-icon {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    cursor: help;
+    transition: color 0.15s;
+}
+
+.help-icon:hover {
+    color: #3b82f6;  /* Premium Blue on hover */
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Quality Issues (Compact & Minimal)
+   ───────────────────────────────────────────────────────────── */
+
+.quality-issue-item {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border-radius: 3px;
+    margin-bottom: 6px;
+    border-left: 2px solid #cbd5e1;
+}
+
+.quality-issue-item:last-child {
+    margin-bottom: 0;
+}
+
+.quality-issue-item.critical {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+}
+
+.quality-issue-item.info {
+    background: white;
+    border-left-color: #94a3b8;
+}
+
+.quality-issue-item i {
+    color: #94a3b8;
+    margin-top: 1px;
+    font-size: 0.875rem;
+}
+
+.quality-issue-item.critical i {
+    color: #ef4444;
+}
+
+.issue-content {
+    flex: 1;
+}
+
+.issue-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.issue-description {
+    font-size: 0.688rem;
+    color: #64748b;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Weekly Breakdown (Compact & Minimal)
+   ───────────────────────────────────────────────────────────── */
+
+.breakdown-chart-v3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 6px;
+    height: 100px;
+    padding: 12px;
+    background: #fafbfc;
+    border: 1px solid #f1f5f9;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.breakdown-tasks-v3 {
+    background: white;
+    border: 1px solid #f1f5f9;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.breakdown-tasks-header-v3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.breakdown-tasks-header-v3 i {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.breakdown-task-list-v3 {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.breakdown-task-item-v3 {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border-radius: 3px;
+    border-left: 2px solid #cbd5e1;
+    font-size: 0.75rem;
+}
+
+.breakdown-task-item-v3.overdue {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+
+.breakdown-task-info-v3 {
+    flex: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Risky Tasks (Compact & Minimal)
+   ───────────────────────────────────────────────────────────── */
+
+.risky-task-item-v3 {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border-radius: 3px;
+    margin-bottom: 6px;
+    border-left: 2px solid #cbd5e1;  /* v3.0: Gray default */
+}
+
+.risky-task-item-v3:last-child {
+    margin-bottom: 0;
+}
+
+/* v3.0: רק קריטי מקבל אדום */
+.risky-task-item-v3.risk-critical {
+    border-left-color: #ef4444;
+}
+
+.risky-task-item-v3.risk-critical i {
+    color: #ef4444;
+}
+
+.risky-task-item-v3 i {
+    margin-top: 1px;
+    font-size: 0.875rem;
+    color: #64748b;  /* v3.0: Gray for non-critical */
+}
+
+.risky-task-info-v3 {
+    flex: 1;
+}
+
+.risky-task-desc {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1e293b;
+    margin-bottom: 3px;
+}
+
+.risky-task-meta-v3 {
+    font-size: 0.688rem;
+    color: #64748b;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: All Alerts Category (Compact & Minimal)
+   ───────────────────────────────────────────────────────────── */
+
+.alert-item {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border-radius: 3px;
+    margin-bottom: 6px;
+    border-left: 2px solid #cbd5e1;
+}
+
+.alert-item:last-child {
+    margin-bottom: 0;
+}
+
+/* v3.0: ללא צבעים - רק אפור */
+.alert-item.warning,
+.alert-item.info {
+    background: white;
+    border-left-color: #cbd5e1;
+}
+
+.alert-item i {
+    color: #64748b;  /* v3.0: Gray icons */
+}
+
+.alert-item i {
+    margin-top: 1px;
+    font-size: 0.875rem;
+}
+
+.alert-content-v3 {
+    flex: 1;
+}
+
+.alert-message-v3 {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.alert-tip-v3 {
+    font-size: 0.688rem;
+    color: #64748b;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v3.0: Responsive Adjustments (Compact)
+   ───────────────────────────────────────────────────────────── */
+
+@media (width <= 768px) {
+    .quick-metrics-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .quick-metric:nth-child(4),
+    .quick-metric:nth-child(5) {
+        grid-column: span 1;
+    }
+
+    .employee-card-header-v3 {
+        padding: 12px 14px;
+    }
+
+    .category-header,
+    .category-content {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .critical-alerts-section {
+        padding: 10px 14px;
+    }
+
+    .employee-name-v3 {
+        font-size: 0.875rem;
+    }
+
+    .badge-score {
+        font-size: 0.875rem;
+    }
+}
