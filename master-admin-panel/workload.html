@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="ניתוח עומס עבודה - Master Admin Panel">
+    <title>📊 ניתוח עומס | Master Admin Panel</title>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System ===== -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css?v=bf8073e">
+
+    <!-- ===== Workload Analytics Styles ===== -->
+    <link rel="stylesheet" href="css/workload-analytics.css?v=3.0.0">
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <div id="navigationContainer"></div>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div id="workloadContent" class="dashboard-content">
+            <!-- Workload Dashboard will be rendered here -->
+        </div>
+    </main>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js?v=bf8073e"></script>
+    <script src="../js/modules/logger.js?v=bf8073e"></script>
+    <script src="../js/modules/presence-system.js?v=bf8073e"></script>
+    <script src="../js/modules/idle-timeout-manager.js?v=bf8073e"></script>
+    <script src="js/core/auth.js?v=bf8073e"></script>
+    <script src="js/core/constants.js?v=bf8073e"></script>
+
+    <!-- ===== Navigation Component ===== -->
+    <script src="js/ui/Navigation.js?v=bf8073e"></script>
+
+    <!-- ===== Data Manager (needed for fetching employees) ===== -->
+    <script src="js/managers/DataManager.js?v=bf8073e"></script>
+
+    <!-- ===== Workload Analytics Module ===== -->
+    <!-- ✅ v4.1.0: Data Accuracy Fixes (dual field support) -->
+    <script src="js/workload-analytics/WorkloadConstants.js?v=4.0.0"></script>
+    <script src="js/workload-analytics/WorkloadCalculator.js?v=4.0.0"></script>
+    <script src="js/workload-analytics/WorkloadService.js?v=4.1.0"></script>
+    <script src="js/workload-analytics/WorkloadCard.js?v=4.0.0"></script>
+
+    <!-- ===== Initialization Script ===== -->
+    <script>
+        // Cross-tab logout synchronization
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'logoutEvent') {
+                console.log('🔒 Logout detected in another tab');
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('📊 Workload Analytics Page - Loading...');
+
+            // Initialize Navigation
+            if (window.Navigation) {
+                window.Navigation.init('workload');
+            }
+
+            // Wait for auth
+            window.firebaseAuth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    // Not logged in - redirect to login
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                console.log('✅ User authenticated:', user.email);
+
+                // Initialize Workload Analytics
+                if (window.WorkloadService && window.WorkloadCard) {
+                    try {
+                        const initSuccess = window.WorkloadService.init();
+                        if (initSuccess) {
+                            // 🔄 v3.0.0: נקה cache מגרסאות ישנות
+                            window.WorkloadService.clearCache();
+                            console.log('🗑️ Cache cleared for v3.0.0');
+
+                            window.WorkloadCard.init();
+                            console.log('✅ Workload Analytics v3.0.0 initialized (Hybrid Professional Design with Categories)');
+
+                            // Initialize Data Manager
+                            if (window.DataManager) {
+                                window.DataManager.init();
+                                const result = await window.DataManager.loadUsers();
+
+                                if (result.success) {
+                                    const employees = window.DataManager.allUsers || [];
+                                    console.log(`✅ Loaded ${employees.length} employees`);
+
+                                    // Render workload dashboard
+                                    const container = document.getElementById('workloadContent');
+                                    await window.WorkloadCard.render(container, employees);
+                                } else {
+                                    console.error('❌ Failed to load employees:', result.error);
+                                    document.getElementById('workloadContent').innerHTML = `
+                                        <div class="workload-error">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            <p>שגיאה בטעינת נתוני עובדים</p>
+                                            <small>${result.error}</small>
+                                        </div>
+                                    `;
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Failed to initialize Workload Analytics:', error);
+                        document.getElementById('workloadContent').innerHTML = `
+                            <div class="workload-error">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>שגיאה באתחול מודול ניתוח עומס</p>
+                                <small>${error.message}</small>
+                            </div>
+                        `;
+                    }
+                } else {
+                    console.warn('⚠️ Workload Analytics not loaded');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
