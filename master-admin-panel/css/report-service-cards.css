@@ -194,6 +194,21 @@
     color: #3b82f6;
 }
 
+.report-card-badge.hours {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.report-card-badge.legal-hourly {
+    background: #f0fdfa;
+    color: #0d9488;
+}
+
+.report-card-badge i {
+    font-size: 0.625rem;
+    margin-left: 4px;
+}
+
 /* Selection indicator (checkmark) */
 .report-card-selected-indicator {
     position: absolute;
