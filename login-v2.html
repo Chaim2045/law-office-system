@@ -198,32 +198,107 @@
             lockoutTime: 15 * 60 * 1000 // 15 minutes
         });
 
+        // ========================================
+        // Check sessionStorage availability (Safari ITP)
+        // ========================================
+        let sessionStorageAvailable = false;
+        try {
+            sessionStorage.setItem('__test__', '1');
+            sessionStorage.removeItem('__test__');
+            sessionStorageAvailable = true;
+            console.log('[StorageCheck] sessionStorage OK');
+        } catch (e) {
+            console.warn('[StorageCheck] sessionStorage BLOCKED (likely Safari ITP):', e.message);
+        }
+
+        // ========================================
+        // Get returnTo parameter from URL
+        // ========================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnTo = urlParams.get('returnTo');
+
         // WelcomeScreen Component
         const welcomeScreen = new WelcomeScreen(welcomeContainer, {
             autoRedirectDelay: 2500,
             onNavigate: (destination) => {
                 // ═══════════════════════════════════════════════════════════
-                // 🔑 Unified Login System - Set session flag
+                // 🔑 Unified Login System - Set auth token
                 // ═══════════════════════════════════════════════════════════
-                // This flag tells the destination interface (employee or admin)
-                // to skip showing their login screen since user just logged in
+                // Safari ITP blocks sessionStorage, so we use URL token as primary
+                // with sessionStorage as bonus (for Chrome/Firefox)
                 //
                 // Security:
-                // - Session-only (cleared on browser close)
-                // - One-time use (destination interface clears it)
-                // - Expires after 1 minute
+                // - URL token: Base64(timestamp), one-time use, 60s expiry
+                // - Cleared from URL immediately after check
                 // - Only works with valid Firebase session
-                //
-                // Without this flag, destination interfaces would show their
-                // own login screens (by design, for security when accessed directly)
                 // ═══════════════════════════════════════════════════════════
-                sessionStorage.setItem('unifiedLoginComplete', 'true');
-                sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
 
-                const url = destination === 'admin'
-                    ? 'master-admin-panel/index.html'
-                    : 'index.html';
-                window.location.href = url;
+                // Try sessionStorage if available (bonus for Chrome/Firefox)
+                if (sessionStorageAvailable) {
+                    try {
+                        sessionStorage.setItem('unifiedLoginComplete', 'true');
+                        sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
+                    } catch (e) {
+                        console.warn('Failed to set sessionStorage (Safari ITP):', e);
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════
+                // 🎯 Single Entry Point - Handle returnTo parameter
+                // ═══════════════════════════════════════════════════════════
+                // If returnTo is provided, use it instead of destination choice
+                // This allows redirecting back to the original page after login
+                // ═══════════════════════════════════════════════════════════
+                let url;
+                if (returnTo) {
+                    // returnTo can be:
+                    // - Full URL for Admin: https://admin-gh-law-office-system.netlify.app/...
+                    // - Relative path for App: /some-page.html
+                    url = returnTo;
+                    console.log('🔍 [DEBUG] Using returnTo:', {
+                        returnTo,
+                        decodedReturnTo: decodeURIComponent(returnTo),
+                        finalUrl: url
+                    });
+                } else {
+                    // No returnTo - use destination choice
+                    // CRITICAL: Use relative paths that work from login-v2.html location
+                    // login-v2.html is at root, so:
+                    // - 'index.html' = Employee interface (same directory)
+                    // - 'master-admin-panel/index.html' = Admin panel (subdirectory)
+                    if (destination === 'admin') {
+                        url = 'master-admin-panel/index.html';
+                    } else {
+                        // destination === 'employee' or anything else
+                        url = 'index.html';
+                    }
+                    console.log('🔍 [DEBUG] Using destination choice:', {
+                        destination,
+                        finalUrl: url,
+                        currentLocation: window.location.href,
+                        resolvedUrl: new URL(url, window.location.href).href
+                    });
+                }
+
+                // ═══════════════════════════════════════════════════════════
+                // 🛡️ Safari ITP Fix - Add URL auth token
+                // ═══════════════════════════════════════════════════════════
+                // Create timestamped token for Safari-safe authentication
+                const authToken = btoa(Date.now().toString());
+
+                // Parse URL to preserve existing query params and hash
+                const urlObj = new URL(url, window.location.href);
+                urlObj.searchParams.set('_auth', authToken);
+                const finalUrl = urlObj.href;
+
+                console.log('🔍 [DEBUG] About to navigate to:', {
+                    originalUrl: url,
+                    authToken: authToken,
+                    finalUrl: finalUrl,
+                    sessionStorageAvailable: sessionStorageAvailable
+                });
+
+                window.location.href = finalUrl;
             }
         });
 
@@ -339,14 +414,56 @@
                     lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
+                // ═══════════════════════════════════════════════════════════
+                // 🔐 Single Entry Point - Admin Role Check
+                // ═══════════════════════════════════════════════════════════
+                // If returnTo points to Admin panel, verify user has admin role
+                // ═══════════════════════════════════════════════════════════
+                const isAdminRequest = returnTo && (
+                    returnTo.includes('admin-gh-law-office-system.netlify.app') ||
+                    returnTo.includes('master-admin-panel')
+                );
+                const isAdmin = role === 'admin' || role === 'master-admin';
+
+                if (isAdminRequest && !isAdmin) {
+                    // User requested Admin but doesn't have permission
+                    showError('אין לך הרשאות גישה לפאנל הניהול. מעבר לאזור האישי...');
+
+                    // Redirect to employee interface after showing error
+                    setTimeout(() => {
+                        // Set sessionStorage if available
+                        if (sessionStorageAvailable) {
+                            try {
+                                sessionStorage.setItem('unifiedLoginComplete', 'true');
+                                sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
+                            } catch (e) { /* Safari ITP */ }
+                        }
+
+                        // Add URL token for Safari
+                        const authToken = btoa(Date.now().toString());
+                        window.location.href = `index.html?_auth=${authToken}`;
+                    }, 2000);
+                    return;
+                }
+
                 // Hide login form
                 loginContainer.classList.add('hidden');
 
-                // Show welcome screen based on role
-                if (role === 'admin' || role === 'master-admin') {
-                    welcomeScreen.showAdminWelcome(displayName, lastLogin);
+                // Show welcome screen based on role and returnTo
+                if (returnTo) {
+                    // returnTo specified - auto-redirect without showing choice screen
+                    if (isAdmin) {
+                        welcomeScreen.showAdminWelcome(displayName, lastLogin);
+                    } else {
+                        welcomeScreen.showEmployeeWelcome(displayName, lastLogin);
+                    }
                 } else {
-                    welcomeScreen.showEmployeeWelcome(displayName, lastLogin);
+                    // No returnTo - show choice screen for admin, auto-redirect for employee
+                    if (isAdmin) {
+                        welcomeScreen.showAdminWelcome(displayName, lastLogin);
+                    } else {
+                        welcomeScreen.showEmployeeWelcome(displayName, lastLogin);
+                    }
                 }
 
             } catch (error) {
