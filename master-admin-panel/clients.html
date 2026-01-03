@@ -575,7 +575,6 @@
     <!-- ===== Clients Management Scripts ===== -->
     <script src="js/managers/ClientsDataManager.js?v=20251205-DATE-FIX"></script>
     <script src="js/managers/ReportGenerator.js?v=20251127v2"></script>
-    <script src="js/managers/MessagingManager.js?v=1"></script>
     <script src="js/ui/Pagination.js?v=20251215"></script>
     <script src="js/ui/ClientReportModal.js?v=20251222v2"></script>
     <script src="js/ui/ClientManagementModal.js?v=20251127-FINAL"></script>
@@ -583,7 +582,6 @@
 
     <!-- ===== Shared Components ===== -->
     <script src="js/ui/Notifications.js?v=20251123v1"></script>
-    <script src="js/ui/MessageComposer.js?v=1"></script>
 
     <!-- ===== Service Overdraft Resolution Feature ===== -->
     <script src="js/features/ServiceOverdraftResolution.js?v=1.0.1"></script>
@@ -600,38 +598,6 @@
         console.log('✅ Task Approval Services loaded globally');
     </script>
     <script src="js/ui/TaskApprovalSidePanel.js"></script>
-
-    <!-- ===== Case Creation System v1.0 (NEW - Organized Component) ===== -->
-    <link rel="stylesheet" href="../components/case-creation/styles.css?v=1.0.0">
-    <script type="module">
-        // Import and initialize Case Creation System
-        import { initCaseCreationSystem } from '../components/case-creation/index.js';
-
-        // Wait for DOM and auth
-        window.addEventListener('DOMContentLoaded', () => {
-            window.firebaseAuth?.onAuthStateChanged((user) => {
-                if (user) {
-                    // Initialize Case Creation System
-                    window.caseCreationDialog = initCaseCreationSystem(window, {
-                        onSuccess: (caseData) => {
-                            console.log('✅ Case created:', caseData);
-                            // Refresh clients table
-                            if (window.ClientsDataManager) {
-                                window.ClientsDataManager.refresh();
-                            }
-                        },
-                        onError: (error) => {
-                            console.error('❌ Error creating case:', error);
-                            if (window.Notifications) {
-                                window.Notifications.show('שגיאה ביצירת תיק: ' + error.message, 'error');
-                            }
-                        }
-                    });
-                    console.log('✅ Case Creation System v1.0 initialized in Admin Panel');
-                }
-            });
-        });
-    </script>
 
     <!-- ===== Legacy Dependencies (still needed by other modules) ===== -->
     <script src="js/modules/logger.js?v=20251201-FIX2"></script>
