@@ -202,6 +202,18 @@ class LawOfficeManager {
     const loginTime = sessionStorage.getItem('unifiedLoginTime');
     const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
 
+    // ═══════════════════════════════════════════════════════════
+    // 🎯 Single Entry Point - Redirect to login-v2 if not authenticated
+    // ═══════════════════════════════════════════════════════════
+    if (!user && !(unifiedLogin === 'true' && isRecent)) {
+      // No authenticated user and no recent unified login
+      // Redirect to login-v2.html with returnTo parameter
+      Logger.log('🔐 No authenticated user - redirecting to unified login');
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
+      window.location.href = `/login-v2.html?returnTo=${returnTo}`;
+      return;
+    }
+
     if (user && unifiedLogin === 'true' && isRecent) {
       Logger.log('🔑 Unified login detected - auto-entering system');
 

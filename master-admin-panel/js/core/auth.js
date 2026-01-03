@@ -243,21 +243,28 @@
          */
         monitorAuthState() {
             this.auth.onAuthStateChanged(async (user) => {
+                // ═══════════════════════════════════════════════════════════
+                // 🔑 Unified Login System - Check for unified login flag
+                // ═══════════════════════════════════════════════════════════
+                const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
+                const loginTime = sessionStorage.getItem('unifiedLoginTime');
+                const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
+
+                // ═══════════════════════════════════════════════════════════
+                // 🎯 Single Entry Point - Redirect to login-v2 if not authenticated
+                // ═══════════════════════════════════════════════════════════
+                if (!user && !(unifiedLogin === 'true' && isRecent)) {
+                    // No authenticated user and no recent unified login
+                    // Redirect to login-v2.html with full returnTo URL
+                    console.log('🔐 No authenticated user - redirecting to unified login');
+                    const currentUrl = window.location.href;
+                    const returnTo = encodeURIComponent(currentUrl);
+                    window.location.href = `https://gh-law-office-system.netlify.app/login-v2.html?returnTo=${returnTo}`;
+                    return;
+                }
+
                 if (user) {
                     console.log('👤 User authenticated:', user.email);
-
-                    // ═══════════════════════════════════════════════════════════
-                    // 🔑 Unified Login System - Check for unified login flag
-                    // ═══════════════════════════════════════════════════════════
-                    // If user came from login-v2.html, check the session flag
-                    // This prevents showing the login screen when user just logged in
-                    //
-                    // Security: Flag is one-time use, expires after 1 minute,
-                    // and only works with valid Firebase session
-                    // ═══════════════════════════════════════════════════════════
-                    const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
-                    const loginTime = sessionStorage.getItem('unifiedLoginTime');
-                    const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
 
                     if (unifiedLogin === 'true' && isRecent) {
                         console.log('🔑 Unified login detected - skipping login screen');
@@ -266,7 +273,6 @@
                         sessionStorage.removeItem('unifiedLoginComplete');
                         sessionStorage.removeItem('unifiedLoginTime');
                     }
-                    // ═══════════════════════════════════════════════════════════
 
                     // Check if user is admin
                     const isAdmin = await this.checkIfAdmin(user);
@@ -282,6 +288,7 @@
                         this.showError('אין לך הרשאות גישה למערכת זו. גישה למנהלים בלבד.');
                     }
                 } else {
+                    // This shouldn't happen due to redirect above, but keeping as fallback
                     console.log('👤 No user authenticated');
                     this.currentUser = null;
                     this.isAdmin = false;

@@ -198,6 +198,12 @@
             lockoutTime: 15 * 60 * 1000 // 15 minutes
         });
 
+        // ========================================
+        // Get returnTo parameter from URL
+        // ========================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnTo = urlParams.get('returnTo');
+
         // WelcomeScreen Component
         const welcomeScreen = new WelcomeScreen(welcomeContainer, {
             autoRedirectDelay: 2500,
@@ -220,9 +226,24 @@
                 sessionStorage.setItem('unifiedLoginComplete', 'true');
                 sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
 
-                const url = destination === 'admin'
-                    ? 'master-admin-panel/index.html'
-                    : 'index.html';
+                // ═══════════════════════════════════════════════════════════
+                // 🎯 Single Entry Point - Handle returnTo parameter
+                // ═══════════════════════════════════════════════════════════
+                // If returnTo is provided, use it instead of destination choice
+                // This allows redirecting back to the original page after login
+                // ═══════════════════════════════════════════════════════════
+                let url;
+                if (returnTo) {
+                    // returnTo can be:
+                    // - Full URL for Admin: https://admin-gh-law-office-system.netlify.app/...
+                    // - Relative path for App: /some-page.html
+                    url = returnTo;
+                } else {
+                    // No returnTo - use destination choice
+                    url = destination === 'admin'
+                        ? 'master-admin-panel/index.html'
+                        : 'index.html';
+                }
                 window.location.href = url;
             }
         });
@@ -339,14 +360,48 @@
                     lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
+                // ═══════════════════════════════════════════════════════════
+                // 🔐 Single Entry Point - Admin Role Check
+                // ═══════════════════════════════════════════════════════════
+                // If returnTo points to Admin panel, verify user has admin role
+                // ═══════════════════════════════════════════════════════════
+                const isAdminRequest = returnTo && (
+                    returnTo.includes('admin-gh-law-office-system.netlify.app') ||
+                    returnTo.includes('master-admin-panel')
+                );
+                const isAdmin = role === 'admin' || role === 'master-admin';
+
+                if (isAdminRequest && !isAdmin) {
+                    // User requested Admin but doesn't have permission
+                    showError('אין לך הרשאות גישה לפאנל הניהול. מעבר לאזור האישי...');
+
+                    // Redirect to employee interface after showing error
+                    setTimeout(() => {
+                        sessionStorage.setItem('unifiedLoginComplete', 'true');
+                        sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
+                        window.location.href = 'index.html';
+                    }, 2000);
+                    return;
+                }
+
                 // Hide login form
                 loginContainer.classList.add('hidden');
 
-                // Show welcome screen based on role
-                if (role === 'admin' || role === 'master-admin') {
-                    welcomeScreen.showAdminWelcome(displayName, lastLogin);
+                // Show welcome screen based on role and returnTo
+                if (returnTo) {
+                    // returnTo specified - auto-redirect without showing choice screen
+                    if (isAdmin) {
+                        welcomeScreen.showAdminWelcome(displayName, lastLogin);
+                    } else {
+                        welcomeScreen.showEmployeeWelcome(displayName, lastLogin);
+                    }
                 } else {
-                    welcomeScreen.showEmployeeWelcome(displayName, lastLogin);
+                    // No returnTo - show choice screen for admin, auto-redirect for employee
+                    if (isAdmin) {
+                        welcomeScreen.showAdminWelcome(displayName, lastLogin);
+                    } else {
+                        welcomeScreen.showEmployeeWelcome(displayName, lastLogin);
+                    }
                 }
 
             } catch (error) {
