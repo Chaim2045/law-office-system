@@ -199,6 +199,19 @@
         });
 
         // ========================================
+        // Check sessionStorage availability (Safari ITP)
+        // ========================================
+        let sessionStorageAvailable = false;
+        try {
+            sessionStorage.setItem('__test__', '1');
+            sessionStorage.removeItem('__test__');
+            sessionStorageAvailable = true;
+            console.log('[StorageCheck] sessionStorage OK');
+        } catch (e) {
+            console.warn('[StorageCheck] sessionStorage BLOCKED (likely Safari ITP):', e.message);
+        }
+
+        // ========================================
         // Get returnTo parameter from URL
         // ========================================
         const urlParams = new URLSearchParams(window.location.search);
@@ -209,22 +222,26 @@
             autoRedirectDelay: 2500,
             onNavigate: (destination) => {
                 // ═══════════════════════════════════════════════════════════
-                // 🔑 Unified Login System - Set session flag
+                // 🔑 Unified Login System - Set auth token
                 // ═══════════════════════════════════════════════════════════
-                // This flag tells the destination interface (employee or admin)
-                // to skip showing their login screen since user just logged in
+                // Safari ITP blocks sessionStorage, so we use URL token as primary
+                // with sessionStorage as bonus (for Chrome/Firefox)
                 //
                 // Security:
-                // - Session-only (cleared on browser close)
-                // - One-time use (destination interface clears it)
-                // - Expires after 1 minute
+                // - URL token: Base64(timestamp), one-time use, 60s expiry
+                // - Cleared from URL immediately after check
                 // - Only works with valid Firebase session
-                //
-                // Without this flag, destination interfaces would show their
-                // own login screens (by design, for security when accessed directly)
                 // ═══════════════════════════════════════════════════════════
-                sessionStorage.setItem('unifiedLoginComplete', 'true');
-                sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
+
+                // Try sessionStorage if available (bonus for Chrome/Firefox)
+                if (sessionStorageAvailable) {
+                    try {
+                        sessionStorage.setItem('unifiedLoginComplete', 'true');
+                        sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
+                    } catch (e) {
+                        console.warn('Failed to set sessionStorage (Safari ITP):', e);
+                    }
+                }
 
                 // ═══════════════════════════════════════════════════════════
                 // 🎯 Single Entry Point - Handle returnTo parameter
@@ -263,8 +280,25 @@
                     });
                 }
 
-                console.log('🔍 [DEBUG] About to navigate to:', url);
-                window.location.href = url;
+                // ═══════════════════════════════════════════════════════════
+                // 🛡️ Safari ITP Fix - Add URL auth token
+                // ═══════════════════════════════════════════════════════════
+                // Create timestamped token for Safari-safe authentication
+                const authToken = btoa(Date.now().toString());
+
+                // Parse URL to preserve existing query params and hash
+                const urlObj = new URL(url, window.location.href);
+                urlObj.searchParams.set('_auth', authToken);
+                const finalUrl = urlObj.href;
+
+                console.log('🔍 [DEBUG] About to navigate to:', {
+                    originalUrl: url,
+                    authToken: authToken,
+                    finalUrl: finalUrl,
+                    sessionStorageAvailable: sessionStorageAvailable
+                });
+
+                window.location.href = finalUrl;
             }
         });
 
@@ -397,9 +431,17 @@
 
                     // Redirect to employee interface after showing error
                     setTimeout(() => {
-                        sessionStorage.setItem('unifiedLoginComplete', 'true');
-                        sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
-                        window.location.href = 'index.html';
+                        // Set sessionStorage if available
+                        if (sessionStorageAvailable) {
+                            try {
+                                sessionStorage.setItem('unifiedLoginComplete', 'true');
+                                sessionStorage.setItem('unifiedLoginTime', Date.now().toString());
+                            } catch (e) { /* Safari ITP */ }
+                        }
+
+                        // Add URL token for Safari
+                        const authToken = btoa(Date.now().toString());
+                        window.location.href = `index.html?_auth=${authToken}`;
                     }, 2000);
                     return;
                 }

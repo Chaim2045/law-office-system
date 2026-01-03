@@ -197,17 +197,66 @@ class LawOfficeManager {
     });
 
     // ═══════════════════════════════════════════════════════════
-    // 🔑 Unified Login System - Check for unified login flag
+    // 🔑 Unified Login System - Check for unified login
     // ═══════════════════════════════════════════════════════════
-    // If user came from login-v2.html, skip the login screen
-    // and automatically enter the system
-    //
-    // Security: Flag is one-time use, expires after 1 minute,
-    // and only works with valid Firebase session
+    // Safari ITP blocks sessionStorage, so check URL token first
+    // Security: Token is one-time use, expires after 60s
     // ═══════════════════════════════════════════════════════════
-    const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
-    const loginTime = sessionStorage.getItem('unifiedLoginTime');
-    const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
+
+    // Check sessionStorage availability
+    let sessionStorageAvailable = false;
+    try {
+      sessionStorage.setItem('__test__', '1');
+      sessionStorage.removeItem('__test__');
+      sessionStorageAvailable = true;
+      Logger.log('[StorageCheck] sessionStorage OK');
+    } catch (e) {
+      Logger.log('[StorageCheck] sessionStorage BLOCKED (Safari ITP)');
+    }
+
+    // Primary: Check URL auth token (Safari-safe)
+    const urlParams = new URLSearchParams(window.location.search);
+    const authToken = urlParams.get('_auth');
+    let unifiedLogin = null;
+    let isRecent = false;
+
+    if (authToken) {
+      try {
+        const timestamp = parseInt(atob(authToken));
+        isRecent = !isNaN(timestamp) && (Date.now() - timestamp) < 60000; // 60s expiry
+        unifiedLogin = isRecent ? 'true' : null;
+
+        if (isRecent) {
+          Logger.log('🔑 URL auth token detected (Safari-safe mode)');
+          // Remove token from URL (one-time use)
+          urlParams.delete('_auth');
+          const newSearch = urlParams.toString();
+          const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '') + window.location.hash;
+          window.history.replaceState({}, '', newUrl);
+        } else {
+          Logger.log('⚠️ URL auth token expired');
+        }
+      } catch (e) {
+        Logger.log('⚠️ Invalid URL auth token');
+      }
+    }
+
+    // Fallback: Check sessionStorage (Chrome/Firefox)
+    if (!unifiedLogin && sessionStorageAvailable) {
+      try {
+        const storedLogin = sessionStorage.getItem('unifiedLoginComplete');
+        const loginTime = sessionStorage.getItem('unifiedLoginTime');
+        const storageRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000;
+
+        if (storedLogin === 'true' && storageRecent) {
+          unifiedLogin = 'true';
+          isRecent = true;
+          Logger.log('🔑 sessionStorage auth detected (Chrome/Firefox mode)');
+        }
+      } catch (e) {
+        Logger.log('⚠️ sessionStorage check failed');
+      }
+    }
 
     // ═══════════════════════════════════════════════════════════
     // 🎯 Single Entry Point - Redirect to login-v2 if not authenticated
@@ -232,9 +281,13 @@ class LawOfficeManager {
     if (user && unifiedLogin === 'true' && isRecent) {
       Logger.log('🔑 Unified login detected - auto-entering system');
 
-      // Clear flags (one-time use)
-      sessionStorage.removeItem('unifiedLoginComplete');
-      sessionStorage.removeItem('unifiedLoginTime');
+      // Clear sessionStorage flags if available (one-time use)
+      if (sessionStorageAvailable) {
+        try {
+          sessionStorage.removeItem('unifiedLoginComplete');
+          sessionStorage.removeItem('unifiedLoginTime');
+        } catch (e) { /* Safari ITP */ }
+      }
 
       // 🔒 Set flag to prevent showLogin() from being called by other code
       window.isInWelcomeScreen = true;

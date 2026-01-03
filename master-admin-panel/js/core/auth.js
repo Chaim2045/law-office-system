@@ -245,6 +245,19 @@
             const monitorStartTime = Date.now();
             console.log('🔍 [DEBUG] Admin monitorAuthState started', { timestamp: monitorStartTime });
 
+            // ═══════════════════════════════════════════════════════════
+            // 🔧 Storage Availability Check (Safari ITP detection)
+            // ═══════════════════════════════════════════════════════════
+            let sessionStorageAvailable = false;
+            try {
+                sessionStorage.setItem('__test__', '1');
+                sessionStorage.removeItem('__test__');
+                sessionStorageAvailable = true;
+                console.log('✅ [Admin] sessionStorage available');
+            } catch (e) {
+                console.warn('⚠️ [Admin] sessionStorage BLOCKED (likely Safari ITP):', e.message);
+            }
+
             this.auth.onAuthStateChanged(async (user) => {
                 const authCallbackTime = Date.now();
                 console.log('🔍 [DEBUG] Admin onAuthStateChanged fired', {
@@ -255,17 +268,57 @@
                 });
 
                 // ═══════════════════════════════════════════════════════════
-                // 🔑 Unified Login System - Check for unified login flag
+                // 🔑 Unified Login System - Check URL auth token (Safari-safe)
                 // ═══════════════════════════════════════════════════════════
-                const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
-                const loginTime = sessionStorage.getItem('unifiedLoginTime');
-                const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
+                const urlParams = new URLSearchParams(window.location.search);
+                const authToken = urlParams.get('_auth');
+                let unifiedLogin = null;
+                let isRecent = false;
+
+                // Primary method: URL token (Safari-safe)
+                if (authToken) {
+                    try {
+                        const timestamp = parseInt(atob(authToken));
+                        isRecent = !isNaN(timestamp) && (Date.now() - timestamp) < 60000; // 60 seconds
+                        unifiedLogin = isRecent ? 'true' : null;
+
+                        if (isRecent) {
+                            console.log('🔑 [Admin] URL auth token detected (Safari-safe mode)');
+                            // Remove token from URL (one-time use)
+                            urlParams.delete('_auth');
+                            const newSearch = urlParams.toString();
+                            const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '') + window.location.hash;
+                            window.history.replaceState({}, '', newUrl);
+                            console.log('🧹 [Admin] Auth token removed from URL');
+                        } else {
+                            console.log('⚠️ [Admin] URL auth token expired');
+                        }
+                    } catch (e) {
+                        console.log('⚠️ [Admin] Invalid URL auth token');
+                    }
+                }
+
+                // Fallback: sessionStorage (Chrome/Firefox)
+                if (!unifiedLogin && sessionStorageAvailable) {
+                    try {
+                        const storedLogin = sessionStorage.getItem('unifiedLoginComplete');
+                        const loginTime = sessionStorage.getItem('unifiedLoginTime');
+                        const storageRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000;
+                        if (storedLogin === 'true' && storageRecent) {
+                            unifiedLogin = 'true';
+                            isRecent = true;
+                            console.log('🔑 [Admin] Unified login detected from sessionStorage');
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ [Admin] Failed to read sessionStorage:', e);
+                    }
+                }
 
                 console.log('🔍 [DEBUG] Admin auth check:', {
                     hasUser: !!user,
                     unifiedLogin,
-                    loginTime,
                     isRecent,
+                    authMethod: authToken ? 'URL token' : (sessionStorageAvailable ? 'sessionStorage' : 'none'),
                     willRedirect: !user && !(unifiedLogin === 'true' && isRecent)
                 });
 
@@ -294,9 +347,16 @@
                     if (unifiedLogin === 'true' && isRecent) {
                         console.log('🔑 Unified login detected - skipping login screen');
 
-                        // Clear flags (one-time use)
-                        sessionStorage.removeItem('unifiedLoginComplete');
-                        sessionStorage.removeItem('unifiedLoginTime');
+                        // Clear flags (one-time use) - only if sessionStorage is available
+                        if (sessionStorageAvailable) {
+                            try {
+                                sessionStorage.removeItem('unifiedLoginComplete');
+                                sessionStorage.removeItem('unifiedLoginTime');
+                                console.log('🧹 [Admin] Unified login flags cleared from sessionStorage');
+                            } catch (e) {
+                                console.warn('⚠️ [Admin] Failed to clear sessionStorage flags:', e);
+                            }
+                        }
                     }
 
                     // Check if user is admin
