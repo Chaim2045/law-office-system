@@ -37,7 +37,36 @@
 [context.production.environment]
   NODE_VERSION = "18"
 
-# SPA routing - all routes to index.html
+# ════════════════════════════════════════════════════════════════════
+# STATIC ASSETS - Serve directly, do NOT redirect to index.html
+# ════════════════════════════════════════════════════════════════════
+# IMPORTANT: These MUST come BEFORE the SPA catch-all redirect
+# Otherwise JS/CSS files will get index.html instead of actual file content
+[[redirects]]
+  from = "/js/*"
+  to = "/js/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/css/*"
+  to = "/css/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/components/*"
+  to = "/components/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+  force = false
+
+# SPA routing - all routes to index.html (AFTER static assets)
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -60,7 +89,7 @@
     # Content Security Policy (strict for admin)
     Content-Security-Policy = """
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
       style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
       font-src 'self' https://cdnjs.cloudflare.com;
       img-src 'self' data: https:;
