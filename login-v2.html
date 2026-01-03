@@ -238,12 +238,32 @@
                     // - Full URL for Admin: https://admin-gh-law-office-system.netlify.app/...
                     // - Relative path for App: /some-page.html
                     url = returnTo;
+                    console.log('🔍 [DEBUG] Using returnTo:', {
+                        returnTo,
+                        decodedReturnTo: decodeURIComponent(returnTo),
+                        finalUrl: url
+                    });
                 } else {
                     // No returnTo - use destination choice
-                    url = destination === 'admin'
-                        ? 'master-admin-panel/index.html'
-                        : 'index.html';
+                    // CRITICAL: Use relative paths that work from login-v2.html location
+                    // login-v2.html is at root, so:
+                    // - 'index.html' = Employee interface (same directory)
+                    // - 'master-admin-panel/index.html' = Admin panel (subdirectory)
+                    if (destination === 'admin') {
+                        url = 'master-admin-panel/index.html';
+                    } else {
+                        // destination === 'employee' or anything else
+                        url = 'index.html';
+                    }
+                    console.log('🔍 [DEBUG] Using destination choice:', {
+                        destination,
+                        finalUrl: url,
+                        currentLocation: window.location.href,
+                        resolvedUrl: new URL(url, window.location.href).href
+                    });
                 }
+
+                console.log('🔍 [DEBUG] About to navigate to:', url);
                 window.location.href = url;
             }
         });

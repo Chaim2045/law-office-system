@@ -180,14 +180,21 @@ class LawOfficeManager {
    * 🎯 אתחול נכון: Auth קודם, אז מודולים
    */
   async init() {
-    Logger.log('🚀 Initializing Law Office System...');
+    const initStartTime = Date.now();
+    Logger.log('🚀 Initializing Law Office System...', { timestamp: initStartTime });
 
     // Setup event listeners (UI only)
     this.setupEventListeners();
 
     // 🛡️ המתן ל-Firebase Auth להיות מוכן
     Logger.log('⏳ Waiting for Firebase Auth...');
+    const authStartTime = Date.now();
     const user = await this.waitForAuthReady();
+    const authEndTime = Date.now();
+    Logger.log('✅ Firebase Auth ready', {
+      timeTaken: `${authEndTime - authStartTime}ms`,
+      user: user ? user.email : 'none'
+    });
 
     // ═══════════════════════════════════════════════════════════
     // 🔑 Unified Login System - Check for unified login flag
@@ -209,8 +216,16 @@ class LawOfficeManager {
       // No authenticated user and no recent unified login
       // Redirect to login-v2.html with returnTo parameter
       Logger.log('🔐 No authenticated user - redirecting to unified login');
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
-      window.location.href = `/login-v2.html?returnTo=${returnTo}`;
+      const returnToPath = window.location.pathname + window.location.search + window.location.hash;
+      const returnTo = encodeURIComponent(returnToPath);
+      const redirectUrl = `/login-v2.html?returnTo=${returnTo}`;
+      console.log('🔍 [DEBUG] App redirect to login:', {
+        returnToPath,
+        returnToEncoded: returnTo,
+        redirectUrl,
+        currentLocation: window.location.href
+      });
+      window.location.href = redirectUrl;
       return;
     }
 

@@ -242,13 +242,32 @@
          * ניטור שינויים בסטטוס האימות
          */
         monitorAuthState() {
+            const monitorStartTime = Date.now();
+            console.log('🔍 [DEBUG] Admin monitorAuthState started', { timestamp: monitorStartTime });
+
             this.auth.onAuthStateChanged(async (user) => {
+                const authCallbackTime = Date.now();
+                console.log('🔍 [DEBUG] Admin onAuthStateChanged fired', {
+                    timestamp: authCallbackTime,
+                    timeSinceMonitorStart: `${authCallbackTime - monitorStartTime}ms`,
+                    hasUser: !!user,
+                    userEmail: user?.email
+                });
+
                 // ═══════════════════════════════════════════════════════════
                 // 🔑 Unified Login System - Check for unified login flag
                 // ═══════════════════════════════════════════════════════════
                 const unifiedLogin = sessionStorage.getItem('unifiedLoginComplete');
                 const loginTime = sessionStorage.getItem('unifiedLoginTime');
                 const isRecent = loginTime && (Date.now() - parseInt(loginTime)) < 60000; // 1 minute
+
+                console.log('🔍 [DEBUG] Admin auth check:', {
+                    hasUser: !!user,
+                    unifiedLogin,
+                    loginTime,
+                    isRecent,
+                    willRedirect: !user && !(unifiedLogin === 'true' && isRecent)
+                });
 
                 // ═══════════════════════════════════════════════════════════
                 // 🎯 Single Entry Point - Redirect to login-v2 if not authenticated
@@ -259,7 +278,13 @@
                     console.log('🔐 No authenticated user - redirecting to unified login');
                     const currentUrl = window.location.href;
                     const returnTo = encodeURIComponent(currentUrl);
-                    window.location.href = `https://gh-law-office-system.netlify.app/login-v2.html?returnTo=${returnTo}`;
+                    const redirectUrl = `https://gh-law-office-system.netlify.app/login-v2.html?returnTo=${returnTo}`;
+                    console.log('🔍 [DEBUG] Admin redirect to login:', {
+                        currentUrl,
+                        returnToEncoded: returnTo,
+                        redirectUrl
+                    });
+                    window.location.href = redirectUrl;
                     return;
                 }
 
