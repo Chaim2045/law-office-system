@@ -23,45 +23,35 @@
     <meta name="description" content="Master Admin Panel - ניהול לקוחות">
     <title>👥 ניהול לקוחות | Master Admin Panel</title>
 
-    <!-- ===== PRE-FLIGHT AUTH CHECK ===== -->
+    <!-- ===== UNIFIED AUTH GUARD (NO PRE-FLIGHT REDIRECT) ===== -->
+    <!-- Auth Guard will handle authentication check after Firebase loads -->
+    <!-- Pre-flight only shows loading overlay, NO redirect -->
     <script>
-    (function() {
-        'use strict';
-
-        // Fast check: האם המשתמש היה מחובר לאחרונה?
-        const authState = sessionStorage.getItem('authState');
-
-        if (!authState) {
-            // אין מידע בכלל - redirect מיד לפני שהדף נטען!
-            console.log('🔒 [Pre-Flight] No auth state - redirecting');
-            window.location.replace('index.html');
-            return;
-        }
-
-        try {
-            const state = JSON.parse(authState);
-            const now = Date.now();
-
-            // בדוק אם המידע טרי (פחות מ-5 דקות)
-            if (!state.isAuthenticated || !state.timestamp ||
-                (now - state.timestamp) > 5 * 60 * 1000) {
-                // מידע לא טרי - redirect
-                console.log('🔒 [Pre-Flight] Auth state is stale - redirecting');
-                sessionStorage.removeItem('authState');
-                window.location.replace('index.html');
-                return;
+        // Optimistic pre-check: Only used to decide overlay text
+        // NO REDIRECT happens here - only Firebase Auth decides!
+        (function() {
+            'use strict';
+            try {
+                const authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    const state = JSON.parse(authState);
+                    const age = Date.now() - (state.timestamp || 0);
+                    if (state.isAuthenticated && age < 5 * 60 * 1000) {
+                        console.log('✅ [Clients Pre-Flight] Recent auth detected - showing optimistic overlay');
+                        window._clientsOptimistic = true;
+                    } else {
+                        console.log('⚠️ [Clients Pre-Flight] Stale/missing auth - will verify with Firebase');
+                        window._clientsOptimistic = false;
+                    }
+                } else {
+                    console.log('⚠️ [Clients Pre-Flight] No auth state - will verify with Firebase');
+                    window._clientsOptimistic = false;
+                }
+            } catch (error) {
+                console.warn('⚠️ [Clients Pre-Flight] Parse error:', error);
+                window._clientsOptimistic = false;
             }
-
-            // המידע טרי - תן לדף להמשיך להיטען בשקט
-            console.log('✅ [Pre-Flight] Auth check passed - loading page');
-
-        } catch (error) {
-            // שגיאה - redirect
-            console.error('❌ [Pre-Flight] Auth check error:', error);
-            sessionStorage.removeItem('authState');
-            window.location.replace('index.html');
-        }
-    })();
+        })();
     </script>
 
     <!-- ===== Firebase SDK ===== -->
@@ -570,6 +560,9 @@
     <script src="js/core/auth.js?v=20251123v1"></script>
     <script src="js/core/constants.js?v=20251123v1"></script>
 
+    <!-- ===== Auth Guard (Unified Authentication) ===== -->
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+
     <!-- ===== Navigation Component ===== -->
     <script src="js/ui/Navigation.js?v=20251123v1"></script>
 
@@ -664,88 +657,107 @@
         });
 
         // Initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Clients Management Page - Loading...');
 
-            // Initialize Navigation
-            if (window.Navigation) {
-                window.Navigation.init('clients');
-            }
+            // ════════════════════════════════════════════════════════════════════
+            // 🔐 UNIFIED AUTH GUARD - Only Firebase Auth decides redirects
+            // ════════════════════════════════════════════════════════════════════
+            window.initAuthGuard({
+                pageName: 'clients',
+                timeoutMs: 5000, // 5 seconds timeout
 
-            // Initialize Announcements Modal
-            if (window.AnnouncementsModal) {
-                window.AnnouncementsModal.init();
-            }
+                // ✅ Called when user IS authenticated
+                onAuthenticated: async (user) => {
+                    console.log('✅ [Clients] User authenticated, initializing page...');
 
-            // Initialize Clients Data Manager
-            if (window.ClientsDataManager) {
-                await window.ClientsDataManager.init();
-            } else {
-                console.error('❌ ClientsDataManager not loaded');
-            }
+                    // Initialize Navigation
+                    if (window.Navigation) {
+                        window.Navigation.init('clients');
+                    }
 
-            // Initialize Clients Table
-            if (window.ClientsTable) {
-                await window.ClientsTable.init();
-            } else {
-                console.error('❌ ClientsTable not loaded');
-            }
+                    // Initialize Announcements Modal
+                    if (window.AnnouncementsModal) {
+                        window.AnnouncementsModal.init();
+                    }
 
-            // Initialize Report Modal
-            if (window.ClientReportModal) {
-                window.ClientReportModal.init();
-            } else {
-                console.error('❌ ClientReportModal not loaded');
-            }
+                    // Initialize Clients Data Manager
+                    if (window.ClientsDataManager) {
+                        await window.ClientsDataManager.init();
+                    } else {
+                        console.error('❌ ClientsDataManager not loaded');
+                    }
 
-            // Initialize Management Modal
-            if (window.ClientManagementModal) {
-                window.ClientManagementModal.init();
-            } else {
-                console.error('❌ ClientManagementModal not loaded');
-            }
+                    // Initialize Clients Table
+                    if (window.ClientsTable) {
+                        await window.ClientsTable.init();
+                    } else {
+                        console.error('❌ ClientsTable not loaded');
+                    }
 
-            // Initialize Messaging Manager
-            if (window.MessagingManager) {
-                window.messagingManager = new window.MessagingManager();
-                await window.messagingManager.init();
-                console.log('✅ MessagingManager initialized');
-            } else {
-                console.warn('⚠️ MessagingManager not loaded');
-            }
+                    // Initialize Report Modal
+                    if (window.ClientReportModal) {
+                        window.ClientReportModal.init();
+                    } else {
+                        console.error('❌ ClientReportModal not loaded');
+                    }
 
-            // Initialize Message Composer
-            if (window.MessageComposer) {
-                window.messageComposer = new window.MessageComposer();
-                await window.messageComposer.init();
-                console.log('✅ MessageComposer initialized');
-            } else {
-                console.warn('⚠️ MessageComposer not loaded');
-            }
+                    // Initialize Management Modal
+                    if (window.ClientManagementModal) {
+                        window.ClientManagementModal.init();
+                    } else {
+                        console.error('❌ ClientManagementModal not loaded');
+                    }
 
-            // Initialize Floating Action Button
-            if (window.FloatingActionButton) {
-                window.FloatingActionButton.init('clients');
-                console.log('✅ FAB initialized for clients page');
-            } else {
-                console.warn('⚠️ FloatingActionButton not loaded');
-            }
+                    // Initialize Messaging Manager
+                    if (window.MessagingManager) {
+                        window.messagingManager = new window.MessagingManager();
+                        await window.messagingManager.init();
+                        console.log('✅ MessagingManager initialized');
+                    } else {
+                        console.warn('⚠️ MessagingManager not loaded');
+                    }
 
-            console.log('✅ Clients Management Page - Ready');
+                    // Initialize Message Composer
+                    if (window.MessageComposer) {
+                        window.messageComposer = new window.MessageComposer();
+                        await window.messageComposer.init();
+                        console.log('✅ MessageComposer initialized');
+                    } else {
+                        console.warn('⚠️ MessageComposer not loaded');
+                    }
 
-            // Refresh button
-            document.getElementById('refreshClientsBtn')?.addEventListener('click', async () => {
-                console.log('🔄 Refreshing clients data...');
-                if (window.ClientsDataManager) {
-                    await window.ClientsDataManager.refresh();
-                }
-            });
+                    // Initialize Floating Action Button
+                    if (window.FloatingActionButton) {
+                        window.FloatingActionButton.init('clients');
+                        console.log('✅ FAB initialized for clients page');
+                    } else {
+                        console.warn('⚠️ FloatingActionButton not loaded');
+                    }
 
-            // Export button
-            document.getElementById('exportClientsBtn')?.addEventListener('click', () => {
-                console.log('📥 Exporting clients to Excel...');
-                if (window.ClientsTable) {
-                    window.ClientsTable.exportToExcel();
+                    console.log('✅ Clients Management Page - Ready');
+
+                    // Refresh button
+                    document.getElementById('refreshClientsBtn')?.addEventListener('click', async () => {
+                        console.log('🔄 Refreshing clients data...');
+                        if (window.ClientsDataManager) {
+                            await window.ClientsDataManager.refresh();
+                        }
+                    });
+
+                    // Export button
+                    document.getElementById('exportClientsBtn')?.addEventListener('click', () => {
+                        console.log('📥 Exporting clients to Excel...');
+                        if (window.ClientsTable) {
+                            window.ClientsTable.exportToExcel();
+                        }
+                    });
+                },
+
+                // ❌ Called when user is NOT authenticated
+                onUnauthenticated: () => {
+                    console.log('🔒 [Clients] User not authenticated, redirecting to login...');
+                    window.location.replace('index.html');
                 }
             });
         });

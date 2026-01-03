@@ -7,6 +7,37 @@
     <meta name="description" content="ניתוח עומס עבודה - Master Admin Panel">
     <title>📊 ניתוח עומס | Master Admin Panel</title>
 
+    <!-- ===== UNIFIED AUTH GUARD (NO PRE-FLIGHT REDIRECT) ===== -->
+    <!-- Auth Guard will handle authentication check after Firebase loads -->
+    <!-- Pre-flight only shows loading overlay, NO redirect -->
+    <script>
+        // Optimistic pre-check: Only used to decide overlay text
+        // NO REDIRECT happens here - only Firebase Auth decides!
+        (function() {
+            'use strict';
+            try {
+                const authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    const state = JSON.parse(authState);
+                    const age = Date.now() - (state.timestamp || 0);
+                    if (state.isAuthenticated && age < 5 * 60 * 1000) {
+                        console.log('✅ [Workload Pre-Flight] Recent auth detected - showing optimistic overlay');
+                        window._workloadOptimistic = true;
+                    } else {
+                        console.log('⚠️ [Workload Pre-Flight] Stale/missing auth - will verify with Firebase');
+                        window._workloadOptimistic = false;
+                    }
+                } else {
+                    console.log('⚠️ [Workload Pre-Flight] No auth state - will verify with Firebase');
+                    window._workloadOptimistic = false;
+                }
+            } catch (error) {
+                console.warn('⚠️ [Workload Pre-Flight] Parse error:', error);
+                window._workloadOptimistic = false;
+            }
+        })();
+    </script>
+
     <!-- ===== Firebase SDK ===== -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -52,6 +83,9 @@
     <script src="js/core/auth.js?v=bf8073e"></script>
     <script src="js/core/constants.js?v=bf8073e"></script>
 
+    <!-- ===== Auth Guard (Unified Authentication) ===== -->
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+
     <!-- ===== Navigation Component ===== -->
     <script src="js/ui/Navigation.js?v=bf8073e"></script>
 
@@ -76,72 +110,80 @@
         });
 
         // Initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             console.log('📊 Workload Analytics Page - Loading...');
 
-            // Initialize Navigation
-            if (window.Navigation) {
-                window.Navigation.init('workload');
-            }
+            // ════════════════════════════════════════════════════════════════════
+            // 🔐 UNIFIED AUTH GUARD - Only Firebase Auth decides redirects
+            // ════════════════════════════════════════════════════════════════════
+            window.initAuthGuard({
+                pageName: 'workload',
+                timeoutMs: 5000, // 5 seconds timeout
 
-            // Wait for auth
-            window.firebaseAuth.onAuthStateChanged(async (user) => {
-                if (!user) {
-                    // Not logged in - redirect to login
-                    window.location.href = 'index.html';
-                    return;
-                }
+                // ✅ Called when user IS authenticated
+                onAuthenticated: async (user) => {
+                    console.log('✅ [Workload] User authenticated, initializing page...');
 
-                console.log('✅ User authenticated:', user.email);
+                    // Initialize Navigation
+                    if (window.Navigation) {
+                        window.Navigation.init('workload');
+                    }
 
-                // Initialize Workload Analytics
-                if (window.WorkloadService && window.WorkloadCard) {
-                    try {
-                        const initSuccess = window.WorkloadService.init();
-                        if (initSuccess) {
-                            // 🔄 v3.0.0: נקה cache מגרסאות ישנות
-                            window.WorkloadService.clearCache();
-                            console.log('🗑️ Cache cleared for v3.0.0');
+                    // Initialize Workload Analytics
+                    if (window.WorkloadService && window.WorkloadCard) {
+                        try {
+                            const initSuccess = window.WorkloadService.init();
+                            if (initSuccess) {
+                                // 🔄 v3.0.0: נקה cache מגרסאות ישנות
+                                window.WorkloadService.clearCache();
+                                console.log('🗑️ Cache cleared for v3.0.0');
 
-                            window.WorkloadCard.init();
-                            console.log('✅ Workload Analytics v3.0.0 initialized (Hybrid Professional Design with Categories)');
+                                window.WorkloadCard.init();
+                                console.log('✅ Workload Analytics v3.0.0 initialized (Hybrid Professional Design with Categories)');
 
-                            // Initialize Data Manager
-                            if (window.DataManager) {
-                                window.DataManager.init();
-                                const result = await window.DataManager.loadUsers();
+                                // Initialize Data Manager
+                                if (window.DataManager) {
+                                    window.DataManager.init();
+                                    const result = await window.DataManager.loadUsers();
 
-                                if (result.success) {
-                                    const employees = window.DataManager.allUsers || [];
-                                    console.log(`✅ Loaded ${employees.length} employees`);
+                                    if (result.success) {
+                                        const employees = window.DataManager.allUsers || [];
+                                        console.log(`✅ Loaded ${employees.length} employees`);
 
-                                    // Render workload dashboard
-                                    const container = document.getElementById('workloadContent');
-                                    await window.WorkloadCard.render(container, employees);
-                                } else {
-                                    console.error('❌ Failed to load employees:', result.error);
-                                    document.getElementById('workloadContent').innerHTML = `
-                                        <div class="workload-error">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                            <p>שגיאה בטעינת נתוני עובדים</p>
-                                            <small>${result.error}</small>
-                                        </div>
-                                    `;
+                                        // Render workload dashboard
+                                        const container = document.getElementById('workloadContent');
+                                        await window.WorkloadCard.render(container, employees);
+                                    } else {
+                                        console.error('❌ Failed to load employees:', result.error);
+                                        document.getElementById('workloadContent').innerHTML = `
+                                            <div class="workload-error">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <p>שגיאה בטעינת נתוני עובדים</p>
+                                                <small>${result.error}</small>
+                                            </div>
+                                        `;
+                                    }
                                 }
                             }
+                        } catch (error) {
+                            console.error('❌ Failed to initialize Workload Analytics:', error);
+                            document.getElementById('workloadContent').innerHTML = `
+                                <div class="workload-error">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <p>שגיאה באתחול מודול ניתוח עומס</p>
+                                    <small>${error.message}</small>
+                                </div>
+                            `;
                         }
-                    } catch (error) {
-                        console.error('❌ Failed to initialize Workload Analytics:', error);
-                        document.getElementById('workloadContent').innerHTML = `
-                            <div class="workload-error">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <p>שגיאה באתחול מודול ניתוח עומס</p>
-                                <small>${error.message}</small>
-                            </div>
-                        `;
+                    } else {
+                        console.warn('⚠️ Workload Analytics not loaded');
                     }
-                } else {
-                    console.warn('⚠️ Workload Analytics not loaded');
+                },
+
+                // ❌ Called when user is NOT authenticated
+                onUnauthenticated: () => {
+                    console.log('🔒 [Workload] User not authenticated, redirecting to login...');
+                    window.location.href = 'index.html';
                 }
             });
         });

@@ -525,7 +525,29 @@ this.passwordInput.value = '';
             this.hideLoading();
             this.setButtonLoading(false);
 
-            // 💾 Update auth state in sessionStorage for fast pre-flight checks
+            // ════════════════════════════════════════════════════════════════════
+            // 💾 SESSION STORAGE UPDATE (for Auth Guard optimistic checks)
+            // ════════════════════════════════════════════════════════════════════
+            // This sessionStorage is used by auth-guard.js for optimistic pre-flight checks
+            // IMPORTANT: Pre-flight checks NEVER redirect based on this data!
+            // Only Firebase Auth (onAuthStateChanged) decides redirects
+            //
+            // Flow:
+            // 1. User logs in → auth.js updates sessionStorage here
+            // 2. User navigates to clients.html/workload.html
+            // 3. Pre-flight reads sessionStorage (optimistic check)
+            //    - If recent (< 5 min) → Show "loading" overlay (optimistic)
+            //    - If stale/missing → Show "authenticating" overlay
+            //    - NO REDIRECT at this stage!
+            // 4. auth-guard.js calls Firebase Auth onAuthStateChanged()
+            //    - If authenticated → Updates sessionStorage with fresh timestamp
+            //    - If not authenticated → Clears sessionStorage and redirects
+            //
+            // Benefits:
+            // ✅ No false redirects when switching tabs
+            // ✅ Better UX: Optimistic loading for recently authenticated users
+            // ✅ Single source of truth: Firebase Auth (not sessionStorage)
+            // ════════════════════════════════════════════════════════════════════
             if (this.currentUser) {
                 const authState = {
                     isAuthenticated: true,
