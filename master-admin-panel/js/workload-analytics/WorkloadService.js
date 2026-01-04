@@ -2,18 +2,22 @@
  * Workload Service - שירות שליפת נתונים לניתוח עומס
  *
  * תפקיד: שליפת נתונים מ-Firestore והעברתם ל-WorkloadCalculator
- * תלות: Firestore, WorkloadCalculator, WorkloadConstants
+ * תלות: Firestore, WorkloadCalculator, WorkloadConstants, WorkHoursCalculator
  *
  * נוצר: 2025-12-30
- * גרסה: 4.1.0 - Data Accuracy Fixes
+ * גרסה: 5.1.0 - Single Source of Truth for Workdays
  *
- * שינויים בגרסה 4.0.0:
- * ✅ Cache TTL נטען מ-WorkloadConstants
- * ✅ שימוש ב-Cloud Function לביצועים
+ * שינויים בגרסה 5.1.0 (2026-01-04):
+ * ✅ Dependency injection: Creates and injects WorkHoursCalculator into WorkloadCalculator
+ * ✅ Single instance of WorkHoursCalculator ensures consistent holiday handling
  *
  * שינויים בגרסה 4.1.0:
  * ✅ תיקון: מיזוג נכון של employee data מ-UI ו-Firestore
  * ✅ תיקון: תמיכה ב-Cloud Function v1.1.0 (dual field support)
+ *
+ * שינויים בגרסה 4.0.0:
+ * ✅ Cache TTL נטען מ-WorkloadConstants
+ * ✅ שימוש ב-Cloud Function לביצועים
  */
 
 (function() {
@@ -52,7 +56,19 @@
             }
 
             this.db = window.firebaseDB;
-            this.calculator = new window.WorkloadCalculator();
+
+            // ✅ v5.1.0: Create single WorkHoursCalculator instance for holiday/workday logic
+            // This is the SINGLE SOURCE OF TRUTH for workday counting
+            if (window.WorkHoursCalculator) {
+                this.workHoursCalculator = new window.WorkHoursCalculator();
+                console.log('✅ WorkHoursCalculator initialized (single source of truth for workdays)');
+            } else {
+                console.warn('⚠️ WorkHoursCalculator not loaded - workload calculations may not include holidays');
+                this.workHoursCalculator = null;
+            }
+
+            // Pass WorkHoursCalculator to WorkloadCalculator (dependency injection)
+            this.calculator = new window.WorkloadCalculator(this.workHoursCalculator);
 
             console.log('✅ WorkloadService initialized');
             return true;
