@@ -5,7 +5,12 @@
  * אין תלות ב-Firestore או ספריות חיצוניות - רק חישובים מתמטיים טהורים
  *
  * נוצר: 2025-12-30
- * גרסה: 5.0.0 - Smart Workload Logic
+ * גרסה: 5.1.0 - Single Source of Truth for Workdays
+ *
+ * שינויים בגרסה 5.1.0 (2026-01-04):
+ * ✅ Single source of truth: WorkHoursCalculator delegated for all workday counting
+ * ✅ Holiday deduction now working correctly (was TODO before)
+ * ✅ Dependency injection: WorkHoursCalculator passed via constructor
  *
  * שינויים בגרסה 5.0.0 (2026-01-03):
  * ✅ מודול איכות נתונים (Data Quality) - זיהוי עובדים שלא ממלאים timesheet
@@ -127,7 +132,7 @@
      * מחשבון עומס עבודה
      */
     class WorkloadCalculator {
-        constructor() {
+        constructor(workHoursCalculator = null) {
             // ✅ v4.0.0: קבועים הועברו ל-WorkloadConstants.js
             // טוען קבועים מקובץ ריכוזי
             if (!window.WorkloadConstants) {
@@ -141,6 +146,17 @@
             this.WEIGHTS = this.constants.SCORE_WEIGHTS;
             this.DEFAULT_DAILY_HOURS = this.constants.WORK_HOURS.DEFAULT_DAILY_HOURS;
             this.DEFAULT_WEEKLY_HOURS = this.constants.WORK_HOURS.DEFAULT_WEEKLY_HOURS;
+
+            // ✅ v5.1.0: Single source of truth for workday counting
+            // WorkHoursCalculator handles holidays + weekends
+            this.workHoursCalculator = workHoursCalculator;
+            if (!this.workHoursCalculator) {
+                console.warn('⚠️ WorkloadCalculator: No WorkHoursCalculator provided, creating default instance');
+                // Fallback: create a default instance if WorkHoursCalculator is available globally
+                if (window.WorkHoursCalculator) {
+                    this.workHoursCalculator = new window.WorkHoursCalculator();
+                }
+            }
         }
 
         /**
@@ -1060,21 +1076,32 @@ return null;
             return d;
         }
 
+        /**
+         * ✅ v5.1.0: Delegate to WorkHoursCalculator for single source of truth
+         * Gets work days in month (excluding weekends AND holidays)
+         * @param {Date} date - התאריך בחודש הרצוי
+         * @returns {number} - מספר ימי עבודה בחודש
+         */
         getWorkDaysInMonth(date) {
             const year = date.getFullYear();
             const month = date.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+            // ✅ Single source of truth: WorkHoursCalculator
+            if (this.workHoursCalculator) {
+                return this.workHoursCalculator.getWorkDaysInMonth(year, month);
+            }
+
+            // ❌ Fallback (should never reach here if properly initialized)
+            console.error('❌ WorkHoursCalculator not available! Falling back to simple weekend counting (NO holidays)');
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
             let workDays = 0;
             for (let day = 1; day <= daysInMonth; day++) {
                 const d = new Date(year, month, day);
                 const dayOfWeek = d.getDay();
-                // 0=ראשון, 6=שבת - לא עובדים בשישי ושבת
                 if (dayOfWeek !== 5 && dayOfWeek !== 6) {
                     workDays++;
                 }
             }
-            // TODO: בגרסה מתקדמת - הוסף ניכוי חגים מ-WorkHoursCalculator
             return workDays;
         }
 
