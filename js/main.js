@@ -61,6 +61,9 @@ import { ActionFlowManager } from './modules/ui-components.js';
 // Debug Tools (Development Only)
 import * as DebugTools from './modules/debug-tools.js';
 
+// Phone Call Timer
+import PhoneCallTimer from './modules/phone-call-timer.js';
+
 
 /* ========================================
    MAIN APPLICATION CLASS
@@ -83,6 +86,9 @@ class LawOfficeManager {
 
     // ✅ NEW v2.0: Add Task Dialog System
     this.addTaskDialog = null;
+
+    // ✅ NEW: Phone Call Timer
+    this.phoneCallTimer = null;
 
     // View State - ✅ Managed by STATE_CONFIG (config/state-config.js)
     // Session-only (resets on page load): taskFilter, timesheetFilter
@@ -174,14 +180,25 @@ class LawOfficeManager {
    * 🎯 אתחול נכון: Auth קודם, אז מודולים
    */
   async init() {
-    Logger.log('🚀 Initializing Law Office System...');
+    const initStartTime = Date.now();
+    Logger.log('🚀 Initializing Law Office System...', { timestamp: initStartTime });
 
     // Setup event listeners (UI only)
     this.setupEventListeners();
 
     // 🛡️ המתן ל-Firebase Auth להיות מוכן
     Logger.log('⏳ Waiting for Firebase Auth...');
+    const authStartTime = Date.now();
     const user = await this.waitForAuthReady();
+    const authEndTime = Date.now();
+    Logger.log('✅ Firebase Auth ready', {
+      timeTaken: `${authEndTime - authStartTime}ms`,
+      user: user ? user.email : 'none'
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // 🔒 Classic Login Flow - Show login screen for all users
+    // ═══════════════════════════════════════════════════════════
 
     // 🔒 SECURITY FIX: Always show login screen, even if user has saved session
     // This matches banking systems behavior - browser can fill password but user must click login
@@ -262,6 +279,9 @@ class LawOfficeManager {
 
         // ✅ NEW v2.0: Initialize Add Task System after login
         this.initializeAddTaskSystem();
+
+        // ✅ NEW: Initialize Phone Call Timer
+        this.initializePhoneCallTimer();
       } else {
         // User not found in employees - sign out
         await firebase.auth().signOut();
@@ -345,6 +365,17 @@ class LawOfficeManager {
       } catch (error) {
         console.error('❌ Failed to initialize System Announcement Ticker:', error);
       }
+    }
+  }
+
+  /**
+   * Ensure Phone Timer is initialized - Called from showApp()
+   * Fallback for cases where user was already authenticated before code deployment
+   */
+  ensurePhoneTimerInitialized() {
+    if (!this.phoneCallTimer && typeof PhoneCallTimer !== 'undefined') {
+      console.log('📞 Phone timer not initialized - initializing now...');
+      this.initializePhoneCallTimer();
     }
   }
 
@@ -1003,6 +1034,26 @@ return false;
     } catch (error) {
       console.error('❌ Error initializing Add Task System:', error);
       // System will fallback to old method automatically
+    }
+  }
+
+  /**
+   * Initialize Phone Call Timer
+   * אתחול טיימר שיחות טלפון
+   */
+  initializePhoneCallTimer() {
+    try {
+      console.log('📞 Initializing Phone Call Timer...');
+
+      this.phoneCallTimer = new PhoneCallTimer(this);
+      this.phoneCallTimer.init();
+
+      // Make globally accessible for onclick handlers
+      window.phoneCallTimer = this.phoneCallTimer;
+
+      console.log('✅ Phone Call Timer initialized');
+    } catch (error) {
+      console.error('❌ Error initializing Phone Call Timer:', error);
     }
   }
 
