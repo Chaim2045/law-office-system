@@ -18,7 +18,7 @@
     'use strict';
 
     class AlertCommunicationManager {
-        constructor(firebaseDB, dataManager, alertEngine) {
+        constructor(firebaseDB, dataManager, alertEngine, alertsAnalyticsService) {
             if (!firebaseDB) {
                 throw new Error('AlertCommunicationManager: firebaseDB is required');
             }
@@ -26,6 +26,7 @@
             this.db = firebaseDB;
             this.dataManager = dataManager;
             this.alertEngine = alertEngine;
+            this.alertsAnalyticsService = alertsAnalyticsService || window.alertsAnalyticsService;
             this.currentAdmin = null;
             this.responsesListener = null;
 
@@ -147,7 +148,7 @@
                 if (failCount === 0) {
                     window.notify.success(`כל ההודעות נשלחו בהצלחה (${successCount})`);
                 } else if (successCount === 0) {
-                    window.notify.error(`שליחת ההודעות נכשלה`);
+                    window.notify.error('שליחת ההודעות נכשלה');
                 } else {
                     window.notify.warning(`${successCount} הודעות נשלחו, ${failCount} נכשלו`);
                 }
@@ -277,9 +278,13 @@
 
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
-                if (data.status === 'unread') stats.unread++;
-                else if (data.status === 'read') stats.read++;
-                else if (data.status === 'responded') stats.responded++;
+                if (data.status === 'unread') {
+stats.unread++;
+} else if (data.status === 'read') {
+stats.read++;
+} else if (data.status === 'responded') {
+stats.responded++;
+}
             });
 
             stats.responseRate = stats.total > 0
@@ -701,13 +706,16 @@
          * שולח התראות אוטומטיות לעובדים על בסיס AlertEngine
          */
         async syncAlertsToUsers() {
-            if (!this.alertEngine) {
-                console.warn('AlertEngine not available');
+            if (!this.alertsAnalyticsService) {
+                console.warn('⚠️ AlertsAnalyticsService not available');
+                if (window.notify) {
+                    window.notify.error('שירות אנליטיקס לא זמין');
+                }
                 return;
             }
 
             if (!this.dataManager) {
-                console.warn('DataManager not available');
+                console.warn('⚠️ DataManager not available');
                 return;
             }
 
@@ -719,12 +727,27 @@
 
                 for (const user of users) {
                     // Skip admins
-                    if (user.role === 'admin') continue;
+                    if (user.role === 'admin') {
+continue;
+}
 
-                    // Calculate alerts for this user
-                    const alerts = this.alertEngine.calculateAlerts(user);
+                    // Calculate alerts via central analytics service
+                    const result = this.alertsAnalyticsService.computeAlertsAnalytics(user);
+
+                    // CRITICAL: If analytics unavailable (system-level issue), stop entire sync
+                    if (!result.ok) {
+                        console.error('❌ AlertCommunicationManager: Analytics unavailable - stopping sync');
+                        console.error('   Error:', result.error.code, '-', result.error.message);
+
+                        if (window.notify) {
+                            window.notify.error(`סנכרון התראות הופסק: ${result.error.message}`);
+                        }
+
+                        return 0; // Stop sync - system-level issue, not user-specific
+                    }
 
                     // Send each alert as a message
+                    const alerts = result.data;
                     for (const alert of alerts) {
                         try {
                             await this.sendAlertMessage(user.email, alert);
@@ -742,7 +765,7 @@
                 return totalAlertsSent;
 
             } catch (error) {
-                console.error('Error syncing alerts:', error);
+                console.error('❌ Error syncing alerts:', error);
                 if (window.notify) {
                     window.notify.error('שגיאה בשליחת התראות אוטומטיות');
                 }
