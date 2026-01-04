@@ -16,6 +16,7 @@ import { updateUserDisplay, updateSidebarUser } from './ui-components.js';
  */
 
 function showLogin() {
+
   const loginSection = document.getElementById('loginSection');
   const forgotPasswordSection = document.getElementById('forgotPasswordSection');
   const welcomeScreen = document.getElementById('welcomeScreen');
@@ -346,6 +347,11 @@ bubblesContainer.classList.add('hidden');
   // ✅ Initialize System Announcement Ticker when entering the app
   if (window.manager && typeof window.manager.initTicker === 'function') {
     window.manager.initTicker();
+  }
+
+  // ✅ Ensure Phone Call Timer is initialized (fallback for existing sessions)
+  if (window.manager && typeof window.manager.ensurePhoneTimerInitialized === 'function') {
+    window.manager.ensurePhoneTimerInitialized();
   }
 }
 
