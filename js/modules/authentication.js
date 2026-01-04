@@ -16,16 +16,6 @@ import { updateUserDisplay, updateSidebarUser } from './ui-components.js';
  */
 
 function showLogin() {
-  // ═══════════════════════════════════════════════════════════
-  // 🔑 Unified Login System - Skip if in unified login flow
-  // ═══════════════════════════════════════════════════════════
-  // If user is coming from login-v2.html (unified login),
-  // don't show the login screen - they're already authenticated
-  // ═══════════════════════════════════════════════════════════
-  if (window.isInWelcomeScreen) {
-    console.log('🔑 Skipping showLogin() - unified login in progress');
-    return;
-  }
 
   const loginSection = document.getElementById('loginSection');
   const forgotPasswordSection = document.getElementById('forgotPasswordSection');

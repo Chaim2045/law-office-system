@@ -48,8 +48,8 @@
                     throw new Error('Firebase SDK לא נטען. ודא שהספריות נטענו לפני הסקריפט.');
                 }
 
-                // Use DEFAULT Firebase App (shared with login-v2.html and index.html)
-                // זה מאפשר שיתוף של auth state בין כל חלקי המערכת
+                // Use DEFAULT Firebase App (shared with main app)
+                // זה מאפשר שיתוף של auth state בין Admin Panel והאפליקציה הראשית
 
                 // Check if default app already initialized
                 if (firebase.apps.length > 0) {
