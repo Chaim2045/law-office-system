@@ -5,7 +5,15 @@
  * אין תלות ב-Firestore או ספריות חיצוניות - רק חישובים מתמטיים טהורים
  *
  * נוצר: 2025-12-30
- * גרסה: 4.0.0 - Production-Ready Refactoring
+ * גרסה: 5.0.0 - Smart Workload Logic
+ *
+ * שינויים בגרסה 5.0.0 (2026-01-03):
+ * ✅ מודול איכות נתונים (Data Quality) - זיהוי עובדים שלא ממלאים timesheet
+ * ✅ חישוב קיבולת אפקטיבית (Effective Capacity) - תקן אמיתי עם הפסקות ומרחב אישי
+ * ✅ עומס משוקלל (Weighted Backlog) - משקל לפי דחיפות (overdue ×3, <24h ×2.5)
+ * ✅ זיהוי משימות תקועות (Stale Tasks) - משימות שלא עודכנו 7+ ימים
+ * ✅ התראות חכמות (Smart Alerts) - התראות קונטקסטואליות לפי דפוסי נתונים
+ * ✅ תיקון NaN bug - גארדים למניעת חלוקה באפס
  *
  * שינויים בגרסה 4.0.0:
  * ✅ ריכוז כל ה-Magic Numbers ב-WorkloadConstants.js
@@ -161,6 +169,12 @@
             // ═══ חלק 3.5: ניתוח עומס יומי (v2.0) ═══
             const dailyLoadAnalysis = this.calculateDailyLoadAnalysis(tasks, employee, now);
 
+            // ═══ 🆕 v5.0: Smart Workload Modules ═══
+            const effectiveCapacity = this.calculateEffectiveCapacity(employee);
+            const weightedBacklog = this.calculateWeightedBacklog(tasks, effectiveCapacity.effective);
+            const dataQuality = this.calculateDataQuality(employee, tasks, timesheetEntries);
+            const staleTasks = this.detectStaleTasks(tasks);
+
             // ═══ חלק 4: ציון עומס משוקלל ═══
             const workloadScore = this.calculateWorkloadScore(
                 basicMetrics,
@@ -180,13 +194,13 @@
             // ═══ v2.1.1: ניתוח איכות ניהול משימות ═══
             const taskQuality = this.analyzeTaskManagementQuality(tasks, now);
 
-            // ═══ חלק 6: התראות ═══
-            const alerts = this.generateAlerts(
-                workloadScore,
-                urgencyMetrics,
-                basicMetrics,
-                dailyLoadAnalysis,
-                taskQuality
+            // ═══ חלק 6: התראות חכמות (v5.0) ═══
+            const alerts = this.generateSmartAlerts(
+                employee,
+                tasks,
+                dataQuality,
+                staleTasks,
+                weightedBacklog
             );
 
             // ═══ חלק 7: משימות בסיכון ═══
@@ -199,7 +213,13 @@
                 // Metadata
                 calculatedAt: now.toISOString(),
                 employeeEmail: employee.email,
-                version: '3.0.0',
+                version: '5.0.0',
+
+                // 🆕 v5.0: Smart Workload Metrics
+                dataQuality,
+                effectiveCapacity,
+                weightedBacklog,
+                staleTasks,
 
                 // Raw metrics
                 ...basicMetrics,
@@ -223,7 +243,7 @@
                 // Predictions
                 ...predictions,
 
-                // Alerts & risks
+                // Alerts & risks (v5.0: Smart Alerts)
                 alerts,
                 riskyTasks
             };
@@ -298,6 +318,11 @@
             const workDaysThisMonth = this.getWorkDaysInMonth(now);
             const monthlyTarget = workDaysThisMonth * dailyTarget;
 
+            // 🔧 FIX v5.0: מניעת NaN - אם אין יעד חודשי, החזר 0
+            const monthlyUtil = monthlyTarget > 0
+                ? this.roundTo((hoursWorkedThisMonth / monthlyTarget) * 100, 1)
+                : 0;
+
             return {
                 dailyHoursTarget: this.roundTo(dailyTarget, 2),
                 hoursWorkedToday: this.roundTo(hoursWorkedToday, 2),
@@ -305,7 +330,7 @@
                 hoursWorkedThisWeek: this.roundTo(hoursWorkedThisWeek, 2),
                 hoursWorkedThisMonth: this.roundTo(hoursWorkedThisMonth, 2),
                 monthlyTarget: this.roundTo(monthlyTarget, 2),
-                monthlyUtilization: this.roundTo((hoursWorkedThisMonth / monthlyTarget) * 100, 1),
+                monthlyUtilization: monthlyUtil,
                 workDaysThisMonth
             };
         }
@@ -370,14 +395,15 @@ return;
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
             // נרמול backlog (7 ימי עבודה = 100%)
-            // ✅ v4.0.0: שימוש ב-constant
+            // 🔧 FIX v5.0: מניעת NaN
             const maxBacklogHours = dailyTarget * this.constants.WORK_HOURS.MAX_BACKLOG_DAYS;
-            const normalizedBacklog = Math.min(100,
-                (basicMetrics.totalBacklogHours / maxBacklogHours) * 100
-            );
+            const normalizedBacklog = maxBacklogHours > 0
+                ? Math.min(100, (basicMetrics.totalBacklogHours / maxBacklogHours) * 100)
+                : 0;
 
             // נרמול urgency (כבר 0-100)
-            const normalizedUrgency = urgencyMetrics.urgencyScore;
+            // 🔧 FIX v5.0: מניעת undefined
+            const normalizedUrgency = urgencyMetrics.urgencyScore || 0;
 
             // נרמול task count (10 משימות = 100%)
             // ✅ v4.0.0: שימוש ב-constant
@@ -386,15 +412,19 @@ return;
             );
 
             // נרמול capacity utilization (כבר באחוזים)
-            const normalizedCapacity = Math.min(100, capacityMetrics.monthlyUtilization);
+            // 🔧 FIX v5.0: טיפול ב-NaN
+            const normalizedCapacity = isNaN(capacityMetrics.monthlyUtilization)
+                ? 0
+                : Math.min(100, capacityMetrics.monthlyUtilization);
 
             // חישוב משוקלל
+            // 🔧 FIX v5.0: וידוא שאין NaN
             const score = Math.round(
                 (normalizedBacklog * this.WEIGHTS.backlog) +
                 (normalizedUrgency * this.WEIGHTS.urgency) +
                 (normalizedTaskCount * this.WEIGHTS.taskCount) +
                 (normalizedCapacity * this.WEIGHTS.capacity)
-            );
+            ) || 0;
 
             // קביעת רמת עומס
             // ✅ v4.0.0: שימוש ב-constants במקום magic numbers
@@ -1051,6 +1081,270 @@ return null;
         sumMinutes(timesheetEntries) {
             return timesheetEntries.reduce((sum, entry) => sum + (entry.minutes || 0), 0);
         }
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🆕 v5.0: SMART WORKLOAD MODULES - מודולים חכמים
+        // ═══════════════════════════════════════════════════════════════
+
+        /**
+         * v5.0: חישוב ציון איכות נתונים (Data Quality Score)
+         */
+        calculateDataQuality(employee, tasks, timesheetEntries) {
+            let score = 100;
+            const issues = [];
+            const recommendations = [];
+
+            const now = new Date();
+            const startOfWeek = this.getStartOfWeek(now);
+            const timesheetThisWeek = timesheetEntries.filter(entry => {
+                const entryDate = new Date(entry.date);
+                return entryDate >= startOfWeek;
+            });
+
+            if (timesheetThisWeek.length === 0) {
+                score -= 30;
+                issues.push('no_timesheet_this_week');
+                recommendations.push('העובד לא רשם שעות השבוע - נתוני העומס לא מדויקים');
+            }
+
+            const tasksWithoutTime = tasks.filter(t =>
+                t.status !== 'הושלם' && (t.actualMinutes === 0 || !t.actualMinutes)
+            );
+            const missingTimePercent = tasks.length > 0
+                ? (tasksWithoutTime.length / tasks.length) * 100
+                : 0;
+
+            if (missingTimePercent > 30) {
+                score -= Math.min(40, missingTimePercent);
+                issues.push('missing_time_tracking');
+                recommendations.push(`${tasksWithoutTime.length} משימות ללא עדכון שעות`);
+            }
+
+            const tasksWithoutDeadline = tasks.filter(t => !t.deadline);
+            if (tasksWithoutDeadline.length > 0) {
+                score -= 15;
+                issues.push('missing_deadlines');
+                recommendations.push(`${tasksWithoutDeadline.length} משימות ללא תאריך יעד`);
+            }
+
+            const shouldBeClosed = tasks.filter(t => {
+                if (t.status === 'הושלם') {
+return false;
+}
+                const completionPercent = t.estimatedMinutes > 0
+                    ? (t.actualMinutes / t.estimatedMinutes) * 100
+                    : 0;
+                const isOverdue = t.deadline && new Date(t.deadline) < now;
+                return completionPercent >= this.constants.TASK_QUALITY.SHOULD_CLOSE_PERCENT && isOverdue;
+            });
+
+            if (shouldBeClosed.length > 0) {
+                score -= 15;
+                issues.push('tasks_need_closing');
+                recommendations.push(`${shouldBeClosed.length} משימות בוצעו 80%+ ובאיחור`);
+            }
+
+            return {
+                score: Math.max(0, Math.round(score)),
+                issues,
+                recommendations,
+                details: {
+                    timesheetEntriesThisWeek: timesheetThisWeek.length,
+                    tasksWithoutTime: tasksWithoutTime.length,
+                    tasksWithoutDeadline: tasksWithoutDeadline.length,
+                    tasksShouldBeClosed: shouldBeClosed.length
+                }
+            };
+        }
+
+        /**
+         * v5.0: חישוב קיבולת אפקטיבית (Effective Capacity)
+         */
+        calculateEffectiveCapacity(employee) {
+            const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
+            const afterBreak = dailyTarget - 1;
+            const personalSpace = afterBreak * 0.15;
+            const effectiveDaily = afterBreak - personalSpace;
+            const weeklyEffective = effectiveDaily * this.constants.WORK_HOURS.WORK_DAYS_PER_WEEK;
+
+            return {
+                nominal: this.roundTo(dailyTarget, 2),
+                afterBreak: this.roundTo(afterBreak, 2),
+                personalSpace: this.roundTo(personalSpace, 2),
+                effective: this.roundTo(effectiveDaily, 2),
+                weeklyEffective: this.roundTo(weeklyEffective, 2)
+            };
+        }
+
+        /**
+         * v5.0: חישוב עומס משוקלל (Weighted Backlog)
+         */
+        calculateWeightedBacklog(tasks, effectiveDaily) {
+            const now = new Date();
+            let totalBacklogHours = 0;
+            let weightedBacklog = 0;
+
+            tasks.forEach(task => {
+                if (task.status === 'הושלם') {
+return;
+}
+
+                const remaining = ((task.estimatedMinutes || 0) - (task.actualMinutes || 0)) / 60;
+                if (remaining <= 0) {
+return;
+}
+
+                const deadline = this.parseDeadline(task.deadline);
+                if (!deadline) {
+                    totalBacklogHours += remaining;
+                    weightedBacklog += remaining;
+                    return;
+                }
+
+                const daysUntilDeadline = (deadline - now) / (1000 * 60 * 60 * 24);
+
+                let urgencyWeight = 1;
+                if (daysUntilDeadline < 0) {
+                    urgencyWeight = 3;
+                } else if (daysUntilDeadline < 1) {
+                    urgencyWeight = 2.5;
+                } else if (daysUntilDeadline < 3) {
+                    urgencyWeight = 2;
+                } else if (daysUntilDeadline < 7) {
+                    urgencyWeight = 1.5;
+                }
+
+                totalBacklogHours += remaining;
+                weightedBacklog += (remaining * urgencyWeight);
+            });
+
+            return {
+                totalHours: this.roundTo(totalBacklogHours, 1),
+                weightedHours: this.roundTo(weightedBacklog, 1),
+                estimatedDays: effectiveDaily > 0
+                    ? this.roundTo(totalBacklogHours / effectiveDaily, 1)
+                    : 0,
+                weightedDays: effectiveDaily > 0
+                    ? this.roundTo(weightedBacklog / effectiveDaily, 1)
+                    : 0
+            };
+        }
+
+        /**
+         * v5.0: זיהוי משימות תקועות (Stale Task Detection)
+         */
+        detectStaleTasks(tasks) {
+            const now = new Date();
+            const staleTasks = [];
+            const STALE_DAYS = 7;
+
+            tasks.forEach(task => {
+                if (task.status === 'הושלם') {
+return;
+}
+
+                const lastModified = task.lastModifiedAt
+                    ? (task.lastModifiedAt.toDate ? task.lastModifiedAt.toDate() : new Date(task.lastModifiedAt))
+                    : null;
+
+                if (!lastModified) {
+return;
+}
+
+                const daysSinceUpdate = (now - lastModified) / (1000 * 60 * 60 * 24);
+                if (daysSinceUpdate < STALE_DAYS) {
+return;
+}
+
+                const progressPercent = task.estimatedMinutes > 0
+                    ? (task.actualMinutes / task.estimatedMinutes) * 100
+                    : 0;
+
+                const deadline = this.parseDeadline(task.deadline);
+                const daysUntilDeadline = deadline
+                    ? (deadline - now) / (1000 * 60 * 60 * 24)
+                    : 999;
+
+                if (progressPercent < 20 && daysUntilDeadline < 14) {
+                    staleTasks.push({
+                        task,
+                        daysSinceUpdate: Math.round(daysSinceUpdate),
+                        progressPercent: Math.round(progressPercent),
+                        daysUntilDeadline: Math.round(daysUntilDeadline),
+                        severity: daysUntilDeadline < 7 ? 'critical' : 'warning'
+                    });
+                }
+            });
+
+            staleTasks.sort((a, b) => a.daysUntilDeadline - b.daysUntilDeadline);
+            return staleTasks;
+        }
+
+        /**
+         * v5.0: יצירת התראות חכמות (Smart Alerts)
+         */
+        generateSmartAlerts(employee, tasks, dataQuality, staleTasks, weightedBacklog) {
+            const alerts = [];
+
+            if (dataQuality.score < 70) {
+                alerts.push({
+                    type: 'data_quality',
+                    severity: dataQuality.score < 50 ? 'critical' : 'warning',
+                    message: `ציון איכות נתונים: ${dataQuality.score}%`,
+                    recommendations: dataQuality.recommendations,
+                    details: dataQuality.details
+                });
+            }
+
+            if (staleTasks.length > 0) {
+                const criticalStale = staleTasks.filter(st => st.severity === 'critical');
+                alerts.push({
+                    type: 'stale_tasks',
+                    severity: criticalStale.length > 0 ? 'critical' : 'warning',
+                    message: `${staleTasks.length} משימות תקועות (${criticalStale.length} קריטיות)`,
+                    details: staleTasks.slice(0, 3),
+                    actionable: true
+                });
+            }
+
+            if (weightedBacklog.weightedDays > 10) {
+                alerts.push({
+                    type: 'weighted_overload',
+                    severity: weightedBacklog.weightedDays > 15 ? 'critical' : 'warning',
+                    message: `עומס משוקלל: ${weightedBacklog.weightedDays} ימי עבודה`,
+                    tip: 'עומס גבוה - שקול להעביר משימות',
+                    details: {
+                        totalBacklog: weightedBacklog.totalHours,
+                        weightedBacklog: weightedBacklog.weightedHours,
+                        difference: this.roundTo(weightedBacklog.weightedHours - weightedBacklog.totalHours, 1)
+                    }
+                });
+            }
+
+            const urgentWithoutTime = tasks.filter(t => {
+                if (t.status === 'הושלם') {
+return false;
+}
+                const deadline = this.parseDeadline(t.deadline);
+                if (!deadline) {
+return false;
+}
+                const daysUntil = (deadline - new Date()) / (1000 * 60 * 60 * 24);
+                return daysUntil < 3 && (t.actualMinutes === 0 || !t.actualMinutes);
+            });
+
+            if (urgentWithoutTime.length > 0) {
+                alerts.push({
+                    type: 'urgent_without_time',
+                    severity: 'critical',
+                    message: `${urgentWithoutTime.length} משימות דחופות (< 3 ימים) ללא עדכון שעות!`,
+                    actionable: true,
+                    tip: 'יש לעדכן זמן עבודה מיד'
+                });
+            }
+
+            return alerts;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1059,6 +1353,6 @@ return null;
 
     window.WorkloadCalculator = WorkloadCalculator;
 
-    console.log('✅ WorkloadCalculator v4.0.0 loaded - Production-Ready with Constants');
+    console.log('✅ WorkloadCalculator v5.0.0 loaded - Smart Workload Logic');
 
 })();
