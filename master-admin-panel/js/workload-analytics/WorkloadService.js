@@ -144,6 +144,32 @@
         }
 
         /**
+         * ✅ v5.2.0: SAFE wrapper with fail-fast error handling
+         * @param {Array} employees - רשימת עובדים
+         * @returns {Promise<Object>} - { ok: boolean, data?: Map, error?: {code, message} }
+         */
+        async calculateAllEmployeesWorkloadSafe(employees) {
+            // ✅ v5.2.0: FAIL-FAST - Verify WorkHoursCalculator availability
+            if (!this.workHoursCalculator) {
+                console.error('❌ FAIL-FAST: WorkHoursCalculator not available - aborting workload calculation');
+                return {
+                    ok: false,
+                    error: {
+                        code: 'WORKHOURS_MISSING',
+                        message: 'חישובי אנליטיקס הושבתו כדי למנוע נתונים שגויים'
+                    }
+                };
+            }
+
+            // Proceed with normal calculation
+            const workloadMap = await this.calculateAllEmployeesWorkload(employees);
+            return {
+                ok: true,
+                data: workloadMap
+            };
+        }
+
+        /**
          * חישוב עומס לכל העובדים
          * @param {Array} employees - רשימת עובדים
          * @returns {Promise<Map>} - Map של email -> workloadMetrics
