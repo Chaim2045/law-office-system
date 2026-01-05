@@ -101,29 +101,6 @@
     <script src="js/workload-analytics/WorkloadService.js?v=5.2.0"></script>
     <script src="js/workload-analytics/WorkloadCard.js?v=5.2.0"></script>
 
-    <!-- ✅ v5.2.0: DEBUG MODE - Temporary testing mechanism (DEV ONLY) -->
-    <script>
-        (function() {
-            'use strict';
-
-            // Check if debug mode is enabled via URL param
-            const urlParams = new URLSearchParams(window.location.search);
-            const debugMode = urlParams.get('debugWorkHours');
-
-            if (debugMode === 'off') {
-                console.warn('🔧 DEBUG MODE: Simulating WorkHoursCalculator failure');
-                console.warn('⚠️ This is a TEMPORARY testing mechanism - will be removed after testing');
-
-                // Strategy: Delete the Class so WorkloadService.init() can't create instance
-                // Line changed: window.WorkHoursCalculator (Class) → undefined
-                delete window.WorkHoursCalculator;
-
-                console.error('❌ DEBUG: window.WorkHoursCalculator deleted - fail-fast should trigger');
-                console.error('❌ DEBUG: WorkloadService.init() will set this.workHoursCalculator = null');
-            }
-        })();
-    </script>
-
     <!-- ===== Initialization Script ===== -->
     <script>
         // Cross-tab logout synchronization
