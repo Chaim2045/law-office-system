@@ -355,7 +355,7 @@
          * ניתוח דחיפות
          */
         calculateUrgencyMetrics(tasks, now) {
-            const activeTasks = tasks.filter(t => t.status === 'active');
+            const activeTasks = tasks.filter(t => t.status === 'פעיל');
 
             let tasksWithin24h = 0;
             let tasksWithin3days = 0;
@@ -965,7 +965,7 @@ tasksByDay[dateKey] = [];
          */
         identifyRiskyTasks(tasks, now) {
             const riskyTasks = [];
-            const activeTasks = tasks.filter(t => t.status === 'active');
+            const activeTasks = tasks.filter(t => t.status === 'פעיל');
 
             activeTasks.forEach(task => {
                 if (!task.deadline) {

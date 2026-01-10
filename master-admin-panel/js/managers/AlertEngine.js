@@ -173,7 +173,7 @@
             const tasks = userData.tasks || [];
 
             const overdueTasks = tasks.filter(task => {
-                if (task.status === 'completed' || task.status === 'cancelled') {
+                if (task.status === 'הושלם' || task.status === 'בוטל') {
                     return false;
                 }
                 if (!task.dueDate) {

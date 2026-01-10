@@ -155,9 +155,9 @@
             // Tasks statistics
             const tasksStats = {
                 total: budgetTasks.length,
-                completed: budgetTasks.filter(t => t.status === 'completed').length,
-                inProgress: budgetTasks.filter(t => t.status === 'in-progress').length,
-                pending: budgetTasks.filter(t => t.status === 'pending').length
+                completed: budgetTasks.filter(t => t.status === 'הושלם').length,
+                inProgress: budgetTasks.filter(t => t.status === 'בביצוע').length,
+                pending: budgetTasks.filter(t => t.status === 'ממתין').length
             };
 
             return {
