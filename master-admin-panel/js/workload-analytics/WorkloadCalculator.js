@@ -1135,7 +1135,7 @@ return null;
             }
 
             const tasksWithoutTime = tasks.filter(t =>
-                t.status !== 'הושלם' && (t.actualMinutes === 0 || !t.actualMinutes)
+                t.status === 'פעיל' && (t.actualMinutes === 0 || !t.actualMinutes)
             );
             const missingTimePercent = tasks.length > 0
                 ? (tasksWithoutTime.length / tasks.length) * 100

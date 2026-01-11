@@ -256,7 +256,7 @@
         // This prevents issues with Firebase pagination not respecting status filters
         let filteredTasks = tasks;
         if (statusFilter === 'active') {
-          filteredTasks = tasks.filter(task => task.status !== 'הושלם');
+          filteredTasks = tasks.filter(task => task.status === 'פעיל');
         } else if (statusFilter === 'completed') {
           filteredTasks = tasks.filter(task => task.status === 'הושלם');
         }

@@ -1908,7 +1908,9 @@ class SmartFAQBot {
      * הדגשת טקסט חיפוש (לשאלות - טקסט רגיל)
      */
     highlightText(text, searchTerm) {
-        if (!searchTerm) return this.escapeHtml(text);
+        if (!searchTerm) {
+return this.escapeHtml(text);
+}
 
         const escapedText = this.escapeHtml(text);
         const escapedTerm = this.escapeHtml(searchTerm);
@@ -1921,7 +1923,9 @@ class SmartFAQBot {
      * הדגשת טקסט חיפוש בתוך HTML (לתשובות)
      */
     highlightTextInHtml(html, searchTerm) {
-        if (!searchTerm || !html) return html;
+        if (!searchTerm || !html) {
+return html;
+}
 
         // הדגש רק בתוך תוכן טקסט, לא בתוך תגים
         const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
@@ -2025,7 +2029,7 @@ class SmartFAQBot {
         const messagesContainer = document.getElementById('faq-bot-messages');
         const suggestionsContainer = document.getElementById('faq-bot-suggestions');
 
-        switch(tabName) {
+        switch (tabName) {
             case 'home':
                 this.showHomeTab();
                 break;
@@ -2135,7 +2139,7 @@ class SmartFAQBot {
                 `;
             });
 
-            html += `</div>`;
+            html += '</div>';
         }
 
         suggestionsContainer.innerHTML = html;
@@ -2192,7 +2196,7 @@ class SmartFAQBot {
         messagesContainer.innerHTML = '';
 
         // הצג מסך סיור
-        let html = `
+        const html = `
             <div class="faq-tour-screen">
                 <div class="faq-tour-icon">
                     <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -2400,7 +2404,9 @@ class SmartFAQBot {
      */
     toggleAccordion(contentId) {
         const content = document.getElementById(contentId);
-        if (!content) return;
+        if (!content) {
+return;
+}
 
         const accordionItem = content.parentElement;
         const isActive = accordionItem.classList.contains('active');
@@ -2419,7 +2425,9 @@ class SmartFAQBot {
      */
     toggleCategory(categoryId) {
         const item = document.querySelector(`.faq-accordion-item[data-category="${categoryId}"]`);
-        if (!item) return;
+        if (!item) {
+return;
+}
 
         const isExpanded = item.classList.contains('expanded');
 
@@ -2455,7 +2463,9 @@ class SmartFAQBot {
         // בדוק אם זו שאלה מתוצאות חיפוש (ID מתחיל ב-search-q-)
         if (questionId.startsWith('search-q-')) {
             const answerDiv = document.getElementById(questionId);
-            if (!answerDiv) return;
+            if (!answerDiv) {
+return;
+}
 
             const isExpanded = answerDiv.classList.contains('expanded');
 
@@ -2480,7 +2490,9 @@ class SmartFAQBot {
 
         // לוגיקה רגילה לשאלות בעמוד הבית
         const item = document.querySelector(`.faq-question-item[data-question="${questionId}"]`);
-        if (!item) return;
+        if (!item) {
+return;
+}
 
         const isExpanded = item.classList.contains('expanded');
 
@@ -2598,7 +2610,9 @@ class SmartFAQBot {
         }
 
         const question = categoryQuestions[questionIndex];
-        if (!question) return;
+        if (!question) {
+return;
+}
 
         // נקה
         messagesContainer.innerHTML = '';
@@ -2624,7 +2638,9 @@ class SmartFAQBot {
         const input = null; // document.getElementById('faq-bot-input');
         const query = ''; // input.value.trim();
 
-        if (!query) return;
+        if (!query) {
+return;
+}
 
         // הצג את שאלת המשתמש
         this.addUserMessage(query);
@@ -2775,8 +2791,12 @@ class SmartFAQBot {
         const len2 = str2.length;
 
         // אם אחד ריק
-        if (len1 === 0) return len2 === 0 ? 1 : 0;
-        if (len2 === 0) return 0;
+        if (len1 === 0) {
+return len2 === 0 ? 1 : 0;
+}
+        if (len2 === 0) {
+return 0;
+}
 
         // מטריצה לחישוב המרחק
         const matrix = [];
@@ -3158,7 +3178,9 @@ class SmartFAQBot {
 
     getSystemStats() {
         try {
-            if (!window.manager) return null;
+            if (!window.manager) {
+return null;
+}
 
             const stats = {
                 activeTasks: 0,
@@ -3169,13 +3191,15 @@ class SmartFAQBot {
 
             // משימות
             if (window.manager.budgetTasks) {
-                stats.activeTasks = window.manager.budgetTasks.filter(t => t.status !== 'הושלם').length;
+                stats.activeTasks = window.manager.budgetTasks.filter(t => t.status === 'פעיל').length;
                 stats.completedTasks = window.manager.budgetTasks.filter(t => t.status === 'הושלם').length;
 
                 // משימות דחופות (עבר תאריך יעד)
                 const now = new Date();
                 stats.urgentTasks = window.manager.budgetTasks.filter(t => {
-                    if (t.status === 'הושלם') return false;
+                    if (t.status !== 'פעיל') {
+return false;
+}
                     const deadline = t.deadline?.toDate ? t.deadline.toDate() : new Date(t.deadline);
                     return deadline < now;
                 }).length;
@@ -3213,7 +3237,9 @@ class SmartFAQBot {
     generateDynamicResponse(query) {
         // תשובות דינמיות מבוססות מידע אמיתי
         const stats = this.getSystemStats();
-        if (!stats) return null;
+        if (!stats) {
+return null;
+}
 
         const userName = this.getUserName();
         const greeting = userName ? userName : '';
@@ -3355,7 +3381,9 @@ class SmartFAQBot {
     checkProactiveHelp() {
         // בודק אם צריך להציע עזרה פרואקטיבית
         const stats = this.getSystemStats();
-        if (!stats) return null;
+        if (!stats) {
+return null;
+}
 
         const suggestions = [];
 
@@ -3426,7 +3454,9 @@ class SmartFAQBot {
     showProactiveSuggestion() {
         // הצג הצעה פרואקטיבית בפתיחת הבוט
         const suggestion = this.checkProactiveHelp();
-        if (!suggestion) return false;
+        if (!suggestion) {
+return false;
+}
 
         setTimeout(() => {
             this.addBotMessage(`
@@ -3615,7 +3645,7 @@ class SmartFAQBot {
      * מבצע את הפעולה בפועל
      */
     executeAction(action, selector) {
-        switch(action) {
+        switch (action) {
             case 'highlight':
                 if (selector) {
                     this.highlightElement(selector, 'לחץ כאן! 👆');
@@ -3634,7 +3664,9 @@ class SmartFAQBot {
                     this.highlightElement(selector, 'לחץ על הכפתור הזה', 3000);
                     setTimeout(() => {
                         const element = document.querySelector(selector);
-                        if (element) element.click();
+                        if (element) {
+element.click();
+}
                     }, 3000);
                 }
                 break;
@@ -3711,7 +3743,9 @@ class SmartFAQBot {
      * הוסף אנימציות CSS לדף
      */
     addHighlightStyles() {
-        if (document.getElementById('bot-highlight-styles')) return;
+        if (document.getElementById('bot-highlight-styles')) {
+return;
+}
 
         const style = document.createElement('style');
         style.id = 'bot-highlight-styles';
@@ -3821,7 +3855,9 @@ class SystemTour {
                 element: 'button[onclick*="switchTab(\'budget\')"]',
                 position: 'bottom',
                 action: () => {
-                    if (typeof switchTab === 'function') switchTab('budget');
+                    if (typeof switchTab === 'function') {
+switchTab('budget');
+}
                 }
             },
             {
@@ -3830,7 +3866,9 @@ class SystemTour {
                 element: '#budgetTab .view-tabs',
                 position: 'bottom',
                 action: () => {
-                    if (typeof switchTab === 'function') switchTab('budget');
+                    if (typeof switchTab === 'function') {
+switchTab('budget');
+}
                 }
             },
             {
@@ -3839,7 +3877,9 @@ class SystemTour {
                 element: 'button[onclick*="switchTab(\'timesheet\')"]',
                 position: 'bottom',
                 action: () => {
-                    if (typeof switchTab === 'function') switchTab('timesheet');
+                    if (typeof switchTab === 'function') {
+switchTab('timesheet');
+}
                 }
             },
             {
@@ -3855,7 +3895,9 @@ class SystemTour {
      * התחלת הסיור
      */
     start() {
-        if (this.isActive) return;
+        if (this.isActive) {
+return;
+}
 
         this.isActive = true;
         this.currentStep = 0;
@@ -3900,7 +3942,9 @@ class SystemTour {
      * הצגת שלב
      */
     showStep(index) {
-        if (index < 0 || index >= this.steps.length) return;
+        if (index < 0 || index >= this.steps.length) {
+return;
+}
 
         this.currentStep = index;
         const step = this.steps[index];
@@ -4003,9 +4047,15 @@ class SystemTour {
         }
 
         // עדכן תוכן
-        if (title) title.textContent = step.title;
-        if (text) text.textContent = step.text;
-        if (progress) progress.textContent = `שלב ${this.currentStep + 1} מתוך ${this.steps.length}`;
+        if (title) {
+title.textContent = step.title;
+}
+        if (text) {
+text.textContent = step.text;
+}
+        if (progress) {
+progress.textContent = `שלב ${this.currentStep + 1} מתוך ${this.steps.length}`;
+}
 
         // מרכז tooltip
         if (tooltip) {
@@ -4028,7 +4078,9 @@ class SystemTour {
      */
     updateSpotlight(rect) {
         const spotlight = document.querySelector('.tour-spotlight');
-        if (!spotlight) return;
+        if (!spotlight) {
+return;
+}
 
         const padding = 8;
 
@@ -4057,7 +4109,9 @@ class SystemTour {
         const text = document.querySelector('.tour-tooltip-text');
         const progress = document.querySelector('.tour-progress');
 
-        if (!tooltip) return;
+        if (!tooltip) {
+return;
+}
 
         // עדכן תוכן
         title.textContent = step.title;
@@ -4124,7 +4178,9 @@ class SystemTour {
         const prevBtn = document.querySelector('.tour-btn-prev');
         const nextBtn = document.querySelector('.tour-btn-next');
 
-        if (!prevBtn || !nextBtn) return;
+        if (!prevBtn || !nextBtn) {
+return;
+}
 
         // כפתור הקודם
         prevBtn.style.display = this.currentStep === 0 ? 'none' : 'inline-block';
@@ -4226,7 +4282,9 @@ class SystemTour {
      * הוספת סטיילים
      */
     addTourStyles() {
-        if (document.getElementById('tour-styles')) return;
+        if (document.getElementById('tour-styles')) {
+return;
+}
 
         const style = document.createElement('style');
         style.id = 'tour-styles';

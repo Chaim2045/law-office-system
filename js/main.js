@@ -1360,8 +1360,8 @@ return;
     if (this.currentTaskFilter === 'completed') {
       this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status === 'הושלם');
     } else if (this.currentTaskFilter === 'active') {
-      // ✅ הצג גם משימות ממתינות לאישור - עם סטייל מיוחד (מנעול)
-      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status !== 'הושלם');
+      // ✅ הצג רק משימות פעילות (לא כולל בוטלו)
+      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status === 'פעיל');
     } else {
       // 'all' - show everything (including pending_approval)
       this.filteredBudgetTasks = [...this.budgetTasks];

@@ -706,7 +706,7 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       messages: messages, // ✅ הוספת הודעות
       stats: {
         totalClients: clients.length,
-        activeTasks: tasks.filter(t => t.status !== 'הושלם').length, // ✅ System uses "פעיל" (not "ממתין"/"בטיפול")
+        activeTasks: tasks.filter(t => t.status === 'פעיל').length, // ✅ System uses "פעיל" (not "ממתין"/"בטיפול")
         completedTasks: tasks.filter(t => t.status === 'הושלם').length,
         hoursThisWeek: Math.round(hoursThisWeek * 10) / 10,
         hoursThisMonth: Math.round(hoursThisMonth * 10) / 10

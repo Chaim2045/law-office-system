@@ -273,9 +273,8 @@
         async fetchEmployeeTasks(employeeEmail) {
             console.log(`🔍 Fetching tasks for ${employeeEmail}...`);
 
-            // ⚠️ IMPORTANT: המערכת משתמשת ב-status !== 'הושלם' למשימות פעילות
-            // לא ניתן לעשות where('status', '!=', 'הושלם') בלי index מורכב
-            // לכן נמשוך הכל ונסנן בצד לקוח
+            // ✅ UPDATED: המערכת משתמשת ב-status === 'פעיל' למשימות פעילות
+            // נמשוך הכל ונסנן client-side כי אין index מורכב employee+status
             const snapshot = await this.db.collection('budget_tasks')
                 .where('employee', '==', employeeEmail)
                 .get();

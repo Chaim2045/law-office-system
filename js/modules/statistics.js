@@ -106,7 +106,7 @@ function _calculateBudgetStatisticsClient(tasks) {
     }
 
     // ✅ בדיקת דחיפות - משתמש בקבוע URGENT_THRESHOLD_HOURS ובפונקציה isUrgent
-    if (task.deadline && task.status !== 'הושלם') {
+    if (task.deadline && task.status === 'פעיל') {
       const deadline = new Date(task.deadline);
       const deadlineMs = deadline.getTime();
 

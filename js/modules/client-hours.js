@@ -246,7 +246,7 @@ continue;
     const urgentTasks = (this.manager.budgetTasks || []).filter(
       (task) =>
         task &&
-        task.status !== 'הושלם' &&
+        task.status === 'פעיל' &&
         task.deadline &&
         task.description &&
         new Date(task.deadline) <= oneDayFromNow

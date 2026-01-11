@@ -141,7 +141,7 @@ async function updateCaseStage(data, context) {
       const tasksSnapshot = await db.collection('budget_tasks')
         .where('caseId', '==', caseId)
         .where('serviceId', '==', currentStageId)
-        .where('status', '!=', 'הושלם')
+        .where('status', '==', 'פעיל')
         .get();
 
       if (!tasksSnapshot.empty) {

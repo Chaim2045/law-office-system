@@ -124,7 +124,7 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
     let filteredTasks = tasks;
     if (usedFallback) {
       if (statusFilter === 'active') {
-        filteredTasks = tasks.filter(task => task.status !== 'הושלם');
+        filteredTasks = tasks.filter(task => task.status === 'פעיל');
       } else if (statusFilter === 'completed') {
         filteredTasks = tasks
           .filter(task => task.status === 'הושלם')
@@ -143,7 +143,7 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
     let finalTasks = usedFallback ? filteredTasks : tasks;
 
     if (statusFilter === 'active') {
-      finalTasks = finalTasks.filter(task => task.status !== 'הושלם');
+      finalTasks = finalTasks.filter(task => task.status === 'פעיל');
     } else if (statusFilter === 'completed') {
       finalTasks = finalTasks.filter(task => task.status === 'הושלם');
     }
@@ -295,13 +295,13 @@ export function validateBudgetTaskForm() {
 export function filterBudgetTasks(budgetTasks, filterValue) {
   if (!filterValue || filterValue === 'active') {
     // Default: show only active tasks
-    return budgetTasks.filter(t => t.status !== 'הושלם');
+    return budgetTasks.filter(t => t.status === 'פעיל');
   } else if (filterValue === 'completed') {
     // Show completed tasks (last month)
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
     return budgetTasks.filter(t => {
-      if (t.status !== 'הושלם') {
+      if (t.status === 'פעיל' || t.status === 'בוטל') {
 return false;
 }
       if (!t.completedAt) {
@@ -315,7 +315,7 @@ return true;
     return [...budgetTasks];
   } else {
     // Fallback: active tasks
-    return budgetTasks.filter(t => t.status !== 'הושלם');
+    return budgetTasks.filter(t => t.status === 'פעיל');
   }
 }
 
@@ -491,7 +491,7 @@ return 'בתחילת הדרך';
  */
 export function getActiveTasksCount(budgetTasks) {
   return (budgetTasks || []).filter(
-    (task) => task && task.status !== 'הושלם'
+    (task) => task && task.status === 'פעיל'
   ).length;
 }
 
