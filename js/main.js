@@ -2391,27 +2391,38 @@ return;
       return;
     }
 
+    const actualHours = task.actualMinutes ? Math.round((task.actualMinutes / 60) * 10) / 10 : 0;
+
     const overlay = document.createElement('div');
     overlay.className = 'popup-overlay';
 
     overlay.innerHTML = `
-      <div class="popup" style="max-width: 580px;">
+      <div class="popup" style="max-width: 480px;">
         <div class="popup-header">
           <i class="fas fa-ban"></i>
           ביטול משימה
         </div>
         <div class="popup-content">
-          <div class="form-group">
-            <label>משימה:</label>
-            <div style="font-weight: bold; color: #333;">${CoreUtils.safeText(task.description || task.taskDescription)}</div>
+          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <i class="fas fa-user" style="color: #64748b; font-size: 12px; width: 14px;"></i>
+              <span style="font-size: 13px; color: #64748b;">לקוח:</span>
+              <span style="font-size: 13px; color: #1e293b; font-weight: 600;">${CoreUtils.safeText(task.clientName)}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <i class="fas fa-tasks" style="color: #64748b; font-size: 12px; width: 14px;"></i>
+              <span style="font-size: 13px; color: #64748b;">משימה:</span>
+              <span style="font-size: 13px; color: #1e293b; font-weight: 600;">${CoreUtils.safeText(task.description || task.taskDescription)}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-clock" style="color: #64748b; font-size: 12px; width: 14px;"></i>
+              <span style="font-size: 13px; color: #64748b;">זמן רשום:</span>
+              <span style="font-size: 13px; color: #1e293b; font-weight: 600;">${actualHours} שעות</span>
+            </div>
           </div>
-          <div class="form-group">
-            <label>לקוח:</label>
-            <div style="color: #555;">${CoreUtils.safeText(task.clientName)}</div>
-          </div>
-          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; border-right: 3px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 14px; color: #92400e;">
-            <i class="fas fa-info-circle" style="margin-left: 6px;"></i>
-            <strong>שים לב:</strong> משימה מבוטלת תוסר מרשימת המשימות הפעילות ולא תופיע יותר בתצוגת העבודה.
+          <div style="background: #fef3c7; border: 1px solid #f59e0b; border-right: 3px solid #f59e0b; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; color: #92400e; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 12px;"></i>
+            <span>המשימה תוסר מרשימת המשימות הפעילות</span>
           </div>
           <div class="form-group">
             <label for="cancelReason">סיבת ביטול:</label>
