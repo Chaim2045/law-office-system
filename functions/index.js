@@ -2502,15 +2502,8 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
  */
 exports.cancelBudgetTask = functions.https.onCall(async (data, context) => {
   try {
-    // Authentication check
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'משתמש לא מחובר'
-      );
-    }
-
-    const user = await getUserContext(context);
+    // Authentication and permissions check
+    const user = await checkUserPermissions(context);
     console.log(`🔄 [cancelBudgetTask] User: ${user.username} (${user.email})`);
 
     // Validate input
@@ -2548,6 +2541,17 @@ exports.cancelBudgetTask = functions.https.onCall(async (data, context) => {
 
     const taskData = taskDoc.data();
 
+    // Authorization: Allow admin OR task owner
+    const isAdmin = user.employee.isAdmin === true || user.role === 'admin';
+    const isOwner = taskData.employee === user.email;
+
+    if (!isAdmin && !isOwner) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'אין הרשאה לבטל משימה זו. רק בעל המשימה או מנהל מערכת יכולים לבטל משימה.'
+      );
+    }
+
     // Validate task status
     if (taskData.status !== 'פעיל') {
       throw new functions.https.HttpsError(
@@ -2562,7 +2566,7 @@ exports.cancelBudgetTask = functions.https.onCall(async (data, context) => {
       const actualHours = (actualMinutes / 60).toFixed(2);
       throw new functions.https.HttpsError(
         'failed-precondition',
-        `לא ניתן לבטל משימה עם רישומי זמן (${actualHours} שעות נרשמו). יש למחוק תחילה את כל רישומי הזמן.`
+        `לא ניתן לבטל משימה עם רישומי זמן (${actualHours} שעות נרשמו). נא לפנות למנהל/ת לטיפול במשימה.`
       );
     }
 
@@ -2572,6 +2576,8 @@ exports.cancelBudgetTask = functions.https.onCall(async (data, context) => {
       cancelReason: reason,
       cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
       cancelledBy: user.username,
+      cancelledByEmail: user.email,
+      cancelledByUid: user.uid,
       lastModifiedBy: user.username,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
     };
