@@ -1,0 +1,191 @@
+/**
+ * ========================================
+ * Notification System Styles
+ * ========================================
+ * מערכת toast אחידה עם container קבוע
+ *
+ * Features:
+ * ✅ Fixed position container (top-right)
+ * ✅ Smooth animations (slide + fade)
+ * ✅ RTL support
+ * ✅ Responsive design
+ * ✅ 4 types: success, error, warning, info
+ *
+ * @version 1.0.0
+ * @date 2025-01-11
+ */
+
+/* ========================================
+   Container - Fixed Position
+   ======================================== */
+
+.notification-container {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none; /* Allow clicks to pass through empty space */
+}
+
+/* Mobile: center top */
+@media (width <= 768px) {
+  .notification-container {
+    top: 60px;
+    right: 50%;
+    transform: translateX(50%);
+    width: calc(100% - 32px);
+    max-width: 400px;
+  }
+}
+
+/* ========================================
+   Notification Toast
+   ======================================== */
+
+.notification {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%),
+              0 2px 8px rgb(0 0 0 / 8%);
+  min-width: 320px;
+  max-width: 420px;
+  pointer-events: auto; /* Enable clicks on notification */
+
+  /* Animation initial state */
+  opacity: 0;
+  transform: translateX(100px);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.notification.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Mobile: slide from top */
+@media (width <= 768px) {
+  .notification {
+    transform: translateY(-30px);
+    min-width: unset;
+    width: 100%;
+  }
+
+  .notification.show {
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   Notification Components
+   ======================================== */
+
+.notification-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-message {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1e293b;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.notification-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.notification-close:hover {
+  background: rgb(0 0 0 / 5%);
+  color: #1e293b;
+}
+
+.notification-close:active {
+  transform: scale(0.95);
+}
+
+/* ========================================
+   Notification Types
+   ======================================== */
+
+.notification-success {
+  border-right: 4px solid #10b981;
+}
+
+.notification-error {
+  border-right: 4px solid #ef4444;
+}
+
+.notification-warning {
+  border-right: 4px solid #f59e0b;
+}
+
+.notification-info {
+  border-right: 4px solid #3b82f6;
+}
+
+/* ========================================
+   Loading Overlay (Optional)
+   ======================================== */
+
+.notification-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgb(0 0 0 / 40%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.notification-loading-overlay.show {
+  opacity: 1;
+}
+
+.notification-loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgb(255 255 255 / 30%);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

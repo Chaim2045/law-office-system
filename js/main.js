@@ -2550,10 +2550,10 @@ return;
     const confirmBtn = overlay?.querySelector('.popup-btn-confirm');
 
     try {
-      // Disable button and show loading
+      // Show loading state (no layout shift)
       if (confirmBtn) {
         confirmBtn.disabled = true;
-        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מבטל...';
+        confirmBtn.classList.add('loading');
       }
 
       // Call Cloud Function
@@ -2563,17 +2563,21 @@ return;
         reason: reason
       });
 
-      // Success
+      // Success - show toast
       this.showNotification('המשימה בוטלה בהצלחה', 'success');
 
-      // Close dialog
+      // Close dialog with smooth transition
       if (overlay) {
         overlay.classList.remove('show');
         setTimeout(() => overlay.remove(), 300);
       }
 
-      // Close expanded card if open
-      this.closeExpandedCard();
+      // Close expanded card if open (smooth transition)
+      const expandedOverlay = document.querySelector('.linear-expanded-overlay.active');
+      if (expandedOverlay) {
+        expandedOverlay.style.opacity = '0';
+        setTimeout(() => this.closeExpandedCard(), 200);
+      }
 
       // Tasks will auto-refresh via realtime listener
       // No manual refresh needed - the listener will handle it
@@ -2581,13 +2585,13 @@ return;
     } catch (error) {
       console.error('❌ Cancel task failed:', error);
 
-      // Re-enable button
+      // Remove loading state
       if (confirmBtn) {
         confirmBtn.disabled = false;
-        confirmBtn.innerHTML = '<i class="fas fa-ban"></i> אשר ביטול';
+        confirmBtn.classList.remove('loading');
       }
 
-      // Show error message from server (already in Hebrew)
+      // Show error toast from server (already in Hebrew)
       const errorMessage = error.message || 'שגיאה בביטול המשימה';
       this.showNotification(errorMessage, 'error');
     }
