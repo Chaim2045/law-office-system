@@ -125,17 +125,17 @@
      * @returns {boolean}
      */
     isActionAvailable(actionType, task) {
-      const isCompleted = task.status === 'הושלם';
+      const isActive = task.status === 'פעיל';
 
       switch (actionType) {
         case 'time':
-          return !isCompleted; // הוספת זמן רק למשימות פעילות
+          return isActive; // הוספת זמן רק למשימות פעילות
 
         case 'extend':
-          return !isCompleted; // הארכת יעד רק למשימות פעילות
+          return isActive; // הארכת יעד רק למשימות פעילות
 
         case 'complete':
-          return !isCompleted; // סיום משימה רק למשימות פעילות
+          return isActive; // סיום משימה רק למשימות פעילות
 
         case 'history':
           return true; // היסטוריה תמיד זמינה

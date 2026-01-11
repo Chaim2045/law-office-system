@@ -283,8 +283,8 @@
             const tasks = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
-                // סינון: רק משימות שלא הושלמו
-                if (data.status !== 'הושלם') {
+                // סינון: רק משימות פעילות
+                if (data.status === 'פעיל') {
                     tasks.push({
                         taskId: doc.id,
                         ...data

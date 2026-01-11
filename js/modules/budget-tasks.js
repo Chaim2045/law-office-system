@@ -64,8 +64,8 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
     // ⚠️ Falls back to client-side if index is not ready yet
     try {
       if (statusFilter === 'active') {
-        // משימות פעילות - כל מה שלא "הושלם"
-        query = query.where('status', '!=', 'הושלם');
+        // משימות פעילות - רק משימות עם סטטוס 'פעיל'
+        query = query.where('status', '==', 'פעיל');
       } else if (statusFilter === 'completed') {
         // משימות מושלמות - ממוינות לפי תאריך השלמה (החדשות ראשון)
         query = query

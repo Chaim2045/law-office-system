@@ -1397,7 +1397,7 @@ return;
       const [activeSnapshot, completedSnapshot] = await Promise.all([
         db.collection('budget_tasks')
           .where('employee', '==', this.currentUser)
-          .where('status', '!=', 'הושלם')
+          .where('status', '==', 'פעיל')
           .get(),
 
         db.collection('budget_tasks')
