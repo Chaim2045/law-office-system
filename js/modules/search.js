@@ -15,11 +15,13 @@
  * @returns {Array} Filtered tasks
  */
 export function filterBudgetTasks(budgetTasks, filterValue) {
-  if (!budgetTasks || budgetTasks.length === 0) return [];
+  if (!budgetTasks || budgetTasks.length === 0) {
+return [];
+}
 
-  // Default: 'active' (no completed tasks)
+  // Default: 'active' (no completed/cancelled tasks)
   if (filterValue === 'active' || !filterValue) {
-    return budgetTasks.filter(t => t.status !== 'הושלם');
+    return budgetTasks.filter(t => t.status === 'פעיל');
   }
 
   if (filterValue === 'completed') {
@@ -27,8 +29,12 @@ export function filterBudgetTasks(budgetTasks, filterValue) {
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
     return budgetTasks.filter(t => {
-      if (t.status !== 'הושלם') return false;
-      if (!t.completedAt) return true;
+      if (t.status === 'פעיל' || t.status === 'בוטל') {
+return false;
+}
+      if (!t.completedAt) {
+return true;
+}
       const completedDate = new Date(t.completedAt);
       return completedDate >= oneMonthAgo;
     });
@@ -40,7 +46,7 @@ export function filterBudgetTasks(budgetTasks, filterValue) {
   }
 
   // Fallback to active
-  return budgetTasks.filter(t => t.status !== 'הושלם');
+  return budgetTasks.filter(t => t.status === 'פעיל');
 }
 
 /**
@@ -50,7 +56,9 @@ export function filterBudgetTasks(budgetTasks, filterValue) {
  * @returns {Array} Sorted tasks (modifies in place)
  */
 export function sortBudgetTasks(tasks, sortValue) {
-  if (!tasks || tasks.length === 0) return tasks;
+  if (!tasks || tasks.length === 0) {
+return tasks;
+}
 
   tasks.sort((a, b) => {
     switch (sortValue) {
@@ -64,9 +72,15 @@ export function sortBudgetTasks(tasks, sortValue) {
         // Sort by client name - Hebrew A-Z
         const nameA = (a.clientName || '').trim();
         const nameB = (b.clientName || '').trim();
-        if (!nameA && !nameB) return 0;
-        if (!nameA) return 1;
-        if (!nameB) return -1;
+        if (!nameA && !nameB) {
+return 0;
+}
+        if (!nameA) {
+return 1;
+}
+        if (!nameB) {
+return -1;
+}
         return nameA.localeCompare(nameB, 'he');
 
       case 'deadline':
@@ -98,14 +112,18 @@ export function sortBudgetTasks(tasks, sortValue) {
  * @returns {Array} Filtered entries
  */
 export function filterTimesheetEntries(timesheetEntries, filterValue) {
-  if (!timesheetEntries || timesheetEntries.length === 0) return [];
+  if (!timesheetEntries || timesheetEntries.length === 0) {
+return [];
+}
 
   const now = new Date();
 
   if (filterValue === 'today') {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return timesheetEntries.filter(entry => {
-      if (!entry.date) return false;
+      if (!entry.date) {
+return false;
+}
       const entryDate = new Date(entry.date);
       const entryDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
       return entryDay.getTime() === today.getTime();
@@ -116,7 +134,9 @@ export function filterTimesheetEntries(timesheetEntries, filterValue) {
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
     return timesheetEntries.filter(entry => {
-      if (!entry.date) return true;
+      if (!entry.date) {
+return true;
+}
       const entryDate = new Date(entry.date);
       return entryDate >= oneMonthAgo;
     });
@@ -133,7 +153,9 @@ export function filterTimesheetEntries(timesheetEntries, filterValue) {
  * @returns {Array} Sorted entries (modifies in place)
  */
 export function sortTimesheetEntries(entries, sortValue) {
-  if (!entries || entries.length === 0) return entries;
+  if (!entries || entries.length === 0) {
+return entries;
+}
 
   entries.sort((a, b) => {
     switch (sortValue) {
@@ -147,9 +169,15 @@ export function sortTimesheetEntries(entries, sortValue) {
         // Sort by client name - Hebrew A-Z
         const nameA = (a.clientName || '').trim();
         const nameB = (b.clientName || '').trim();
-        if (!nameA && !nameB) return 0;
-        if (!nameA) return 1;
-        if (!nameB) return -1;
+        if (!nameA && !nameB) {
+return 0;
+}
+        if (!nameA) {
+return 1;
+}
+        if (!nameB) {
+return -1;
+}
         return nameA.localeCompare(nameB, 'he');
 
       case 'hours':

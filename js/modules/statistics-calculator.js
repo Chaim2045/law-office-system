@@ -26,24 +26,26 @@
 async function calculateClientHoursAccurate(clientName) {
   try {
     const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
+    if (!db) {
+throw new Error('Firebase לא מחובר');
+}
 
     // Get client data
     const clientsSnapshot = await db
-      .collection("clients")
-      .where("fullName", "==", clientName)
+      .collection('clients')
+      .where('fullName', '==', clientName)
       .get();
 
     if (clientsSnapshot.empty) {
-      throw new Error("לקוח לא נמצא");
+      throw new Error('לקוח לא נמצא');
     }
 
     const client = clientsSnapshot.docs[0].data();
 
     // Get all timesheet entries for this client (from ALL users)
     const timesheetSnapshot = await db
-      .collection("timesheet_entries")
-      .where("clientName", "==", clientName)
+      .collection('timesheet_entries')
+      .where('clientName', '==', clientName)
       .get();
 
     let totalMinutesUsed = 0;
@@ -52,7 +54,7 @@ async function calculateClientHoursAccurate(clientName) {
     timesheetSnapshot.forEach((doc) => {
       const entry = doc.data();
       const minutes = entry.minutes || 0;
-      const lawyer = entry.employee || entry.lawyer || "לא ידוע";
+      const lawyer = entry.employee || entry.lawyer || 'לא ידוע';
 
       totalMinutesUsed += minutes;
 
@@ -72,16 +74,16 @@ async function calculateClientHoursAccurate(clientName) {
     const remainingHours = remainingMinutes / 60;
 
     // Determine status
-    let status = "פעיל";
+    let status = 'פעיל';
     let isBlocked = false;
     let isCritical = false;
 
-    if (client.type === "hours") {
+    if (client.type === 'hours') {
       if (remainingMinutes <= 0) {
-        status = "חסום - נגמרו השעות";
+        status = 'חסום - נגמרו השעות';
         isBlocked = true;
       } else if (remainingHours <= 5) {
-        status = "קריטי - מעט שעות";
+        status = 'קריטי - מעט שעות';
         isCritical = true;
       }
     }
@@ -99,12 +101,12 @@ async function calculateClientHoursAccurate(clientName) {
       entriesCount: timesheetSnapshot.size,
       entriesByLawyer,
       uniqueLawyers: Object.keys(entriesByLawyer),
-      lastCalculated: new Date(),
+      lastCalculated: new Date()
     };
 
     return result;
   } catch (error) {
-    console.error("שגיאה בחישוב שעות:", error);
+    console.error('שגיאה בחישוב שעות:', error);
     throw error;
   }
 }
@@ -119,25 +121,27 @@ async function calculateClientHoursAccurate(clientName) {
 async function updateClientHoursImmediately(clientName, minutesUsed) {
   try {
     const db = window.firebaseDB;
-    if (!db) throw new Error("Firebase לא מחובר");
+    if (!db) {
+throw new Error('Firebase לא מחובר');
+}
 
     // Find the client
     const clientsSnapshot = await db
-      .collection("clients")
-      .where("fullName", "==", clientName)
+      .collection('clients')
+      .where('fullName', '==', clientName)
       .get();
 
     if (clientsSnapshot.empty) {
       console.warn(`לקוח ${clientName} לא נמצא - לא ניתן לעדכן שעות`);
-      return { success: false, message: "לקוח לא נמצא" };
+      return { success: false, message: 'לקוח לא נמצא' };
     }
 
     const clientDoc = clientsSnapshot.docs[0];
     const clientData = clientDoc.data();
 
     // Only for hours-based clients
-    if (clientData.type !== "hours") {
-      return { success: true, message: "לקוח פיקס - לא נדרש עדכון" };
+    if (clientData.type !== 'hours') {
+      return { success: true, message: 'לקוח פיקס - לא נדרש עדכון' };
     }
 
     // Recalculate using accurate function
@@ -151,7 +155,7 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
       lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
       totalMinutesUsed: hoursData.totalMinutesUsed,
       isBlocked: hoursData.isBlocked,
-      isCritical: hoursData.isCritical,
+      isCritical: hoursData.isCritical
     });
 
     // Update local system data
@@ -175,11 +179,11 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
 
     return {
       success: true,
-      message: "שעות לקוח עודכנו בהצלחה",
-      data: hoursData,
+      message: 'שעות לקוח עודכנו בהצלחה',
+      data: hoursData
     };
   } catch (error) {
-    console.error("שגיאה בעדכון שעות לקוח:", error);
+    console.error('שגיאה בעדכון שעות לקוח:', error);
     return { success: false, message: error.message };
   }
 }
@@ -193,7 +197,9 @@ async function updateClientHoursImmediately(clientName, minutesUsed) {
  * @returns {number} אחוז התקדמות (0-100)
  */
 function calculateSimpleProgress(task) {
-  if (!task.estimatedMinutes || task.estimatedMinutes <= 0) return 0;
+  if (!task.estimatedMinutes || task.estimatedMinutes <= 0) {
+return 0;
+}
   const progress = Math.round(
     ((task.actualMinutes || 0) / task.estimatedMinutes) * 100
   );
@@ -207,13 +213,25 @@ function calculateSimpleProgress(task) {
  * @returns {string} טקסט סטטוס
  */
 function getProgressStatusText(progress) {
-  if (progress >= 100) return "הושלם";
-  if (progress >= 90) return "כמעט סיימת";
-  if (progress >= 75) return "קרוב לסיום";
-  if (progress >= 50) return "באמצע הדרך";
-  if (progress >= 25) return "התחלנו";
-  if (progress > 0) return "בתחילת הדרך";
-  return "לא התחיל";
+  if (progress >= 100) {
+return 'הושלם';
+}
+  if (progress >= 90) {
+return 'כמעט סיימת';
+}
+  if (progress >= 75) {
+return 'קרוב לסיום';
+}
+  if (progress >= 50) {
+return 'באמצע הדרך';
+}
+  if (progress >= 25) {
+return 'התחלנו';
+}
+  if (progress > 0) {
+return 'בתחילת הדרך';
+}
+  return 'לא התחיל';
 }
 
 // ===== ספירת משימות =====
@@ -225,8 +243,10 @@ function getProgressStatusText(progress) {
  * @returns {number} מספר משימות פעילות
  */
 function getActiveTasksCount(tasks) {
-  if (!tasks || !Array.isArray(tasks)) return 0;
-  return tasks.filter((task) => task && task.status !== "הושלם").length;
+  if (!tasks || !Array.isArray(tasks)) {
+return 0;
+}
+  return tasks.filter((task) => task && task.status === 'פעיל').length;
 }
 
 /**
@@ -236,8 +256,10 @@ function getActiveTasksCount(tasks) {
  * @returns {number} מספר משימות שהושלמו
  */
 function getCompletedTasksCount(tasks) {
-  if (!tasks || !Array.isArray(tasks)) return 0;
-  return tasks.filter((task) => task && task.status === "הושלם").length;
+  if (!tasks || !Array.isArray(tasks)) {
+return 0;
+}
+  return tasks.filter((task) => task && task.status === 'הושלם').length;
 }
 
 /**
@@ -247,10 +269,12 @@ function getCompletedTasksCount(tasks) {
  * @param {string} type - 'estimated' או 'actual'
  * @returns {number} סך השעות
  */
-function getTotalHours(tasks, type = "actual") {
-  if (!tasks || !Array.isArray(tasks)) return 0;
+function getTotalHours(tasks, type = 'actual') {
+  if (!tasks || !Array.isArray(tasks)) {
+return 0;
+}
 
-  const minutesField = type === "estimated" ? "estimatedMinutes" : "actualMinutes";
+  const minutesField = type === 'estimated' ? 'estimatedMinutes' : 'actualMinutes';
 
   const totalMinutes = tasks.reduce((sum, task) => {
     return sum + (task[minutesField] || 0);
@@ -278,7 +302,7 @@ function calculateBudgetStatistics(tasks) {
       overallProgress: 0,
       totalPlanned: 0,
       totalActual: 0,
-      completionRate: 0,
+      completionRate: 0
     };
   }
 
@@ -294,12 +318,12 @@ function calculateBudgetStatistics(tasks) {
     totalPlanned: 0,
     totalActual: 0,
     completedThisMonth: 0,
-    criticalTasks: 0,
+    criticalTasks: 0
   };
 
   tasks.forEach((task) => {
     // ספירת משימות פעילות והושלמו
-    if (task.status === "הושלם") {
+    if (task.status === 'הושלם') {
       stats.completed++;
 
       // בדיקה אם הושלם החודש
@@ -325,8 +349,8 @@ function calculateBudgetStatistics(tasks) {
       stats.overBudget++;
     }
 
-    // בדיקת דחיפות - רק למשימות שלא הושלמו
-    if (task.deadline && task.status !== "הושלם") {
+    // בדיקת דחיפות - רק למשימות פעילות
+    if (task.deadline && task.status === 'פעיל') {
       const deadline = new Date(task.deadline);
       const daysUntil = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
 
@@ -357,18 +381,18 @@ function calculateBudgetStatistics(tasks) {
     stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
   // קביעת סטטוס
-  let status = "good";
-  let statusText = "בקצב טוב";
+  let status = 'good';
+  let statusText = 'בקצב טוב';
 
   if (stats.completionRate >= 80 && stats.urgent === 0) {
-    status = "excellent";
-    statusText = "מעולה!";
+    status = 'excellent';
+    statusText = 'מעולה!';
   } else if (stats.urgent > 3 || stats.overBudget > 5) {
-    status = "danger";
-    statusText = "דורש תשומת לב";
+    status = 'danger';
+    statusText = 'דורש תשומת לב';
   } else if (stats.urgent > 0 || stats.overBudget > 2) {
-    status = "warning";
-    statusText = "ניתן לשפר";
+    status = 'warning';
+    statusText = 'ניתן לשפר';
   }
 
   stats.budgetStatus = status;
@@ -384,22 +408,22 @@ function calculateBudgetStatistics(tasks) {
  * @param {string} currentFilter - הפילטר הנוכחי (active/completed/all)
  * @returns {string} HTML string
  */
-function createBudgetStatsBar(stats, currentFilter = "all") {
+function createBudgetStatsBar(stats, currentFilter = 'all') {
   const plannedHours = Math.round((stats.totalPlanned / 60) * 10) / 10;
   const actualHours = Math.round((stats.totalActual / 60) * 10) / 10;
 
   return `
     <div class="stats-badge">
       <span class="badge-item ${
-        currentFilter === "all" ? "badge-highlight" : ""
+        currentFilter === 'all' ? 'badge-highlight' : ''
       }">משימות: <strong>${stats.total}</strong></span>
       <span class="badge-separator">|</span>
       <span class="badge-item ${
-        currentFilter === "active" ? "badge-highlight" : ""
+        currentFilter === 'active' ? 'badge-highlight' : ''
       }">פעילות: <strong>${stats.active}</strong></span>
       <span class="badge-separator">|</span>
       <span class="badge-item ${
-        currentFilter === "completed" ? "badge-highlight" : ""
+        currentFilter === 'completed' ? 'badge-highlight' : ''
       } badge-success">הושלמו: <strong>${stats.completed}</strong></span>
       <span class="badge-separator">|</span>
       <span class="badge-item">התקדמות: <strong>${
@@ -411,7 +435,7 @@ function createBudgetStatsBar(stats, currentFilter = "all") {
       <span class="badge-separator">|</span>
       <span class="badge-item badge-urgent">דחופות: <strong>${stats.urgent}</strong></span>
       `
-          : ""
+          : ''
       }
     </div>
   `;
@@ -437,7 +461,7 @@ function calculateTimesheetStatistics(entries) {
       weekHours: 0,
       monthMinutes: 0,
       monthHours: 0,
-      uniqueClients: 0,
+      uniqueClients: 0
     };
   }
 
@@ -458,7 +482,7 @@ function calculateTimesheetStatistics(entries) {
     todayMinutes: 0,
     weekMinutes: 0,
     monthMinutes: 0,
-    clients: new Set(),
+    clients: new Set()
   };
 
   entries.forEach((entry) => {
@@ -563,21 +587,21 @@ function calculateSmartGoals(monthHours, now) {
       : 0;
 
   // קביעת סטטוס
-  let status = "good";
-  let statusText = "בקצב טוב";
+  let status = 'good';
+  let statusText = 'בקצב טוב';
 
   if (progressPercent >= 95) {
-    status = "excellent";
-    statusText = "מעולה!";
+    status = 'excellent';
+    statusText = 'מעולה!';
   } else if (progressPercent >= 80 && actualDailyAverage >= 6) {
-    status = "good";
-    statusText = "בקצב טוב";
+    status = 'good';
+    statusText = 'בקצב טוב';
   } else if (progressPercent < 60 || actualDailyAverage < 5) {
-    status = "danger";
-    statusText = "דורש תשומת לב";
+    status = 'danger';
+    statusText = 'דורש תשומת לב';
   } else {
-    status = "warning";
-    statusText = "ניתן לשפר";
+    status = 'warning';
+    statusText = 'ניתן לשפר';
   }
 
   return {
@@ -588,7 +612,7 @@ function calculateSmartGoals(monthHours, now) {
     actualDailyAverage,
     workDaysRemaining,
     goalStatus: status,
-    goalStatusText: statusText,
+    goalStatusText: statusText
   };
 }
 
@@ -617,7 +641,7 @@ function createTimesheetStatsBar(stats) {
 // ===== ייצוא לשימוש גלובלי =====
 
 // Export as module for modern usage
-if (typeof module !== "undefined" && module.exports) {
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // Client hours calculations
     calculateClientHoursAccurate,
@@ -639,7 +663,7 @@ if (typeof module !== "undefined" && module.exports) {
     // Timesheet statistics
     calculateTimesheetStatistics,
     createTimesheetStatsBar,
-    calculateSmartGoals,
+    calculateSmartGoals
   };
 }
 
@@ -665,7 +689,7 @@ window.StatisticsCalculator = {
   // Timesheet statistics
   calculateTimesheetStatistics,
   createTimesheetStatsBar,
-  calculateSmartGoals,
+  calculateSmartGoals
 };
 
-Logger.log("Statistics Calculator Module loaded successfully");
+Logger.log('Statistics Calculator Module loaded successfully');

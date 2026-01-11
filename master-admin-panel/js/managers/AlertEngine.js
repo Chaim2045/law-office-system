@@ -173,7 +173,7 @@
             const tasks = userData.tasks || [];
 
             const overdueTasks = tasks.filter(task => {
-                if (task.status === 'completed' || task.status === 'cancelled') {
+                if (task.status === 'הושלם' || task.status === 'בוטל') {
                     return false;
                 }
                 if (!task.dueDate) {
@@ -362,21 +362,16 @@
                 }
             });
 
-            // Calculate work days passed this month (excluding Fridays, Saturdays, and holidays)
-            let workDaysPassed = 0;
-            const today = new Date();
-            const currentDay = today.getDate();
+            // Calculate work days passed this month (excluding weekends and holidays)
+            // Using WorkHoursCalculator for accurate calculation including Israeli holidays
+            // CRITICAL: Must use existing instance - fail fast if unavailable
+            const calculator = this.workHoursCalculator || window.WorkHoursCalculatorInstance;
 
-            for (let day = 1; day <= currentDay; day++) {
-                const date = new Date(now.getFullYear(), now.getMonth(), day);
-                const dayOfWeek = date.getDay();
-
-                // Skip Friday (5) and Saturday (6)
-                if (dayOfWeek !== 5 && dayOfWeek !== 6) {
-                    // TODO: Check if it's a holiday using WorkHoursCalculator
-                    workDaysPassed++;
-                }
+            if (!calculator) {
+                throw new Error('WORKHOURS_MISSING: WorkHoursCalculator unavailable');
             }
+
+            const workDaysPassed = calculator.getWorkDaysPassedThisMonth();
 
             // Calculate expected hours for days passed
             const expectedHoursForDaysPassed = workDaysPassed * expectedDailyHours;

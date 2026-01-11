@@ -72,8 +72,17 @@
             }
 
             try {
-                // חשב עומס לכל העובדים
-                const workloadMap = await this.workloadService.calculateAllEmployeesWorkload(employees);
+                // ✅ v5.2.0: Use SAFE wrapper with fail-fast checking
+                const result = await this.workloadService.calculateAllEmployeesWorkloadSafe(employees);
+
+                // ✅ v5.2.0: FAIL-FAST - Check if calculation succeeded
+                if (!result.ok) {
+                    console.error('❌ Workload calculation failed:', result.error.code);
+                    container.innerHTML = this.renderFailFastError(result.error.message);
+                    return;
+                }
+
+                const workloadMap = result.data;
 
                 // 🔍 DEBUG: בדיקת נתונים
                 console.log('📊 Workload Map:', workloadMap);
@@ -123,7 +132,25 @@
         }
 
         /**
-         * רינדור שגיאה
+         * רינדור שגיאת Fail-Fast (באנר אדום)
+         * ✅ v5.2.0: No partial data shown - clean failure state
+         */
+        renderFailFastError(message) {
+            return `
+                <div class="workload-fail-fast-banner">
+                    <div class="fail-fast-content">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div class="fail-fast-message">
+                            <h3>${message}</h3>
+                            <p>המערכת זיהתה שחישובי ימי עבודה אינם זמינים ועצרה את כל התהליך כדי למנוע הצגת נתונים שגויים.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * רינדור שגיאה כללית
          */
         renderError(message) {
             return `
@@ -1078,6 +1105,6 @@ return;
     const workloadCard = new WorkloadCard();
     window.WorkloadCard = workloadCard;
 
-    console.log('✅ WorkloadCard v4.0.0 loaded - Production-Ready (250+ lines removed)');
+    console.log('✅ WorkloadCard v5.2.0 loaded - Fail-Fast Error Handling');
 
 })();

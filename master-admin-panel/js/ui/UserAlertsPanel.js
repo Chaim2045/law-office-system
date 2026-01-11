@@ -20,7 +20,8 @@
             this.alerts = [];
 
             // References to managers
-            this.alertEngine = window.alertEngine;
+            this.alertsAnalyticsService = window.alertsAnalyticsService;
+            this.alertEngine = window.alertEngine; // For getMessageTemplate utility
             this.contextMessageManager = window.contextMessageManager;
             this.threadManager = window.threadManager;
         }
@@ -31,24 +32,26 @@
          * @param {Object} userData - Full user data
          */
         async init(userId, userData) {
-            try {
-                console.log('🚀 UserAlertsPanel: Initializing for user', userId);
+            console.log('🚀 UserAlertsPanel: Initializing for user', userId);
 
-                this.userId = userId;
-                this.userData = userData;
+            this.userId = userId;
+            this.userData = userData;
 
-                // Calculate alerts
-                this.alerts = this.alertEngine.calculateAlerts(userData);
+            // Calculate alerts via central analytics service
+            const result = this.alertsAnalyticsService.computeAlertsAnalytics(userData);
 
-                // Render
-                this.render();
-
-                console.log('✅ UserAlertsPanel: Initialized successfully');
-
-            } catch (error) {
-                console.error('❌ UserAlertsPanel: Init failed:', error);
-                this.renderError('שגיאה בטעינת התראות');
+            if (!result.ok) {
+                // Analytics failed - show error banner, no partial data
+                console.error('❌ UserAlertsPanel: Analytics unavailable:', result.error.code);
+                this.renderError(result.error.message);
+                return;
             }
+
+            // Success - render alerts
+            this.alerts = result.data;
+            this.render();
+
+            console.log('✅ UserAlertsPanel: Initialized successfully');
         }
 
         /**
@@ -350,12 +353,20 @@
             console.log('🔄 Refreshing alerts...');
 
             // Clear cache
-            this.alertEngine.clearCache(this.userId);
+            this.alertsAnalyticsService.clearCache(this.userId);
 
-            // Recalculate
-            this.alerts = this.alertEngine.calculateAlerts(this.userData);
+            // Recalculate via central analytics service
+            const result = this.alertsAnalyticsService.computeAlertsAnalytics(this.userData);
 
-            // Re-render
+            if (!result.ok) {
+                // Analytics failed - show error banner, no partial data
+                console.error('❌ UserAlertsPanel: Analytics unavailable on refresh:', result.error.code);
+                this.renderError(result.error.message);
+                return;
+            }
+
+            // Success - update and re-render
+            this.alerts = result.data;
             this.render();
 
             this.showSuccess('התראות עודכנו');

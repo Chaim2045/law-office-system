@@ -881,6 +881,9 @@ return false;
 
           // Update task count badges
           this.updateTaskCountBadges();
+
+          // ✅ Update expanded card if open (makes cancel button reactive)
+          this.updateExpandedCard();
         },
         (error) => {
           console.error('❌ Tasks listener error:', error);
@@ -1360,8 +1363,8 @@ return;
     if (this.currentTaskFilter === 'completed') {
       this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status === 'הושלם');
     } else if (this.currentTaskFilter === 'active') {
-      // ✅ הצג גם משימות ממתינות לאישור - עם סטייל מיוחד (מנעול)
-      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status !== 'הושלם');
+      // ✅ הצג רק משימות פעילות (לא כולל בוטלו)
+      this.filteredBudgetTasks = this.budgetTasks.filter(task => task.status === 'פעיל');
     } else {
       // 'all' - show everything (including pending_approval)
       this.filteredBudgetTasks = [...this.budgetTasks];
@@ -1397,7 +1400,7 @@ return;
       const [activeSnapshot, completedSnapshot] = await Promise.all([
         db.collection('budget_tasks')
           .where('employee', '==', this.currentUser)
-          .where('status', '!=', 'הושלם')
+          .where('status', '==', 'פעיל')
           .get(),
 
         db.collection('budget_tasks')
@@ -1912,7 +1915,7 @@ return;
     const isCompleted = task.status === 'הושלם';
 
     const expandedContent = `
-      <div class="linear-expanded-overlay" onclick="manager.closeExpandedCard(event)">
+      <div class="linear-expanded-overlay" data-task-id="${task.id}" onclick="manager.closeExpandedCard(event)">
         <div class="linear-expanded-card" onclick="event.stopPropagation()">
           <div class="linear-expanded-header">
             <h2 class="linear-expanded-title">${CoreUtils.safeText(task.description || task.taskDescription)}</h2>
@@ -1960,6 +1963,72 @@ return;
     if (overlay) {
       overlay.classList.remove('active');
       setTimeout(() => overlay.remove(), 300);
+    }
+  }
+
+  /**
+   * Update expanded card if currently open
+   * מעדכן את הכרטיס המורחב אם פתוח כרגע
+   * @param {string} [taskId] - Optional task ID. If not provided, uses data-task-id from overlay
+   */
+  updateExpandedCard(taskId) {
+    // Check if expanded card is currently open
+    const overlay = document.querySelector('.linear-expanded-overlay.active');
+    if (!overlay) {
+      return; // No expanded card open
+    }
+
+    // Get taskId from data attribute if not provided
+    if (!taskId) {
+      taskId = overlay.dataset.taskId;
+    }
+
+    if (!taskId) {
+      return; // No task ID available
+    }
+
+    // Get updated task data
+    const task = this.budgetTasks.find((t) => t.id === taskId);
+    if (!task) {
+      // Task deleted or not found - close the card
+      this.closeExpandedCard();
+      return;
+    }
+
+    // Find the actions container in the expanded card
+    const actionsContainer = overlay.querySelector('.linear-actions');
+    if (!actionsContainer) {
+      return; // No actions container found
+    }
+
+    // Calculate progress
+    let progress = 0;
+    if (task.estimatedMinutes && task.estimatedMinutes > 0) {
+      progress = Math.round(((task.actualMinutes || 0) / task.estimatedMinutes) * 100);
+    }
+    const isCompleted = task.status === 'הושלם';
+
+    // Update progress and status displays in the info grid
+    const infoItems = overlay.querySelectorAll('.linear-info-item');
+    infoItems.forEach((item) => {
+      const label = item.querySelector('label');
+      const span = item.querySelector('span');
+
+      if (!label || !span) {
+return;
+}
+
+      if (label.textContent === 'התקדמות:') {
+        span.textContent = `${progress}%`;
+      } else if (label.textContent === 'סטטוס:') {
+        span.textContent = CoreUtils.safeText(task.status);
+      }
+    });
+
+    // Regenerate action buttons with updated task data
+    if (this.taskActionsManager) {
+      const newButtons = this.taskActionsManager.createCardActionButtons(task, isCompleted);
+      actionsContainer.outerHTML = newButtons;
     }
   }
 
@@ -2366,6 +2435,165 @@ return;
     } else {
       // Fallback to standard completion if validation module not loaded
       window.DialogsModule.showTaskCompletionModal(task, this);
+    }
+  }
+
+  /**
+   * Show cancel task dialog
+   * ביטול משימה - רק למשימות פעילות ללא זמן רשום
+   */
+  showCancelTaskDialog(taskId) {
+    const task = this.budgetTasks.find((t) => t.id === taskId);
+    if (!task) {
+      this.showNotification('המשימה לא נמצאה', 'error');
+      return;
+    }
+
+    // Validate task can be cancelled
+    if (task.status !== 'פעיל') {
+      this.showNotification('ניתן לבטל רק משימות פעילות', 'error');
+      return;
+    }
+
+    if (task.actualMinutes > 0) {
+      this.showNotification('לא ניתן לבטל משימה עם זמן רשום. נא לפנות למנהל/ת.', 'error');
+      return;
+    }
+
+    const actualHours = task.actualMinutes ? Math.round((task.actualMinutes / 60) * 10) / 10 : 0;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+
+    overlay.innerHTML = `
+      <div class="popup" style="max-width: 480px;">
+        <div class="popup-header">
+          <i class="fas fa-ban"></i>
+          ביטול משימה
+        </div>
+        <div class="popup-content">
+          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <i class="fas fa-user" style="color: #64748b; font-size: 12px; width: 14px;"></i>
+              <span style="font-size: 13px; color: #64748b;">לקוח:</span>
+              <span style="font-size: 13px; color: #1e293b; font-weight: 600;">${CoreUtils.safeText(task.clientName)}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <i class="fas fa-tasks" style="color: #64748b; font-size: 12px; width: 14px;"></i>
+              <span style="font-size: 13px; color: #64748b;">משימה:</span>
+              <span style="font-size: 13px; color: #1e293b; font-weight: 600;">${CoreUtils.safeText(task.description || task.taskDescription)}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-clock" style="color: #64748b; font-size: 12px; width: 14px;"></i>
+              <span style="font-size: 13px; color: #64748b;">זמן רשום:</span>
+              <span style="font-size: 13px; color: #1e293b; font-weight: 600;">${actualHours} שעות</span>
+            </div>
+          </div>
+          <div style="background: #fef3c7; border: 1px solid #f59e0b; border-right: 3px solid #f59e0b; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; color: #92400e; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 12px;"></i>
+            <span>המשימה תוסר מרשימת המשימות הפעילות</span>
+          </div>
+          <div class="form-group">
+            <label for="cancelReason">סיבת ביטול:</label>
+            <textarea id="cancelReason" rows="3" placeholder="נא לתאר את סיבת ביטול המשימה..." required></textarea>
+          </div>
+        </div>
+        <div class="popup-buttons">
+          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+            <i class="fas fa-times"></i> ביטול
+          </button>
+          <button class="popup-btn popup-btn-confirm" onclick="manager.submitCancelTask('${taskId}')" style="background: #dc2626; border-color: #dc2626;">
+            <i class="fas fa-ban"></i> אשר ביטול
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('show'), 10);
+
+    // Focus on reason textarea
+    setTimeout(() => {
+      const reasonInput = document.getElementById('cancelReason');
+      if (reasonInput) {
+        reasonInput.focus();
+      }
+    }, 100);
+  }
+
+  /**
+   * Submit task cancellation
+   * שליחת בקשת ביטול לשרת
+   */
+  async submitCancelTask(taskId) {
+    const reasonInput = document.getElementById('cancelReason');
+    const reason = reasonInput?.value?.trim();
+
+    // Clear previous errors
+    reasonInput?.classList.remove('error');
+    const existingError = reasonInput?.parentElement.querySelector('.error-message');
+    if (existingError) {
+      existingError.remove();
+    }
+
+    // Validate reason
+    if (!reason) {
+      reasonInput?.classList.add('error');
+      const errorMsg = document.createElement('span');
+      errorMsg.className = 'error-message';
+      errorMsg.textContent = 'נא למלא סיבת ביטול';
+      reasonInput?.parentElement.appendChild(errorMsg);
+      return;
+    }
+
+    const overlay = document.querySelector('.popup-overlay.show');
+    const confirmBtn = overlay?.querySelector('.popup-btn-confirm');
+
+    try {
+      // Show loading state (no layout shift)
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add('loading');
+      }
+
+      // Call Cloud Function
+      const cancelTask = firebase.functions().httpsCallable('cancelBudgetTask');
+      const result = await cancelTask({
+        taskId: taskId,
+        reason: reason
+      });
+
+      // Success - show toast
+      this.showNotification('המשימה בוטלה בהצלחה', 'success');
+
+      // Close dialog with smooth transition
+      if (overlay) {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 300);
+      }
+
+      // Close expanded card if open (smooth transition)
+      const expandedOverlay = document.querySelector('.linear-expanded-overlay.active');
+      if (expandedOverlay) {
+        expandedOverlay.style.opacity = '0';
+        setTimeout(() => this.closeExpandedCard(), 200);
+      }
+
+      // Tasks will auto-refresh via realtime listener
+      // No manual refresh needed - the listener will handle it
+
+    } catch (error) {
+      console.error('❌ Cancel task failed:', error);
+
+      // Remove loading state
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove('loading');
+      }
+
+      // Show error toast from server (already in Hebrew)
+      const errorMessage = error.message || 'שגיאה בביטול המשימה';
+      this.showNotification(errorMessage, 'error');
     }
   }
 

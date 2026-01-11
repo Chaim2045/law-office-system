@@ -2007,7 +2007,7 @@ return;
 
             // Filter completed tasks for selected date
             const completedToday = allTasks.filter(task => {
-                if (task.status !== 'completed') {
+                if (task.status !== 'הושלם') {
 return false;
 }
 
@@ -4524,10 +4524,10 @@ return '';
                                     סטטוס
                                 </label>
                                 <select id="taskStatus" required>
-                                    <option value="active" ${task.status === 'active' ? 'selected' : ''}>✅ פעילה</option>
-                                    <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>✔️ הושלמה</option>
-                                    <option value="on_hold" ${task.status === 'on_hold' ? 'selected' : ''}>⏸️ בהמתנה</option>
-                                    <option value="cancelled" ${task.status === 'cancelled' ? 'selected' : ''}>❌ בוטלה</option>
+                                    <option value="פעיל" ${task.status === 'פעיל' ? 'selected' : ''}>✅ פעילה</option>
+                                    <option value="הושלם" ${task.status === 'הושלם' ? 'selected' : ''}>✔️ הושלמה</option>
+                                    <option value="בהמתנה" ${task.status === 'בהמתנה' ? 'selected' : ''}>⏸️ בהמתנה</option>
+                                    <option value="בוטל" ${task.status === 'בוטל' ? 'selected' : ''}>❌ בוטלה</option>
                                 </select>
                             </div>
                         </div>

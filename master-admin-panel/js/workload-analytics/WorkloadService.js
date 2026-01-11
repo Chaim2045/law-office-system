@@ -2,18 +2,22 @@
  * Workload Service - שירות שליפת נתונים לניתוח עומס
  *
  * תפקיד: שליפת נתונים מ-Firestore והעברתם ל-WorkloadCalculator
- * תלות: Firestore, WorkloadCalculator, WorkloadConstants
+ * תלות: Firestore, WorkloadCalculator, WorkloadConstants, WorkHoursCalculator
  *
  * נוצר: 2025-12-30
- * גרסה: 4.1.0 - Data Accuracy Fixes
+ * גרסה: 5.1.0 - Single Source of Truth for Workdays
  *
- * שינויים בגרסה 4.0.0:
- * ✅ Cache TTL נטען מ-WorkloadConstants
- * ✅ שימוש ב-Cloud Function לביצועים
+ * שינויים בגרסה 5.1.0 (2026-01-04):
+ * ✅ Dependency injection: Creates and injects WorkHoursCalculator into WorkloadCalculator
+ * ✅ Single instance of WorkHoursCalculator ensures consistent holiday handling
  *
  * שינויים בגרסה 4.1.0:
  * ✅ תיקון: מיזוג נכון של employee data מ-UI ו-Firestore
  * ✅ תיקון: תמיכה ב-Cloud Function v1.1.0 (dual field support)
+ *
+ * שינויים בגרסה 4.0.0:
+ * ✅ Cache TTL נטען מ-WorkloadConstants
+ * ✅ שימוש ב-Cloud Function לביצועים
  */
 
 (function() {
@@ -52,7 +56,19 @@
             }
 
             this.db = window.firebaseDB;
-            this.calculator = new window.WorkloadCalculator();
+
+            // ✅ v5.1.0: Create single WorkHoursCalculator instance for holiday/workday logic
+            // This is the SINGLE SOURCE OF TRUTH for workday counting
+            if (window.WorkHoursCalculator) {
+                this.workHoursCalculator = new window.WorkHoursCalculator();
+                console.log('✅ WorkHoursCalculator initialized (single source of truth for workdays)');
+            } else {
+                console.warn('⚠️ WorkHoursCalculator not loaded - workload calculations may not include holidays');
+                this.workHoursCalculator = null;
+            }
+
+            // Pass WorkHoursCalculator to WorkloadCalculator (dependency injection)
+            this.calculator = new window.WorkloadCalculator(this.workHoursCalculator);
 
             console.log('✅ WorkloadService initialized');
             return true;
@@ -125,6 +141,32 @@
                 console.error(`❌ Error calculating workload for ${employeeEmail}:`, error);
                 return this.getEmptyWorkloadMetrics(employeeEmail);
             }
+        }
+
+        /**
+         * ✅ v5.2.0: SAFE wrapper with fail-fast error handling
+         * @param {Array} employees - רשימת עובדים
+         * @returns {Promise<Object>} - { ok: boolean, data?: Map, error?: {code, message} }
+         */
+        async calculateAllEmployeesWorkloadSafe(employees) {
+            // ✅ v5.2.0: FAIL-FAST - Verify WorkHoursCalculator availability
+            if (!this.workHoursCalculator) {
+                console.error('❌ FAIL-FAST: WorkHoursCalculator not available - aborting workload calculation');
+                return {
+                    ok: false,
+                    error: {
+                        code: 'WORKHOURS_MISSING',
+                        message: 'חישובי אנליטיקס הושבתו כדי למנוע נתונים שגויים'
+                    }
+                };
+            }
+
+            // Proceed with normal calculation
+            const workloadMap = await this.calculateAllEmployeesWorkload(employees);
+            return {
+                ok: true,
+                data: workloadMap
+            };
         }
 
         /**
@@ -231,9 +273,8 @@
         async fetchEmployeeTasks(employeeEmail) {
             console.log(`🔍 Fetching tasks for ${employeeEmail}...`);
 
-            // ⚠️ IMPORTANT: המערכת משתמשת ב-status !== 'הושלם' למשימות פעילות
-            // לא ניתן לעשות where('status', '!=', 'הושלם') בלי index מורכב
-            // לכן נמשוך הכל ונסנן בצד לקוח
+            // ✅ UPDATED: המערכת משתמשת ב-status === 'פעיל' למשימות פעילות
+            // נמשוך הכל ונסנן client-side כי אין index מורכב employee+status
             const snapshot = await this.db.collection('budget_tasks')
                 .where('employee', '==', employeeEmail)
                 .get();
@@ -241,8 +282,8 @@
             const tasks = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
-                // סינון: רק משימות שלא הושלמו
-                if (data.status !== 'הושלם') {
+                // סינון: רק משימות פעילות
+                if (data.status === 'פעיל') {
                     tasks.push({
                         taskId: doc.id,
                         ...data

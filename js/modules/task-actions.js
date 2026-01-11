@@ -50,6 +50,8 @@
       }
 
       // משימה פעילה - כל הכפתורים
+      const canCancel = Number(task.actualMinutes || 0) === 0;
+
       return `
         <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog('${taskId}')" title="הוסף זמן">
           <i class="fas fa-clock"></i>
@@ -60,6 +62,11 @@
         <button class="action-btn history-btn" onclick="manager.showTaskHistory('${taskId}')" title="היסטוריה">
           <i class="fas fa-history"></i>
         </button>
+        ${canCancel ? `
+        <button class="action-btn cancel-btn" onclick="manager.showCancelTaskDialog('${taskId}')" title="בטל משימה">
+          <i class="fas fa-ban"></i>
+        </button>
+        ` : ''}
         <button class="action-btn complete-btn" onclick="manager.completeTask('${taskId}')" title="סיים משימה">
           <i class="fas fa-check"></i>
         </button>
@@ -91,8 +98,9 @@
 
       // 🆕 Phase 1: בדיקה אם יש חריגה
       const originalEstimate = task.originalEstimate || task.estimatedMinutes || 0;
-      const actualMinutes = task.actualMinutes || 0;
+      const actualMinutes = Number(task.actualMinutes || 0);
       const isOverBudget = actualMinutes > originalEstimate;
+      const canCancel = actualMinutes === 0;
 
       // משימה פעילה - כל הכפתורים + עדכן תקציב אם יש חריגה
       return `
@@ -111,6 +119,11 @@
           <button class="linear-action-btn warning" onclick="manager.showExtendDeadlineDialog('${taskId}')">
             <i class="fas fa-calendar-plus"></i> האריך יעד
           </button>
+          ${canCancel ? `
+          <button class="linear-action-btn danger" onclick="manager.showCancelTaskDialog('${taskId}')">
+            <i class="fas fa-ban"></i> בטל משימה
+          </button>
+          ` : ''}
           <button class="linear-action-btn success" onclick="manager.completeTask('${taskId}')">
             <i class="fas fa-check"></i> סיים משימה
           </button>
@@ -125,17 +138,20 @@
      * @returns {boolean}
      */
     isActionAvailable(actionType, task) {
-      const isCompleted = task.status === 'הושלם';
+      const isActive = task.status === 'פעיל';
 
       switch (actionType) {
         case 'time':
-          return !isCompleted; // הוספת זמן רק למשימות פעילות
+          return isActive; // הוספת זמן רק למשימות פעילות
 
         case 'extend':
-          return !isCompleted; // הארכת יעד רק למשימות פעילות
+          return isActive; // הארכת יעד רק למשימות פעילות
 
         case 'complete':
-          return !isCompleted; // סיום משימה רק למשימות פעילות
+          return isActive; // סיום משימה רק למשימות פעילות
+
+        case 'cancel':
+          return isActive && (Number(task.actualMinutes || 0) === 0); // ביטול רק למשימות פעילות ללא זמן
 
         case 'history':
           return true; // היסטוריה תמיד זמינה

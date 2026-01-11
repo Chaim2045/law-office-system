@@ -287,3 +287,14 @@
   border-color: #4c535b;
 }
 
+.linear-action-btn.danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.linear-action-btn.danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
