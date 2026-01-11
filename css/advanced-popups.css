@@ -2086,6 +2086,21 @@
   /* הירושה מ-action-btn מספיקה - עיצוב אחיד לכולם */
 }
 
+/* Cancel button - red/danger styling */
+.cancel-btn {
+  color: #dc2626;
+  background: rgb(220 38 38 / 8%);
+  border-color: rgb(220 38 38 / 25%);
+}
+
+.cancel-btn:hover {
+  background: rgb(220 38 38 / 15%);
+  color: #b91c1c;
+  border-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgb(220 38 38 / 20%);
+}
+
 /* כפתור עריכה (טבלת שעתון) - משתמש באותו צבע כחול-סגול */
 .edit-btn {
   /* הירושה מ-action-btn מספיקה */

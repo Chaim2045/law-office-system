@@ -2369,6 +2369,150 @@ return;
     }
   }
 
+  /**
+   * Show cancel task dialog
+   * ביטול משימה - רק למשימות פעילות ללא זמן רשום
+   */
+  showCancelTaskDialog(taskId) {
+    const task = this.budgetTasks.find((t) => t.id === taskId);
+    if (!task) {
+      this.showNotification('המשימה לא נמצאה', 'error');
+      return;
+    }
+
+    // Validate task can be cancelled
+    if (task.status !== 'פעיל') {
+      this.showNotification('ניתן לבטל רק משימות פעילות', 'error');
+      return;
+    }
+
+    if (task.actualMinutes > 0) {
+      this.showNotification('לא ניתן לבטל משימה עם זמן רשום. נא לפנות למנהל/ת.', 'error');
+      return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+
+    overlay.innerHTML = `
+      <div class="popup" style="max-width: 520px;">
+        <div class="popup-header">
+          <i class="fas fa-ban"></i>
+          ביטול משימה
+        </div>
+        <div class="popup-content">
+          <div class="form-group">
+            <label>משימה:</label>
+            <div style="font-weight: bold; color: #333;">${CoreUtils.safeText(task.description || task.taskDescription)}</div>
+          </div>
+          <div class="form-group">
+            <label>לקוח:</label>
+            <div>${CoreUtils.safeText(task.clientName)}</div>
+          </div>
+          <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 14px; color: #92400e;">
+            <i class="fas fa-info-circle"></i>
+            משימה מבוטלת תוסר מרשימת המשימות הפעילות ולא תופיע יותר בתצוגת העבודה.
+          </div>
+          <div class="form-group">
+            <label for="cancelReason" style="color: #dc2626;">סיבת ביטול (חובה):</label>
+            <textarea id="cancelReason" class="popup-input" rows="3" placeholder="נא לתאר את סיבת ביטול המשימה..." style="resize: vertical; min-height: 80px;"></textarea>
+          </div>
+        </div>
+        <div class="popup-buttons">
+          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
+            <i class="fas fa-times"></i> ביטול
+          </button>
+          <button class="popup-btn popup-btn-danger" onclick="manager.submitCancelTask('${taskId}')">
+            <i class="fas fa-ban"></i> אשר ביטול
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('show'), 10);
+
+    // Focus on reason textarea
+    setTimeout(() => {
+      const reasonInput = document.getElementById('cancelReason');
+      if (reasonInput) {
+        reasonInput.focus();
+      }
+    }, 100);
+  }
+
+  /**
+   * Submit task cancellation
+   * שליחת בקשת ביטול לשרת
+   */
+  async submitCancelTask(taskId) {
+    const reasonInput = document.getElementById('cancelReason');
+    const reason = reasonInput?.value?.trim();
+
+    // Clear previous errors
+    reasonInput?.classList.remove('error');
+    const existingError = reasonInput?.parentElement.querySelector('.error-message');
+    if (existingError) {
+      existingError.remove();
+    }
+
+    // Validate reason
+    if (!reason) {
+      reasonInput?.classList.add('error');
+      const errorMsg = document.createElement('span');
+      errorMsg.className = 'error-message';
+      errorMsg.textContent = 'נא למלא סיבת ביטול';
+      reasonInput?.parentElement.appendChild(errorMsg);
+      return;
+    }
+
+    const overlay = document.querySelector('.popup-overlay.show');
+    const confirmBtn = overlay?.querySelector('.popup-btn-danger');
+
+    try {
+      // Disable button and show loading
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מבטל...';
+      }
+
+      // Call Cloud Function
+      const cancelTask = firebase.functions().httpsCallable('cancelBudgetTask');
+      const result = await cancelTask({
+        taskId: taskId,
+        reason: reason
+      });
+
+      // Success
+      this.showNotification('המשימה בוטלה בהצלחה', 'success');
+
+      // Close dialog
+      if (overlay) {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 300);
+      }
+
+      // Close expanded card if open
+      this.closeExpandedCard();
+
+      // Tasks will auto-refresh via realtime listener
+      // No manual refresh needed - the listener will handle it
+
+    } catch (error) {
+      console.error('❌ Cancel task failed:', error);
+
+      // Re-enable button
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-ban"></i> אשר ביטול';
+      }
+
+      // Show error message from server (already in Hebrew)
+      const errorMessage = error.message || 'שגיאה בביטול המשימה';
+      this.showNotification(errorMessage, 'error');
+    }
+  }
+
   async submitTimeEntry(taskId) {
     const task = this.budgetTasks.find((t) => t.id === taskId);
     if (!task) {
