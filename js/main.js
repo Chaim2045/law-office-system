@@ -881,6 +881,9 @@ return false;
 
           // Update task count badges
           this.updateTaskCountBadges();
+
+          // ✅ Update expanded card if open (makes cancel button reactive)
+          this.updateExpandedCard();
         },
         (error) => {
           console.error('❌ Tasks listener error:', error);
@@ -1912,7 +1915,7 @@ return;
     const isCompleted = task.status === 'הושלם';
 
     const expandedContent = `
-      <div class="linear-expanded-overlay" onclick="manager.closeExpandedCard(event)">
+      <div class="linear-expanded-overlay" data-task-id="${task.id}" onclick="manager.closeExpandedCard(event)">
         <div class="linear-expanded-card" onclick="event.stopPropagation()">
           <div class="linear-expanded-header">
             <h2 class="linear-expanded-title">${CoreUtils.safeText(task.description || task.taskDescription)}</h2>
@@ -1960,6 +1963,72 @@ return;
     if (overlay) {
       overlay.classList.remove('active');
       setTimeout(() => overlay.remove(), 300);
+    }
+  }
+
+  /**
+   * Update expanded card if currently open
+   * מעדכן את הכרטיס המורחב אם פתוח כרגע
+   * @param {string} [taskId] - Optional task ID. If not provided, uses data-task-id from overlay
+   */
+  updateExpandedCard(taskId) {
+    // Check if expanded card is currently open
+    const overlay = document.querySelector('.linear-expanded-overlay.active');
+    if (!overlay) {
+      return; // No expanded card open
+    }
+
+    // Get taskId from data attribute if not provided
+    if (!taskId) {
+      taskId = overlay.dataset.taskId;
+    }
+
+    if (!taskId) {
+      return; // No task ID available
+    }
+
+    // Get updated task data
+    const task = this.budgetTasks.find((t) => t.id === taskId);
+    if (!task) {
+      // Task deleted or not found - close the card
+      this.closeExpandedCard();
+      return;
+    }
+
+    // Find the actions container in the expanded card
+    const actionsContainer = overlay.querySelector('.linear-actions');
+    if (!actionsContainer) {
+      return; // No actions container found
+    }
+
+    // Calculate progress
+    let progress = 0;
+    if (task.estimatedMinutes && task.estimatedMinutes > 0) {
+      progress = Math.round(((task.actualMinutes || 0) / task.estimatedMinutes) * 100);
+    }
+    const isCompleted = task.status === 'הושלם';
+
+    // Update progress and status displays in the info grid
+    const infoItems = overlay.querySelectorAll('.linear-info-item');
+    infoItems.forEach((item) => {
+      const label = item.querySelector('label');
+      const span = item.querySelector('span');
+
+      if (!label || !span) {
+return;
+}
+
+      if (label.textContent === 'התקדמות:') {
+        span.textContent = `${progress}%`;
+      } else if (label.textContent === 'סטטוס:') {
+        span.textContent = CoreUtils.safeText(task.status);
+      }
+    });
+
+    // Regenerate action buttons with updated task data
+    if (this.taskActionsManager) {
+      const newButtons = this.taskActionsManager.createCardActionButtons(task, isCompleted);
+      actionsContainer.outerHTML = newButtons;
     }
   }
 

@@ -50,7 +50,7 @@
       }
 
       // משימה פעילה - כל הכפתורים
-      const canCancel = task.actualMinutes === 0;
+      const canCancel = Number(task.actualMinutes || 0) === 0;
 
       return `
         <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog('${taskId}')" title="הוסף זמן">
@@ -98,7 +98,7 @@
 
       // 🆕 Phase 1: בדיקה אם יש חריגה
       const originalEstimate = task.originalEstimate || task.estimatedMinutes || 0;
-      const actualMinutes = task.actualMinutes || 0;
+      const actualMinutes = Number(task.actualMinutes || 0);
       const isOverBudget = actualMinutes > originalEstimate;
       const canCancel = actualMinutes === 0;
 
@@ -151,7 +151,7 @@
           return isActive; // סיום משימה רק למשימות פעילות
 
         case 'cancel':
-          return isActive && (task.actualMinutes === 0); // ביטול רק למשימות פעילות ללא זמן
+          return isActive && (Number(task.actualMinutes || 0) === 0); // ביטול רק למשימות פעילות ללא זמן
 
         case 'history':
           return true; // היסטוריה תמיד זמינה
