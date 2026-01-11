@@ -2395,7 +2395,7 @@ return;
     overlay.className = 'popup-overlay';
 
     overlay.innerHTML = `
-      <div class="popup" style="max-width: 520px;">
+      <div class="popup" style="max-width: 580px;">
         <div class="popup-header">
           <i class="fas fa-ban"></i>
           ביטול משימה
@@ -2407,22 +2407,22 @@ return;
           </div>
           <div class="form-group">
             <label>לקוח:</label>
-            <div>${CoreUtils.safeText(task.clientName)}</div>
+            <div style="color: #555;">${CoreUtils.safeText(task.clientName)}</div>
           </div>
-          <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 14px; color: #92400e;">
-            <i class="fas fa-info-circle"></i>
-            משימה מבוטלת תוסר מרשימת המשימות הפעילות ולא תופיע יותר בתצוגת העבודה.
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; border-right: 3px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 14px; color: #92400e;">
+            <i class="fas fa-info-circle" style="margin-left: 6px;"></i>
+            <strong>שים לב:</strong> משימה מבוטלת תוסר מרשימת המשימות הפעילות ולא תופיע יותר בתצוגת העבודה.
           </div>
           <div class="form-group">
-            <label for="cancelReason" style="color: #dc2626;">סיבת ביטול (חובה):</label>
-            <textarea id="cancelReason" class="popup-input" rows="3" placeholder="נא לתאר את סיבת ביטול המשימה..." style="resize: vertical; min-height: 80px;"></textarea>
+            <label for="cancelReason">סיבת ביטול:</label>
+            <textarea id="cancelReason" rows="3" placeholder="נא לתאר את סיבת ביטול המשימה..." required></textarea>
           </div>
         </div>
         <div class="popup-buttons">
           <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
             <i class="fas fa-times"></i> ביטול
           </button>
-          <button class="popup-btn popup-btn-danger" onclick="manager.submitCancelTask('${taskId}')">
+          <button class="popup-btn popup-btn-confirm" onclick="manager.submitCancelTask('${taskId}')" style="background: #dc2626; border-color: #dc2626;">
             <i class="fas fa-ban"></i> אשר ביטול
           </button>
         </div>
@@ -2467,7 +2467,7 @@ return;
     }
 
     const overlay = document.querySelector('.popup-overlay.show');
-    const confirmBtn = overlay?.querySelector('.popup-btn-danger');
+    const confirmBtn = overlay?.querySelector('.popup-btn-confirm');
 
     try {
       // Disable button and show loading
