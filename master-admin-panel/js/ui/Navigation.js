@@ -388,10 +388,11 @@ return;
                         .where('createdAt', '>=', today)
                         .get();
 
-                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה
+                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה וסטטוס != task_cancelled
                     const unviewedCount = snapshot.docs.filter(doc => {
-                        const createdAt = doc.data().createdAt?.toDate();
-                        return createdAt && createdAt > lastViewedAt;
+                        const data = doc.data();
+                        const createdAt = data.createdAt?.toDate();
+                        return createdAt && createdAt > lastViewedAt && data.status !== 'task_cancelled';
                     }).length;
 
                     this.updateApprovalCountBadge(unviewedCount);
