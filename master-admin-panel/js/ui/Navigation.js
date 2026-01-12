@@ -381,10 +381,10 @@ return;
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
-                    // קבל כל משימות autoApproved מהיום
+                    // קבל רק משימות auto_approved מהיום (לא task_cancelled)
                     const snapshot = await window.firebaseDB
                         .collection('pending_task_approvals')
-                        .where('autoApproved', '==', true)
+                        .where('status', '==', 'auto_approved')
                         .where('createdAt', '>=', today)
                         .get();
 
@@ -427,7 +427,7 @@ return;
 
             this.approvalsCountUnsubscribe = window.firebaseDB
                 .collection('pending_task_approvals')
-                .where('autoApproved', '==', true)
+                .where('status', '==', 'auto_approved')
                 .where('createdAt', '>=', today)
                 .onSnapshot(
                     async () => {
