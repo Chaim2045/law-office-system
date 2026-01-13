@@ -25,6 +25,7 @@
             this.loadMoreIncrement = 20; // Load more: 20 items each time
             this.lastDocument = null; // Firestore cursor for pagination
             this.hasMoreData = true; // Flag to indicate if more data exists
+            this.currentLimit = 4; // Track cumulative limit for realtime listener
         }
 
         /**
@@ -229,6 +230,7 @@
                     // ✅ Reset pagination when changing filters
                     this.lastDocument = null;
                     this.hasMoreData = true;
+                    this.currentLimit = this.initialLimit;
 
                     // Update realtime listener
                     if (this.realtimeUnsubscribe) {
@@ -272,6 +274,7 @@
                 this.approvals = [];
                 this.lastDocument = null;
                 this.hasMoreData = true;
+                this.currentLimit = this.initialLimit;
 
                 // ✅ Map client-side filters to Firestore filters
                 // 'today' and 'auto_approved' are client-side only, so fetch 'all'
@@ -305,6 +308,9 @@
          */
         applyFiltersAndRender() {
             let filtered = [...this.approvals];
+
+            // ✅ Always exclude task_cancelled (critical for badge consistency)
+            filtered = filtered.filter(approval => approval.status !== 'task_cancelled');
 
             // ✅ Filter by "today" if selected
             if (this.currentFilter === 'today') {
@@ -466,6 +472,7 @@
                 this.approvals = [...this.approvals, ...result.approvals];
                 this.lastDocument = result.lastDocument;
                 this.hasMoreData = result.hasMore;
+                this.currentLimit += this.loadMoreIncrement; // Increase limit for realtime listener
 
                 // ✅ Update realtime listener to match new loaded count
                 if (this.realtimeUnsubscribe) {
@@ -595,10 +602,6 @@
                 this.taskApprovalService.init(window.firebaseDB, currentUser);
             }
 
-            // ✅ Calculate dynamic limit based on currently loaded approvals
-            // Listen to AT LEAST what we already loaded, or initialLimit if nothing loaded yet
-            const currentLoadedCount = this.approvals.length || this.initialLimit;
-
             // ✅ Map client-side filters to Firestore filters
             const firestoreFilter = ['today', 'auto_approved'].includes(this.currentFilter)
                 ? 'all'
@@ -606,16 +609,30 @@
 
             this.realtimeUnsubscribe = this.taskApprovalService.listenToAllApprovals(
                 (approvals) => {
-                    console.log(`🔥 Real-time update: ${approvals.length} approvals (limit: ${currentLoadedCount})`);
+                    console.log(`🔥 Real-time update: ${approvals.length} approvals (limit: ${this.currentLimit})`);
 
-                    // ✅ Only update if we got meaningful data
+                    // ✅ Merge strategy: Upsert by id to prevent overwriting paginated data
                     if (approvals.length > 0 || this.approvals.length === 0) {
-                        this.approvals = approvals;
+                        // Create map of existing approvals by id
+                        const approvalMap = new Map(this.approvals.map(a => [a.id, a]));
+
+                        // Upsert incoming approvals (update existing, add new)
+                        approvals.forEach(approval => {
+                            approvalMap.set(approval.id, approval);
+                        });
+
+                        // Convert back to array and sort by createdAt desc
+                        this.approvals = Array.from(approvalMap.values()).sort((a, b) => {
+                            const dateA = a.createdAt || a.requestedAt || 0;
+                            const dateB = b.createdAt || b.requestedAt || 0;
+                            return dateB - dateA;
+                        });
+
                         this.applyFiltersAndRender();
                     }
                 },
                 firestoreFilter,
-                currentLoadedCount // ✅ Pass dynamic limit
+                this.currentLimit // ✅ Use tracked cumulative limit
             );
         }
 
