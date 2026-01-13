@@ -388,6 +388,17 @@ return;
                         .where('createdAt', '>=', today)
                         .get();
 
+                    console.log('🔍 Badge debug:', {
+                        snapshotSize: snapshot.size,
+                        docs: snapshot.docs.map(d => ({
+                            id: d.id,
+                            status: d.data().status,
+                            taskId: d.data().taskId,
+                            createdAt: d.data().createdAt?.toDate?.()
+                        })),
+                        lastViewedAt
+                    });
+
                     // ספור רק משימות שנוצרו אחרי הצפייה האחרונה וסטטוס != task_cancelled
                     const unviewedCount = snapshot.docs.filter(doc => {
                         const data = doc.data();

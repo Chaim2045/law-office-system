@@ -154,13 +154,46 @@ async function runMigration(migrationName, mode = 'dryRun') {
 
     // Safety check for destructive operations
     if (mode === 'up' || mode === 'down') {
-      console.log('\n' + colorize('⚠️  WARNING: This operation will modify your database!', colors.yellow));
+      console.log('\n' + colorize('⚠️  WARNING: This operation will modify your PRODUCTION database!', colors.yellow));
+      console.log(colorize('⚠️  Project: law-office-system-e4801 (SINGLE PROJECT - NO DEV/PROD SPLIT)', colors.yellow));
       console.log(colorize('⚠️  Make sure you have a backup before proceeding!', colors.yellow));
 
-      const confirmed = await confirm('\nDo you want to continue?');
-      if (!confirmed) {
-        console.log(colorize('\n❌ Migration cancelled by user', colors.red));
-        process.exit(0);
+      // Special confirmation for migration 003 (backfill)
+      if (migrationName === '003_backfill_cancelled_task_approvals') {
+        console.log('\n' + colorize('═'.repeat(80), colors.red));
+        console.log(colorize('🚨 CRITICAL: PRODUCTION DATA MODIFICATION', colors.bright + colors.red));
+        console.log(colorize('═'.repeat(80), colors.red));
+        console.log(colorize('This migration will update pending_task_approvals records.', colors.red));
+        console.log(colorize('There is NO separate dev environment - this affects LIVE data.', colors.red));
+        console.log(colorize('═'.repeat(80), colors.red) + '\n');
+
+        const rl = require('readline').createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+
+        const answer = await new Promise(resolve => {
+          rl.question(
+            colorize('Type exactly: ', colors.yellow) +
+            colorize('RUN_BACKFILL_003_WITH_BACKUP', colors.bright + colors.red) +
+            colorize(' to continue: ', colors.yellow),
+            (ans) => {
+              rl.close();
+              resolve(ans);
+            }
+          );
+        });
+
+        if (answer !== 'RUN_BACKFILL_003_WITH_BACKUP') {
+          console.log(colorize('\n❌ Migration cancelled - confirmation phrase did not match', colors.red));
+          process.exit(0);
+        }
+      } else {
+        const confirmed = await confirm('\nDo you want to continue?');
+        if (!confirmed) {
+          console.log(colorize('\n❌ Migration cancelled by user', colors.red));
+          process.exit(0);
+        }
       }
     }
 
