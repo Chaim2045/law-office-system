@@ -306,6 +306,9 @@
         applyFiltersAndRender() {
             let filtered = [...this.approvals];
 
+            // ✅ NEW: Filter out cancelled tasks (always exclude, regardless of filter)
+            filtered = filtered.filter(approval => approval.status !== 'task_cancelled');
+
             // ✅ Filter by "today" if selected
             if (this.currentFilter === 'today') {
                 const today = new Date();

@@ -381,17 +381,29 @@ return;
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
-                    // קבל כל משימות autoApproved מהיום
+                    // קבל רק משימות auto_approved מהיום (לא task_cancelled)
                     const snapshot = await window.firebaseDB
                         .collection('pending_task_approvals')
-                        .where('autoApproved', '==', true)
+                        .where('status', '==', 'auto_approved')
                         .where('createdAt', '>=', today)
                         .get();
 
-                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה
+                    console.log('🔍 Badge debug:', {
+                        snapshotSize: snapshot.size,
+                        docs: snapshot.docs.map(d => ({
+                            id: d.id,
+                            status: d.data().status,
+                            taskId: d.data().taskId,
+                            createdAt: d.data().createdAt?.toDate?.()
+                        })),
+                        lastViewedAt
+                    });
+
+                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה וסטטוס != task_cancelled
                     const unviewedCount = snapshot.docs.filter(doc => {
-                        const createdAt = doc.data().createdAt?.toDate();
-                        return createdAt && createdAt > lastViewedAt;
+                        const data = doc.data();
+                        const createdAt = data.createdAt?.toDate();
+                        return createdAt && createdAt > lastViewedAt && data.status !== 'task_cancelled';
                     }).length;
 
                     this.updateApprovalCountBadge(unviewedCount);
@@ -427,7 +439,7 @@ return;
 
             this.approvalsCountUnsubscribe = window.firebaseDB
                 .collection('pending_task_approvals')
-                .where('autoApproved', '==', true)
+                .where('status', '==', 'auto_approved')
                 .where('createdAt', '>=', today)
                 .onSnapshot(
                     async () => {
