@@ -340,10 +340,10 @@
                 });
             }
 
-            // Sort by date (newest first)
+            // Sort by date (newest first) - prioritize createdAt
             filtered.sort((a, b) => {
-                const dateA = a.requestedAt?.toDate?.() || a.requestedAt || 0;
-                const dateB = b.requestedAt?.toDate?.() || b.requestedAt || 0;
+                const dateA = a.createdAt || a.requestedAt?.toDate?.() || a.requestedAt || 0;
+                const dateB = b.createdAt || b.requestedAt?.toDate?.() || b.requestedAt || 0;
                 return dateB - dateA;
             });
 
