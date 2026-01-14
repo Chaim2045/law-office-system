@@ -215,12 +215,13 @@ export class TaskApprovalService {
       query = query.where('status', '==', status);
     }
 
-    query = query.orderBy('requestedAt', 'desc').limit(limit);
+    query = query.orderBy('createdAt', 'desc').limit(limit);
 
     return query.onSnapshot(snapshot => {
       const approvals = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || null,
         requestedAt: doc.data().requestedAt?.toDate() || null,
         reviewedAt: doc.data().reviewedAt?.toDate() || null
       }));

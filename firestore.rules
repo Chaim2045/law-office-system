@@ -87,26 +87,18 @@ service cloud.firestore {
 
       allow create, delete: if false; // Only through Cloud Functions
 
-      // ✅ Update: Allow users to update their own lastLogin and loginCount
+      // ✅ Update: Allow users to update their own lastLogin, loginCount, and approvalsPanelLastViewed
       // Phone updates should be done through Cloud Functions
       allow update: if isAuthenticated() &&
                        employeeId == request.auth.token.email &&
                        request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['lastLogin', 'loginCount', 'phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt']);
+                         .hasOnly(['lastLogin', 'loginCount', 'phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt', 'approvalsPanelLastViewed']);
     }
 
     // ✅ Clients: READ for all authenticated, WRITE for admins only
     // Reason: Users need to see clients list to assign tasks
     // Security: Only admins can create/update/delete clients
     match /clients/{clientId} {
-      allow read: if isAuthenticated(); // ✅ All authenticated users can read
-      allow write: if isAdmin(); // ✅ Only admins can create/update/delete
-    }
-
-    // ✅ Services: READ for all authenticated, WRITE for admins only
-    // Reason: Users need to see services to select for phone calls and tasks
-    // Security: Only admins can create/update/delete services
-    match /services/{serviceId} {
       allow read: if isAuthenticated(); // ✅ All authenticated users can read
       allow write: if isAdmin(); // ✅ Only admins can create/update/delete
     }
