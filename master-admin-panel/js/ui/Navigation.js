@@ -386,17 +386,18 @@ return;
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
-                    // קבל כל משימות autoApproved מהיום
+                    // קבל רק משימות auto_approved מהיום (לא task_cancelled)
                     const snapshot = await window.firebaseDB
                         .collection('pending_task_approvals')
-                        .where('autoApproved', '==', true)
+                        .where('status', '==', 'auto_approved')
                         .where('createdAt', '>=', today)
                         .get();
 
-                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה
+                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה (ללא task_cancelled)
                     const unviewedCount = snapshot.docs.filter(doc => {
-                        const createdAt = doc.data().createdAt?.toDate();
-                        return createdAt && createdAt > lastViewedAt;
+                        const data = doc.data();
+                        const createdAt = data.createdAt?.toDate();
+                        return createdAt && createdAt > lastViewedAt && data.status !== 'task_cancelled';
                     }).length;
 
                     this.updateApprovalCountBadge(unviewedCount);

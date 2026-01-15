@@ -2588,6 +2588,30 @@ exports.cancelBudgetTask = functions.https.onCall(async (data, context) => {
     console.log(`✅ משימה בוטלה: ${data.taskId}`);
     console.log(`📝 סיבה: ${reason}`);
 
+    // ✅ NEW: Sync approval record to prevent cancelled tasks from showing in approval screen
+    try {
+      const approvalSnapshot = await db.collection('pending_task_approvals')
+        .where('taskId', '==', data.taskId)
+        .limit(1)
+        .get();
+
+      if (!approvalSnapshot.empty) {
+        const approvalDoc = approvalSnapshot.docs[0];
+        await approvalDoc.ref.update({
+          status: 'task_cancelled',
+          cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+          cancelledBy: user.username,
+          cancelledByEmail: user.email
+        });
+        console.log(`✅ רשומת אישור עודכנה: ${approvalDoc.id} → task_cancelled`);
+      } else {
+        console.warn(`⚠️ לא נמצאה רשומת אישור עבור משימה ${data.taskId} (אין צורך בעדכון)`);
+      }
+    } catch (approvalError) {
+      // Don't fail the cancellation if approval update fails
+      console.error(`❌ שגיאה בעדכון רשומת אישור (הביטול בוצע בהצלחה):`, approvalError);
+    }
+
     // Audit log
     await logAction('CANCEL_TASK', user.uid, user.username, {
       taskId: data.taskId,

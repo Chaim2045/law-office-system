@@ -151,6 +151,70 @@ node runner.js 001_fix_task_hours_minutes down
 
 Note: Rollback removes migration markers but doesn't restore incorrect values (since the fix is correct).
 
+### 002_add_original_estimate
+
+**Purpose**: Add original estimate and budget tracking fields to existing tasks.
+
+**Problem**:
+- Existing tasks don't have originalEstimate, originalDeadline
+- Missing budgetAdjustments and deadlineExtensions arrays
+- Can't track budget changes over time
+
+**Solution**:
+- Set originalEstimate = current estimatedMinutes
+- Set originalDeadline = current deadline
+- Initialize empty arrays for tracking changes
+
+**Dry-run**:
+```bash
+node runner.js 002_add_original_estimate dryRun
+```
+
+**Execute**:
+```bash
+node runner.js 002_add_original_estimate up
+```
+
+### 003_backfill_cancelled_task_approvals
+
+**Purpose**: Sync approval status for legacy cancelled tasks.
+
+**Problem**:
+- Tasks cancelled before 2026-01-12 (commit fd574e8) have:
+  - budget_tasks.status = 'בוטל' ✅
+  - pending_task_approvals.status = 'auto_approved' ❌ (not synced)
+- Admin panel shows cancelled tasks incorrectly
+- Badge counts cancelled tasks
+
+**Solution**:
+- Find all cancelled tasks (status='בוטל')
+- Update their approval records to status='task_cancelled'
+- Copy cancellation metadata from task
+- Add backfill audit trail
+
+**Dry-run** (safe, shows what would happen):
+```bash
+cd functions/migrations
+node runner.js 003_backfill_cancelled_task_approvals dryRun
+```
+
+**Execute** (after reviewing dry-run + creating backup):
+```bash
+node runner.js 003_backfill_cancelled_task_approvals up
+```
+
+**Rollback** (restore status='auto_approved'):
+```bash
+node runner.js 003_backfill_cancelled_task_approvals down
+```
+
+**Expected output:**
+- Scanned: All cancelled tasks
+- Matched: Approvals found for those tasks
+- Updated: Approvals changed to 'task_cancelled'
+- Skipped: Already synced approvals (from fd574e8 onward)
+- Not found: Tasks without approval records (pre-approval system)
+
 ## Creating New Migrations
 
 ### Step 1: Create Migration File
