@@ -176,7 +176,7 @@ export class TaskApprovalPanel {
                 <td class="task-desc">${approval.taskData.description}</td>
                 <td class="task-client">${approval.taskData.clientName}</td>
                 <td class="task-budget">${helpers.formatMinutesToHoursText(approval.taskData.estimatedMinutes)}</td>
-                <td class="task-time">${helpers.formatRelativeTime(approval.requestedAt)}</td>
+                <td class="task-time">${helpers.formatRelativeTime(approval.createdAt || approval.requestedAt)}</td>
                 <td><span class="task-status ${approval.status}">${helpers.getStatusText(approval.status)}</span></td>
               </tr>
             `).join('')}

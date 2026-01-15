@@ -514,7 +514,7 @@
                 ? '✅ אושר אוטומטית'
                 : this.getStatusText(approval.status);
             const minutes = approval.taskData?.estimatedMinutes || 0;
-            const timeAgo = this.formatRelativeTime(approval.requestedAt);
+            const timeAgo = this.formatRelativeTime(approval.createdAt || approval.requestedAt);
 
             return `
                 <div class="approval-card" data-id="${approval.id}" data-status="${approval.status}">
