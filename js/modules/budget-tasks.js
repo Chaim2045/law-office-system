@@ -784,6 +784,7 @@ export function createTableRow(task, options = {}) {
     deadlineHtml = window.SVGRings.createCompactDeadlineRing({
       daysRemaining: daysUntilDeadline,
       progress: deadlineProgress,
+      deadline: deadline,
       size: 52
     });
   } else {
