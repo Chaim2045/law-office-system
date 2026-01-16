@@ -356,6 +356,32 @@ return '';
                         </div>
                     </div>
 
+                    <!-- 🆕 SECONDARY QUICK METRICS - New Metrics Row -->
+                    <div class="quick-metrics-row secondary">
+                        <div class="quick-metric" title="אחוז ימי עבודה עם דיווח שעות החודש (כולל היום)">
+                            <i class="fas fa-calendar-check"></i>
+                            <div class="qm-value">${metrics.reportingConsistency !== undefined ? Math.round(metrics.reportingConsistency) : '-'}%</div>
+                            <div class="qm-label">דיווח</div>
+                        </div>
+                        <div class="quick-metric ${(metrics.next5DaysCoverage?.coverageGap || 0) > 0 ? 'coverage-alert' : ''}"
+                             title="כיסוי קיבולת ל-5 ימים הבאים: ${this.formatHours(metrics.next5DaysCoverage?.availableHours || 0)} זמין vs ${this.formatHours(metrics.next5DaysCoverage?.requiredHours || 0)} נדרש">
+                            <i class="fas fa-shield-alt"></i>
+                            <div class="qm-value">${metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) : '-'}%</div>
+                            <div class="qm-label">כיסוי</div>
+                        </div>
+                        <div class="quick-metric urgent" title="משימות באיחור + דחופות (עד 3 ימים)">
+                            <i class="fas fa-fire"></i>
+                            <div class="qm-value">${metrics.overduePlusDueSoon || 0}</div>
+                            <div class="qm-label">קריטי</div>
+                        </div>
+                        <div class="quick-metric ${(metrics.dailyBreakdown?.peakMultiplier || 0) >= 2 ? 'peak-alert' : ''}"
+                             title="כפולת עומס יום השיא (${this.formatHours(metrics.maxDailyLoad || 0)} ÷ ${this.formatHours(metrics.dailyHoursTarget || 8.45)})">
+                            <i class="fas fa-times"></i>
+                            <div class="qm-value">×${metrics.dailyBreakdown?.peakMultiplier || 0}</div>
+                            <div class="qm-label">שיא</div>
+                        </div>
+                    </div>
+
                     <!-- ══════ CRITICAL ALERTS - פתוח אוטומטית אם יש ══════ -->
                     ${hasCriticalAlerts ? this.renderCriticalAlertsSection(metrics.alerts) : ''}
 

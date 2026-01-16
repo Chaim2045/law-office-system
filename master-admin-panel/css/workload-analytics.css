@@ -1189,6 +1189,29 @@
     font-weight: 600;
 }
 
+/* 🆕 Secondary Quick Metrics Row - New Metrics */
+.quick-metrics-row.secondary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fafbfc;  /* Subtle background to differentiate from primary row */
+}
+
+.quick-metrics-row.secondary .quick-metric {
+    background: #fafbfc;
+}
+
+.quick-metrics-row.secondary .quick-metric:hover {
+    background: #f1f5f9;
+}
+
+/* Coverage alert - red when gap is positive (overloaded) */
+.quick-metric.coverage-alert .qm-value {
+    color: #ef4444;
+    font-weight: 700;
+}
+
 /* ─────────────────────────────────────────────────────────────
    v3.0: Critical Alerts Section (Compact & Minimal)
    ───────────────────────────────────────────────────────────── */

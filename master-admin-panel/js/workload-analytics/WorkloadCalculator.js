@@ -339,6 +339,19 @@
                 ? this.roundTo((hoursWorkedThisMonth / monthlyTarget) * 100, 1)
                 : 0;
 
+            // 🆕 Metric 1: Reporting Consistency %
+            // ספירת ימים ייחודיים עם דיווח timesheet
+            const uniqueDatesReported = new Set(timesheetEntries.map(e => e.date)).size;
+
+            // ספירת ימי עבודה שעברו החודש (לא כולל סופ"ש וחגים)
+            const workDaysPassed = this.workHoursCalculator
+                ? this.workHoursCalculator.getWorkDaysPassedThisMonth()
+                : Math.floor(now.getDate() * 0.7); // fallback: ~70% of days are workdays
+
+            const reportingConsistency = workDaysPassed > 0
+                ? this.roundTo((uniqueDatesReported / workDaysPassed) * 100, 1)
+                : 0;
+
             return {
                 dailyHoursTarget: this.roundTo(dailyTarget, 2),
                 hoursWorkedToday: this.roundTo(hoursWorkedToday, 2),
@@ -347,7 +360,8 @@
                 hoursWorkedThisMonth: this.roundTo(hoursWorkedThisMonth, 2),
                 monthlyTarget: this.roundTo(monthlyTarget, 2),
                 monthlyUtilization: monthlyUtil,
-                workDaysThisMonth
+                workDaysThisMonth,
+                reportingConsistency  // 🆕 NEW METRIC
             };
         }
 
@@ -395,12 +409,16 @@ return;
                 (tasksWithin7days * this.constants.URGENCY.WITHIN_7DAYS_SCORE)
             );
 
+            // 🆕 Metric 3: Overdue + DueSoon (critical tasks count)
+            const overduePlusDueSoon = overdueTasksCount + tasksWithin3days;
+
             return {
                 urgencyScore: Math.round(urgencyScore),
                 tasksWithin24h,
                 tasksWithin3days,
                 tasksWithin7days,
-                overdueTasksCount
+                overdueTasksCount,
+                overduePlusDueSoon  // 🆕 NEW METRIC
             };
         }
 
@@ -632,9 +650,27 @@ return;
             // חישוב זמינות אמיתית
             const availability = this.calculateRealAvailableHours(dailyLoads, dailyTarget, 5);
 
+            // 🆕 Metric 2: Coverage Next 5 Business Days
+            // חישוב סה"כ שעות נדרשות ב-5 ימים הקרובים
+            let totalRequiredNext5 = 0;
+            for (let i = 0; i < 5; i++) {
+                const date = new Date(now);
+                date.setDate(date.getDate() + i);
+                const dateKey = this.dateToString(date);
+                totalRequiredNext5 += dailyLoads[dateKey] || 0;
+            }
+
+            const next5DaysCoverage = {
+                requiredHours: this.roundTo(totalRequiredNext5, 1),
+                availableHours: availability.totalAvailableHours,
+                coverageGap: this.roundTo(totalRequiredNext5 - availability.totalAvailableHours, 1),
+                coverageRatio: this.roundTo((availability.totalAvailableHours / (5 * dailyTarget)) * 100, 1)
+            };
+
             return {
                 ...capacityAnalysis,
-                ...availability
+                ...availability,
+                next5DaysCoverage  // 🆕 NEW METRIC
             };
         }
 
@@ -721,12 +757,18 @@ tasksByDay[dateKey] = [];
                 tasksByDay[day].sort((a, b) => b.hoursForThisDay - a.hoursForThisDay);
             });
 
+            // 🆕 Metric 4: Peak Multiplier (peak load / daily target)
+            const peakMultiplier = dailyTarget > 0
+                ? this.roundTo(peakDayLoad / dailyTarget, 2)
+                : 0;
+
             return {
                 dailyLoads,           // { '2026-01-02': 19.0, ... }
                 tasksByDay,           // { '2026-01-02': [{ task, hoursForThisDay }, ...] }
                 peakDay,              // '2026-01-02'
                 peakDayLoad: this.roundTo(peakDayLoad, 1),  // 19.0
-                dailyTarget           // 8.45 (or custom)
+                dailyTarget,          // 8.45 (or custom)
+                peakMultiplier        // 🆕 NEW METRIC (e.g. 2.25 = 225% of target)
             };
         }
 
