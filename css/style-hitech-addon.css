@@ -377,6 +377,17 @@
   color: #1f2937;
 }
 
+.svg-ring-overdue-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 4px 10px;
+  border-radius: 12px;
+  margin-top: 6px;
+  display: inline-block;
+}
+
 /* Action button מתחת לרינג */
 .svg-ring-action-btn {
   display: inline-flex;

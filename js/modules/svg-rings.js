@@ -222,6 +222,7 @@
    * @param {Object} config - Configuration object
    * @param {number} config.daysRemaining - Days until deadline (can be negative for overdue)
    * @param {number} config.progress - Progress percentage (0-100)
+   * @param {Date} [config.deadline] - Deadline date object (for displaying full date)
    * @param {string} [config.size=52] - Ring size in pixels
    * @returns {string} - Compact ring HTML
    */
@@ -229,6 +230,7 @@
     const {
       daysRemaining,
       progress,
+      deadline,
       size = 52
     } = config;
 
@@ -280,6 +282,15 @@
     const gradientId = `compact-ring-${Math.random().toString(36).substr(2, 9)}`;
     const displayDays = Math.abs(daysRemaining);
 
+    // פורמט תאריך מלא DD.MM.YYYY (אם deadline קיים)
+    let fullDateStr = '';
+    if (deadline) {
+      const day = String(deadline.getDate()).padStart(2, '0');
+      const month = String(deadline.getMonth() + 1).padStart(2, '0');
+      const year = deadline.getFullYear();
+      fullDateStr = `${day}.${month}.${year}`;
+    }
+
     return `
       <div class="compact-deadline-ring">
         <svg width="${size}" height="${size}" viewBox="0 0 60 60" class="compact-svg-ring">
@@ -329,8 +340,10 @@
             ${displayDays}
           </text>
         </svg>
-        <!-- "ימים" label below ring -->
-        <div class="compact-ring-label-below" style="color: ${colorScheme.text};">ימים</div>
+        <!-- תאריך מלא (שורה ראשונה) -->
+        ${fullDateStr ? `<div class="compact-ring-date" style="color: ${colorScheme.text};">${fullDateStr}</div>` : ''}
+        <!-- "X ימים" label (שורה שנייה) -->
+        <div class="compact-ring-label-below" style="color: ${colorScheme.text};">${displayDays} ימים</div>
         ${isOverdue ? '<div class="compact-ring-status">איחור!</div>' : ''}
       </div>
     `;
@@ -431,22 +444,14 @@
     const circumference = 2 * Math.PI * radius;
     const gradientId = `deadline-gradient-${Math.random().toString(36).substr(2, 9)}`;
 
-    // פורמט תאריך קומפקטי
-    const day = deadline.getDate();
-    const month = deadline.getMonth() + 1;
-    const dateStr = `${day}.${month}`;
+    // מספר הימים (יוצג במרכז העיגול)
+    const displayDays = Math.abs(daysRemaining);
 
-    // טקסט מתחת לטבעת
-    let bottomText;
-    if (isOverdue) {
-      bottomText = absDays === 1 ? 'איחור יום' : `איחור ${absDays} ימים`;
-    } else if (daysRemaining === 0) {
-      bottomText = 'היום!';
-    } else if (daysRemaining === 1) {
-      bottomText = 'יום אחד';
-    } else {
-      bottomText = `${daysRemaining} ימים`;
-    }
+    // פורמט תאריך מלא DD.MM.YYYY (יוצג מתחת לעיגול)
+    const day = String(deadline.getDate()).padStart(2, '0');
+    const month = String(deadline.getMonth() + 1).padStart(2, '0');
+    const year = deadline.getFullYear();
+    const fullDateStr = `${day}.${month}.${year}`;
 
     return `
       <div class="svg-ring-container">
@@ -485,16 +490,17 @@
               </linearGradient>
             </defs>
 
-            <!-- Center content: Compact date (gray text) -->
+            <!-- Center content: Number of days -->
             <text
               x="40"
               y="40"
               text-anchor="middle"
               dominant-baseline="central"
-              font-size="16"
-              font-weight="700"
-              fill="#6b7280">
-              ${dateStr}
+              font-size="20"
+              font-weight="400"
+              fill="#6b7280"
+              opacity="0.85">
+              ${displayDays}
             </text>
           </svg>
         </div>
@@ -502,7 +508,8 @@
         <!-- Label and value -->
         <div class="svg-ring-info">
           <div class="svg-ring-label">תאריך יעד</div>
-          <div class="svg-ring-value">${bottomText}</div>
+          <div class="svg-ring-value">${fullDateStr}</div>
+          ${isOverdue ? `<div class="svg-ring-overdue-badge">איחור ${displayDays} ימים</div>` : ''}
         </div>
 
         <!-- Action button (if provided) -->
