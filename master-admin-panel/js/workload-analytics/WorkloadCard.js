@@ -366,7 +366,7 @@ return '';
                         <div class="quick-metric ${(metrics.next5DaysCoverage?.coverageGap || 0) > 0 ? 'coverage-alert' : ''}"
                              title="כיסוי קיבולת ל-5 ימים הבאים: ${this.formatHours(metrics.next5DaysCoverage?.availableHours || 0)} זמין vs ${this.formatHours(metrics.next5DaysCoverage?.requiredHours || 0)} נדרש">
                             <i class="fas fa-shield-alt"></i>
-                            <div class="qm-value">${metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) : '-'}%</div>
+                            <div class="qm-value">${metrics.next5DaysCoverage?.coverageRatio !== null && metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) + '%' : '—'}</div>
                             <div class="qm-label">כיסוי</div>
                         </div>
                         <div class="quick-metric urgent" title="משימות באיחור + דחופות (עד 3 ימים)">

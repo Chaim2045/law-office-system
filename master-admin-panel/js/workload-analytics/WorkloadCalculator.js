@@ -169,6 +169,21 @@
         calculateWorkload(employee, tasks, timesheetEntries) {
             const now = new Date();
 
+            // 🐛 DEBUG: Log inputs for first employee with tasks
+            if (tasks.length > 0 && !window._workloadDebugLogged) {
+                console.log('🐛 [WORKLOAD DEBUG] Employee:', employee.email);
+                console.log('🐛 [WORKLOAD DEBUG] Total tasks received:', tasks.length);
+                console.log('🐛 [WORKLOAD DEBUG] First 3 tasks:', tasks.slice(0, 3).map(t => ({
+                    status: t.status,
+                    estimatedMinutes: t.estimatedMinutes,
+                    actualMinutes: t.actualMinutes,
+                    deadline: t.deadline,
+                    remainingMinutes: (t.estimatedMinutes || 0) - (t.actualMinutes || 0)
+                })));
+                console.log('🐛 [WORKLOAD DEBUG] Timesheet entries count:', timesheetEntries.length);
+                window._workloadDebugLogged = true; // Log only once
+            }
+
             // ═══ חלק 1: מדדים בסיסיים ═══
             const basicMetrics = this.calculateBasicMetrics(tasks);
 
@@ -224,6 +239,17 @@
 
             // ═══ v2.1: פירוט מפורט של עומס יומי ═══
             const dailyBreakdown = this.calculateDailyTaskBreakdown(tasks, employee, now);
+
+            // 🐛 DEBUG: Log final workload scores
+            if (tasks.length > 0 && !window._workloadScoreDebugLogged) {
+                console.log('🐛 [WORKLOAD SCORE DEBUG]');
+                console.log('  workloadScore:', workloadScore.score);
+                console.log('  workloadLevel:', workloadScore.level);
+                console.log('  maxDailyLoad:', dailyLoadAnalysis.maxDailyLoad);
+                console.log('  dailyBreakdown.peakDayLoad:', dailyBreakdown.peakDayLoad);
+                console.log('  dailyBreakdown.peakMultiplier:', dailyBreakdown.peakMultiplier);
+                window._workloadScoreDebugLogged = true;
+            }
 
             return {
                 // Metadata
@@ -349,8 +375,17 @@
                 : Math.floor(now.getDate() * 0.7); // fallback: ~70% of days are workdays
 
             const reportingConsistency = workDaysPassed > 0
-                ? this.roundTo((uniqueDatesReported / workDaysPassed) * 100, 1)
+                ? Math.min(100, this.roundTo((uniqueDatesReported / workDaysPassed) * 100, 1))
                 : 0;
+
+            // 🐛 DEBUG: Log reporting consistency calculation
+            if (!window._reportingDebugLogged) {
+                console.log('🐛 [REPORTING CONSISTENCY DEBUG]');
+                console.log('  uniqueDatesReported:', uniqueDatesReported);
+                console.log('  workDaysPassed:', workDaysPassed);
+                console.log('  reportingConsistency:', reportingConsistency);
+                window._reportingDebugLogged = true;
+            }
 
             return {
                 dailyHoursTarget: this.roundTo(dailyTarget, 2),
@@ -664,8 +699,20 @@ return;
                 requiredHours: this.roundTo(totalRequiredNext5, 1),
                 availableHours: availability.totalAvailableHours,
                 coverageGap: this.roundTo(totalRequiredNext5 - availability.totalAvailableHours, 1),
-                coverageRatio: this.roundTo((availability.totalAvailableHours / (5 * dailyTarget)) * 100, 1)
+                coverageRatio: totalRequiredNext5 > 0
+                    ? this.roundTo((availability.totalAvailableHours / (5 * dailyTarget)) * 100, 1)
+                    : null  // Return null if no tasks, UI will show "—"
             };
+
+            // 🐛 DEBUG: Log coverage calculation
+            if (!window._coverageDebugLogged) {
+                console.log('🐛 [COVERAGE DEBUG]');
+                console.log('  dailyLoads keys:', Object.keys(dailyLoads).length);
+                console.log('  totalRequiredNext5:', totalRequiredNext5);
+                console.log('  availableHours:', availability.totalAvailableHours);
+                console.log('  coverageRatio:', next5DaysCoverage.coverageRatio);
+                window._coverageDebugLogged = true;
+            }
 
             return {
                 ...capacityAnalysis,
@@ -761,6 +808,18 @@ tasksByDay[dateKey] = [];
             const peakMultiplier = dailyTarget > 0
                 ? this.roundTo(peakDayLoad / dailyTarget, 2)
                 : 0;
+
+            // 🐛 DEBUG: Log peak day calculation
+            if (!window._peakDebugLogged) {
+                console.log('🐛 [PEAK DAY DEBUG]');
+                console.log('  dailyLoads keys count:', Object.keys(dailyLoads).length);
+                console.log('  peakDay:', peakDay);
+                console.log('  peakDayLoad:', peakDayLoad);
+                console.log('  dailyTarget:', dailyTarget);
+                console.log('  peakMultiplier:', peakMultiplier);
+                console.log('  dailyLoads sample:', Object.entries(dailyLoads).slice(0, 3));
+                window._peakDebugLogged = true;
+            }
 
             return {
                 dailyLoads,           // { '2026-01-02': 19.0, ... }
