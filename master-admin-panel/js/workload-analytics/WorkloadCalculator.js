@@ -181,6 +181,20 @@
                     remainingMinutes: (t.estimatedMinutes || 0) - (t.actualMinutes || 0)
                 })));
                 console.log('🐛 [WORKLOAD DEBUG] Timesheet entries count:', timesheetEntries.length);
+
+                // 🐛 DEBUG: Detailed deadline inspection for first task
+                const firstTask = tasks[0];
+                if (firstTask) {
+                    console.log('🐛 [TASK DEBUG]', {
+                        employee: employee.email,
+                        status: firstTask.status,
+                        deadlineRaw: firstTask.deadline,
+                        deadlineType: typeof firstTask.deadline,
+                        estimatedMinutes: firstTask.estimatedMinutes,
+                        actualMinutes: firstTask.actualMinutes
+                    });
+                }
+
                 window._workloadDebugLogged = true; // Log only once
             }
 
@@ -1143,21 +1157,47 @@ return;
 return null;
 }
 
+            // 🐛 DEBUG: Log first deadline parse attempt
+            if (!window._deadlineParseLogged) {
+                console.log('🐛 [DEADLINE PARSE]', {
+                    deadlineRaw: deadline,
+                    type: typeof deadline,
+                    hasToDate: !!(deadline.toDate),
+                    isDate: deadline instanceof Date
+                });
+                window._deadlineParseLogged = true;
+            }
+
             // Firestore Timestamp
             if (deadline.toDate && typeof deadline.toDate === 'function') {
-                return deadline.toDate();
+                const parsed = deadline.toDate();
+                if (!window._deadlineParseLogged2) {
+                    console.log('🐛 [DEADLINE PARSED] Firestore Timestamp →', parsed);
+                    window._deadlineParseLogged2 = true;
+                }
+                return parsed;
             }
 
             // String
             if (typeof deadline === 'string') {
-                return new Date(deadline);
+                const parsed = new Date(deadline);
+                if (!window._deadlineParseLogged2) {
+                    console.log('🐛 [DEADLINE PARSED] String →', parsed);
+                    window._deadlineParseLogged2 = true;
+                }
+                return parsed;
             }
 
             // כבר Date object
             if (deadline instanceof Date) {
+                if (!window._deadlineParseLogged2) {
+                    console.log('🐛 [DEADLINE PARSED] Already Date →', deadline);
+                    window._deadlineParseLogged2 = true;
+                }
                 return deadline;
             }
 
+            console.log('🐛 [DEADLINE PARSE FAILED] Unknown type:', typeof deadline);
             return null;
         }
 
