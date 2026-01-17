@@ -190,29 +190,30 @@
         calculateWorkload(employee, tasks, timesheetEntries) {
             const now = new Date();
 
-            // 🐛 DEBUG: Log inputs for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && tasks.length > 0 && !window._workloadDebugLogged) {
+            // 🐛 DEBUG: Helper for targeted debug logging
+            const DEBUG_EMAILS = new Set([
+                'marva@ghlawoffice.co.il',
+                'uzi@ghlawoffice.co.il'
+            ]);
+            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
+
+            // 🐛 DEBUG: Log inputs for targeted employees only
+            if (shouldDebug(employee.email) && tasks.length > 0 && !window._workloadDebugLogged) {
                 console.log('🐛 [WORKLOAD DEBUG] Employee:', employee.email);
                 console.log('🐛 [WORKLOAD DEBUG] Total tasks received:', tasks.length);
-                console.log('🐛 [WORKLOAD DEBUG] First 3 tasks:', tasks.slice(0, 3).map(t => ({
-                    status: t.status,
-                    estimatedMinutes: t.estimatedMinutes,
-                    actualMinutes: t.actualMinutes,
-                    deadline: t.deadline,
-                    remainingMinutes: (t.estimatedMinutes || 0) - (t.actualMinutes || 0)
-                })));
                 console.log('🐛 [WORKLOAD DEBUG] Timesheet entries count:', timesheetEntries.length);
 
-                // 🐛 DEBUG: Detailed deadline inspection for first task
-                const firstTask = tasks[0];
-                if (firstTask) {
+                // 🐛 [TASK DEBUG] - First task only, minimal output
+                const t = tasks[0];
+                if (t) {
                     console.log('🐛 [TASK DEBUG]', {
                         employee: employee.email,
-                        status: firstTask.status,
-                        deadlineRaw: firstTask.deadline,
-                        deadlineType: typeof firstTask.deadline,
-                        estimatedMinutes: firstTask.estimatedMinutes,
-                        actualMinutes: firstTask.actualMinutes
+                        status: t.status,
+                        estimatedMinutes: t.estimatedMinutes,
+                        actualMinutes: t.actualMinutes,
+                        remainingMinutes: (t.estimatedMinutes || 0) - (t.actualMinutes || 0),
+                        deadlineType: typeof t.deadline,
+                        deadlineKeys: t.deadline && typeof t.deadline === 'object' ? Object.keys(t.deadline) : null
                     });
                 }
 
@@ -275,8 +276,8 @@
             // ═══ v2.1: פירוט מפורט של עומס יומי ═══
             const dailyBreakdown = this.calculateDailyTaskBreakdown(tasks, employee, now);
 
-            // 🐛 DEBUG: Log final workload scores for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && tasks.length > 0 && !window._workloadScoreDebugLogged) {
+            // 🐛 DEBUG: Log final workload scores for targeted employees only
+            if (shouldDebug(employee.email) && tasks.length > 0 && !window._workloadScoreDebugLogged) {
                 console.log('🐛 [WORKLOAD SCORE DEBUG]');
                 console.log('  workloadScore:', workloadScore.score);
                 console.log('  workloadLevel:', workloadScore.level);
@@ -370,6 +371,10 @@
         calculateCapacityMetrics(employee, timesheetEntries, now) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
+            // 🐛 DEBUG: Helper for targeted debug logging
+            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
+            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
+
             // שעות היום
             const todayStr = this.dateToString(now);
             const todayEntries = timesheetEntries.filter(e => e.date === todayStr);
@@ -414,8 +419,8 @@
                 ? Math.min(100, this.roundTo((uniqueDatesReported / workDaysPassed) * 100, 1))
                 : 0;
 
-            // 🐛 DEBUG: Log reporting consistency calculation for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && !window._reportingDebugLogged) {
+            // 🐛 DEBUG: Log reporting consistency calculation for targeted employees only
+            if (shouldDebug(employee.email) && !window._reportingDebugLogged) {
                 console.log('🐛 [REPORTING CONSISTENCY DEBUG]');
                 console.log('  uniqueDatesReported:', uniqueDatesReported);
                 console.log('  workDaysPassed:', workDaysPassed);
@@ -502,8 +507,12 @@ return;
         calculateWorkloadScore(basicMetrics, capacityMetrics, urgencyMetrics, employee) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
-            // 🐛 DEBUG: Log inputs for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && !window._workloadScoreInputsLogged) {
+            // 🐛 DEBUG: Helper for targeted debug logging
+            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
+            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
+
+            // 🐛 DEBUG: Log inputs for targeted employees only
+            if (shouldDebug(employee.email) && !window._workloadScoreInputsLogged) {
                 console.log('🐛 [WORKLOAD SCORE INPUTS]');
                 console.log('  activeTasksCount:', basicMetrics.activeTasksCount);
                 console.log('  totalBacklogHours:', basicMetrics.totalBacklogHours);
@@ -538,8 +547,8 @@ return;
                 ? 0
                 : Math.min(100, capacityMetrics.monthlyUtilization);
 
-            // 🐛 DEBUG: Log normalized components for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && !window._workloadScoreNormalizedLogged) {
+            // 🐛 DEBUG: Log normalized components for targeted employees only
+            if (shouldDebug(employee.email) && !window._workloadScoreNormalizedLogged) {
                 console.log('🐛 [WORKLOAD SCORE NORMALIZED]');
                 console.log('  normalizedBacklog:', normalizedBacklog);
                 console.log('  normalizedUrgency:', normalizedUrgency);
@@ -570,12 +579,12 @@ return;
             const hasWorkload = basicMetrics.totalBacklogHours > 0 ||
                                basicMetrics.activeTasksCount > 0 ||
                                urgencyMetrics.urgencyScore > 0;
-            if (hasWorkload && score === 0 && employee.email === 'haim@ghlawoffice.co.il') {
+            if (hasWorkload && score === 0 && shouldDebug(employee.email)) {
                 console.warn('⚠️ WorkloadCalculator: Workload exists but score is 0. Check weights:', this.WEIGHTS);
             }
 
-            // 🐛 DEBUG: Log final score calculation for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && !window._workloadScoreFinalLogged) {
+            // 🐛 DEBUG: Log final score calculation for targeted employees only
+            if (shouldDebug(employee.email) && !window._workloadScoreFinalLogged) {
                 console.log('🐛 [WORKLOAD SCORE FINAL]');
                 console.log('  rawScore (before rounding):', rawScore);
                 console.log('  score (after rounding):', score);
@@ -827,6 +836,10 @@ return;
         calculateDailyLoadAnalysis(tasks, employee, now) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
+            // 🐛 DEBUG: Helper for targeted debug logging
+            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
+            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
+
             // חישוב עומס יומי נדרש
             const dailyLoads = this.calculateDailyTaskLoad(tasks, now);
 
@@ -856,8 +869,8 @@ return;
                     : null  // Return null if no tasks, UI will show "—"
             };
 
-            // 🐛 DEBUG: Log coverage calculation for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && !window._coverageDebugLogged) {
+            // 🐛 DEBUG: Log coverage calculation for targeted employees only
+            if (shouldDebug(employee.email) && !window._coverageDebugLogged) {
                 console.log('🐛 [COVERAGE DEBUG]');
                 console.log('  dailyLoads keys:', Object.keys(dailyLoads).length);
                 console.log('  totalRequiredNext5:', totalRequiredNext5);
@@ -882,6 +895,11 @@ return;
          */
         calculateDailyTaskBreakdown(tasks, employee, now) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
+
+            // 🐛 DEBUG: Helper for targeted debug logging
+            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
+            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
+
             const dailyLoads = {}; // { 'YYYY-MM-DD': totalHours }
             const tasksByDay = {}; // { 'YYYY-MM-DD': [{ task, hoursForThisDay }] }
 
@@ -996,8 +1014,8 @@ tasksByDay[dateKey] = [];
                 ? this.roundTo(peakDayLoad / dailyTarget, 2)
                 : 0;
 
-            // 🐛 DEBUG: Log peak day calculation for haim@ghlawoffice.co.il only
-            if (employee.email === 'haim@ghlawoffice.co.il' && !window._peakDebugLogged) {
+            // 🐛 DEBUG: Log peak day calculation for targeted employees only
+            if (shouldDebug(employee.email) && !window._peakDebugLogged) {
                 console.log('🐛 [PEAK DAY DEBUG]');
                 console.log('  dailyLoads keys count:', Object.keys(dailyLoads).length);
                 console.log('  peakDay:', peakDay);
