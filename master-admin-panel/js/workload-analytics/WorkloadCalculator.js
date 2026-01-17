@@ -276,6 +276,16 @@
             // ═══ v2.1: פירוט מפורט של עומס יומי ═══
             const dailyBreakdown = this.calculateDailyTaskBreakdown(tasks, employee, now);
 
+            // ═══ Manager Trust Metrics ═══
+            const dataConfidence = this.calculateDataConfidence(capacityMetrics);
+            const managerRisk = this.calculateManagerRisk(
+                dailyLoadAnalysis.next5DaysCoverage,
+                dailyBreakdown.peakMultiplier,
+                dailyBreakdown.peakDayLoad,
+                employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS,
+                urgencyMetrics
+            );
+
             // 🐛 DEBUG: Log final workload scores for targeted employees only
             if (shouldDebug(employee.email) && tasks.length > 0 && !window._workloadScoreDebugLogged) {
                 console.log('🐛 [WORKLOAD SCORE DEBUG]');
@@ -284,6 +294,8 @@
                 console.log('  maxDailyLoad:', dailyLoadAnalysis.maxDailyLoad);
                 console.log('  dailyBreakdown.peakDayLoad:', dailyBreakdown.peakDayLoad);
                 console.log('  dailyBreakdown.peakMultiplier:', dailyBreakdown.peakMultiplier);
+                console.log('  dataConfidence:', dataConfidence);
+                console.log('  managerRisk:', managerRisk);
                 window._workloadScoreDebugLogged = true;
             }
 
@@ -298,6 +310,10 @@
                 effectiveCapacity,
                 weightedBacklog,
                 staleTasks,
+
+                // 🆕 Manager Trust Metrics
+                dataConfidence,
+                managerRisk,
 
                 // Raw metrics
                 ...basicMetrics,
@@ -618,6 +634,122 @@ return;
                     taskCountScore: Math.round(taskCountComponent),
                     capacityScore: Math.round(capacityComponent)
                 }
+            };
+        }
+
+        /**
+         * חישוב אמינות נתונים (Data Confidence)
+         * @param {Object} capacityMetrics - מדדי קיבולת
+         * @returns {Object} אמינות נתונים
+         */
+        calculateDataConfidence(capacityMetrics) {
+            const reportingConsistency = capacityMetrics.reportingConsistency || 0;
+            const uniqueDatesReported = capacityMetrics.reportingDays || 0;
+            const workDaysPassed = capacityMetrics.workDaysPassed || 0;
+
+            // Score = reporting consistency (0-100)
+            const score = Math.max(0, Math.min(100, reportingConsistency));
+
+            // Level based on thresholds
+            let level;
+            if (score >= 70) {
+                level = 'high';
+            } else if (score >= 30) {
+                level = 'medium';
+            } else {
+                level = 'low';
+            }
+
+            // Reasons for low confidence
+            const reasons = [];
+            if (score < 30) {
+                reasons.push('דיווח שעות נמוך — הנתונים פחות אמינים');
+            }
+            if (uniqueDatesReported > workDaysPassed + 2) {
+                reasons.push('דיווחים מחוץ לימי עבודה/כפילויות — בדוק איכות נתונים');
+            }
+
+            return {
+                score: this.roundTo(score, 1),
+                level,
+                reasons
+            };
+        }
+
+        /**
+         * חישוב סיכון ניהולי (Manager Risk)
+         * @param {Object} next5DaysCoverage - כיסוי עומס 5 ימים
+         * @param {number} peakMultiplier - מכפיל יום שיא
+         * @param {number} peakDayLoad - עומס יום שיא
+         * @param {number} dailyTarget - יעד יומי
+         * @param {Object} urgencyMetrics - מדדי דחיפות
+         * @returns {Object} סיכון ניהולי
+         */
+        calculateManagerRisk(next5DaysCoverage, peakMultiplier, peakDayLoad, dailyTarget, urgencyMetrics) {
+            const requiredHours = next5DaysCoverage?.requiredHours || 0;
+            const availableHours = next5DaysCoverage?.availableHours || 0;
+            const coverageRatio = next5DaysCoverage?.coverageRatio || null;
+            const gapHours = next5DaysCoverage?.coverageGap || 0;
+
+            // Component 1: Coverage Risk
+            let coverageRisk = 0;
+            if (requiredHours > 0 && coverageRatio !== null && coverageRatio < 100) {
+                coverageRisk = Math.max(0, Math.min(100, (gapHours / Math.max(1, dailyTarget * 5)) * 100));
+            }
+
+            // Component 2: Peak Risk
+            let peakRisk = 0;
+            if (peakMultiplier > 1.09) {
+                if (peakMultiplier >= 1.5) {
+                    peakRisk = 80;
+                } else if (peakMultiplier >= 1.10) {
+                    peakRisk = 50;
+                }
+            }
+
+            // Component 3: Critical Risk
+            const criticalCount = urgencyMetrics.overduePlusDueSoon ||
+                                 (urgencyMetrics.overdueTasksCount || 0) + (urgencyMetrics.tasksWithin3days || 0);
+            let criticalRisk = 0;
+            if (criticalCount >= 6) {
+                criticalRisk = 90;
+            } else if (criticalCount >= 3) {
+                criticalRisk = 70;
+            } else if (criticalCount >= 1) {
+                criticalRisk = 40;
+            }
+
+            // Final score = max of all components
+            const score = Math.max(coverageRisk, peakRisk, criticalRisk);
+
+            // Level based on score
+            let level;
+            if (score >= 80) {
+                level = 'critical';
+            } else if (score >= 60) {
+                level = 'high';
+            } else if (score >= 30) {
+                level = 'medium';
+            } else {
+                level = 'low';
+            }
+
+            // Reasons (max 2, ordered by severity)
+            const reasons = [];
+            if (coverageRatio !== null && coverageRatio < 100 && requiredHours > 0 && gapHours > 0) {
+                reasons.push(`בסיכון: חסרות ${this.roundTo(gapHours, 1)} ש׳ ל־5 ימי עבודה`);
+            }
+            if (peakMultiplier >= 1.2 && reasons.length < 2) {
+                reasons.push(`עומס נקודתי: יום שיא ×${this.roundTo(peakMultiplier, 2)}`);
+            }
+            if (criticalCount > 0 && reasons.length < 2) {
+                reasons.push(`קריטי: ${criticalCount} משימות (איחור/דדליין קרוב)`);
+            }
+
+            return {
+                score: this.roundTo(score, 1),
+                level,
+                reasons
             };
         }
 
