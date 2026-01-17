@@ -322,26 +322,47 @@ return '';
         }
 
         /**
-         * Manager "Why" Row - Shows first reason if risk is not low
+         * Manager Insight Row - Modern, clean information display
          */
-        renderManagerWhyRow(metrics) {
+        renderManagerInsightRow(metrics) {
             const riskLevel = metrics.managerRisk?.level || 'low';
             const reasons = metrics.managerRisk?.reasons || [];
             const confidenceLow = metrics.dataConfidence?.level === 'low';
 
+            // Only show if there's something important to communicate
             if (riskLevel === 'low' && !confidenceLow) {
                 return '';
             }
 
             const firstReason = reasons[0] || '';
-            const confidenceSuffix = confidenceLow ? ' (אמינות נמוכה)' : '';
 
-            return `
-                <div class="manager-why-row" data-risk="${riskLevel}">
-                    <i class="fas fa-info-circle"></i>
-                    <span>${firstReason}${confidenceSuffix}</span>
-                </div>
-            `;
+            // If confidence is low, show that as priority
+            if (confidenceLow) {
+                const confidenceReasons = metrics.dataConfidence?.reasons || [];
+                const confidenceText = confidenceReasons[0] || 'דיווח שעות נמוך — הנתונים פחות אמינים';
+                return `
+                    <div class="manager-insight-row" data-level="warning">
+                        <svg class="insight-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="insight-text">${confidenceText}</span>
+                    </div>
+                `;
+            }
+
+            // Show risk reason
+            if (firstReason) {
+                return `
+                    <div class="manager-insight-row" data-level="${riskLevel}">
+                        <svg class="insight-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="insight-text">${firstReason}</span>
+                    </div>
+                `;
+            }
+
+            return '';
         }
 
         /**
@@ -392,109 +413,110 @@ return 'reporting-medium';
         }
 
         /**
-         * v3.0: רינדור כרטיס עובד בודד - ארכיטקטורה קטגורית
+         * v4.1: רינדור כרטיס עובד בודד - Modern Dashboard Design
          */
         renderEmployeeCard(employee, metrics) {
-            // v3.0: Minimal colors - רק אפור + אדום לקריטי
-            const levelColors = {
-                low: { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' },
-                medium: { bg: '#e2e8f0', text: '#475569', border: '#cbd5e1' },
-                high: { bg: '#cbd5e1', text: '#1e293b', border: '#94a3b8' },
-                critical: { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' },
-                unknown: { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' }
-            };
-
-            const color = levelColors[metrics.workloadLevel];
-            const levelLabels = {
-                low: 'זמין',
-                medium: 'בינוני',
-                high: 'עמוס',
-                critical: 'קריטי',
-                unknown: 'לא ידוע'
-            };
-
-            // Manager Risk colors and labels
-            const riskColors = {
-                low: { bg: '#f1f5f9', text: '#059669', border: '#e2e8f0' },
-                medium: { bg: '#fef3c7', text: '#d97706', border: '#fbbf24' },
-                high: { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' },
-                critical: { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' }
-            };
-
-            const riskLabels = {
+            // Status determination: use managerRisk if available, else workload
+            const primaryStatus = metrics.managerRisk?.level || metrics.workloadLevel;
+            const statusLabels = {
                 low: 'תקין',
                 medium: 'במעקב',
-                high: 'בסיכון',
+                high: 'דורש תשומת לב',
                 critical: 'קריטי'
             };
 
-            const riskColor = riskColors[metrics.managerRisk?.level || 'low'];
-
             return `
-                <div class="employee-workload-card manager-summary" data-level="${metrics.workloadLevel}" data-risk="${metrics.managerRisk?.level || 'low'}">
-                    <!-- ══════ HEADER - תמיד פתוח ══════ -->
-                    <div class="employee-card-header-v3">
-                        <div class="employee-identity">
-                            <div class="employee-name-v3">${this.sanitize(employee.displayName || employee.username)}</div>
-                            <div class="employee-role-v3">${this.getRoleLabel(employee.role)}</div>
+                <div class="employee-workload-card-modern" data-status="${primaryStatus}">
+                    <!-- ══════ HEADER ══════ -->
+                    <div class="employee-card-header-modern">
+                        <div class="employee-identity-modern">
+                            <div class="employee-name-modern">${this.sanitize(employee.displayName || employee.username)}</div>
+                            <div class="employee-meta-modern">
+                                <span class="employee-role-modern">${this.getRoleLabel(employee.role)}</span>
+                                <span class="status-dot" data-status="${primaryStatus}"></span>
+                                <span class="status-label-modern">${statusLabels[primaryStatus] || 'לא ידוע'}</span>
+                            </div>
                         </div>
-                        <div class="status-badges">
-                            <div class="workload-status-badge" style="background: ${color.bg}; color: ${color.text}">
-                                <div class="badge-score">${metrics.workloadScore}%</div>
-                                <div class="badge-label">${levelLabels[metrics.workloadLevel]}</div>
-                            </div>
-                            <div class="manager-risk-badge" style="background: ${riskColor.bg}; color: ${riskColor.text}; border: 1px solid ${riskColor.border}">
-                                <div class="badge-label">${riskLabels[metrics.managerRisk?.level || 'low']}</div>
-                            </div>
-                            ${metrics.dataConfidence?.level === 'low' ? '<div class="confidence-tag" title="' + (metrics.dataConfidence.reasons.join(', ') || '') + '">אמינות נתונים נמוכה</div>' : ''}
+                        <div class="workload-score-modern">
+                            <div class="score-value">${metrics.workloadScore}<span class="score-unit">%</span></div>
+                            <div class="score-label">עומס</div>
                         </div>
                     </div>
 
-                    ${this.renderManagerWhyRow(metrics)}
+                    ${this.renderManagerInsightRow(metrics)}
 
-                    <!-- ══════ MANAGER SUMMARY: 4 KEY METRICS ══════ -->
-                    <div class="quick-metrics-row manager-summary-metrics">
-                        <div class="quick-metric ${this.getCoverageClass(metrics.next5DaysCoverage?.coverageRatio)}"
-                             title="כמה מהעומס המתוכנן ל-5 ימי העבודה הקרובים ניתן לכסות לפי הקיבולת הפנויה של העובד">
-                            <i class="fas fa-shield-alt"></i>
-                            <div class="qm-value">
-                                ${metrics.next5DaysCoverage?.coverageRatio !== null && metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) + '%' : '—'}
-                                ${this.getCoverageSubtext(metrics.next5DaysCoverage)}
-                            </div>
-                            <div class="qm-label">כיסוי עומס (5 ימים)</div>
+                    <!-- ══════ METRICS GRID - Compact Cards ══════ -->
+                    <div class="metrics-grid-compact">
+                        <!-- Row 1: Most Important -->
+                        <div class="metric-card-compact" data-status="${this.getCoverageStatus(metrics.next5DaysCoverage?.coverageRatio)}"
+                             title="כיסוי עומס - כמה מהעומס המתוכנן ל-5 ימי העבודה הקרובים ניתן לכסות לפי הקיבולת הפנויה של העובד">
+                            <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="metric-value-compact">${metrics.next5DaysCoverage?.coverageRatio !== null && metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) + '%' : '—'}</div>
+                            <div class="metric-label-compact">כיסוי 5 ימים</div>
+                            ${this.getCoverageSubline(metrics.next5DaysCoverage)}
                         </div>
-                        <div class="quick-metric ${this.getPeakMultiplierClass(metrics.dailyBreakdown?.peakMultiplier)}"
-                             title="מכפלת עומס ביום העמוס ביותר לעומת התקן היומי (×1.00 = תקין, מעל ×1.00 = עומס יתר)">
-                            <i class="fas fa-times"></i>
-                            <div class="qm-value">
-                                ×${metrics.dailyBreakdown?.peakMultiplier?.toFixed(2) || '0.00'}
-                                ${metrics.dailyBreakdown?.peakDayLoad ? '<div class="qm-subtext">' + this.formatHours(metrics.dailyBreakdown.peakDayLoad) + ' ש׳ ביום שיא</div>' : ''}
-                            </div>
-                            <div class="qm-label">יום שיא ×</div>
+
+                        <div class="metric-card-compact" data-status="${this.getPeakStatus(metrics.dailyBreakdown?.peakMultiplier)}"
+                             title="יום שיא - מכפלת עומס ביום העמוס ביותר לעומת התקן היומי (×1.00 = תקין, מעל ×1.00 = עומס יתר)">
+                            <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                            </svg>
+                            <div class="metric-value-compact">×${metrics.dailyBreakdown?.peakMultiplier?.toFixed(2) || '0.00'}</div>
+                            <div class="metric-label-compact">יום שיא</div>
+                            ${metrics.dailyBreakdown?.peakDayLoad ? '<div class="metric-subline-compact">' + this.formatHours(metrics.dailyBreakdown.peakDayLoad) + '</div>' : ''}
                         </div>
-                        <div class="quick-metric ${this.getCriticalTasksClass(metrics.overduePlusDueSoon)}" title="מספר המשימות באיחור + משימות עם דדליין ב-3 הימים הקרובים">
-                            <i class="fas fa-fire"></i>
-                            <div class="qm-value">${metrics.overduePlusDueSoon || 0}</div>
-                            <div class="qm-label">קריטי</div>
+
+                        <div class="metric-card-compact" data-status="${this.getCriticalStatus(metrics.overduePlusDueSoon)}"
+                             title="משימות דחופות - מספר המשימות באיחור + משימות עם דדליין ב-3 הימים הקרובים">
+                            <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="metric-value-compact">${metrics.overduePlusDueSoon || 0}</div>
+                            <div class="metric-label-compact">דחוף</div>
+                            <div class="metric-subline-compact">משימות</div>
                         </div>
-                        <div class="quick-metric ${this.getConfidenceClass(metrics.dataConfidence?.score)}" title="אמינות הנתונים המדווחים - מבוסס על עקביות דיווח שעות">
-                            <i class="fas fa-calendar-check"></i>
-                            <div class="qm-value">
-                                ${metrics.dataConfidence?.score !== undefined ? Math.round(metrics.dataConfidence.score) + '%' : '—'}
-                                ${metrics.reportingDays !== undefined ? '<div class="qm-subtext">' + (metrics.reportingDays || 0) + ' מתוך ' + (metrics.workDaysPassed || 0) + '</div>' : ''}
-                            </div>
-                            <div class="qm-label">אמינות נתונים</div>
+
+                        <div class="metric-card-compact" data-status="${this.getConfidenceStatus(metrics.dataConfidence?.score)}"
+                             title="אמינות נתונים - מבוסס על עקביות דיווח שעות עבודה במהלך החודש">
+                            <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="metric-value-compact">${metrics.dataConfidence?.score !== undefined ? Math.round(metrics.dataConfidence.score) + '%' : '—'}</div>
+                            <div class="metric-label-compact">אמינות</div>
+                            ${metrics.reportingDays !== undefined ? '<div class="metric-subline-compact">' + (metrics.reportingDays || 0) + '/' + (metrics.workDaysPassed || 0) + ' ימים</div>' : ''}
+                        </div>
+
+                        <!-- Row 2: Additional Info -->
+                        <div class="metric-card-compact" data-status="neutral"
+                             title="משימות פעילות - מספר המשימות שהעובד עובד עליהן כרגע">
+                            <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="metric-value-compact">${metrics.activeTasksCount || 0}</div>
+                            <div class="metric-label-compact">פעילות</div>
+                        </div>
+
+                        <div class="metric-card-compact" data-status="neutral"
+                             title="Backlog - סך שעות עבודה שנותרו בכל המשימות הפעילות">
+                            <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="metric-value-compact">${this.formatHours(metrics.totalBacklogHours)}</div>
+                            <div class="metric-label-compact">Backlog</div>
+                        </div>
+
+                        <div class="metric-card-compact" data-status="neutral"
+                             title="זמין השבוע - כמה שעות עבודה יש לעובד פנויות השבוע הקרוב">
+                            <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="metric-value-compact">${this.formatHours(metrics.availableHoursThisWeek)}</div>
+                            <div class="metric-label-compact">זמין השבוע</div>
                         </div>
                     </div>
-
-                    <!-- ══════ DETAILED SECTIONS - Collapsed by default ══════ -->
-                    <details class="details-section">
-                        <summary class="details-header">
-                            <i class="fas fa-chevron-left details-toggle-icon"></i>
-                            <span>פרטים נוספים</span>
-                        </summary>
-                        <div class="details-content">${this.renderDetailedSections(employee, metrics)}</div>
-                    </details>
 
                     <!-- ══════ CATEGORIES - Collapsible ══════ -->
                     <div class="workload-categories">
@@ -1173,6 +1195,103 @@ return 'peak-medium';
                 return `<div class="qm-subtext">חסר ${this.formatHours(gap)}</div>`;
             } else if (gap < 0) {
                 return `<div class="qm-subtext">עודף ${this.formatHours(Math.abs(gap))}</div>`;
+            }
+            return '';
+        }
+
+        /**
+         * Modern metric helpers - return status for styling
+         */
+        getCoverageStatus(ratio) {
+            if (ratio === null || ratio === undefined) {
+return 'neutral';
+}
+            if (ratio >= 100) {
+return 'good';
+}
+            if (ratio >= 80) {
+return 'warning';
+}
+            return 'critical';
+        }
+
+        getPeakStatus(multiplier) {
+            if (!multiplier) {
+return 'neutral';
+}
+            if (multiplier >= 1.5) {
+return 'critical';
+}
+            if (multiplier >= 1.1) {
+return 'warning';
+}
+            return 'good';
+        }
+
+        getCriticalStatus(count) {
+            if (!count || count === 0) {
+return 'good';
+}
+            if (count >= 3) {
+return 'critical';
+}
+            if (count >= 1) {
+return 'warning';
+}
+            return 'good';
+        }
+
+        getConfidenceStatus(score) {
+            if (score === undefined || score === null) {
+return 'neutral';
+}
+            if (score >= 70) {
+return 'good';
+}
+            if (score >= 30) {
+return 'warning';
+}
+            return 'critical';
+        }
+
+        getCoverageSubtextModern(coverage) {
+            if (!coverage || coverage.coverageRatio === null || coverage.coverageRatio === undefined) {
+                return '';
+            }
+
+            const gap = coverage.coverageGap || 0;
+            if (gap > 0) {
+                return `<div class="metric-subtext-modern">חסר ${this.formatHours(gap)}</div>`;
+            } else if (gap < 0) {
+                return `<div class="metric-subtext-modern">עודף ${this.formatHours(Math.abs(gap))}</div>`;
+            }
+            return '<div class="metric-subtext-modern">מכוסה</div>';
+        }
+
+        getCoverageGapText(coverage) {
+            if (!coverage || coverage.coverageRatio === null || coverage.coverageRatio === undefined) {
+                return '';
+            }
+
+            const gap = coverage.coverageGap || 0;
+            if (gap > 0) {
+                return ` (חסר ${this.formatHours(gap)})`;
+            } else if (gap < 0) {
+                return ` (עודף ${this.formatHours(Math.abs(gap))})`;
+            }
+            return '';
+        }
+
+        getCoverageSubline(coverage) {
+            if (!coverage || coverage.coverageRatio === null || coverage.coverageRatio === undefined) {
+                return '';
+            }
+
+            const gap = coverage.coverageGap || 0;
+            if (gap > 0) {
+                return `<div class="metric-subline-compact">חסר ${this.formatHours(gap)}</div>`;
+            } else if (gap < 0) {
+                return `<div class="metric-subline-compact">עודף ${this.formatHours(Math.abs(gap))}</div>`;
             }
             return '';
         }
