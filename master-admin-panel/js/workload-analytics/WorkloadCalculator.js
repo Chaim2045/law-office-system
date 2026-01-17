@@ -142,8 +142,29 @@
 
             this.constants = window.WorkloadConstants;
 
-            // שמירת הפניות מהירות (backward compatibility)
-            this.WEIGHTS = this.constants.SCORE_WEIGHTS;
+            // 🔧 FIX v5.3: Normalize weights and validate sum
+            const rawWeights = this.constants.SCORE_WEIGHTS;
+            const weightsSum = rawWeights.BACKLOG + rawWeights.URGENCY + rawWeights.TASK_COUNT + rawWeights.CAPACITY;
+
+            // Validate weights sum to 1.0 (with tolerance for floating point)
+            if (Math.abs(weightsSum - 1.0) > 0.001) {
+                console.warn('⚠️ WorkloadCalculator: SCORE_WEIGHTS sum is', weightsSum, 'not 1.0. Normalizing weights.');
+                this.WEIGHTS = {
+                    backlog: rawWeights.BACKLOG / weightsSum,
+                    urgency: rawWeights.URGENCY / weightsSum,
+                    taskCount: rawWeights.TASK_COUNT / weightsSum,
+                    capacity: rawWeights.CAPACITY / weightsSum
+                };
+            } else {
+                // Map UPPERCASE to camelCase for consistency
+                this.WEIGHTS = {
+                    backlog: rawWeights.BACKLOG,
+                    urgency: rawWeights.URGENCY,
+                    taskCount: rawWeights.TASK_COUNT,
+                    capacity: rawWeights.CAPACITY
+                };
+            }
+
             this.DEFAULT_DAILY_HOURS = this.constants.WORK_HOURS.DEFAULT_DAILY_HOURS;
             this.DEFAULT_WEEKLY_HOURS = this.constants.WORK_HOURS.DEFAULT_WEEKLY_HOURS;
 
@@ -169,8 +190,8 @@
         calculateWorkload(employee, tasks, timesheetEntries) {
             const now = new Date();
 
-            // 🐛 DEBUG: Log inputs for first employee with tasks
-            if (tasks.length > 0 && !window._workloadDebugLogged) {
+            // 🐛 DEBUG: Log inputs for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && tasks.length > 0 && !window._workloadDebugLogged) {
                 console.log('🐛 [WORKLOAD DEBUG] Employee:', employee.email);
                 console.log('🐛 [WORKLOAD DEBUG] Total tasks received:', tasks.length);
                 console.log('🐛 [WORKLOAD DEBUG] First 3 tasks:', tasks.slice(0, 3).map(t => ({
@@ -254,8 +275,8 @@
             // ═══ v2.1: פירוט מפורט של עומס יומי ═══
             const dailyBreakdown = this.calculateDailyTaskBreakdown(tasks, employee, now);
 
-            // 🐛 DEBUG: Log final workload scores
-            if (tasks.length > 0 && !window._workloadScoreDebugLogged) {
+            // 🐛 DEBUG: Log final workload scores for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && tasks.length > 0 && !window._workloadScoreDebugLogged) {
                 console.log('🐛 [WORKLOAD SCORE DEBUG]');
                 console.log('  workloadScore:', workloadScore.score);
                 console.log('  workloadLevel:', workloadScore.level);
@@ -374,26 +395,27 @@
             const workDaysThisMonth = this.getWorkDaysInMonth(now);
             const monthlyTarget = workDaysThisMonth * dailyTarget;
 
-            // 🔧 FIX v5.0: מניעת NaN - אם אין יעד חודשי, החזר 0
-            const monthlyUtil = monthlyTarget > 0
-                ? this.roundTo((hoursWorkedThisMonth / monthlyTarget) * 100, 1)
+            // ספירת ימי עבודה שעברו החודש (לא כולל סופ"ש וחגים)
+            const workDaysPassed = this.workHoursCalculator
+                ? this.workHoursCalculator.getWorkDaysPassedThisMonth()
+                : Math.floor(now.getDate() * 0.7); // fallback: ~70% of days are workdays
+
+            // 🔧 FIX v5.2: Fair mid-month comparison - use workdays passed so far
+            const monthlyTargetSoFar = workDaysPassed * dailyTarget;
+            const monthlyUtil = monthlyTargetSoFar > 0
+                ? this.roundTo((hoursWorkedThisMonth / monthlyTargetSoFar) * 100, 1)
                 : 0;
 
             // 🆕 Metric 1: Reporting Consistency %
             // ספירת ימים ייחודיים עם דיווח timesheet
             const uniqueDatesReported = new Set(timesheetEntries.map(e => e.date)).size;
 
-            // ספירת ימי עבודה שעברו החודש (לא כולל סופ"ש וחגים)
-            const workDaysPassed = this.workHoursCalculator
-                ? this.workHoursCalculator.getWorkDaysPassedThisMonth()
-                : Math.floor(now.getDate() * 0.7); // fallback: ~70% of days are workdays
-
             const reportingConsistency = workDaysPassed > 0
                 ? Math.min(100, this.roundTo((uniqueDatesReported / workDaysPassed) * 100, 1))
                 : 0;
 
-            // 🐛 DEBUG: Log reporting consistency calculation
-            if (!window._reportingDebugLogged) {
+            // 🐛 DEBUG: Log reporting consistency calculation for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && !window._reportingDebugLogged) {
                 console.log('🐛 [REPORTING CONSISTENCY DEBUG]');
                 console.log('  uniqueDatesReported:', uniqueDatesReported);
                 console.log('  workDaysPassed:', workDaysPassed);
@@ -408,9 +430,12 @@
                 hoursWorkedThisWeek: this.roundTo(hoursWorkedThisWeek, 2),
                 hoursWorkedThisMonth: this.roundTo(hoursWorkedThisMonth, 2),
                 monthlyTarget: this.roundTo(monthlyTarget, 2),
+                monthlyTargetSoFar: this.roundTo(monthlyTargetSoFar, 2),  // 🆕 For fair comparison
                 monthlyUtilization: monthlyUtil,
                 workDaysThisMonth,
-                reportingConsistency  // 🆕 NEW METRIC
+                reportingConsistency,  // 🆕 NEW METRIC
+                reportingDays: uniqueDatesReported,  // 🆕 For UI subtext
+                workDaysPassed  // 🆕 For UI subtext
             };
         }
 
@@ -477,6 +502,19 @@ return;
         calculateWorkloadScore(basicMetrics, capacityMetrics, urgencyMetrics, employee) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
+            // 🐛 DEBUG: Log inputs for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && !window._workloadScoreInputsLogged) {
+                console.log('🐛 [WORKLOAD SCORE INPUTS]');
+                console.log('  activeTasksCount:', basicMetrics.activeTasksCount);
+                console.log('  totalBacklogHours:', basicMetrics.totalBacklogHours);
+                console.log('  urgencyScore:', urgencyMetrics.urgencyScore);
+                console.log('  overdueTasksCount:', urgencyMetrics.overdueTasksCount);
+                console.log('  tasksWithin3days:', urgencyMetrics.tasksWithin3days);
+                console.log('  monthlyUtilization:', capacityMetrics.monthlyUtilization);
+                console.log('  weights:', this.WEIGHTS);
+                window._workloadScoreInputsLogged = true;
+            }
+
             // נרמול backlog (7 ימי עבודה = 100%)
             // 🔧 FIX v5.0: מניעת NaN
             const maxBacklogHours = dailyTarget * this.constants.WORK_HOURS.MAX_BACKLOG_DAYS;
@@ -500,14 +538,63 @@ return;
                 ? 0
                 : Math.min(100, capacityMetrics.monthlyUtilization);
 
+            // 🐛 DEBUG: Log normalized components for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && !window._workloadScoreNormalizedLogged) {
+                console.log('🐛 [WORKLOAD SCORE NORMALIZED]');
+                console.log('  normalizedBacklog:', normalizedBacklog);
+                console.log('  normalizedUrgency:', normalizedUrgency);
+                console.log('  normalizedTaskCount:', normalizedTaskCount);
+                console.log('  normalizedCapacity:', normalizedCapacity);
+                window._workloadScoreNormalizedLogged = true;
+            }
+
             // חישוב משוקלל
-            // 🔧 FIX v5.0: וידוא שאין NaN
-            const score = Math.round(
-                (normalizedBacklog * this.WEIGHTS.backlog) +
-                (normalizedUrgency * this.WEIGHTS.urgency) +
-                (normalizedTaskCount * this.WEIGHTS.taskCount) +
-                (normalizedCapacity * this.WEIGHTS.capacity)
-            ) || 0;
+            // 🔧 FIX v5.3: Explicit component validation + NaN prevention
+            const backlogComponent = (normalizedBacklog || 0) * this.WEIGHTS.backlog;
+            const urgencyComponent = (normalizedUrgency || 0) * this.WEIGHTS.urgency;
+            const taskCountComponent = (normalizedTaskCount || 0) * this.WEIGHTS.taskCount;
+            const capacityComponent = (normalizedCapacity || 0) * this.WEIGHTS.capacity;
+
+            const rawScore = backlogComponent + urgencyComponent + taskCountComponent + capacityComponent;
+
+            // Ensure score is valid number in 0-100 range
+            let score = Math.round(rawScore);
+            if (isNaN(score) || score < 0) {
+                console.warn('⚠️ WorkloadCalculator: Invalid score calculated, defaulting to 0. rawScore was:', rawScore);
+                score = 0;
+            } else if (score > 100) {
+                score = 100; // Cap at 100
+            }
+
+            // 🔧 FIX v5.3: Sanity check - if there's workload but score is 0, warn
+            const hasWorkload = basicMetrics.totalBacklogHours > 0 ||
+                               basicMetrics.activeTasksCount > 0 ||
+                               urgencyMetrics.urgencyScore > 0;
+            if (hasWorkload && score === 0 && employee.email === 'haim@ghlawoffice.co.il') {
+                console.warn('⚠️ WorkloadCalculator: Workload exists but score is 0. Check weights:', this.WEIGHTS);
+            }
+
+            // 🐛 DEBUG: Log final score calculation for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && !window._workloadScoreFinalLogged) {
+                console.log('🐛 [WORKLOAD SCORE FINAL]');
+                console.log('  rawScore (before rounding):', rawScore);
+                console.log('  score (after rounding):', score);
+                console.log('  component breakdown:', {
+                    backlogComponent: backlogComponent.toFixed(2),
+                    urgencyComponent: urgencyComponent.toFixed(2),
+                    taskCountComponent: taskCountComponent.toFixed(2),
+                    capacityComponent: capacityComponent.toFixed(2),
+                    sum: rawScore.toFixed(2)
+                });
+                console.log('  weights used:', {
+                    backlog: this.WEIGHTS.backlog,
+                    urgency: this.WEIGHTS.urgency,
+                    taskCount: this.WEIGHTS.taskCount,
+                    capacity: this.WEIGHTS.capacity,
+                    sum: (this.WEIGHTS.backlog + this.WEIGHTS.urgency + this.WEIGHTS.taskCount + this.WEIGHTS.capacity).toFixed(3)
+                });
+                window._workloadScoreFinalLogged = true;
+            }
 
             // קביעת רמת עומס
             // ✅ v4.0.0: שימוש ב-constants במקום magic numbers
@@ -517,10 +604,10 @@ return;
                 score,
                 level,
                 breakdown: {
-                    backlogScore: Math.round(normalizedBacklog * this.WEIGHTS.backlog),
-                    urgencyScore: Math.round(normalizedUrgency * this.WEIGHTS.urgency),
-                    taskCountScore: Math.round(normalizedTaskCount * this.WEIGHTS.taskCount),
-                    capacityScore: Math.round(normalizedCapacity * this.WEIGHTS.capacity)
+                    backlogScore: Math.round(backlogComponent),
+                    urgencyScore: Math.round(urgencyComponent),
+                    taskCountScore: Math.round(taskCountComponent),
+                    capacityScore: Math.round(capacityComponent)
                 }
             };
         }
@@ -575,6 +662,34 @@ return;
         }
 
         /**
+         * 🔧 FIX v5.4: Count actual workdays between two dates (holiday/weekend-aware)
+         * @param {Date} startDate - תאריך התחלה
+         * @param {Date} endDate - תאריך סיום
+         * @returns {number} מספר ימי עבודה בפועל
+         */
+        countWorkdaysBetween(startDate, endDate) {
+            if (!this.workHoursCalculator) {
+                // Fallback: count calendar days if no WorkHoursCalculator
+                return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+            }
+
+            let workdays = 0;
+            const current = new Date(startDate);
+            current.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(0, 0, 0, 0);
+
+            while (current <= end) {
+                if (this.workHoursCalculator.isWorkDay(current)) {
+                    workdays++;
+                }
+                current.setDate(current.getDate() + 1);
+            }
+
+            return workdays;
+        }
+
+        /**
          * חישוב עומס יומי נדרש לכל משימה
          * @param {Array} tasks - רשימת משימות
          * @param {Date} now - תאריך נוכחי
@@ -601,21 +716,43 @@ return;
 return;
 } // deadline לא תקין
 
-                const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+                // 🔧 FIX v5.4: Count actual workdays, not calendar days
+                const calendarDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
 
-                if (daysUntilDeadline <= 0) {
+                if (calendarDays <= 0) {
                     // Overdue! כל השעות נדרשות היום
                     const today = this.dateToString(now);
-                    dailyLoads[today] = (dailyLoads[today] || 0) + remainingHours;
+                    // Only add to workdays
+                    if (!this.workHoursCalculator || this.workHoursCalculator.isWorkDay(now)) {
+                        dailyLoads[today] = (dailyLoads[today] || 0) + remainingHours;
+                    }
                 } else {
-                    // פיזור שווה על הימים עד deadline
-                    const dailyHoursNeeded = remainingHours / daysUntilDeadline;
+                    // 🔧 FIX v5.4: Calculate workdays for accurate distribution
+                    const workdaysUntilDeadline = this.countWorkdaysBetween(now, deadline);
 
-                    for (let i = 0; i < daysUntilDeadline; i++) {
-                        const date = new Date(now);
-                        date.setDate(date.getDate() + i);
-                        const dateKey = this.dateToString(date);
-                        dailyLoads[dateKey] = (dailyLoads[dateKey] || 0) + dailyHoursNeeded;
+                    if (workdaysUntilDeadline <= 0) {
+                        // No workdays left but not yet overdue - treat as overdue
+                        const today = this.dateToString(now);
+                        if (!this.workHoursCalculator || this.workHoursCalculator.isWorkDay(now)) {
+                            dailyLoads[today] = (dailyLoads[today] || 0) + remainingHours;
+                        }
+                    } else {
+                        // פיזור שווה על ימי עבודה בלבד
+                        const dailyHoursNeeded = remainingHours / workdaysUntilDeadline;
+
+                        // Iterate through calendar days but only add to workdays
+                        for (let i = 0; i < calendarDays; i++) {
+                            const date = new Date(now);
+                            date.setDate(date.getDate() + i);
+                            const dateKey = this.dateToString(date);
+
+                            // Skip weekends and holidays
+                            if (this.workHoursCalculator && !this.workHoursCalculator.isWorkDay(date)) {
+                                continue;
+                            }
+
+                            dailyLoads[dateKey] = (dailyLoads[dateKey] || 0) + dailyHoursNeeded;
+                        }
                     }
                 }
             });
@@ -713,13 +850,14 @@ return;
                 requiredHours: this.roundTo(totalRequiredNext5, 1),
                 availableHours: availability.totalAvailableHours,
                 coverageGap: this.roundTo(totalRequiredNext5 - availability.totalAvailableHours, 1),
+                // Fixed: Coverage ratio = (available / required) * 100, not capacity utilization
                 coverageRatio: totalRequiredNext5 > 0
-                    ? this.roundTo((availability.totalAvailableHours / (5 * dailyTarget)) * 100, 1)
+                    ? this.roundTo((availability.totalAvailableHours / totalRequiredNext5) * 100, 1)
                     : null  // Return null if no tasks, UI will show "—"
             };
 
-            // 🐛 DEBUG: Log coverage calculation
-            if (!window._coverageDebugLogged) {
+            // 🐛 DEBUG: Log coverage calculation for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && !window._coverageDebugLogged) {
                 console.log('🐛 [COVERAGE DEBUG]');
                 console.log('  dailyLoads keys:', Object.keys(dailyLoads).length);
                 console.log('  totalRequiredNext5:', totalRequiredNext5);
@@ -764,49 +902,84 @@ return;
 return;
 }
 
-                const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+                // 🔧 FIX v5.4: Count actual workdays, not calendar days
+                const calendarDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
 
-                if (daysUntilDeadline <= 0) {
+                if (calendarDays <= 0) {
                     // Overdue! כל השעות נדרשות היום
                     const today = this.dateToString(now);
-                    dailyLoads[today] = (dailyLoads[today] || 0) + remainingHours;
 
-                    // הוסף למעקב משימות
-                    if (!tasksByDay[today]) {
-tasksByDay[today] = [];
-}
-                    tasksByDay[today].push({
-                        task: task,
-                        hoursForThisDay: remainingHours
-                    });
-                } else {
-                    // פיזור שווה עד הדדליין
-                    const dailyHoursNeeded = remainingHours / daysUntilDeadline;
-
-                    for (let i = 0; i < daysUntilDeadline; i++) {
-                        const date = new Date(now);
-                        date.setDate(date.getDate() + i);
-                        const dateKey = this.dateToString(date);
-
-                        dailyLoads[dateKey] = (dailyLoads[dateKey] || 0) + dailyHoursNeeded;
+                    // Only add to workdays
+                    if (!this.workHoursCalculator || this.workHoursCalculator.isWorkDay(now)) {
+                        dailyLoads[today] = (dailyLoads[today] || 0) + remainingHours;
 
                         // הוסף למעקב משימות
-                        if (!tasksByDay[dateKey]) {
+                        if (!tasksByDay[today]) {
+tasksByDay[today] = [];
+}
+                        tasksByDay[today].push({
+                            task: task,
+                            hoursForThisDay: remainingHours
+                        });
+                    }
+                } else {
+                    // 🔧 FIX v5.4: Calculate workdays for accurate distribution
+                    const workdaysUntilDeadline = this.countWorkdaysBetween(now, deadline);
+
+                    if (workdaysUntilDeadline <= 0) {
+                        // No workdays left but not yet overdue - treat as overdue
+                        const today = this.dateToString(now);
+                        if (!this.workHoursCalculator || this.workHoursCalculator.isWorkDay(now)) {
+                            dailyLoads[today] = (dailyLoads[today] || 0) + remainingHours;
+                            if (!tasksByDay[today]) {
+tasksByDay[today] = [];
+}
+                            tasksByDay[today].push({
+                                task: task,
+                                hoursForThisDay: remainingHours
+                            });
+                        }
+                    } else {
+                        // פיזור שווה על ימי עבודה בלבד
+                        const dailyHoursNeeded = remainingHours / workdaysUntilDeadline;
+
+                        // Iterate through calendar days but only add to workdays
+                        for (let i = 0; i < calendarDays; i++) {
+                            const date = new Date(now);
+                            date.setDate(date.getDate() + i);
+                            const dateKey = this.dateToString(date);
+
+                            // Skip weekends and holidays
+                            if (this.workHoursCalculator && !this.workHoursCalculator.isWorkDay(date)) {
+                                continue;
+                            }
+
+                            dailyLoads[dateKey] = (dailyLoads[dateKey] || 0) + dailyHoursNeeded;
+
+                            // הוסף למעקב משימות
+                            if (!tasksByDay[dateKey]) {
 tasksByDay[dateKey] = [];
 }
-                        tasksByDay[dateKey].push({
-                            task: task,
-                            hoursForThisDay: dailyHoursNeeded
-                        });
+                            tasksByDay[dateKey].push({
+                                task: task,
+                                hoursForThisDay: dailyHoursNeeded
+                            });
+                        }
                     }
                 }
             });
 
-            // מצא יום שיא
+            // מצא יום שיא - only from workdays
             let peakDay = null;
             let peakDayLoad = 0;
 
             Object.keys(dailyLoads).forEach(day => {
+                // Skip non-workdays in peak selection
+                const dayDate = new Date(day);
+                if (this.workHoursCalculator && !this.workHoursCalculator.isWorkDay(dayDate)) {
+                    return;
+                }
+
                 if (dailyLoads[day] > peakDayLoad) {
                     peakDayLoad = dailyLoads[day];
                     peakDay = day;
@@ -823,8 +996,8 @@ tasksByDay[dateKey] = [];
                 ? this.roundTo(peakDayLoad / dailyTarget, 2)
                 : 0;
 
-            // 🐛 DEBUG: Log peak day calculation
-            if (!window._peakDebugLogged) {
+            // 🐛 DEBUG: Log peak day calculation for haim@ghlawoffice.co.il only
+            if (employee.email === 'haim@ghlawoffice.co.il' && !window._peakDebugLogged) {
                 console.log('🐛 [PEAK DAY DEBUG]');
                 console.log('  dailyLoads keys count:', Object.keys(dailyLoads).length);
                 console.log('  peakDay:', peakDay);
@@ -832,6 +1005,25 @@ tasksByDay[dateKey] = [];
                 console.log('  dailyTarget:', dailyTarget);
                 console.log('  peakMultiplier:', peakMultiplier);
                 console.log('  dailyLoads sample:', Object.entries(dailyLoads).slice(0, 3));
+
+                // 🐛 DEBUG: Peak day details
+                if (peakDay) {
+                    const peakDayDate = new Date(peakDay);
+                    const peakDayOfWeek = peakDayDate.getDay(); // 0=Sunday, 6=Saturday
+                    const isWorkDay = this.workHoursCalculator
+                        ? this.workHoursCalculator.isWorkDay(peakDayDate)
+                        : null;
+                    console.log('  peakDay string:', peakDay);
+                    console.log('  peakDay.getDay():', peakDayOfWeek, ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][peakDayOfWeek]);
+                    console.log('  workHoursCalculator.isWorkDay(peakDay):', isWorkDay);
+                }
+
+                // 🐛 DEBUG: Date key generation format
+                const sampleDate = new Date(2026, 0, 17); // Jan 17, 2026
+                console.log('  Date key format test (2026-01-17):');
+                console.log('    dateToString:', this.dateToString(sampleDate));
+                console.log('    toISOString().slice(0,10):', sampleDate.toISOString().slice(0, 10));
+
                 window._peakDebugLogged = true;
             }
 
@@ -1157,47 +1349,36 @@ return;
 return null;
 }
 
-            // 🐛 DEBUG: Log first deadline parse attempt
-            if (!window._deadlineParseLogged) {
-                console.log('🐛 [DEADLINE PARSE]', {
-                    deadlineRaw: deadline,
-                    type: typeof deadline,
-                    hasToDate: !!(deadline.toDate),
-                    isDate: deadline instanceof Date
-                });
-                window._deadlineParseLogged = true;
+            // Firestore Timestamp (native object with toDate method)
+            if (deadline.toDate && typeof deadline.toDate === 'function') {
+                return deadline.toDate();
             }
 
-            // Firestore Timestamp
-            if (deadline.toDate && typeof deadline.toDate === 'function') {
-                const parsed = deadline.toDate();
-                if (!window._deadlineParseLogged2) {
-                    console.log('🐛 [DEADLINE PARSED] Firestore Timestamp →', parsed);
-                    window._deadlineParseLogged2 = true;
+            // Serialized Firestore Timestamp (plain object with seconds property)
+            if (typeof deadline === 'object' && deadline !== null) {
+                if (typeof deadline.seconds === 'number') {
+                    return new Date(deadline.seconds * 1000);
                 }
-                return parsed;
+                if (typeof deadline._seconds === 'number') {
+                    return new Date(deadline._seconds * 1000);
+                }
             }
 
             // String
             if (typeof deadline === 'string') {
-                const parsed = new Date(deadline);
-                if (!window._deadlineParseLogged2) {
-                    console.log('🐛 [DEADLINE PARSED] String →', parsed);
-                    window._deadlineParseLogged2 = true;
-                }
-                return parsed;
+                return new Date(deadline);
             }
 
             // כבר Date object
             if (deadline instanceof Date) {
-                if (!window._deadlineParseLogged2) {
-                    console.log('🐛 [DEADLINE PARSED] Already Date →', deadline);
-                    window._deadlineParseLogged2 = true;
-                }
                 return deadline;
             }
 
-            console.log('🐛 [DEADLINE PARSE FAILED] Unknown type:', typeof deadline);
+            // Parse failed - log once per session
+            if (!window._deadlineParseFailLogged) {
+                console.warn('⚠️ [DEADLINE PARSE FAILED] Unknown format:', typeof deadline, deadline);
+                window._deadlineParseFailLogged = true;
+            }
             return null;
         }
 
