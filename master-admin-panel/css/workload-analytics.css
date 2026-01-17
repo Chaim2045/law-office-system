@@ -1212,6 +1212,92 @@
     font-weight: 700;
 }
 
+/* 🆕 Subtext for metrics - small additional info below value */
+.qm-subtext {
+    font-size: 0.625rem;
+    font-weight: 400;
+    color: #94a3b8;
+    margin-top: 2px;
+    line-height: 1.2;
+}
+
+/* 🆕 Manager Summary Line - shows only when there's a critical issue */
+.manager-summary-line {
+    padding: 8px 16px;
+    font-size: 0.813rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.manager-summary-line.critical {
+    background: #fef2f2;
+    color: #991b1b;
+    border-bottom-color: #fecaca;
+}
+
+.manager-summary-line.critical i {
+    color: #dc2626;
+}
+
+.manager-summary-line.warning {
+    background: #fffbeb;
+    color: #92400e;
+    border-bottom-color: #fde68a;
+}
+
+.manager-summary-line.warning i {
+    color: #f59e0b;
+}
+
+/* 🆕 Color classes for new metrics */
+
+/* Reporting Consistency */
+.quick-metric.reporting-good i { color: #10b981; }
+
+.quick-metric.reporting-good .qm-value { color: #059669; }
+
+.quick-metric.reporting-medium i { color: #f59e0b; }
+
+.quick-metric.reporting-medium .qm-value { color: #d97706; }
+
+.quick-metric.reporting-poor i { color: #ef4444; }
+
+.quick-metric.reporting-poor .qm-value { color: #dc2626; }
+
+/* Coverage */
+.quick-metric.coverage-good i { color: #10b981; }
+
+.quick-metric.coverage-good .qm-value { color: #059669; }
+
+.quick-metric.coverage-medium i { color: #f59e0b; }
+
+.quick-metric.coverage-medium .qm-value { color: #d97706; }
+
+.quick-metric.coverage-poor i { color: #ef4444; }
+
+.quick-metric.coverage-poor .qm-value { color: #dc2626; font-weight: 700; }
+
+/* Critical Tasks */
+.quick-metric.critical-high i { color: #ef4444; }
+
+.quick-metric.critical-high .qm-value { color: #dc2626; font-weight: 700; }
+
+.quick-metric.critical-medium i { color: #f59e0b; }
+
+.quick-metric.critical-medium .qm-value { color: #d97706; }
+
+/* Peak Multiplier */
+.quick-metric.peak-high i { color: #ef4444; }
+
+.quick-metric.peak-high .qm-value { color: #dc2626; font-weight: 700; }
+
+.quick-metric.peak-medium i { color: #f59e0b; }
+
+.quick-metric.peak-medium .qm-value { color: #d97706; }
+
 /* ─────────────────────────────────────────────────────────────
    v3.0: Critical Alerts Section (Compact & Minimal)
    ───────────────────────────────────────────────────────────── */
@@ -1635,5 +1721,111 @@
 
     .badge-score {
         font-size: 0.875rem;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Manager Summary Mode - New UI
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Status badges container */
+.status-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.manager-risk-badge {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.confidence-tag {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    border: 1px solid #fca5a5;
+}
+
+/* Manager "Why" Row */
+.manager-why-row {
+    background: #fef3c7;
+    border-left: 3px solid #f59e0b;
+    padding: 8px 12px;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #92400e;
+    border-radius: 3px;
+}
+
+.manager-why-row[data-risk="high"],
+.manager-why-row[data-risk="critical"] {
+    background: #fee2e2;
+    border-left-color: #dc2626;
+    color: #991b1b;
+}
+
+.manager-why-row i {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+/* Details section (collapsed by default) */
+.details-section {
+    margin-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.details-header {
+    padding: 10px 12px;
+    background: #f8fafc;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.details-header:hover {
+    background: #f1f5f9;
+}
+
+.details-toggle-icon {
+    transition: transform 0.3s;
+    font-size: 0.7rem;
+}
+
+.details-section[open] .details-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.details-content {
+    padding: 12px;
+    background: #fafbfc;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Manager summary metrics - 4 metrics only */
+.manager-summary-metrics {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (width <= 768px) {
+    .manager-summary-metrics {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

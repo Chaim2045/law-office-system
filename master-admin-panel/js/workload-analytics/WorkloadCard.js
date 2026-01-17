@@ -288,6 +288,110 @@ return '';
         }
 
         /**
+         * Manager Summary Line - תמציתי ומדויק
+         */
+        renderManagerSummary(metrics) {
+            const coverage = metrics.next5DaysCoverage;
+            const peakMultiplier = metrics.dailyBreakdown?.peakMultiplier || 0;
+            const coverageRatio = coverage?.coverageRatio;
+            const requiredHours = coverage?.requiredHours || 0;
+            const gapHours = coverage?.coverageGap || 0;
+
+            // Priority 1: Coverage gap (most critical)
+            if (coverageRatio !== null && coverageRatio < 100 && requiredHours > 0 && gapHours > 0) {
+                return `
+                    <div class="manager-summary-line critical">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>בסיכון: חסרות ${this.formatHours(gapHours)} ל-5 ימים</span>
+                    </div>
+                `;
+            }
+
+            // Priority 2: Peak overload
+            if (peakMultiplier >= 1.2) {
+                return `
+                    <div class="manager-summary-line warning">
+                        <i class="fas fa-chart-line"></i>
+                        <span>עומס נקודתי: יום שיא ×${peakMultiplier.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+
+            // No issues - don't show line
+            return '';
+        }
+
+        /**
+         * Manager "Why" Row - Shows first reason if risk is not low
+         */
+        renderManagerWhyRow(metrics) {
+            const riskLevel = metrics.managerRisk?.level || 'low';
+            const reasons = metrics.managerRisk?.reasons || [];
+            const confidenceLow = metrics.dataConfidence?.level === 'low';
+
+            if (riskLevel === 'low' && !confidenceLow) {
+                return '';
+            }
+
+            const firstReason = reasons[0] || '';
+            const confidenceSuffix = confidenceLow ? ' (אמינות נמוכה)' : '';
+
+            return `
+                <div class="manager-why-row" data-risk="${riskLevel}">
+                    <i class="fas fa-info-circle"></i>
+                    <span>${firstReason}${confidenceSuffix}</span>
+                </div>
+            `;
+        }
+
+        /**
+         * Render detailed sections (collapsed by default)
+         */
+        renderDetailedSections(employee, metrics) {
+            return `
+                <!-- Old Quick Metrics -->
+                <div class="quick-metrics-row">
+                    <div class="quick-metric">
+                        <i class="fas fa-tasks"></i>
+                        <div class="qm-value">${metrics.activeTasksCount || 0}</div>
+                        <div class="qm-label">משימות פעילות</div>
+                    </div>
+                    <div class="quick-metric">
+                        <i class="fas fa-clock"></i>
+                        <div class="qm-value">${this.formatHours(metrics.totalBacklogHours)}</div>
+                        <div class="qm-label">Backlog</div>
+                    </div>
+                    <div class="quick-metric">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div class="qm-value">${metrics.tasksWithin24h || 0}</div>
+                        <div class="qm-label">דחופות (24h)</div>
+                    </div>
+                    <div class="quick-metric">
+                        <i class="fas fa-battery-three-quarters"></i>
+                        <div class="qm-value">${this.formatHours(metrics.availableHoursThisWeek)}</div>
+                        <div class="qm-label">זמין השבוע</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Helper: Get CSS class for confidence score
+         */
+        getConfidenceClass(score) {
+            if (score === undefined || score === null) {
+return '';
+}
+            if (score < 30) {
+return 'reporting-poor';
+}
+            if (score < 70) {
+return 'reporting-medium';
+}
+            return 'reporting-good';
+        }
+
+        /**
          * v3.0: רינדור כרטיס עובד בודד - ארכיטקטורה קטגורית
          */
         renderEmployeeCard(employee, metrics) {
@@ -309,81 +413,88 @@ return '';
                 unknown: 'לא ידוע'
             };
 
-            // בדיקה אם יש נושאים קריטיים
-            const hasCriticalAlerts = metrics.alerts.some(a => a.severity === 'critical');
+            // Manager Risk colors and labels
+            const riskColors = {
+                low: { bg: '#f1f5f9', text: '#059669', border: '#e2e8f0' },
+                medium: { bg: '#fef3c7', text: '#d97706', border: '#fbbf24' },
+                high: { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' },
+                critical: { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' }
+            };
+
+            const riskLabels = {
+                low: 'תקין',
+                medium: 'במעקב',
+                high: 'בסיכון',
+                critical: 'קריטי'
+            };
+
+            const riskColor = riskColors[metrics.managerRisk?.level || 'low'];
 
             return `
-                <div class="employee-workload-card v3" data-level="${metrics.workloadLevel}">
+                <div class="employee-workload-card manager-summary" data-level="${metrics.workloadLevel}" data-risk="${metrics.managerRisk?.level || 'low'}">
                     <!-- ══════ HEADER - תמיד פתוח ══════ -->
                     <div class="employee-card-header-v3">
                         <div class="employee-identity">
                             <div class="employee-name-v3">${this.sanitize(employee.displayName || employee.username)}</div>
                             <div class="employee-role-v3">${this.getRoleLabel(employee.role)}</div>
                         </div>
-                        <div class="workload-status-badge" style="background: ${color.bg}; color: ${color.text}">
-                            <div class="badge-score">${metrics.workloadScore}%</div>
-                            <div class="badge-label">${levelLabels[metrics.workloadLevel]}</div>
+                        <div class="status-badges">
+                            <div class="workload-status-badge" style="background: ${color.bg}; color: ${color.text}">
+                                <div class="badge-score">${metrics.workloadScore}%</div>
+                                <div class="badge-label">${levelLabels[metrics.workloadLevel]}</div>
+                            </div>
+                            <div class="manager-risk-badge" style="background: ${riskColor.bg}; color: ${riskColor.text}; border: 1px solid ${riskColor.border}">
+                                <div class="badge-label">${riskLabels[metrics.managerRisk?.level || 'low']}</div>
+                            </div>
+                            ${metrics.dataConfidence?.level === 'low' ? '<div class="confidence-tag" title="' + (metrics.dataConfidence.reasons.join(', ') || '') + '">אמינות נתונים נמוכה</div>' : ''}
                         </div>
                     </div>
 
-                    <!-- ══════ QUICK METRICS - תמיד פתוח ══════ -->
-                    <div class="quick-metrics-row">
-                        <div class="quick-metric" title="מספר המשימות הפעילות (שטרם הושלמו)">
-                            <i class="fas fa-tasks"></i>
-                            <div class="qm-value">${metrics.activeTasksCount || 0}</div>
-                            <div class="qm-label">משימות</div>
-                        </div>
-                        <div class="quick-metric" title="סה״כ שעות שנותרו לביצוע בכל המשימות">
-                            <i class="fas fa-clock"></i>
-                            <div class="qm-value">${this.formatHours(metrics.totalBacklogHours)}</div>
-                            <div class="qm-label">Backlog</div>
-                        </div>
-                        <div class="quick-metric urgent" title="משימות עם דדליין עד 24 שעות">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <div class="qm-value">${metrics.tasksWithin24h || 0}</div>
-                            <div class="qm-label">דחופות</div>
-                        </div>
-                        <div class="quick-metric ${metrics.maxDailyLoad > (metrics.dailyHoursTarget || employee.dailyHoursTarget || 8.45) ? 'peak-alert' : ''}"
-                             title="היום עם העומס הגבוה ביותר בשבוע הקרוב">
-                            <i class="fas fa-chart-bar"></i>
-                            <div class="qm-value">${metrics.maxDailyLoad !== undefined ? this.formatHours(metrics.maxDailyLoad) : '-'}</div>
-                            <div class="qm-label">יום שיא</div>
-                        </div>
-                        <div class="quick-metric available" title="כמה שעות העובד יכול לקבל משימות נוספות השבוע">
-                            <i class="fas fa-battery-three-quarters"></i>
-                            <div class="qm-value">${this.formatHours(metrics.availableHoursThisWeek)}</div>
-                            <div class="qm-label">זמין</div>
-                        </div>
-                    </div>
+                    ${this.renderManagerWhyRow(metrics)}
 
-                    <!-- 🆕 SECONDARY QUICK METRICS - New Metrics Row -->
-                    <div class="quick-metrics-row secondary">
-                        <div class="quick-metric" title="אחוז ימי עבודה עם דיווח שעות החודש (כולל היום)">
-                            <i class="fas fa-calendar-check"></i>
-                            <div class="qm-value">${metrics.reportingConsistency !== undefined ? Math.round(metrics.reportingConsistency) : '-'}%</div>
-                            <div class="qm-label">דיווח</div>
-                        </div>
-                        <div class="quick-metric ${(metrics.next5DaysCoverage?.coverageGap || 0) > 0 ? 'coverage-alert' : ''}"
-                             title="כיסוי קיבולת ל-5 ימים הבאים: ${this.formatHours(metrics.next5DaysCoverage?.availableHours || 0)} זמין vs ${this.formatHours(metrics.next5DaysCoverage?.requiredHours || 0)} נדרש">
+                    <!-- ══════ MANAGER SUMMARY: 4 KEY METRICS ══════ -->
+                    <div class="quick-metrics-row manager-summary-metrics">
+                        <div class="quick-metric ${this.getCoverageClass(metrics.next5DaysCoverage?.coverageRatio)}"
+                             title="כמה מהעומס המתוכנן ל-5 ימי העבודה הקרובים ניתן לכסות לפי הקיבולת הפנויה של העובד">
                             <i class="fas fa-shield-alt"></i>
-                            <div class="qm-value">${metrics.next5DaysCoverage?.coverageRatio !== null && metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) + '%' : '—'}</div>
-                            <div class="qm-label">כיסוי</div>
+                            <div class="qm-value">
+                                ${metrics.next5DaysCoverage?.coverageRatio !== null && metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) + '%' : '—'}
+                                ${this.getCoverageSubtext(metrics.next5DaysCoverage)}
+                            </div>
+                            <div class="qm-label">כיסוי עומס (5 ימים)</div>
                         </div>
-                        <div class="quick-metric urgent" title="משימות באיחור + דחופות (עד 3 ימים)">
+                        <div class="quick-metric ${this.getPeakMultiplierClass(metrics.dailyBreakdown?.peakMultiplier)}"
+                             title="מכפלת עומס ביום העמוס ביותר לעומת התקן היומי (×1.00 = תקין, מעל ×1.00 = עומס יתר)">
+                            <i class="fas fa-times"></i>
+                            <div class="qm-value">
+                                ×${metrics.dailyBreakdown?.peakMultiplier?.toFixed(2) || '0.00'}
+                                ${metrics.dailyBreakdown?.peakDayLoad ? '<div class="qm-subtext">' + this.formatHours(metrics.dailyBreakdown.peakDayLoad) + ' ש׳ ביום שיא</div>' : ''}
+                            </div>
+                            <div class="qm-label">יום שיא ×</div>
+                        </div>
+                        <div class="quick-metric ${this.getCriticalTasksClass(metrics.overduePlusDueSoon)}" title="מספר המשימות באיחור + משימות עם דדליין ב-3 הימים הקרובים">
                             <i class="fas fa-fire"></i>
                             <div class="qm-value">${metrics.overduePlusDueSoon || 0}</div>
                             <div class="qm-label">קריטי</div>
                         </div>
-                        <div class="quick-metric ${(metrics.dailyBreakdown?.peakMultiplier || 0) >= 2 ? 'peak-alert' : ''}"
-                             title="כפולת עומס יום השיא (${this.formatHours(metrics.maxDailyLoad || 0)} ÷ ${this.formatHours(metrics.dailyHoursTarget || 8.45)})">
-                            <i class="fas fa-times"></i>
-                            <div class="qm-value">×${metrics.dailyBreakdown?.peakMultiplier || 0}</div>
-                            <div class="qm-label">שיא</div>
+                        <div class="quick-metric ${this.getConfidenceClass(metrics.dataConfidence?.score)}" title="אמינות הנתונים המדווחים - מבוסס על עקביות דיווח שעות">
+                            <i class="fas fa-calendar-check"></i>
+                            <div class="qm-value">
+                                ${metrics.dataConfidence?.score !== undefined ? Math.round(metrics.dataConfidence.score) + '%' : '—'}
+                                ${metrics.reportingDays !== undefined ? '<div class="qm-subtext">' + (metrics.reportingDays || 0) + ' מתוך ' + (metrics.workDaysPassed || 0) + '</div>' : ''}
+                            </div>
+                            <div class="qm-label">אמינות נתונים</div>
                         </div>
                     </div>
 
-                    <!-- ══════ CRITICAL ALERTS - פתוח אוטומטית אם יש ══════ -->
-                    ${hasCriticalAlerts ? this.renderCriticalAlertsSection(metrics.alerts) : ''}
+                    <!-- ══════ DETAILED SECTIONS - Collapsed by default ══════ -->
+                    <details class="details-section">
+                        <summary class="details-header">
+                            <i class="fas fa-chevron-left details-toggle-icon"></i>
+                            <span>פרטים נוספים</span>
+                        </summary>
+                        <div class="details-content">${this.renderDetailedSections(employee, metrics)}</div>
+                    </details>
 
                     <!-- ══════ CATEGORIES - Collapsible ══════ -->
                     <div class="workload-categories">
@@ -830,14 +941,27 @@ return '';
 return null;
 }
 
+            // Firestore Timestamp (native object with toDate method)
             if (deadline.toDate && typeof deadline.toDate === 'function') {
                 return deadline.toDate();
             }
 
+            // Serialized Firestore Timestamp (plain object with seconds property)
+            if (typeof deadline === 'object' && deadline !== null) {
+                if (typeof deadline.seconds === 'number') {
+                    return new Date(deadline.seconds * 1000);
+                }
+                if (typeof deadline._seconds === 'number') {
+                    return new Date(deadline._seconds * 1000);
+                }
+            }
+
+            // String
             if (typeof deadline === 'string') {
                 return new Date(deadline);
             }
 
+            // Already Date object
             if (deadline instanceof Date) {
                 return deadline;
             }
@@ -982,6 +1106,75 @@ return `בעוד ${diffDays} ימים`;
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             return `${day}/${month}`;
+        }
+
+        /**
+         * CSS class helpers for new metrics
+         */
+        getReportingConsistencyClass(consistency) {
+            if (consistency === undefined || consistency === null) {
+return '';
+}
+            if (consistency >= 71) {
+return 'reporting-good';
+}
+            if (consistency >= 31) {
+return 'reporting-medium';
+}
+            return 'reporting-poor';
+        }
+
+        getCoverageClass(ratio) {
+            if (ratio === null || ratio === undefined) {
+return '';
+}
+            if (ratio >= 100) {
+return 'coverage-good';
+}
+            if (ratio >= 80) {
+return 'coverage-medium';
+}
+            return 'coverage-poor';
+        }
+
+        getCriticalTasksClass(count) {
+            if (!count || count === 0) {
+return '';
+}
+            if (count >= 3) {
+return 'critical-high';
+}
+            if (count >= 1) {
+return 'critical-medium';
+}
+            return '';
+        }
+
+        getPeakMultiplierClass(multiplier) {
+            if (!multiplier) {
+return '';
+}
+            if (multiplier >= 1.5) {
+return 'peak-high';
+}
+            if (multiplier >= 1.1) {
+return 'peak-medium';
+}
+            return '';
+        }
+
+        getCoverageSubtext(coverage) {
+            if (!coverage || coverage.coverageRatio === null || coverage.coverageRatio === undefined) {
+                return '';
+            }
+
+            const gap = coverage.coverageGap || 0;
+            if (gap > 0) {
+                return `<div class="qm-subtext">חסר ${this.formatHours(gap)}</div>`;
+            } else if (gap < 0) {
+                return `<div class="qm-subtext">עודף ${this.formatHours(Math.abs(gap))}</div>`;
+            }
+            return '';
         }
 
         formatHours(hours) {
