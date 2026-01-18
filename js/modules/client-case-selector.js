@@ -1051,7 +1051,9 @@ return;
       } else {
         // ✅ NEW ARCHITECTURE: מעבר על כל השירותים
         services.forEach(service => {
-          if (service.status !== 'active') {
+          // ✅ Default to 'active' for services without status (backward compatibility)
+          const serviceStatus = service.status || 'active';
+          if (serviceStatus !== 'active') {
 return;
 } // דלג על שירותים לא פעילים
 
