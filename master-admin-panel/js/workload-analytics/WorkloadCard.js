@@ -466,7 +466,7 @@ return 'reporting-medium';
                             <svg class="metric-icon-compact" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                             </svg>
-                            <div class="metric-value-compact">${metrics.next5DaysCoverage?.coverageRatio !== null && metrics.next5DaysCoverage?.coverageRatio !== undefined ? Math.round(metrics.next5DaysCoverage.coverageRatio) + '%' : '—'}</div>
+                            <div class="metric-value-compact">${this.formatCoverageRatio(metrics.next5DaysCoverage?.coverageRatio)}</div>
                             <div class="metric-label-compact">עמידה בדדליינים</div>
                             ${this.getCoverageStatusText(metrics.next5DaysCoverage)}
                         </div>
@@ -1362,6 +1362,20 @@ return 'warning';
                 return `<div class="metric-subline-compact status-warning">⚠️ ${daysText || 'דיווח חלקי'}</div>`;
             }
             return `<div class="metric-subline-compact status-critical">❌ ${daysText || 'דיווח חסר'}</div>`;
+        }
+
+        /**
+         * Format coverage ratio to prevent displaying huge percentages
+         * Caps display at 100% when there's surplus time
+         */
+        formatCoverageRatio(ratio) {
+            if (ratio === null || ratio === undefined) {
+                return '—';
+            }
+
+            // Cap display at 100% - no need to show 4,130%
+            const displayRatio = Math.min(100, Math.round(ratio));
+            return `${displayRatio}%`;
         }
 
         formatHours(hours) {
