@@ -766,7 +766,7 @@ body {
 }
 
 .dashboard-content {
-  max-width: 1600px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: var(--space-6);
   padding-bottom: calc(var(--space-6) * 3); /* Extra padding at bottom so pagination is fully visible */

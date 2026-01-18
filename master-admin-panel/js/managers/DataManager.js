@@ -120,6 +120,13 @@
                     const userData = doc.data();
                     const userEmail = doc.id;
 
+                    // 🔒 FILTER: Skip inactive users (soft-deleted)
+                    // Allow showing only active users unless explicitly requested
+                    if (userData.status === 'inactive' || userData.status === 'suspended') {
+                        console.log(`⏭️ Skipping inactive user: ${userEmail}`);
+                        return; // Skip this user
+                    }
+
                     // Create base user object
                     const user = {
                         id: doc.id,

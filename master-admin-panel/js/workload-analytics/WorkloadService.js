@@ -333,7 +333,8 @@
                     criticalCount: 0,
                     availableCount: 0,
                     overloadedCount: 0,
-                    totalAlerts: 0
+                    totalAlerts: 0,
+                    totalUrgentTasks: 0
                 };
             }
 
@@ -350,10 +351,13 @@
             };
 
             let totalAlerts = 0;
+            let totalUrgentTasks = 0;
 
             employees.forEach(emp => {
                 levelCounts[emp.workloadLevel]++;
                 totalAlerts += emp.alerts.length;
+                // Sum all urgent tasks across team
+                totalUrgentTasks += emp.overduePlusDueSoon || 0;
             });
 
             return {
@@ -364,7 +368,8 @@
                 criticalCount: levelCounts.critical,
                 availableCount: levelCounts.low + levelCounts.medium, // פחות מ-60%
                 overloadedCount: levelCounts.high + levelCounts.critical, // יותר מ-60%
-                totalAlerts
+                totalAlerts,
+                totalUrgentTasks  // NEW: Total urgent tasks across entire team
             };
         }
 

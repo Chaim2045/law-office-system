@@ -27,6 +27,9 @@
             this.clientInfoContainer = null;
             this.servicesListContainer = null;
             this.closeButton = null;
+
+            // ✅ Store ESC handler reference for cleanup
+            this.escHandler = null;
         }
 
         /**
@@ -71,12 +74,13 @@
                 }
             });
 
-            // ESC key to close
-            document.addEventListener('keydown', (e) => {
+            // ✅ ESC key to close - Store reference for cleanup
+            this.escHandler = (e) => {
                 if (e.key === 'Escape' && this.modalElement.style.display !== 'none') {
                     this.close();
                 }
-            });
+            };
+            document.addEventListener('keydown', this.escHandler);
 
             // Quick action buttons
             const actionButtons = this.modalElement.querySelectorAll('[data-action]');
@@ -109,6 +113,13 @@
             this.renderFeeAgreements();
             this.setupFeeAgreementListeners();
 
+            // ✅ Re-attach ESC listener (in case it was removed by close())
+            if (this.escHandler) {
+                // Remove first to prevent duplicates
+                document.removeEventListener('keydown', this.escHandler);
+                document.addEventListener('keydown', this.escHandler);
+            }
+
             // Show modal
             this.modalElement.style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -122,6 +133,11 @@
             this.modalElement.style.display = 'none';
             document.body.style.overflow = '';
             this.currentClient = null;
+
+            // ✅ Remove ESC listener to prevent memory leak
+            if (this.escHandler) {
+                document.removeEventListener('keydown', this.escHandler);
+            }
         }
 
         /**
@@ -184,6 +200,18 @@ return;
 
             const services = this.currentClient.services || [];
 
+            // 🔍 DEBUG: Check for duplicate services
+            console.log('📊 Rendering services:', services.length);
+            const serviceIds = services.map(s => s.id);
+            const uniqueIds = [...new Set(serviceIds)];
+            if (serviceIds.length !== uniqueIds.length) {
+                console.warn('⚠️ DUPLICATE SERVICES DETECTED!', {
+                    total: serviceIds.length,
+                    unique: uniqueIds.length,
+                    ids: serviceIds
+                });
+            }
+
             if (services.length === 0) {
                 this.servicesListContainer.innerHTML = `
                     <div class="management-empty-state">
@@ -236,6 +264,7 @@ return;
          */
         renderServiceCard(service) {
             const typeBadge = this.getServiceTypeBadge(service.type);
+            const statusBadge = this.getServiceStatusBadge(service.status);
             const serviceInfo = this.getServiceInfo(service);
             const stagesHTML = service.type === 'legal_procedure' && service.stages
                 ? this.renderStages(service.stages)
@@ -250,6 +279,7 @@ return;
                                 <i class="fas ${this.getServiceIcon(service.type)}"></i>
                                 שירות
                             </div>
+                            ${statusBadge}
                             <span class="management-service-badge service-name" title="${service.name || 'ללא שם'}"><i class="fas fa-tag"></i> ${this.escapeHtml(this.truncateServiceName(service.name || 'ללא שם'))}</span>
                             ${typeBadge}
                         </div>
@@ -284,6 +314,20 @@ return;
                 'fixed': '<span class="management-service-badge fixed"><i class="fas fa-dollar-sign"></i> מחיר קבוע</span>'
             };
             return badges[type] || '';
+        }
+
+        /**
+         * Get service status badge
+         * קבלת תג סטטוס שירות
+         */
+        getServiceStatusBadge(status) {
+            const badges = {
+                'active': '<span class="service-status-badge status-active"><i class="fas fa-check-circle"></i> פעיל</span>',
+                'completed': '<span class="service-status-badge status-completed"><i class="fas fa-lock"></i> הושלם</span>',
+                'on_hold': '<span class="service-status-badge status-on-hold"><i class="fas fa-pause-circle"></i> בהמתנה</span>',
+                'archived': '<span class="service-status-badge status-archived"><i class="fas fa-archive"></i> בארכיון</span>'
+            };
+            return badges[status || 'active'] || '';
         }
 
         /**
@@ -502,6 +546,13 @@ return '';
                 }
             }
 
+            // Change status button (always visible)
+            actions.push(`<button class="management-service-action-btn secondary" data-service-action="change-status" data-service-id="${service.id}">
+                <i class="fas fa-exchange-alt"></i> שנה סטטוס
+            </button>`);
+
+            // Complete button (deprecated - now use change status)
+            // Keeping for backward compatibility
             if (service.status === 'active') {
                 actions.push(`<button class="management-service-action-btn secondary" data-service-action="complete" data-service-id="${service.id}">
                     <i class="fas fa-check"></i> סמן כהושלם
@@ -572,6 +623,9 @@ return '';
                     break;
                 case 'next-stage':
                     this.moveToNextStage(service);
+                    break;
+                case 'change-status':
+                    this.changeServiceStatus(service);
                     break;
                 case 'complete':
                     this.completeService(service);
@@ -1288,6 +1342,186 @@ return;
                 this.hideLoading();
                 this.showNotification('שגיאה בסימון השירות: ' + error.message, 'error');
             }
+        }
+
+        /**
+         * Change service status - Interactive modal
+         * שינוי סטטוס שירות - מודל אינטראקטיבי
+         */
+        async changeServiceStatus(service) {
+            console.log('🔄 Changing service status for:', service.serviceName || service.name);
+
+            const currentStatus = service.status || 'active';
+
+            // Status options - compact
+            const statusOptions = {
+                'active': { label: 'פעיל', icon: 'fa-check-circle', color: '#10b981' },
+                'completed': { label: 'הושלם', icon: 'fa-lock', color: '#6366f1' },
+                'on_hold': { label: 'בהמתנה', icon: 'fa-pause-circle', color: '#f59e0b' },
+                'archived': { label: 'בארכיון', icon: 'fa-archive', color: '#6b7280' }
+            };
+
+            // Build compact modal HTML
+            const modalHTML = `
+                <div class="status-change-modal-overlay" id="statusChangeModalOverlay">
+                    <div class="status-change-modal">
+                        <div class="status-change-modal-header">
+                            <h3><i class="fas fa-exchange-alt"></i> שינוי סטטוס</h3>
+                            <button class="status-change-modal-close" onclick="document.getElementById('statusChangeModalOverlay').remove()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="status-change-modal-body">
+                            <div class="status-change-service-info">
+                                <i class="fas fa-briefcase"></i>
+                                <span>${this.escapeHtml(service.serviceName || service.name || 'שירות')}</span>
+                            </div>
+                            <div class="status-change-current">
+                                <span class="status-change-label">נוכחי:</span>
+                                <span class="status-change-badge" style="background: ${statusOptions[currentStatus]?.color || '#6b7280'}">
+                                    <i class="fas ${statusOptions[currentStatus]?.icon || 'fa-circle'}"></i>
+                                    ${statusOptions[currentStatus]?.label || currentStatus}
+                                </span>
+                            </div>
+                            <div class="status-change-buttons">
+                                ${Object.entries(statusOptions).map(([key, opt]) => `
+                                    <button class="status-change-option ${key === currentStatus ? 'current' : ''}"
+                                            data-status="${key}" style="--status-color: ${opt.color}"
+                                            ${key === currentStatus ? 'disabled' : ''}>
+                                        <i class="fas ${opt.icon}"></i>
+                                        <span>${opt.label}</span>
+                                        ${key === currentStatus ? '<span class="current-badge">נוכחי</span>' : ''}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <textarea id="statusChangeNote" placeholder="הערה (אופציונלי)" rows="2"></textarea>
+                        </div>
+                        <div class="status-change-modal-footer">
+                            <button class="btn-secondary" onclick="document.getElementById('statusChangeModalOverlay').remove()">ביטול</button>
+                            <button class="btn-primary" id="statusChangeConfirmBtn" disabled>שמור</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Insert modal into DOM
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            // Get modal elements
+            const overlay = document.getElementById('statusChangeModalOverlay');
+            const confirmBtn = document.getElementById('statusChangeConfirmBtn');
+            const noteTextarea = document.getElementById('statusChangeNote');
+            const optionButtons = overlay.querySelectorAll('.status-change-option:not([disabled])');
+
+            let selectedStatus = null;
+
+            // Handle option selection
+            optionButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all
+                    optionButtons.forEach(b => b.classList.remove('active'));
+
+                    // Add active class to selected
+                    button.classList.add('active');
+                    selectedStatus = button.dataset.status;
+
+                    // Enable confirm button
+                    confirmBtn.disabled = false;
+                });
+            });
+
+            // Handle confirm
+            confirmBtn.addEventListener('click', async () => {
+                if (!selectedStatus) {
+return;
+}
+
+                const note = noteTextarea.value.trim();
+
+                try {
+                    // Disable button and show loading
+                    confirmBtn.disabled = true;
+                    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+
+                    const db = window.firebaseApp.firestore();
+                    const clientRef = db.collection('clients').doc(this.currentClient.id);
+
+                    // Build status change history entry
+                    const historyEntry = {
+                        from: currentStatus,
+                        to: selectedStatus,
+                        changedAt: new Date().toISOString(),
+                        changedBy: window.currentUser?.email || 'unknown',
+                        note: note || null
+                    };
+
+                    // Update service in services array
+                    const updatedServices = this.currentClient.services.map(s => {
+                        if (s.id === service.id) {
+                            return {
+                                ...s,
+                                status: selectedStatus,
+                                statusChangedAt: new Date().toISOString(),
+                                statusChangedBy: window.currentUser?.email || 'unknown',
+                                previousStatus: currentStatus,
+                                statusChangeHistory: [
+                                    ...(s.statusChangeHistory || []),
+                                    historyEntry
+                                ]
+                            };
+                        }
+                        return s;
+                    });
+
+                    await clientRef.update({
+                        services: updatedServices,
+                        updatedAt: new Date().toISOString()
+                    });
+
+                    // Update local data
+                    this.currentClient.services = updatedServices;
+
+                    // Close modal
+                    overlay.remove();
+
+                    // ⚠️ DON'T re-render services here!
+                    // Firestore real-time listener will trigger re-render automatically
+                    // this.renderServices(); // REMOVED - causes double render
+
+                    // Show success
+                    this.showNotification(
+                        `הסטטוס שונה ל-"${statusOptions[selectedStatus].label}"`,
+                        'success'
+                    );
+
+                    // ⚠️ DON'T refresh parent data here - it causes infinite loop!
+                    // The modal already has the updated data from Firestore
+
+                } catch (error) {
+                    console.error('❌ Error changing service status:', error);
+                    this.showNotification('שגיאה בשינוי סטטוס: ' + error.message, 'error');
+
+                    // Re-enable button
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> שמור שינויים';
+                }
+            });
+
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            });
+
+            // Close on ESC key
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    overlay.remove();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
         }
 
         async deleteService(service) {
