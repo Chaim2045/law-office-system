@@ -1477,10 +1477,8 @@ return;
                         'success'
                     );
 
-                    // Refresh parent data
-                    if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
-                        await window.ClientsDataManager.loadClients();
-                    }
+                    // ⚠️ DON'T refresh parent data here - it causes infinite loop!
+                    // The modal already has the updated data from Firestore
 
                 } catch (error) {
                     console.error('❌ Error changing service status:', error);
