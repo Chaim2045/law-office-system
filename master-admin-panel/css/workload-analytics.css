@@ -20,6 +20,15 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════
+   Page-Specific Width Override
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Override dashboard-content width for workload page only */
+#workloadContent.dashboard-content {
+    max-width: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    Loading & Error States
    ═══════════════════════════════════════════════════════════════ */
 
