@@ -1977,9 +1977,18 @@ return;
                 // Handle Firebase Timestamp
                 if (entryDate?.toDate && typeof entryDate.toDate === 'function') {
                     entryDate = entryDate.toDate();
+                } else if (entryDate?._seconds !== undefined) {
+                    // Handle serialized Firebase Timestamp (with _seconds)
+                    entryDate = new Date(entryDate._seconds * 1000);
                 }
 
-                const entryDateString = new Date(entryDate).toISOString().split('T')[0];
+                // Validate date before calling toISOString
+                const dateObj = new Date(entryDate);
+                if (isNaN(dateObj.getTime())) {
+                    return false; // Skip invalid dates
+                }
+
+                const entryDateString = dateObj.toISOString().split('T')[0];
                 return entryDateString === dateString;
             });
 
@@ -2017,11 +2026,22 @@ return false;
 }
 
                 let taskDate = completedDate;
+
+                // Handle Firebase Timestamp
                 if (taskDate?.toDate && typeof taskDate.toDate === 'function') {
                     taskDate = taskDate.toDate();
+                } else if (taskDate?._seconds !== undefined) {
+                    // Handle serialized Firebase Timestamp (with _seconds)
+                    taskDate = new Date(taskDate._seconds * 1000);
                 }
 
-                const taskDateString = new Date(taskDate).toISOString().split('T')[0];
+                // Validate date before calling toISOString
+                const dateObj = new Date(taskDate);
+                if (isNaN(dateObj.getTime())) {
+                    return false; // Skip invalid dates
+                }
+
+                const taskDateString = dateObj.toISOString().split('T')[0];
                 return taskDateString === dateString;
             });
 
