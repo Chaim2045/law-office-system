@@ -22,6 +22,7 @@
         constructor() {
             this.initialized = false;
             this.version = '1.0.1';
+            this.modalCheckIntervalId = null; // ✅ Track interval for cleanup
         }
 
         /**
@@ -484,11 +485,30 @@
         setupUIInjection() {
             console.log('🔧 Setting up UI injection...');
 
+            let attemptCount = 0;
+            const MAX_ATTEMPTS = 20; // מקסימום 10 שניות (20 * 500ms)
+
             // פונקציה להזרקת UI
             const checkForModal = () => {
                 const modal = document.getElementById('clientManagementModal');
                 if (modal && modal.style.display !== 'none') {
                     this.injectOverdraftUI();
+                    // ✅ עצור את ה-interval אחרי הזרקה מוצלחת
+                    if (this.modalCheckIntervalId) {
+                        clearInterval(this.modalCheckIntervalId);
+                        this.modalCheckIntervalId = null;
+                        console.log('✅ Stopped polling interval (modal opened)');
+                    }
+                }
+
+                // ✅ עצור את ה-interval אחרי מקסימום ניסיונות
+                attemptCount++;
+                if (attemptCount >= MAX_ATTEMPTS) {
+                    if (this.modalCheckIntervalId) {
+                        clearInterval(this.modalCheckIntervalId);
+                        this.modalCheckIntervalId = null;
+                        console.log('⚠️ Stopped polling interval (max attempts reached)');
+                    }
                 }
             };
 
@@ -517,8 +537,13 @@
                 console.log('✅ MutationObserver attached to modal');
             }
 
-            // 3. גיבוי - interval קצר יותר
-            setInterval(checkForModal, 500);
+            // 3. ✅ גיבוי - interval עם cleanup
+            // Reset counter כשמתחילים interval חדש
+            attemptCount = 0;
+            if (this.modalCheckIntervalId) {
+                clearInterval(this.modalCheckIntervalId);
+            }
+            this.modalCheckIntervalId = setInterval(checkForModal, 500);
         }
 
         /**
@@ -535,8 +560,18 @@
             console.log(`🔍 Found ${serviceCards.length} service cards`);
 
             serviceCards.forEach(card => {
-                // בדיקה אם כבר הזרקנו UI
+                // ✅ בדיקה 1: האם כבר יש UI מוזרק?
                 if (card.querySelector('.overdraft-warning-box') || card.querySelector('.overdraft-resolved-box')) {
+                    return;
+                }
+
+                // ✅ בדיקה 2: האם כבר בתהליך הזרקה? (race condition prevention)
+                if (card.dataset.overdraftInjecting === '1') {
+                    return;
+                }
+
+                // ✅ בדיקה 3: האם כבר הושלמה הזרקה? (redundant safety)
+                if (card.dataset.overdraftInjected === '1') {
                     return;
                 }
 
@@ -554,16 +589,29 @@
                     return;
                 }
 
+                // ✅ נעילה: סמן שהכרטיס בתהליך הזרקה
+                card.dataset.overdraftInjecting = '1';
+
                 // קבלת נתוני השירות
                 this.getServiceData(clientId, serviceId).then(service => {
                     if (!service) {
                         console.log(`⚠️ Service not found: ${serviceId}`);
+                        // ✅ שחרור נעילה - אין שירות
+                        delete card.dataset.overdraftInjecting;
                         return;
                     }
 
                     // בדיקה אם השירות בחריגה
                     const hasOverdraft = (service.hoursRemaining || 0) < 0;
                     if (!hasOverdraft) {
+                        // ✅ שחרור נעילה - אין חריגה
+                        delete card.dataset.overdraftInjecting;
+                        return;
+                    }
+
+                    // ✅ בדיקה כפולה: האם מישהו אחר הספיק להזריק? (race condition final check)
+                    if (card.querySelector('.overdraft-warning-box') || card.querySelector('.overdraft-resolved-box')) {
+                        delete card.dataset.overdraftInjecting;
                         return;
                     }
 
@@ -574,6 +622,14 @@
 
                     // הזרקה לתוך ה-service card
                     card.appendChild(overdraftUI);
+
+                    // ✅ סימון שהושלמה הזרקה
+                    delete card.dataset.overdraftInjecting;
+                    card.dataset.overdraftInjected = '1';
+                }).catch(error => {
+                    console.error('❌ Error injecting overdraft UI:', error);
+                    // ✅ שחרור נעילה במקרה של שגיאה
+                    delete card.dataset.overdraftInjecting;
                 });
             });
         }
