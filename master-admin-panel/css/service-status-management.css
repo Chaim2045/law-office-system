@@ -67,7 +67,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: 100000;
     animation: fadeIn 0.2s ease;
 }
 
@@ -83,13 +83,13 @@
 
 .status-change-modal {
     background: white;
-    border-radius: 16px;
+    border-radius: 12px;
     width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
+    max-width: 420px;
+    max-height: 80vh;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
-    animation: slideUp 0.3s ease;
+    box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
+    animation: slideUp 0.2s ease;
 }
 
 @keyframes slideUp {
@@ -109,24 +109,24 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 24px;
-    border-bottom: 2px solid #f3f4f6;
-    background: linear-gradient(135deg, #f9fafb 0%, #fff 100%);
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
 }
 
 .status-change-modal-header h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     color: #0f172a;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .status-change-modal-header h3 i {
     color: #3b82f6;
-    font-size: 20px;
+    font-size: 16px;
 }
 
 .status-change-modal-close {
@@ -150,98 +150,91 @@
 
 /* Modal Body */
 .status-change-modal-body {
-    padding: 24px;
-    max-height: calc(90vh - 160px);
+    padding: 20px;
+    max-height: calc(80vh - 130px);
     overflow-y: auto;
 }
 
 .status-change-service-info {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
+    gap: 8px;
+    padding: 10px 12px;
     background: #f0f9ff;
-    border: 2px solid #3b82f6;
-    border-radius: 10px;
-    margin-bottom: 20px;
+    border-left: 3px solid #3b82f6;
+    border-radius: 6px;
+    margin-bottom: 16px;
 }
 
 .status-change-service-info i {
     color: #3b82f6;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .status-change-service-info span {
     font-weight: 600;
     color: #0f172a;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .status-change-current {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 2px dashed #e5e7eb;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed #e5e7eb;
 }
 
 .status-change-label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .status-change-badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
     font-weight: 600;
     color: white;
 }
 
-.status-change-options {
-    margin-bottom: 24px;
-}
-
-.status-change-options .status-change-label {
-    display: block;
-    margin-bottom: 12px;
-}
-
 .status-change-buttons {
     display: grid;
-    gap: 12px;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
 .status-change-option {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 16px;
+    gap: 10px;
+    padding: 12px;
     background: white;
     border: 2px solid #e5e7eb;
-    border-radius: 12px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     position: relative;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .status-change-option:not([disabled]):hover {
     border-color: var(--status-color);
-    background: linear-gradient(135deg, var(--status-color)10, transparent);
-    transform: translateX(-4px);
+    background: linear-gradient(135deg, var(--status-color)08, transparent);
+    transform: scale(1.02);
 }
 
 .status-change-option.active {
     border-color: var(--status-color);
-    background: linear-gradient(135deg, var(--status-color)15, transparent);
-    box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+    background: linear-gradient(135deg, var(--status-color)12, transparent);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .status-change-option.active::before {
@@ -250,93 +243,54 @@
     left: 0;
     top: 0;
     bottom: 0;
-    width: 4px;
+    width: 3px;
     background: var(--status-color);
-    border-radius: 12px 0 0 12px;
+    border-radius: 10px 0 0 10px;
 }
 
 .status-change-option.current {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
-.status-change-option-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: var(--status-color);
-    color: white;
-    font-size: 18px;
+.status-change-option i {
+    font-size: 16px;
+    color: var(--status-color);
 }
 
-.status-change-option-content {
+.status-change-option span {
     flex: 1;
-}
-
-.status-change-option-label {
-    font-size: 14px;
-    font-weight: 600;
     color: #0f172a;
-    margin-bottom: 4px;
 }
 
-.status-change-option-description {
-    font-size: 12px;
-    color: #6b7280;
-    line-height: 1.4;
-}
-
-.status-change-option-current-badge {
+.status-change-option .current-badge {
     position: absolute;
-    top: 8px;
-    left: 8px;
-    padding: 4px 10px;
+    top: 6px;
+    left: 6px;
+    padding: 2px 6px;
     background: var(--status-color);
     color: white;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    border-radius: 12px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-}
-
-.status-change-note {
-    margin-bottom: 0;
-}
-
-.status-change-note label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #6b7280;
-    margin-bottom: 8px;
-}
-
-.status-change-note label i {
-    color: #3b82f6;
-}
-
-.status-change-note textarea {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e5e7eb;
     border-radius: 8px;
-    font-size: 13px;
+    letter-spacing: 0.3px;
+}
+
+.status-change-modal-body textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 12px;
     font-family: inherit;
     resize: vertical;
-    transition: all 0.2s ease;
+    transition: border 0.2s;
 }
 
-.status-change-note textarea:focus {
+.status-change-modal-body textarea:focus {
     outline: none;
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
+    box-shadow: 0 0 0 2px rgb(59 130 246 / 8%);
 }
 
 /* Modal Footer */
@@ -344,29 +298,26 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
-    padding: 16px 24px;
-    border-top: 2px solid #f3f4f6;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid #e5e7eb;
     background: #f9fafb;
 }
 
 .status-change-modal-footer button {
-    padding: 10px 20px;
+    padding: 8px 16px;
     border: none;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    transition: all 0.15s;
 }
 
 .status-change-modal-footer .btn-secondary {
     background: white;
     color: #6b7280;
-    border: 2px solid #e5e7eb;
+    border: 1px solid #e5e7eb;
 }
 
 .status-change-modal-footer .btn-secondary:hover {
@@ -377,11 +328,11 @@
 .status-change-modal-footer .btn-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white;
-    box-shadow: 0 2px 8px rgb(59 130 246 / 30%);
+    box-shadow: 0 1px 4px rgb(59 130 246 / 25%);
 }
 
 .status-change-modal-footer .btn-primary:hover:not(:disabled) {
-    box-shadow: 0 4px 12px rgb(59 130 246 / 40%);
+    box-shadow: 0 2px 8px rgb(59 130 246 / 35%);
     transform: translateY(-1px);
 }
 
@@ -395,11 +346,7 @@
 }
 
 @keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
+    from { transform: rotate(0deg); }
 
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }

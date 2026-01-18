@@ -1325,107 +1325,52 @@ return;
 
             const currentStatus = service.status || 'active';
 
-            // Status options with metadata
+            // Status options - compact
             const statusOptions = {
-                'active': {
-                    label: 'פעיל',
-                    icon: 'fa-check-circle',
-                    color: '#10b981',
-                    description: 'שירות פעיל - ניתן לרשום עליו משימות'
-                },
-                'completed': {
-                    label: 'הושלם',
-                    icon: 'fa-lock',
-                    color: '#6366f1',
-                    description: 'שירות הושלם - לא ניתן לרשום משימות חדשות'
-                },
-                'on_hold': {
-                    label: 'בהמתנה',
-                    icon: 'fa-pause-circle',
-                    color: '#f59e0b',
-                    description: 'שירות בהמתנה - מושהה זמנית'
-                },
-                'archived': {
-                    label: 'בארכיון',
-                    icon: 'fa-archive',
-                    color: '#6b7280',
-                    description: 'שירות בארכיון - לא בשימוש'
-                }
+                'active': { label: 'פעיל', icon: 'fa-check-circle', color: '#10b981' },
+                'completed': { label: 'הושלם', icon: 'fa-lock', color: '#6366f1' },
+                'on_hold': { label: 'בהמתנה', icon: 'fa-pause-circle', color: '#f59e0b' },
+                'archived': { label: 'בארכיון', icon: 'fa-archive', color: '#6b7280' }
             };
 
-            // Build modal HTML
+            // Build compact modal HTML
             const modalHTML = `
                 <div class="status-change-modal-overlay" id="statusChangeModalOverlay">
                     <div class="status-change-modal">
                         <div class="status-change-modal-header">
-                            <h3>
-                                <i class="fas fa-exchange-alt"></i>
-                                שינוי סטטוס שירות
-                            </h3>
+                            <h3><i class="fas fa-exchange-alt"></i> שינוי סטטוס</h3>
                             <button class="status-change-modal-close" onclick="document.getElementById('statusChangeModalOverlay').remove()">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
-
                         <div class="status-change-modal-body">
                             <div class="status-change-service-info">
                                 <i class="fas fa-briefcase"></i>
                                 <span>${this.escapeHtml(service.serviceName || service.name || 'שירות')}</span>
                             </div>
-
                             <div class="status-change-current">
-                                <span class="status-change-label">סטטוס נוכחי:</span>
+                                <span class="status-change-label">נוכחי:</span>
                                 <span class="status-change-badge" style="background: ${statusOptions[currentStatus]?.color || '#6b7280'}">
                                     <i class="fas ${statusOptions[currentStatus]?.icon || 'fa-circle'}"></i>
                                     ${statusOptions[currentStatus]?.label || currentStatus}
                                 </span>
                             </div>
-
-                            <div class="status-change-options">
-                                <span class="status-change-label">בחר סטטוס חדש:</span>
-                                <div class="status-change-buttons">
-                                    ${Object.entries(statusOptions).map(([key, option]) => `
-                                        <button
-                                            class="status-change-option ${key === currentStatus ? 'current' : ''}"
-                                            data-status="${key}"
-                                            style="--status-color: ${option.color}"
-                                            ${key === currentStatus ? 'disabled' : ''}
-                                        >
-                                            <div class="status-change-option-icon">
-                                                <i class="fas ${option.icon}"></i>
-                                            </div>
-                                            <div class="status-change-option-content">
-                                                <div class="status-change-option-label">${option.label}</div>
-                                                <div class="status-change-option-description">${option.description}</div>
-                                            </div>
-                                            ${key === currentStatus ? '<span class="status-change-option-current-badge">נוכחי</span>' : ''}
-                                        </button>
-                                    `).join('')}
-                                </div>
+                            <div class="status-change-buttons">
+                                ${Object.entries(statusOptions).map(([key, opt]) => `
+                                    <button class="status-change-option ${key === currentStatus ? 'current' : ''}"
+                                            data-status="${key}" style="--status-color: ${opt.color}"
+                                            ${key === currentStatus ? 'disabled' : ''}>
+                                        <i class="fas ${opt.icon}"></i>
+                                        <span>${opt.label}</span>
+                                        ${key === currentStatus ? '<span class="current-badge">נוכחי</span>' : ''}
+                                    </button>
+                                `).join('')}
                             </div>
-
-                            <div class="status-change-note">
-                                <label for="statusChangeNote">
-                                    <i class="fas fa-comment"></i>
-                                    הערה (אופציונלי)
-                                </label>
-                                <textarea
-                                    id="statusChangeNote"
-                                    placeholder="למה משנים את הסטטוס? (לדוגמה: 'נגמרו השעות', 'לקוח רכש תוכנית חדשה')"
-                                    rows="3"
-                                ></textarea>
-                            </div>
+                            <textarea id="statusChangeNote" placeholder="הערה (אופציונלי)" rows="2"></textarea>
                         </div>
-
                         <div class="status-change-modal-footer">
-                            <button class="btn-secondary" onclick="document.getElementById('statusChangeModalOverlay').remove()">
-                                <i class="fas fa-times"></i>
-                                ביטול
-                            </button>
-                            <button class="btn-primary" id="statusChangeConfirmBtn" disabled>
-                                <i class="fas fa-check"></i>
-                                שמור שינויים
-                            </button>
+                            <button class="btn-secondary" onclick="document.getElementById('statusChangeModalOverlay').remove()">ביטול</button>
+                            <button class="btn-primary" id="statusChangeConfirmBtn" disabled>שמור</button>
                         </div>
                     </div>
                 </div>
