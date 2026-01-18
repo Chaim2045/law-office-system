@@ -1468,8 +1468,9 @@ return;
                     // Close modal
                     overlay.remove();
 
-                    // Re-render services
-                    this.renderServices();
+                    // ⚠️ DON'T re-render services here!
+                    // Firestore real-time listener will trigger re-render automatically
+                    // this.renderServices(); // REMOVED - causes double render
 
                     // Show success
                     this.showNotification(
