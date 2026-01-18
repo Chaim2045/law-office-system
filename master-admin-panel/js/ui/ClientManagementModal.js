@@ -184,6 +184,18 @@ return;
 
             const services = this.currentClient.services || [];
 
+            // 🔍 DEBUG: Check for duplicate services
+            console.log('📊 Rendering services:', services.length);
+            const serviceIds = services.map(s => s.id);
+            const uniqueIds = [...new Set(serviceIds)];
+            if (serviceIds.length !== uniqueIds.length) {
+                console.warn('⚠️ DUPLICATE SERVICES DETECTED!', {
+                    total: serviceIds.length,
+                    unique: uniqueIds.length,
+                    ids: serviceIds
+                });
+            }
+
             if (services.length === 0) {
                 this.servicesListContainer.innerHTML = `
                     <div class="management-empty-state">
