@@ -259,12 +259,12 @@ return '#64748b';
                     </div>
 
                     <div class="team-stat-card">
-                        <div class="stat-icon" style="background: #94a3b820; color: #64748b">
-                            <i class="fas fa-bell"></i>
+                        <div class="stat-icon" style="background: ${stats.totalUrgentTasks > 0 ? '#ef444420' : '#94a3b820'}; color: ${stats.totalUrgentTasks > 0 ? '#ef4444' : '#64748b'}">
+                            <i class="fas fa-fire"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-label">סה״כ התראות</div>
-                            <div class="stat-value" style="color: #1e293b">${stats.totalAlerts}</div>
+                            <div class="stat-label">משימות דחופות</div>
+                            <div class="stat-value" style="color: ${stats.totalUrgentTasks > 0 ? '#ef4444' : '#1e293b'}">${stats.totalUrgentTasks || 0}</div>
                         </div>
                     </div>
                 </div>
