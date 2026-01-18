@@ -1863,15 +1863,16 @@
     transform: translateY(-2px);
 }
 
-/* Status indicator stripe (subtle) */
+/* Status indicator stripe - Left side, bold & clear */
 .employee-workload-card-modern::before {
     content: '';
     position: absolute;
     top: 0;
-    right: 0;
-    width: 4px;
+    left: 0;
+    width: 5px;
     height: 100%;
-    transition: width 0.3s ease;
+    transition: all 0.3s ease;
+    border-radius: 12px 0 0 12px;
 }
 
 .employee-workload-card-modern[data-status="low"]::before {
@@ -1888,10 +1889,11 @@
 
 .employee-workload-card-modern[data-status="critical"]::before {
     background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 0 8px rgb(239 68 68 / 30%);
 }
 
 .employee-workload-card-modern:hover::before {
-    width: 6px;
+    width: 8px;
 }
 
 /* ══════ MODERN HEADER ══════ */
