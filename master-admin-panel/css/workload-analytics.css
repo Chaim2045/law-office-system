@@ -107,9 +107,6 @@
     padding: 24px;
     box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
     margin-bottom: 24px;
-    max-width: 1800px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -246,8 +243,6 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
-    max-width: 1800px;
-    margin: 0 auto;
 }
 
 /* List View */
