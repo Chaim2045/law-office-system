@@ -27,6 +27,9 @@
             this.clientInfoContainer = null;
             this.servicesListContainer = null;
             this.closeButton = null;
+
+            // ✅ Store ESC handler reference for cleanup
+            this.escHandler = null;
         }
 
         /**
@@ -71,12 +74,13 @@
                 }
             });
 
-            // ESC key to close
-            document.addEventListener('keydown', (e) => {
+            // ✅ ESC key to close - Store reference for cleanup
+            this.escHandler = (e) => {
                 if (e.key === 'Escape' && this.modalElement.style.display !== 'none') {
                     this.close();
                 }
-            });
+            };
+            document.addEventListener('keydown', this.escHandler);
 
             // Quick action buttons
             const actionButtons = this.modalElement.querySelectorAll('[data-action]');
@@ -109,6 +113,13 @@
             this.renderFeeAgreements();
             this.setupFeeAgreementListeners();
 
+            // ✅ Re-attach ESC listener (in case it was removed by close())
+            if (this.escHandler) {
+                // Remove first to prevent duplicates
+                document.removeEventListener('keydown', this.escHandler);
+                document.addEventListener('keydown', this.escHandler);
+            }
+
             // Show modal
             this.modalElement.style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -122,6 +133,11 @@
             this.modalElement.style.display = 'none';
             document.body.style.overflow = '';
             this.currentClient = null;
+
+            // ✅ Remove ESC listener to prevent memory leak
+            if (this.escHandler) {
+                document.removeEventListener('keydown', this.escHandler);
+            }
         }
 
         /**
