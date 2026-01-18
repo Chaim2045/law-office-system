@@ -19,9 +19,10 @@
 # ════════════════════════════════════════════════════════════════
 [build]
   publish = "."
-  # שלבים: TypeScript → Lint → Build
+  # שלבים: Cache-bust → TypeScript → Lint → Build
+  # Cache-bust רץ רק ב-Netlify (לא ב-git commits!)
   # אם אחד נכשל - הכל נעצר!
-  command = "npm run type-check && npm run compile-ts"
+  command = "npm run cache-bust && npm run type-check && npm run compile-ts"
 
 # Production environment variables
 [context.production.environment]
