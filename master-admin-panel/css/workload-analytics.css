@@ -2050,16 +2050,17 @@
     background: linear-gradient(135deg, #fafbfc 0%, #fff 100%);
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    padding: 16px 12px;
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 6px;
+    gap: 8px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
     cursor: help;
+    min-height: 135px;
 }
 
 .metric-card-compact::before {
@@ -2118,7 +2119,7 @@
 .metric-value-compact {
     font-size: 1.125rem;
     font-weight: 700;
-    color: #0f172a;
+    color: #475569;
     line-height: 1.3;
     letter-spacing: -0.01em;
     transition: font-size 0.2s;
@@ -2126,19 +2127,6 @@
 
 .metric-card-compact:hover .metric-value-compact {
     font-size: 1.5rem;
-}
-
-/* Value colors based on status */
-.metric-card-compact[data-status="good"] .metric-value-compact {
-    color: #059669;
-}
-
-.metric-card-compact[data-status="warning"] .metric-value-compact {
-    color: #d97706;
-}
-
-.metric-card-compact[data-status="critical"] .metric-value-compact {
-    color: #dc2626;
 }
 
 .metric-label-compact {
