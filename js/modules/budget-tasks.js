@@ -109,7 +109,9 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
       // ✅ Use shared timestamp converter (Single Source of Truth)
       const taskWithFirebaseId = {
         ...window.DatesModule.convertTimestampFields(data, ['createdAt', 'updatedAt', 'completedAt', 'deadline']),
-        firebaseDocId: doc.id // ✅ Always save Firebase document ID
+        firebaseDocId: doc.id, // ✅ Always save Firebase document ID
+        // ✅ FIX: Map timeEntries to history for timeline display
+        history: data.timeEntries || []
       };
 
       // Only set 'id' if it doesn't exist in the data
@@ -410,7 +412,7 @@ return {};
     status: task.status || 'פעיל',
     branch: task.branch || '',
     fileNumber: task.fileNumber || '',
-    history: task.history || [],
+    history: task.history || task.timeEntries || [],
     createdAt: task.createdAt || null,
     updatedAt: task.updatedAt || null,
     caseId: task.caseId || null,

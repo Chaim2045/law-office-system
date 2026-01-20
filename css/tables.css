@@ -2542,3 +2542,92 @@
   font-weight: 500;
   color: var(--gray-900);
 }
+
+/* ============================================
+   Budget Button in Table Actions
+   Added to match card view functionality
+   ============================================ */
+
+/* Base action-btn styles (if not already defined) */
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 2px;
+}
+
+.action-btn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* Specific button styles */
+.action-btn.time-btn {
+  color: var(--blue-500, #3b82f6);
+}
+
+.action-btn.time-btn:hover {
+  background: var(--blue-50, #eff6ff);
+  border-color: var(--blue-300, #93c5fd);
+}
+
+.action-btn.budget-btn {
+  background: var(--orange-50, #fffbeb);
+  color: var(--orange-500, #f59e0b);
+  border-color: var(--orange-200, #fde68a);
+}
+
+.action-btn.budget-btn:hover {
+  background: var(--orange-100, #fef3c7);
+  color: var(--orange-600, #d97706);
+  border-color: var(--orange-300, #fcd34d);
+}
+
+.action-btn.extend-btn {
+  color: var(--purple-500, #a855f7);
+}
+
+.action-btn.extend-btn:hover {
+  background: var(--purple-50, #f3e8ff);
+  border-color: var(--purple-300, #d8b4fe);
+}
+
+.action-btn.history-btn {
+  color: var(--gray-600, #4b5563);
+}
+
+.action-btn.history-btn:hover {
+  background: var(--gray-100, #f3f4f6);
+  border-color: var(--gray-400, #9ca3af);
+}
+
+.action-btn.cancel-btn {
+  color: var(--red-500, #ef4444);
+}
+
+.action-btn.cancel-btn:hover {
+  background: var(--red-50, #fef2f2);
+  border-color: var(--red-300, #fca5a5);
+}
+
+.action-btn.complete-btn {
+  color: var(--green-500, #10b981);
+}
+
+.action-btn.complete-btn:hover {
+  background: var(--green-50, #d1fae5);
+  border-color: var(--green-300, #6ee7b7);
+}
