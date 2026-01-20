@@ -1,0 +1,330 @@
+/**
+ * TaskTimeline Component Styles
+ * Ultra-minimal design matching existing system
+ */
+
+/* Override popup styles for Timeline - tighter and cleaner */
+#taskTimelineOverlay .popup {
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 3%),
+    0 4px 12px rgb(0 0 0 / 8%),
+    0 8px 24px rgb(0 0 0 / 6%) !important;
+  border: 1px solid #e5e7eb;
+  max-width: 780px !important; /* Match timeline content width + padding */
+  max-height: 90vh !important; /* Taller to reduce scrolling */
+  transition: all 250ms ease !important; /* Smooth close animation */
+}
+
+/* Overlay fade animation */
+#taskTimelineOverlay {
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+#taskTimelineOverlay.active {
+  opacity: 1;
+}
+
+#taskTimelineOverlay .popup-header {
+  padding: 20px 24px 16px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+#taskTimelineOverlay .popup-buttons {
+  padding: 16px 24px !important;
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+/* Timeline Container */
+.timeline-container {
+  position: relative;
+  padding-right: 28px; /* RTL - tighter space for the line */
+  max-width: 680px; /* Limit content width for better readability */
+  margin: 0 auto; /* Center the timeline */
+}
+
+/* Vertical Line (RTL) */
+.timeline-container::before {
+  content: '';
+  position: absolute;
+  right: 10px; /* RTL - centered on smaller icon (22px/2 = 11px, minus 1px for border) */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, #e5e7eb 0%, #e5e7eb 100%);
+}
+
+/* Timeline Item */
+.timeline-item {
+  position: relative;
+  display: flex;
+  gap: 12px; /* Tighter gap */
+  margin-bottom: 16px; /* Tighter spacing between items */
+  direction: rtl;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Timeline Icon */
+.timeline-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  position: relative;
+  z-index: 1;
+  border: 2px solid #fff; /* White ring around icon */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 8%);
+}
+
+/* Timeline Content */
+.timeline-content {
+  flex: 1;
+  background: #f9fafb; /* --gray-50 */
+  border: 1px solid #e5e7eb; /* --gray-200 */
+  border-radius: 8px; /* Smaller radius */
+  padding: 10px 14px; /* Tighter padding */
+  transition: all 200ms ease; /* --transition-smooth */
+}
+
+.timeline-content:hover {
+  background: #fff;
+  border-color: #d4d4d4;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 10%);
+  transform: translateY(-1px);
+}
+
+/* Timeline Header */
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px; /* Tighter */
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.timeline-date {
+  font-size: 13px; /* Slightly bigger for readability */
+  font-weight: 600; /* --font-semibold */
+  color: #0f172a; /* --gray-900 */
+}
+
+.timeline-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px; /* Slightly bigger padding */
+  border-radius: 12px; /* Less rounded */
+  font-size: 12px; /* Bigger text for readability */
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.time-badge {
+  background: #eff6ff; /* --blue-50 */
+  color: #3b82f6; /* --blue-500 */
+}
+
+.budget-badge {
+  background: #fffbeb; /* --orange-50 */
+  color: #f59e0b; /* --orange-500 */
+}
+
+.deadline-badge {
+  background: #f3e8ff; /* --purple-50 */
+  color: #a855f7; /* --purple-500 */
+}
+
+.created-badge {
+  background: #d1fae5; /* --green-100 */
+  color: #10b981; /* --green-500 */
+}
+
+/* Timeline Description */
+.timeline-description {
+  font-size: 14px; /* Bigger for better readability */
+  color: #4b5563; /* --gray-600 */
+  line-height: 1.5;
+  margin-bottom: 6px; /* Tighter */
+  overflow-wrap: break-word;
+}
+
+/* Timeline Footer */
+.timeline-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-user {
+  font-size: 12px; /* Bigger for readability */
+  color: #9ca3af; /* --gray-400 */
+}
+
+/* Empty State */
+.timeline-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+}
+
+/* Prevent body scroll when timeline is open */
+body.timeline-open {
+  overflow: hidden;
+}
+
+/* Close button - override absolute positioning */
+#taskTimelineOverlay .popup-close-btn,
+#taskTimelineOverlay .popup-header button {
+  position: static !important; /* Remove absolute positioning */
+  transition: all 200ms ease !important;
+  outline: 0 !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  border-radius: 9px !important;
+  box-shadow: none !important;
+
+  /* Remove fixed dimensions that create the box */
+  width: auto !important;
+  height: auto !important;
+  padding: 8px !important;
+
+  /* Keep centering */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#taskTimelineOverlay .popup-close-btn:hover,
+#taskTimelineOverlay .popup-header button:hover {
+  background: transparent !important;
+  color: #dc2626 !important; /* Red on hover */
+  transform: scale(1.15) !important; /* Slight scale up for feedback */
+  border: 0 !important;
+  border-width: 0 !important;
+  outline: 0 !important;
+}
+
+#taskTimelineOverlay .popup-close-btn:active {
+  transform: scale(0.95) !important; /* Slight press effect */
+  border: 0 !important;
+  outline: 0 !important;
+}
+
+#taskTimelineOverlay .popup-close-btn:focus {
+  outline: 0 !important; /* Remove focus outline */
+  box-shadow: none !important; /* Remove any focus shadow */
+  border: 0 !important;
+}
+
+#taskTimelineOverlay .popup-close-btn:focus-visible {
+  outline: 0 !important;
+  border: 0 !important;
+}
+
+/* Animation - Slide in from right (RTL) */
+@keyframes slideInTimeline {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.timeline-item {
+  animation: slideInTimeline 300ms ease-out backwards;
+}
+
+/* Stagger animation delays */
+.timeline-item:nth-child(1) { animation-delay: 0ms; }
+
+.timeline-item:nth-child(2) { animation-delay: 50ms; }
+
+.timeline-item:nth-child(3) { animation-delay: 100ms; }
+
+.timeline-item:nth-child(4) { animation-delay: 150ms; }
+
+.timeline-item:nth-child(5) { animation-delay: 200ms; }
+
+.timeline-item:nth-child(6) { animation-delay: 250ms; }
+
+.timeline-item:nth-child(7) { animation-delay: 300ms; }
+
+.timeline-item:nth-child(8) { animation-delay: 350ms; }
+
+.timeline-item:nth-child(9) { animation-delay: 400ms; }
+
+.timeline-item:nth-child(10) { animation-delay: 450ms; }
+
+/* Responsive adjustments */
+@media (width <= 640px) {
+  .timeline-container {
+    padding-right: 24px;
+  }
+
+  .timeline-container::before {
+    right: 7px;
+  }
+
+  .timeline-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  .timeline-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .timeline-content {
+    padding: 10px 12px;
+  }
+}
+
+/* Dark mode support (if enabled) */
+@media (prefers-color-scheme: dark) {
+  .timeline-content {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .timeline-content:hover {
+    background: #0f172a;
+    border-color: #475569;
+  }
+
+  .timeline-date {
+    color: #f1f5f9;
+  }
+
+  .timeline-description {
+    color: #cbd5e1;
+  }
+
+  .timeline-user {
+    color: #64748b;
+  }
+
+  .timeline-container::before {
+    background: linear-gradient(to bottom, #334155 0%, #334155 100%);
+  }
+
+  .timeline-icon {
+    border-color: #1e293b;
+  }
+}

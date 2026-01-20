@@ -2051,63 +2051,13 @@ return;
       return;
     }
 
-    const overlay = document.createElement('div');
-    overlay.className = 'popup-overlay';
-
-    let historyHtml = '';
-    if (task.history?.length > 0) {
-      historyHtml = task.history
-        .map(
-          (entry) => `
-        <div class="history-entry">
-          <div class="history-header">
-            <span class="history-date">${CoreUtils.formatDate(entry.date)}</span>
-            <span class="history-minutes">${entry.minutes} דקות</span>
-          </div>
-          <div class="history-description">${CoreUtils.safeText(
-            entry.description || ''
-          )}</div>
-          <div class="history-timestamp">נוסף ב: ${CoreUtils.safeText(
-            entry.timestamp || ''
-          )}</div>
-        </div>
-      `
-        )
-        .join('');
+    // ✅ Use new TaskTimeline component
+    if (window.TaskTimelineInstance) {
+      window.TaskTimelineInstance.show(task);
     } else {
-      historyHtml =
-        '<div style="text-align: center; color: #6b7280; padding: 40px;">אין היסטוריה עדיין</div>';
+      console.error('TaskTimeline component not loaded');
+      this.showNotification('שגיאה בטעינת ציר הזמן', 'error');
     }
-
-    overlay.innerHTML = `
-      <div class="popup" style="max-width: 600px;">
-        <div class="popup-header">
-          <i class="fas fa-history"></i>
-          היסטוריית זמנים - ${CoreUtils.safeText(task.clientName || '')}
-        </div>
-        <div class="popup-content">
-          <div class="task-summary">
-            <h4>${CoreUtils.safeText(task.description || '')}</h4>
-            <p>סה"כ זמן: ${task.actualMinutes || 0} דקות מתוך ${
-      task.estimatedMinutes || 0
-    }</p>
-          </div>
-          <div class="history-container">
-            ${historyHtml}
-          </div>
-        </div>
-        <div class="popup-buttons" style="justify-content: flex-start;">
-          <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">
-            <i class="fas fa-times"></i> סגור
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-    setTimeout(() => overlay.classList.add('show'), 10);
   }
 
   showExtendDeadlineDialog(taskId) {

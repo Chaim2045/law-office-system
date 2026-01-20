@@ -52,10 +52,20 @@
       // משימה פעילה - כל הכפתורים
       const canCancel = Number(task.actualMinutes || 0) === 0;
 
+      // ✅ Check if over budget (same logic as cards view)
+      const originalEstimate = task.originalEstimate || task.estimatedMinutes || 0;
+      const actualMinutes = Number(task.actualMinutes || 0);
+      const isOverBudget = actualMinutes > originalEstimate;
+
       return `
         <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog('${taskId}')" title="הוסף זמן">
           <i class="fas fa-clock"></i>
         </button>
+        ${isOverBudget ? `
+        <button class="action-btn budget-btn" onclick="manager.showAdjustBudgetDialog('${taskId}')" title="עדכן תקציב">
+          <i class="fas fa-edit"></i>
+        </button>
+        ` : ''}
         <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog('${taskId}')" title="האריך יעד">
           <i class="fas fa-calendar-plus"></i>
         </button>
