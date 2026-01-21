@@ -125,6 +125,7 @@
     <link rel="stylesheet" href="css/style.css?v=933e079" />
     <link rel="stylesheet" href="css/header.css?v=933e079" />
     <link rel="stylesheet" href="css/content-areas.css?v=933e079" />
+    <link rel="stylesheet" href="css/login-modern.css?v=933e079" />
     <link rel="stylesheet" href="css/buttons.css?v=933e079" />
     <link rel="stylesheet" href="css/forms.css?v=933e079" />
     <link rel="stylesheet" href="css/tables.css?v=933e079" />
@@ -423,69 +424,105 @@
       <!-- MAIN CONTENT AREA -->
       <main class="main-content">
         <!-- ===== אזור כניסה למערכת ===== -->
-        <!-- LOGIN SECTION -->
+        <!-- LOGIN SECTION - MODERN DESIGN -->
         <div class="login-wrapper hidden" id="loginSection">
-          <!-- Logo -->
-          <div class="login-logo">
-            <img src="images/logo.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="logo-image" />
-            <h1>משרד עו"ד גיא הרשקוביץ</h1>
-            <p>מערכת ניהול מתקדמת</p>
-          </div>
-
-          <!-- Login Card -->
+          <!-- Modern Login Card -->
           <div class="login-card">
-            <h3>כניסה למערכת</h3>
+            <!-- Logo Section -->
+            <div class="logo-section">
+              <div class="logo-content">
+                <div class="logo-icon">
+                  <img src="images/logo.png" alt="Hershlo Logo">
+                </div>
+                <div class="logo-text">Hershlo</div>
+              </div>
+              <div class="logo-subtitle">Professional Management System</div>
+            </div>
 
+            <!-- Form Section -->
+            <div class="form-section">
+              <!-- Header -->
+              <div class="card-header">
+                <h1 class="card-title">התחברות למערכת</h1>
+                <p class="card-subtitle">בחר את דרך הכניסה המועדפת עליך</p>
+              </div>
 
-            <!-- Password Login Section -->
-            <div class="password-input-section active">
-              <form id="loginForm">
-                <div class="form-group">
-                  <label for="email">אימייל</label>
+              <!-- Error Alert -->
+              <div class="error-alert" id="errorAlert">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorMessage"></span>
+              </div>
+
+              <!-- Social Login -->
+              <div class="social-section">
+                <div class="social-grid">
+                  <button class="social-btn google" id="googleBtn" onclick="window.manager.loginWithGoogle()">
+                    <i class="fab fa-google"></i>
+                    <span>Google</span>
+                  </button>
+                  <button class="social-btn apple" id="appleBtn" onclick="window.manager.loginWithApple()">
+                    <i class="fab fa-apple"></i>
+                    <span>Apple</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Divider -->
+              <div class="divider">
+                <span>או</span>
+              </div>
+
+              <!-- Form -->
+              <form id="loginForm" class="login-form">
+                <!-- Email -->
+                <div class="input-group">
                   <input
                     type="email"
                     id="email"
-                    placeholder="your@email.com"
-                    autocomplete="email"
+                    class="input-field"
+                    placeholder="אימייל (name@company.com)"
                     required
-                  />
+                    autocomplete="email"
+                  >
                 </div>
-                <div class="form-group">
-                  <label for="password">סיסמה</label>
+
+                <!-- Password -->
+                <div class="input-group">
                   <input
                     type="password"
                     id="password"
-                    placeholder="הזן סיסמה"
-                    autocomplete="current-password"
+                    class="input-field"
+                    placeholder="סיסמה"
                     required
-                  />
+                    autocomplete="current-password"
+                  >
+                  <button type="button" class="toggle-password" onclick="togglePasswordVisibility()" aria-label="הצג/הסתר סיסמה">
+                    <i class="fas fa-eye" id="toggleIcon"></i>
+                  </button>
                 </div>
-                <div class="error-message hidden" id="errorMessage">
-                  אימייל או סיסמה שגויים
-                </div>
-                <br />
-                <button type="submit" class="btn">
-                  <i class="fas fa-sign-in-alt"></i>
-                  כניסה
-                </button>
 
-                <!-- Forgot Password Link -->
-                <div class="forgot-password-link">
-                  <a href="#" onclick="showForgotPassword(); return false;">
-                    <i class="fas fa-key"></i>
-                    שכחתי סיסמה
+                <!-- Options -->
+                <div class="form-options">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="remember">
+                    <span>זכור אותי</span>
+                  </label>
+                  <a href="#" class="forgot-link" onclick="showForgotPassword(); return false;">
+                    שכחת סיסמה?
                   </a>
                 </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn submit-btn" id="submitBtn">
+                  <span class="btn-text">
+                    כניסה
+                    <i class="fas fa-arrow-left"></i>
+                  </span>
+                  <div class="btn-spinner"></div>
+                </button>
               </form>
             </div>
-
           </div>
-
-          <!-- Login Footer -->
-          <div class="login-footer">
-            <p>© 2025 כל הזכויות שמורות למשרד עורכי דין גיא הרשקוביץ וחיים פרץ</p>
-          </div>
-
         </div>
 
         <!-- ===== מסך שחזור סיסמה ===== -->

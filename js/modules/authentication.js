@@ -56,15 +56,16 @@ bubblesContainer.classList.remove('hidden');
 }
 
 async function handleLogin() {
-  const email = document.getElementById('email').value;
+  const emailInput = document.getElementById('email').value;
   const password = document.getElementById('password').value;
+  const errorAlert = document.getElementById('errorAlert');
   const errorMessage = document.getElementById('errorMessage');
 
-  if (!email || !password) {
-    if (errorMessage) {
+  if (!emailInput || !password) {
+    if (errorMessage && errorAlert) {
       errorMessage.textContent = 'אנא מלא את כל השדות';
-      errorMessage.classList.remove('hidden');
-      setTimeout(() => errorMessage.classList.add('hidden'), 3000);
+      errorAlert.classList.add('show');
+      setTimeout(() => errorAlert.classList.remove('show'), 3000);
     }
     return;
   }
@@ -76,15 +77,20 @@ async function handleLogin() {
 
     // התחברות עם Firebase Auth
     const userCredential = await firebase.auth()
-      .signInWithEmailAndPassword(email, password);
+      .signInWithEmailAndPassword(emailInput, password);
 
-    const userEmail = userCredential.user.email;
+    // Normalize email (same as Google OAuth flow)
+    const email = userCredential.user.email?.toLowerCase().trim();
     const uid = userCredential.user.uid;
+
+    if (!email) {
+      throw new Error('לא התקבל אימייל מהמערכת');
+    }
 
     // ✅ OPTIMIZATION: Direct get instead of query (faster, cheaper)
     // userCredential.user.email is available immediately after sign-in
     const employeeDoc = await window.firebaseDB.collection('employees')
-      .doc(userEmail)  // Direct document access
+      .doc(email)  // Direct document access with normalized email
       .get();
 
     if (!employeeDoc.exists) {
@@ -93,9 +99,13 @@ async function handleLogin() {
 
     const employee = employeeDoc.data();
 
+    if (!employee) {
+      throw new Error('שגיאה בטעינת נתוני עובד');
+    }
+
     // ✅ שמור את המשתמש הנוכחי - email לשאילתות, username לתצוגה, uid לזיהוי
     this.currentUid = uid; // ✅ Firebase Auth UID
-    this.currentUser = employee.email; // ✅ EMAIL for queries and security
+    this.currentUser = email; // ✅ NORMALIZED EMAIL for queries and security
     this.currentUsername = employee.username || employee.name; // Username for display
     this.currentEmployee = employee; // ✅ Full employee data (including dailyHoursTarget)
 
@@ -181,10 +191,10 @@ async function handleLogin() {
       errorText = 'חשבון זה הושבת. צור קשר עם המנהל';
     }
 
-    if (errorMessage) {
+    if (errorMessage && errorAlert) {
       errorMessage.textContent = errorText;
-      errorMessage.classList.remove('hidden');
-      setTimeout(() => errorMessage.classList.add('hidden'), 3000);
+      errorAlert.classList.add('show');
+      setTimeout(() => errorAlert.classList.remove('show'), 3000);
     }
   }
 }
@@ -566,6 +576,320 @@ async function handleForgotPassword(event) {
   }
 }
 
+// ════════════════════════════════════════════════════════════
+// GOOGLE LOGIN
+// ════════════════════════════════════════════════════════════
+
+async function loginWithGoogle() {
+  const btn = document.getElementById('googleBtn');
+  if (btn) {
+btn.disabled = true;
+}
+  hideError();
+
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+
+    const result = await window.firebaseAuth.signInWithPopup(provider);
+    const user = result.user;
+    console.log('✅ Google Login Success:', user);
+
+    // Normalize email
+    const email = user.email?.toLowerCase().trim();
+
+    if (!email) {
+      await window.firebaseAuth.signOut();
+      showError('לא התקבל אימייל מ-Google');
+      if (btn) {
+btn.disabled = false;
+}
+      return;
+    }
+
+    // Check if user exists in employees collection
+    const employeeDoc = await window.firebaseDB.collection('employees').doc(email).get();
+
+    if (!employeeDoc.exists) {
+      // User not authorized - sign them out
+      await window.firebaseAuth.signOut();
+      showError('משתמש לא מורשה - פנה למנהל המערכת');
+      if (btn) {
+btn.disabled = false;
+}
+      return;
+    }
+
+    const employee = employeeDoc.data();
+
+    if (!employee) {
+      await window.firebaseAuth.signOut();
+      showError('שגיאה בטעינת נתוני עובד');
+      if (btn) {
+btn.disabled = false;
+}
+      return;
+    }
+
+    console.log('✅ Employee validated:', employee);
+
+    // Set current user data (this = LawOfficeManager)
+    this.currentUid = user.uid;
+    this.currentUser = email;
+    this.currentUsername = employee.username || employee.name || email;
+    this.currentEmployee = employee;
+
+    // Update user display
+    updateUserDisplay(this.currentUsername);
+
+    // Show welcome screen (blocking)
+    window.isInWelcomeScreen = true;
+    await this.showWelcomeScreen();
+
+    // Load data while welcome screen is showing
+    await this.loadData();
+
+    // Log login activity
+    if (this.activityLogger) {
+      await this.activityLogger.logLogin();
+    }
+
+    // Update lastLogin timestamp
+    try {
+      await window.firebaseDB.collection('employees').doc(this.currentUser).update({
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+        loginCount: firebase.firestore.FieldValue.increment(1)
+      });
+    } catch (err) {
+      console.warn('⚠️ Failed to update lastLogin:', err);
+    }
+
+    // Track user presence (with timeout to prevent blocking)
+    if (window.PresenceSystem) {
+      try {
+        await Promise.race([
+          window.PresenceSystem.connect(
+            this.currentUid,
+            this.currentUsername,
+            this.currentUser
+          ),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('PresenceSystem timeout')), 5000)
+          )
+        ]);
+        console.log('✅ PresenceSystem connected successfully');
+      } catch (err) {
+        console.warn('⚠️ PresenceSystem failed (non-critical):', err.message);
+        // Continue anyway - presence tracking is not critical for login
+      }
+    }
+
+    // Show the main app
+    console.log('🎯 Calling showApp...');
+    showApp.call(this);
+    console.log('✅ showApp completed');
+
+    // ⚡ Lazy load AI Chat System AFTER successful login
+    this.initAIChatSystem();
+
+  } catch (error) {
+    console.error('❌ Google Login Error:', error);
+
+    // Handle other errors
+    let errorMsg = 'שגיאה בהתחברות עם Google';
+
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      errorMsg = 'קיים חשבון עם שיטת התחברות אחרת. היכנס עם סיסמה או פנה למנהל.';
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      errorMsg = 'הפופאפ נסגר - נסה שוב';
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      errorMsg = 'הבקשה בוטלה';
+    }
+
+    showError(errorMsg);
+    if (btn) {
+btn.disabled = false;
+}
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// APPLE LOGIN
+// ════════════════════════════════════════════════════════════
+
+async function loginWithApple() {
+  const btn = document.getElementById('appleBtn');
+  if (btn) {
+btn.disabled = true;
+}
+  hideError();
+
+  try {
+    const provider = new firebase.auth.OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+
+    const result = await window.firebaseAuth.signInWithPopup(provider);
+    const user = result.user;
+    console.log('✅ Apple Login Success:', user);
+
+    // Normalize email
+    const email = user.email?.toLowerCase().trim();
+
+    if (!email) {
+      await window.firebaseAuth.signOut();
+      showError('לא התקבל אימייל מ-Apple');
+      if (btn) {
+btn.disabled = false;
+}
+      return;
+    }
+
+    // Check if user exists in employees collection
+    const employeeDoc = await window.firebaseDB.collection('employees').doc(email).get();
+
+    if (!employeeDoc.exists) {
+      // User not authorized - sign them out
+      await window.firebaseAuth.signOut();
+      showError('משתמש לא מורשה - פנה למנהל המערכת');
+      if (btn) {
+btn.disabled = false;
+}
+      return;
+    }
+
+    const employee = employeeDoc.data();
+
+    if (!employee) {
+      await window.firebaseAuth.signOut();
+      showError('שגיאה בטעינת נתוני עובד');
+      if (btn) {
+btn.disabled = false;
+}
+      return;
+    }
+
+    console.log('✅ Employee validated:', employee);
+
+    // Set current user data (this = LawOfficeManager)
+    this.currentUid = user.uid;
+    this.currentUser = email;
+    this.currentUsername = employee.username || employee.name || email;
+    this.currentEmployee = employee;
+
+    // Update user display
+    updateUserDisplay(this.currentUsername);
+
+    // Show welcome screen (blocking)
+    window.isInWelcomeScreen = true;
+    await this.showWelcomeScreen();
+
+    // Load data while welcome screen is showing
+    await this.loadData();
+
+    // Log login activity
+    if (this.activityLogger) {
+      await this.activityLogger.logLogin();
+    }
+
+    // Update lastLogin timestamp
+    try {
+      await window.firebaseDB.collection('employees').doc(this.currentUser).update({
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+        loginCount: firebase.firestore.FieldValue.increment(1)
+      });
+    } catch (err) {
+      console.warn('⚠️ Failed to update lastLogin:', err);
+    }
+
+    // Track user presence (with timeout to prevent blocking)
+    if (window.PresenceSystem) {
+      try {
+        await Promise.race([
+          window.PresenceSystem.connect(
+            this.currentUid,
+            this.currentUsername,
+            this.currentUser
+          ),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('PresenceSystem timeout')), 5000)
+          )
+        ]);
+        console.log('✅ PresenceSystem connected successfully');
+      } catch (err) {
+        console.warn('⚠️ PresenceSystem failed (non-critical):', err.message);
+        // Continue anyway - presence tracking is not critical for login
+      }
+    }
+
+    // Show the main app
+    console.log('🎯 Calling showApp...');
+    showApp.call(this);
+    console.log('✅ showApp completed');
+
+    // ⚡ Lazy load AI Chat System AFTER successful login
+    this.initAIChatSystem();
+
+  } catch (error) {
+    console.error('❌ Apple Login Error:', error);
+
+    // Handle other errors
+    let errorMsg = 'שגיאה בהתחברות עם Apple';
+
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      errorMsg = 'קיים חשבון עם שיטת התחברות אחרת. היכנס עם סיסמה או פנה למנהל.';
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      errorMsg = 'הפופאפ נסגר - נסה שוב';
+    }
+
+    showError(errorMsg);
+    if (btn) {
+btn.disabled = false;
+}
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// TOGGLE PASSWORD VISIBILITY
+// ════════════════════════════════════════════════════════════
+
+function togglePasswordVisibility() {
+  const passwordInput = document.getElementById('password');
+  const toggleIcon = document.getElementById('toggleIcon');
+
+  if (!passwordInput || !toggleIcon) {
+return;
+}
+
+  const isPassword = passwordInput.type === 'password';
+
+  passwordInput.type = isPassword ? 'text' : 'password';
+  toggleIcon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
+// ════════════════════════════════════════════════════════════
+// ERROR HANDLING
+// ════════════════════════════════════════════════════════════
+
+function showError(message) {
+  const errorAlert = document.getElementById('errorAlert');
+  const errorMessage = document.getElementById('errorMessage');
+
+  if (errorAlert && errorMessage) {
+    errorMessage.textContent = message;
+    errorAlert.classList.add('show');
+  }
+}
+
+function hideError() {
+  const errorAlert = document.getElementById('errorAlert');
+
+  if (errorAlert) {
+    errorAlert.classList.remove('show');
+  }
+}
+
 /**
  * Initialize authentication methods
  */
@@ -923,6 +1247,42 @@ async function initAIChatSystem() {
   }
 }
 
+// ════════════════════════════════════════════════════════════
+// FEATURE FLAG INITIALIZATION
+// ════════════════════════════════════════════════════════════
+
+/**
+ * Initialize OAuth feature flags
+ * Called on DOMContentLoaded to apply feature flags
+ */
+function initOAuthFeatureFlags() {
+  const appleBtn = document.getElementById('appleBtn');
+
+  if (!appleBtn) {
+return;
+}
+
+  // Check if Apple OAuth is enabled in config
+  const isEnabled = window.CONFIG?.enableAppleOAuth === true;
+
+  if (!isEnabled) {
+    appleBtn.disabled = true;
+    appleBtn.style.opacity = '0.5';
+    appleBtn.style.cursor = 'not-allowed';
+    appleBtn.title = 'בקרוב - Apple Sign-In נמצא בפיתוח';
+
+    // Replace onclick to show message instead
+    appleBtn.onclick = (e) => {
+      e.preventDefault();
+      showError('Apple Sign-In יהיה זמין בקרוב');
+    };
+
+    console.log('🚫 Apple OAuth disabled by feature flag');
+  } else {
+    console.log('✅ Apple OAuth enabled');
+  }
+}
+
 // Exports
 export {
   showLogin,
@@ -940,5 +1300,11 @@ export {
   handleSMSLogin,           // ← חדש
   verifyOTP,                // ← חדש
   setupOTPInputs,           // ← חדש
-  initAIChatSystem          // ⚡ Lazy loading
+  loginWithGoogle,          // ← Google OAuth
+  loginWithApple,           // ← Apple OAuth
+  togglePasswordVisibility, // ← Toggle password visibility
+  showError,                // ← Show error message
+  hideError,                // ← Hide error message
+  initAIChatSystem,         // ⚡ Lazy loading
+  initOAuthFeatureFlags     // ← Feature flags for OAuth
 };
