@@ -1,0 +1,538 @@
+/* ═══════════════════════════════════════════════════════════
+   MODERN LOGIN SCREEN - DEMO-6 LANDSCAPE LAYOUT
+   מסך התחברות מודרני - Layout אופקי עם לוגו
+   ═══════════════════════════════════════════════════════════ */
+
+/* Override for login section */
+.login-wrapper#loginSection {
+  max-width: none;
+  width: 100%;
+  padding: 24px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
+  z-index: 100; /* Below FAB (9998) but above regular content */
+}
+
+/* Hide old logo and footer */
+.login-wrapper#loginSection > .login-logo,
+.login-wrapper#loginSection > .login-footer {
+  display: none;
+}
+
+/* Modern login card container */
+.login-wrapper#loginSection > .login-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 10%);
+  border: 1px solid #e5e7eb !important;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  padding: 0;
+  backdrop-filter: none;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  outline: none !important;
+}
+
+/* === LOGO SECTION === */
+.logo-section {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  padding: 20px;
+  padding-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.logo-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 80%, rgb(255 255 255 / 10%) 0, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgb(255 255 255 / 8%) 0, transparent 50%);
+}
+
+.logo-content {
+  position: relative;
+  z-index: 1;
+}
+
+.logo-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.logo-text {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 0;
+  line-height: 1;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+
+  /* Shine effect */
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 60%) 0%,
+    rgb(255 255 255 / 100%) 50%,
+    rgb(255 255 255 / 60%) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 6s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0% {
+    background-position: -200% 0;
+  }
+
+  50% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.logo-subtitle {
+  font-size: 13px;
+  opacity: 0.85;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  margin-top: auto;
+  padding-bottom: 24px;
+}
+
+/* === FORM SECTION === */
+.login-wrapper#loginSection .form-section {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Remove borders from containers only */
+.form-section .password-input-section,
+.form-section .login-form,
+.form-section .card-header,
+.form-section .social-section,
+.form-section .divider,
+.form-section .form-options,
+.form-section .card-footer {
+  border: none;
+  box-shadow: none;
+}
+
+.card-header {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.card-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  margin-bottom: 8px;
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* === SOCIAL BUTTONS === */
+.social-section {
+  margin-bottom: 16px;
+}
+
+.social-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.social-btn {
+  height: 44px;
+  padding: 0 16px;
+  background: white;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 200ms;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.social-btn:hover {
+  border-color: #2563eb;
+  background: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 5%);
+}
+
+.social-btn:active {
+  transform: translateY(0);
+}
+
+.social-btn i {
+  font-size: 18px;
+}
+
+.social-btn.google i {
+  color: #4285f4;
+}
+
+.social-btn.apple i {
+  color: #000;
+}
+
+.social-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === DIVIDER === */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+/* === FORM === */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.input-label {
+  display: none;
+}
+
+/* Override existing input styles */
+.form-section .input-field,
+.form-section input[type="email"],
+.form-section input[type="password"],
+.form-section input[type="text"].password-field {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  transition: border-color 200ms;
+  outline: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: none;
+}
+
+.form-section input[type="password"],
+.form-section input[type="text"].password-field {
+  padding-left: 44px;
+}
+
+.form-section .input-field::placeholder {
+  color: #9ca3af;
+}
+
+.form-section .input-field:focus {
+  border-color: #2563eb;
+  box-shadow: none;
+  transform: none;
+  outline: none;
+}
+
+/* Remove any form-group effects */
+.form-section .form-group::after,
+.form-section .input-group::after {
+  display: none !important;
+}
+
+/* Toggle password button */
+.toggle-password {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 200ms;
+  font-size: 16px;
+}
+
+.toggle-password:hover {
+  color: #4b5563;
+}
+
+/* === OPTIONS === */
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
+.forgot-link {
+  font-size: 13px;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 200ms;
+}
+
+.forgot-link:hover {
+  color: #1e40af;
+  text-decoration: underline;
+}
+
+/* === SUBMIT BUTTON === */
+.form-section .submit-btn,
+.form-section button[type="submit"].btn {
+  width: 100%;
+  height: 44px;
+  margin-top: 0;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 5%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+}
+
+.form-section .submit-btn:hover,
+.form-section button[type="submit"].btn:hover {
+  background: #1e40af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%);
+}
+
+.form-section .submit-btn:active,
+.form-section button[type="submit"].btn:active {
+  transform: translateY(0);
+}
+
+.form-section .submit-btn:disabled,
+.form-section button[type="submit"].btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgb(255 255 255 / 30%);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.submit-btn.loading .btn-spinner {
+  display: block;
+}
+
+.submit-btn.loading .btn-text {
+  display: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* === FOOTER === */
+.card-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.signup-link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 200ms;
+}
+
+.signup-link:hover {
+  color: #1e40af;
+  text-decoration: underline;
+}
+
+/* === ERROR ALERT === */
+.error-alert {
+  min-height: 0;
+  max-height: 0;
+  overflow: hidden;
+  margin-bottom: 0;
+  padding: 0 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #991b1b;
+  font-size: 13px;
+  opacity: 0;
+  transition: all 300ms ease;
+}
+
+.error-alert.show {
+  min-height: auto;
+  max-height: 100px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  opacity: 1;
+}
+
+.error-alert i {
+  margin-left: 8px;
+}
+
+/* Override old error message styles */
+.form-section .error-message {
+  display: none !important;
+}
+
+/* === RESPONSIVE === */
+@media (width <= 920px) {
+  .login-wrapper#loginSection > .login-card {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+
+  .logo-section {
+    min-height: auto;
+    padding: 24px;
+  }
+
+  .logo-text {
+    font-size: 22px;
+  }
+
+  .logo-icon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (width <= 480px) {
+  .login-wrapper#loginSection {
+    padding: 16px;
+  }
+
+  .form-section {
+    padding: 24px;
+  }
+
+  .social-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* === ACCESSIBILITY === */
+*:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HIDE LOGIN SECTION WHEN APP IS SHOWN
+   ═══════════════════════════════════════════════════════════ */
+#loginSection.hidden {
+  display: none !important;
+}
