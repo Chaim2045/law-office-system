@@ -272,7 +272,8 @@ return '#64748b';
         }
 
         /**
-         * רינדור רשת עובדים
+         * רינדור רשימת עובדים (קומפקטית)
+         * UI/WORKLOAD-DRAWER-2026: Replaced grid with compact list
          */
         renderEmployeesGrid(employees, workloadMap) {
             const html = employees.map(emp => {
@@ -281,10 +282,137 @@ return '#64748b';
 return '';
 }
 
-                return this.renderEmployeeCard(emp, metrics);
+                return this.renderEmployeeListRow(emp, metrics);
             }).join('');
 
-            return `<div class="workload-grid" id="workloadGrid">${html}</div>`;
+            return `<div class="workload-employees-list" id="workloadEmployeesList">${html}</div>`;
+        }
+
+        /**
+         * UI/WORKLOAD-DRAWER-2026: Render compact employee list row
+         */
+        renderEmployeeListRow(employee, metrics) {
+            const status = metrics.managerRisk?.level || metrics.workloadLevel;
+            const statusLabels = {
+                low: 'תקין',
+                medium: 'גבולי',
+                high: 'דורש תשומת לב',
+                critical: 'חריג'
+            };
+
+            // Extract reasons chips (up to 2)
+            const reasonsChips = this.extractReasonsChips(metrics);
+
+            // Status icon
+            const statusIcons = {
+                low: 'fa-check-circle',
+                medium: 'fa-exclamation-circle',
+                high: 'fa-exclamation-triangle',
+                critical: 'fa-exclamation-triangle'
+            };
+
+            return `
+                <div class="employee-list-row"
+                     data-status="${status}"
+                     data-email="${this.sanitize(employee.email)}"
+                     onclick="window.workloadDrawer.open('${this.sanitize(employee.email)}')">
+
+                    <!-- Employee Info -->
+                    <div class="employee-list-info">
+                        <div class="employee-list-name">${this.sanitize(employee.displayName || employee.username)}</div>
+                        <div class="employee-list-role">${this.getRoleLabel(employee.role)}</div>
+                    </div>
+
+                    <!-- Workload Score -->
+                    <div class="employee-list-score">
+                        <div class="employee-list-score-value">${metrics.workloadScore}%</div>
+                        <div class="employee-list-score-label">עומס</div>
+                    </div>
+
+                    <!-- Reasons Chips -->
+                    <div class="employee-list-reasons">
+                        ${reasonsChips.map(chip => `
+                            <div class="employee-reason-chip ${chip.critical ? 'critical' : ''}">
+                                <i class="fas ${chip.icon}"></i>
+                                ${this.sanitize(chip.text)}
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Status Badge -->
+                    <div class="employee-list-status">
+                        <i class="fas ${statusIcons[status]}"></i>
+                        ${statusLabels[status] || 'לא ידוע'}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * UI/WORKLOAD-DRAWER-2026: Extract up to 2 reason chips
+         * Priority: managerRisk.reasons > critical alerts > high alerts
+         */
+        extractReasonsChips(metrics) {
+            const chips = [];
+
+            // Try managerRisk.reasons first (up to 2)
+            if (metrics.managerRisk?.reasons && metrics.managerRisk.reasons.length > 0) {
+                const isCritical = metrics.managerRisk.level === 'critical';
+                chips.push({
+                    text: metrics.managerRisk.reasons[0],
+                    icon: 'fa-info-circle',
+                    critical: isCritical
+                });
+                if (metrics.managerRisk.reasons.length > 1) {
+                    chips.push({
+                        text: metrics.managerRisk.reasons[1],
+                        icon: 'fa-info-circle',
+                        critical: isCritical
+                    });
+                }
+                return chips;
+            }
+
+            // Fallback: alerts (critical first, then high)
+            if (metrics.alerts && metrics.alerts.length > 0) {
+                const criticalAlerts = metrics.alerts.filter(a => a.severity === 'critical');
+                const highAlerts = metrics.alerts.filter(a => a.severity === 'warning');
+
+                if (criticalAlerts.length > 0) {
+                    chips.push({
+                        text: criticalAlerts[0].message,
+                        icon: 'fa-exclamation-triangle',
+                        critical: true
+                    });
+                    if (criticalAlerts.length > 1) {
+                        chips.push({
+                            text: criticalAlerts[1].message,
+                            icon: 'fa-exclamation-triangle',
+                            critical: true
+                        });
+                        return chips;
+                    }
+                }
+
+                if (highAlerts.length > 0 && chips.length < 2) {
+                    chips.push({
+                        text: highAlerts[0].message,
+                        icon: 'fa-exclamation-circle',
+                        critical: false
+                    });
+                }
+
+                if (chips.length > 0) {
+return chips;
+}
+            }
+
+            // Final fallback: "ללא התראות"
+            return [{
+                text: 'ללא התראות',
+                icon: 'fa-check',
+                critical: false
+            }];
         }
 
         /**
