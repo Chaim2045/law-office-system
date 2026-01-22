@@ -1958,6 +1958,124 @@ return;
     };
 
     // ═══════════════════════════════════════════════════════════════
+    // UI/WORKLOAD-DRAWER-2026: Drawer Manager
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Global drawer manager for workload details
+     */
+    window.workloadDrawer = {
+        isOpen: false,
+        currentEmail: null,
+
+        /**
+         * Open drawer for specific employee
+         */
+        open(employeeEmail) {
+            const workloadCard = window.WorkloadCard;
+            if (!workloadCard || !workloadCard.employees || !workloadCard.workloadMap) {
+                console.error('❌ Workload data not available');
+                return;
+            }
+
+            // Find employee
+            const employee = workloadCard.employees.find(e => e.email === employeeEmail);
+            if (!employee) {
+                console.error('❌ Employee not found:', employeeEmail);
+                return;
+            }
+
+            // Get metrics
+            const metrics = workloadCard.workloadMap.get(employeeEmail);
+            if (!metrics) {
+                console.error('❌ Metrics not found for:', employeeEmail);
+                return;
+            }
+
+            // Render drawer
+            const container = document.getElementById('workloadDrawerContainer');
+            if (!container) {
+                console.error('❌ Drawer container not found');
+                return;
+            }
+
+            container.innerHTML = workloadCard.renderDrawer(employee, metrics, workloadCard.workloadMap);
+
+            // Activate drawer
+            this.currentEmail = employeeEmail;
+            this.isOpen = true;
+
+            // Add event listeners
+            setTimeout(() => {
+                const overlay = document.getElementById('workloadDrawerOverlay');
+                const drawer = document.getElementById('workloadDrawer');
+                const closeBtn = document.getElementById('drawerCloseBtn');
+
+                if (overlay && drawer) {
+                    overlay.classList.add('active');
+                    drawer.classList.add('active');
+
+                    // Lock body scroll
+                    document.body.style.overflow = 'hidden';
+                }
+
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => this.close());
+                }
+
+                if (overlay) {
+                    overlay.addEventListener('click', () => this.close());
+                }
+
+                // Escape key
+                document.addEventListener('keydown', this.handleEscapeKey);
+            }, 10);
+
+            console.log('✅ Drawer opened for:', employeeEmail);
+        },
+
+        /**
+         * Close drawer
+         */
+        close() {
+            const overlay = document.getElementById('workloadDrawerOverlay');
+            const drawer = document.getElementById('workloadDrawer');
+
+            if (overlay && drawer) {
+                overlay.classList.remove('active');
+                drawer.classList.remove('active');
+
+                // Unlock body scroll
+                document.body.style.overflow = '';
+            }
+
+            // Remove escape listener
+            document.removeEventListener('keydown', this.handleEscapeKey);
+
+            // Clear after animation
+            setTimeout(() => {
+                const container = document.getElementById('workloadDrawerContainer');
+                if (container) {
+                    container.innerHTML = '';
+                }
+                this.isOpen = false;
+                this.currentEmail = null;
+            }, 300);
+
+            console.log('✅ Drawer closed');
+        },
+
+        /**
+         * Handle escape key
+         */
+        handleEscapeKey(e) {
+            if (e.key === 'Escape' && window.workloadDrawer.isOpen) {
+                window.workloadDrawer.close();
+            }
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════
     // Global Export
     // ═══════════════════════════════════════════════════════════════
 
