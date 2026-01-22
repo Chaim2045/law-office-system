@@ -1139,20 +1139,9 @@ return dateStr;
 
         /**
          * הוספת event listeners
+         * UI/WORKLOAD-DRAWER-2026: Removed view toggle (now always list)
          */
         attachEventListeners() {
-            // Toggle view
-            const viewButtons = this.container.querySelectorAll('.view-toggle-btn');
-            viewButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const view = btn.dataset.view;
-                    this.toggleView(view);
-
-                    viewButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                });
-            });
-
             // Refresh
             const refreshBtn = this.container.querySelector('#refreshWorkloadBtn');
             if (refreshBtn) {
@@ -1169,24 +1158,6 @@ return dateStr;
                     alert('דו״ח מפורט - בפיתוח');
                 });
             }
-        }
-
-        /**
-         * החלף תצוגה (grid/list)
-         */
-        toggleView(view) {
-            const grid = this.container.querySelector('#workloadGrid');
-            if (!grid) {
-return;
-}
-
-            if (view === 'list') {
-                grid.classList.add('workload-list-view');
-            } else {
-                grid.classList.remove('workload-list-view');
-            }
-
-            this.currentView = view;
         }
 
         // ═══════════════════════════════════════════════════════════════
