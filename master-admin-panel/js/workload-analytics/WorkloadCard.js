@@ -103,6 +103,10 @@
                 const teamStats = this.workloadService.calculateTeamStats(workloadMap);
                 console.log('📈 Team Stats:', teamStats);
 
+                // UI/WORKLOAD-DRAWER-2026: Store data for drawer access
+                this.employees = employees;
+                this.workloadMap = workloadMap;
+
                 // רינדור
                 container.innerHTML = this.renderWorkloadDashboard(
                     employees,
@@ -164,6 +168,7 @@
 
         /**
          * רינדור דשבורד עומס מלא
+         * UI/WORKLOAD-DRAWER-2026: Removed view toggle, added drawer container
          */
         renderWorkloadDashboard(employees, workloadMap, teamStats) {
             return `
@@ -177,21 +182,12 @@
                             </h3>
                             <p class="workload-subtitle">עדכון אוטומטי כל 5 דקות</p>
                         </div>
-
-                        <div class="workload-view-toggle">
-                            <button class="view-toggle-btn active" data-view="grid" title="תצוגת רשת">
-                                <i class="fas fa-th"></i>
-                            </button>
-                            <button class="view-toggle-btn" data-view="list" title="תצוגת רשימה">
-                                <i class="fas fa-list"></i>
-                            </button>
-                        </div>
                     </div>
 
                     <!-- סטטיסטיקות צוות -->
                     ${this.renderTeamStats(teamStats)}
 
-                    <!-- רשת עובדים -->
+                    <!-- רשימת עובדים (קליק פותח drawer) -->
                     <div class="workload-employees-container">
                         ${this.renderEmployeesGrid(employees, workloadMap)}
                     </div>
@@ -208,6 +204,9 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- UI/WORKLOAD-DRAWER-2026: Drawer container (injected into DOM) -->
+                <div id="workloadDrawerContainer"></div>
             `;
         }
 
@@ -1504,6 +1503,321 @@ return 'warning';
             // Cap display at 100% - no need to show 4,130%
             const displayRatio = Math.min(100, Math.round(ratio));
             return `${displayRatio}%`;
+        }
+
+/**
+         * UI/WORKLOAD-DRAWER-2026: Render drawer with all employee details
+         */
+        renderDrawer(employee, metrics, workloadMap) {
+            const whyLine = this.getDrawerWhyLine(metrics);
+            const whyClass = metrics.managerRisk?.level === 'critical' ? 'critical' :
+                            (metrics.managerRisk?.level === 'high' ? '' : 'neutral');
+
+            return `
+                <!-- Drawer Overlay -->
+                <div class="workload-drawer-overlay" id="workloadDrawerOverlay"></div>
+
+                <!-- Drawer -->
+                <div class="workload-drawer" id="workloadDrawer">
+                    <!-- Header -->
+                    <div class="drawer-header">
+                        <div class="drawer-header-top">
+                            <div class="drawer-employee-info">
+                                <h3>${this.sanitize(employee.displayName || employee.username)}</h3>
+                                <div class="role">${this.getRoleLabel(employee.role)}</div>
+                            </div>
+                            <button class="drawer-close-btn" id="drawerCloseBtn">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        ${whyLine ? `<div class="drawer-why-line ${whyClass}">${whyLine}</div>` : ''}
+                    </div>
+
+                    <!-- Content -->
+                    <div class="drawer-content">
+                        ${this.renderDrawerSectionA(metrics)}
+                        ${this.renderDrawerSectionB(metrics)}
+                        ${this.renderDrawerSectionC(metrics)}
+                        ${this.renderDrawerSectionD(metrics)}
+                        ${this.renderDrawerSectionE(metrics, employee)}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * UI/WORKLOAD-DRAWER-2026: Get "why" explanation line for drawer header
+         */
+        getDrawerWhyLine(metrics) {
+            // Priority: managerRisk.reasons
+            if (metrics.managerRisk?.reasons && metrics.managerRisk.reasons.length > 0) {
+                return metrics.managerRisk.reasons.slice(0, 2).join(' • ');
+            }
+
+            // Fallback: critical alerts
+            if (metrics.alerts && metrics.alerts.length > 0) {
+                const critical = metrics.alerts.filter(a => a.severity === 'critical');
+                if (critical.length > 0) {
+                    return critical.slice(0, 2).map(a => a.message).join(' • ');
+                }
+            }
+
+            // Neutral fallback
+            return 'מצב תקין, אין התראות משמעותיות';
+        }
+
+        /**
+         * Section A: Workload Overview
+         */
+        renderDrawerSectionA(metrics) {
+            const statusLabels = {
+                low: 'זמין',
+                medium: 'בינוני',
+                high: 'עמוס',
+                critical: 'קריטי'
+            };
+            const status = metrics.managerRisk?.level || metrics.workloadLevel;
+
+            return `
+                <div class="drawer-section">
+                    <div class="drawer-section-title">
+                        <i class="fas fa-tachometer-alt"></i>
+                        סקירת עומס
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-percentage"></i>
+                            ציון עומס
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${metrics.workloadScore}%
+                            <div class="drawer-metric-context">100% = ניצול מלא של שעות התקן</div>
+                        </div>
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-info-circle"></i>
+                            מצב כללי
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${statusLabels[status] || 'לא ידוע'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Section B: Deadlines & Risk
+         */
+        renderDrawerSectionB(metrics) {
+            const coverage = metrics.next5DaysCoverage || {};
+            const coverageRatio = coverage.coverageRatio !== null && coverage.coverageRatio !== undefined
+                ? Math.min(100, Math.round(coverage.coverageRatio))
+                : null;
+            const gap = coverage.coverageGap || 0;
+
+            let gapText = '';
+            if (coverageRatio !== null) {
+                if (gap > 0) {
+                    gapText = `חסר ${this.formatHours(gap)}`;
+                } else if (gap < 0) {
+                    gapText = `עודף ${this.formatHours(Math.abs(gap))}`;
+                } else {
+                    gapText = 'מכוסה במלואו';
+                }
+            }
+
+            const isCritical = metrics.overduePlusDueSoon >= 3;
+
+            return `
+                <div class="drawer-section">
+                    <div class="drawer-section-title">
+                        <i class="fas fa-calendar-exclamation"></i>
+                        דדליינים וסיכונים
+                    </div>
+                    <div class="drawer-metric ${isCritical ? 'critical' : ''}">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-fire"></i>
+                            משימות דחופות
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${metrics.overduePlusDueSoon || 0}
+                            <div class="drawer-metric-context">באיחור + 3 ימים קרובים</div>
+                        </div>
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-shield-alt"></i>
+                            כיסוי 5 ימים
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${coverageRatio !== null ? `${coverageRatio}%` : '—'}
+                            ${gapText ? `<div class="drawer-metric-context">${gapText}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Section C: Capacity Context
+         */
+        renderDrawerSectionC(metrics) {
+            const peakMultiplier = metrics.dailyBreakdown?.peakMultiplier;
+            const peakDisplay = peakMultiplier ? `×${peakMultiplier.toFixed(2)}` : '—';
+
+            return `
+                <div class="drawer-section">
+                    <div class="drawer-section-title">
+                        <i class="fas fa-battery-three-quarters"></i>
+                        קיבולת והיקף
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-clock"></i>
+                            זמינות השבוע
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${this.formatHours(metrics.availableHoursThisWeek)}
+                            <div class="drawer-metric-context">שעות פנויות זמינות</div>
+                        </div>
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-chart-bar"></i>
+                            עומס יומי מקסימלי
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${peakDisplay}
+                            <div class="drawer-metric-context">ביום העמוס ביותר ביחס לתקן</div>
+                        </div>
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-tasks"></i>
+                            Backlog כולל
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${this.formatHours(metrics.totalBacklogHours)}
+                            <div class="drawer-metric-context">שעות עבודה נותרות</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Section D: Data Quality
+         */
+        renderDrawerSectionD(metrics) {
+            const confidence = metrics.dataConfidence?.score;
+            const confidenceDisplay = confidence !== undefined && confidence !== null
+                ? `${Math.round(confidence)}%`
+                : '—';
+
+            let qualityText = '';
+            if (confidence !== undefined) {
+                if (confidence >= 70) {
+                    qualityText = 'דיווח עקבי ואמין';
+                } else if (confidence >= 30) {
+                    qualityText = 'דיווח חלקי';
+                } else {
+                    qualityText = 'דיווח חסר';
+                }
+            }
+
+            return `
+                <div class="drawer-section">
+                    <div class="drawer-section-title">
+                        <i class="fas fa-chart-line"></i>
+                        איכות נתונים
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-clipboard-check"></i>
+                            אמון בנתונים
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${confidenceDisplay}
+                            ${qualityText ? `<div class="drawer-metric-context">${qualityText}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="drawer-metric">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-list"></i>
+                            משימות פעילות
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${metrics.activeTasksCount || 0}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Section E: Trends (Weekly Breakdown)
+         */
+        renderDrawerSectionE(metrics, employee) {
+            const dailyBreakdown = metrics.dailyBreakdown;
+            if (!dailyBreakdown || !dailyBreakdown.dailyLoads) {
+                return `
+                    <div class="drawer-section">
+                        <div class="drawer-section-title">
+                            <i class="fas fa-calendar-week"></i>
+                            מגמות שבועיות
+                        </div>
+                        <p style="color: #64748b; font-size: 0.875rem;">אין נתונים זמינים</p>
+                    </div>
+                `;
+            }
+
+            const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
+
+            // Get next 5 days
+            const today = new Date();
+            const next5Days = [];
+            for (let i = 0; i < 5; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+                const dateKey = this.dateToYYYYMMDD(date);
+                next5Days.push({
+                    date: date,
+                    dateKey: dateKey,
+                    load: dailyBreakdown.dailyLoads[dateKey] || 0,
+                    dayName: this.getDayName(date)
+                });
+            }
+
+            const maxLoad = Math.max(...next5Days.map(d => d.load), dailyTarget);
+
+            const chartHtml = next5Days.map(day => {
+                const heightPercent = maxLoad > 0 ? (day.load / maxLoad) * 100 : 0;
+                const isOverloaded = day.load > dailyTarget;
+
+                return `
+                    <div class="drawer-daily-bar-wrapper">
+                        <div class="drawer-daily-bar-value">${this.formatHours(day.load)}</div>
+                        <div class="drawer-daily-bar ${isOverloaded ? 'overloaded' : ''}"
+                             style="height: ${heightPercent}%">
+                        </div>
+                        <div class="drawer-daily-bar-label">${day.dayName}</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="drawer-section">
+                    <div class="drawer-section-title">
+                        <i class="fas fa-calendar-week"></i>
+                        פירוט שבועי
+                    </div>
+                    <div class="drawer-weekly-chart">
+                        ${chartHtml}
+                    </div>
+                </div>
+            `;
         }
 
         formatHours(hours) {
