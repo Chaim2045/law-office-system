@@ -8,6 +8,15 @@
  */
 
 /* ========================================
+   FEATURE FLAGS - Production Configuration
+   ======================================== */
+
+window.CONFIG = {
+  // Apple OAuth is disabled by default until production testing is complete
+  enableAppleOAuth: false
+};
+
+/* ========================================
    MODULE IMPORTS - Core System Components
    ======================================== */
 
@@ -499,6 +508,15 @@ class LawOfficeManager {
 
   async verifyOTP() {
     await Auth.verifyOTP.call(this);
+  }
+
+  // OAuth Authentication methods
+  async loginWithGoogle() {
+    await Auth.loginWithGoogle.call(this);
+  }
+
+  async loginWithApple() {
+    await Auth.loginWithApple.call(this);
   }
 
   // ⚡ Lazy Loading - AI Chat System
@@ -2899,6 +2917,7 @@ window.logout = Auth.logout;
 window.confirmLogout = Auth.confirmLogout;
 window.showLogin = Auth.showLogin;
 window.showForgotPassword = Auth.showForgotPassword;
+window.togglePasswordVisibility = Auth.togglePasswordVisibility;
 
 // ✅ OLD client search functions removed - now using ClientCaseSelector component
 // Old: window.searchClients, window.selectClient
@@ -3036,10 +3055,12 @@ function initializeUIListeners() {
 // Initialize listeners when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
+    Auth.initOAuthFeatureFlags(); // Apply feature flags
     initializeUIListeners();
     manager.init();
   });
 } else {
+  Auth.initOAuthFeatureFlags(); // Apply feature flags
   initializeUIListeners();
   manager.init();
 }
