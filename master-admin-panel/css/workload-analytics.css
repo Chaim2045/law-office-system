@@ -2214,3 +2214,447 @@
         height: 16px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   UI/WORKLOAD-DRAWER-2026: Employee List & Drawer
+   Compact list view with side drawer for details
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────────
+   Employee List Container
+   ────────────────────────────────────────────────────────────── */
+
+.workload-employees-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Employee List Row (Compact)
+   ────────────────────────────────────────────────────────────── */
+
+.employee-list-row {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 16px;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.employee-list-row:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+    transform: translateY(-1px);
+}
+
+/* Critical status indicator */
+.employee-list-row[data-status="critical"] {
+    border-left: 4px solid #ef4444;
+}
+
+.employee-list-row[data-status="critical"]:hover {
+    border-left-color: #dc2626;
+}
+
+/* Employee Info (Name + Role) */
+.employee-list-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0; /* Allow text truncation */
+}
+
+.employee-list-name {
+    font-size: 0.938rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.employee-list-role {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 400;
+}
+
+/* Workload Score Badge */
+.employee-list-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 16px;
+    background: #f8fafc;
+    border-radius: 6px;
+    min-width: 80px;
+}
+
+.employee-list-score-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1;
+}
+
+.employee-list-score-label {
+    font-size: 0.625rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Critical score highlighting */
+.employee-list-row[data-status="critical"] .employee-list-score {
+    background: #fef2f2;
+}
+
+.employee-list-row[data-status="critical"] .employee-list-score-value {
+    color: #dc2626;
+}
+
+/* Reasons Chips Container */
+.employee-list-reasons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    max-width: 400px;
+}
+
+.employee-reason-chip {
+    padding: 4px 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #475569;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.employee-reason-chip i {
+    font-size: 0.688rem;
+    color: #64748b;
+}
+
+/* Critical reason chip */
+.employee-reason-chip.critical {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.employee-reason-chip.critical i {
+    color: #dc2626;
+}
+
+/* Status Badge */
+.employee-list-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #475569;
+    white-space: nowrap;
+}
+
+.employee-list-status i {
+    font-size: 0.688rem;
+    color: #64748b;
+}
+
+/* Critical status badge */
+.employee-list-row[data-status="critical"] .employee-list-status {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.employee-list-row[data-status="critical"] .employee-list-status i {
+    color: #dc2626;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Drawer Overlay
+   ────────────────────────────────────────────────────────────── */
+
+.workload-drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgb(0 0 0 / 40%);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.workload-drawer-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Drawer Container
+   ────────────────────────────────────────────────────────────── */
+
+.workload-drawer {
+    position: fixed;
+    top: 0;
+    right: -480px; /* Hidden initially */
+    width: 480px;
+    height: 100vh;
+    background: white;
+    box-shadow: -4px 0 24px rgb(0 0 0 / 15%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    transition: right 0.3s ease;
+    overflow: hidden;
+}
+
+.workload-drawer.active {
+    right: 0;
+}
+
+/* Drawer Header */
+.drawer-header {
+    padding: 24px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fafbfc;
+    flex-shrink: 0;
+}
+
+.drawer-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.drawer-close-btn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.drawer-close-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.drawer-employee-info h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 4px;
+}
+
+.drawer-employee-info .role {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+/* "Why" Explanation Line */
+.drawer-why-line {
+    padding: 12px;
+    background: #fff7ed;
+    border-left: 3px solid #f59e0b;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: #92400e;
+    line-height: 1.5;
+}
+
+.drawer-why-line.critical {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+    color: #991b1b;
+}
+
+.drawer-why-line.neutral {
+    background: #f8fafc;
+    border-left-color: #cbd5e1;
+    color: #475569;
+}
+
+/* Drawer Content (Scrollable) */
+.drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+/* Drawer Section */
+.drawer-section {
+    margin-bottom: 28px;
+}
+
+.drawer-section:last-child {
+    margin-bottom: 0;
+}
+
+.drawer-section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.drawer-section-title i {
+    color: #3b82f6;
+    font-size: 1rem;
+}
+
+/* Metric Row in Drawer */
+.drawer-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.drawer-metric:last-child {
+    border-bottom: none;
+}
+
+.drawer-metric-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.drawer-metric-label i {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.drawer-metric-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.drawer-metric-context {
+    font-size: 0.688rem;
+    color: #94a3b8;
+    font-weight: 400;
+    text-align: right;
+}
+
+/* Critical metric highlighting */
+.drawer-metric.critical .drawer-metric-value {
+    color: #dc2626;
+}
+
+.drawer-metric.critical .drawer-metric-context {
+    color: #991b1b;
+}
+
+/* Weekly Chart in Drawer */
+.drawer-weekly-chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+    height: 120px;
+    padding: 16px 12px;
+    background: #fafbfc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    margin-top: 12px;
+}
+
+.drawer-daily-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.drawer-daily-bar {
+    width: 100%;
+    min-height: 4px;
+    background: #94a3b8;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.25s;
+}
+
+.drawer-daily-bar.overloaded {
+    background: #ef4444;
+}
+
+.drawer-daily-bar-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.drawer-daily-bar-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Responsive: Drawer
+   ────────────────────────────────────────────────────────────── */
+
+@media (width <= 768px) {
+    .workload-drawer {
+        width: 100vw;
+        right: -100vw;
+    }
+
+    .employee-list-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .employee-list-reasons {
+        max-width: 100%;
+    }
+
+    .employee-list-score,
+    .employee-list-status {
+        justify-self: start;
+    }
+}
