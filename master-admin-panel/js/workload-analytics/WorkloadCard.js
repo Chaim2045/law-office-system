@@ -92,11 +92,6 @@
                 if (employees.length > 0 && workloadMap.size > 0) {
                     const firstEmp = employees[0];
                     const firstMetrics = workloadMap.get(firstEmp.email);
-                    console.log('🔍 First employee metrics:', {
-                        email: firstEmp.email,
-                        name: firstEmp.displayName,
-                        metrics: firstMetrics
-                    });
                 }
 
                 // חשב סטטיסטיקות צוות
@@ -2100,9 +2095,6 @@ return 'warning';
         renderDrawerSectionE(metrics, employee) {
             const dailyBreakdown = metrics.dailyBreakdown;
 
-            // Debug: בדיקה מה יש בנתונים
-            console.log('🔍 [Section E] dailyBreakdown:', dailyBreakdown);
-
             if (!dailyBreakdown || !dailyBreakdown.dailyLoads) {
                 const reason = !dailyBreakdown
                     ? 'לא קיים dailyBreakdown'
@@ -2374,7 +2366,6 @@ return;
 
     window.viewEmployeeWorkloadDetails = function(email) {
         console.log('📊 Viewing detailed workload for:', email);
-        // TODO: פתח modal עם פרטים מלאים
         if (window.UserDetailsModal) {
             window.UserDetailsModal.show(email);
         } else {
