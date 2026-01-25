@@ -1324,8 +1324,11 @@ return;
           // הפעל את הטאב שנלחץ (CSS יטפל בעיצוב)
           tab.classList.add('active');
 
-          // רינדור מחדש
-          this.renderServiceSection();
+          // רינדור מחדש - רק אם אנחנו כבר בשלב השירות
+          // Guard clause: מונע קריאה ל-renderServiceSection לפני שהמשתמש הגיע לשלב הנכון
+          if (this.currentStep === (this.currentMode === 'new' ? 3 : 2)) {
+            this.renderServiceSection();
+          }
         });
       });
 
