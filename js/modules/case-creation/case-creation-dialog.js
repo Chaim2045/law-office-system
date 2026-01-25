@@ -1421,18 +1421,20 @@ return;
         this.handleSubmit();
       });
 
-      // 🔍 INSTRUMENTATION: Trace Enter key presses on form
+      // 🛡️ Prevent implicit form submit on Enter in non-final steps
       document.getElementById('modernCaseForm')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-          console.group('🔍 TRACE ENTER KEY on modernCaseForm');
-          console.log('isTrusted:', e.isTrusted);
-          console.log('key:', e.key);
-          console.log('target:', e.target);
-          console.log('target.tagName:', e.target?.tagName);
-          console.log('target.type:', e.target?.type);
-          console.log('target.id:', e.target?.id);
-          console.trace('Stack trace:');
-          console.groupEnd();
+          // Allow Enter in textareas for multi-line input
+          if (e.target?.tagName === 'TEXTAREA') {
+            return;
+          }
+
+          // Block submit in non-final steps
+          const isLastStep = this.currentStep === this.totalSteps;
+          if (!isLastStep) {
+            e.preventDefault();
+            console.log('🛡️ Enter blocked: currentStep', this.currentStep, '< totalSteps', this.totalSteps);
+          }
         }
       });
     }
