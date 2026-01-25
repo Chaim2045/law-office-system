@@ -2214,3 +2214,1367 @@
         height: 16px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   UI/WORKLOAD-DRAWER-2026: Employee List & Drawer
+   Compact list view with side drawer for details
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────────
+   Employee List Container
+   ────────────────────────────────────────────────────────────── */
+
+.workload-employees-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GITHUB PROJECTS STYLE - Grouped Table
+   ══════════════════════════════════════════════════════════════ */
+
+/* Table Container - HI-TECH: Elevated card with premium shadow */
+.workload-employees-table {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 4%),
+                0 1px 2px rgb(0 0 0 / 6%);
+    border: 1px solid rgb(0 0 0 / 3%);
+    transition: box-shadow 0.3s ease;
+}
+
+.workload-employees-table:hover {
+    box-shadow: 0 4px 12px rgb(0 0 0 / 6%),
+                0 2px 4px rgb(0 0 0 / 8%);
+}
+
+/* Group Container */
+.employee-group {
+    border-bottom: 1px solid rgb(0 0 0 / 4%);
+    position: relative;
+}
+
+.employee-group:last-child {
+    border-bottom: none;
+}
+
+/* Group Header (Collapsible) - HI-TECH: Glassmorphism effect */
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: linear-gradient(to right, #fafbfc, #fff);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-bottom: 1px solid rgb(0 0 0 / 3%);
+}
+
+.group-header:hover {
+    background: linear-gradient(to right, #f5f7fa, #fafbfc);
+    transform: translateY(-1px);
+}
+
+.group-header:active {
+    transform: translateY(0);
+}
+
+.group-chevron {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.group-header:hover .group-chevron {
+    color: #6b7280;
+}
+
+.group-icon {
+    font-size: 0.875rem;
+    color: #6b7280;
+    transition: all 0.2s ease;
+}
+
+/* HI-TECH: Animated pulse for critical status */
+.employee-group[data-status="critical"] .group-icon {
+    color: #ef4444;
+    animation: pulse-critical 2s ease-in-out infinite;
+}
+
+@keyframes pulse-critical {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.employee-group[data-status="high"] .group-icon {
+    color: #f59e0b;
+}
+
+.employee-group[data-status="medium"] .group-icon {
+    color: #3b82f6;
+}
+
+.employee-group[data-status="low"] .group-icon {
+    color: #10b981;
+}
+
+.group-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    flex: 1;
+    letter-spacing: -0.01em;
+}
+
+/* HI-TECH: Premium count badge with glow */
+.group-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    padding: 3px 10px;
+    border-radius: 12px;
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 5%);
+    transition: all 0.2s ease;
+}
+
+.group-header:hover .group-count {
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+    transform: scale(1.05);
+}
+
+/* Group Rows Container */
+.group-rows {
+    background: white;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   GITHUB PROJECTS STYLE - Row (No Boxes, Bottom Border Only)
+   ────────────────────────────────────────────────────────────── */
+
+/* HI-TECH: Row with smooth transitions and micro-interactions */
+.narrative-grid-row {
+    background: white;
+    border-bottom: 1px solid rgb(0 0 0 / 4%);
+    padding: 14px 20px;
+    display: grid;
+    grid-template-columns: 200px 2fr 140px 180px 60px;
+    gap: 16px;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.narrative-grid-row::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.narrative-grid-row:hover {
+    background: linear-gradient(to right, #fafbfc, #fff);
+    transform: translateX(2px);
+}
+
+.narrative-grid-row:hover::before {
+    opacity: 1;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   GITHUB PROJECTS STYLE - Columns
+   ────────────────────────────────────────────────────────────── */
+
+/* Column 1: Employee + Role Pill */
+.grid-col-employee {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* HI-TECH: Premium typography */
+.grid-employee-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #0a0a0a;
+    letter-spacing: -0.01em;
+    transition: color 0.2s ease;
+}
+
+.narrative-grid-row:hover .grid-employee-name {
+    color: #3b82f6;
+}
+
+/* HI-TECH: Elevated pill with subtle shadow */
+.role-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+    border-radius: 14px;
+    font-size: 0.75rem;
+    color: #6b7280;
+    width: fit-content;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 3%),
+                inset 0 1px 0 rgb(255 255 255 / 50%);
+    transition: all 0.2s ease;
+}
+
+.role-pill:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 6%),
+                inset 0 1px 0 rgb(255 255 255 / 50%);
+}
+
+.role-pill i {
+    font-size: 0.688rem;
+    opacity: 0.7;
+}
+
+/* Column 2: Task/Description */
+.grid-col-task {
+    display: flex;
+    align-items: center;
+}
+
+.grid-task-title {
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+/* Column 3: Status Pill */
+.grid-col-status-pill {
+    display: flex;
+    align-items: center;
+}
+
+/* HI-TECH: Premium status pills with glow */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    letter-spacing: -0.01em;
+}
+
+.status-pill i {
+    font-size: 0.688rem;
+}
+
+.status-pill.status-complete {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    box-shadow: 0 2px 4px rgb(16 185 129 / 15%),
+                inset 0 1px 0 rgb(255 255 255 / 30%);
+}
+
+.status-pill.status-complete:hover {
+    box-shadow: 0 4px 8px rgb(16 185 129 / 25%),
+                inset 0 1px 0 rgb(255 255 255 / 30%);
+    transform: translateY(-1px);
+}
+
+.status-pill.status-on-track {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e40af;
+    box-shadow: 0 2px 4px rgb(59 130 246 / 15%),
+                inset 0 1px 0 rgb(255 255 255 / 30%);
+}
+
+.status-pill.status-on-track:hover {
+    box-shadow: 0 4px 8px rgb(59 130 246 / 25%),
+                inset 0 1px 0 rgb(255 255 255 / 30%);
+    transform: translateY(-1px);
+}
+
+.status-pill.status-at-risk {
+    background: linear-gradient(135deg, #fed7aa, #fdba74);
+    color: #92400e;
+    box-shadow: 0 2px 4px rgb(245 158 11 / 15%),
+                inset 0 1px 0 rgb(255 255 255 / 30%);
+}
+
+.status-pill.status-at-risk:hover {
+    box-shadow: 0 4px 8px rgb(245 158 11 / 25%),
+                inset 0 1px 0 rgb(255 255 255 / 30%);
+    transform: translateY(-1px);
+}
+
+.status-pill.status-behind {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #991b1b;
+    box-shadow: 0 2px 4px rgb(239 68 68 / 20%),
+                0 0 8px rgb(239 68 68 / 10%),
+                inset 0 1px 0 rgb(255 255 255 / 30%);
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 2px 4px rgb(239 68 68 / 20%),
+                    0 0 8px rgb(239 68 68 / 10%),
+                    inset 0 1px 0 rgb(255 255 255 / 30%);
+    }
+
+    50% {
+        box-shadow: 0 2px 4px rgb(239 68 68 / 25%),
+                    0 0 12px rgb(239 68 68 / 15%),
+                    inset 0 1px 0 rgb(255 255 255 / 30%);
+    }
+}
+
+/* Column 4: Inline Progress Bar - HI-TECH */
+.grid-col-progress {
+    display: flex;
+    align-items: center;
+}
+
+.inline-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+/* HI-TECH: Premium progress bar with glow */
+.progress-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: linear-gradient(to right, #f3f4f6, #e5e7eb);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 5%);
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 12px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg,
+        transparent,
+        rgb(255 255 255 / 25%),
+        transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.progress-bar-fill.progress-normal {
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #a855f7);
+    box-shadow: 0 0 8px rgb(139 92 246 / 30%);
+}
+
+.progress-bar-fill.progress-critical {
+    background: linear-gradient(90deg, #ef4444, #dc2626, #f59e0b);
+    box-shadow: 0 0 8px rgb(239 68 68 / 40%);
+}
+
+.progress-label {
+    font-size: 0.813rem;
+    font-weight: 700;
+    color: #374151;
+    min-width: 45px;
+    text-align: right;
+    letter-spacing: -0.02em;
+}
+
+/* Column 5: Assignee Avatar - HI-TECH */
+.grid-col-assignee {
+    display: flex;
+    justify-content: center;
+}
+
+/* HI-TECH: Premium avatar with ring and glow */
+.assignee-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%),
+                0 0 0 2px white,
+                0 0 0 3px #e5e7eb;
+    transition: all 0.2s ease;
+    letter-spacing: -0.02em;
+}
+
+.assignee-avatar:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgb(0 0 0 / 15%),
+                0 0 0 2px white,
+                0 0 0 3px #3b82f6,
+                0 0 12px rgb(59 130 246 / 25%);
+}
+
+/* KEYBOARD NAVIGATION - 2026: Selected state (using ::before instead of border-left) */
+.narrative-grid-row.keyboard-selected {
+    background: #f1f5f9;
+    box-shadow: 0 0 0 1px #e0e7ff inset;
+}
+
+.narrative-grid-row.keyboard-selected::before {
+    background: linear-gradient(135deg, #3b82f6, #3b82f6) !important;
+    opacity: 1 !important;
+}
+
+/* Critical/High rows - ::before is already styled in main row styles */
+
+/* Backward compatibility wrapper */
+.employee-list-row {
+    background: white;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 240px 1fr 200px 40px;
+    gap: 24px;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.employee-list-row:hover {
+    background: #fafbfc;
+}
+
+.employee-list-row.keyboard-selected {
+    background: #f1f5f9;
+    box-shadow: 0 0 0 1px #e0e7ff inset;
+}
+
+/* Status indicators removed - using ::before on main rows instead */
+
+/* ──────────────────────────────────────────────────────────────
+   Column 1: Employee
+   ────────────────────────────────────────────────────────────── */
+
+.grid-col-employee {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.grid-employee-name {
+    font-size: 0.938rem;
+    font-weight: 500;
+    color: #1e293b;
+    line-height: 1.3;
+}
+
+.grid-employee-role {
+    font-size: 0.813rem;
+    color: #64748b;
+    font-weight: 400;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Column 2: Status Sentence (THE NARRATIVE)
+   ────────────────────────────────────────────────────────────── */
+
+.grid-col-status {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.grid-status-headline {
+    font-size: 0.938rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.3;
+}
+
+.grid-status-why {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Column 3: Key Proof (3 metrics only)
+   ────────────────────────────────────────────────────────────── */
+
+.grid-col-proof {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.grid-proof-item {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    font-size: 0.813rem;
+}
+
+.grid-proof-label {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.grid-proof-value {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.grid-proof-value.critical {
+    color: #ef4444;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Column 4: Action
+   ────────────────────────────────────────────────────────────── */
+
+.grid-col-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cbd5e1;
+    font-size: 0.875rem;
+}
+
+.narrative-grid-row:hover .grid-col-action {
+    color: #64748b;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   DEPRECATED: Old employee list styles (keeping for fallback)
+   ────────────────────────────────────────────────────────────── */
+
+.employee-list-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0; /* Allow text truncation */
+}
+
+.employee-list-name {
+    font-size: 0.938rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.employee-list-role {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 400;
+}
+
+/* Workload Score - 2026: Hero Number (no badge) */
+.employee-list-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 80px;
+}
+
+.employee-list-score-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1;
+}
+
+.employee-list-score-label {
+    font-size: 0.688rem;
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+/* Critical score highlighting - 2026: Dot indicator only */
+.employee-list-row[data-status="critical"] .employee-list-score-value {
+    color: #dc2626;
+}
+
+.employee-list-row[data-status="critical"] .employee-list-score-value::before {
+    content: "●";
+    color: #ef4444;
+    margin-left: 6px;
+    font-size: 0.5em;
+    vertical-align: middle;
+}
+
+/* Reasons Signals Container - 2026: Minimal, no boxes */
+.employee-list-reasons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    max-width: 400px;
+}
+
+.employee-reason-chip {
+    font-size: 0.813rem;
+    color: #475569;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+}
+
+.employee-reason-chip i {
+    font-size: 0.75rem;
+    color: #3b82f6;
+}
+
+/* Critical reason signal - 2026: Dot + neutral text */
+.employee-reason-chip.critical {
+    color: #475569;
+}
+
+.employee-reason-chip.critical i {
+    color: #ef4444;
+}
+
+/* Status Badge - 2026: Minimal */
+.employee-list-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.813rem;
+    font-weight: 400;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.employee-list-status i {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+/* Critical status - 2026: Red icon only */
+.employee-list-row[data-status="critical"] .employee-list-status {
+    color: #475569;
+}
+
+.employee-list-row[data-status="critical"] .employee-list-status i {
+    color: #ef4444;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Drawer Overlay
+   ────────────────────────────────────────────────────────────── */
+
+.workload-drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgb(0 0 0 / 40%);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.workload-drawer-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Drawer Container
+   ────────────────────────────────────────────────────────────── */
+
+.workload-drawer {
+    position: fixed;
+    top: 0;
+    right: -480px; /* Hidden initially */
+    width: 480px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -4px 0 24px rgb(0 0 0 / 12%),
+                -2px 0 8px rgb(0 0 0 / 8%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    border-left: 1px solid rgb(0 0 0 / 6%);
+}
+
+.workload-drawer.active {
+    right: 0;
+}
+
+/* Drawer Header - 2026: GitHub Projects Style with Glassmorphism */
+.drawer-header {
+    padding: 24px;
+    border-bottom: 1px solid rgb(0 0 0 / 4%);
+    background: linear-gradient(to bottom, #fafbfc, #fff);
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 3%);
+}
+
+.drawer-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.drawer-close-btn {
+    background: transparent;
+    border: none;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 6px;
+}
+
+.drawer-close-btn:hover {
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    color: #1e293b;
+    transform: scale(1.05);
+}
+
+.drawer-employee-info h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+}
+
+.drawer-employee-info .role {
+    font-size: 0.875rem;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+    border-radius: 14px;
+    font-weight: 500;
+}
+
+/* NARRATIVE-DATA-GRID-2026: Insight-First Section - GitHub Projects Style */
+.drawer-insight-section {
+    padding: 20px 0;
+    border-bottom: 1px solid rgb(0 0 0 / 4%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.drawer-insight-headline {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+}
+
+.drawer-insight-why {
+    font-size: 0.938rem;
+    color: #475569;
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+.drawer-severity-hint {
+    font-size: 0.813rem;
+    font-weight: 500;
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    border-radius: 12px;
+    color: #991b1b;
+}
+
+/* DEPRECATED: Old drawer-why-line (keeping for fallback) */
+.drawer-why-line {
+    padding: 16px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.938rem;
+    color: #1e293b;
+    line-height: 1.6;
+    font-weight: 500;
+}
+
+.drawer-why-line.critical {
+    color: #1e293b;
+    border-bottom-color: #fee2e2;
+}
+
+.drawer-why-line.critical::before {
+    content: "●";
+    color: #ef4444;
+    margin-left: 8px;
+    font-size: 0.75em;
+}
+
+.drawer-why-line.neutral {
+    color: #475569;
+}
+
+/* Drawer Content (Scrollable) - GitHub Projects Style */
+.drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background: linear-gradient(to bottom, #fff, #fafbfc);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Status Explanation Section - WHY the employee has this status
+   CLEAN & MINIMAL - פס צד דק בלבד, לא רקע צבעוני
+   ══════════════════════════════════════════════════════════════ */
+
+.drawer-explanation-section {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-right: 3px solid var(--status-color); /* פס דק בצד בלבד */
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.drawer-explanation-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.938rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.drawer-explanation-header i {
+    font-size: 0.875rem;
+    color: var(--status-color);
+    background: var(--status-bg);
+    padding: 6px;
+    border-radius: 4px;
+}
+
+.drawer-explanation-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.drawer-explanation-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #1e293b;
+    padding: 10px 12px;
+    background: #fafbfc;
+    border-radius: 6px;
+    border: none; /* ללא מסגרות צבעוניות */
+}
+
+.drawer-explanation-item i {
+    flex-shrink: 0;
+    color: #94a3b8;
+    font-size: 0.375rem;
+    margin-top: 6px;
+}
+
+.drawer-explanation-item span {
+    flex: 1;
+}
+
+.drawer-explanation-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.813rem;
+    color: #64748b;
+    padding: 10px 12px;
+    background: #fafbfc;
+    border-radius: 6px;
+    border: none;
+}
+
+.drawer-explanation-footer i {
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+/* Drawer Section */
+.drawer-section {
+    margin-bottom: 28px;
+}
+
+.drawer-section:last-child {
+    margin-bottom: 0;
+}
+
+.drawer-section-title {
+    font-size: 0.938rem;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.01em;
+    margin-bottom: 16px;
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #f1f5f9, #e5e7eb);
+    border-radius: 6px;
+    border-right: 2px solid #cbd5e1;
+}
+
+.drawer-section-title i {
+    color: #3b82f6;
+    font-size: 0.875rem;
+}
+
+/* Metric Row in Drawer - 2026: Clean & Minimal */
+.drawer-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    background: none;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 0;
+    transition: all 0.2s ease;
+}
+
+.drawer-metric:hover {
+    background: #fafbfc;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.drawer-metric:last-child {
+    margin-bottom: 0;
+}
+
+.drawer-metric-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.drawer-metric-label i {
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
+.drawer-metric-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    letter-spacing: -0.01em;
+}
+
+.drawer-metric-context {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 400;
+    text-align: right;
+    line-height: 1.4;
+}
+
+/* Manager insight - Clean & Subtle */
+.drawer-metric-insight {
+    font-size: 0.813rem;
+    color: #64748b;
+    background: none;
+    padding: 8px 0 8px 24px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    position: relative;
+}
+
+.drawer-metric-insight::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb;
+}
+
+.drawer-metric-insight i {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.drawer-metric-insight strong {
+    color: #475569;
+    font-weight: 600;
+}
+
+/* Critical metric highlighting - Subtle */
+.drawer-metric.critical {
+    background: none;
+}
+
+.drawer-metric.critical .drawer-metric-value {
+    color: #dc2626;
+}
+
+.drawer-metric.critical .drawer-metric-label i {
+    color: #ef4444;
+}
+
+/* Weekly Chart in Drawer - 2026: GitHub Projects Style with Shimmer */
+.drawer-weekly-chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+    height: 120px;
+    padding: 16px;
+    background: linear-gradient(to bottom, #fafbfc, #fff);
+    border: 1px solid rgb(0 0 0 / 4%);
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.drawer-daily-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 4px;
+    margin: -4px;
+    border-radius: 4px;
+}
+
+.drawer-daily-bar-wrapper:hover {
+    background: rgb(0 0 0 / 3%);
+    transform: scale(1.05);
+}
+
+.drawer-daily-bar-wrapper.selected {
+    background: #eff6ff;
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+}
+
+.drawer-daily-bar {
+    width: 100%;
+    min-height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    border-radius: 4px 4px 0 0;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 8px rgb(139 92 246 / 20%);
+}
+
+.drawer-daily-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg,
+        transparent,
+        rgb(255 255 255 / 25%),
+        transparent);
+    animation: shimmer 2s infinite;
+}
+
+.drawer-daily-bar.overloaded {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+    box-shadow: 0 0 8px rgb(239 68 68 / 30%);
+}
+
+.drawer-daily-bar-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.drawer-daily-bar-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #334155;
+    letter-spacing: -0.01em;
+}
+
+/* Drawer Task Items - Peak Day Tasks */
+.drawer-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.drawer-task-item {
+    padding: 12px;
+    background: white;
+    border: 1px solid #f1f5f9;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.drawer-task-item:hover {
+    background: #fafbfc;
+    border-color: #e5e7eb;
+    transform: translateX(2px);
+}
+
+.drawer-task-item.overdue {
+    /* רק פס דק - ללא רקע אדום */
+    border-right: 3px solid #ef4444;
+}
+
+.drawer-task-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.813rem;
+}
+
+.drawer-task-header i {
+    color: #94a3b8;
+    font-size: 0.75rem;
+}
+
+.drawer-task-client {
+    font-weight: 600;
+    color: #475569;
+    flex: 1;
+}
+
+.drawer-task-hours {
+    font-weight: 600;
+    color: #3b82f6;
+    background: #eff6ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.drawer-task-overdue-badge {
+    font-weight: 600;
+    color: #dc2626;
+    background: #fee2e2;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-right: auto;
+}
+
+.drawer-task-description {
+    font-size: 0.813rem;
+    color: #64748b;
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+
+.drawer-task-deadline {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.drawer-task-deadline i {
+    font-size: 0.688rem;
+}
+
+/* Expand button to show all tasks */
+.drawer-tasks-expand-btn {
+    margin-top: 12px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    color: #3b82f6;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drawer-tasks-expand-btn:hover {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgb(59 130 246 / 15%);
+}
+
+.drawer-tasks-expand-btn:active {
+    transform: translateY(0);
+}
+
+.drawer-tasks-expand-btn i {
+    font-size: 0.75rem;
+    transition: transform 0.2s ease;
+}
+
+.drawer-tasks-expand-btn:hover i {
+    transform: translateY(2px);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Responsive: Drawer
+   ────────────────────────────────────────────────────────────── */
+
+@media (width <= 768px) {
+    .workload-drawer {
+        width: 100vw;
+        right: -100vw;
+    }
+
+    .employee-list-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .employee-list-reasons {
+        max-width: 100%;
+    }
+
+    .employee-list-score,
+    .employee-list-status {
+        justify-self: start;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KEYBOARD NAVIGATION HINTS BAR - 2026
+   ══════════════════════════════════════════════════════════════ */
+
+.keyboard-hints-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fafbfc;
+    border-top: 1px solid #e2e8f0;
+    padding: 12px 24px;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    z-index: 1000;
+    font-size: 0.813rem;
+    color: #64748b;
+}
+
+.keyboard-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.keyboard-hint-key {
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    min-width: 24px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+.keyboard-hint-label {
+    color: #64748b;
+    font-weight: 400;
+}
+
+/* Hide on mobile */
+@media (width <= 768px) {
+    .keyboard-hints-bar {
+        display: none;
+    }
+}
