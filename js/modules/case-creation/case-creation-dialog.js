@@ -336,6 +336,9 @@
         // 🎨 החל סטיילים ראשוניים על כל הטאבים הפעילים
         this.initializeActiveTabStyles();
 
+        // ✅ Initialize button states for step 1
+        this.updateNavigationButtons();
+
         // המתנה מינימלית של 200ms כדי שהמשתמש יראה את הלוטי
         const elapsedTime = Date.now() - startTime;
         const remainingTime = 200 - elapsedTime;
