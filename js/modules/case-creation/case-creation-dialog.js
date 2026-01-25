@@ -1315,7 +1315,17 @@ serviceTitleField.style.display = 'block';
       document.getElementById('existingClientModeBtn')?.addEventListener('click', () => this.switchMode('existing'));
 
       // ✅ Stepper Navigation
-      document.getElementById('nextStepBtn')?.addEventListener('click', () => this.nextStep());
+      // 🔍 INSTRUMENTATION: Trace nextStepBtn clicks with event details
+      document.getElementById('nextStepBtn')?.addEventListener('click', (e) => {
+        console.group('🔍 TRACE nextStepBtn CLICK');
+        console.log('isTrusted:', e.isTrusted);
+        console.log('type:', e.type);
+        console.log('target:', e.target);
+        console.log('currentTarget:', e.currentTarget);
+        console.trace('Stack trace:');
+        console.groupEnd();
+        this.nextStep();
+      });
       document.getElementById('prevStepBtn')?.addEventListener('click', () => this.prevStep());
 
       // שינוי סוג הליך - New Client Mode (טאבים)
@@ -1397,9 +1407,33 @@ return;
       });
 
       // שליחת טופס
+      // 🔍 INSTRUMENTATION: Trace form submit events
       document.getElementById('modernCaseForm')?.addEventListener('submit', (e) => {
+        console.group('🔍 TRACE FORM SUBMIT');
+        console.log('isTrusted:', e.isTrusted);
+        console.log('type:', e.type);
+        console.log('submitter:', e.submitter);
+        console.log('submitter.id:', e.submitter?.id);
+        console.log('submitter.type:', e.submitter?.type);
+        console.trace('Stack trace:');
+        console.groupEnd();
         e.preventDefault();
         this.handleSubmit();
+      });
+
+      // 🔍 INSTRUMENTATION: Trace Enter key presses on form
+      document.getElementById('modernCaseForm')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          console.group('🔍 TRACE ENTER KEY on modernCaseForm');
+          console.log('isTrusted:', e.isTrusted);
+          console.log('key:', e.key);
+          console.log('target:', e.target);
+          console.log('target.tagName:', e.target?.tagName);
+          console.log('target.type:', e.target?.type);
+          console.log('target.id:', e.target?.id);
+          console.trace('Stack trace:');
+          console.groupEnd();
+        }
       });
     }
 
