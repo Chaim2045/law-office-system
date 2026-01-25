@@ -625,7 +625,7 @@
                     הבא
                     <i class="fas fa-arrow-left" style="margin-right: 6px;"></i>
                   </button>
-                  <button type="submit" id="submitBtn" class="btn btn-primary" style="display: none;">
+                  <button type="submit" id="caseSubmitBtn" class="btn btn-primary" style="display: none;">
                     <i class="fas fa-save"></i>
                     שמור תיק
                   </button>
@@ -879,7 +879,7 @@ serviceTitleField.style.display = 'block';
     updateNavigationButtons() {
       const prevBtn = document.getElementById('prevStepBtn');
       const nextBtn = document.getElementById('nextStepBtn');
-      const submitBtn = document.getElementById('submitBtn');
+      const submitBtn = document.getElementById('caseSubmitBtn');
 
       // כפתור "חזור" - מוצג רק אם לא בשלב ראשון
       if (prevBtn) {
@@ -2322,7 +2322,7 @@ return;
      */
     setupButtonMonitor() {
       const nextBtn = document.getElementById('nextStepBtn');
-      const submitBtn = document.getElementById('submitBtn');
+      const submitBtn = document.getElementById('caseSubmitBtn');
 
       if (!nextBtn || !submitBtn) {
         console.warn('⚠️ Buttons not found for monitoring');
