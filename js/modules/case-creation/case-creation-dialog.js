@@ -865,6 +865,9 @@ serviceTypeSelector.style.display = 'block';
 serviceTitleField.style.display = 'block';
 }
 
+          // ✅ רינדור סקשן השירות לפי procedureType
+          this.renderServiceSection();
+
           // ✅ העברת כרטיס המידע של תיק קיים לשלב 2
           this.moveExistingCaseInfoToStep3();
         }
