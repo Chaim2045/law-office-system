@@ -207,6 +207,30 @@
 
                 <!-- UI/WORKLOAD-DRAWER-2026: Drawer container (injected into DOM) -->
                 <div id="workloadDrawerContainer"></div>
+
+                <!-- KEYBOARD NAVIGATION - 2026: Hints Bar -->
+                <div class="keyboard-hints-bar">
+                    <div class="keyboard-hint">
+                        <span class="keyboard-hint-key">↑↓</span>
+                        <span class="keyboard-hint-label">ניווט</span>
+                    </div>
+                    <div class="keyboard-hint">
+                        <span class="keyboard-hint-key">Enter</span>
+                        <span class="keyboard-hint-label">פתיחה</span>
+                    </div>
+                    <div class="keyboard-hint">
+                        <span class="keyboard-hint-key">Esc</span>
+                        <span class="keyboard-hint-label">סגירה</span>
+                    </div>
+                    <div class="keyboard-hint">
+                        <span class="keyboard-hint-key">/</span>
+                        <span class="keyboard-hint-label">חיפוש</span>
+                    </div>
+                    <div class="keyboard-hint">
+                        <span class="keyboard-hint-key">1-3</span>
+                        <span class="keyboard-hint-label">סינון</span>
+                    </div>
+                </div>
             `;
         }
 
@@ -271,80 +295,286 @@ return '#64748b';
         }
 
         /**
-         * רינדור רשימת עובדים (קומפקטית)
-         * UI/WORKLOAD-DRAWER-2026: Replaced grid with compact list
+         * GITHUB-PROJECTS-STYLE: Group employees by status
          */
-        renderEmployeesGrid(employees, workloadMap) {
-            const html = employees.map(emp => {
+        groupEmployeesByStatus(employees, workloadMap) {
+            const groups = {
+                critical: { title: 'עומס קריטי', icon: 'fa-exclamation-triangle', employees: [] },
+                high: { title: 'דורש תשומת לב', icon: 'fa-exclamation-circle', employees: [] },
+                medium: { title: 'עומס בינוני', icon: 'fa-info-circle', employees: [] },
+                low: { title: 'תקין', icon: 'fa-check-circle', employees: [] }
+            };
+
+            employees.forEach(emp => {
                 const metrics = workloadMap.get(emp.email);
                 if (!metrics) {
-return '';
+return;
 }
 
-                return this.renderEmployeeListRow(emp, metrics);
-            }).join('');
+                const status = metrics.managerRisk?.level || metrics.workloadLevel;
+                if (groups[status]) {
+                    groups[status].employees.push({ employee: emp, metrics });
+                }
+            });
 
-            return `<div class="workload-employees-list" id="workloadEmployeesList">${html}</div>`;
+            return groups;
         }
 
         /**
-         * UI/WORKLOAD-DRAWER-2026: Render compact employee list row
+         * GITHUB-PROJECTS-STYLE: Render grouped table
          */
-        renderEmployeeListRow(employee, metrics) {
-            const status = metrics.managerRisk?.level || metrics.workloadLevel;
-            const statusLabels = {
-                low: 'תקין',
-                medium: 'גבולי',
-                high: 'דורש תשומת לב',
-                critical: 'חריג'
-            };
+        renderEmployeesGrid(employees, workloadMap) {
+            const groups = this.groupEmployeesByStatus(employees, workloadMap);
 
-            // Extract reasons chips (up to 2)
-            const reasonsChips = this.extractReasonsChips(metrics);
+            const groupsHtml = Object.entries(groups)
+                .filter(([_, group]) => group.employees.length > 0)
+                .map(([status, group]) => {
+                    return this.renderEmployeeGroup(status, group);
+                }).join('');
 
-            // Status icon
-            const statusIcons = {
-                low: 'fa-check-circle',
-                medium: 'fa-exclamation-circle',
-                high: 'fa-exclamation-triangle',
-                critical: 'fa-exclamation-triangle'
-            };
+            return `<div class="workload-employees-table" id="workloadEmployeesList">${groupsHtml}</div>`;
+        }
+
+        /**
+         * GITHUB-PROJECTS-STYLE: Render single group with collapse
+         */
+        renderEmployeeGroup(status, group) {
+            const groupId = `group-${status}`;
+            const count = group.employees.length;
+
+            const rowsHtml = group.employees.map(({ employee, metrics }) => {
+                return this.renderEmployeeListRow(employee, metrics);
+            }).join('');
 
             return `
-                <div class="employee-list-row"
+                <div class="employee-group" data-status="${status}" data-collapsed="false">
+                    <div class="group-header" onclick="window.toggleEmployeeGroup('${groupId}')">
+                        <i class="fas fa-chevron-down group-chevron" id="${groupId}-chevron"></i>
+                        <i class="fas ${group.icon} group-icon"></i>
+                        <span class="group-title">${group.title}</span>
+                        <span class="group-count">${count}</span>
+                    </div>
+                    <div class="group-rows" id="${groupId}">
+                        ${rowsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * NARRATIVE-DATA-GRID-2026: Generate status sentence (headline + why line)
+         */
+        generateStatusSentence(metrics) {
+            const status = metrics.managerRisk?.level || metrics.workloadLevel;
+
+            // Critical: עומס חריג
+            if (status === 'critical') {
+                const hasOverdueFiles = metrics.overdueFiles > 0;
+                const hasHighUrgent = metrics.next5DaysUrgent >= 5;
+                const hasLowAvailability = (metrics.next5DaysAvailable || 0) < 20;
+
+                if (hasOverdueFiles && hasHighUrgent) {
+                    return {
+                        headline: 'חריג השבוע',
+                        why: 'הצטברות תיקים דחופים עם איחורים קיימים'
+                    };
+                }
+                if (hasHighUrgent && hasLowAvailability) {
+                    return {
+                        headline: 'דורש תשומת לב',
+                        why: 'בעיקר בגלל דדליינים קרובים וזמינות נמוכה'
+                    };
+                }
+                if (hasOverdueFiles) {
+                    return {
+                        headline: 'חריג השבוע',
+                        why: 'יש תיקים באיחור שדורשים טיפול מיידי'
+                    };
+                }
+                return {
+                    headline: 'דורש תשומת לב',
+                    why: 'עומס גבוה עם מספר גורמים מצטברים'
+                };
+            }
+
+            // High: דורש תשומת לב
+            if (status === 'high') {
+                const peakMultiplier = metrics.dailyBreakdown?.peakMultiplier || 0;
+                const hasHighUrgent = metrics.next5DaysUrgent >= 3;
+
+                if (peakMultiplier >= 1.5 && hasHighUrgent) {
+                    return {
+                        headline: 'דורש תשומת לב',
+                        why: 'שיא עומס זמני עם התחייבויות קרובות'
+                    };
+                }
+                if (hasHighUrgent) {
+                    return {
+                        headline: 'דורש תשומת לב',
+                        why: 'בעיקר בגלל ריכוז דדליינים בטווח הקרוב'
+                    };
+                }
+                return {
+                    headline: 'דורש תשומת לב',
+                    why: 'עומס מעל הממוצע אך ניתן לניהול'
+                };
+            }
+
+            // Medium: תקין עם הערות
+            if (status === 'medium') {
+                const hasNoData = (metrics.reportingDaysRatio || 0) < 0.5;
+                if (hasNoData) {
+                    return {
+                        headline: 'תקין',
+                        why: 'אך קשה להעריך בדיוק בגלל חוסר בנתונים'
+                    };
+                }
+                return {
+                    headline: 'תקין',
+                    why: 'כמות תיקים גבוהה אך ללא חריגות'
+                };
+            }
+
+            // Low: תקין או תת-תפוסה
+            if (metrics.workloadScore < 30) {
+                return {
+                    headline: 'תקין',
+                    why: 'מתחת לתפוסה הרגילה באופן ניכר'
+                };
+            }
+
+            return {
+                headline: 'תקין',
+                why: 'מצב מאוזן ללא התראות משמעותיות'
+            };
+        }
+
+        /**
+         * GITHUB-PROJECTS-STYLE: Render table row with pills & progress
+         */
+        renderNarrativeGridRow(employee, metrics) {
+            const status = metrics.managerRisk?.level || metrics.workloadLevel;
+            const sentence = this.generateStatusSentence(metrics);
+
+            // Pills & badges
+            const statusPill = this.renderStatusPill(status);
+            const rolePill = this.renderRolePill(employee.role);
+
+            // Progress bar for workload
+            const workloadPercent = metrics.workloadScore || 0;
+            const progressBar = this.renderInlineProgress(workloadPercent, status);
+
+            // Key metrics
+            const deadlines = metrics.next5DaysUrgent || 0;
+            const availability = Math.round(metrics.next5DaysAvailable || 0);
+
+            return `
+                <div class="narrative-grid-row"
                      data-status="${status}"
                      data-email="${this.sanitize(employee.email)}"
                      onclick="window.workloadDrawer.open('${this.sanitize(employee.email)}')">
 
-                    <!-- Employee Info -->
-                    <div class="employee-list-info">
-                        <div class="employee-list-name">${this.sanitize(employee.displayName || employee.username)}</div>
-                        <div class="employee-list-role">${this.getRoleLabel(employee.role)}</div>
+                    <!-- Column 1: Employee + Role Pill -->
+                    <div class="grid-col-employee">
+                        <div class="grid-employee-name">${this.sanitize(employee.displayName || employee.username)}</div>
+                        ${rolePill}
                     </div>
 
-                    <!-- Workload Score -->
-                    <div class="employee-list-score">
-                        <div class="employee-list-score-value">${metrics.workloadScore}%</div>
-                        <div class="employee-list-score-label">עומס</div>
+                    <!-- Column 2: Task/Description -->
+                    <div class="grid-col-task">
+                        <div class="grid-task-title">${sentence.why}</div>
                     </div>
 
-                    <!-- Reasons Chips -->
-                    <div class="employee-list-reasons">
-                        ${reasonsChips.map(chip => `
-                            <div class="employee-reason-chip ${chip.critical ? 'critical' : ''}">
-                                <i class="fas ${chip.icon}"></i>
-                                ${this.sanitize(chip.text)}
-                            </div>
-                        `).join('')}
+                    <!-- Column 3: Status Pill -->
+                    <div class="grid-col-status-pill">
+                        ${statusPill}
                     </div>
 
-                    <!-- Status Badge -->
-                    <div class="employee-list-status">
-                        <i class="fas ${statusIcons[status]}"></i>
-                        ${statusLabels[status] || 'לא ידוע'}
+                    <!-- Column 4: Workload Progress -->
+                    <div class="grid-col-progress">
+                        ${progressBar}
+                    </div>
+
+                    <!-- Column 5: Assignee (avatar would go here) -->
+                    <div class="grid-col-assignee">
+                        <div class="assignee-avatar">${this.getInitials(employee.displayName || employee.username)}</div>
                     </div>
                 </div>
             `;
+        }
+
+        /**
+         * GITHUB-PROJECTS-STYLE: Render status pill
+         */
+        renderStatusPill(status) {
+            const statusConfig = {
+                critical: { label: 'פיגור', icon: 'fa-exclamation-triangle', class: 'status-behind' },
+                high: { label: 'סיכון', icon: 'fa-exclamation-circle', class: 'status-at-risk' },
+                medium: { label: 'תקין', icon: 'fa-circle', class: 'status-on-track' },
+                low: { label: 'הושלם', icon: 'fa-check-circle', class: 'status-complete' }
+            };
+
+            const config = statusConfig[status] || statusConfig.low;
+
+            return `
+                <span class="status-pill ${config.class}">
+                    <i class="fas ${config.icon}"></i>
+                    ${config.label}
+                </span>
+            `;
+        }
+
+        /**
+         * GITHUB-PROJECTS-STYLE: Render role pill
+         */
+        renderRolePill(role) {
+            const roleIcons = {
+                lawyer: 'fa-briefcase',
+                paralegal: 'fa-file-alt',
+                admin: 'fa-user-cog'
+            };
+
+            const icon = roleIcons[role] || 'fa-user';
+
+            return `<span class="role-pill"><i class="fas ${icon}"></i> ${this.getRoleLabel(role)}</span>`;
+        }
+
+        /**
+         * GITHUB-PROJECTS-STYLE: Render inline progress bar
+         */
+        renderInlineProgress(percent, status) {
+            const isCritical = status === 'critical' || status === 'high';
+            const barClass = isCritical ? 'progress-critical' : 'progress-normal';
+
+            return `
+                <div class="inline-progress">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill ${barClass}" style="width: ${percent}%"></div>
+                    </div>
+                    <span class="progress-label">${percent}%</span>
+                </div>
+            `;
+        }
+
+        /**
+         * Helper: Get initials for avatar
+         */
+        getInitials(name) {
+            if (!name) {
+return '?';
+}
+            const parts = name.split(' ');
+            if (parts.length >= 2) {
+                return parts[0][0] + parts[1][0];
+            }
+            return name.substring(0, 2);
+        }
+
+        /**
+         * DEPRECATED: Old list row - kept for reference during migration
+         */
+        renderEmployeeListRow(employee, metrics) {
+            return this.renderNarrativeGridRow(employee, metrics);
         }
 
         /**
@@ -359,13 +589,13 @@ return '';
                 const isCritical = metrics.managerRisk.level === 'critical';
                 chips.push({
                     text: metrics.managerRisk.reasons[0],
-                    icon: 'fa-info-circle',
+                    icon: 'fa-circle',
                     critical: isCritical
                 });
                 if (metrics.managerRisk.reasons.length > 1) {
                     chips.push({
                         text: metrics.managerRisk.reasons[1],
-                        icon: 'fa-info-circle',
+                        icon: 'fa-circle',
                         critical: isCritical
                     });
                 }
@@ -380,13 +610,13 @@ return '';
                 if (criticalAlerts.length > 0) {
                     chips.push({
                         text: criticalAlerts[0].message,
-                        icon: 'fa-exclamation-triangle',
+                        icon: 'fa-circle',
                         critical: true
                     });
                     if (criticalAlerts.length > 1) {
                         chips.push({
                             text: criticalAlerts[1].message,
-                            icon: 'fa-exclamation-triangle',
+                            icon: 'fa-circle',
                             critical: true
                         });
                         return chips;
@@ -396,7 +626,7 @@ return '';
                 if (highAlerts.length > 0 && chips.length < 2) {
                     chips.push({
                         text: highAlerts[0].message,
-                        icon: 'fa-exclamation-circle',
+                        icon: 'fa-circle',
                         critical: false
                     });
                 }
@@ -409,7 +639,7 @@ return chips;
             // Final fallback: "ללא התראות"
             return [{
                 text: 'ללא התראות',
-                icon: 'fa-check',
+                icon: 'fa-circle',
                 critical: false
             }];
         }
@@ -1218,16 +1448,32 @@ return '-';
 
             const diffDays = Math.floor((date - today) / (1000 * 60 * 60 * 24));
 
+            // Today
             if (diffDays === 0) {
 return 'היום';
 }
+
+            // Tomorrow
             if (diffDays === 1) {
 return 'מחר';
 }
-            if (diffDays < 7) {
+
+            // Future (next 6 days)
+            if (diffDays > 1 && diffDays < 7) {
 return `בעוד ${diffDays} ימים`;
 }
 
+            // Yesterday
+            if (diffDays === -1) {
+return 'אתמול';
+}
+
+            // Past (last 6 days)
+            if (diffDays < 0 && diffDays >= -6) {
+return `לפני ${Math.abs(diffDays)} ימים`;
+}
+
+            // All other dates: show DD/MM format
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             return `${day}/${month}`;
@@ -1477,12 +1723,44 @@ return 'warning';
         }
 
 /**
-         * UI/WORKLOAD-DRAWER-2026: Render drawer with all employee details
+         * NARRATIVE-DATA-GRID-2026: Get severity hint (textual only)
+         */
+        getSeverityHint(metrics) {
+            const status = metrics.managerRisk?.level || metrics.workloadLevel;
+
+            if (status === 'critical') {
+                const hasOverdueFiles = metrics.overdueFiles > 0;
+                if (hasOverdueFiles) {
+                    return 'דורש תשומת לב';
+                }
+                return 'לטפל בטווח הקרוב';
+            }
+
+            if (status === 'high') {
+                return 'לטפל בטווח הקרוב';
+            }
+
+            if (status === 'medium') {
+                const hasNoData = (metrics.reportingDaysRatio || 0) < 0.5;
+                if (hasNoData) {
+                    return 'מעקב - נתונים חסרים';
+                }
+                return 'מעקב';
+            }
+
+            if (metrics.workloadScore < 30) {
+                return 'מעקב - תת תפוסה';
+            }
+
+            return 'מעקב';
+        }
+
+        /**
+         * NARRATIVE-DATA-GRID-2026: Render drawer with insight-first top section
          */
         renderDrawer(employee, metrics, workloadMap) {
-            const whyLine = this.getDrawerWhyLine(metrics);
-            const whyClass = metrics.managerRisk?.level === 'critical' ? 'critical' :
-                            (metrics.managerRisk?.level === 'high' ? '' : 'neutral');
+            const sentence = this.generateStatusSentence(metrics);
+            const severityHint = this.getSeverityHint(metrics);
 
             return `
                 <!-- Drawer Overlay -->
@@ -1501,11 +1779,18 @@ return 'warning';
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
-                        ${whyLine ? `<div class="drawer-why-line ${whyClass}">${whyLine}</div>` : ''}
+
+                        <!-- Insight-First Section -->
+                        <div class="drawer-insight-section">
+                            <div class="drawer-insight-headline">${sentence.headline}</div>
+                            <div class="drawer-insight-why">${sentence.why}</div>
+                            <div class="drawer-severity-hint">${severityHint}</div>
+                        </div>
                     </div>
 
                     <!-- Content -->
                     <div class="drawer-content">
+                        ${this.renderDrawerStatusExplanation(metrics)}
                         ${this.renderDrawerSectionA(metrics)}
                         ${this.renderDrawerSectionB(metrics)}
                         ${this.renderDrawerSectionC(metrics)}
@@ -1517,61 +1802,109 @@ return 'warning';
         }
 
         /**
-         * UI/WORKLOAD-DRAWER-2026: Get "why" explanation line for drawer header
+         * Status Explanation Section - explains WHY the employee has this status
          */
-        getDrawerWhyLine(metrics) {
-            // Priority: managerRisk.reasons
-            if (metrics.managerRisk?.reasons && metrics.managerRisk.reasons.length > 0) {
-                return metrics.managerRisk.reasons.slice(0, 2).join(' • ');
+        renderDrawerStatusExplanation(metrics) {
+            const status = metrics.managerRisk?.level || metrics.workloadLevel;
+            const reasons = metrics.managerRisk?.reasons || [];
+
+            // If status is good (תקין/הושלם), no need for detailed explanation
+            if (status === 'medium' || status === 'low') {
+                return '';
             }
 
-            // Fallback: critical alerts
-            if (metrics.alerts && metrics.alerts.length > 0) {
-                const critical = metrics.alerts.filter(a => a.severity === 'critical');
-                if (critical.length > 0) {
-                    return critical.slice(0, 2).map(a => a.message).join(' • ');
+            // Status configuration
+            const statusConfig = {
+                critical: {
+                    label: 'פיגור',
+                    icon: 'fa-exclamation-triangle',
+                    color: '#dc2626',
+                    bgColor: '#fef2f2',
+                    title: 'למה העובד בפיגור?'
+                },
+                high: {
+                    label: 'סיכון',
+                    icon: 'fa-exclamation-circle',
+                    color: '#ea580c',
+                    bgColor: '#fff7ed',
+                    title: 'למה העובד בסיכון?'
                 }
+            };
+
+            const config = statusConfig[status];
+            if (!config || reasons.length === 0) {
+                return '';
             }
 
-            // Neutral fallback
-            return 'מצב תקין, אין התראות משמעותיות';
+            // Build reasons list
+            const reasonsHtml = reasons.map(reason => `
+                <div class="drawer-explanation-item">
+                    <i class="fas fa-circle" style="font-size: 0.375rem; color: ${config.color}; margin-top: 6px;"></i>
+                    <span>${this.sanitize(reason)}</span>
+                </div>
+            `).join('');
+
+            return `
+                <div class="drawer-explanation-section" style="--status-color: ${config.color}; --status-bg: ${config.bgColor};">
+                    <div class="drawer-explanation-header">
+                        <i class="fas ${config.icon}"></i>
+                        <span>${config.title}</span>
+                    </div>
+                    <div class="drawer-explanation-content">
+                        ${reasonsHtml}
+                    </div>
+                    <div class="drawer-explanation-footer">
+                        <i class="fas fa-lightbulb"></i>
+                        הנתונים המפורטים להלן מסבירים את הסיבות המדוייקות למצב זה
+                    </div>
+                </div>
+            `;
         }
 
         /**
          * Section A: Workload Overview
          */
         renderDrawerSectionA(metrics) {
-            const statusLabels = {
-                low: 'זמין',
-                medium: 'בינוני',
-                high: 'עמוס',
-                critical: 'קריטי'
-            };
             const status = metrics.managerRisk?.level || metrics.workloadLevel;
+            const statusPill = this.renderStatusPill(status);
+            const score = metrics.workloadScore;
+
+            // Manager insight based on score
+            let scoreInsight = '';
+            if (score <= 50) {
+                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>תת-ניצול:</strong> העובד זמין לקבל משימות נוספות</span></div>';
+            } else if (score <= 85) {
+                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>ניצול טוב:</strong> עומס עבודה בריא ומאוזן</span></div>';
+            } else if (score <= 110) {
+                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס גבוה:</strong> עובד קרוב למקסימום - עקוב אחרי הסטטוס</span></div>';
+            } else {
+                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס יתר!</strong> חריגה מהתקן - עלול להשפיע על איכות ועמידה בזמנים</span></div>';
+            }
 
             return `
                 <div class="drawer-section">
                     <div class="drawer-section-title">
-                        <i class="fas fa-tachometer-alt"></i>
-                        סקירת עומס
+                        <i class="fas fa-gauge-high"></i>
+                        מצב עומס כללי
                     </div>
                     <div class="drawer-metric">
                         <div class="drawer-metric-label">
-                            <i class="fas fa-percentage"></i>
-                            ציון עומס
+                            <i class="fas fa-percent"></i>
+                            ניצול קיבולת
                         </div>
                         <div class="drawer-metric-value">
-                            ${metrics.workloadScore}%
-                            <div class="drawer-metric-context">100% = ניצול מלא של שעות התקן</div>
+                            ${score}%
+                            <div class="drawer-metric-context">100% = ניצול מלא של זמן פנוי</div>
                         </div>
                     </div>
-                    <div class="drawer-metric">
+                    ${scoreInsight}
+                    <div class="drawer-metric" style="margin-top: 12px;">
                         <div class="drawer-metric-label">
-                            <i class="fas fa-info-circle"></i>
-                            מצב כללי
+                            <i class="fas fa-signal"></i>
+                            סטטוס כללי
                         </div>
                         <div class="drawer-metric-value">
-                            ${statusLabels[status] || 'לא ידוע'}
+                            ${statusPill}
                         </div>
                     </div>
                 </div>
@@ -1599,13 +1932,35 @@ return 'warning';
                 }
             }
 
-            const isCritical = metrics.overduePlusDueSoon >= 3;
+            const urgentCount = metrics.overduePlusDueSoon || 0;
+            const isCritical = urgentCount >= 3;
+
+            // Manager insights
+            let urgentInsight = '';
+            if (urgentCount === 0) {
+                urgentInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>מצוין!</strong> אין משימות דחופות - העובד עובד לפי לוח זמנים</span></div>';
+            } else if (urgentCount <= 2) {
+                urgentInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>שים לב:</strong> יש מספר קטן של משימות דחופות - כדאי לבדוק עדיפויות</span></div>';
+            } else {
+                urgentInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>דורש התערבות!</strong> יותר מדי משימות דחופות - העובד עלול להיות מוצף</span></div>';
+            }
+
+            let coverageInsight = '';
+            if (coverageRatio !== null) {
+                if (coverageRatio >= 100) {
+                    coverageInsight = '<div class="drawer-metric-insight"><i class="fas fa-shield-check"></i><span><strong>כיסוי מלא:</strong> יש מספיק זמן לכל המשימות ב-5 הימים הקרובים</span></div>';
+                } else if (coverageRatio >= 70) {
+                    coverageInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>כיסוי חלקי:</strong> יש לחץ זמן, כדאי לשקול תעדוף מחדש</span></div>';
+                } else {
+                    coverageInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>חוסר כיסוי!</strong> לא מספיק זמן למשימות הקרובות - דורש פתרון מיידי</span></div>';
+                }
+            }
 
             return `
                 <div class="drawer-section">
                     <div class="drawer-section-title">
                         <i class="fas fa-calendar-exclamation"></i>
-                        דדליינים וסיכונים
+                        דחיפות ולחץ זמן
                     </div>
                     <div class="drawer-metric ${isCritical ? 'critical' : ''}">
                         <div class="drawer-metric-label">
@@ -1613,20 +1968,22 @@ return 'warning';
                             משימות דחופות
                         </div>
                         <div class="drawer-metric-value">
-                            ${metrics.overduePlusDueSoon || 0}
-                            <div class="drawer-metric-context">באיחור + 3 ימים קרובים</div>
+                            ${urgentCount}
+                            <div class="drawer-metric-context">באיחור או דדליין ב-3 ימים הקרובים</div>
                         </div>
                     </div>
-                    <div class="drawer-metric">
+                    ${urgentInsight}
+                    <div class="drawer-metric" style="margin-top: 12px;">
                         <div class="drawer-metric-label">
-                            <i class="fas fa-shield-alt"></i>
-                            כיסוי 5 ימים
+                            <i class="fas fa-hourglass-half"></i>
+                            כיסוי זמן - 5 ימים
                         </div>
                         <div class="drawer-metric-value">
                             ${coverageRatio !== null ? `${coverageRatio}%` : '—'}
                             ${gapText ? `<div class="drawer-metric-context">${gapText}</div>` : ''}
                         </div>
                     </div>
+                    ${coverageInsight}
                 </div>
             `;
         }
@@ -1637,41 +1994,45 @@ return 'warning';
         renderDrawerSectionC(metrics) {
             const peakMultiplier = metrics.dailyBreakdown?.peakMultiplier;
             const peakDisplay = peakMultiplier ? `×${peakMultiplier.toFixed(2)}` : '—';
+            const backlogHours = metrics.totalBacklogHours || 0;
+
+            // Backlog insight
+            let backlogInsight = '';
+            if (backlogHours === 0) {
+                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>אין צבר:</strong> כל המשימות בוצעו או מתוזמנות</span></div>';
+            } else if (backlogHours <= 40) {
+                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>צבר קטן:</strong> עומס עבודה סביר לטווח הבינוני</span></div>';
+            } else if (backlogHours <= 80) {
+                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-circle"></i><span><strong>צבר גדול:</strong> כדאי לשקול עדיפות מחדש או העברת משימות</span></div>';
+            } else {
+                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>צבר קריטי!</strong> צבר גדול מדי - דורש התערבות ניהולית מיידית</span></div>';
+            }
 
             return `
                 <div class="drawer-section">
                     <div class="drawer-section-title">
-                        <i class="fas fa-battery-three-quarters"></i>
-                        קיבולת והיקף
+                        <i class="fas fa-chart-line"></i>
+                        נתח עבודה וקיבולת
                     </div>
                     <div class="drawer-metric">
                         <div class="drawer-metric-label">
-                            <i class="fas fa-clock"></i>
-                            זמינות השבוע
+                            <i class="fas fa-clipboard-list"></i>
+                            צבר משימות (Backlog)
+                        </div>
+                        <div class="drawer-metric-value">
+                            ${this.formatHours(backlogHours)}
+                            <div class="drawer-metric-context">שעות עבודה שנותרו לביצוע</div>
+                        </div>
+                    </div>
+                    ${backlogInsight}
+                    <div class="drawer-metric" style="margin-top: 12px;">
+                        <div class="drawer-metric-label">
+                            <i class="fas fa-business-time"></i>
+                            זמן פנוי השבוע
                         </div>
                         <div class="drawer-metric-value">
                             ${this.formatHours(metrics.availableHoursThisWeek)}
-                            <div class="drawer-metric-context">שעות פנויות זמינות</div>
-                        </div>
-                    </div>
-                    <div class="drawer-metric">
-                        <div class="drawer-metric-label">
-                            <i class="fas fa-chart-bar"></i>
-                            עומס יומי מקסימלי
-                        </div>
-                        <div class="drawer-metric-value">
-                            ${peakDisplay}
-                            <div class="drawer-metric-context">ביום העמוס ביותר ביחס לתקן</div>
-                        </div>
-                    </div>
-                    <div class="drawer-metric">
-                        <div class="drawer-metric-label">
-                            <i class="fas fa-tasks"></i>
-                            Backlog כולל
-                        </div>
-                        <div class="drawer-metric-value">
-                            ${this.formatHours(metrics.totalBacklogHours)}
-                            <div class="drawer-metric-context">שעות עבודה נותרות</div>
+                            <div class="drawer-metric-context">שעות זמינות להקצאה חדשה</div>
                         </div>
                     </div>
                 </div>
@@ -1688,39 +2049,45 @@ return 'warning';
                 : '—';
 
             let qualityText = '';
+            let confidenceInsight = '';
             if (confidence !== undefined) {
                 if (confidence >= 70) {
                     qualityText = 'דיווח עקבי ואמין';
+                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>נתונים אמינים:</strong> העובד מדווח באופן עקבי - ניתן לסמוך על הנתונים</span></div>';
                 } else if (confidence >= 30) {
                     qualityText = 'דיווח חלקי';
+                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>דיווח חלקי:</strong> יש פערים בדיווח - המספרים עשויים להיות לא מדויקים</span></div>';
                 } else {
                     qualityText = 'דיווח חסר';
+                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>חוסר דיווח!</strong> העובד לא מדווח כראוי - קשה להעריך עומס אמיתי</span></div>';
                 }
             }
 
             return `
                 <div class="drawer-section">
                     <div class="drawer-section-title">
-                        <i class="fas fa-chart-line"></i>
-                        איכות נתונים
+                        <i class="fas fa-database"></i>
+                        מהימנות הנתונים
                     </div>
                     <div class="drawer-metric">
                         <div class="drawer-metric-label">
-                            <i class="fas fa-clipboard-check"></i>
-                            אמון בנתונים
+                            <i class="fas fa-chart-pie"></i>
+                            רמת אמינות
                         </div>
                         <div class="drawer-metric-value">
                             ${confidenceDisplay}
                             ${qualityText ? `<div class="drawer-metric-context">${qualityText}</div>` : ''}
                         </div>
                     </div>
-                    <div class="drawer-metric">
+                    ${confidenceInsight}
+                    <div class="drawer-metric" style="margin-top: 12px;">
                         <div class="drawer-metric-label">
-                            <i class="fas fa-list"></i>
+                            <i class="fas fa-tasks"></i>
                             משימות פעילות
                         </div>
                         <div class="drawer-metric-value">
                             ${metrics.activeTasksCount || 0}
+                            <div class="drawer-metric-context">משימות שהעובד עובד עליהן כעת</div>
                         </div>
                     </div>
                 </div>
@@ -1732,19 +2099,37 @@ return 'warning';
          */
         renderDrawerSectionE(metrics, employee) {
             const dailyBreakdown = metrics.dailyBreakdown;
+
+            // Debug: בדיקה מה יש בנתונים
+            console.log('🔍 [Section E] dailyBreakdown:', dailyBreakdown);
+
             if (!dailyBreakdown || !dailyBreakdown.dailyLoads) {
+                const reason = !dailyBreakdown
+                    ? 'לא קיים dailyBreakdown'
+                    : 'לא קיים dailyLoads';
+                console.warn('⚠️ [Section E] אין נתונים:', reason);
+
                 return `
                     <div class="drawer-section">
                         <div class="drawer-section-title">
                             <i class="fas fa-calendar-week"></i>
-                            מגמות שבועיות
+                            פירוט שבועי
                         </div>
-                        <p style="color: #64748b; font-size: 0.875rem;">אין נתונים זמינים</p>
+                        <div style="padding: 16px 0; color: #64748b; font-size: 0.875rem; text-align: center;">
+                            <i class="fas fa-info-circle" style="display: block; font-size: 2rem; margin-bottom: 8px; opacity: 0.3;"></i>
+                            <p style="margin: 0;">אין נתונים שבועיים זמינים</p>
+                            <p style="margin: 4px 0 0; font-size: 0.75rem; color: #94a3b8;">העובד לא דיווח על משימות השבוע</p>
+                        </div>
                     </div>
                 `;
             }
 
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
+
+            // Peak day info (needed before rendering chart)
+            const tasksByDay = dailyBreakdown.tasksByDay || {};
+            const peakDay = dailyBreakdown.peakDay;
+            const peakDayLoad = dailyBreakdown.peakDayLoad;
 
             // Get next 5 days
             const today = new Date();
@@ -1763,12 +2148,17 @@ return 'warning';
 
             const maxLoad = Math.max(...next5Days.map(d => d.load), dailyTarget);
 
-            const chartHtml = next5Days.map(day => {
+            const chartHtml = next5Days.map((day, index) => {
                 const heightPercent = maxLoad > 0 ? (day.load / maxLoad) * 100 : 0;
                 const isOverloaded = day.load > dailyTarget;
+                const isPeakDay = day.dateKey === peakDay;
 
                 return `
-                    <div class="drawer-daily-bar-wrapper">
+                    <div class="drawer-daily-bar-wrapper"
+                         data-date-key="${day.dateKey}"
+                         data-day-name="${day.dayName}"
+                         data-day-load="${day.load}"
+                         ${isPeakDay ? 'data-is-peak="true"' : ''}>
                         <div class="drawer-daily-bar-value">${this.formatHours(day.load)}</div>
                         <div class="drawer-daily-bar ${isOverloaded ? 'overloaded' : ''}"
                              style="height: ${heightPercent}%">
@@ -1778,34 +2168,98 @@ return 'warning';
                 `;
             }).join('');
 
+            // Count overloaded days
+            const overloadedDaysCount = next5Days.filter(d => d.load > dailyTarget).length;
+            let weeklyInsight = '';
+
+            if (overloadedDaysCount === 0) {
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>שבוע מאוזן:</strong> אין ימים עם עומס יתר - העובד יכול לעמוד בלוח הזמנים</span></div>';
+            } else if (overloadedDaysCount <= 2) {
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>ימים עמוסים:</strong> יש ' + overloadedDaysCount + ' ימים עם עומס גבוה (עמודות אדומות) - כדאי לעקוב</span></div>';
+            } else {
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>שבוע קריטי!</strong> יותר מדי ימים עמוסים - העובד עלול להיות מוצף</span></div>';
+            }
+
+            // Peak day tasks rendering
+            let peakDayTasksHtml = '';
+            if (peakDay && tasksByDay[peakDay]) {
+                const peakDayTasks = tasksByDay[peakDay];
+                const peakDayDate = this.formatDateFromString(peakDay);
+
+                const tasksListHtml = peakDayTasks.slice(0, 5).map(item => {
+                    const task = item.task;
+                    const hours = item.hoursForThisDay;
+                    const deadline = this.parseDeadlineForDisplay(task.deadline);
+                    const isOverdue = deadline && deadline < today;
+
+                    return `
+                        <div class="drawer-task-item ${isOverdue ? 'overdue' : ''}">
+                            <div class="drawer-task-header">
+                                <i class="fas fa-briefcase"></i>
+                                <span class="drawer-task-client">${this.sanitize(task.clientName || 'ללא לקוח')}</span>
+                                <span class="drawer-task-hours">${this.formatHours(hours)}</span>
+                            </div>
+                            <div class="drawer-task-description">${this.sanitize(task.description || task.taskName || 'ללא תיאור')}</div>
+                            ${deadline ? `<div class="drawer-task-deadline"><i class="fas fa-calendar"></i> ${this.formatDate(deadline.toISOString())}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+
+                const showingCount = Math.min(5, peakDayTasks.length);
+                const totalCount = peakDayTasks.length;
+
+                peakDayTasksHtml = `
+                    <div id="drawerSelectedDayTasks" style="margin-top: 20px;">
+                        <div style="font-size: 0.875rem; font-weight: 600; color: #475569; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-fire" style="color: #ef4444;"></i>
+                            <span id="drawerSelectedDayTitle">משימות ביום השיא (${peakDayDate} - ${this.formatHours(peakDayLoad)})</span>
+                        </div>
+                        <div class="drawer-tasks-list" id="drawerTasksList">
+                            ${tasksListHtml}
+                        </div>
+                        ${totalCount > 5 ? `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 8px; text-align: center;">מציג ${showingCount} מתוך ${totalCount} משימות</div>` : ''}
+                    </div>
+                `;
+            }
+
             return `
                 <div class="drawer-section">
                     <div class="drawer-section-title">
                         <i class="fas fa-calendar-week"></i>
-                        פירוט שבועי
+                        פירוט 5 ימים קרובים
                     </div>
-                    <div class="drawer-weekly-chart">
+                    <div style="font-size: 0.813rem; color: #64748b; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-hand-pointer" style="font-size: 0.75rem;"></i>
+                        לחץ על יום כדי לראות את המשימות שלו
+                    </div>
+                    <div class="drawer-weekly-chart" id="drawerWeeklyChart" data-has-tasks-by-day="${Object.keys(tasksByDay).length > 0}">
                         ${chartHtml}
                     </div>
+                    ${weeklyInsight}
+                    ${peakDayTasksHtml}
                 </div>
             `;
         }
 
         formatHours(hours) {
-            if (hours === undefined || hours === null) {
-return '0h';
-}
-            if (hours === 0) {
-return '0h';
-}
+            if (hours === undefined || hours === null || hours === '') {
+                return '0h';
+            }
+
+            // Convert to number if string
+            const numHours = typeof hours === 'string' ? parseFloat(hours) : hours;
+
+            if (isNaN(numHours) || numHours === 0) {
+                return '0h';
+            }
 
             // אם זה מספר שלם, הצג בלי נקודה עשרונית
-            if (hours === Math.floor(hours)) {
-                return `${hours}h`;
+            if (numHours === Math.floor(numHours)) {
+                return `${numHours}h`;
             }
 
             // אחרת, הצג עם נקודה עשרונית אחת
-            return `${hours.toFixed(1)}h`;
+            return `${numHours.toFixed(1)}h`;
         }
     }
 
@@ -2000,9 +2454,199 @@ return;
 
                 // Escape key
                 document.addEventListener('keydown', this.handleEscapeKey);
+
+                // Weekly chart day selection - Event delegation
+                this.attachWeeklyChartListeners(metrics);
             }, 10);
 
             console.log('✅ Drawer opened for:', employeeEmail);
+        },
+
+        /**
+         * Attach event listeners for weekly chart day selection
+         */
+        attachWeeklyChartListeners(metrics) {
+            const chart = document.getElementById('drawerWeeklyChart');
+            if (!chart) {
+                return;
+            }
+
+            const hasTasksByDay = chart.dataset.hasTasksByDay === 'true';
+            if (!hasTasksByDay) {
+                console.log('ℹ️ No tasks by day - skipping chart interaction');
+                return;
+            }
+
+            // Store handler as property for stable reference
+            if (!this._chartClickHandler) {
+                this._chartClickHandler = (e) => {
+                    // Find closest bar wrapper
+                    const barWrapper = e.target.closest('.drawer-daily-bar-wrapper');
+                    if (!barWrapper) {
+                        return;
+                    }
+
+                    const dateKey = barWrapper.dataset.dateKey;
+                    const dayName = barWrapper.dataset.dayName;
+                    const dayLoad = barWrapper.dataset.dayLoad;
+
+                    console.log('📅 Day clicked:', dateKey, dayName);
+
+                    // Update selected state
+                    const chartEl = document.getElementById('drawerWeeklyChart');
+                    if (chartEl) {
+                        chartEl.querySelectorAll('.drawer-daily-bar-wrapper').forEach(bar => {
+                            bar.classList.remove('selected');
+                        });
+                    }
+                    barWrapper.classList.add('selected');
+
+                    // Reset expanded state when selecting a new day
+                    const tasksList = document.getElementById('drawerTasksList');
+                    if (tasksList) {
+                        tasksList.classList.remove('expanded');
+                    }
+
+                    // Update tasks display - metrics will be captured from closure
+                    this.updateDrawerTasks(dateKey, dayName, dayLoad, this._currentMetrics);
+                };
+            }
+
+            // Store metrics for handler
+            this._currentMetrics = metrics;
+
+            // Remove existing listener (if any) before adding new one
+            chart.removeEventListener('click', this._chartClickHandler);
+
+            // Add single listener
+            chart.addEventListener('click', this._chartClickHandler);
+
+            // Mark peak day as selected by default
+            const peakBar = chart.querySelector('[data-is-peak="true"]');
+            if (peakBar) {
+                peakBar.classList.add('selected');
+            }
+
+            console.log('✅ Weekly chart listeners attached');
+        },
+
+        /**
+         * Update drawer tasks for selected day
+         */
+        updateDrawerTasks(dateKey, dayName, dayLoad, metrics) {
+            const workloadCard = window.WorkloadCard;
+            const tasksList = document.getElementById('drawerTasksList');
+            const titleEl = document.getElementById('drawerSelectedDayTitle');
+
+            if (!tasksList || !titleEl) {
+                return;
+            }
+
+            const dailyBreakdown = metrics.dailyBreakdown;
+            if (!dailyBreakdown || !dailyBreakdown.tasksByDay) {
+                return;
+            }
+
+            const tasksByDay = dailyBreakdown.tasksByDay;
+            const dayTasks = tasksByDay[dateKey];
+
+            if (!dayTasks || dayTasks.length === 0) {
+                tasksList.innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 0.875rem;">
+                        <i class="fas fa-info-circle" style="display: block; font-size: 1.5rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                        אין משימות מתוזמנות ליום זה
+                    </div>
+                `;
+                titleEl.textContent = `משימות ב${dayName} - אין משימות`;
+                return;
+            }
+
+            // Render tasks
+            const today = new Date();
+            const dateFormatted = workloadCard.formatDateFromString(dateKey);
+
+            // Check if already showing all tasks (from expand button click)
+            const isExpanded = tasksList.classList.contains('expanded');
+            const tasksToShow = isExpanded ? dayTasks : dayTasks.slice(0, 5);
+
+            const tasksHtml = tasksToShow.map(item => {
+                const task = item.task;
+                const hours = item.hoursForThisDay;
+                const deadline = workloadCard.parseDeadlineForDisplay(task.deadline);
+                const isOverdue = deadline && deadline < today;
+
+                // Calculate days overdue
+                let overdueBadge = '';
+                if (isOverdue) {
+                    const daysOverdue = Math.floor((today - deadline) / (1000 * 60 * 60 * 24));
+                    if (daysOverdue === 0) {
+                        overdueBadge = '<span class="drawer-task-overdue-badge">באיחור - היום</span>';
+                    } else if (daysOverdue === 1) {
+                        overdueBadge = '<span class="drawer-task-overdue-badge">באיחור - יום</span>';
+                    } else {
+                        overdueBadge = `<span class="drawer-task-overdue-badge">באיחור - ${daysOverdue} ימים</span>`;
+                    }
+                }
+
+                return `
+                    <div class="drawer-task-item ${isOverdue ? 'overdue' : ''}">
+                        <div class="drawer-task-header">
+                            <i class="fas fa-briefcase"></i>
+                            <span class="drawer-task-client">${workloadCard.sanitize(task.clientName || 'ללא לקוח')}</span>
+                            ${overdueBadge}
+                            <span class="drawer-task-hours">${workloadCard.formatHours(hours)}</span>
+                        </div>
+                        <div class="drawer-task-description">${workloadCard.sanitize(task.description || task.taskName || 'ללא תיאור')}</div>
+                        ${deadline ? `<div class="drawer-task-deadline"><i class="fas fa-calendar"></i> ${workloadCard.formatDate(deadline.toISOString())}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            // Add "Show All" button if needed
+            const showingCount = tasksToShow.length;
+            const totalCount = dayTasks.length;
+            const needsExpandButton = totalCount > 5 && !isExpanded;
+
+            const expandButtonHtml = needsExpandButton ? `
+                <div class="drawer-tasks-expand-btn" data-date-key="${dateKey}" data-day-name="${dayName}" data-day-load="${dayLoad}">
+                    <i class="fas fa-chevron-down"></i>
+                    הצג את כל המשימות (${totalCount - 5} נוספות)
+                </div>
+            ` : '';
+
+            tasksList.innerHTML = tasksHtml + expandButtonHtml;
+
+            // Attach expand button listener if exists
+            if (needsExpandButton) {
+                const expandBtn = tasksList.querySelector('.drawer-tasks-expand-btn');
+                if (expandBtn) {
+                    expandBtn.addEventListener('click', () => {
+                        this.expandTasks(dateKey, dayName, dayLoad, metrics);
+                    });
+                }
+            }
+
+            titleEl.innerHTML = `משימות ב${dayName} (${dateFormatted} - ${workloadCard.formatHours(dayLoad)})`;
+
+            console.log('✅ Tasks updated for:', dayName, `(${dayTasks.length} tasks)`);
+        },
+
+        /**
+         * Expand tasks to show all
+         */
+        expandTasks(dateKey, dayName, dayLoad, metrics) {
+            const tasksList = document.getElementById('drawerTasksList');
+            if (!tasksList) {
+                return;
+            }
+
+            // Mark as expanded
+            tasksList.classList.add('expanded');
+
+            // Re-render with all tasks
+            this.updateDrawerTasks(dateKey, dayName, dayLoad, metrics);
+
+            console.log('✅ Expanded tasks view');
         },
 
         /**
@@ -2047,6 +2691,183 @@ return;
     };
 
     // ═══════════════════════════════════════════════════════════════
+    // KEYBOARD NAVIGATION MANAGER - 2026
+    // ═══════════════════════════════════════════════════════════════
+
+    class KeyboardNavigationManager {
+        constructor() {
+            this.selectedIndex = -1;
+            this.rows = [];
+            this.isEnabled = false;
+        }
+
+        init() {
+            this.attachGlobalKeyboardListeners();
+            this.isEnabled = true;
+        }
+
+        attachGlobalKeyboardListeners() {
+            document.addEventListener('keydown', (e) => {
+                // Don't intercept if user is typing in input field
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
+                }
+
+                // Don't intercept if drawer is open (let drawer handle Escape)
+                if (window.workloadDrawer?.isOpen) {
+                    return;
+                }
+
+                this.handleKeyPress(e);
+            });
+        }
+
+        handleKeyPress(e) {
+            const key = e.key;
+
+            // Update rows list
+            this.refreshRowsList();
+
+            if (this.rows.length === 0) {
+return;
+}
+
+            // Arrow Down or 'j' (vim-style)
+            if (key === 'ArrowDown' || key === 'j') {
+                e.preventDefault();
+                this.selectNext();
+            } else if (key === 'ArrowUp' || key === 'k') {
+                // Arrow Up or 'k' (vim-style)
+                e.preventDefault();
+                this.selectPrevious();
+            } else if (key === 'Enter') {
+                // Enter - open drawer
+                e.preventDefault();
+                this.openSelected();
+            } else if (key === '/') {
+                // Forward slash - focus search
+                e.preventDefault();
+                this.focusSearch();
+            } else if (key === '1' || key === '2' || key === '3') {
+                // Number keys 1-3 for quick filter
+                e.preventDefault();
+                this.quickFilter(key);
+            }
+        }
+
+        refreshRowsList() {
+            this.rows = Array.from(document.querySelectorAll('.narrative-grid-row, .employee-list-row'));
+        }
+
+        selectNext() {
+            if (this.selectedIndex < this.rows.length - 1) {
+                this.selectedIndex++;
+                this.updateSelection();
+            }
+        }
+
+        selectPrevious() {
+            if (this.selectedIndex > 0) {
+                this.selectedIndex--;
+                this.updateSelection();
+            } else if (this.selectedIndex === -1 && this.rows.length > 0) {
+                this.selectedIndex = 0;
+                this.updateSelection();
+            }
+        }
+
+        updateSelection() {
+            // Remove previous selection
+            this.rows.forEach(row => row.classList.remove('keyboard-selected'));
+
+            // Add new selection
+            if (this.selectedIndex >= 0 && this.selectedIndex < this.rows.length) {
+                const selectedRow = this.rows[this.selectedIndex];
+                selectedRow.classList.add('keyboard-selected');
+
+                // Scroll into view if needed
+                selectedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        openSelected() {
+            if (this.selectedIndex >= 0 && this.selectedIndex < this.rows.length) {
+                const selectedRow = this.rows[this.selectedIndex];
+                const email = selectedRow.dataset.email;
+
+                if (email && window.workloadDrawer) {
+                    window.workloadDrawer.open(email);
+                }
+            }
+        }
+
+        focusSearch() {
+            const searchInput = document.querySelector('#workloadSearchInput, input[type="search"]');
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+
+        quickFilter(key) {
+            // Simulate filter click based on number
+            const filterButtons = document.querySelectorAll('[data-filter]');
+            if (!filterButtons || filterButtons.length === 0) {
+return;
+}
+
+            // 1 = All, 2 = Needs Attention, 3 = Critical
+            const filterMap = {
+                '1': 'all',
+                '2': 'high',
+                '3': 'critical'
+            };
+
+            const targetFilter = filterMap[key];
+            const targetButton = Array.from(filterButtons).find(btn => btn.dataset.filter === targetFilter);
+
+            if (targetButton) {
+                targetButton.click();
+            }
+        }
+
+        reset() {
+            this.selectedIndex = -1;
+            this.rows.forEach(row => row.classList.remove('keyboard-selected'));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // GITHUB-PROJECTS-STYLE: Group Toggle Function
+    // ═══════════════════════════════════════════════════════════════
+
+    window.toggleEmployeeGroup = function(groupId) {
+        const groupRows = document.getElementById(groupId);
+        const chevron = document.getElementById(`${groupId}-chevron`);
+        const groupEl = groupRows?.closest('.employee-group');
+
+        if (!groupRows || !chevron || !groupEl) {
+return;
+}
+
+        const isCollapsed = groupEl.dataset.collapsed === 'true';
+
+        if (isCollapsed) {
+            // Expand
+            groupRows.style.display = '';
+            chevron.classList.remove('fa-chevron-right');
+            chevron.classList.add('fa-chevron-down');
+            groupEl.dataset.collapsed = 'false';
+        } else {
+            // Collapse
+            groupRows.style.display = 'none';
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-right');
+            groupEl.dataset.collapsed = 'true';
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════
     // Global Export
     // ═══════════════════════════════════════════════════════════════
 
@@ -2056,6 +2877,13 @@ return;
     const workloadCard = new WorkloadCard();
     window.WorkloadCard = workloadCard;
 
+    // Initialize Keyboard Navigation
+    const keyboardNav = new KeyboardNavigationManager();
+    keyboardNav.init();
+    window.workloadKeyboardNav = keyboardNav;
+
     console.log('✅ WorkloadCard v5.2.0 loaded - Fail-Fast Error Handling');
+    console.log('⌨️  Keyboard Navigation enabled - Use ↑↓ j/k, Enter, /, 1-3');
+    console.log('📁 GitHub Projects Style - Grouped Table');
 
 })();
