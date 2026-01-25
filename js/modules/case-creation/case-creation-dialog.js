@@ -286,9 +286,27 @@
       this.pricingType = 'hourly';
       this.currentCase = null; // ✅ תיק קיים (למצב הוספת שירות)
 
-      // ✅ Stepper properties
-      this.currentStep = 1;
+      // ✅ Stepper properties - with instrumentation
+      this._currentStep = 1; // Internal storage
       this.totalSteps = 3; // 3 for new client, 2 for existing client
+
+      // 🔍 INSTRUMENTATION: Getter/Setter for currentStep tracking
+      Object.defineProperty(this, 'currentStep', {
+        get() {
+          return this._currentStep;
+        },
+        set(newValue) {
+          const oldValue = this._currentStep;
+          console.group(`🔍 TRACE currentStep set: ${oldValue} → ${newValue}`);
+          console.log('Mode:', this.currentMode);
+          console.log('TotalSteps:', this.totalSteps);
+          console.trace('Stack trace:');
+          console.groupEnd();
+          this._currentStep = newValue;
+        },
+        configurable: true,
+        enumerable: true
+      });
     }
 
     /**
@@ -329,6 +347,9 @@
         if (window.NotificationSystem) {
           window.NotificationSystem.hideLoading();
         }
+
+        // 🔍 INSTRUMENTATION: Monitor button style changes
+        this.setupButtonMonitor();
 
         Logger.log('✅ Case creation dialog opened');
       } catch (error) {
@@ -790,6 +811,12 @@
      * עדכון תצוגת שלבים (הצגה/הסתרה)
      */
     updateStepVisibility() {
+      // 🔍 INSTRUMENTATION: Trace all calls
+      console.group('🔍 TRACE updateStepVisibility()');
+      console.log('currentStep:', this.currentStep);
+      console.log('currentMode:', this.currentMode);
+      console.trace('Stack trace:');
+
       // הסתרת כל השלבים
       document.querySelectorAll('.wizard-step').forEach(step => {
         step.style.display = 'none';
@@ -803,10 +830,13 @@
       if (this.currentMode === 'new') {
         // New Client: 3 steps
         if (this.currentStep === 1) {
+          console.log('📍 BRANCH = 1 (step1_newClient)');
           document.getElementById('step1_newClient').style.display = 'block';
         } else if (this.currentStep === 2) {
+          console.log('📍 BRANCH = 2 (step2_newClient)');
           document.getElementById('step2_newClient').style.display = 'block';
         } else if (this.currentStep === 3) {
+          console.log('📍 BRANCH = 3 (step3_service)');
           document.getElementById('step3_service').style.display = 'block';
           // הסתרת שדות של existing client
           if (serviceTypeSelector) {
@@ -836,6 +866,8 @@ serviceTitleField.style.display = 'block';
           this.moveExistingCaseInfoToStep3();
         }
       }
+
+      console.groupEnd(); // End of updateStepVisibility trace
     }
 
     /**
@@ -1061,6 +1093,14 @@ serviceTitleField.style.display = 'block';
      * רינדור סקשן שירות לפי סוג הליך
      */
     renderServiceSection() {
+      // 🔍 INSTRUMENTATION: Trace all calls
+      console.group('🔍 TRACE renderServiceSection()');
+      console.log('procedureType:', this.procedureType);
+      console.log('currentStep:', this.currentStep);
+      console.log('currentMode:', this.currentMode);
+      console.trace('Stack trace:');
+      console.groupEnd();
+
       const container = document.getElementById('serviceSection');
       if (!container) {
         console.log('❌ serviceSection container not found!');
@@ -1308,6 +1348,30 @@ return;
         document.getElementById('serviceTypeTab_hours'),
         document.getElementById('serviceTypeTab_legal')
       ];
+
+      // 🔍 INSTRUMENTATION: Add capture listeners for event audit
+      serviceTypeTabs.forEach(tab => {
+        if (!tab) {
+return;
+}
+
+        // Capture listener for debugging (runs before bubble)
+        tab.addEventListener('click', (e) => {
+          console.group(`🔍 EVENT AUDIT: click on ${tab.id}`);
+          console.log('isTrusted:', e.isTrusted);
+          console.log('target:', e.target);
+          console.log('currentTarget:', e.currentTarget);
+          console.trace('Stack trace:');
+          console.groupEnd();
+        }, true); // true = capture phase
+
+        tab.addEventListener('pointerdown', (e) => {
+          console.group(`🔍 EVENT AUDIT: pointerdown on ${tab.id}`);
+          console.log('isTrusted:', e.isTrusted);
+          console.trace('Stack trace:');
+          console.groupEnd();
+        }, true);
+      });
 
       serviceTypeTabs.forEach(tab => {
         if (!tab) {
@@ -2212,6 +2276,46 @@ return;
         </div>
       `).join('');
       errorsDiv.style.display = 'block';
+    }
+
+    /**
+     * 🔍 INSTRUMENTATION: Monitor nextStepBtn style changes
+     */
+    setupButtonMonitor() {
+      const nextBtn = document.getElementById('nextStepBtn');
+      const submitBtn = document.getElementById('submitBtn');
+
+      if (!nextBtn || !submitBtn) {
+        console.warn('⚠️ Buttons not found for monitoring');
+        return;
+      }
+
+      // Initial state
+      console.group('🔍 INITIAL BUTTON STATE');
+      console.log('nextBtn inline style:', nextBtn.getAttribute('style'));
+      console.log('nextBtn computed display:', window.getComputedStyle(nextBtn).display);
+      console.log('submitBtn inline style:', submitBtn.getAttribute('style'));
+      console.log('submitBtn computed display:', window.getComputedStyle(submitBtn).display);
+      console.groupEnd();
+
+      // MutationObserver for style changes
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            console.group(`🔍 BUTTON STYLE CHANGED: ${mutation.target.id}`);
+            console.log('New inline style:', mutation.target.getAttribute('style'));
+            console.log('Computed display:', window.getComputedStyle(mutation.target).display);
+            console.trace('Stack trace:');
+            console.groupEnd();
+          }
+        });
+      });
+
+      observer.observe(nextBtn, { attributes: true, attributeFilter: ['style'] });
+      observer.observe(submitBtn, { attributes: true, attributeFilter: ['style'] });
+
+      // Store observer for cleanup
+      this.buttonObserver = observer;
     }
 
     /**
