@@ -286,9 +286,27 @@
       this.pricingType = 'hourly';
       this.currentCase = null; // ✅ תיק קיים (למצב הוספת שירות)
 
-      // ✅ Stepper properties
-      this.currentStep = 1;
+      // ✅ Stepper properties - with instrumentation
+      this._currentStep = 1; // Internal storage
       this.totalSteps = 3; // 3 for new client, 2 for existing client
+
+      // 🔍 INSTRUMENTATION: Getter/Setter for currentStep tracking
+      Object.defineProperty(this, 'currentStep', {
+        get() {
+          return this._currentStep;
+        },
+        set(newValue) {
+          const oldValue = this._currentStep;
+          console.group(`🔍 TRACE currentStep set: ${oldValue} → ${newValue}`);
+          console.log('Mode:', this.currentMode);
+          console.log('TotalSteps:', this.totalSteps);
+          console.trace('Stack trace:');
+          console.groupEnd();
+          this._currentStep = newValue;
+        },
+        configurable: true,
+        enumerable: true
+      });
     }
 
     /**
@@ -318,6 +336,9 @@
         // 🎨 החל סטיילים ראשוניים על כל הטאבים הפעילים
         this.initializeActiveTabStyles();
 
+        // ✅ Initialize button states for step 1
+        this.updateNavigationButtons();
+
         // המתנה מינימלית של 200ms כדי שהמשתמש יראה את הלוטי
         const elapsedTime = Date.now() - startTime;
         const remainingTime = 200 - elapsedTime;
@@ -329,6 +350,9 @@
         if (window.NotificationSystem) {
           window.NotificationSystem.hideLoading();
         }
+
+        // 🔍 INSTRUMENTATION: Monitor button style changes
+        this.setupButtonMonitor();
 
         Logger.log('✅ Case creation dialog opened');
       } catch (error) {
@@ -386,14 +410,6 @@
                     </button>
                   </div>
                 </div>
-
-                <!-- Lottie Validation Feedback -->
-                <div id="validationFeedback" style="
-                  width: 80px;
-                  height: 80px;
-                  margin: 0 auto 16px auto;
-                  display: none;
-                "></div>
 
                 <!-- Stepper Indicator -->
                 <div id="stepperIndicator" style="margin-bottom: 32px;">
@@ -601,7 +617,7 @@
                     הבא
                     <i class="fas fa-arrow-left" style="margin-right: 6px;"></i>
                   </button>
-                  <button type="submit" id="submitBtn" class="btn btn-primary" style="display: none;">
+                  <button type="submit" id="caseSubmitBtn" class="btn btn-primary" style="display: none;">
                     <i class="fas fa-save"></i>
                     שמור תיק
                   </button>
@@ -700,50 +716,15 @@
     }
 
     /**
-     * מעבר לשלב הבא (עם ולידציה + Lottie feedback)
+     * מעבר לשלב הבא (עם ולידציה)
      */
     async nextStep() {
-      const feedbackContainer = document.getElementById('validationFeedback');
-
-      // הצג Lottie "בודק..."
-      if (feedbackContainer && window.LottieManager) {
-        feedbackContainer.style.display = 'block';
-        await window.LottieManager.load('processing', feedbackContainer, {
-          loop: true,
-          autoplay: true
-        });
-      }
-
       // ולידציה של השלב הנוכחי
       const validation = await this.validateCurrentStep();
 
       if (!validation.isValid) {
-        // שגיאה - הצג Lottie error
-        if (feedbackContainer && window.LottieManager) {
-          await window.LottieManager.load('error', feedbackContainer, {
-            loop: false,
-            autoplay: true
-          });
-
-          // המתן לסיום אנימציה
-          await this.delay(800);
-          feedbackContainer.style.display = 'none';
-        }
-
         this.displayErrors(validation.errors);
         return;
-      }
-
-      // הצלחה - הצג Lottie success
-      if (feedbackContainer && window.LottieManager) {
-        await window.LottieManager.load('successSimple', feedbackContainer, {
-          loop: false,
-          autoplay: true
-        });
-
-        // המתן לסיום אנימציה
-        await this.delay(500);
-        feedbackContainer.style.display = 'none';
       }
 
       // הסתרת שגיאות
@@ -790,6 +771,12 @@
      * עדכון תצוגת שלבים (הצגה/הסתרה)
      */
     updateStepVisibility() {
+      // 🔍 INSTRUMENTATION: Trace all calls
+      console.group('🔍 TRACE updateStepVisibility()');
+      console.log('currentStep:', this.currentStep);
+      console.log('currentMode:', this.currentMode);
+      console.trace('Stack trace:');
+
       // הסתרת כל השלבים
       document.querySelectorAll('.wizard-step').forEach(step => {
         step.style.display = 'none';
@@ -803,10 +790,13 @@
       if (this.currentMode === 'new') {
         // New Client: 3 steps
         if (this.currentStep === 1) {
+          console.log('📍 BRANCH = 1 (step1_newClient)');
           document.getElementById('step1_newClient').style.display = 'block';
         } else if (this.currentStep === 2) {
+          console.log('📍 BRANCH = 2 (step2_newClient)');
           document.getElementById('step2_newClient').style.display = 'block';
         } else if (this.currentStep === 3) {
+          console.log('📍 BRANCH = 3 (step3_service)');
           document.getElementById('step3_service').style.display = 'block';
           // הסתרת שדות של existing client
           if (serviceTypeSelector) {
@@ -832,10 +822,15 @@ serviceTypeSelector.style.display = 'block';
 serviceTitleField.style.display = 'block';
 }
 
+          // ✅ רינדור סקשן השירות לפי procedureType
+          this.renderServiceSection();
+
           // ✅ העברת כרטיס המידע של תיק קיים לשלב 2
           this.moveExistingCaseInfoToStep3();
         }
       }
+
+      console.groupEnd(); // End of updateStepVisibility trace
     }
 
     /**
@@ -844,7 +839,7 @@ serviceTitleField.style.display = 'block';
     updateNavigationButtons() {
       const prevBtn = document.getElementById('prevStepBtn');
       const nextBtn = document.getElementById('nextStepBtn');
-      const submitBtn = document.getElementById('submitBtn');
+      const submitBtn = document.getElementById('caseSubmitBtn');
 
       // כפתור "חזור" - מוצג רק אם לא בשלב ראשון
       if (prevBtn) {
@@ -1061,6 +1056,14 @@ serviceTitleField.style.display = 'block';
      * רינדור סקשן שירות לפי סוג הליך
      */
     renderServiceSection() {
+      // 🔍 INSTRUMENTATION: Trace all calls
+      console.group('🔍 TRACE renderServiceSection()');
+      console.log('procedureType:', this.procedureType);
+      console.log('currentStep:', this.currentStep);
+      console.log('currentMode:', this.currentMode);
+      console.trace('Stack trace:');
+      console.groupEnd();
+
       const container = document.getElementById('serviceSection');
       if (!container) {
         console.log('❌ serviceSection container not found!');
@@ -1275,7 +1278,17 @@ serviceTitleField.style.display = 'block';
       document.getElementById('existingClientModeBtn')?.addEventListener('click', () => this.switchMode('existing'));
 
       // ✅ Stepper Navigation
-      document.getElementById('nextStepBtn')?.addEventListener('click', () => this.nextStep());
+      // 🔍 INSTRUMENTATION: Trace nextStepBtn clicks with event details
+      document.getElementById('nextStepBtn')?.addEventListener('click', (e) => {
+        console.group('🔍 TRACE nextStepBtn CLICK');
+        console.log('isTrusted:', e.isTrusted);
+        console.log('type:', e.type);
+        console.log('target:', e.target);
+        console.log('currentTarget:', e.currentTarget);
+        console.trace('Stack trace:');
+        console.groupEnd();
+        this.nextStep();
+      });
       document.getElementById('prevStepBtn')?.addEventListener('click', () => this.prevStep());
 
       // שינוי סוג הליך - New Client Mode (טאבים)
@@ -1309,6 +1322,30 @@ return;
         document.getElementById('serviceTypeTab_legal')
       ];
 
+      // 🔍 INSTRUMENTATION: Add capture listeners for event audit
+      serviceTypeTabs.forEach(tab => {
+        if (!tab) {
+return;
+}
+
+        // Capture listener for debugging (runs before bubble)
+        tab.addEventListener('click', (e) => {
+          console.group(`🔍 EVENT AUDIT: click on ${tab.id}`);
+          console.log('isTrusted:', e.isTrusted);
+          console.log('target:', e.target);
+          console.log('currentTarget:', e.currentTarget);
+          console.trace('Stack trace:');
+          console.groupEnd();
+        }, true); // true = capture phase
+
+        tab.addEventListener('pointerdown', (e) => {
+          console.group(`🔍 EVENT AUDIT: pointerdown on ${tab.id}`);
+          console.log('isTrusted:', e.isTrusted);
+          console.trace('Stack trace:');
+          console.groupEnd();
+        }, true);
+      });
+
       serviceTypeTabs.forEach(tab => {
         if (!tab) {
 return;
@@ -1324,15 +1361,44 @@ return;
           // הפעל את הטאב שנלחץ (CSS יטפל בעיצוב)
           tab.classList.add('active');
 
-          // רינדור מחדש
-          this.renderServiceSection();
+          // רינדור מחדש - רק אם אנחנו כבר בשלב השירות
+          // Guard clause: מונע קריאה ל-renderServiceSection לפני שהמשתמש הגיע לשלב הנכון
+          if (this.currentStep === (this.currentMode === 'new' ? 3 : 2)) {
+            this.renderServiceSection();
+          }
         });
       });
 
       // שליחת טופס
+      // 🔍 INSTRUMENTATION: Trace form submit events
       document.getElementById('modernCaseForm')?.addEventListener('submit', (e) => {
+        console.group('🔍 TRACE FORM SUBMIT');
+        console.log('isTrusted:', e.isTrusted);
+        console.log('type:', e.type);
+        console.log('submitter:', e.submitter);
+        console.log('submitter.id:', e.submitter?.id);
+        console.log('submitter.type:', e.submitter?.type);
+        console.trace('Stack trace:');
+        console.groupEnd();
         e.preventDefault();
         this.handleSubmit();
+      });
+
+      // 🛡️ Prevent implicit form submit on Enter in non-final steps
+      document.getElementById('modernCaseForm')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          // Allow Enter in textareas for multi-line input
+          if (e.target?.tagName === 'TEXTAREA') {
+            return;
+          }
+
+          // Block submit in non-final steps
+          const isLastStep = this.currentStep === this.totalSteps;
+          if (!isLastStep) {
+            e.preventDefault();
+            console.log('🛡️ Enter blocked: currentStep', this.currentStep, '< totalSteps', this.totalSteps);
+          }
+        }
       });
     }
 
@@ -2209,6 +2275,46 @@ return;
         </div>
       `).join('');
       errorsDiv.style.display = 'block';
+    }
+
+    /**
+     * 🔍 INSTRUMENTATION: Monitor nextStepBtn style changes
+     */
+    setupButtonMonitor() {
+      const nextBtn = document.getElementById('nextStepBtn');
+      const submitBtn = document.getElementById('caseSubmitBtn');
+
+      if (!nextBtn || !submitBtn) {
+        console.warn('⚠️ Buttons not found for monitoring');
+        return;
+      }
+
+      // Initial state
+      console.group('🔍 INITIAL BUTTON STATE');
+      console.log('nextBtn inline style:', nextBtn.getAttribute('style'));
+      console.log('nextBtn computed display:', window.getComputedStyle(nextBtn).display);
+      console.log('submitBtn inline style:', submitBtn.getAttribute('style'));
+      console.log('submitBtn computed display:', window.getComputedStyle(submitBtn).display);
+      console.groupEnd();
+
+      // MutationObserver for style changes
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            console.group(`🔍 BUTTON STYLE CHANGED: ${mutation.target.id}`);
+            console.log('New inline style:', mutation.target.getAttribute('style'));
+            console.log('Computed display:', window.getComputedStyle(mutation.target).display);
+            console.trace('Stack trace:');
+            console.groupEnd();
+          }
+        });
+      });
+
+      observer.observe(nextBtn, { attributes: true, attributeFilter: ['style'] });
+      observer.observe(submitBtn, { attributes: true, attributeFilter: ['style'] });
+
+      // Store observer for cleanup
+      this.buttonObserver = observer;
     }
 
     /**
