@@ -425,19 +425,38 @@
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
                       שם הלקוח <span style="color: #ef4444;">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="newClientName"
-                      placeholder="שם מלא"
-                      style="
-                        width: 100%;
-                        padding: 10px 12px;
-                        border: 1px solid #d1d5db;
-                        border-radius: 6px;
-                        font-size: 14px;
-                        transition: all 0.2s;
-                      "
-                    >
+                    <div style="position: relative;">
+                      <input
+                        type="text"
+                        id="newClientName"
+                        placeholder="שם מלא"
+                        autocomplete="off"
+                        style="
+                          width: 100%;
+                          padding: 10px 12px;
+                          border: 1px solid #d1d5db;
+                          border-radius: 6px;
+                          font-size: 14px;
+                          transition: all 0.2s;
+                        "
+                      >
+                      <!-- Autocomplete Dropdown -->
+                      <div id="clientNameSuggestions" style="
+                        display: none;
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        right: 0;
+                        background: white;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                        margin-top: 4px;
+                        max-height: 300px;
+                        overflow-y: auto;
+                        z-index: 1000;
+                      "></div>
+                    </div>
                   </div>
                 </div>
 
@@ -1291,6 +1310,9 @@ serviceTitleField.style.display = 'block';
       });
       document.getElementById('prevStepBtn')?.addEventListener('click', () => this.prevStep());
 
+      // 💡 Client Name Autocomplete
+      this.setupClientNameAutocomplete();
+
       // שינוי סוג הליך - New Client Mode (טאבים)
       const serviceTypeTabsNew = [
         document.getElementById('serviceTypeTab_hours_new'),
@@ -1478,6 +1500,212 @@ return;
           oldField.replaceWith(newField);
         }
       });
+    }
+
+    /**
+     * 💡 Setup Client Name Autocomplete
+     */
+    setupClientNameAutocomplete() {
+      const input = document.getElementById('newClientName');
+      const suggestionsContainer = document.getElementById('clientNameSuggestions');
+
+      if (!input || !suggestionsContainer) {
+return;
+}
+
+      // Input event - search as user types
+      input.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+
+        if (query.length >= 2) {
+          const matches = this.findMatchingClients(query);
+
+          if (matches.length > 0) {
+            this.showClientSuggestions(matches, query);
+          } else {
+            this.hideClientSuggestions();
+          }
+        } else {
+          this.hideClientSuggestions();
+        }
+      });
+
+      // Click outside to close
+      document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+          this.hideClientSuggestions();
+        }
+      });
+
+      // Escape key to close
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          this.hideClientSuggestions();
+        }
+      });
+    }
+
+    /**
+     * 🔍 Find matching clients in cache
+     */
+    findMatchingClients(query) {
+      if (!window.ClientCaseSelector?.clientsCache) {
+        return [];
+      }
+
+      const queryLower = query.toLowerCase();
+
+      return window.ClientCaseSelector.clientsCache
+        .filter(client => {
+          return client.fullName && client.fullName.toLowerCase().includes(queryLower);
+        })
+        .slice(0, 5); // Limit to 5 suggestions
+    }
+
+    /**
+     * 💡 Show client suggestions dropdown
+     */
+    showClientSuggestions(matches, newName) {
+      const container = document.getElementById('clientNameSuggestions');
+      if (!container) {
+return;
+}
+
+      const html = `
+        <div style="padding: 8px 0;">
+          <div style="padding: 8px 16px; font-size: 12px; color: #6b7280; font-weight: 500;">
+            💡 לקוחות קיימים במערכת:
+          </div>
+          ${matches.map(client => `
+            <div class="client-suggestion-item" data-client-id="${client.id}" style="
+              padding: 12px 16px;
+              cursor: pointer;
+              transition: background 0.15s;
+              border-bottom: 1px solid #f3f4f6;
+              display: flex;
+              align-items: center;
+              gap: 12px;
+            "
+            onmouseover="this.style.background='#f9fafb'"
+            onmouseout="this.style.background='white'">
+              <i class="fas fa-user-check" style="color: #3b82f6; width: 16px;"></i>
+              <div style="flex: 1;">
+                <div style="font-weight: 500; color: #1f2937; font-size: 14px;">
+                  ${this.highlightMatch(client.fullName, newName)}
+                </div>
+                ${client.phone ? `
+                  <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
+                    <i class="fas fa-phone" style="width: 12px;"></i> ${client.phone}
+                  </div>
+                ` : ''}
+              </div>
+              <i class="fas fa-arrow-left" style="color: #9ca3af; font-size: 12px;"></i>
+            </div>
+          `).join('')}
+          <div class="client-suggestion-item-new" data-new-client="true" style="
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f0fdf4;
+          "
+          onmouseover="this.style.background='#dcfce7'"
+          onmouseout="this.style.background='#f0fdf4'">
+            <i class="fas fa-plus-circle" style="color: #10b981; width: 16px;"></i>
+            <div style="flex: 1;">
+              <div style="font-weight: 500; color: #059669; font-size: 14px;">
+                ${newName} (לקוח חדש)
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      container.style.display = 'block';
+
+      // Add click listeners
+      container.querySelectorAll('.client-suggestion-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const clientId = item.getAttribute('data-client-id');
+          this.selectExistingClient(clientId);
+        });
+      });
+
+      container.querySelector('.client-suggestion-item-new')?.addEventListener('click', () => {
+        this.hideClientSuggestions();
+        // User chose to continue with new client - do nothing
+      });
+    }
+
+    /**
+     * 🎨 Highlight matching text
+     */
+    highlightMatch(text, query) {
+      const index = text.toLowerCase().indexOf(query.toLowerCase());
+      if (index === -1) {
+return text;
+}
+
+      const before = text.substring(0, index);
+      const match = text.substring(index, index + query.length);
+      const after = text.substring(index + query.length);
+
+      return `${before}<span style="background: #fef08a; font-weight: 600;">${match}</span>${after}`;
+    }
+
+    /**
+     * ✅ Select existing client from suggestions
+     */
+    async selectExistingClient(clientId) {
+      this.hideClientSuggestions();
+
+      // Switch to existing client mode
+      this.switchMode('existing');
+
+      // ✅ Load FULL case data from Firebase (like EventBus flow does)
+      const fullCaseData = await this.checkExistingCaseForClient(clientId);
+
+      if (fullCaseData) {
+        this.currentCase = fullCaseData;  // ✅ Now includes services, caseNumber, etc.
+
+        // Trigger client selector to show this client
+        if (this.clientSelector) {
+          const selectorInput = document.querySelector('#caseDialogClientSelector input');
+          if (selectorInput) {
+            selectorInput.value = fullCaseData.fullName;
+            selectorInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+
+        // Show client info with complete data
+        this.showExistingCaseInfo(fullCaseData);
+
+        // Move to step 2 automatically
+        this.currentStep = 2;
+        this.updateStepVisibility();
+        this.updateStepIndicator();
+        this.updateNavigationButtons();
+
+        Logger.log('✅ Selected existing client from autocomplete:', fullCaseData.fullName);
+      } else {
+        Logger.error('❌ Could not load case data for client:', clientId);
+        // Fall back gracefully - stay on current step
+        this.switchMode('new');  // Switch back to new client mode
+      }
+    }
+
+    /**
+     * 🙈 Hide client suggestions
+     */
+    hideClientSuggestions() {
+      const container = document.getElementById('clientNameSuggestions');
+      if (container) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+      }
     }
 
     /**
