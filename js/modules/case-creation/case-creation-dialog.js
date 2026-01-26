@@ -411,14 +411,6 @@
                   </div>
                 </div>
 
-                <!-- Lottie Validation Feedback -->
-                <div id="validationFeedback" style="
-                  width: 80px;
-                  height: 80px;
-                  margin: 0 auto 16px auto;
-                  display: none;
-                "></div>
-
                 <!-- Stepper Indicator -->
                 <div id="stepperIndicator" style="margin-bottom: 32px;">
                   ${this.renderStepIndicator()}
@@ -724,50 +716,15 @@
     }
 
     /**
-     * מעבר לשלב הבא (עם ולידציה + Lottie feedback)
+     * מעבר לשלב הבא (עם ולידציה)
      */
     async nextStep() {
-      const feedbackContainer = document.getElementById('validationFeedback');
-
-      // הצג Lottie "בודק..."
-      if (feedbackContainer && window.LottieManager) {
-        feedbackContainer.style.display = 'block';
-        await window.LottieManager.load('processing', feedbackContainer, {
-          loop: true,
-          autoplay: true
-        });
-      }
-
       // ולידציה של השלב הנוכחי
       const validation = await this.validateCurrentStep();
 
       if (!validation.isValid) {
-        // שגיאה - הצג Lottie error
-        if (feedbackContainer && window.LottieManager) {
-          await window.LottieManager.load('error', feedbackContainer, {
-            loop: false,
-            autoplay: true
-          });
-
-          // המתן לסיום אנימציה
-          await this.delay(800);
-          feedbackContainer.style.display = 'none';
-        }
-
         this.displayErrors(validation.errors);
         return;
-      }
-
-      // הצלחה - הצג Lottie success
-      if (feedbackContainer && window.LottieManager) {
-        await window.LottieManager.load('successSimple', feedbackContainer, {
-          loop: false,
-          autoplay: true
-        });
-
-        // המתן לסיום אנימציה
-        await this.delay(500);
-        feedbackContainer.style.display = 'none';
       }
 
       // הסתרת שגיאות
