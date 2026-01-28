@@ -86,13 +86,24 @@
 
             // Filter by service if selected
             if (formData.service !== 'all') {
-                timesheetEntries = timesheetEntries.filter(entry =>
-                    entry.service === formData.service || entry.serviceName === formData.service
-                );
+                const matchService = (entry) => {
+                    if (formData.serviceId && entry.serviceId === formData.serviceId) {
+return true;
+}
+                    if (formData.serviceId && entry.service === formData.serviceId) {
+return true;
+}
+                    if (entry.service === formData.service) {
+return true;
+}
+                    if (entry.serviceName === formData.service) {
+return true;
+}
+                    return false;
+                };
 
-                budgetTasks = budgetTasks.filter(task =>
-                    task.service === formData.service || task.serviceName === formData.service
-                );
+                timesheetEntries = timesheetEntries.filter(matchService);
+                budgetTasks = budgetTasks.filter(matchService);
             }
 
             // Calculate statistics
