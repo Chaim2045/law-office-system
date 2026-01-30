@@ -263,8 +263,55 @@
     clientResults.innerHTML = '';
     clientResults.classList.remove('show');
 
-    // Client selected from autocomplete
+    // Check if client has multiple services
+    const client = allClients.find(c => c.id === clientId);
+
+    if (client && client.services && client.services.length > 1) {
+      showServiceSelector(client.services);
+    } else if (client && client.services && client.services.length === 1) {
+      // Single service - auto-select it
+      document.getElementById('selectedServiceId').value = client.services[0].id;
+      hideServiceSelector();
+    } else {
+      // No services
+      hideServiceSelector();
+    }
   }
+
+  /**
+   * Show service selector dropdown
+   */
+  function showServiceSelector(services) {
+    const serviceSelector = document.getElementById('serviceSelector');
+    const serviceSelectorGroup = document.getElementById('serviceSelectorGroup');
+
+    // Build options
+    const options = services.map(service => {
+      const hoursRemaining = service.hoursRemaining || 0;
+      const status = hoursRemaining <= 0 ? ' (אזלו השעות)' : ` (${hoursRemaining.toFixed(1)} שעות נותרות)`;
+      return `<option value="${safeAttr(service.id)}">${safeText(service.name || 'שירות ללא שם')}${status}</option>`;
+    }).join('');
+
+    serviceSelector.innerHTML = '<option value="">בחר שירות...</option>' + options;
+    serviceSelectorGroup.classList.remove('hidden');
+    serviceSelector.required = true;
+  }
+
+  /**
+   * Hide service selector dropdown
+   */
+  function hideServiceSelector() {
+    const serviceSelectorGroup = document.getElementById('serviceSelectorGroup');
+    const serviceSelector = document.getElementById('serviceSelector');
+
+    serviceSelectorGroup.classList.add('hidden');
+    serviceSelector.required = false;
+  }
+
+  // Service selector change handler
+  document.getElementById('serviceSelector').addEventListener('change', (e) => {
+    document.getElementById('selectedServiceId').value = e.target.value;
+  });
 
   // Close dropdown when clicking outside
   document.addEventListener('click', (e) => {
@@ -282,6 +329,8 @@
 
     const clientId = document.getElementById('selectedClientId').value;
     const clientName = document.getElementById('selectedClientName').value;
+    const serviceId = document.getElementById('selectedServiceId').value;
+    const branch = document.getElementById('branch').value;
     const hours = parseInt(document.getElementById('hours').value) || 0;
     const mins = parseInt(document.getElementById('minutes').value) || 0;
     const description = document.getElementById('description').value.trim();
@@ -290,6 +339,18 @@
     // Validation
     if (!clientId || !clientName) {
       showError('יש לבחור לקוח מהרשימה');
+      return;
+    }
+
+    // Check if service selector is visible and required
+    const serviceSelectorGroup = document.getElementById('serviceSelectorGroup');
+    if (!serviceSelectorGroup.classList.contains('hidden') && !serviceId) {
+      showError('יש לבחור שירות/חבילה');
+      return;
+    }
+
+    if (!branch) {
+      showError('יש לבחור סניף מטפל');
       return;
     }
 
@@ -317,16 +378,24 @@
       // Convert date to Timestamp
       const date = firebase.firestore.Timestamp.fromDate(new Date(dateValue));
 
-      // Call Cloud Function
-      const createQuickLogEntry = functions.httpsCallable('createQuickLogEntry');
-
-      const result = await createQuickLogEntry({
+      // Build payload
+      const payload = {
         clientId: clientId,
         clientName: clientName,
         date: date,
         minutes: totalMinutes,
-        description: description
-      });
+        description: description,
+        branch: branch
+      };
+
+      // Add serviceId if selected
+      if (serviceId) {
+        payload.serviceId = serviceId;
+      }
+
+      // Call Cloud Function
+      const createQuickLogEntry = functions.httpsCallable('createQuickLogEntry');
+      const result = await createQuickLogEntry(payload);
 
       hideLoading();
 
@@ -372,11 +441,14 @@
   function resetForm() {
     document.getElementById('selectedClientId').value = '';
     document.getElementById('selectedClientName').value = '';
+    document.getElementById('selectedServiceId').value = '';
     clientSearch.value = '';
+    document.getElementById('branch').value = '';
     document.getElementById('hours').value = '0';
     document.getElementById('minutes').value = '0';
     document.getElementById('description').value = '';
     dateInput.valueAsDate = new Date();
+    hideServiceSelector();
   }
 
   // ═══════════════════════════════════════════════════════════════════

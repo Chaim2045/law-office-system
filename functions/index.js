@@ -3418,6 +3418,9 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       createdBy: user.username,
       lastModifiedBy: user.username,
 
+      // Branch tracking
+      branch: data.branch || null,
+
       // Timestamps
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3438,7 +3441,18 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
 
       // ✅ Client hours-based - find active package
       if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
-        const service = clientData.services[0];  // Use first service for Quick Log (no service selection)
+        // 🔍 Find service by serviceId if provided, otherwise use first service
+        let service = null;
+        if (data.serviceId) {
+          service = clientData.services.find(s => s.id === data.serviceId);
+          if (!service) {
+            console.warn(`⚠️ [Quick Log] Service ${data.serviceId} not found for client ${data.clientId}, using first service`);
+            service = clientData.services[0];
+          }
+        } else {
+          service = clientData.services[0];
+          console.warn(`⚠️ [Quick Log] No serviceId provided, using first service`);
+        }
         const activePackage = DeductionSystem.getActivePackage(service);
 
         if (activePackage) {
@@ -3553,9 +3567,20 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         console.log(`ℹ️ [Quick Log] לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
       }
 
-      // Update entry with stage/package IDs
+      // Update entry with stage/package/service IDs
       entryData.stageId = updatedStageId;
       entryData.packageId = updatedPackageId;
+
+      // Update service information if serviceId was provided
+      if (data.serviceId && clientData.services) {
+        const selectedService = clientData.services.find(s => s.id === data.serviceId);
+        if (selectedService) {
+          entryData.serviceId = selectedService.id;
+          entryData.serviceName = selectedService.name || null;
+          entryData.serviceType = selectedService.type || null;
+          entryData.parentServiceId = selectedService.parentId || null;
+        }
+      }
 
     } catch (error) {
       console.error(`⚠️ [Quick Log] שגיאה בקיזוז שעות מלקוח ${data.clientId}:`, error);
