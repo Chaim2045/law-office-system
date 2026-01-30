@@ -369,22 +369,16 @@ body {
   font-weight: var(--font-medium);
 }
 
-/* Minutes input - Hero element with gradient */
+/* Minutes input - same size as other inputs */
 .form-group input[type="number"] {
-  font-size: 2.5rem;
-  font-weight: var(--font-bold);
-  text-align: center;
-  letter-spacing: -0.03em;
-  padding: 1.5rem;
-  background: linear-gradient(135deg, var(--primary-bg) 0%, var(--white) 50%, var(--primary-bg) 100%);
-  border: 3px solid var(--primary-light);
-  color: var(--primary-dark);
+  font-size: 1rem;
+  font-weight: var(--font-semibold);
+  text-align: right;
+  color: var(--gray-900);
 }
 
 .form-group input[type="number"]:focus {
-  border-color: var(--primary);
-  background: var(--white);
-  color: var(--primary-darker);
+  /* Uses standard focus styles from parent */
 }
 
 /* Date input */
