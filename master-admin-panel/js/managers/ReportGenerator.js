@@ -1300,13 +1300,96 @@ return '0:00';
         </div>
             `;
         }
+
+        /**
+         * Edit timesheet entry
+         * עריכת רשומת שעתון
+         */
+        editTimesheetEntry(button) {
+            try {
+                console.log('🖊️ Edit button clicked');
+
+                // Get data from button attributes
+                const entryId = button.dataset.entryId;
+                const employeeId = button.dataset.employee;
+                const clientId = button.dataset.clientId;
+                const action = button.dataset.action;
+                const date = button.dataset.date;
+                const minutes = parseInt(button.dataset.minutes);
+
+                // Get employee name
+                const employeeName = this.dataManager.getEmployeeName(employeeId);
+
+                // Format date
+                const formattedDate = this.formatDate(date);
+
+                // Open modal
+                if (window.ClientReportModal) {
+                    window.ClientReportModal.openEditTimesheetModal({
+                        id: entryId,
+                        employee: employeeId,
+                        employeeName: employeeName,
+                        clientId: clientId,
+                        action: action,
+                        date: formattedDate,
+                        minutes: minutes
+                    });
+                } else {
+                    console.error('❌ ClientReportModal not found');
+                    alert('שגיאה: מודל העריכה לא נמצא');
+                }
+
+            } catch (error) {
+                console.error('❌ Error opening edit modal:', error);
+                alert('שגיאה בפתיחת מודל העריכה: ' + error.message);
+            }
+        }
+
+        /**
+         * Fetch report data without generating report
+         * שליפת נתוני דוח ללא יצירת הדוח
+         */
+        async fetchReportData(formData) {
+            console.log('📊 Fetching report data for preview...', formData);
+
+            try {
+                if (!window.ClientsDataManager) {
+                    throw new Error('ClientsDataManager not found');
+                }
+
+                this.dataManager = window.ClientsDataManager;
+
+                // Get client
+                const client = this.dataManager.getClientById(formData.clientId);
+                if (!client) {
+                    throw new Error('Client not found');
+                }
+
+                console.log('✅ Client found:', client.name);
+
+                // Collect data
+                const reportData = await this.collectReportData(client, formData);
+
+                console.log('✅ Report data collected:', reportData);
+
+                // Add client to reportData
+                reportData.client = client;
+
+                return reportData;
+
+            } catch (error) {
+                console.error('❌ Error in fetchReportData:', error);
+                throw error;
+            }
+        }
     }
 
     // Create global instance
     const reportGenerator = new ReportGenerator();
 
-    // Make available globally
+    // Make available globally (both naming conventions)
     window.ReportGenerator = reportGenerator;
+    window.reportGenerator = reportGenerator;  // Alias for onclick handlers
 
     // Export for ES6 modules (if needed)
     if (typeof module !== 'undefined' && module.exports) {
