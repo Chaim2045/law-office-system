@@ -294,6 +294,18 @@ body {
   margin-bottom: var(--space-6);
 }
 
+/* Form row - side by side fields */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
 .form-group label {
   display: block;
   margin-bottom: var(--space-3);
@@ -614,6 +626,22 @@ body {
 /* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE - Desktop Enhancements
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Small phones - stack form-row vertically */
+@media (width <= 375px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  .form-row .form-group {
+    margin-bottom: var(--space-5);
+  }
+
+  .form-row .form-group:last-child {
+    margin-bottom: 0;
+  }
+}
 
 @media (width >= 768px) {
   body {
