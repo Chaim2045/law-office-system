@@ -1868,6 +1868,9 @@ return '';
 
                 console.log('✅ Timesheet entry updated:', result.data);
 
+                // Close SweetAlert edit modal
+                Swal.close();
+
                 // Close edit modal
                 const editModal = document.getElementById('editTimesheetOverlay');
                 if (editModal) {
