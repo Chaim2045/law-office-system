@@ -104,7 +104,7 @@
             // Generate report button
             const generateBtn = document.getElementById('generateReportBtn');
             if (generateBtn) {
-                generateBtn.addEventListener('click', () => this.generateReport());
+                generateBtn.addEventListener('click', () => this.showTimesheetPreview());
             }
 
             // Email report button
@@ -1052,6 +1052,25 @@ return '';
             if (this.endDateInput) {
                 this.endDateInput.value = this.formatDateForInput(endDate);
             }
+
+            // Update active state on buttons
+            const quickButtons = document.querySelectorAll('.btn-quick-date');
+            quickButtons.forEach(btn => {
+                const btnRange = btn.getAttribute('data-range');
+                if (btnRange === range) {
+                    // Add active class
+                    btn.classList.add('active');
+                    btn.style.background = '#1877F2';
+                    btn.style.color = 'white';
+                    btn.style.fontWeight = '600';
+                } else {
+                    // Remove active class
+                    btn.classList.remove('active');
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    btn.style.fontWeight = '';
+                }
+            });
         }
 
         /**
@@ -1157,6 +1176,257 @@ return '';
             }
 
             return true;
+        }
+
+        /**
+         * Escape HTML to prevent XSS
+         * מניעת XSS על ידי escape של HTML
+         */
+        escapeHtml(text) {
+            if (!text) {
+return '';
+}
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * Show timesheet preview with edit options
+         * הצגת תצוגה מקדימה של רשומות שעתון עם אפשרות עריכה
+         */
+        async showTimesheetPreview() {
+            console.log('👁️ Showing timesheet preview...');
+
+            const formData = this.getFormData();
+            console.log('📋 Form data:', formData);
+
+            if (!this.validateForm(formData)) {
+                console.log('❌ Form validation failed');
+                return;
+            }
+
+            try {
+                this.showLoading('טוען נתונים...');
+                console.log('⏳ Loading data...');
+
+                // Fetch data for preview
+                const reportData = await window.ReportGenerator.fetchReportData(formData);
+                console.log('✅ Data fetched:', reportData);
+
+                this.hideLoading();
+
+                if (!reportData || !reportData.timesheetEntries || reportData.timesheetEntries.length === 0) {
+                    console.log('⚠️ No timesheet entries found');
+                    alert('לא נמצאו רשומות שעתון לתקופה זו');
+                    return;
+                }
+
+                console.log('🎨 Rendering preview modal...');
+                // Show preview modal
+                this.renderTimesheetPreviewModal(reportData, formData);
+                console.log('✅ Preview modal rendered');
+
+            } catch (error) {
+                console.error('❌ Error showing preview:', error);
+                this.hideLoading();
+                alert('שגיאה בטעינת הנתונים: ' + error.message);
+            }
+        }
+
+        /**
+         * Render timesheet preview modal
+         * רינדור מודל תצוגה מקדימה
+         */
+        renderTimesheetPreviewModal(reportData, formData) {
+            console.log('🎨 renderTimesheetPreviewModal - reportData:', reportData);
+            const { client, timesheetEntries } = reportData;
+            console.log('👤 Client from reportData:', client);
+
+            // Get client name - support both 'name' and 'fullName' fields
+            const clientName = client?.name || client?.fullName || this.currentClient?.name || this.currentClient?.fullName || 'לקוח';
+            console.log('📝 Client name to display:', clientName);
+
+            // Close the report modal first
+            this.close();
+
+            // Store data for later use
+            this.previewData = { reportData, formData };
+
+            // Build table HTML with side panel approach
+            const tableHTML = `
+                <div class="modal-overlay modal-show" id="timesheetPreviewOverlay" style="display: flex; z-index: 10001; background: rgba(0,0,0,0.5);">
+                    <div style="position: fixed; right: 0; top: 0; height: 100%; width: 600px; max-width: 90%; background: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column;">
+                        <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;">
+                            <h2 style="margin: 0; font-size: 1.25rem;"><i class="fas fa-list-alt"></i> תצוגה מקדימה - ${clientName}</h2>
+                            <button class="close-btn" onclick="window.ClientReportModal.closePreview()" style="position: absolute; left: 1rem; top: 1.5rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 1.5rem;">
+                            <p style="margin-bottom: 1rem; color: #666; padding: 0.75rem; background: #f0f7ff; border-radius: 4px; border-right: 3px solid #1877F2;">
+                                <i class="fas fa-info-circle"></i>
+                                ניתן לערוך כל רשומה לפני הפקת הדוח הסופי
+                            </p>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                        <th style="padding: 10px 8px; text-align: right; font-size: 0.85rem;">תאריך</th>
+                                        <th style="padding: 10px 8px; text-align: right; font-size: 0.85rem;">תיאור</th>
+                                        <th style="padding: 10px 8px; text-align: right; font-size: 0.85rem;">דקות</th>
+                                        <th style="padding: 10px 8px; text-align: center; font-size: 0.85rem; width: 70px;">פעולות</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preview-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; gap: 1rem; flex-shrink: 0;">
+                            <button class="btn btn-secondary" onclick="window.ClientReportModal.closePreview()">
+                                ביטול
+                            </button>
+                            <button class="btn btn-primary" onclick="window.ClientReportModal.proceedToGenerateReport()">
+                                <i class="fas fa-file-pdf"></i> המשך להפקת דוח
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add to DOM
+            document.body.insertAdjacentHTML('beforeend', tableHTML);
+
+            // Now add rows dynamically to avoid string escaping issues
+            const tbody = document.getElementById('preview-tbody');
+            timesheetEntries.forEach((entry, index) => {
+                const action = entry.action || entry.taskDescription || entry.description || '-';
+                const minutes = entry.minutes || 0;
+
+                // Create row
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid #e5e7eb';
+
+                // Create cells safely using textContent (no XSS)
+                const dateCell = document.createElement('td');
+                dateCell.style.cssText = 'padding: 10px 8px; font-size: 0.85rem;';
+                dateCell.textContent = this.formatDate(entry.date);
+
+                const actionCell = document.createElement('td');
+                actionCell.style.cssText = 'padding: 10px 8px; font-size: 0.85rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+                actionCell.textContent = action;
+                actionCell.title = action; // Safe - browser handles escaping
+
+                const minutesCell = document.createElement('td');
+                minutesCell.style.cssText = 'padding: 10px 8px; font-size: 0.85rem;';
+                minutesCell.textContent = String(minutes);
+
+                const actionsCell = document.createElement('td');
+                actionsCell.style.cssText = 'padding: 10px 8px; text-align: center;';
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-edit-entry';
+                editBtn.style.cssText = 'background: #1877F2; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;';
+                editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                editBtn.addEventListener('click', () => {
+                    this.editEntryFromPreview(
+                        entry.id,
+                        entry.employee,
+                        formData.clientId,
+                        action,
+                        entry.date,
+                        minutes
+                    );
+                });
+
+                actionsCell.appendChild(editBtn);
+                row.appendChild(dateCell);
+                row.appendChild(actionCell);
+                row.appendChild(minutesCell);
+                row.appendChild(actionsCell);
+
+                tbody.appendChild(row);
+            });
+        }
+
+        /**
+         * Close preview panel
+         * סגירת פאנל תצוגה מקדימה
+         */
+        closePreview() {
+            const overlay = document.getElementById('timesheetPreviewOverlay');
+            if (overlay) {
+                overlay.remove();
+            }
+            // Re-open report modal
+            this.open(this.currentClient);
+        }
+
+        /**
+         * Edit entry from preview
+         * עריכת רשומה מתצוגה מקדימה
+         */
+        editEntryFromPreview(entryId, employeeId, clientId, action, date, minutes) {
+            const employeeName = this.dataManager.getEmployeeName(employeeId);
+
+            this.openEditTimesheetModal({
+                id: entryId,
+                employee: employeeId,
+                employeeName: employeeName,
+                clientId: clientId,
+                action: action,
+                date: this.formatDate(date),
+                minutes: minutes
+            });
+        }
+
+        /**
+         * Proceed to generate report after preview
+         * המשך להפקת דוח אחרי תצוגה מקדימה
+         */
+        async proceedToGenerateReport() {
+            console.log('🚀 Proceeding to generate report...');
+
+            // Get form data from stored preview data
+            if (!this.previewData || !this.previewData.formData) {
+                console.error('❌ No preview data found');
+                alert('שגיאה: נתוני תצוגה מקדימה לא נמצאו');
+                return;
+            }
+
+            const formData = this.previewData.formData;
+
+            // Close preview modal
+            const previewOverlay = document.getElementById('timesheetPreviewOverlay');
+            if (previewOverlay) {
+                previewOverlay.remove();
+            }
+
+            // Check if ReportGenerator exists
+            if (!window.ReportGenerator) {
+                console.error('❌ ReportGenerator not loaded');
+                alert('מערכת הדוחות לא נטענה');
+                return;
+            }
+
+            try {
+                // Show loading
+                this.showLoading('מפיק דוח...');
+
+                // Generate report using stored formData
+                await window.ReportGenerator.generate(formData);
+
+                // Hide loading
+                this.hideLoading();
+
+                if (window.notify) {
+                    window.notify.success('הדוח הופק בהצלחה', 'הצלחה');
+                }
+
+            } catch (error) {
+                console.error('❌ Error generating report:', error);
+                this.hideLoading();
+                alert('שגיאה בהפקת הדוח: ' + error.message);
+            }
         }
 
         /**
@@ -1287,6 +1557,389 @@ return '';
             if (overlay) {
                 overlay.style.display = 'none';
             }
+        }
+
+        /**
+         * Show save spinner on button
+         * הצגת ספינר על כפתור השמירה
+         */
+        showSaveSpinner() {
+            const btn = document.getElementById('saveTimesheetBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+                btn.style.cursor = 'not-allowed';
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-left: 6px;"></i> שומר...';
+            }
+        }
+
+        /**
+         * Show success toast notification
+         * הצגת הודעת הצלחה
+         */
+        showSuccessToast(message) {
+            this.showToast(message, 'success');
+        }
+
+        /**
+         * Show error toast notification
+         * הצגת הודעת שגיאה
+         */
+        showErrorToast(message) {
+            this.showToast(message, 'error');
+        }
+
+        /**
+         * Show warning toast notification
+         * הצגת הודעת אזהרה
+         */
+        showWarningToast(message) {
+            this.showToast(message, 'warning');
+        }
+
+        /**
+         * Show toast notification
+         * הצגת הודעת טוסט
+         */
+        showToast(message, type = 'success') {
+            // Remove existing toast if any
+            const existingToast = document.getElementById('successToast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            // Configure colors based on type
+            let gradient, icon, duration;
+            switch (type) {
+                case 'success':
+                    gradient = 'linear-gradient(to right, #10b981, #059669)';
+                    icon = 'fa-check';
+                    duration = 3000;
+                    break;
+                case 'error':
+                    gradient = 'linear-gradient(to right, #ef4444, #dc2626)';
+                    icon = 'fa-exclamation-triangle';
+                    duration = 4000;
+                    break;
+                case 'warning':
+                    gradient = 'linear-gradient(to right, #f59e0b, #d97706)';
+                    icon = 'fa-exclamation-circle';
+                    duration = 3500;
+                    break;
+                default:
+                    gradient = 'linear-gradient(to right, #3b82f6, #2563eb)';
+                    icon = 'fa-info-circle';
+                    duration = 3000;
+            }
+
+            // Create toast HTML
+            const toastHTML = `
+                <div id="successToast" style="
+                    position: fixed;
+                    top: 24px;
+                    right: 24px;
+                    background: ${gradient};
+                    color: white;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.1);
+                    z-index: 10003;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    min-width: 280px;
+                    max-width: 400px;
+                    animation: slideInRight 0.3s ease-out;
+                ">
+                    <div style="
+                        width: 32px;
+                        height: 32px;
+                        background: rgba(255, 255, 255, 0.2);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas ${icon}" style="font-size: 16px;"></i>
+                    </div>
+                    <span style="flex: 1;">${message}</span>
+                </div>
+                <style>
+                    @keyframes slideInRight {
+                        from {
+                            transform: translateX(400px);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                    @keyframes slideOutRight {
+                        from {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                        to {
+                            transform: translateX(400px);
+                            opacity: 0;
+                        }
+                    }
+                </style>
+            `;
+
+            // Add to body
+            document.body.insertAdjacentHTML('beforeend', toastHTML);
+
+            // Auto remove after duration
+            setTimeout(() => {
+                const toast = document.getElementById('successToast');
+                if (toast) {
+                    toast.style.animation = 'slideOutRight 0.3s ease-in';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        /**
+         * Open edit timesheet entry modal
+         * פתיחת מודל עריכת רשומת שעתון
+         */
+        openEditTimesheetModal(entryData) {
+            console.log('🖊️ Opening edit timesheet modal:', entryData);
+
+            // Remove any existing edit modal first
+            const existingModal = document.getElementById('editTimesheetOverlay');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Create modal HTML with modern clean design
+            const modalHTML = `
+                <div class="modal-overlay modal-show" id="editTimesheetOverlay" style="display: flex; z-index: 10002;">
+                    <div class="modal-content" style="max-width: 520px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
+                        <div class="modal-header" style="border-bottom: 1px solid #e5e7eb; padding: 16px 20px; background: linear-gradient(to bottom, #ffffff, #f9fafb);">
+                            <h2 style="font-size: 17px; font-weight: 600; color: #1f2937; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-edit" style="color: #3b82f6; font-size: 16px;"></i>
+                                עריכת רשומת שעתון
+                            </h2>
+                            <button class="close-btn" onclick="document.getElementById('editTimesheetOverlay').remove()" style="width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; border: none; cursor: pointer; transition: all 0.2s;">
+                                <i class="fas fa-times" style="color: #6b7280; font-size: 14px;"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" style="padding: 18px 20px 16px 20px; background: #ffffff;">
+                            <!-- תאריך ועובד בשורה אחת -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">
+                                        <i class="fas fa-calendar" style="color: #6b7280; width: 14px; font-size: 12px;"></i>
+                                        תאריך
+                                    </label>
+                                    <input type="text" id="editEntryDate" value="${this.escapeHtml(entryData.date)}" disabled class="form-control" style="background: #f9fafb; color: #6b7280; cursor: not-allowed; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; font-size: 13px; width: 100%;">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">
+                                        <i class="fas fa-user" style="color: #6b7280; width: 14px; font-size: 12px;"></i>
+                                        עובד
+                                    </label>
+                                    <input type="text" id="editEntryEmployee" value="${this.escapeHtml(entryData.employeeName)}" disabled class="form-control" style="background: #f9fafb; color: #6b7280; cursor: not-allowed; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; font-size: 13px; width: 100%;">
+                                </div>
+                            </div>
+
+                            <!-- דקות -->
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">
+                                    <i class="fas fa-clock" style="color: #3b82f6; width: 14px; font-size: 12px;"></i>
+                                    דקות
+                                </label>
+                                <input type="number" id="editEntryMinutes" value="${entryData.minutes}" class="form-control" min="1" style="border: 2px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; font-size: 14px; transition: all 0.2s; font-weight: 500; width: 120px;" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';">
+                            </div>
+
+                            <!-- תיאור הפעולה -->
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px;">
+                                    <i class="fas fa-file-alt" style="color: #3b82f6; width: 14px; font-size: 12px;"></i>
+                                    תיאור הפעולה
+                                </label>
+                                <textarea id="editEntryAction" class="form-control" rows="3" placeholder="תיאור הפעולה..." style="border: 2px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; font-size: 13px; line-height: 1.4; resize: vertical; height: 70px; max-height: 200px; transition: all 0.2s; font-family: inherit; width: 100%;" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="border-top: 1px solid #e5e7eb; padding: 14px 20px; background: #f9fafb; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button class="btn btn-secondary" onclick="document.getElementById('editTimesheetOverlay').remove()" style="padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6';" onmouseout="this.style.background='white';">
+                                <i class="fas fa-times" style="margin-left: 6px; font-size: 12px;"></i>
+                                ביטול
+                            </button>
+                            <button class="btn btn-primary" id="saveTimesheetBtn" onclick="window.ClientReportModal.saveTimesheetEdit('${entryData.id}', '${entryData.employee}', '${entryData.clientId}')" style="padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; background: linear-gradient(to bottom, #3b82f6, #2563eb); color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.2)';">
+                                <i class="fas fa-save" style="margin-left: 6px; font-size: 12px;"></i>
+                                שמור שינויים
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add to body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            // Set textarea value safely using textContent (prevents XSS)
+            const textarea = document.getElementById('editEntryAction');
+            if (textarea) {
+                textarea.value = entryData.action || '';
+            }
+        }
+
+        /**
+         * Save timesheet entry edit
+         * שמירת עריכת רשומת שעתון
+         */
+        async saveTimesheetEdit(entryId, employeeId, clientId) {
+            try {
+                console.log('💾 Saving timesheet edit:', { entryId, employeeId, clientId });
+
+                // Get values
+                const minutes = parseInt(document.getElementById('editEntryMinutes').value);
+                const action = document.getElementById('editEntryAction').value.trim();
+
+                // Validate
+                if (!action || action.length < 3) {
+                    this.showWarningToast('תיאור הפעולה חייב להכיל לפחות 3 תווים');
+                    return;
+                }
+
+                if (!minutes || minutes < 1) {
+                    this.showWarningToast('מספר דקות חייב להיות לפחות 1');
+                    return;
+                }
+
+                // Show spinner on save button
+                this.showSaveSpinner();
+
+                // Get current entry for audit trail
+                const entryDoc = await firebase.firestore()
+                    .collection('timesheet_entries')
+                    .doc(entryId)
+                    .get();
+
+                if (!entryDoc.exists) {
+                    throw new Error('רשומת שעתון לא נמצאה');
+                }
+
+                const currentEntry = entryDoc.data();
+
+                // Prepare edit history (without server timestamp - will be added by Cloud Function)
+                const editHistory = currentEntry.editHistory || [];
+                const newEdit = {
+                    editedBy: firebase.auth().currentUser.uid,
+                    editedAt: new Date().toISOString(), // Use ISO string instead of server timestamp
+                    oldAction: currentEntry.action || currentEntry.taskDescription || currentEntry.description || '',
+                    newAction: action,
+                    oldMinutes: currentEntry.minutes,
+                    newMinutes: minutes
+                };
+                editHistory.push(newEdit);
+
+                console.log('📤 Sending update to Cloud Function:', {
+                    entryId,
+                    minutes,
+                    action,
+                    editHistoryLength: editHistory.length,
+                    note: 'minutesDiff will be calculated on server'
+                });
+
+                // Call Cloud Function (server will calculate minutesDiff)
+                const updateTimesheetEntry = firebase.functions().httpsCallable('updateTimesheetEntry');
+                const result = await updateTimesheetEntry({
+                    entryId: entryId,
+                    date: currentEntry.date,
+                    minutes: minutes,
+                    // minutesDiff removed - server calculates it
+                    action: action,
+                    editHistory: editHistory,
+                    taskId: currentEntry.taskId || null,
+                    autoGenerated: currentEntry.autoGenerated || false,
+                    clientId: currentEntry.clientId || clientId || null,
+                    serviceId: currentEntry.serviceId || currentEntry.service || null
+                });
+
+                console.log('📥 Response from Cloud Function:', result);
+
+                console.log('✅ Timesheet entry updated:', result.data);
+
+                // Close edit modal
+                const editModal = document.getElementById('editTimesheetOverlay');
+                if (editModal) {
+                    editModal.remove();
+                }
+
+                // Show success toast
+                this.showSuccessToast('השינויים נשמרו בהצלחה!');
+
+                // Refresh preview if it's open
+                const previewOverlay = document.getElementById('timesheetPreviewOverlay');
+                if (previewOverlay && this.previewData) {
+                    console.log('🔄 Refreshing preview...');
+                    // Re-show preview with updated data
+                    setTimeout(async () => {
+                        // Close old preview
+                        previewOverlay.remove();
+                        // Fetch fresh data and show new preview
+                        try {
+                            const reportData = await window.ReportGenerator.fetchReportData(this.previewData.formData);
+                            this.renderTimesheetPreviewModal(reportData, this.previewData.formData);
+                        } catch (error) {
+                            console.error('❌ Error refreshing preview:', error);
+                        }
+                    }, 300);
+                }
+
+            } catch (error) {
+                console.error('❌ Error saving timesheet edit:', error);
+
+                // Re-enable button
+                const btn = document.getElementById('saveTimesheetBtn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.innerHTML = '<i class="fas fa-save" style="margin-left: 6px;"></i> שמור שינויים';
+                }
+
+                // Show error toast
+                this.showErrorToast('שגיאה בשמירת השינויים: ' + error.message);
+            }
+        }
+
+        /**
+         * Format date for display
+         * פורמט תאריך לתצוגה
+         */
+        formatDate(date) {
+            if (!date) {
+return '-';
+}
+
+            // Handle Firestore Timestamp
+            if (date.toDate && typeof date.toDate === 'function') {
+                date = date.toDate();
+            }
+
+            // Handle string dates
+            if (typeof date === 'string') {
+                date = new Date(date);
+            }
+
+            // Handle Date objects
+            if (date instanceof Date) {
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+            }
+
+            return '-';
         }
     }
 
