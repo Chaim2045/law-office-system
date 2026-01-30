@@ -3,11 +3,11 @@
  * ⏱ Quick Log - Professional Mobile App UI
  * ════════════════════════════════════════════════════════════════════════════
  *
- * @version 3.0.0
+ * @version 4.0.0
  * @updated 2026-01-30
- * @description Premium mobile app design with iOS/Android inspired UX
+ * @description Premium mobile app design - Banking/WhatsApp level quality
  *
- * Design Inspiration: WhatsApp, Telegram, Banking Apps
+ * Design Inspiration: Revolut, N26, WhatsApp, Telegram
  * ════════════════════════════════════════════════════════════════════════════
  */
 
@@ -26,6 +26,7 @@
   /* Brand colors */
   --primary: #667eea;
   --primary-dark: #5568d3;
+  --primary-darker: #4c5fc7;
   --primary-light: #e0e7ff;
   --primary-bg: #eef2ff;
 
@@ -83,7 +84,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, Alef, sans-serif;
-  background: var(--gray-100);
+  background: var(--gray-50);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -100,7 +101,7 @@ body {
   width: 100%;
   max-width: 100%;
   min-height: 100vh;
-  background: var(--white);
+  background: var(--gray-50);
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -140,7 +141,7 @@ body {
   text-align: center;
   margin-bottom: var(--space-2);
   color: var(--gray-900);
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   font-weight: var(--font-bold);
   letter-spacing: -0.02em;
 }
@@ -203,7 +204,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   QUICK LOG SCREEN - App-like Header + Content
+   QUICK LOG SCREEN - Premium App Design
    ═══════════════════════════════════════════════════════════════════════════ */
 
 #quickLogScreen {
@@ -219,31 +220,41 @@ body {
   min-height: 100vh;
 }
 
-/* Header - iOS style */
+/* Header - Gradient with depth */
 .header {
-  background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
-  padding: var(--space-4) var(--space-5);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  padding: var(--space-6) var(--space-5);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: sticky;
+  position: relative;
+  box-shadow: 0 4px 12px rgb(102 126 234 / 25%);
+}
+
+.header::before {
+  content: '';
+  position: absolute;
   top: 0;
-  z-index: 100;
-  box-shadow: var(--shadow-xs);
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 30%), transparent);
 }
 
 .header h1 {
-  font-size: 1.125rem;
-  font-weight: var(--font-semibold);
-  color: var(--gray-900);
+  font-size: 1.25rem;
+  font-weight: var(--font-bold);
+  color: var(--white);
   letter-spacing: -0.01em;
+  margin-bottom: var(--space-1);
+  text-align: center;
 }
 
 .user-welcome {
-  font-size: 0.8125rem;
-  color: var(--gray-500);
-  margin-top: var(--space-1);
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 85%);
+  font-weight: var(--font-medium);
   text-align: center;
 }
 
@@ -252,24 +263,25 @@ body {
   left: var(--space-5);
   top: 50%;
   transform: translateY(-50%);
-  padding: var(--space-2) var(--space-3);
-  background: var(--gray-100);
-  color: var(--gray-700);
-  border: none;
-  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  background: rgb(255 255 255 / 20%);
+  color: var(--white);
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: var(--radius-full);
   font-size: 0.8125rem;
   cursor: pointer;
   transition: all 0.15s ease;
-  font-weight: var(--font-medium);
+  font-weight: var(--font-semibold);
+  backdrop-filter: blur(10px);
 }
 
 .btn-logout:active {
   transform: translateY(-50%) scale(0.95);
-  background: var(--gray-200);
+  background: rgb(255 255 255 / 30%);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   FORM - Card-based Clean Design
+   FORM - Premium Card Design
    ═══════════════════════════════════════════════════════════════════════════ */
 
 #quickLogForm {
@@ -279,49 +291,52 @@ body {
 }
 
 .form-group {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .form-group label {
   display: block;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
   color: var(--gray-700);
   font-weight: var(--font-semibold);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-/* Input cards - WhatsApp style */
+/* Input cards - Premium style */
 .form-group input,
 .form-group textarea,
 .form-group select {
   width: 100%;
-  padding: 0.9375rem var(--space-4);
+  padding: 1rem var(--space-4);
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   font-size: 1rem;
   font-family: inherit;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--white);
   color: var(--gray-900);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 2px rgb(0 0 0 / 6%);
 }
 
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  box-shadow: 0 0 0 3px var(--primary-bg), var(--shadow-md);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 4px var(--primary-bg), 0 8px 16px rgb(102 126 234 / 12%);
+  transform: translateY(-2px);
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
   color: var(--gray-400);
+  font-weight: var(--font-normal);
 }
 
 .form-group textarea {
   resize: vertical;
-  min-height: 110px;
+  min-height: 120px;
   line-height: 1.6;
 }
 
@@ -329,34 +344,42 @@ body {
 .form-group select {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
   background-position: left 1rem center;
   background-repeat: no-repeat;
   background-size: 1.25rem;
   padding-left: 3rem;
+  font-weight: var(--font-semibold);
+  color: var(--gray-700);
+}
+
+.form-group select option {
   font-weight: var(--font-medium);
 }
 
-/* Minutes input - large & prominent */
+/* Minutes input - Hero element with gradient */
 .form-group input[type="number"] {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: var(--font-bold);
   text-align: center;
-  letter-spacing: -0.02em;
-  padding: 1.25rem;
-  background: linear-gradient(135deg, var(--primary-bg) 0%, var(--white) 100%);
-  border: 2px solid var(--primary-light);
+  letter-spacing: -0.03em;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-bg) 0%, var(--white) 50%, var(--primary-bg) 100%);
+  border: 3px solid var(--primary-light);
+  color: var(--primary-dark);
 }
 
 .form-group input[type="number"]:focus {
   border-color: var(--primary);
   background: var(--white);
+  color: var(--primary-darker);
 }
 
 /* Date input */
 .form-group input[type="date"] {
   cursor: pointer;
-  font-weight: var(--font-medium);
+  font-weight: var(--font-semibold);
+  color: var(--gray-700);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -373,26 +396,27 @@ body {
   max-height: 0;
   overflow: hidden;
   background: var(--white);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%), 0 2px 8px rgb(0 0 0 / 8%);
   transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 200;
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .results-dropdown.show {
   max-height: 360px;
   overflow-y: auto;
-  border: 1px solid var(--gray-200);
+  border: 1px solid var(--gray-100);
 }
 
 /* Custom scrollbar */
 .results-dropdown::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .results-dropdown::-webkit-scrollbar-track {
   background: transparent;
+  margin: var(--space-2) 0;
 }
 
 .results-dropdown::-webkit-scrollbar-thumb {
@@ -405,7 +429,7 @@ body {
 }
 
 .result-item {
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   cursor: pointer;
   transition: all 0.12s ease;
   display: flex;
@@ -436,7 +460,7 @@ body {
   background: var(--gray-100);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
-  font-weight: var(--font-medium);
+  font-weight: var(--font-semibold);
   white-space: nowrap;
 }
 
@@ -455,69 +479,71 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SUBMIT BUTTON - Prominent CTA
+   SUBMIT BUTTON - Premium CTA
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .form-actions {
   position: sticky;
   bottom: 0;
-  background: var(--gray-50);
+  background: var(--white);
   padding: var(--space-5);
   padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
   margin: 0 calc(var(--space-5) * -1);
   margin-top: auto;
   border-top: 1px solid var(--gray-200);
+  box-shadow: 0 -4px 12px rgb(0 0 0 / 5%);
 }
 
 .btn-primary {
   width: 100%;
-  padding: 1.125rem;
-  background: var(--primary);
+  padding: 1.25rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: var(--white);
   border: none;
   border-radius: var(--radius-xl);
-  font-size: 1.0625rem;
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
   cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: var(--shadow-md);
-  letter-spacing: -0.01em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgb(102 126 234 / 35%);
+  text-transform: uppercase;
+  font-size: 0.9375rem;
+  letter-spacing: 0.05em;
 }
 
 .btn-primary:active {
-  transform: scale(0.98);
-  background: var(--primary-dark);
-  box-shadow: var(--shadow-sm);
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgb(102 126 234 / 25%);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MESSAGES - Toast-style Notifications
+   MESSAGES - Modern Toast Notifications
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .message {
   position: fixed;
-  top: var(--space-5);
+  top: var(--space-6);
   right: var(--space-5);
   left: var(--space-5);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-xl);
   text-align: center;
   font-weight: var(--font-semibold);
   font-size: 0.9375rem;
   z-index: 1000;
   animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  backdrop-filter: blur(10px);
 }
 
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(-30px) scale(0.95);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -544,7 +570,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LOADING - iOS Style Spinner
+   LOADING - Premium Spinner
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .loading-overlay {
@@ -553,8 +579,8 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgb(0 0 0 / 40%);
-  backdrop-filter: blur(8px);
+  background: rgb(0 0 0 / 50%);
+  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -564,9 +590,9 @@ body {
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgb(255 255 255 / 25%);
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgb(255 255 255 / 20%);
   border-top-color: var(--white);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -580,8 +606,8 @@ body {
 
 .loading-overlay p {
   color: var(--white);
-  margin-top: var(--space-4);
-  font-size: 1rem;
+  margin-top: var(--space-5);
+  font-size: 1.0625rem;
   font-weight: var(--font-semibold);
 }
 
@@ -591,15 +617,15 @@ body {
 
 @media (width >= 768px) {
   body {
-    background: var(--gray-100);
-    padding: var(--space-6);
+    background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-200) 100%);
+    padding: var(--space-8);
   }
 
   .screen {
     max-width: 480px;
     min-height: auto;
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 15%);
     overflow: hidden;
   }
 
@@ -612,19 +638,19 @@ body {
   }
 
   .header {
-    position: static;
     border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
   }
 
   .form-actions {
     position: static;
     margin: var(--space-6) 0 0 0;
-    padding: var(--space-5) 0 0 0;
+    padding: var(--space-6) 0 0 0;
+    border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACCESSIBILITY
+   ACCESSIBILITY & POLISH
    ═══════════════════════════════════════════════════════════════════════════ */
 
 input:focus-visible,
@@ -649,5 +675,18 @@ button:focus-visible {
   body {
     padding-top: max(0px, env(safe-area-inset-top));
     padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  .header {
+    padding-top: max(var(--space-6), env(safe-area-inset-top));
+  }
+}
+
+/* Premium touch feedback */
+@media (hover: none) {
+  .btn-primary:active,
+  .result-item:active,
+  .btn-logout:active {
+    transition-duration: 0.05s;
   }
 }
