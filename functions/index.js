@@ -3968,7 +3968,7 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
 
         if (clientDoc.exists) {
           const clientData = clientDoc.data();
-          const hoursDiff = data.minutesDiff / 60;
+          const hoursDiff = minutesDiff / 60;
 
           // עדכון לקוח שעתי - עדכון החבילה
           if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
