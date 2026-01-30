@@ -66,10 +66,16 @@
   force = true
 
 # SPA routing - redirect all to index.html
-# Exception: Allow reset-password.html to be served directly
+# Exceptions: Allow standalone pages to be served directly
 [[redirects]]
   from = "/reset-password.html"
   to = "/reset-password.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/quick-log.html"
+  to = "/quick-log.html"
   status = 200
   force = true
 

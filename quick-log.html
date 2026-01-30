@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>⏱ רישום שעות מהיר | משרד עו"ד</title>
+
+  <!-- Firebase SDK (v9.22.0 - same as main app) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/quick-log.css">
+</head>
+<body>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- LOGIN SCREEN (Hidden when authenticated) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="loginScreen" class="screen">
+    <div class="login-box">
+      <h1>⏱ רישום שעות מהיר</h1>
+      <p class="subtitle">מיועד למנהלים בלבד</p>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginEmail">אימייל</label>
+          <input
+            type="email"
+            id="loginEmail"
+            placeholder="your@email.com"
+            required
+            autocomplete="email"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword">סיסמה</label>
+          <input
+            type="password"
+            id="loginPassword"
+            placeholder="••••••••"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+
+        <button type="submit" class="btn-primary">התחבר</button>
+
+        <div id="loginError" class="error-message hidden"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- QUICK LOG SCREEN (Hidden until authenticated + authorized) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="quickLogScreen" class="screen hidden">
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <h1>⏱ רישום שעות מהיר</h1>
+        <p class="user-welcome">שלום, <span id="userName"></span></p>
+        <button type="button" class="btn-logout" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> יציאה
+        </button>
+      </div>
+
+      <!-- Quick Log Form -->
+      <form id="quickLogForm">
+        <!-- Client Search -->
+        <div class="form-group">
+          <label for="clientSearch">לקוח *</label>
+          <input
+            type="text"
+            id="clientSearch"
+            placeholder="חפש לקוח לפי שם או מספר תיק..."
+            required
+            autocomplete="off"
+          >
+          <div id="clientResults" class="results-dropdown"></div>
+          <input type="hidden" id="selectedClientId">
+          <input type="hidden" id="selectedClientName">
+        </div>
+
+        <!-- Hours + Minutes -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="hours">שעות</label>
+            <input
+              type="number"
+              id="hours"
+              min="0"
+              max="24"
+              value="0"
+              placeholder="0"
+            >
+          </div>
+          <div class="form-group">
+            <label for="minutes">דקות</label>
+            <input
+              type="number"
+              id="minutes"
+              min="0"
+              max="59"
+              value="0"
+              placeholder="0"
+            >
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label for="description">תיאור *</label>
+          <textarea
+            id="description"
+            rows="3"
+            placeholder="תיאור קצר של הפעולה שבוצעה..."
+            required
+          ></textarea>
+        </div>
+
+        <!-- Date -->
+        <div class="form-group">
+          <label for="date">תאריך *</label>
+          <input
+            type="date"
+            id="date"
+            required
+          >
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn-primary btn-submit">
+            ✅ שלח דיווח
+          </button>
+        </div>
+      </form>
+
+      <!-- Success Message -->
+      <div id="successMessage" class="message success hidden"></div>
+
+      <!-- Error Message -->
+      <div id="errorMessage" class="message error hidden"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- LOADING OVERLAY -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>שולח דיווח...</p>
+  </div>
+
+  <!-- Font Awesome (for icons) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Script -->
+  <script src="js/quick-log.js"></script>
+</body>
+</html>
