@@ -616,13 +616,16 @@ body {
   bottom: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-behavior: smooth;
+  scroll-behavior: auto; /* Disable smooth for manual control */
   padding: 140px 0; /* Center first item (280px total / 2 - 24px half item) */
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
   perspective: 1000px;
   perspective-origin: center center;
+  scroll-snap-type: none; /* Disable snap to prevent jumping */
+  touch-action: pan-y; /* Allow only vertical scrolling for better touch response */
+  overscroll-behavior: contain; /* Prevent scroll chaining */
 }
 
 .wheel-column .wheel-picker-scroll::-webkit-scrollbar {

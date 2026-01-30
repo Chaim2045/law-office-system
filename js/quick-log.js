@@ -538,23 +538,64 @@ navigator.vibrate(10);
       const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
       const scrollTop = scrollContainer.scrollTop;
       const containerHeight = scrollContainer.clientHeight;
-      const containerMiddle = scrollTop + (containerHeight / 2);
+      const ITEM_HEIGHT = 48;
+      const SCROLL_PADDING = 140; // Same as CSS padding
+      const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
 
       items.forEach((item, index) => {
-        const itemTop = index * 48;
-        const itemCenter = itemTop + 24;
-        const distance = Math.abs(itemCenter - containerMiddle);
+        const itemTop = index * ITEM_HEIGHT;
+        const itemCenter = itemTop + (ITEM_HEIGHT / 2);
+        const distanceFromCenter = itemCenter - containerMiddle;
+        const absDistance = Math.abs(distanceFromCenter);
 
-        if (distance < 24) {
+        // Calculate 3D rotation
+        const rotationAngle = (distanceFromCenter / ITEM_HEIGHT) * 15;
+        const clampedRotation = Math.max(-45, Math.min(45, rotationAngle));
+
+        let opacity, fontSize, fontWeight, color;
+
+        if (absDistance < 24) {
+          // At center
+          opacity = 1;
+          fontSize = '1.75rem';
+          fontWeight = '700';
+          color = '#1a365d';
           item.classList.remove('far', 'near-center');
           item.classList.add('at-center');
-        } else if (distance < 72) {
+        } else if (absDistance < 48) {
+          // Near center
+          const ratio = absDistance / 48;
+          opacity = 1 - (ratio * 0.35);
+          fontSize = `${1.75 - (ratio * 0.5)}rem`;
+          fontWeight = '600';
+          color = '#4b5563';
           item.classList.remove('far', 'at-center');
           item.classList.add('near-center');
+        } else if (absDistance < 96) {
+          // Moderately far
+          const ratio = (absDistance - 48) / 48;
+          opacity = 0.65 - (ratio * 0.25);
+          fontSize = `${1.25 - (ratio * 0.15)}rem`;
+          fontWeight = '500';
+          color = '#6b7280';
+          item.classList.remove('at-center', 'near-center');
+          item.classList.add('far');
         } else {
+          // Very far
+          opacity = 0.15;
+          fontSize = '1rem';
+          fontWeight = '500';
+          color = '#d1d5db';
           item.classList.remove('at-center', 'near-center');
           item.classList.add('far');
         }
+
+        // Apply styles directly (override CSS classes)
+        item.style.opacity = opacity;
+        item.style.fontSize = fontSize;
+        item.style.fontWeight = fontWeight;
+        item.style.color = color;
+        item.style.transform = `rotateX(${-clampedRotation}deg) translateZ(0)`;
       });
     }
 
@@ -578,22 +619,46 @@ navigator.vibrate(10);
         const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
         const scrollTop = scrollContainer.scrollTop;
         const itemHeight = 48;
-        const centerIndex = Math.round(scrollTop / itemHeight);
+        const containerHeight = scrollContainer.clientHeight;
+        const SCROLL_PADDING = 140;
+        const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
+        const centerIndex = Math.round(containerMiddle / itemHeight);
         const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
 
         wheel.currentValue = wheel.items[clampedIndex].value;
         updateWheelEffect(scrollContainer);
       };
 
+      // Haptic feedback tracking
+      let lastVibrationIndex = -1;
+
       // Scroll event
       let scrollTimeout;
       scrollContainer.addEventListener('scroll', () => {
         clearTimeout(scrollTimeout);
+        updateWheelEffect(scrollContainer);
+
+        // Haptic feedback on item change
+        const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
+        const scrollTop = scrollContainer.scrollTop;
+        const containerHeight = scrollContainer.clientHeight;
+        const SCROLL_PADDING = 140;
+        const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
+        const centerIndex = Math.round(containerMiddle / 48);
+        const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
+
+        if (clampedIndex !== lastVibrationIndex && navigator.vibrate) {
+          navigator.vibrate(5); // Very light haptic feedback
+          lastVibrationIndex = clampedIndex;
+        }
+
         scrollTimeout = setTimeout(() => {
-          const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
           const itemHeight = 48;
           const scrollTop = scrollContainer.scrollTop;
-          const centerIndex = Math.round(scrollTop / itemHeight);
+          const containerHeight = scrollContainer.clientHeight;
+          const SCROLL_PADDING = 140;
+          const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
+          const centerIndex = Math.round(containerMiddle / itemHeight);
           const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
 
           scrollContainer.scrollTo({
@@ -601,16 +666,63 @@ navigator.vibrate(10);
             behavior: 'smooth'
           });
           updateValue();
-        }, 100);
-
-        updateWheelEffect(scrollContainer);
+        }, 150); // Increased from 100 to 150 for smoother snapping
       });
+
+      // Touch gesture support for better mobile experience
+      let touchStartY = 0;
+      let touchStartScrollTop = 0;
+      let isTouching = false;
+      let touchVelocity = 0;
+      let lastTouchY = 0;
+      let lastTouchTime = 0;
+
+      scrollContainer.addEventListener('touchstart', (e) => {
+        isTouching = true;
+        touchStartY = e.touches[0].clientY;
+        touchStartScrollTop = scrollContainer.scrollTop;
+        lastTouchY = e.touches[0].clientY;
+        lastTouchTime = Date.now();
+        touchVelocity = 0;
+        clearTimeout(scrollTimeout);
+      }, { passive: true });
+
+      scrollContainer.addEventListener('touchmove', (e) => {
+        if (!isTouching) {
+return;
+}
+
+        const currentY = e.touches[0].clientY;
+        const currentTime = Date.now();
+        const deltaY = currentY - lastTouchY;
+        const deltaTime = currentTime - lastTouchTime;
+
+        if (deltaTime > 0) {
+          touchVelocity = deltaY / deltaTime;
+        }
+
+        lastTouchY = currentY;
+        lastTouchTime = currentTime;
+      }, { passive: true });
+
+      scrollContainer.addEventListener('touchend', () => {
+        isTouching = false;
+
+        // Apply momentum based on velocity
+        if (Math.abs(touchVelocity) > 0.5) {
+          const momentum = touchVelocity * 50; // Adjust momentum factor
+          scrollContainer.scrollBy({
+            top: -momentum,
+            behavior: 'smooth'
+          });
+        }
+      }, { passive: true });
 
       // Center on current value initially
       const initialIndex = wheel.items.findIndex(item => item.value === wheel.currentValue);
       if (initialIndex !== -1) {
         scrollContainer.scrollTop = initialIndex * 48;
-        updateWheelEffect(scrollContainer);
+        setTimeout(() => updateWheelEffect(scrollContainer), 50);
       }
     });
 
