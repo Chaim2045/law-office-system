@@ -167,11 +167,539 @@
   // ═══════════════════════════════════════════════════════════════════
 
   /**
+   * Generic 3D Wheel Picker Factory
+   * iOS-style wheel with perspective effect + Virtual Scrolling for performance
+   *
+   * @param {Object} config - Configuration object
+   * @param {string} config.inputId - ID of the hidden input element
+   * @param {string} config.displayId - ID of the display button element
+   * @param {string} config.pickerId - ID of the picker modal element
+   * @param {string} config.scrollId - ID of the scroll container element
+   * @param {string} config.doneButtonId - ID of the done button element
+   * @param {Array} config.items - Array of {value, label} objects
+   * @param {string} config.displayFormat - Function or string template for display
+   * @param {boolean} config.useVirtualScrolling - Enable virtual scrolling (default: true for >100 items)
+   */
+  function createWheelPicker(config) {
+    const input = document.getElementById(config.inputId);
+    const display = document.getElementById(config.displayId);
+    const picker = document.getElementById(config.pickerId);
+    const wheelScroll = document.getElementById(config.scrollId);
+    const doneButton = document.getElementById(config.doneButtonId);
+    const backdrop = document.getElementById('wheelPickerBackdrop');
+
+    let selectedValue = null;
+    let isScrolling = false;
+    let scrollTimeout = null;
+
+    // Constants
+    const ITEM_HEIGHT = 44;
+    const SCROLL_PADDING = 115;
+    const BUFFER_SIZE = 25;
+    const TOTAL_ITEMS = config.items.length;
+    const TOTAL_HEIGHT = TOTAL_ITEMS * ITEM_HEIGHT;
+    const USE_VIRTUAL = config.useVirtualScrolling !== false && TOTAL_ITEMS > 100;
+
+    // Create container
+    wheelScroll.innerHTML = `<div class="wheel-virtual-container" style="height: ${TOTAL_HEIGHT}px; position: relative;"></div>`;
+    const container = wheelScroll.firstElementChild;
+
+    // Cache for rendered items
+    const renderedItems = new Map();
+    let lastRenderedRange = { start: -1, end: -1 };
+
+    /**
+     * Format display text
+     */
+    function formatDisplay(value) {
+      if (typeof config.displayFormat === 'function') {
+        return config.displayFormat(value);
+      }
+      return config.displayFormat.replace('{value}', value);
+    }
+
+    /**
+     * Render visible items based on scroll position
+     */
+    function renderVisibleItems() {
+      const scrollTop = wheelScroll.scrollTop;
+      const viewportHeight = wheelScroll.clientHeight;
+
+      let startIndex, endIndex;
+
+      if (USE_VIRTUAL) {
+        // Virtual scrolling for large lists
+        startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE);
+        endIndex = Math.min(TOTAL_ITEMS, Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + BUFFER_SIZE);
+
+        if (startIndex === lastRenderedRange.start && endIndex === lastRenderedRange.end) {
+          return;
+        }
+        lastRenderedRange = { start: startIndex, end: endIndex };
+      } else {
+        // Render all items for small lists
+        startIndex = 0;
+        endIndex = TOTAL_ITEMS;
+      }
+
+      // Remove items outside range
+      if (USE_VIRTUAL) {
+        renderedItems.forEach((element, index) => {
+          if (index < startIndex || index >= endIndex) {
+            element.remove();
+            renderedItems.delete(index);
+          }
+        });
+      }
+
+      // Add/update items in range
+      for (let i = startIndex; i < endIndex; i++) {
+        if (!renderedItems.has(i)) {
+          const itemData = config.items[i];
+          const item = document.createElement('div');
+          item.className = 'wheel-picker-item';
+          item.dataset.value = itemData.value;
+          item.dataset.index = i;
+          item.textContent = itemData.label;
+          item.style.position = 'absolute';
+          item.style.top = `${i * ITEM_HEIGHT}px`;
+          item.style.left = '0';
+          item.style.right = '0';
+          item.style.width = '100%';
+          item.style.height = `${ITEM_HEIGHT}px`;
+          item.style.display = 'flex';
+          item.style.alignItems = 'center';
+          item.style.justifyContent = 'center';
+          item.style.fontSize = '1.125rem';
+          item.style.fontWeight = '500';
+          item.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+          item.style.transformStyle = 'preserve-3d';
+          item.style.transformOrigin = 'center center';
+          item.style.willChange = 'transform, opacity';
+          item.style.userSelect = 'none';
+          item.style.cursor = 'pointer';
+          item.style.textAlign = 'center';
+
+          // Add click handler
+          item.addEventListener('click', () => {
+            selectedValue = itemData.value;
+            input.value = itemData.value;
+            display.textContent = formatDisplay(itemData.label);
+            display.style.color = 'var(--gray-900)';
+
+            if (navigator.vibrate) {
+navigator.vibrate(10);
+}
+            setTimeout(closeWheel, 200);
+          });
+
+          container.appendChild(item);
+          renderedItems.set(i, item);
+        }
+      }
+
+      updateWheelEffect();
+    }
+
+    // Open wheel picker
+    display.addEventListener('click', () => {
+      picker.classList.add('active');
+      backdrop.classList.add('active');
+      document.body.style.overflow = 'hidden';
+
+      renderVisibleItems();
+
+      // Scroll to current value
+      if (selectedValue) {
+        const index = config.items.findIndex(item => item.value === selectedValue);
+        if (index !== -1) {
+          const viewportHeight = wheelScroll.clientHeight;
+          const targetScroll = index * ITEM_HEIGHT - (viewportHeight / 2) + (ITEM_HEIGHT / 2) + SCROLL_PADDING;
+          wheelScroll.scrollTop = Math.max(0, targetScroll);
+          renderVisibleItems();
+        }
+      }
+
+      setTimeout(updateWheelEffect, 50);
+    });
+
+    // Close wheel picker
+    const closeWheel = () => {
+      picker.classList.remove('active');
+      // Only hide backdrop if no other pickers are open
+      const openPickers = document.querySelectorAll('.wheel-picker.active');
+      if (openPickers.length === 0) {
+        backdrop.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    };
+
+    // Close on backdrop click (only this picker)
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop && picker.classList.contains('active')) {
+        closeWheel();
+      }
+    });
+    doneButton.addEventListener('click', closeWheel);
+
+    // Handle scroll
+    wheelScroll.addEventListener('scroll', () => {
+      isScrolling = true;
+      clearTimeout(scrollTimeout);
+      renderVisibleItems();
+      scrollTimeout = setTimeout(() => {
+        isScrolling = false;
+        snapToNearest();
+      }, 150);
+    });
+
+    // Update 3D effect
+    function updateWheelEffect() {
+      const scrollTop = wheelScroll.scrollTop;
+      const viewportHeight = wheelScroll.clientHeight;
+      const containerMiddle = scrollTop + (viewportHeight / 2) - SCROLL_PADDING;
+
+      let closestItem = null;
+      let minDistance = Infinity;
+
+      renderedItems.forEach((element, index) => {
+        const itemTop = index * ITEM_HEIGHT;
+        const itemCenter = itemTop + (ITEM_HEIGHT / 2);
+        const distance = Math.abs(itemCenter - containerMiddle);
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          const itemData = config.items[index];
+          closestItem = { element, index, value: itemData.value, label: itemData.label };
+        }
+      });
+
+      if (isScrolling && closestItem) {
+        display.textContent = formatDisplay(closestItem.label);
+        display.style.color = 'var(--gray-900)';
+      }
+
+      renderedItems.forEach((item, index) => {
+        const itemTop = index * ITEM_HEIGHT;
+        const itemCenter = itemTop + (ITEM_HEIGHT / 2);
+        const distanceFromCenter = itemCenter - containerMiddle;
+        const absDistance = Math.abs(distanceFromCenter);
+
+        const rotationAngle = (distanceFromCenter / ITEM_HEIGHT) * 15;
+        const clampedRotation = Math.max(-45, Math.min(45, rotationAngle));
+
+        let opacity, fontSize, fontWeight, color;
+
+        if (absDistance < 22) {
+          opacity = 1;
+          fontSize = '1.75rem';
+          fontWeight = '700';
+          color = '#1a365d';
+        } else if (absDistance < 44) {
+          const ratio = absDistance / 44;
+          opacity = 1 - (ratio * 0.35);
+          fontSize = `${1.75 - (ratio * 0.5)}rem`;
+          fontWeight = '600';
+          color = '#4b5563';
+        } else if (absDistance < 88) {
+          const ratio = (absDistance - 44) / 44;
+          opacity = 0.65 - (ratio * 0.25);
+          fontSize = `${1.25 - (ratio * 0.15)}rem`;
+          fontWeight = '500';
+          color = '#6b7280';
+        } else {
+          opacity = 0.15;
+          fontSize = '1rem';
+          fontWeight = '500';
+          color = '#d1d5db';
+        }
+
+        item.style.opacity = opacity;
+        item.style.fontSize = fontSize;
+        item.style.fontWeight = fontWeight;
+        item.style.color = color;
+        item.style.transform = `rotateX(${-clampedRotation}deg) translateZ(0)`;
+      });
+    }
+
+    // Snap to nearest
+    function snapToNearest() {
+      const scrollTop = wheelScroll.scrollTop;
+      const viewportHeight = wheelScroll.clientHeight;
+      const containerMiddle = scrollTop + (viewportHeight / 2) - SCROLL_PADDING;
+
+      let closestItem = null;
+      let minDistance = Infinity;
+
+      renderedItems.forEach((_element, index) => {
+        const itemTop = index * ITEM_HEIGHT;
+        const itemCenter = itemTop + (ITEM_HEIGHT / 2);
+        const distance = Math.abs(itemCenter - containerMiddle);
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          const itemData = config.items[index];
+          closestItem = { index, value: itemData.value, label: itemData.label };
+        }
+      });
+
+      if (!closestItem) {
+return;
+}
+
+      const targetScroll = closestItem.index * ITEM_HEIGHT - (viewportHeight / 2) + (ITEM_HEIGHT / 2) + SCROLL_PADDING;
+      wheelScroll.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
+
+      selectedValue = closestItem.value;
+      input.value = closestItem.value;
+      display.textContent = formatDisplay(closestItem.label);
+      display.style.color = 'var(--gray-900)';
+
+      if (navigator.vibrate) {
+navigator.vibrate(10);
+}
+
+      setTimeout(() => {
+        renderVisibleItems();
+        updateWheelEffect();
+      }, 100);
+    }
+  }
+
+  /**
+   * Initialize 3D Wheel Picker for minutes (1-2000)
+   */
+  function initializeMinutesPicker() {
+    const minutesItems = [];
+    for (let i = 1; i <= 2000; i++) {
+      minutesItems.push({ value: i, label: i.toString() });
+    }
+
+    createWheelPicker({
+      inputId: 'minutes',
+      displayId: 'minutesDisplay',
+      pickerId: 'minutesWheelPicker',
+      scrollId: 'minutesWheelScroll',
+      doneButtonId: 'wheelPickerDone',
+      items: minutesItems,
+      displayFormat: (label) => `${label} דקות`,
+      useVirtualScrolling: true
+    });
+  }
+
+  /**
+   * Initialize Multi-Wheel Date Picker (Day / Month / Year)
+   * Like iOS native date picker with 3 separate wheels
+   */
+  function initializeDatePicker() {
+    const dateInput = document.getElementById('date');
+    const dateDisplay = document.getElementById('dateDisplay');
+    const picker = document.getElementById('dateWheelPicker');
+    const doneButton = document.getElementById('dateWheelPickerDone');
+    const backdrop = document.getElementById('wheelPickerBackdrop');
+
+    // Hebrew month names
+    const hebrewMonths = [
+      'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+      'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+    ];
+
+    // Get today's date
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // Create wheel data
+    const dayWheel = { scrollId: 'dayWheelScroll', items: [], currentValue: currentDay };
+    const monthWheel = { scrollId: 'monthWheelScroll', items: [], currentValue: currentMonth };
+    const yearWheel = { scrollId: 'yearWheelScroll', items: [], currentValue: currentYear };
+
+    // Generate days (1-31)
+    for (let i = 1; i <= 31; i++) {
+      dayWheel.items.push({ value: i, label: i.toString() });
+    }
+
+    // Generate months (Hebrew names)
+    for (let i = 0; i < 12; i++) {
+      monthWheel.items.push({ value: i, label: hebrewMonths[i] });
+    }
+
+    // Generate years (current year - 2 to current year + 5)
+    for (let i = currentYear - 2; i <= currentYear + 5; i++) {
+      yearWheel.items.push({ value: i, label: i.toString() });
+    }
+
+    // 3D effect update function for multi-wheel
+    function updateWheelEffect(scrollContainer) {
+      const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
+      const scrollTop = scrollContainer.scrollTop;
+      const containerHeight = scrollContainer.clientHeight;
+      const containerMiddle = scrollTop + (containerHeight / 2);
+
+      items.forEach((item, index) => {
+        const itemTop = index * 48;
+        const itemCenter = itemTop + 24;
+        const distance = Math.abs(itemCenter - containerMiddle);
+
+        if (distance < 24) {
+          item.classList.remove('far', 'near-center');
+          item.classList.add('at-center');
+        } else if (distance < 72) {
+          item.classList.remove('far', 'at-center');
+          item.classList.add('near-center');
+        } else {
+          item.classList.remove('at-center', 'near-center');
+          item.classList.add('far');
+        }
+      });
+    }
+
+    // Initialize all three wheels
+    const wheels = [dayWheel, monthWheel, yearWheel];
+
+    wheels.forEach(wheel => {
+      const scrollContainer = document.getElementById(wheel.scrollId);
+
+      // Render items
+      wheel.items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'wheel-picker-item';
+        div.textContent = item.label;
+        div.dataset.value = item.value;
+        scrollContainer.appendChild(div);
+      });
+
+      // Update current value on scroll
+      const updateValue = () => {
+        const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
+        const scrollTop = scrollContainer.scrollTop;
+        const itemHeight = 48;
+        const centerIndex = Math.round(scrollTop / itemHeight);
+        const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
+
+        wheel.currentValue = wheel.items[clampedIndex].value;
+        updateWheelEffect(scrollContainer);
+      };
+
+      // Scroll event
+      let scrollTimeout;
+      scrollContainer.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
+          const itemHeight = 48;
+          const scrollTop = scrollContainer.scrollTop;
+          const centerIndex = Math.round(scrollTop / itemHeight);
+          const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
+
+          scrollContainer.scrollTo({
+            top: clampedIndex * itemHeight,
+            behavior: 'smooth'
+          });
+          updateValue();
+        }, 100);
+
+        updateWheelEffect(scrollContainer);
+      });
+
+      // Center on current value initially
+      const initialIndex = wheel.items.findIndex(item => item.value === wheel.currentValue);
+      if (initialIndex !== -1) {
+        scrollContainer.scrollTop = initialIndex * 48;
+        updateWheelEffect(scrollContainer);
+      }
+    });
+
+    // Open picker
+    dateDisplay.addEventListener('click', () => {
+      picker.classList.add('active');
+      backdrop.classList.add('active');
+      // Update effects after opening
+      wheels.forEach(wheel => {
+        const scrollContainer = document.getElementById(wheel.scrollId);
+        updateWheelEffect(scrollContainer);
+      });
+    });
+
+    // Close picker
+    const closeWheel = () => {
+      picker.classList.remove('active');
+      const openPickers = document.querySelectorAll('.wheel-picker.active');
+      if (openPickers.length === 0) {
+        backdrop.classList.remove('active');
+      }
+    };
+
+    doneButton.addEventListener('click', () => {
+      // Get selected values
+      const day = dayWheel.currentValue;
+      const month = monthWheel.currentValue;
+      const year = yearWheel.currentValue;
+
+      // Validate and adjust day for month
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const validDay = Math.min(day, daysInMonth);
+
+      // Create date and store
+      const selectedDate = new Date(year, month, validDay);
+      const isoDate = selectedDate.toISOString().split('T')[0];
+      dateInput.value = isoDate;
+
+      // Update display
+      dateDisplay.textContent = `${validDay} ${hebrewMonths[month]} ${year}`;
+      dateDisplay.style.color = 'var(--gray-900)';
+
+      closeWheel();
+    });
+
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop && picker.classList.contains('active')) {
+        closeWheel();
+      }
+    });
+
+    // Set initial display
+    dateInput.value = today.toISOString().split('T')[0];
+    dateDisplay.textContent = `${currentDay} ${hebrewMonths[currentMonth]} ${currentYear}`;
+    dateDisplay.style.color = 'var(--gray-900)';
+  }
+
+  /**
+   * Initialize 3D Wheel Picker for branch
+   */
+  function initializeBranchPicker() {
+    const branchItems = [
+      { value: 'רחובות', label: 'רחובות' },
+      { value: 'תל אביב', label: 'תל אביב' }
+    ];
+
+    createWheelPicker({
+      inputId: 'branch',
+      displayId: 'branchDisplay',
+      pickerId: 'branchWheelPicker',
+      scrollId: 'branchWheelScroll',
+      doneButtonId: 'branchWheelPickerDone',
+      items: branchItems,
+      displayFormat: (label) => label,
+      useVirtualScrolling: false
+    });
+  }
+
+  /**
    * Load clients from Firestore
    * Reuses window.clients if available, otherwise fetches
    */
   async function loadClients() {
     try {
+      // Initialize wheel pickers
+      initializeMinutesPicker();
+      initializeDatePicker();
+      initializeBranchPicker();
+
       // Check if clients are already loaded (from main app)
       if (window.clients && Array.isArray(window.clients) && window.clients.length > 0) {
         // Reusing existing clients from window.clients
@@ -444,8 +972,31 @@
     document.getElementById('branch').value = '';
     document.getElementById('minutes').value = '';
     document.getElementById('description').value = '';
-    dateInput.valueAsDate = new Date();
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
     hideServiceSelector();
+
+    // Reset wheel picker displays
+    const minutesDisplay = document.getElementById('minutesDisplay');
+    const branchDisplay = document.getElementById('branchDisplay');
+    const dateDisplay = document.getElementById('dateDisplay');
+
+    if (minutesDisplay) {
+      minutesDisplay.textContent = 'בחר דקות...';
+      minutesDisplay.style.color = '';
+    }
+    if (branchDisplay) {
+      branchDisplay.textContent = 'בחר סניף...';
+      branchDisplay.style.color = '';
+    }
+    if (dateDisplay) {
+      const today = new Date();
+      const hebrewMonths = [
+        'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+        'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+      ];
+      dateDisplay.textContent = `${today.getDate()} ${hebrewMonths[today.getMonth()]} ${today.getFullYear()}`;
+      dateDisplay.style.color = 'var(--gray-900)';
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -462,8 +1013,7 @@
     quickLogScreen.classList.remove('hidden');
     userName.textContent = currentUser.username || currentUser.email;
 
-    // Set default date to today
-    dateInput.valueAsDate = new Date();
+    // Set default date to today (handled by wheel picker initialization)
   }
 
   function showLoading() {

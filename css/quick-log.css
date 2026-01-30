@@ -179,14 +179,14 @@ body {
 
 .login-box input:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-bg);
+  border-color: #1a365d;
+  box-shadow: 0 0 0 3px rgb(26 54 93 / 10%);
 }
 
 .login-box button {
   width: 100%;
   padding: 1rem;
-  background: var(--primary);
+  background: #1a365d;
   color: var(--white);
   border: none;
   border-radius: var(--radius-lg);
@@ -200,7 +200,7 @@ body {
 
 .login-box button:active {
   transform: scale(0.98);
-  background: var(--primary-dark);
+  background: #0f1f3d;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -222,14 +222,14 @@ body {
 
 /* Header - Gradient with depth */
 .header {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
   padding: var(--space-6) var(--space-5);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: 0 4px 12px rgb(102 126 234 / 25%);
+  box-shadow: 0 4px 12px rgb(26 54 93 / 25%);
 }
 
 .header::before {
@@ -336,7 +336,7 @@ body {
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  box-shadow: 0 0 0 4px var(--primary-bg), 0 8px 16px rgb(102 126 234 / 12%);
+  box-shadow: 0 0 0 4px rgb(26 54 93 / 8%), 0 8px 16px rgb(26 54 93 / 12%);
   transform: translateY(-2px);
 }
 
@@ -369,12 +369,357 @@ body {
   font-weight: var(--font-medium);
 }
 
-/* Minutes input - same size as other inputs */
-.form-group input[type="number"] {
+/* ═══════════════════════════════════════════════════════════════════════════
+   3D WHEEL PICKER - iOS Style
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-picker-wrapper {
+  position: relative;
+}
+
+.wheel-picker-display {
+  width: 100%;
+  padding: 1rem var(--space-4);
+  border: none;
+  border-radius: var(--radius-xl);
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--white);
+  color: var(--gray-700);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 2px rgb(0 0 0 / 6%);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: right;
+  font-weight: var(--font-semibold);
+  user-select: none;
+}
+
+.wheel-picker-display:active {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 4px rgb(26 54 93 / 8%), 0 8px 16px rgb(26 54 93 / 12%);
+}
+
+/* Wheel picker modal */
+.wheel-picker {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: min(330px, 40vh); /* Responsive: max 330px or 40% of viewport height */
+  max-height: 50vh; /* Never exceed 50% of screen */
+  background: var(--white);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: 0 -4px 20px rgb(0 0 0 / 15%);
+  z-index: 1000;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.wheel-picker.active {
+  transform: translateY(0);
+}
+
+/* Header with done button */
+.wheel-picker-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 var(--space-4);
+  background: linear-gradient(
+    to bottom,
+    var(--white) 0%,
+    var(--white) 80%,
+    rgb(255 255 255 / 95%) 100%
+  );
+  border-bottom: 1px solid var(--gray-200);
+  z-index: 10;
+}
+
+.wheel-picker-done {
+  background: none;
+  border: none;
+  color: #1a365d; /* Dark blue - navy */
   font-size: 1rem;
   font-weight: var(--font-semibold);
-  text-align: right;
-  color: var(--gray-900);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: var(--radius-lg);
+}
+
+.wheel-picker-done:active {
+  background: rgb(26 54 93 / 10%);
+  transform: scale(0.95);
+}
+
+/* Gradient overlays - create fade effect */
+.wheel-picker-overlay-top,
+.wheel-picker-overlay-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 100px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wheel-picker-overlay-top {
+  top: 50px; /* Below header */
+  background: linear-gradient(to bottom,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+.wheel-picker-overlay-bottom {
+  bottom: 0;
+  background: linear-gradient(to top,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+/* Selection highlight - the middle line with glow */
+.wheel-picker-highlight {
+  position: absolute;
+  top: calc(50% + 25px); /* 50% of picker height + half of header (50px/2) */
+  left: 5%;
+  right: 5%;
+  height: 44px;
+  transform: translateY(-50%);
+  background: transparent; /* Fully transparent so number is visible */
+  border-top: 2px solid rgb(26 54 93 / 30%);
+  border-bottom: 2px solid rgb(26 54 93 / 30%);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  z-index: 1; /* BELOW the scroll items so text shows through */
+  box-shadow: 0 0 25px rgb(26 54 93 / 8%);
+}
+
+/* Scrollable container - with 3D perspective */
+.wheel-picker-scroll {
+  height: calc(100% - 50px); /* Subtract header height */
+  margin-top: 50px; /* Below header */
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  padding: 115px 0; /* Center first item (140px total height / 2 - 22px half item) */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  perspective: 1000px; /* 3D perspective */
+  perspective-origin: center center;
+}
+
+.wheel-picker-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+/* Individual items */
+.wheel-picker-item {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  font-size: 1.125rem;
+  font-weight: var(--font-medium);
+  color: var(--gray-300);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+  user-select: none;
+  cursor: pointer;
+  opacity: 0.4;
+  position: relative;
+  z-index: 2; /* Above highlight bar so text is visible */
+}
+
+.wheel-picker-item:active {
+  background: rgb(26 54 93 / 8%);
+}
+
+/* 3D effect - items scale and fade based on distance from center */
+.wheel-picker-item.far {
+  opacity: 0.15;
+  font-size: 0.875rem;
+  transform: scale(0.8) rotateX(25deg);
+  filter: blur(0.5px);
+}
+
+.wheel-picker-item.near-center {
+  color: var(--gray-600);
+  font-size: 1.25rem;
+  opacity: 0.65;
+  transform: scale(0.93) rotateX(8deg);
+}
+
+.wheel-picker-item.at-center {
+  color: #1a365d; /* Dark blue - navy */
+  font-size: 1.75rem;
+  font-weight: var(--font-bold);
+  opacity: 1;
+  transform: scale(1.15) rotateX(0deg);
+  text-shadow: 0 2px 6px rgb(26 54 93 / 20%);
+  letter-spacing: 0.02em;
+}
+
+/* Backdrop overlay */
+.wheel-picker-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgb(0 0 0 / 40%);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.wheel-picker-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Multi-wheel picker (for date: day/month/year) */
+.multi-wheel-picker {
+  height: min(380px, 45vh); /* Slightly taller for 3 columns */
+}
+
+.multi-wheel-container {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 100%;
+  padding-top: 50px; /* Header height */
+}
+
+.wheel-column {
+  flex: 1;
+  position: relative;
+  height: 100%;
+}
+
+/* Each column has its own scroll container */
+.wheel-column .wheel-picker-scroll {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  padding: 140px 0; /* Center first item (280px total / 2 - 24px half item) */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  perspective: 1000px;
+  perspective-origin: center center;
+}
+
+.wheel-column .wheel-picker-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Overlays for each column */
+.wheel-column .wheel-picker-overlay-top,
+.wheel-column .wheel-picker-overlay-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 100px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wheel-column .wheel-picker-overlay-top {
+  top: 0;
+  background: linear-gradient(to bottom,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+.wheel-column .wheel-picker-overlay-bottom {
+  bottom: 0;
+  background: linear-gradient(to top,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+/* Highlight bar for each column */
+.wheel-column .wheel-picker-highlight {
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  right: 5%;
+  height: 48px;
+  transform: translateY(-50%);
+  background: transparent; /* Fully transparent so number is visible */
+  border-top: 2px solid rgb(26 54 93 / 30%);
+  border-bottom: 2px solid rgb(26 54 93 / 30%);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  z-index: 1; /* BELOW the scroll items so text shows through */
+  box-shadow: 0 0 25px rgb(26 54 93 / 8%);
+}
+
+/* Items in multi-wheel picker */
+.wheel-column .wheel-picker-item {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--gray-600);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  z-index: 2; /* Above highlight bar so text is visible */
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.wheel-column .wheel-picker-item:active {
+  background: rgb(26 54 93 / 8%);
+}
+
+/* 3D effect for multi-wheel items */
+.wheel-column .wheel-picker-item.far {
+  opacity: 0.15;
+  font-size: 0.875rem;
+  transform: scale(0.8) rotateX(25deg);
+  filter: blur(0.5px);
+}
+
+.wheel-column .wheel-picker-item.near-center {
+  color: var(--gray-600);
+  font-size: 1.25rem;
+  opacity: 0.65;
+  transform: scale(0.93) rotateX(8deg);
+}
+
+.wheel-column .wheel-picker-item.at-center {
+  color: #1a365d;
+  font-size: 1.75rem;
+  font-weight: var(--font-bold);
+  opacity: 1;
+  transform: scale(1.15) rotateX(0deg);
+  text-shadow: 0 2px 6px rgb(26 54 93 / 20%);
+  letter-spacing: 0.02em;
 }
 
 .form-group input[type="number"]:focus {
@@ -450,7 +795,7 @@ body {
 }
 
 .result-item:active {
-  background: var(--primary-bg);
+  background: rgb(26 54 93 / 8%);
   transform: scale(0.98);
 }
 
@@ -503,14 +848,14 @@ body {
 .btn-primary {
   width: 100%;
   padding: 1.25rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
   color: var(--white);
   border: none;
   border-radius: var(--radius-xl);
   font-weight: var(--font-bold);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgb(102 126 234 / 35%);
+  box-shadow: 0 4px 12px rgb(26 54 93 / 35%);
   text-transform: uppercase;
   font-size: 0.9375rem;
   letter-spacing: 0.05em;
@@ -518,7 +863,7 @@ body {
 
 .btn-primary:active {
   transform: scale(0.97);
-  box-shadow: 0 2px 8px rgb(102 126 234 / 25%);
+  box-shadow: 0 2px 8px rgb(26 54 93 / 25%);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -679,7 +1024,7 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid #1a365d;
   outline-offset: 2px;
 }
 
