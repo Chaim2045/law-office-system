@@ -331,8 +331,7 @@
     const clientName = document.getElementById('selectedClientName').value;
     const serviceId = document.getElementById('selectedServiceId').value;
     const branch = document.getElementById('branch').value;
-    const hours = parseInt(document.getElementById('hours').value) || 0;
-    const mins = parseInt(document.getElementById('minutes').value) || 0;
+    const totalMinutes = parseInt(document.getElementById('minutes').value) || 0;
     const description = document.getElementById('description').value.trim();
     const dateValue = dateInput.value;
 
@@ -354,7 +353,6 @@
       return;
     }
 
-    const totalMinutes = (hours * 60) + mins;
     if (totalMinutes <= 0) {
       showError('יש להזין לפחות דקה אחת');
       return;
@@ -444,8 +442,7 @@
     document.getElementById('selectedServiceId').value = '';
     clientSearch.value = '';
     document.getElementById('branch').value = '';
-    document.getElementById('hours').value = '0';
-    document.getElementById('minutes').value = '0';
+    document.getElementById('minutes').value = '';
     document.getElementById('description').value = '';
     dateInput.valueAsDate = new Date();
     hideServiceSelector();
