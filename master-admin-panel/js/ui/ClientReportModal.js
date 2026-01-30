@@ -31,6 +31,9 @@
             this.serviceFilter = null;
             this.quickDateButtons = null;
 
+            // Event listeners tracking for cleanup
+            this.eventListeners = [];
+
             this.isInitialized = false;
         }
 
@@ -190,7 +193,15 @@
                 this.reportForm.reset();
             }
 
-            console.log('✖️ Closed report modal');
+            // Cleanup event listeners to prevent memory leak
+            this.eventListeners.forEach(({ element, event, handler }) => {
+                if (element) {
+                    element.removeEventListener(event, handler);
+                }
+            });
+            this.eventListeners = [];
+
+            console.log('✖️ Closed report modal (cleaned up event listeners)');
         }
 
         /**
@@ -790,10 +801,13 @@ card.classList.add('resolved');
                 serviceDescription = 'שירות שעות';
             }
 
-            cardMeta.innerHTML = `
-                <i class="fas fa-circle"></i>
-                <span>${serviceDescription}</span>
-            `;
+            // Build cardMeta safely (preventing XSS)
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-circle';
+            const span = document.createElement('span');
+            span.textContent = serviceDescription;
+            cardMeta.appendChild(icon);
+            cardMeta.appendChild(span);
 
             mainSection.appendChild(cardName);
             mainSection.appendChild(cardMeta);
@@ -959,9 +973,17 @@ card.classList.add('resolved');
             // ═══════════════════════════════════════
             // EVENT HANDLERS
             // ═══════════════════════════════════════
-            card.addEventListener('click', (e) => {
+            const clickHandler = (e) => {
                 e.preventDefault();
                 this.selectServiceCard(card, serviceInfo.displayName);
+            };
+            card.addEventListener('click', clickHandler);
+
+            // Track listener for cleanup
+            this.eventListeners.push({
+                element: card,
+                event: 'click',
+                handler: clickHandler
             });
 
             return card;
@@ -1726,7 +1748,7 @@ return '';
                                 <i class="fas fa-edit" style="color: #3b82f6; font-size: 16px;"></i>
                                 עריכת רשומת שעתון
                             </h2>
-                            <button class="close-btn" onclick="document.getElementById('editTimesheetOverlay').remove()" style="width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; border: none; cursor: pointer; transition: all 0.2s;">
+                            <button class="close-btn" id="closeEditModalBtn" style="width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; border: none; cursor: pointer; transition: all 0.2s;">
                                 <i class="fas fa-times" style="color: #6b7280; font-size: 14px;"></i>
                             </button>
                         </div>
@@ -1768,11 +1790,11 @@ return '';
                             </div>
                         </div>
                         <div class="modal-footer" style="border-top: 1px solid #e5e7eb; padding: 14px 20px; background: #f9fafb; display: flex; gap: 10px; justify-content: flex-end;">
-                            <button class="btn btn-secondary" onclick="document.getElementById('editTimesheetOverlay').remove()" style="padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6';" onmouseout="this.style.background='white';">
+                            <button class="btn btn-secondary" id="cancelEditTimesheetBtn" style="padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6';" onmouseout="this.style.background='white';">
                                 <i class="fas fa-times" style="margin-left: 6px; font-size: 12px;"></i>
                                 ביטול
                             </button>
-                            <button class="btn btn-primary" id="saveTimesheetBtn" onclick="window.ClientReportModal.saveTimesheetEdit('${entryData.id}', '${entryData.employee}', '${entryData.clientId}')" style="padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; background: linear-gradient(to bottom, #3b82f6, #2563eb); color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.2)';">
+                            <button class="btn btn-primary" id="saveTimesheetBtn" style="padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; background: linear-gradient(to bottom, #3b82f6, #2563eb); color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.2)';">
                                 <i class="fas fa-save" style="margin-left: 6px; font-size: 12px;"></i>
                                 שמור שינויים
                             </button>
@@ -1789,6 +1811,39 @@ return '';
             if (textarea) {
                 textarea.value = entryData.action || '';
             }
+
+            // Add event listeners securely (prevents XSS from inline onclick)
+            const closeModalBtn = document.getElementById('closeEditModalBtn');
+            const cancelBtn = document.getElementById('cancelEditTimesheetBtn');
+            const saveBtn = document.getElementById('saveTimesheetBtn');
+
+            const closeHandler = () => {
+                const modal = document.getElementById('editTimesheetOverlay');
+                if (modal) {
+modal.remove();
+}
+            };
+
+            const saveHandler = () => {
+                this.saveTimesheetEdit(entryData.id, entryData.employee, entryData.clientId);
+            };
+
+            if (closeModalBtn) {
+closeModalBtn.addEventListener('click', closeHandler);
+}
+            if (cancelBtn) {
+cancelBtn.addEventListener('click', closeHandler);
+}
+            if (saveBtn) {
+saveBtn.addEventListener('click', saveHandler);
+}
+
+            // Track for cleanup
+            this.eventListeners.push(
+                { element: closeModalBtn, event: 'click', handler: closeHandler },
+                { element: cancelBtn, event: 'click', handler: closeHandler },
+                { element: saveBtn, event: 'click', handler: saveHandler }
+            );
         }
 
         /**

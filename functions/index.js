@@ -3995,7 +3995,7 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
                 // עדכון הלקוח
                 await clientRef.update({
                   services: clientData.services,
-                  minutesRemaining: admin.firestore.FieldValue.increment(-data.minutesDiff),
+                  minutesRemaining: admin.firestore.FieldValue.increment(-minutesDiff),
                   hoursRemaining: admin.firestore.FieldValue.increment(-hoursDiff),
                   lastActivity: admin.firestore.FieldValue.serverTimestamp()
                 });
