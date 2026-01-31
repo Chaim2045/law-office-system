@@ -50,6 +50,14 @@
   NODE_VERSION = "18"
   ENVIRONMENT = "production"
 
+# Deploy Previews (PR-based) - Skip TypeScript compilation
+[context.deploy-preview]
+  command = "npm run cache-bust"
+
+[context.deploy-preview.environment]
+  NODE_VERSION = "18"
+  ENVIRONMENT = "preview"
+
 # Feature Branches - Deploy Previews
 [context.branch-deploy]
   command = "npm run compile-ts || echo 'TS compilation skipped in preview'"
