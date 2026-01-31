@@ -44,6 +44,14 @@
   const db = firebase.firestore();
   const functions = firebase.functions();
 
+  // ✅ FIX: Safari Tracking Prevention blocks Firebase Auth storage
+  // Force LOCAL persistence to work around Safari's cross-site tracking prevention
+  // This ensures auth state persists even with Safari's privacy features enabled
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .catch(error => {
+      console.error('[Quick Log] Persistence error:', error);
+    });
+
   // ═══════════════════════════════════════════════════════════════════
   // STATE
   // ═══════════════════════════════════════════════════════════════════
