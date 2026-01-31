@@ -869,6 +869,12 @@ body {
   box-shadow: 0 2px 8px rgb(26 54 93 / 25%);
 }
 
+.btn-primary i {
+  margin-left: var(--space-2);
+  font-size: 1.125rem;
+  vertical-align: middle;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MESSAGES - Modern Toast Notifications
    ═══════════════════════════════════════════════════════════════════════════ */
