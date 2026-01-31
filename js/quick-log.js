@@ -274,8 +274,8 @@
       e.preventDefault();
       e.stopPropagation();
 
-      // CLICK TRACE: Immediate proof of click
-      console.info('[Quick Log] 🔵 Google button clicked', {
+      // CLICK TRACE: Immediate proof of click (PERSISTENT - survives redirect)
+      persistentLog('info', '[Quick Log] 🔵 GOOGLE BUTTON CLICKED', {
         timestamp: Date.now(),
         origin: location.origin,
         href: location.href
@@ -283,7 +283,7 @@
 
       // Wait for auth initialization
       if (!authInitialized) {
-        console.info('[Quick Log] Waiting for auth initialization...');
+        persistentLog('info', '[Quick Log] Waiting for auth initialization...');
         await initAuthOnce();
       }
 
@@ -301,39 +301,39 @@
         const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
         const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
 
-        console.info('[Quick Log] === GOOGLE SIGN-IN START ===');
-        console.info('[Quick Log] Origin:', window.location.origin);
-        console.info('[Quick Log] UserAgent:', userAgent);
-        console.info('[Quick Log] isMobile:', isMobile);
-        console.info('[Quick Log] isSafari:', isSafari);
+        persistentLog('info', '[Quick Log] === GOOGLE SIGN-IN START ===');
+        persistentLog('info', '[Quick Log] Origin:', window.location.origin);
+        persistentLog('info', '[Quick Log] UserAgent:', userAgent);
+        persistentLog('info', '[Quick Log] isMobile:', isMobile);
+        persistentLog('info', '[Quick Log] isSafari:', isSafari);
 
         if (isMobile) {
           // Mobile: Always use redirect
           const method = 'signInWithRedirect';
-          console.info('[Quick Log] Starting Google auth', {
+          persistentLog('info', '[Quick Log] Starting Google auth', {
             method: method,
             ua: navigator.userAgent,
             timestamp: Date.now()
           });
           await auth.signInWithRedirect(provider);
-          console.info('[Quick Log] signInWithRedirect called - page should redirect now');
+          persistentLog('info', '[Quick Log] signInWithRedirect called - page should redirect now');
           // Page will reload, redirect result handled in initAuthOnce
         } else {
           // Desktop: Try popup, fallback to redirect
           const method = 'signInWithPopup';
-          console.info('[Quick Log] Starting Google auth', {
+          persistentLog('info', '[Quick Log] Starting Google auth', {
             method: method,
             ua: navigator.userAgent,
             timestamp: Date.now()
           });
           try {
             await auth.signInWithPopup(provider);
-            console.info('[Quick Log] signInWithPopup succeeded');
+            persistentLog('info', '[Quick Log] signInWithPopup succeeded');
             // onAuthStateChanged will handle validation
           } catch (popupError) {
             if (popupError.code === 'auth/popup-blocked') {
-              console.info('[Quick Log] Popup blocked, fallback: signInWithRedirect');
-              console.info('[Quick Log] Starting Google auth', {
+              persistentLog('info', '[Quick Log] Popup blocked, fallback: signInWithRedirect');
+              persistentLog('info', '[Quick Log] Starting Google auth', {
                 method: 'signInWithRedirect',
                 ua: navigator.userAgent,
                 timestamp: Date.now()
@@ -346,9 +346,9 @@
         }
 
       } catch (error) {
-        console.error('[Quick Log] ❌ Google login error:', error);
-        console.error('[Quick Log] Error code:', error.code);
-        console.error('[Quick Log] Error message:', error.message);
+        persistentLog('error', '[Quick Log] ❌ Google login error:', error);
+        persistentLog('error', '[Quick Log] Error code:', error.code);
+        persistentLog('error', '[Quick Log] Error message:', error.message);
         handleGoogleError(error);
         googleLoginBtn.disabled = false;
         googleLoginBtn.classList.remove('loading');
@@ -1533,7 +1533,76 @@ return '';
   // INITIALIZATION
   // ═══════════════════════════════════════════════════════════════════
 
+  // ═══════════════════════════════════════════════════════════════════
+  // PERSISTENT LOGGING (Survives page reload)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Save log to sessionStorage so it survives redirect
+   */
+  function persistentLog(level, ...args) {
+    const timestamp = new Date().toISOString();
+    const message = args.map(arg => {
+      if (typeof arg === 'object') {
+        return JSON.stringify(arg);
+      }
+      return String(arg);
+    }).join(' ');
+
+    const logEntry = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+
+    // Save to sessionStorage
+    const logs = JSON.parse(sessionStorage.getItem('quickLogDebug') || '[]');
+    logs.push(logEntry);
+    // Keep only last 50 logs
+    if (logs.length > 50) {
+      logs.shift();
+    }
+    sessionStorage.setItem('quickLogDebug', JSON.stringify(logs));
+
+    // Also console log
+    if (level === 'error') {
+      console.error(...args);
+    } else if (level === 'warn') {
+      console.warn(...args);
+    } else {
+      console.info(...args);
+    }
+  }
+
+  /**
+   * Display persistent logs on screen
+   */
+  function showPersistentLogs() {
+    const logs = JSON.parse(sessionStorage.getItem('quickLogDebug') || '[]');
+
+    if (logs.length === 0) {
+      return;
+    }
+
+    console.info('[Quick Log] ═══════════════════════════════════════════════');
+    console.info('[Quick Log] PERSISTENT LOGS FROM PREVIOUS PAGE LOADS:');
+    console.info('[Quick Log] ═══════════════════════════════════════════════');
+    logs.forEach(log => console.info(log));
+    console.info('[Quick Log] ═══════════════════════════════════════════════');
+    console.info('[Quick Log] Total logs:', logs.length);
+    console.info('[Quick Log] ═══════════════════════════════════════════════');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // INITIALIZATION
+  // ═══════════════════════════════════════════════════════════════════
+
   console.info('[Quick Log] Script loaded, starting initialization...');
+
+  // Show any logs from previous page loads (e.g., after Google redirect)
+  showPersistentLogs();
+
+  persistentLog('info', '[Quick Log] === PAGE LOAD ===', {
+    timestamp: Date.now(),
+    href: location.href,
+    referrer: document.referrer
+  });
 
   // Initialize auth on page load (CRITICAL: must run before any auth operations)
   initAuthOnce();
