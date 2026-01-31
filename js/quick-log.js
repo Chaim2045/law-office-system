@@ -730,10 +730,32 @@ return;
     dateDisplay.addEventListener('click', () => {
       picker.classList.add('active');
       backdrop.classList.add('active');
-      // Update effects after opening
+
+      // Always reset to today's date when opening picker
+      const today = new Date();
+      const todayDay = today.getDate();
+      const todayMonth = today.getMonth();
+      const todayYear = today.getFullYear();
+
+      // Update wheel values to today
+      dayWheel.currentValue = todayDay;
+      monthWheel.currentValue = todayMonth;
+      yearWheel.currentValue = todayYear;
+
+      // Scroll each wheel to today's date
       wheels.forEach(wheel => {
         const scrollContainer = document.getElementById(wheel.scrollId);
-        updateWheelEffect(scrollContainer);
+        const itemHeight = 48;
+
+        // Find index of current value (today's date)
+        const currentIndex = wheel.items.findIndex(item => item.value === wheel.currentValue);
+        if (currentIndex !== -1) {
+          // Scroll to center that item
+          scrollContainer.scrollTop = currentIndex * itemHeight;
+        }
+
+        // Update visual effects
+        setTimeout(() => updateWheelEffect(scrollContainer), 50);
       });
     });
 
