@@ -95,8 +95,23 @@
 
       // Step 2: Check for redirect result (mobile flow)
       const result = await auth.getRedirectResult();
+
+      // Log the full result object to see what's inside
+      console.info('[Quick Log] getRedirectResult() returned:', {
+        hasUser: !!result?.user,
+        hasCredential: !!result?.credential,
+        operationType: result?.operationType,
+        additionalUserInfo: result?.additionalUserInfo
+      });
+
       if (result && result.user) {
         console.info('[Quick Log] ✅ Redirect result user:', result.user.email, '| UID:', result.user.uid);
+        persistentLog('info', '[Quick Log] ✅ Redirect success:', result.user.email, '| UID:', result.user.uid);
+      } else if (result && result.credential === null && result.user === null) {
+        // This means redirect happened but failed
+        console.error('[Quick Log] ❌ Redirect completed but no user/credential');
+        console.error('[Quick Log] This usually means domain not authorized or auth was cancelled');
+        persistentLog('error', '[Quick Log] ❌ Redirect completed but no user (domain unauthorized?)');
       } else {
         console.info('[Quick Log] Redirect result: none (normal page load or desktop flow)');
       }
