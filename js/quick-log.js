@@ -44,20 +44,13 @@
   const db = firebase.firestore();
   const functions = firebase.functions();
 
-  // ✅ FIX: Safari Tracking Prevention blocks Firebase Auth storage
-  // Force LOCAL persistence to work around Safari's cross-site tracking prevention
-  // This ensures auth state persists even with Safari's privacy features enabled
-  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-    .catch(error => {
-      console.error('[Quick Log] Persistence error:', error);
-    });
-
   // ═══════════════════════════════════════════════════════════════════
   // STATE
   // ═══════════════════════════════════════════════════════════════════
 
   let currentUser = null;
   let allClients = [];
+  let authInitialized = false;
 
   // ═══════════════════════════════════════════════════════════════════
   // DOM ELEMENTS
@@ -77,28 +70,72 @@
   const dateInput = document.getElementById('date');
 
   // ═══════════════════════════════════════════════════════════════════
-  // AUTH STATE MANAGEMENT
+  // AUTH INITIALIZATION (Persistence + Redirect Result)
   // ═══════════════════════════════════════════════════════════════════
 
-  auth.onAuthStateChanged(async (user) => {
-    if (user) {
-      // User is logged in - check if they're a manager/admin
-      const isAuthorized = await checkUserRole(user);
-
-      if (isAuthorized) {
-        showQuickLogScreen();
-        await loadClients();
-      } else {
-        showError('אין לך הרשאה לגשת לדף זה. רק מנהלים יכולים לדווח שעות.', true);
-        setTimeout(() => {
-          logout();
-        }, 3000);
-      }
-    } else {
-      // User is not logged in
-      showLoginScreen();
+  /**
+   * Initialize Firebase Auth with proper persistence and redirect handling
+   * MUST run once before any auth operations
+   */
+  async function initAuthOnce() {
+    if (authInitialized) {
+      console.info('[Quick Log] Auth already initialized, skipping');
+      return;
     }
-  });
+
+    console.info('[Quick Log] === AUTH INITIALIZATION START ===');
+    console.info('[Quick Log] Origin:', window.location.origin);
+    console.info('[Quick Log] UserAgent:', navigator.userAgent);
+    console.info('[Quick Log] Safari:', /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent));
+
+    try {
+      // Step 1: Set persistence to LOCAL (critical for Safari)
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      console.info('[Quick Log] ✅ Persistence set: LOCAL');
+
+      // Step 2: Check for redirect result (mobile flow)
+      const result = await auth.getRedirectResult();
+      if (result && result.user) {
+        console.info('[Quick Log] ✅ Redirect result user:', result.user.email, '| UID:', result.user.uid);
+      } else {
+        console.info('[Quick Log] Redirect result: none (normal page load or desktop flow)');
+      }
+
+      // Step 3: Register auth state listener
+      auth.onAuthStateChanged(async (user) => {
+        console.info('[Quick Log] === onAuthStateChanged fired ===');
+        console.info('[Quick Log] User:', user ? user.email : 'null');
+
+        if (user) {
+          console.info('[Quick Log] User UID:', user.uid);
+          // User is logged in - check if they're a manager/admin
+          const isAuthorized = await checkUserRole(user);
+
+          if (isAuthorized) {
+            showQuickLogScreen();
+            await loadClients();
+          } else {
+            // STOP LOOP: Don't auto-logout, show persistent error
+            console.error('[Quick Log] ❌ Authorization failed - showing error screen');
+            showUnauthorizedScreen();
+          }
+        } else {
+          // User is not logged in
+          console.info('[Quick Log] No user - showing login screen');
+          showLoginScreen();
+        }
+      });
+
+      authInitialized = true;
+      console.info('[Quick Log] ✅ Auth initialization complete');
+
+    } catch (error) {
+      console.error('[Quick Log] ❌ Auth initialization error:', error);
+      console.error('[Quick Log] Error code:', error.code);
+      console.error('[Quick Log] Error message:', error.message);
+      handleGoogleError(error);
+    }
+  }
 
   /**
    * Check if user has manager or admin role
@@ -109,9 +146,9 @@
       const uid = user.uid;
       const email = user.email;
 
-      console.log('[Quick Log] Checking user role...');
-      console.log('[Quick Log]   UID:', uid);
-      console.log('[Quick Log]   Email:', email);
+      console.info('[Quick Log] === ROLE CHECK START ===');
+      console.info('[Quick Log] UID:', uid);
+      console.info('[Quick Log] Email:', email);
 
       // Query employees by authUID (matches backend pattern)
       const snapshot = await db.collection('employees')
@@ -119,39 +156,63 @@
         .limit(1)
         .get();
 
-      console.log('[Quick Log] Query result:', snapshot.empty ? 'NOT FOUND' : 'FOUND');
+      console.info('[Quick Log] Firestore query result:', snapshot.empty ? 'NOT FOUND' : 'FOUND');
 
       if (snapshot.empty) {
-        console.error('[Quick Log] ❌ Employee not found with authUID:', uid);
-        console.log('[Quick Log] This means the authUID in Firestore does not match Firebase Auth UID');
+        console.error('[Quick Log] ❌ ROLE CHECK FAILED: Employee not found with authUID:', uid);
+        console.error('[Quick Log] This UID does not exist in Firestore employees collection');
         return false;
       }
 
       const employee = snapshot.docs[0].data();
       currentUser = employee;
 
-      console.log('[Quick Log] ✅ Employee found:');
-      console.log('[Quick Log]   Name:', employee.name);
-      console.log('[Quick Log]   Email:', employee.email);
-      console.log('[Quick Log]   Role:', employee.role);
-      console.log('[Quick Log]   authUID:', employee.authUID);
+      console.info('[Quick Log] Employee data:');
+      console.info('[Quick Log]   Name:', employee.name);
+      console.info('[Quick Log]   Email:', employee.email);
+      console.info('[Quick Log]   Role:', employee.role);
+      console.info('[Quick Log]   Active:', employee.isActive !== false);
 
       // Check if user is manager or admin
       const isAuthorized = employee.role === 'manager' || employee.role === 'admin';
 
       if (isAuthorized) {
-        console.log('[Quick Log] ✅ User is authorized (role:', employee.role + ')');
+        console.info('[Quick Log] ✅ ROLE CHECK PASSED: role =', employee.role);
       } else {
-        console.error('[Quick Log] ❌ Unauthorized: User role is', employee.role, '(not manager/admin)');
+        console.error('[Quick Log] ❌ ROLE CHECK FAILED: role =', employee.role, '(not manager/admin)');
       }
 
       return isAuthorized;
 
     } catch (error) {
-      console.error('[Quick Log] ❌ Error checking user role:', error);
-      console.error('[Quick Log] Error details:', error.message);
+      console.error('[Quick Log] ❌ ROLE CHECK ERROR:', error);
+      console.error('[Quick Log] Error code:', error.code);
+      console.error('[Quick Log] Error message:', error.message);
       return false;
     }
+  }
+
+  /**
+   * Show unauthorized screen (no auto-logout to stop loop)
+   */
+  function showUnauthorizedScreen() {
+    loginScreen.classList.remove('hidden');
+    quickLogScreen.classList.add('hidden');
+
+    // Show persistent error with manual logout button
+    const errorHtml = `
+      <div style="text-align: center; padding: 1rem;">
+        <p style="color: #dc2626; font-weight: 600; margin-bottom: 1rem;">
+          ❌ אין לך הרשאה לגשת לדף זה<br>
+          רק מנהלים יכולים לדווח שעות
+        </p>
+        <button onclick="logout()" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer;">
+          התנתק
+        </button>
+      </div>
+    `;
+    loginError.innerHTML = errorHtml;
+    loginError.classList.remove('hidden');
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -198,21 +259,14 @@
 
   const googleLoginBtn = document.getElementById('googleLoginBtn');
 
-  // Check for redirect result on page load
-  auth.getRedirectResult()
-    .then(result => {
-      if (result.user) {
-        console.log('[Quick Log] Google redirect login success:', result.user.email);
-        // onAuthStateChanged will handle validation
-      }
-    })
-    .catch(error => {
-      console.error('[Quick Log] Redirect result error:', error);
-      handleGoogleError(error);
-    });
-
   if (googleLoginBtn) {
     googleLoginBtn.addEventListener('click', async () => {
+      // Wait for auth initialization
+      if (!authInitialized) {
+        console.info('[Quick Log] Waiting for auth initialization...');
+        await initAuthOnce();
+      }
+
       googleLoginBtn.disabled = true;
       googleLoginBtn.classList.add('loading');
       hideAllMessages();
@@ -222,23 +276,31 @@
         provider.addScope('profile');
         provider.addScope('email');
 
-        // Mobile-first: use redirect (better UX on mobile)
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        // Detect environment
+        const userAgent = navigator.userAgent;
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
+        const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+
+        console.info('[Quick Log] === GOOGLE SIGN-IN START ===');
+        console.info('[Quick Log] Origin:', window.location.origin);
+        console.info('[Quick Log] UserAgent:', userAgent);
+        console.info('[Quick Log] isMobile:', isMobile);
+        console.info('[Quick Log] isSafari:', isSafari);
 
         if (isMobile) {
           // Mobile: Always use redirect
-          console.log('[Quick Log] Using signInWithRedirect (mobile)');
+          console.info('[Quick Log] Method: signInWithRedirect (mobile)');
           await auth.signInWithRedirect(provider);
-          // Page will reload, redirect result handled on next load
+          // Page will reload, redirect result handled in initAuthOnce
         } else {
           // Desktop: Try popup, fallback to redirect
-          console.log('[Quick Log] Using signInWithPopup (desktop)');
+          console.info('[Quick Log] Method: signInWithPopup (desktop)');
           try {
             await auth.signInWithPopup(provider);
             // onAuthStateChanged will handle validation
           } catch (popupError) {
             if (popupError.code === 'auth/popup-blocked') {
-              console.log('[Quick Log] Popup blocked, falling back to redirect');
+              console.info('[Quick Log] Popup blocked, fallback: signInWithRedirect');
               await auth.signInWithRedirect(provider);
             } else {
               throw popupError;
@@ -247,7 +309,9 @@
         }
 
       } catch (error) {
-        console.error('[Quick Log] Google login error:', error);
+        console.error('[Quick Log] ❌ Google login error:', error);
+        console.error('[Quick Log] Error code:', error.code);
+        console.error('[Quick Log] Error message:', error.message);
         handleGoogleError(error);
         googleLoginBtn.disabled = false;
         googleLoginBtn.classList.remove('loading');
@@ -1407,6 +1471,7 @@ return '';
   // INITIALIZATION
   // ═══════════════════════════════════════════════════════════════════
 
-  // Quick Log initialized and ready
+  // Initialize auth on page load (CRITICAL: must run before any auth operations)
+  initAuthOnce();
 
 })();
