@@ -311,52 +311,32 @@
         provider.addScope('profile');
         provider.addScope('email');
 
-        // Detect environment
+        // Always use popup (works on both desktop and mobile)
+        // Redirect has issues with persistence in mobile browsers
         const userAgent = navigator.userAgent;
         const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
-        const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
 
         persistentLog('info', '[Quick Log] === GOOGLE SIGN-IN START ===');
         persistentLog('info', '[Quick Log] Origin:', window.location.origin);
         persistentLog('info', '[Quick Log] UserAgent:', userAgent);
-        persistentLog('info', '[Quick Log] isMobile:', isMobile);
-        persistentLog('info', '[Quick Log] isSafari:', isSafari);
+        persistentLog('info', '[Quick Log] Device:', isMobile ? 'Mobile' : 'Desktop');
+        persistentLog('info', '[Quick Log] Method: signInWithPopup (universal)');
 
-        if (isMobile) {
-          // Mobile: Always use redirect
-          const method = 'signInWithRedirect';
-          persistentLog('info', '[Quick Log] Starting Google auth', {
-            method: method,
-            ua: navigator.userAgent,
-            timestamp: Date.now()
-          });
-          await auth.signInWithRedirect(provider);
-          persistentLog('info', '[Quick Log] signInWithRedirect called - page should redirect now');
-          // Page will reload, redirect result handled in initAuthOnce
-        } else {
-          // Desktop: Try popup, fallback to redirect
-          const method = 'signInWithPopup';
-          persistentLog('info', '[Quick Log] Starting Google auth', {
-            method: method,
-            ua: navigator.userAgent,
-            timestamp: Date.now()
-          });
-          try {
-            await auth.signInWithPopup(provider);
-            persistentLog('info', '[Quick Log] signInWithPopup succeeded');
-            // onAuthStateChanged will handle validation
-          } catch (popupError) {
-            if (popupError.code === 'auth/popup-blocked') {
-              persistentLog('info', '[Quick Log] Popup blocked, fallback: signInWithRedirect');
-              persistentLog('info', '[Quick Log] Starting Google auth', {
-                method: 'signInWithRedirect',
-                ua: navigator.userAgent,
-                timestamp: Date.now()
-              });
-              await auth.signInWithRedirect(provider);
-            } else {
-              throw popupError;
-            }
+        try {
+          await auth.signInWithPopup(provider);
+          persistentLog('info', '[Quick Log] ✅ Popup sign-in succeeded');
+          // onAuthStateChanged will handle validation
+        } catch (popupError) {
+          // If popup is blocked, fallback to redirect
+          if (popupError.code === 'auth/popup-blocked') {
+            persistentLog('warn', '[Quick Log] Popup blocked, fallback: signInWithRedirect');
+            persistentLog('info', '[Quick Log] Starting Google auth (redirect):', {
+              method: 'signInWithRedirect',
+              timestamp: Date.now()
+            });
+            await auth.signInWithRedirect(provider);
+          } else {
+            throw popupError;
           }
         }
 
