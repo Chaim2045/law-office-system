@@ -259,8 +259,28 @@
 
   const googleLoginBtn = document.getElementById('googleLoginBtn');
 
-  if (googleLoginBtn) {
-    googleLoginBtn.addEventListener('click', async () => {
+  if (!googleLoginBtn) {
+    console.error('[Quick Log] ❌ googleLoginBtn NOT FOUND - check HTML element ID');
+    // Show error on login screen
+    if (loginError) {
+      loginError.innerHTML = '<p style="color: #dc2626;">שגיאת מערכת: כפתור Google לא נמצא</p>';
+      loginError.classList.remove('hidden');
+    }
+  } else {
+    console.info('[Quick Log] ✅ googleLoginBtn found, attaching click handler');
+
+    googleLoginBtn.addEventListener('click', async (e) => {
+      // CRITICAL: Prevent any default behavior or propagation
+      e.preventDefault();
+      e.stopPropagation();
+
+      // CLICK TRACE: Immediate proof of click
+      console.info('[Quick Log] 🔵 Google button clicked', {
+        timestamp: Date.now(),
+        origin: location.origin,
+        href: location.href
+      });
+
       // Wait for auth initialization
       if (!authInitialized) {
         console.info('[Quick Log] Waiting for auth initialization...');
@@ -289,18 +309,35 @@
 
         if (isMobile) {
           // Mobile: Always use redirect
-          console.info('[Quick Log] Method: signInWithRedirect (mobile)');
+          const method = 'signInWithRedirect';
+          console.info('[Quick Log] Starting Google auth', {
+            method: method,
+            ua: navigator.userAgent,
+            timestamp: Date.now()
+          });
           await auth.signInWithRedirect(provider);
+          console.info('[Quick Log] signInWithRedirect called - page should redirect now');
           // Page will reload, redirect result handled in initAuthOnce
         } else {
           // Desktop: Try popup, fallback to redirect
-          console.info('[Quick Log] Method: signInWithPopup (desktop)');
+          const method = 'signInWithPopup';
+          console.info('[Quick Log] Starting Google auth', {
+            method: method,
+            ua: navigator.userAgent,
+            timestamp: Date.now()
+          });
           try {
             await auth.signInWithPopup(provider);
+            console.info('[Quick Log] signInWithPopup succeeded');
             // onAuthStateChanged will handle validation
           } catch (popupError) {
             if (popupError.code === 'auth/popup-blocked') {
               console.info('[Quick Log] Popup blocked, fallback: signInWithRedirect');
+              console.info('[Quick Log] Starting Google auth', {
+                method: 'signInWithRedirect',
+                ua: navigator.userAgent,
+                timestamp: Date.now()
+              });
               await auth.signInWithRedirect(provider);
             } else {
               throw popupError;
@@ -1468,8 +1505,35 @@ return '';
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // GLOBAL ERROR HANDLERS (Catch crashes)
+  // ═══════════════════════════════════════════════════════════════════
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('[Quick Log] ❌ Unhandled Promise Rejection:', {
+      reason: event.reason,
+      promise: event.promise,
+      timestamp: Date.now()
+    });
+    console.error('[Quick Log] Rejection stack:', event.reason?.stack || 'no stack');
+  });
+
+  window.addEventListener('error', (event) => {
+    console.error('[Quick Log] ❌ Uncaught Error:', {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error,
+      timestamp: Date.now()
+    });
+    console.error('[Quick Log] Error stack:', event.error?.stack || 'no stack');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
   // INITIALIZATION
   // ═══════════════════════════════════════════════════════════════════
+
+  console.info('[Quick Log] Script loaded, starting initialization...');
 
   // Initialize auth on page load (CRITICAL: must run before any auth operations)
   initAuthOnce();
