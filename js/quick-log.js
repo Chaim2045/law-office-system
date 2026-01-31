@@ -99,6 +99,11 @@
   async function checkUserRole(user) {
     try {
       const uid = user.uid;
+      const email = user.email;
+
+      console.log('[Quick Log] Checking user role...');
+      console.log('[Quick Log]   UID:', uid);
+      console.log('[Quick Log]   Email:', email);
 
       // Query employees by authUID (matches backend pattern)
       const snapshot = await db.collection('employees')
@@ -106,21 +111,37 @@
         .limit(1)
         .get();
 
+      console.log('[Quick Log] Query result:', snapshot.empty ? 'NOT FOUND' : 'FOUND');
+
       if (snapshot.empty) {
-        console.error('[Quick Log] Employee not found');
+        console.error('[Quick Log] ❌ Employee not found with authUID:', uid);
+        console.log('[Quick Log] This means the authUID in Firestore does not match Firebase Auth UID');
         return false;
       }
 
       const employee = snapshot.docs[0].data();
       currentUser = employee;
 
+      console.log('[Quick Log] ✅ Employee found:');
+      console.log('[Quick Log]   Name:', employee.name);
+      console.log('[Quick Log]   Email:', employee.email);
+      console.log('[Quick Log]   Role:', employee.role);
+      console.log('[Quick Log]   authUID:', employee.authUID);
+
       // Check if user is manager or admin
       const isAuthorized = employee.role === 'manager' || employee.role === 'admin';
+
+      if (isAuthorized) {
+        console.log('[Quick Log] ✅ User is authorized (role:', employee.role + ')');
+      } else {
+        console.error('[Quick Log] ❌ Unauthorized: User role is', employee.role, '(not manager/admin)');
+      }
 
       return isAuthorized;
 
     } catch (error) {
-      console.error('[Quick Log] Error checking user role:', error);
+      console.error('[Quick Log] ❌ Error checking user role:', error);
+      console.error('[Quick Log] Error details:', error.message);
       return false;
     }
   }
