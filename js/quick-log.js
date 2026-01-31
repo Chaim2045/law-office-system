@@ -1119,14 +1119,15 @@ navigator.vibrate(10);
     hideAllMessages();
 
     try {
-      // Convert date to Timestamp
-      const date = firebase.firestore.Timestamp.fromDate(new Date(dateValue));
+      // Convert date to ISO string (Callable Functions don't support Timestamp serialization)
+      const dateObj = new Date(dateValue);
+      const dateISO = dateObj.toISOString();
 
       // Build payload
       const payload = {
         clientId: clientId,
         clientName: clientName,
-        date: date,
+        date: dateISO,  // Send as ISO string, backend will convert to Timestamp
         minutes: totalMinutes,
         description: description,
         branch: branch

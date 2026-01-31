@@ -3390,6 +3390,10 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
     // 4️⃣ CREATE ENTRY DATA (Schema aligned with createTimesheetEntry)
     // ═══════════════════════════════════════════════════════════════════
 
+    // Convert date from ISO string to Firestore Timestamp
+    // (Callable Functions serialize Timestamps to plain objects, so we receive ISO string instead)
+    const dateTimestamp = admin.firestore.Timestamp.fromDate(new Date(data.date));
+
     const entryData = {
       // Client/Case identifiers
       clientId: data.clientId,
@@ -3405,7 +3409,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       packageId: null,  // Will be updated by deduction logic if applicable
 
       // Time tracking
-      date: data.date,
+      date: dateTimestamp,  // ✅ FIXED: Use proper Firestore Timestamp
       minutes: data.minutes,
       hours: data.minutes / 60,
 
