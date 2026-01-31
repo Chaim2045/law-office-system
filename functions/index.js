@@ -3390,9 +3390,42 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
     // 4️⃣ CREATE ENTRY DATA (Schema aligned with createTimesheetEntry)
     // ═══════════════════════════════════════════════════════════════════
 
-    // Convert date from ISO string to Firestore Timestamp
-    // (Callable Functions serialize Timestamps to plain objects, so we receive ISO string instead)
-    const dateTimestamp = admin.firestore.Timestamp.fromDate(new Date(data.date));
+    // Parse date - supports multiple formats for backward compatibility
+    let dateTimestamp;
+    const dateType = typeof data.date;
+
+    if (dateType === 'string') {
+      // ISO string format (current format from frontend)
+      const d = new Date(data.date);
+      if (isNaN(d.getTime())) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'Invalid date string format'
+        );
+      }
+      dateTimestamp = admin.firestore.Timestamp.fromDate(d);
+      console.log('[Quick Log] Date parsed from ISO string:', data.date);
+
+    } else if (data.date && dateType === 'object' && typeof data.date.seconds === 'number') {
+      // Firestore Timestamp-like map: {seconds, nanoseconds}
+      // (legacy format from Callable Function serialization)
+      dateTimestamp = new admin.firestore.Timestamp(
+        data.date.seconds,
+        data.date.nanoseconds || 0
+      );
+      console.log('[Quick Log] Date parsed from {seconds, nanoseconds} map');
+
+    } else if (data.date && typeof data.date.toDate === 'function') {
+      // Real Firestore Timestamp object (unlikely but supported)
+      dateTimestamp = admin.firestore.Timestamp.fromDate(data.date.toDate());
+      console.log('[Quick Log] Date parsed from Timestamp object');
+
+    } else {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid date format. Expected ISO string, {seconds, nanoseconds}, or Timestamp object'
+      );
+    }
 
     const entryData = {
       // Client/Case identifiers
