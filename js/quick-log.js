@@ -164,6 +164,90 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════
+  // GOOGLE SIGN-IN (Mobile-First)
+  // ═══════════════════════════════════════════════════════════════════
+
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
+
+  // Check for redirect result on page load
+  auth.getRedirectResult()
+    .then(result => {
+      if (result.user) {
+        console.log('[Quick Log] Google redirect login success:', result.user.email);
+        // onAuthStateChanged will handle validation
+      }
+    })
+    .catch(error => {
+      console.error('[Quick Log] Redirect result error:', error);
+      handleGoogleError(error);
+    });
+
+  if (googleLoginBtn) {
+    googleLoginBtn.addEventListener('click', async () => {
+      googleLoginBtn.disabled = true;
+      googleLoginBtn.classList.add('loading');
+      hideAllMessages();
+
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope('profile');
+        provider.addScope('email');
+
+        // Mobile-first: use redirect (better UX on mobile)
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+          // Mobile: Always use redirect
+          console.log('[Quick Log] Using signInWithRedirect (mobile)');
+          await auth.signInWithRedirect(provider);
+          // Page will reload, redirect result handled on next load
+        } else {
+          // Desktop: Try popup, fallback to redirect
+          console.log('[Quick Log] Using signInWithPopup (desktop)');
+          try {
+            await auth.signInWithPopup(provider);
+            // onAuthStateChanged will handle validation
+          } catch (popupError) {
+            if (popupError.code === 'auth/popup-blocked') {
+              console.log('[Quick Log] Popup blocked, falling back to redirect');
+              await auth.signInWithRedirect(provider);
+            } else {
+              throw popupError;
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error('[Quick Log] Google login error:', error);
+        handleGoogleError(error);
+        googleLoginBtn.disabled = false;
+        googleLoginBtn.classList.remove('loading');
+      }
+    });
+  }
+
+  function handleGoogleError(error) {
+    let errorText = 'שגיאה בהתחברות עם Google';
+
+    if (error.code === 'auth/popup-closed-by-user') {
+      errorText = 'החלון נסגר - נסה שוב';
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      errorText = 'הבקשה בוטלה';
+    } else if (error.code === 'auth/unauthorized-domain') {
+      console.error('[Quick Log] Unauthorized domain:', window.location.origin);
+      errorText = `Domain לא מורשה: ${window.location.origin}\nפנה למנהל המערכת`;
+    } else if (error.code === 'auth/network-request-failed') {
+      errorText = 'שגיאת רשת - בדוק חיבור לאינטרנט';
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      errorText = 'חשבון קיים עם שיטת כניסה אחרת';
+    } else if (error.message) {
+      errorText = error.message;
+    }
+
+    showMessage(loginError, errorText, 'error');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // BIOMETRIC AUTHENTICATION
   // ═══════════════════════════════════════════════════════════════════
 
