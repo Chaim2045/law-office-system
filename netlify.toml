@@ -146,10 +146,12 @@
         https://identitytoolkit.googleapis.com
         https://securetoken.googleapis.com
         https://*.cloudfunctions.net
-        https://*.lottiefiles.com;
+        https://*.lottiefiles.com
+        https://accounts.google.com;
       frame-src 'self'
         https://*.firebaseapp.com
-        https://law-office-system-e4801.firebaseapp.com;
+        https://law-office-system-e4801.firebaseapp.com
+        https://accounts.google.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
