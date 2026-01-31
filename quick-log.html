@@ -20,37 +20,76 @@
   <!-- LOGIN SCREEN (Hidden when authenticated) -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <div id="loginScreen" class="screen">
-    <div class="login-box">
-      <h1>⏱ רישום שעות מהיר</h1>
-      <p class="subtitle">מיועד למנהלים בלבד</p>
-
-      <form id="loginForm">
-        <div class="form-group">
-          <label for="loginEmail">אימייל</label>
-          <input
-            type="email"
-            id="loginEmail"
-            placeholder="your@email.com"
-            required
-            autocomplete="email"
-          >
+    <div class="login-container">
+      <div class="login-card">
+        <!-- Logo & Branding -->
+        <div class="login-header">
+          <div class="login-logo">
+            <img src="images/logo.png" alt="לוגו משרד">
+          </div>
+          <h1 class="login-title">רישום שעות מהיר</h1>
+          <p class="login-subtitle">מערכת ניהול למנהלים</p>
         </div>
 
-        <div class="form-group">
-          <label for="loginPassword">סיסמה</label>
-          <input
-            type="password"
-            id="loginPassword"
-            placeholder="••••••••"
-            required
-            autocomplete="current-password"
-          >
+        <!-- Biometric Login (Priority) -->
+        <button type="button" id="biometricLogin" class="btn-biometric">
+          <i class="fas fa-fingerprint"></i>
+          <span>כניסה מהירה</span>
+        </button>
+
+        <div class="login-divider">
+          <span>או התחבר עם סיסמה</span>
         </div>
 
-        <button type="submit" class="btn-primary">התחבר</button>
+        <!-- Traditional Login Form -->
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail">
+              <i class="fas fa-envelope"></i>
+              אימייל
+            </label>
+            <input
+              type="email"
+              id="loginEmail"
+              placeholder="your@email.com"
+              required
+              autocomplete="email"
+            >
+          </div>
 
-        <div id="loginError" class="error-message hidden"></div>
-      </form>
+          <div class="form-group">
+            <label for="loginPassword">
+              <i class="fas fa-lock"></i>
+              סיסמה
+            </label>
+            <div class="password-input-wrapper">
+              <input
+                type="password"
+                id="loginPassword"
+                placeholder="••••••••"
+                required
+                autocomplete="current-password"
+              >
+              <button type="button" class="password-toggle" id="passwordToggle" aria-label="הצג סיסמה">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-login">
+            <i class="fas fa-sign-in-alt"></i>
+            התחבר
+          </button>
+
+          <div id="loginError" class="error-message hidden"></div>
+        </form>
+
+        <!-- Security Badge -->
+        <div class="security-badge">
+          <i class="fas fa-shield-alt"></i>
+          <span>חיבור מאובטח</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -73,14 +112,16 @@
         <!-- Client Search -->
         <div class="form-group">
           <label for="clientSearch">לקוח *</label>
-          <input
-            type="text"
-            id="clientSearch"
-            placeholder="חפש לקוח לפי שם או מספר תיק..."
-            required
-            autocomplete="off"
-          >
-          <div id="clientResults" class="results-dropdown"></div>
+          <div style="position: relative;">
+            <input
+              type="text"
+              id="clientSearch"
+              placeholder="חפש לקוח לפי שם או מספר תיק..."
+              required
+              autocomplete="off"
+            >
+            <div id="clientResults" class="results-dropdown"></div>
+          </div>
           <input type="hidden" id="selectedClientId">
           <input type="hidden" id="selectedClientName">
         </div>
@@ -88,9 +129,11 @@
         <!-- Service Selector (shown if client has multiple services) -->
         <div id="serviceSelectorGroup" class="form-group hidden">
           <label for="serviceSelector">שירות/חבילה *</label>
-          <select id="serviceSelector" required>
-            <option value="">בחר שירות...</option>
-          </select>
+          <div style="position: relative;">
+            <select id="serviceSelector" required>
+              <option value="">בחר שירות...</option>
+            </select>
+          </div>
           <input type="hidden" id="selectedServiceId">
         </div>
 
@@ -117,8 +160,19 @@
 
           <div class="form-group">
             <label for="minutes">דקות *</label>
-            <div class="wheel-picker-wrapper">
-              <input type="hidden" id="minutes" required>
+            <div class="hybrid-input-wrapper">
+              <input
+                type="number"
+                id="minutes"
+                class="hybrid-input"
+                placeholder="הקלד מספר דקות..."
+                min="1"
+                max="2000"
+                required
+              >
+              <button type="button" class="hybrid-picker-btn" id="minutesPickerBtn" title="פתח בורר">
+                <i class="fas fa-list"></i>
+              </button>
               <div class="wheel-picker" id="minutesWheelPicker">
                 <div class="wheel-picker-header">
                   <button type="button" class="wheel-picker-done" id="wheelPickerDone">סיום</button>
@@ -130,7 +184,6 @@
                   <!-- Items will be generated by JavaScript -->
                 </div>
               </div>
-              <div class="wheel-picker-display" id="minutesDisplay">בחר דקות...</div>
             </div>
           </div>
         </div>
@@ -149,44 +202,11 @@
         <!-- Date -->
         <div class="form-group">
           <label for="date">תאריך *</label>
-          <div class="wheel-picker-wrapper">
-            <input type="hidden" id="date" required>
-            <div class="wheel-picker multi-wheel-picker" id="dateWheelPicker">
-              <div class="wheel-picker-header">
-                <button type="button" class="wheel-picker-done" id="dateWheelPickerDone">סיום</button>
-              </div>
-              <div class="multi-wheel-container">
-                <!-- Day Wheel -->
-                <div class="wheel-column">
-                  <div class="wheel-picker-overlay-top"></div>
-                  <div class="wheel-picker-overlay-bottom"></div>
-                  <div class="wheel-picker-highlight"></div>
-                  <div class="wheel-picker-scroll" id="dayWheelScroll">
-                    <!-- Items will be generated by JavaScript -->
-                  </div>
-                </div>
-                <!-- Month Wheel -->
-                <div class="wheel-column">
-                  <div class="wheel-picker-overlay-top"></div>
-                  <div class="wheel-picker-overlay-bottom"></div>
-                  <div class="wheel-picker-highlight"></div>
-                  <div class="wheel-picker-scroll" id="monthWheelScroll">
-                    <!-- Items will be generated by JavaScript -->
-                  </div>
-                </div>
-                <!-- Year Wheel -->
-                <div class="wheel-column">
-                  <div class="wheel-picker-overlay-top"></div>
-                  <div class="wheel-picker-overlay-bottom"></div>
-                  <div class="wheel-picker-highlight"></div>
-                  <div class="wheel-picker-scroll" id="yearWheelScroll">
-                    <!-- Items will be generated by JavaScript -->
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="wheel-picker-display" id="dateDisplay">בחר תאריך...</div>
-          </div>
+          <input
+            type="date"
+            id="date"
+            required
+          >
         </div>
 
         <!-- Actions -->

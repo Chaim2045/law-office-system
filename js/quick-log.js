@@ -98,23 +98,24 @@
    */
   async function checkUserRole(user) {
     try {
-      const email = user.email.toLowerCase().trim();
+      const uid = user.uid;
 
-      // Try to get employee document
-      const employeeDoc = await db.collection('employees').doc(email).get();
+      // Query employees by authUID (matches backend pattern)
+      const snapshot = await db.collection('employees')
+        .where('authUID', '==', uid)
+        .limit(1)
+        .get();
 
-      if (!employeeDoc.exists) {
-        console.error('[Quick Log] Employee document not found');
+      if (snapshot.empty) {
+        console.error('[Quick Log] Employee not found');
         return false;
       }
 
-      const employee = employeeDoc.data();
+      const employee = snapshot.docs[0].data();
       currentUser = employee;
 
       // Check if user is manager or admin
       const isAuthorized = employee.role === 'manager' || employee.role === 'admin';
-
-      // User role checked: manager or admin required
 
       return isAuthorized;
 
@@ -161,6 +162,153 @@
   window.logout = function() {
     auth.signOut();
   };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // BIOMETRIC AUTHENTICATION
+  // ═══════════════════════════════════════════════════════════════════
+
+  const biometricBtn = document.getElementById('biometricLogin');
+  const BIOMETRIC_CREDENTIAL_KEY = 'quicklog_biometric_credential';
+
+  // Check if biometric is available
+  async function checkBiometricAvailability() {
+    if (!window.PublicKeyCredential) {
+      biometricBtn.style.display = 'none';
+      return false;
+    }
+
+    try {
+      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (!available) {
+        biometricBtn.style.display = 'none';
+      }
+      return available;
+    } catch (error) {
+      console.error('[Quick Log] Biometric check error:', error);
+      biometricBtn.style.display = 'none';
+      return false;
+    }
+  }
+
+  // Handle biometric login
+  biometricBtn.addEventListener('click', async () => {
+    try {
+      biometricBtn.classList.add('loading');
+      hideMessage(loginError);
+
+      // Check if we have stored credentials
+      const storedEmail = localStorage.getItem(BIOMETRIC_CREDENTIAL_KEY);
+
+      if (!storedEmail) {
+        showMessage(loginError, 'לא נמצאו פרטי כניסה שמורים. אנא התחבר בעזרת סיסמה תחילה.', 'error');
+        biometricBtn.classList.remove('loading');
+        return;
+      }
+
+      // Request biometric authentication (will trigger Face ID/Touch ID)
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: new Uint8Array(32), // In production, this should come from server
+          timeout: 60000,
+          userVerification: 'required'
+        }
+      });
+
+      if (credential) {
+        // In a real app, verify the credential with your backend
+        // For now, we'll just sign in with the stored email
+        // You would need to implement a backend endpoint that:
+        // 1. Verifies the biometric credential
+        // 2. Returns a custom token
+        // 3. Signs in with that token
+
+        showMessage(loginError, 'כניסה ביומטרית מוצלחת! מנסה להתחבר...', 'success');
+
+        // For demo purposes, show that biometric worked
+        // In production, you'd get a custom token from backend
+        setTimeout(() => {
+          showMessage(loginError, 'זיהוי ביומטרי מוצלח. אנא השלם כניסה עם סיסמה.', 'error');
+        }, 1500);
+      }
+
+    } catch (error) {
+      console.error('[Quick Log] Biometric login error:', error);
+
+      if (error.name === 'NotAllowedError') {
+        showMessage(loginError, 'הזיהוי הביומטרי נכשל או בוטל', 'error');
+      } else {
+        showMessage(loginError, 'שגיאה בכניסה ביומטרית', 'error');
+      }
+    } finally {
+      biometricBtn.classList.remove('loading');
+    }
+  });
+
+  // Store credential after successful password login
+  async function registerBiometricAfterLogin(email) {
+    const biometricAvailable = await checkBiometricAvailability();
+    if (!biometricAvailable) {
+return;
+}
+
+    try {
+      // Create credential for future biometric login
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: new Uint8Array(32),
+          rp: {
+            name: 'משרד עורכי דין - רישום מהיר',
+            id: window.location.hostname
+          },
+          user: {
+            id: new Uint8Array(16),
+            name: email,
+            displayName: email
+          },
+          pubKeyCredParams: [
+            { alg: -7, type: 'public-key' }  // ES256
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'required'
+          },
+          timeout: 60000
+        }
+      });
+
+      if (credential) {
+        // Store email for future biometric login
+        localStorage.setItem(BIOMETRIC_CREDENTIAL_KEY, email);
+        console.log('[Quick Log] Biometric credential registered');
+      }
+    } catch (error) {
+      // Silent fail - don't interrupt user flow
+      console.error('[Quick Log] Biometric registration error:', error);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PASSWORD VISIBILITY TOGGLE
+  // ═══════════════════════════════════════════════════════════════════
+
+  const passwordToggle = document.getElementById('passwordToggle');
+  const passwordInput = document.getElementById('loginPassword');
+
+  passwordToggle.addEventListener('click', () => {
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+
+    const icon = passwordToggle.querySelector('i');
+    icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+
+    passwordToggle.setAttribute('aria-label', isPassword ? 'הסתר סיסמה' : 'הצג סיסמה');
+  });
+
+  // Initialize biometric check on load
+  checkBiometricAvailability();
+
+  // ⚠️ DEV: Disable biometric demo (no backend support)
+  biometricBtn.style.display = 'none';
 
   // ═══════════════════════════════════════════════════════════════════
   // CLIENT LOADING & AUTOCOMPLETE
@@ -470,127 +618,157 @@ navigator.vibrate(10);
   }
 
   /**
-   * Initialize 3D Wheel Picker for minutes (1-2000)
+   * Initialize Hybrid Minutes Picker (Input + Wheel)
    */
   function initializeMinutesPicker() {
+    const input = document.getElementById('minutes');
+    const pickerBtn = document.getElementById('minutesPickerBtn');
+    const picker = document.getElementById('minutesWheelPicker');
+    const wheelScroll = document.getElementById('minutesWheelScroll');
+    const doneButton = document.getElementById('wheelPickerDone');
+    const backdrop = document.getElementById('wheelPickerBackdrop');
+
+    const ITEM_HEIGHT = 44;
+    const SCROLL_PADDING = 115;
+    const BUFFER_SIZE = 25;
+    const MIN_VALUE = 1;
+    const MAX_VALUE = 2000;
+
+    // Generate items
     const minutesItems = [];
-    for (let i = 1; i <= 2000; i++) {
+    for (let i = MIN_VALUE; i <= MAX_VALUE; i++) {
       minutesItems.push({ value: i, label: i.toString() });
     }
 
-    createWheelPicker({
-      inputId: 'minutes',
-      displayId: 'minutesDisplay',
-      pickerId: 'minutesWheelPicker',
-      scrollId: 'minutesWheelScroll',
-      doneButtonId: 'wheelPickerDone',
-      items: minutesItems,
-      displayFormat: (label) => `${label} דקות`,
-      useVirtualScrolling: true
-    });
-  }
+    const TOTAL_ITEMS = minutesItems.length;
+    const TOTAL_HEIGHT = TOTAL_ITEMS * ITEM_HEIGHT;
 
-  /**
-   * Initialize Multi-Wheel Date Picker (Day / Month / Year)
-   * Like iOS native date picker with 3 separate wheels
-   */
-  function initializeDatePicker() {
-    const dateInput = document.getElementById('date');
-    const dateDisplay = document.getElementById('dateDisplay');
-    const picker = document.getElementById('dateWheelPicker');
-    const doneButton = document.getElementById('dateWheelPickerDone');
-    const backdrop = document.getElementById('wheelPickerBackdrop');
+    // Create container with virtual scrolling
+    wheelScroll.innerHTML = `<div class="wheel-virtual-container" style="height: ${TOTAL_HEIGHT}px; position: relative;"></div>`;
+    const container = wheelScroll.firstElementChild;
 
-    // Hebrew month names
-    const hebrewMonths = [
-      'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
-      'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
-    ];
+    const renderedItems = new Map();
+    let lastRenderedRange = { start: -1, end: -1 };
+    let scrollTimeout = null;
 
-    // Get today's date
-    const today = new Date();
-    const currentDay = today.getDate();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-
-    // Create wheel data
-    const dayWheel = { scrollId: 'dayWheelScroll', items: [], currentValue: currentDay };
-    const monthWheel = { scrollId: 'monthWheelScroll', items: [], currentValue: currentMonth };
-    const yearWheel = { scrollId: 'yearWheelScroll', items: [], currentValue: currentYear };
-
-    // Generate days (1-31)
-    for (let i = 1; i <= 31; i++) {
-      dayWheel.items.push({ value: i, label: i.toString() });
+    // Validate input
+    function validateInput() {
+      let value = parseInt(input.value);
+      if (isNaN(value) || value < MIN_VALUE) {
+        value = MIN_VALUE;
+      } else if (value > MAX_VALUE) {
+        value = MAX_VALUE;
+      }
+      input.value = value;
+      return value;
     }
 
-    // Generate months (Hebrew names)
-    for (let i = 0; i < 12; i++) {
-      monthWheel.items.push({ value: i, label: hebrewMonths[i] });
+    // Render visible items
+    function renderVisibleItems() {
+      const scrollTop = wheelScroll.scrollTop;
+      const viewportHeight = wheelScroll.clientHeight;
+
+      const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE);
+      const endIndex = Math.min(TOTAL_ITEMS, Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + BUFFER_SIZE);
+
+      if (startIndex === lastRenderedRange.start && endIndex === lastRenderedRange.end) {
+        return;
+      }
+      lastRenderedRange = { start: startIndex, end: endIndex };
+
+      // Remove items outside range
+      renderedItems.forEach((element, index) => {
+        if (index < startIndex || index >= endIndex) {
+          element.remove();
+          renderedItems.delete(index);
+        }
+      });
+
+      // Add items in range
+      for (let i = startIndex; i < endIndex; i++) {
+        if (!renderedItems.has(i)) {
+          const itemData = minutesItems[i];
+          const item = document.createElement('div');
+          item.className = 'wheel-picker-item';
+          item.dataset.value = itemData.value;
+          item.dataset.index = i;
+          item.textContent = itemData.label;
+          item.style.position = 'absolute';
+          item.style.top = `${i * ITEM_HEIGHT}px`;
+          item.style.left = '0';
+          item.style.right = '0';
+          item.style.width = '100%';
+          item.style.height = `${ITEM_HEIGHT}px`;
+          item.style.display = 'flex';
+          item.style.alignItems = 'center';
+          item.style.justifyContent = 'center';
+          item.style.fontSize = '1.125rem';
+          item.style.fontWeight = '500';
+          item.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+          item.style.transformStyle = 'preserve-3d';
+          item.style.transformOrigin = 'center center';
+          item.style.willChange = 'transform, opacity';
+          item.style.userSelect = 'none';
+          item.style.cursor = 'pointer';
+          item.style.textAlign = 'center';
+
+          item.addEventListener('click', () => {
+            input.value = itemData.value;
+            if (navigator.vibrate) {
+navigator.vibrate(10);
+}
+            setTimeout(closePicker, 200);
+          });
+
+          container.appendChild(item);
+          renderedItems.set(i, item);
+        }
+      }
+
+      updateWheelEffect();
     }
 
-    // Generate years (current year - 2 to current year + 5)
-    for (let i = currentYear - 2; i <= currentYear + 5; i++) {
-      yearWheel.items.push({ value: i, label: i.toString() });
-    }
+    // Update 3D effect
+    function updateWheelEffect() {
+      const scrollTop = wheelScroll.scrollTop;
+      const viewportHeight = wheelScroll.clientHeight;
+      const containerMiddle = scrollTop + (viewportHeight / 2) - SCROLL_PADDING;
 
-    // 3D effect update function for multi-wheel
-    function updateWheelEffect(scrollContainer) {
-      const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
-      const scrollTop = scrollContainer.scrollTop;
-      const containerHeight = scrollContainer.clientHeight;
-      const ITEM_HEIGHT = 48;
-      const SCROLL_PADDING = 140; // Same as CSS padding
-      const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
-
-      items.forEach((item, index) => {
+      renderedItems.forEach((item, index) => {
         const itemTop = index * ITEM_HEIGHT;
         const itemCenter = itemTop + (ITEM_HEIGHT / 2);
         const distanceFromCenter = itemCenter - containerMiddle;
         const absDistance = Math.abs(distanceFromCenter);
 
-        // Calculate 3D rotation
         const rotationAngle = (distanceFromCenter / ITEM_HEIGHT) * 15;
         const clampedRotation = Math.max(-45, Math.min(45, rotationAngle));
 
         let opacity, fontSize, fontWeight, color;
 
-        if (absDistance < 24) {
-          // At center
+        if (absDistance < 22) {
           opacity = 1;
           fontSize = '1.75rem';
           fontWeight = '700';
           color = '#1a365d';
-          item.classList.remove('far', 'near-center');
-          item.classList.add('at-center');
-        } else if (absDistance < 48) {
-          // Near center
-          const ratio = absDistance / 48;
+        } else if (absDistance < 44) {
+          const ratio = absDistance / 44;
           opacity = 1 - (ratio * 0.35);
           fontSize = `${1.75 - (ratio * 0.5)}rem`;
           fontWeight = '600';
           color = '#4b5563';
-          item.classList.remove('far', 'at-center');
-          item.classList.add('near-center');
-        } else if (absDistance < 96) {
-          // Moderately far
-          const ratio = (absDistance - 48) / 48;
+        } else if (absDistance < 88) {
+          const ratio = (absDistance - 44) / 44;
           opacity = 0.65 - (ratio * 0.25);
           fontSize = `${1.25 - (ratio * 0.15)}rem`;
           fontWeight = '500';
           color = '#6b7280';
-          item.classList.remove('at-center', 'near-center');
-          item.classList.add('far');
         } else {
-          // Very far
           opacity = 0.15;
           fontSize = '1rem';
           fontWeight = '500';
           color = '#d1d5db';
-          item.classList.remove('at-center', 'near-center');
-          item.classList.add('far');
         }
 
-        // Apply styles directly (override CSS classes)
         item.style.opacity = opacity;
         item.style.fontSize = fontSize;
         item.style.fontWeight = fontWeight;
@@ -599,209 +777,113 @@ navigator.vibrate(10);
       });
     }
 
-    // Initialize all three wheels
-    const wheels = [dayWheel, monthWheel, yearWheel];
+    // Snap to nearest
+    function snapToNearest() {
+      const scrollTop = wheelScroll.scrollTop;
+      const viewportHeight = wheelScroll.clientHeight;
+      const containerMiddle = scrollTop + (viewportHeight / 2) - SCROLL_PADDING;
 
-    wheels.forEach(wheel => {
-      const scrollContainer = document.getElementById(wheel.scrollId);
+      let closestItem = null;
+      let minDistance = Infinity;
 
-      // Render items
-      wheel.items.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'wheel-picker-item';
-        div.textContent = item.label;
-        div.dataset.value = item.value;
-        scrollContainer.appendChild(div);
-      });
+      renderedItems.forEach((_element, index) => {
+        const itemTop = index * ITEM_HEIGHT;
+        const itemCenter = itemTop + (ITEM_HEIGHT / 2);
+        const distance = Math.abs(itemCenter - containerMiddle);
 
-      // Update current value on scroll
-      const updateValue = () => {
-        const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
-        const scrollTop = scrollContainer.scrollTop;
-        const itemHeight = 48;
-        const containerHeight = scrollContainer.clientHeight;
-        const SCROLL_PADDING = 140;
-        const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
-        const centerIndex = Math.round(containerMiddle / itemHeight);
-        const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
-
-        wheel.currentValue = wheel.items[clampedIndex].value;
-        updateWheelEffect(scrollContainer);
-      };
-
-      // Haptic feedback tracking
-      let lastVibrationIndex = -1;
-
-      // Scroll event
-      let scrollTimeout;
-      scrollContainer.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        updateWheelEffect(scrollContainer);
-
-        // Haptic feedback on item change
-        const items = Array.from(scrollContainer.querySelectorAll('.wheel-picker-item'));
-        const scrollTop = scrollContainer.scrollTop;
-        const containerHeight = scrollContainer.clientHeight;
-        const SCROLL_PADDING = 140;
-        const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
-        const centerIndex = Math.round(containerMiddle / 48);
-        const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
-
-        if (clampedIndex !== lastVibrationIndex && navigator.vibrate) {
-          navigator.vibrate(5); // Very light haptic feedback
-          lastVibrationIndex = clampedIndex;
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestItem = { index, value: minutesItems[index].value };
         }
-
-        scrollTimeout = setTimeout(() => {
-          const itemHeight = 48;
-          const scrollTop = scrollContainer.scrollTop;
-          const containerHeight = scrollContainer.clientHeight;
-          const SCROLL_PADDING = 140;
-          const containerMiddle = scrollTop + (containerHeight / 2) - SCROLL_PADDING;
-          const centerIndex = Math.round(containerMiddle / itemHeight);
-          const clampedIndex = Math.max(0, Math.min(centerIndex, items.length - 1));
-
-          scrollContainer.scrollTo({
-            top: clampedIndex * itemHeight,
-            behavior: 'smooth'
-          });
-          updateValue();
-        }, 150); // Increased from 100 to 150 for smoother snapping
       });
 
-      // Touch gesture support for better mobile experience
-      let touchStartY = 0;
-      let touchStartScrollTop = 0;
-      let isTouching = false;
-      let touchVelocity = 0;
-      let lastTouchY = 0;
-      let lastTouchTime = 0;
-
-      scrollContainer.addEventListener('touchstart', (e) => {
-        isTouching = true;
-        touchStartY = e.touches[0].clientY;
-        touchStartScrollTop = scrollContainer.scrollTop;
-        lastTouchY = e.touches[0].clientY;
-        lastTouchTime = Date.now();
-        touchVelocity = 0;
-        clearTimeout(scrollTimeout);
-      }, { passive: true });
-
-      scrollContainer.addEventListener('touchmove', (e) => {
-        if (!isTouching) {
+      if (!closestItem) {
 return;
 }
 
-        const currentY = e.touches[0].clientY;
-        const currentTime = Date.now();
-        const deltaY = currentY - lastTouchY;
-        const deltaTime = currentTime - lastTouchTime;
+      const targetScroll = closestItem.index * ITEM_HEIGHT - (viewportHeight / 2) + (ITEM_HEIGHT / 2) + SCROLL_PADDING;
+      wheelScroll.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
 
-        if (deltaTime > 0) {
-          touchVelocity = deltaY / deltaTime;
-        }
+      input.value = closestItem.value;
+      if (navigator.vibrate) {
+navigator.vibrate(10);
+}
 
-        lastTouchY = currentY;
-        lastTouchTime = currentTime;
-      }, { passive: true });
-
-      scrollContainer.addEventListener('touchend', () => {
-        isTouching = false;
-
-        // Apply momentum based on velocity
-        if (Math.abs(touchVelocity) > 0.5) {
-          const momentum = touchVelocity * 50; // Adjust momentum factor
-          scrollContainer.scrollBy({
-            top: -momentum,
-            behavior: 'smooth'
-          });
-        }
-      }, { passive: true });
-
-      // Center on current value initially
-      const initialIndex = wheel.items.findIndex(item => item.value === wheel.currentValue);
-      if (initialIndex !== -1) {
-        scrollContainer.scrollTop = initialIndex * 48;
-        setTimeout(() => updateWheelEffect(scrollContainer), 50);
-      }
-    });
+      setTimeout(() => {
+        renderVisibleItems();
+        updateWheelEffect();
+      }, 100);
+    }
 
     // Open picker
-    dateDisplay.addEventListener('click', () => {
+    function openPicker() {
       picker.classList.add('active');
       backdrop.classList.add('active');
       document.body.style.overflow = 'hidden';
 
-      // Always reset to today's date when opening picker
-      const today = new Date();
-      const todayDay = today.getDate();
-      const todayMonth = today.getMonth();
-      const todayYear = today.getFullYear();
+      // Validate and scroll to current value
+      const currentValue = validateInput();
+      const index = currentValue - 1; // 0-indexed
 
-      // Update wheel values to today
-      dayWheel.currentValue = todayDay;
-      monthWheel.currentValue = todayMonth;
-      yearWheel.currentValue = todayYear;
+      renderVisibleItems();
 
-      // Scroll each wheel to today's date
-      wheels.forEach(wheel => {
-        const scrollContainer = document.getElementById(wheel.scrollId);
-        const itemHeight = 48;
+      const viewportHeight = wheelScroll.clientHeight;
+      const targetScroll = index * ITEM_HEIGHT - (viewportHeight / 2) + (ITEM_HEIGHT / 2) + SCROLL_PADDING;
+      wheelScroll.scrollTop = Math.max(0, targetScroll);
 
-        // Find index of current value (today's date)
-        const currentIndex = wheel.items.findIndex(item => item.value === wheel.currentValue);
-        if (currentIndex !== -1) {
-          // Scroll to center that item instantly (no animation)
-          scrollContainer.scrollTop = currentIndex * itemHeight;
-        }
-
-        // Update visual effects after scroll
-        setTimeout(() => updateWheelEffect(scrollContainer), 100);
-      });
-    });
+      renderVisibleItems();
+      setTimeout(updateWheelEffect, 50);
+    }
 
     // Close picker
-    const closeWheel = () => {
+    function closePicker() {
       picker.classList.remove('active');
       const openPickers = document.querySelectorAll('.wheel-picker.active');
       if (openPickers.length === 0) {
         backdrop.classList.remove('active');
         document.body.style.overflow = '';
       }
-    };
+    }
 
-    doneButton.addEventListener('click', () => {
-      // Get selected values
-      const day = dayWheel.currentValue;
-      const month = monthWheel.currentValue;
-      const year = yearWheel.currentValue;
-
-      // Validate and adjust day for month
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const validDay = Math.min(day, daysInMonth);
-
-      // Create date and store
-      const selectedDate = new Date(year, month, validDay);
-      const isoDate = selectedDate.toISOString().split('T')[0];
-      dateInput.value = isoDate;
-
-      // Update display
-      dateDisplay.textContent = `${validDay} ${hebrewMonths[month]} ${year}`;
-      dateDisplay.style.color = 'var(--gray-900)';
-
-      closeWheel();
-    });
+    // Event listeners
+    pickerBtn.addEventListener('click', openPicker);
+    doneButton.addEventListener('click', closePicker);
 
     backdrop.addEventListener('click', (e) => {
       if (e.target === backdrop && picker.classList.contains('active')) {
-        closeWheel();
+        closePicker();
       }
     });
 
-    // Set initial display
+    wheelScroll.addEventListener('scroll', () => {
+      clearTimeout(scrollTimeout);
+      renderVisibleItems();
+      scrollTimeout = setTimeout(() => {
+        snapToNearest();
+      }, 150);
+    });
+
+    // Input validation on blur
+    input.addEventListener('blur', validateInput);
+
+    // Prevent invalid characters
+    input.addEventListener('keypress', (e) => {
+      if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+        e.preventDefault();
+      }
+    });
+  }
+
+  /**
+   * Initialize date input with today's date
+   */
+  function initializeDatePicker() {
+    const dateInput = document.getElementById('date');
+    const today = new Date();
     dateInput.value = today.toISOString().split('T')[0];
-    dateDisplay.textContent = `${currentDay} ${hebrewMonths[currentMonth]} ${currentYear}`;
-    dateDisplay.style.color = 'var(--gray-900)';
   }
 
   /**
@@ -1111,27 +1193,11 @@ return;
     document.getElementById('date').value = new Date().toISOString().split('T')[0];
     hideServiceSelector();
 
-    // Reset wheel picker displays
-    const minutesDisplay = document.getElementById('minutesDisplay');
+    // Reset branch display only (minutes is now a direct input)
     const branchDisplay = document.getElementById('branchDisplay');
-    const dateDisplay = document.getElementById('dateDisplay');
-
-    if (minutesDisplay) {
-      minutesDisplay.textContent = 'בחר דקות...';
-      minutesDisplay.style.color = '';
-    }
     if (branchDisplay) {
       branchDisplay.textContent = 'בחר סניף...';
       branchDisplay.style.color = '';
-    }
-    if (dateDisplay) {
-      const today = new Date();
-      const hebrewMonths = [
-        'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
-        'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
-      ];
-      dateDisplay.textContent = `${today.getDate()} ${hebrewMonths[today.getMonth()]} ${today.getFullYear()}`;
-      dateDisplay.style.color = 'var(--gray-900)';
     }
   }
 
