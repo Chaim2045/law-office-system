@@ -730,6 +730,7 @@ return;
     dateDisplay.addEventListener('click', () => {
       picker.classList.add('active');
       backdrop.classList.add('active');
+      document.body.style.overflow = 'hidden';
 
       // Always reset to today's date when opening picker
       const today = new Date();
@@ -750,12 +751,12 @@ return;
         // Find index of current value (today's date)
         const currentIndex = wheel.items.findIndex(item => item.value === wheel.currentValue);
         if (currentIndex !== -1) {
-          // Scroll to center that item
+          // Scroll to center that item instantly (no animation)
           scrollContainer.scrollTop = currentIndex * itemHeight;
         }
 
-        // Update visual effects
-        setTimeout(() => updateWheelEffect(scrollContainer), 50);
+        // Update visual effects after scroll
+        setTimeout(() => updateWheelEffect(scrollContainer), 100);
       });
     });
 
@@ -765,6 +766,7 @@ return;
       const openPickers = document.querySelectorAll('.wheel-picker.active');
       if (openPickers.length === 0) {
         backdrop.classList.remove('active');
+        document.body.style.overflow = '';
       }
     };
 
