@@ -3296,6 +3296,384 @@ exports.createTimesheetEntry = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * ════════════════════════════════════════════════════════════════════════════
+ * 🎯 Quick Log Entry - Manager/Admin Only
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * Simplified timesheet entry for managers without task requirement
+ *
+ * @function createQuickLogEntry
+ * @param {Object} data
+ * @param {string} data.clientId - Client document ID (required)
+ * @param {string} data.clientName - Client display name (required)
+ * @param {Timestamp} data.date - Entry date (required)
+ * @param {number} data.minutes - Duration in minutes (required, > 0)
+ * @param {string} data.description - Work description (required)
+ * @param {Object} context - Firebase auth context
+ * @returns {Object} { success: boolean, entryId: string, message: string }
+ *
+ * @created 2026-01-30
+ * @version 1.0.0
+ *
+ * Key Differences from createTimesheetEntry:
+ * - ✅ Manager/Admin only (enforced at server)
+ * - ❌ No taskId requirement
+ * - ✅ Sets isQuickLog: true flag
+ * - ✅ Reuses same schema and deduction logic
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
+  try {
+    // ═══════════════════════════════════════════════════════════════════
+    // 1️⃣ AUTHENTICATION & AUTHORIZATION
+    // ═══════════════════════════════════════════════════════════════════
+
+    const user = await checkUserPermissions(context);
+
+    // 🔒 CRITICAL: Enforce manager/admin only
+    if (user.role !== 'manager' && user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהלים יכולים להשתמש ברישום מהיר'
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 2️⃣ VALIDATION
+    // ═══════════════════════════════════════════════════════════════════
+
+    if (!data.clientId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר מזהה לקוח'
+      );
+    }
+
+    if (!data.date) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר תאריך'
+      );
+    }
+
+    if (typeof data.minutes !== 'number' || data.minutes <= 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'דקות חייבות להיות מספר חיובי'
+      );
+    }
+
+    if (!data.description || typeof data.description !== 'string' || data.description.trim() === '') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסר תיאור פעולה'
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 3️⃣ CLIENT VERIFICATION
+    // ═══════════════════════════════════════════════════════════════════
+
+    const clientDoc = await db.collection('clients').doc(data.clientId).get();
+
+    if (!clientDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'לקוח לא נמצא במערכת'
+      );
+    }
+
+    const clientData = clientDoc.data();
+    const finalClientName = data.clientName || clientData.clientName || clientData.fullName;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 4️⃣ CREATE ENTRY DATA (Schema aligned with createTimesheetEntry)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Parse date - supports multiple formats for backward compatibility
+    let dateTimestamp;
+    const dateType = typeof data.date;
+
+    if (dateType === 'string') {
+      // ISO string format (current format from frontend)
+      const d = new Date(data.date);
+      if (isNaN(d.getTime())) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'Invalid date string format'
+        );
+      }
+      dateTimestamp = admin.firestore.Timestamp.fromDate(d);
+      console.log('[Quick Log] Date parsed from ISO string:', data.date);
+
+    } else if (data.date && dateType === 'object' && typeof data.date.seconds === 'number') {
+      // Firestore Timestamp-like map: {seconds, nanoseconds}
+      // (legacy format from Callable Function serialization)
+      dateTimestamp = new admin.firestore.Timestamp(
+        data.date.seconds,
+        data.date.nanoseconds || 0
+      );
+      console.log('[Quick Log] Date parsed from {seconds, nanoseconds} map');
+
+    } else if (data.date && typeof data.date.toDate === 'function') {
+      // Real Firestore Timestamp object (unlikely but supported)
+      dateTimestamp = admin.firestore.Timestamp.fromDate(data.date.toDate());
+      console.log('[Quick Log] Date parsed from Timestamp object');
+
+    } else {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid date format. Expected ISO string, {seconds, nanoseconds}, or Timestamp object'
+      );
+    }
+
+    const entryData = {
+      // Client/Case identifiers
+      clientId: data.clientId,
+      clientName: finalClientName,
+      caseNumber: data.clientId,  // Use clientId as caseNumber (same as createTimesheetEntry line 2959)
+
+      // Service/Stage tracking (null for Quick Log)
+      serviceId: null,
+      serviceName: null,
+      serviceType: null,
+      parentServiceId: null,
+      stageId: null,  // Will be updated by deduction logic if applicable
+      packageId: null,  // Will be updated by deduction logic if applicable
+
+      // Time tracking
+      date: dateTimestamp,  // ✅ FIXED: Use proper Firestore Timestamp
+      minutes: data.minutes,
+      hours: data.minutes / 60,
+
+      // Work description
+      action: sanitizeString(data.description.trim()),
+
+      // User tracking
+      employee: user.email,  // EMAIL for security rules and queries
+      lawyer: user.username,  // Username for display
+      createdBy: user.username,
+      lastModifiedBy: user.username,
+
+      // Branch tracking
+      branch: data.branch || null,
+
+      // Timestamps
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+      // Flags
+      isInternal: false,  // Quick Log is always for clients (not internal)
+      isQuickLog: true  // 🆕 NEW FLAG: Mark as Quick Log entry
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 5️⃣ HOURS DEDUCTION (Reuse logic from createTimesheetEntry)
+    // ═══════════════════════════════════════════════════════════════════
+
+    try {
+      const hoursWorked = data.minutes / 60;
+      let updatedStageId = null;
+      let updatedPackageId = null;
+
+      // ✅ Client hours-based - find active package
+      if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+        // 🔍 Find service by serviceId if provided, otherwise use first service
+        let service = null;
+        if (data.serviceId) {
+          service = clientData.services.find(s => s.id === data.serviceId);
+          if (!service) {
+            console.warn(`⚠️ [Quick Log] Service ${data.serviceId} not found for client ${data.clientId}, using first service`);
+            service = clientData.services[0];
+          }
+        } else {
+          service = clientData.services[0];
+          console.warn(`⚠️ [Quick Log] No serviceId provided, using first service`);
+        }
+        const activePackage = DeductionSystem.getActivePackage(service);
+
+        if (activePackage) {
+          // Check overdraft limit
+          const currentRemaining = activePackage.hoursRemaining || 0;
+          const afterDeduction = currentRemaining - hoursWorked;
+
+          if (afterDeduction < -10) {
+            throw new functions.https.HttpsError(
+              'resource-exhausted',
+              'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+              {
+                clientId: clientData.caseNumber,
+                currentRemaining,
+                requestedHours: hoursWorked,
+                wouldBe: afterDeduction
+              }
+            );
+          }
+
+          // Deduct hours from active package
+          DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
+          updatedPackageId = activePackage.id;
+
+          // Update package status to overdraft if negative
+          if (afterDeduction < 0 && afterDeduction >= -10) {
+            activePackage.status = 'overdraft';
+          }
+
+          // Update client document
+          await clientDoc.ref.update({
+            services: clientData.services,
+            minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+            hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+          console.log(`✅ [Quick Log] קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id}`);
+        } else {
+          console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
+        }
+      }
+      // ✅ Legal procedure - hourly pricing
+      else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
+        const targetStageId = clientData.currentStage || 'stage_a';
+        const stages = clientData.stages || [];
+        const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
+
+        if (currentStageIndex !== -1) {
+          const currentStage = stages[currentStageIndex];
+          updatedStageId = currentStage.id;
+
+          const activePackage = DeductionSystem.getActivePackage(currentStage);
+
+          if (activePackage) {
+            const currentRemaining = activePackage.hoursRemaining || 0;
+            const afterDeduction = currentRemaining - hoursWorked;
+
+            if (afterDeduction < -10) {
+              throw new functions.https.HttpsError(
+                'resource-exhausted',
+                'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                {
+                  clientId: clientData.caseNumber,
+                  currentRemaining,
+                  requestedHours: hoursWorked,
+                  wouldBe: afterDeduction
+                }
+              );
+            }
+
+            DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
+            updatedPackageId = activePackage.id;
+
+            if (afterDeduction < 0 && afterDeduction >= -10) {
+              activePackage.status = 'overdraft';
+            }
+
+            await clientDoc.ref.update({
+              stages: stages,
+              hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+              lastActivity: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            console.log(`✅ [Quick Log] קוזזו ${hoursWorked.toFixed(2)} שעות משלב ${currentStage.name}`);
+          }
+        }
+      }
+      // ✅ Legal procedure - fixed price (track hours only)
+      else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
+        const targetStageId = clientData.currentStage || 'stage_a';
+        const stages = clientData.stages || [];
+        const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
+
+        if (currentStageIndex !== -1) {
+          const currentStage = stages[currentStageIndex];
+          updatedStageId = currentStage.id;
+
+          // Track hours only (no deduction - fixed price)
+          stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
+          stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
+
+          await clientDoc.ref.update({
+            stages: stages,
+            totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+          console.log(`✅ [Quick Log] נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
+        }
+      } else {
+        console.log(`ℹ️ [Quick Log] לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
+      }
+
+      // Update entry with stage/package/service IDs
+      entryData.stageId = updatedStageId;
+      entryData.packageId = updatedPackageId;
+
+      // Update service information if serviceId was provided
+      if (data.serviceId && clientData.services) {
+        const selectedService = clientData.services.find(s => s.id === data.serviceId);
+        if (selectedService) {
+          entryData.serviceId = selectedService.id;
+          entryData.serviceName = selectedService.name || null;
+          entryData.serviceType = selectedService.type || null;
+          entryData.parentServiceId = selectedService.parentId || null;
+        }
+      }
+
+    } catch (error) {
+      console.error(`⚠️ [Quick Log] שגיאה בקיזוז שעות מלקוח ${data.clientId}:`, error);
+
+      // If it's an HttpsError (like resource-exhausted), re-throw it
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      // Otherwise, log but don't fail the entire operation
+      console.warn(`⚠️ [Quick Log] ממשיך בכל זאת עם יצירת הרישום`);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 6️⃣ SAVE ENTRY TO FIRESTORE
+    // ═══════════════════════════════════════════════════════════════════
+
+    const docRef = await db.collection('timesheet_entries').add(entryData);
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 7️⃣ AUDIT LOG
+    // ═══════════════════════════════════════════════════════════════════
+
+    await logAction('CREATE_QUICK_LOG_ENTRY', user.uid, user.username, {
+      entryId: docRef.id,
+      clientId: data.clientId,
+      clientName: finalClientName,
+      minutes: data.minutes,
+      date: data.date
+    });
+
+    console.log(`✅ [Quick Log] רישום נוצר בהצלחה: ${docRef.id} עבור ${finalClientName} (${data.minutes} דקות)`);
+
+    return {
+      success: true,
+      entryId: docRef.id,
+      message: 'רישום נוצר בהצלחה'
+    };
+
+  } catch (error) {
+    console.error('[Quick Log] Error in createQuickLogEntry:', error);
+
+    // Re-throw HttpsError as-is
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    // Wrap other errors
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה ביצירת רישום מהיר: ${error.message}`
+    );
+  }
+});
+
+/**
  * ✅ ENTERPRISE v2.0: יצירת רישום שעות עם דיוק מוחלט
  *
  * שיפורים לעומת createTimesheetEntry:

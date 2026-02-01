@@ -1,0 +1,1739 @@
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ * ⏱ Quick Log - Professional Mobile App UI
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * @version 4.0.0
+ * @updated 2026-01-30
+ * @description Premium mobile app design - Banking/WhatsApp level quality
+ *
+ * Design Inspiration: Revolut, N26, WhatsApp, Telegram
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET & VARIABLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  /* Brand colors */
+  --primary: #667eea;
+  --primary-dark: #5568d3;
+  --primary-darker: #4c5fc7;
+  --primary-light: #e0e7ff;
+  --primary-bg: #eef2ff;
+
+  /* Status colors */
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --error: #ef4444;
+  --error-light: #fee2e2;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+
+  /* Neutral palette */
+  --white: #fff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Shadows - iOS inspired */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 5%);
+  --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 6%);
+  --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 10%);
+  --shadow-lg: 0 8px 16px -4px rgb(0 0 0 / 12%);
+  --shadow-xl: 0 12px 24px -8px rgb(0 0 0 / 15%);
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Border radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, Alef, sans-serif;
+  background: var(--gray-50);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  direction: rtl;
+  color: var(--gray-900);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.screen {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  background: var(--gray-50);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGIN SCREEN - Premium & Minimal
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#loginScreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0;
+  background: var(--white);
+  animation: fadeIn 0.6s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.login-container {
+  width: 100%;
+  max-width: 100%;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+.login-card {
+  background: var(--white);
+  border-radius: 0;
+  padding: 2rem 1.5rem;
+  box-shadow: none;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Center vertically */
+  align-items: stretch; /* Stretch items horizontally */
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo & Header */
+.login-header {
+  text-align: center;
+  margin-top: -3rem; /* Pull logo up */
+  margin-bottom: -1rem; /* Negative margin - buttons overlap into logo space */
+  animation: fadeInDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.login-logo {
+  width: 100%;
+  max-width: 580px; /* Increased from 500px */
+  max-height: 35vh; /* Increased from 30vh to 35vh */
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-logo img {
+  width: 100%;
+  height: auto;
+  max-height: 35vh; /* Increased from 30vh to 35vh */
+  object-fit: contain;
+
+  /* Removed animation: logoFloat 3s ease-in-out infinite; */
+}
+
+/* Logo animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.firm-name {
+  font-size: 0.875rem;
+  color: var(--gray-500);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin: 0;
+  margin-top: -3.5rem;
+}
+
+/* Google Login Button */
+.btn-google-login {
+  width: 100%;
+  min-height: 56px; /* Increased from 52px to 56px for better touch */
+  padding: 0.875rem 1.25rem;
+  background: var(--white);
+  color: var(--gray-700);
+  border: 2px solid var(--gray-200);
+  border-radius: 14px;
+  font-size: 1rem; /* 16px - prevents iOS zoom */
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn-google-login:hover:not(:disabled) {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+}
+
+.btn-google-login:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 8%);
+}
+
+.btn-google-login:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-google-login i {
+  font-size: 1.375rem;
+  color: #4285f4;
+}
+
+.btn-google-login.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.btn-google-login.loading i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+
+  to { transform: rotate(360deg); }
+}
+
+/* Biometric Button */
+.btn-biometric {
+  width: 100%;
+  padding: 1.125rem;
+  background: linear-gradient(135deg, #1a365d 0%, #2d5a8c 100%);
+  color: var(--white);
+  border: none;
+  border-radius: 16px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgb(26 54 93 / 30%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn-biometric:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgb(26 54 93 / 40%);
+}
+
+.btn-biometric:active {
+  transform: scale(0.98);
+}
+
+.btn-biometric i {
+  font-size: 1.5rem;
+}
+
+.btn-biometric.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.btn-biometric.loading i {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  margin: 2rem 0 1.75rem;
+  color: var(--gray-400);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--gray-200);
+}
+
+.login-divider span {
+  padding: 0 1rem;
+}
+
+/* Form Groups */
+#loginForm .form-group {
+  margin-bottom: 1.25rem;
+}
+
+#loginForm label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+  color: var(--gray-700);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+#loginForm label i {
+  font-size: 0.875rem;
+  color: var(--gray-400);
+}
+
+#loginForm input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: var(--white);
+  color: var(--gray-900);
+}
+
+#loginForm input:focus {
+  outline: none;
+  border-color: #1a365d;
+  box-shadow: 0 0 0 4px rgb(26 54 93 / 8%);
+}
+
+#loginForm input::placeholder {
+  color: var(--gray-400);
+}
+
+/* Password Input with Toggle */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-left: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle:hover {
+  color: var(--gray-600);
+}
+
+.password-toggle i {
+  font-size: 1.125rem;
+}
+
+/* Login Button */
+.btn-login {
+  width: 100%;
+  padding: 1rem;
+  background: var(--gray-900);
+  color: var(--white);
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+
+.btn-login:hover {
+  background: var(--gray-800);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 16%);
+}
+
+.btn-login:active {
+  transform: scale(0.98);
+}
+
+.btn-login i {
+  font-size: 1rem;
+}
+
+/* Error Message */
+.error-message {
+  margin-top: 1rem;
+  padding: 0.875rem 1rem;
+  background: rgb(239 68 68 / 10%);
+  border: 1.5px solid rgb(239 68 68 / 30%);
+  border-radius: 12px;
+  color: rgb(185 28 28);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.error-message.hidden {
+  display: none;
+}
+
+/* Security Badge */
+.security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--gray-100);
+  color: var(--gray-500);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.security-badge i {
+  font-size: 0.875rem;
+  color: #10b981;
+}
+
+/* Mobile Responsive */
+@media (width <= 768px) {
+  #loginScreen {
+    padding: 0 !important;
+    background: var(--white) !important;
+    min-height: 100vh !important;
+  }
+
+  .floating-elements,
+  #loginScreen::before,
+  #loginScreen::after {
+    display: none !important;
+  }
+
+  .login-container {
+    max-width: 100% !important;
+    height: 100vh !important;
+  }
+
+  .login-card {
+    border-radius: 0 !important;
+    padding: 2rem 1.5rem;
+    box-shadow: none !important;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+@media (width >= 769px) {
+  .login-container {
+    max-width: 100%;
+  }
+
+  .login-card {
+    border-radius: 0;
+    padding: 3rem 2.5rem;
+    min-height: 100vh;
+    box-shadow: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUICK LOG SCREEN - Premium App Design
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#quickLogScreen {
+  background: var(--gray-50);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header - Gradient with depth (Responsive Flexbox) */
+.header {
+  background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
+  padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 4vw, 1.25rem);
+  padding-top: max(clamp(0.5rem, 1.5vw, 0.75rem), env(safe-area-inset-top)); /* Safe area for notch */
+  position: relative;
+  box-shadow: 0 4px 12px rgb(26 54 93 / 25%);
+  overflow: visible;
+  min-height: auto; /* Remove excess height */
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 30%), transparent);
+}
+
+/* Header Top - Relative positioning for absolute logout button */
+.header-top {
+  position: relative;
+  display: flex;
+  justify-content: center; /* Center the content */
+  align-items: center;
+  width: 100%;
+}
+
+/* Header Content - Center text container */
+.header-content {
+  flex: 1;
+  text-align: center;
+  min-width: 0; /* Allow text truncation if needed */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Header Title - Clean & Minimal */
+.header-title {
+  font-size: clamp(1.125rem, 4vw, 1.375rem);
+  font-weight: var(--font-bold);
+  color: var(--white);
+  letter-spacing: -0.01em;
+  margin: 0;
+  margin-bottom: clamp(0.25rem, 0.8vw, 0.375rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.user-welcome {
+  font-size: clamp(0.875rem, 2.5vw, 1rem); /* Min 14px → 16px to prevent iOS zoom */
+  color: rgb(255 255 255 / 85%);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-logout {
+  position: absolute;
+  left: clamp(0.5rem, 2vw, 1rem); /* Position on the left side */
+  top: 50%;
+  transform: translateY(-50%); /* Vertically center */
+  padding: 0;
+  width: 44px; /* Square touch target */
+  height: 44px; /* Square touch target */
+  background: rgb(255 255 255 / 15%);
+  color: var(--white);
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: var(--radius-full);
+  font-size: 1.125rem; /* Icon size */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-logout:hover {
+  background: rgb(255 255 255 / 25%);
+  transform: translateY(-50%) scale(1.05); /* Maintain vertical centering */
+}
+
+.btn-logout:active {
+  transform: translateY(-50%) scale(0.95); /* Maintain vertical centering */
+  background: rgb(255 255 255 / 35%);
+}
+
+.btn-logout i {
+  margin: 0; /* Remove any default margins */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM - Premium Card Design
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#quickLogForm {
+  flex: 1;
+  padding: clamp(1rem, 4vw, 1.25rem);
+  padding-bottom: clamp(1.5rem, 5vw, 2rem);
+}
+
+.form-group {
+  margin-bottom: clamp(1rem, 4vw, 1.5rem);
+}
+
+/* Form row - side by side fields */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(0.75rem, 3vw, 1rem);
+  margin-bottom: clamp(1rem, 4vw, 1.5rem);
+}
+
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: clamp(0.5rem, 2vw, 0.75rem);
+  color: var(--gray-700);
+  font-weight: var(--font-semibold);
+  font-size: clamp(0.8125rem, 2.5vw, 0.875rem); /* Min 13px (acceptable for labels) */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Input cards - Premium style (Responsive) */
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: clamp(0.75rem, 3vw, 1rem) clamp(0.875rem, 3.5vw, 1rem);
+  border: none;
+  border-radius: var(--radius-xl);
+  font-size: 1rem; /* CRITICAL: Fixed 16px to prevent iOS auto-zoom */
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--white);
+  color: var(--gray-900);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 2px rgb(0 0 0 / 6%);
+  min-height: 44px; /* Touch target minimum */
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgb(26 54 93 / 8%), 0 8px 16px rgb(26 54 93 / 12%);
+  transform: translateY(-2px);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--gray-400);
+  font-weight: var(--font-normal);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+}
+
+/* Select with custom arrow */
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-position: left 1rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
+  padding-left: 3rem;
+  font-weight: var(--font-semibold);
+  color: var(--gray-700);
+}
+
+.form-group select option {
+  font-weight: var(--font-medium);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HYBRID INPUT - Number Input + Wheel Picker
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hybrid-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.hybrid-input {
+  flex: 1;
+  padding: 1rem var(--space-4);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-xl);
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--white);
+  color: var(--gray-900);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 2px rgb(0 0 0 / 6%);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: var(--font-semibold);
+  text-align: right;
+}
+
+.hybrid-input:focus {
+  outline: none;
+  border-color: #1a365d;
+  box-shadow: 0 0 0 4px rgb(26 54 93 / 8%), 0 8px 16px rgb(26 54 93 / 12%);
+  transform: translateY(-2px);
+}
+
+.hybrid-input::placeholder {
+  color: var(--gray-400);
+  font-weight: var(--font-normal);
+}
+
+/* Remove number input spinners */
+.hybrid-input::-webkit-outer-spin-button,
+.hybrid-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hybrid-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.hybrid-picker-btn {
+  padding: 0 1.25rem;
+  background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-xl);
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgb(26 54 93 / 35%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.5rem;
+}
+
+.hybrid-picker-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgb(26 54 93 / 45%);
+}
+
+.hybrid-picker-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgb(26 54 93 / 25%);
+}
+
+.hybrid-picker-btn i {
+  font-size: 1.125rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3D WHEEL PICKER - iOS Style
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-picker-wrapper {
+  position: relative;
+}
+
+.wheel-picker-display {
+  width: 100%;
+  padding: 1rem var(--space-4);
+  border: none;
+  border-radius: var(--radius-xl);
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--white);
+  color: var(--gray-700);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 2px rgb(0 0 0 / 6%);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: right;
+  font-weight: var(--font-semibold);
+  user-select: none;
+}
+
+.wheel-picker-display:active {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 4px rgb(26 54 93 / 8%), 0 8px 16px rgb(26 54 93 / 12%);
+}
+
+/* Wheel picker modal (Mobile-Optimized) */
+.wheel-picker {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 330px; /* Fixed height - keyboard-safe! */
+  max-height: 80%; /* Percentage-based fallback */
+  background: var(--white);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: 0 -4px 20px rgb(0 0 0 / 15%);
+  z-index: 1000;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Dynamic viewport height support (modern browsers) */
+@supports (height: 100dvh) {
+  .wheel-picker {
+    max-height: min(330px, 40dvh); /* dvh = dynamic vh (accounts for keyboard) */
+  }
+}
+
+.wheel-picker.active {
+  transform: translateY(0);
+}
+
+/* Header with done button */
+.wheel-picker-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 var(--space-4);
+  background: linear-gradient(
+    to bottom,
+    var(--white) 0%,
+    var(--white) 80%,
+    rgb(255 255 255 / 95%) 100%
+  );
+  border-bottom: 1px solid var(--gray-200);
+  z-index: 10;
+}
+
+.wheel-picker-done {
+  background: none;
+  border: none;
+  color: #1a365d; /* Dark blue - navy */
+  font-size: 1rem;
+  font-weight: var(--font-semibold);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: var(--radius-lg);
+}
+
+.wheel-picker-done:active {
+  background: rgb(26 54 93 / 10%);
+  transform: scale(0.95);
+}
+
+/* Gradient overlays - create fade effect */
+.wheel-picker-overlay-top,
+.wheel-picker-overlay-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 100px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wheel-picker-overlay-top {
+  top: 50px; /* Below header */
+  background: linear-gradient(to bottom,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+.wheel-picker-overlay-bottom {
+  bottom: 0;
+  background: linear-gradient(to top,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+/* Selection highlight - the middle line with glow */
+.wheel-picker-highlight {
+  position: absolute;
+  top: calc(50% + 25px); /* 50% of picker height + half of header (50px/2) */
+  left: 5%;
+  right: 5%;
+  height: 44px;
+  transform: translateY(-50%);
+  background: transparent; /* Fully transparent so number is visible */
+  border-top: 2px solid rgb(26 54 93 / 30%);
+  border-bottom: 2px solid rgb(26 54 93 / 30%);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  z-index: 1; /* BELOW the scroll items so text shows through */
+  box-shadow: 0 0 25px rgb(26 54 93 / 8%);
+}
+
+/* Scrollable container - with 3D perspective */
+.wheel-picker-scroll {
+  height: calc(100% - 50px); /* Subtract header height */
+  margin-top: 50px; /* Below header */
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  padding: 115px 0; /* Center first item (140px total height / 2 - 22px half item) */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  perspective: 1000px; /* 3D perspective */
+  perspective-origin: center center;
+}
+
+.wheel-picker-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+/* Individual items */
+.wheel-picker-item {
+  height: 48px; /* Increased from 44px to 48px for better touch */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  font-size: 1.125rem;
+  font-weight: var(--font-medium);
+  color: var(--gray-300);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+  user-select: none;
+  cursor: pointer;
+  opacity: 0.4;
+  position: relative;
+  z-index: 2; /* Above highlight bar so text is visible */
+}
+
+.wheel-picker-item:active {
+  background: rgb(26 54 93 / 8%);
+}
+
+/* 3D effect - items scale and fade based on distance from center */
+.wheel-picker-item.far {
+  opacity: 0.15;
+  font-size: 0.875rem;
+  transform: scale(0.8) rotateX(25deg);
+  filter: blur(0.5px);
+}
+
+.wheel-picker-item.near-center {
+  color: var(--gray-600);
+  font-size: 1.25rem;
+  opacity: 0.65;
+  transform: scale(0.93) rotateX(8deg);
+}
+
+.wheel-picker-item.at-center {
+  color: #1a365d; /* Dark blue - navy */
+  font-size: 1.75rem;
+  font-weight: var(--font-bold);
+  opacity: 1;
+  transform: scale(1.15) rotateX(0deg);
+  text-shadow: 0 2px 6px rgb(26 54 93 / 20%);
+  letter-spacing: 0.02em;
+}
+
+/* Backdrop overlay */
+.wheel-picker-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgb(0 0 0 / 40%);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.wheel-picker-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Multi-wheel picker (for date: day/month/year) - Mobile-Optimized */
+.multi-wheel-picker {
+  height: 380px; /* Fixed height - keyboard-safe! */
+  max-height: 85%; /* Percentage-based fallback */
+}
+
+/* Dynamic viewport height support (modern browsers) */
+@supports (height: 100dvh) {
+  .multi-wheel-picker {
+    max-height: min(380px, 45dvh); /* dvh = dynamic vh (accounts for keyboard) */
+  }
+}
+
+.multi-wheel-container {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 100%;
+  padding-top: 50px; /* Header height */
+}
+
+.wheel-column {
+  flex: 1;
+  position: relative;
+  height: 100%;
+}
+
+/* Each column has its own scroll container */
+.wheel-column .wheel-picker-scroll {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: auto; /* Disable smooth for manual control */
+  padding: 140px 0; /* Center first item (280px total / 2 - 24px half item) */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  perspective: 1000px;
+  perspective-origin: center center;
+  scroll-snap-type: none; /* Disable snap to prevent jumping */
+  touch-action: pan-y; /* Allow only vertical scrolling for better touch response */
+  overscroll-behavior: contain; /* Prevent scroll chaining */
+}
+
+.wheel-column .wheel-picker-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Overlays for each column */
+.wheel-column .wheel-picker-overlay-top,
+.wheel-column .wheel-picker-overlay-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 100px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wheel-column .wheel-picker-overlay-top {
+  top: 0;
+  background: linear-gradient(to bottom,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+.wheel-column .wheel-picker-overlay-bottom {
+  bottom: 0;
+  background: linear-gradient(to top,
+    rgb(255 255 255 / 95%) 0%,
+    rgb(255 255 255 / 80%) 40%,
+    transparent 100%
+  );
+}
+
+/* Highlight bar for each column */
+.wheel-column .wheel-picker-highlight {
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  right: 5%;
+  height: 48px;
+  transform: translateY(-50%);
+  background: transparent; /* Fully transparent so number is visible */
+  border-top: 2px solid rgb(26 54 93 / 30%);
+  border-bottom: 2px solid rgb(26 54 93 / 30%);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  z-index: 1; /* BELOW the scroll items so text shows through */
+  box-shadow: 0 0 25px rgb(26 54 93 / 8%);
+}
+
+/* Items in multi-wheel picker */
+.wheel-column .wheel-picker-item {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--gray-600);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  z-index: 2; /* Above highlight bar so text is visible */
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.wheel-column .wheel-picker-item:active {
+  background: rgb(26 54 93 / 8%);
+}
+
+/* 3D effect for multi-wheel items */
+.wheel-column .wheel-picker-item.far {
+  opacity: 0.15;
+  font-size: 0.875rem;
+  transform: scale(0.8) rotateX(25deg);
+  filter: blur(0.5px);
+}
+
+.wheel-column .wheel-picker-item.near-center {
+  color: var(--gray-600);
+  font-size: 1.25rem;
+  opacity: 0.65;
+  transform: scale(0.93) rotateX(8deg);
+}
+
+.wheel-column .wheel-picker-item.at-center {
+  color: #1a365d;
+  font-size: 1.75rem;
+  font-weight: var(--font-bold);
+  opacity: 1;
+  transform: scale(1.15) rotateX(0deg);
+  text-shadow: 0 2px 6px rgb(26 54 93 / 20%);
+  letter-spacing: 0.02em;
+}
+
+.form-group input[type="number"]:focus {
+  /* Uses standard focus styles from parent */
+}
+
+/* Date input */
+.form-group input[type="date"] {
+  cursor: pointer;
+  font-weight: var(--font-semibold);
+  color: var(--gray-700);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CLIENT AUTOCOMPLETE - Modern Dropdown
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#clientSearch {
+  position: relative;
+}
+
+.results-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-height: 0;
+  overflow: hidden;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%), 0 2px 8px rgb(0 0 0 / 8%);
+  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 200;
+  margin-top: var(--space-3);
+}
+
+.results-dropdown.show {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-100);
+}
+
+/* Custom scrollbar */
+.results-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.results-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+  margin: var(--space-2) 0;
+}
+
+.results-dropdown::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
+}
+
+.results-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+.result-item {
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.result-item:last-child {
+  border-bottom: none;
+}
+
+.result-item:active {
+  background: rgb(26 54 93 / 8%);
+  transform: scale(0.98);
+}
+
+.result-item strong {
+  color: var(--gray-900);
+  font-size: 0.9375rem;
+  font-weight: var(--font-semibold);
+}
+
+.result-item .file-number {
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  background: var(--gray-100);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-semibold);
+  white-space: nowrap;
+}
+
+.no-results {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 0.875rem;
+}
+
+.no-results i {
+  display: block;
+  margin-bottom: var(--space-3);
+  font-size: 2.5rem;
+  opacity: 0.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUBMIT BUTTON - Premium CTA
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.form-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--white);
+  padding: var(--space-5);
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 1.25rem)); /* Safe area for home indicator */
+  padding-left: max(var(--space-5), env(safe-area-inset-left, var(--space-5)));
+  padding-right: max(var(--space-5), env(safe-area-inset-right, var(--space-5)));
+  margin: 0 calc(var(--space-5) * -1);
+  margin-top: auto;
+  border-top: 1px solid var(--gray-200);
+  box-shadow: 0 -4px 12px rgb(0 0 0 / 5%);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: clamp(1rem, 4vw, 1.25rem);
+  background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-xl);
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgb(26 54 93 / 35%);
+  text-transform: uppercase;
+  font-size: clamp(0.875rem, 2.8vw, 0.9375rem);
+  letter-spacing: 0.05em;
+  min-height: 48px; /* Touch target minimum (Material Design) */
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgb(26 54 93 / 25%);
+}
+
+.btn-primary i {
+  margin-left: var(--space-2);
+  font-size: 1.125rem;
+  vertical-align: middle;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MESSAGES - Modern Toast Notifications (Mobile-First)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.message {
+  position: fixed;
+  top: calc(var(--space-6) + env(safe-area-inset-top, 0px)); /* Safe area for notch */
+  right: var(--space-4);
+  left: var(--space-4);
+  padding: clamp(0.875rem, 3vw, 1rem) clamp(1rem, 4vw, 1.25rem);
+  border-radius: var(--radius-xl);
+  text-align: center;
+  font-weight: var(--font-semibold);
+  font-size: clamp(0.875rem, 3vw, 1rem); /* 14px-16px responsive */
+  z-index: 10000; /* Above everything */
+  animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy */
+  box-shadow:
+    0 10px 30px rgb(0 0 0 / 15%),
+    0 4px 12px rgb(0 0 0 / 10%),
+    0 0 0 1px rgb(255 255 255 / 10%) inset; /* Inner glow */
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  min-height: 56px; /* Touch-friendly */
+  line-height: 1.4;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.message.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: var(--white);
+}
+
+.message.success::before {
+  content: "✓";
+  font-size: 1.5rem;
+  font-weight: var(--font-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 25%);
+}
+
+.message.error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: var(--white);
+}
+
+.message.error::before {
+  content: "✕";
+  font-size: 1.5rem;
+  font-weight: var(--font-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 25%);
+}
+
+/* Mobile optimizations */
+@media (width <= 359px) {
+  .message {
+    top: calc(var(--space-4) + env(safe-area-inset-top, 0px));
+    right: var(--space-3);
+    left: var(--space-3);
+    padding: 0.75rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.error-message {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--error-light);
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  text-align: center;
+  font-weight: var(--font-medium);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING - Premium Spinner
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgb(0 0 0 / 50%);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.15s ease;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgb(255 255 255 / 20%);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-overlay p {
+  color: var(--white);
+  margin-top: var(--space-5);
+  font-size: 1.0625rem;
+  font-weight: var(--font-semibold);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE - Desktop Enhancements
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRITICAL BREAKPOINTS - Small Screens
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Very small phones (320px-359px) - Galaxy Fold, iPhone SE (1st gen) */
+@media (width <= 359px) {
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .btn-logout {
+    order: -1; /* Move logout to top */
+    width: 100%;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  .btn-logout i {
+    margin-left: 0.25rem;
+  }
+
+  .header-content {
+    text-align: center;
+  }
+
+  .header h1 {
+    font-size: 0.9375rem;
+  }
+
+  .user-welcome {
+    font-size: 0.75rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .form-row .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-row .form-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-size: 0.875rem;
+    padding: 0.75rem 0.875rem;
+  }
+}
+
+/* Small phones (360px-389px) - iPhone SE (2nd/3rd gen), Galaxy S8 */
+@media (width >= 360px) and (width <= 389px) {
+  .header {
+    padding: 1rem;
+  }
+
+  .btn-logout {
+    padding: 0.4rem 0.875rem;
+    font-size: 0.75rem;
+  }
+
+  .header h1 {
+    font-size: 1.0625rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Standard small phones (390px-428px) - iPhone 12/13/14/15, Galaxy S21+ */
+@media (width >= 390px) and (width <= 428px) {
+  .header {
+    padding: 1.125rem 1rem;
+  }
+
+  .btn-logout {
+    padding: 0.4rem 0.875rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Wheel picker adjustments for very small screens */
+@media (width <= 359px) {
+  .wheel-picker {
+    height: clamp(260px, 32vh, 280px);
+    max-height: 40vh;
+  }
+
+  .multi-wheel-picker {
+    height: clamp(280px, 35vh, 300px);
+    max-height: 45vh;
+  }
+
+  .wheel-picker-item {
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .wheel-picker-item.at-center {
+    font-size: 1.5rem;
+  }
+
+  .wheel-column .wheel-picker-item {
+    height: 44px;
+    font-size: 1.125rem;
+  }
+
+  .wheel-column .wheel-picker-item.at-center {
+    font-size: 1.5rem;
+  }
+
+  .wheel-picker-header {
+    height: 44px;
+  }
+
+  .wheel-picker-done {
+    font-size: 0.9375rem;
+    padding: 0.375rem 0.75rem;
+  }
+}
+
+/* Message notifications - responsive positioning */
+@media (width <= 359px) {
+  .message {
+    top: var(--space-4);
+    right: var(--space-4);
+    left: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.875rem;
+  }
+}
+
+@media (width >= 768px) {
+  body {
+    background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-200) 100%);
+    padding: var(--space-8);
+  }
+
+  .screen {
+    max-width: 480px;
+    min-height: auto;
+    border-radius: var(--radius-2xl);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 15%);
+    overflow: hidden;
+  }
+
+  #quickLogScreen {
+    min-height: auto;
+  }
+
+  .container {
+    min-height: auto;
+  }
+
+  .header {
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  }
+
+  .form-actions {
+    position: static;
+    margin: var(--space-6) 0 0 0;
+    padding: var(--space-6) 0 0 0;
+    border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY & POLISH
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid #1a365d;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* iOS safe area support */
+@supports (padding: max(0px)) {
+  body {
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  .header {
+    padding-top: max(var(--space-6), env(safe-area-inset-top));
+  }
+}
+
+/* Premium touch feedback */
+@media (hover: none) {
+  .btn-primary:active,
+  .result-item:active,
+  .btn-logout:active {
+    transition-duration: 0.05s;
+  }
+}
