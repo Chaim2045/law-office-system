@@ -162,7 +162,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: center; /* Center vertically */
+  align-items: stretch; /* Stretch items horizontally */
   animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -181,13 +182,16 @@ body {
 /* Logo & Header */
 .login-header {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-top: -3rem; /* Pull logo up */
+  margin-bottom: -1rem; /* Negative margin - buttons overlap into logo space */
+  animation: fadeInDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .login-logo {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 1.25rem;
+  width: 100%;
+  max-width: 580px; /* Increased from 500px */
+  max-height: 35vh; /* Increased from 30vh to 35vh */
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -195,22 +199,43 @@ body {
 
 .login-logo img {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 35vh; /* Increased from 30vh to 35vh */
   object-fit: contain;
+
+  /* Removed animation: logoFloat 3s ease-in-out infinite; */
 }
 
-.login-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.02em;
+/* Logo animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.login-subtitle {
-  font-size: 0.9375rem;
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.firm-name {
+  font-size: 0.875rem;
   color: var(--gray-500);
   font-weight: 500;
+  letter-spacing: 0.02em;
+  margin: 0;
+  margin-top: -3.5rem;
 }
 
 /* Google Login Button */
@@ -557,10 +582,12 @@ body {
 /* Header - Gradient with depth (Responsive Flexbox) */
 .header {
   background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
-  padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 4vw, 1.25rem);
-  padding-top: max(clamp(1rem, 3vw, 1.5rem), env(safe-area-inset-top)); /* Safe area for notch */
+  padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 4vw, 1.25rem);
+  padding-top: max(clamp(0.5rem, 1.5vw, 0.75rem), env(safe-area-inset-top)); /* Safe area for notch */
   position: relative;
   box-shadow: 0 4px 12px rgb(26 54 93 / 25%);
+  overflow: visible;
+  min-height: auto; /* Remove excess height */
 }
 
 .header::before {
@@ -573,12 +600,12 @@ body {
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 30%), transparent);
 }
 
-/* Header Top - Flexbox Layout */
+/* Header Top - Relative positioning for absolute logout button */
 .header-top {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: center; /* Center the content */
   align-items: center;
-  gap: clamp(0.5rem, 2vw, 1rem);
   width: 100%;
 }
 
@@ -587,17 +614,25 @@ body {
   flex: 1;
   text-align: center;
   min-width: 0; /* Allow text truncation if needed */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.header h1 {
-  font-size: clamp(1rem, 3.5vw, 1.25rem);
+/* Header Title - Clean & Minimal */
+.header-title {
+  font-size: clamp(1.125rem, 4vw, 1.375rem);
   font-weight: var(--font-bold);
   color: var(--white);
   letter-spacing: -0.01em;
-  margin-bottom: clamp(0.125rem, 0.5vw, 0.25rem);
+  margin: 0;
+  margin-bottom: clamp(0.25rem, 0.8vw, 0.375rem);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .user-welcome {
@@ -610,25 +645,38 @@ body {
 }
 
 .btn-logout {
-  position: relative;
-  padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(0.875rem, 2.5vw, 1rem);
-  background: rgb(255 255 255 / 20%);
+  position: absolute;
+  left: clamp(0.5rem, 2vw, 1rem); /* Position on the left side */
+  top: 50%;
+  transform: translateY(-50%); /* Vertically center */
+  padding: 0;
+  width: 44px; /* Square touch target */
+  height: 44px; /* Square touch target */
+  background: rgb(255 255 255 / 15%);
   color: var(--white);
-  border: 1px solid rgb(255 255 255 / 30%);
+  border: 1px solid rgb(255 255 255 / 25%);
   border-radius: var(--radius-full);
-  font-size: clamp(0.8125rem, 2vw, 0.875rem); /* Min 13px → 13px (acceptable for buttons) */
+  font-size: 1.125rem; /* Icon size */
   cursor: pointer;
-  transition: all 0.15s ease;
-  font-weight: var(--font-semibold);
+  transition: all 0.2s ease;
   backdrop-filter: blur(10px);
-  flex-shrink: 0;
-  white-space: nowrap;
-  min-height: 44px; /* Touch target minimum */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-logout:hover {
+  background: rgb(255 255 255 / 25%);
+  transform: translateY(-50%) scale(1.05); /* Maintain vertical centering */
 }
 
 .btn-logout:active {
-  transform: scale(0.95);
-  background: rgb(255 255 255 / 30%);
+  transform: translateY(-50%) scale(0.95); /* Maintain vertical centering */
+  background: rgb(255 255 255 / 35%);
+}
+
+.btn-logout i {
+  margin: 0; /* Remove any default margins */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
