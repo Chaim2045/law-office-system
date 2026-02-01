@@ -554,14 +554,10 @@ body {
   min-height: 100vh;
 }
 
-/* Header - Gradient with depth */
+/* Header - Gradient with depth (Responsive Flexbox) */
 .header {
   background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
-  padding: var(--space-6) var(--space-5);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 4vw, 1.25rem);
   position: relative;
   box-shadow: 0 4px 12px rgb(26 54 93 / 25%);
 }
@@ -576,41 +572,60 @@ body {
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 30%), transparent);
 }
 
+/* Header Top - Flexbox Layout */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: clamp(0.5rem, 2vw, 1rem);
+  width: 100%;
+}
+
+/* Header Content - Center text container */
+.header-content {
+  flex: 1;
+  text-align: center;
+  min-width: 0; /* Allow text truncation if needed */
+}
+
 .header h1 {
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 3.5vw, 1.25rem);
   font-weight: var(--font-bold);
   color: var(--white);
   letter-spacing: -0.01em;
-  margin-bottom: var(--space-1);
-  text-align: center;
+  margin-bottom: clamp(0.125rem, 0.5vw, 0.25rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-welcome {
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
   color: rgb(255 255 255 / 85%);
   font-weight: var(--font-medium);
-  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-logout {
-  position: absolute;
-  left: var(--space-5);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: var(--space-2) var(--space-4);
+  position: relative;
+  padding: clamp(0.375rem, 1.5vw, 0.5rem) clamp(0.75rem, 2.5vw, 1rem);
   background: rgb(255 255 255 / 20%);
   color: var(--white);
   border: 1px solid rgb(255 255 255 / 30%);
   border-radius: var(--radius-full);
-  font-size: 0.8125rem;
+  font-size: clamp(0.7rem, 2vw, 0.8125rem);
   cursor: pointer;
   transition: all 0.15s ease;
   font-weight: var(--font-semibold);
   backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .btn-logout:active {
-  transform: translateY(-50%) scale(0.95);
+  transform: scale(0.95);
   background: rgb(255 255 255 / 30%);
 }
 
@@ -620,20 +635,20 @@ body {
 
 #quickLogForm {
   flex: 1;
-  padding: var(--space-5);
-  padding-bottom: var(--space-8);
+  padding: clamp(1rem, 4vw, 1.25rem);
+  padding-bottom: clamp(1.5rem, 5vw, 2rem);
 }
 
 .form-group {
-  margin-bottom: var(--space-6);
+  margin-bottom: clamp(1rem, 4vw, 1.5rem);
 }
 
 /* Form row - side by side fields */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  gap: clamp(0.75rem, 3vw, 1rem);
+  margin-bottom: clamp(1rem, 4vw, 1.5rem);
 }
 
 .form-row .form-group {
@@ -642,23 +657,23 @@ body {
 
 .form-group label {
   display: block;
-  margin-bottom: var(--space-3);
+  margin-bottom: clamp(0.5rem, 2vw, 0.75rem);
   color: var(--gray-700);
   font-weight: var(--font-semibold);
-  font-size: 0.8125rem;
+  font-size: clamp(0.75rem, 2.5vw, 0.8125rem);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-/* Input cards - Premium style */
+/* Input cards - Premium style (Responsive) */
 .form-group input,
 .form-group textarea,
 .form-group select {
   width: 100%;
-  padding: 1rem var(--space-4);
+  padding: clamp(0.75rem, 3vw, 1rem) clamp(0.875rem, 3.5vw, 1rem);
   border: none;
   border-radius: var(--radius-xl);
-  font-size: 1rem;
+  font-size: clamp(0.9375rem, 3vw, 1rem);
   font-family: inherit;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--white);
@@ -812,14 +827,14 @@ body {
   box-shadow: 0 0 0 4px rgb(26 54 93 / 8%), 0 8px 16px rgb(26 54 93 / 12%);
 }
 
-/* Wheel picker modal */
+/* Wheel picker modal (Responsive) */
 .wheel-picker {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: min(330px, 40vh); /* Responsive: max 330px or 40% of viewport height */
-  max-height: 50vh; /* Never exceed 50% of screen */
+  height: clamp(280px, 35vh, 330px); /* Smaller on tiny screens */
+  max-height: 45vh; /* More conservative on small screens */
   background: var(--white);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: 0 -4px 20px rgb(0 0 0 / 15%);
@@ -1001,9 +1016,10 @@ body {
   pointer-events: auto;
 }
 
-/* Multi-wheel picker (for date: day/month/year) */
+/* Multi-wheel picker (for date: day/month/year) - Responsive */
 .multi-wheel-picker {
-  height: min(380px, 45vh); /* Slightly taller for 3 columns */
+  height: clamp(300px, 40vh, 380px); /* Adaptive height */
+  max-height: 50vh;
 }
 
 .multi-wheel-container {
@@ -1266,7 +1282,7 @@ body {
 
 .btn-primary {
   width: 100%;
-  padding: 1.25rem;
+  padding: clamp(1rem, 4vw, 1.25rem);
   background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
   color: var(--white);
   border: none;
@@ -1276,7 +1292,7 @@ body {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgb(26 54 93 / 35%);
   text-transform: uppercase;
-  font-size: 0.9375rem;
+  font-size: clamp(0.875rem, 2.8vw, 0.9375rem);
   letter-spacing: 0.05em;
 }
 
@@ -1391,19 +1407,144 @@ body {
    RESPONSIVE - Desktop Enhancements
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Small phones - stack form-row vertically */
-@media (width <= 375px) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRITICAL BREAKPOINTS - Small Screens
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Very small phones (320px-359px) - Galaxy Fold, iPhone SE (1st gen) */
+@media (width <= 359px) {
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .btn-logout {
+    order: -1; /* Move logout to top */
+    width: 100%;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  .btn-logout i {
+    margin-left: 0.25rem;
+  }
+
+  .header-content {
+    text-align: center;
+  }
+
+  .header h1 {
+    font-size: 0.9375rem;
+  }
+
+  .user-welcome {
+    font-size: 0.75rem;
+  }
+
   .form-row {
     grid-template-columns: 1fr;
-    gap: var(--space-5);
+    gap: 1rem;
   }
 
   .form-row .form-group {
-    margin-bottom: var(--space-5);
+    margin-bottom: 1rem;
   }
 
   .form-row .form-group:last-child {
     margin-bottom: 0;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-size: 0.875rem;
+    padding: 0.75rem 0.875rem;
+  }
+}
+
+/* Small phones (360px-389px) - iPhone SE (2nd/3rd gen), Galaxy S8 */
+@media (width >= 360px) and (width <= 389px) {
+  .header {
+    padding: 1rem;
+  }
+
+  .btn-logout {
+    padding: 0.4rem 0.875rem;
+    font-size: 0.75rem;
+  }
+
+  .header h1 {
+    font-size: 1.0625rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Standard small phones (390px-428px) - iPhone 12/13/14/15, Galaxy S21+ */
+@media (width >= 390px) and (width <= 428px) {
+  .header {
+    padding: 1.125rem 1rem;
+  }
+
+  .btn-logout {
+    padding: 0.4rem 0.875rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Wheel picker adjustments for very small screens */
+@media (width <= 359px) {
+  .wheel-picker {
+    height: clamp(260px, 32vh, 280px);
+    max-height: 40vh;
+  }
+
+  .multi-wheel-picker {
+    height: clamp(280px, 35vh, 300px);
+    max-height: 45vh;
+  }
+
+  .wheel-picker-item {
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .wheel-picker-item.at-center {
+    font-size: 1.5rem;
+  }
+
+  .wheel-column .wheel-picker-item {
+    height: 44px;
+    font-size: 1.125rem;
+  }
+
+  .wheel-column .wheel-picker-item.at-center {
+    font-size: 1.5rem;
+  }
+
+  .wheel-picker-header {
+    height: 44px;
+  }
+
+  .wheel-picker-done {
+    font-size: 0.9375rem;
+    padding: 0.375rem 0.75rem;
+  }
+}
+
+/* Message notifications - responsive positioning */
+@media (width <= 359px) {
+  .message {
+    top: var(--space-4);
+    right: var(--space-4);
+    left: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.875rem;
   }
 }
 

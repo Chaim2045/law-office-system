@@ -123,6 +123,17 @@
 
         if (user) {
           console.info('[Quick Log] User UID:', user.uid);
+
+          // Check if user manually logged out
+          const manualLogout = sessionStorage.getItem('quickLogManualLogout');
+          if (manualLogout === 'true') {
+            console.info('[Quick Log] ⚠️ Manual logout detected - forcing re-login');
+            sessionStorage.removeItem('quickLogManualLogout');
+            await auth.signOut();
+            showLoginScreen();
+            return;
+          }
+
           // User is logged in - check if they're a manager/admin
           const isAuthorized = await checkUserRole(user);
 
@@ -265,6 +276,8 @@
   });
 
   window.logout = function() {
+    console.info('[Quick Log] 🚪 Manual logout - setting flag for re-login requirement');
+    sessionStorage.setItem('quickLogManualLogout', 'true');
     auth.signOut();
   };
 
