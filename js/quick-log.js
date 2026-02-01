@@ -90,9 +90,9 @@
     console.info('[Quick Log] Safari:', /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent));
 
     try {
-      // Step 1: Set persistence to LOCAL (critical for Safari)
-      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-      console.info('[Quick Log] ✅ Persistence set: LOCAL');
+      // Step 1: Set persistence to SESSION (security: logout on browser close)
+      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+      console.info('[Quick Log] ✅ Persistence set: SESSION (logout on browser close)');
 
       // Step 2: Check for redirect result (mobile flow)
       const result = await auth.getRedirectResult();
