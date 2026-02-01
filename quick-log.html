@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>⏱ רישום שעות מהיר | משרד עו"ד</title>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+
+  <!-- Firebase SDK (v9.22.0 - same as main app) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/quick-log.css">
+</head>
+<body>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- LOGIN SCREEN (Hidden when authenticated) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="loginScreen" class="screen">
+    <div class="login-container">
+      <div class="login-card">
+        <!-- Logo & Branding -->
+        <div class="login-header">
+          <div class="login-logo">
+            <img src="images/hershlaw-logo-new.png" alt="HershLAW - רישום בקליק">
+          </div>
+        </div>
+
+        <!-- Google Login (Primary) -->
+        <button type="button" id="googleLoginBtn" class="btn-google-login">
+          <i class="fab fa-google"></i>
+          <span>המשך עם Google</span>
+        </button>
+
+        <!-- Biometric Login -->
+        <button type="button" id="biometricLogin" class="btn-biometric">
+          <i class="fas fa-fingerprint"></i>
+          <span>כניסה מהירה</span>
+        </button>
+
+        <div class="login-divider">
+          <span>או עם סיסמה</span>
+        </div>
+
+        <!-- Traditional Login Form -->
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail">
+              <i class="fas fa-envelope"></i>
+              אימייל
+            </label>
+            <input
+              type="email"
+              id="loginEmail"
+              placeholder="your@email.com"
+              required
+              autocomplete="email"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">
+              <i class="fas fa-lock"></i>
+              סיסמה
+            </label>
+            <div class="password-input-wrapper">
+              <input
+                type="password"
+                id="loginPassword"
+                placeholder="••••••••"
+                required
+                autocomplete="current-password"
+              >
+              <button type="button" class="password-toggle" id="passwordToggle" aria-label="הצג סיסמה">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-login">
+            <i class="fas fa-sign-in-alt"></i>
+            התחבר
+          </button>
+
+          <div id="loginError" class="error-message hidden"></div>
+        </form>
+
+        <!-- Security Badge -->
+        <div class="security-badge">
+          <i class="fas fa-shield-alt"></i>
+          <span>חיבור מאובטח</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- QUICK LOG SCREEN (Hidden until authenticated + authorized) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="quickLogScreen" class="screen hidden">
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-top">
+          <div class="header-content">
+            <h1 class="header-title">HershLAW | רישום מהיר</h1>
+            <p class="user-welcome">שלום, <span id="userName"></span></p>
+          </div>
+          <button type="button" class="btn-logout" onclick="logout()" aria-label="יציאה">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Log Form -->
+      <form id="quickLogForm">
+        <!-- Client Search -->
+        <div class="form-group">
+          <label for="clientSearch">לקוח *</label>
+          <div style="position: relative;">
+            <input
+              type="text"
+              id="clientSearch"
+              placeholder="חפש לקוח לפי שם או מספר תיק..."
+              required
+              autocomplete="off"
+            >
+            <div id="clientResults" class="results-dropdown"></div>
+          </div>
+          <input type="hidden" id="selectedClientId">
+          <input type="hidden" id="selectedClientName">
+        </div>
+
+        <!-- Service Selector (shown if client has multiple services) -->
+        <div id="serviceSelectorGroup" class="form-group hidden">
+          <label for="serviceSelector">שירות/חבילה *</label>
+          <div style="position: relative;">
+            <select id="serviceSelector" required>
+              <option value="">בחר שירות...</option>
+            </select>
+          </div>
+          <input type="hidden" id="selectedServiceId">
+        </div>
+
+        <!-- Branch + Minutes Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="branch">סניף מטפל *</label>
+            <div class="wheel-picker-wrapper">
+              <input type="hidden" id="branch" required>
+              <div class="wheel-picker" id="branchWheelPicker">
+                <div class="wheel-picker-header">
+                  <button type="button" class="wheel-picker-done" id="branchWheelPickerDone">סיום</button>
+                </div>
+                <div class="wheel-picker-overlay-top"></div>
+                <div class="wheel-picker-overlay-bottom"></div>
+                <div class="wheel-picker-highlight"></div>
+                <div class="wheel-picker-scroll" id="branchWheelScroll">
+                  <!-- Items will be generated by JavaScript -->
+                </div>
+              </div>
+              <div class="wheel-picker-display" id="branchDisplay">בחר סניף...</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="minutes">דקות *</label>
+            <div class="hybrid-input-wrapper">
+              <input
+                type="number"
+                id="minutes"
+                class="hybrid-input"
+                placeholder="הקלד מספר דקות..."
+                min="1"
+                max="2000"
+                required
+              >
+              <button type="button" class="hybrid-picker-btn" id="minutesPickerBtn" title="פתח בורר">
+                <i class="fas fa-list"></i>
+              </button>
+              <div class="wheel-picker" id="minutesWheelPicker">
+                <div class="wheel-picker-header">
+                  <button type="button" class="wheel-picker-done" id="wheelPickerDone">סיום</button>
+                </div>
+                <div class="wheel-picker-overlay-top"></div>
+                <div class="wheel-picker-overlay-bottom"></div>
+                <div class="wheel-picker-highlight"></div>
+                <div class="wheel-picker-scroll" id="minutesWheelScroll">
+                  <!-- Items will be generated by JavaScript -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label for="description">תיאור *</label>
+          <textarea
+            id="description"
+            rows="3"
+            placeholder="תיאור קצר של הפעולה שבוצעה..."
+            required
+          ></textarea>
+        </div>
+
+        <!-- Date -->
+        <div class="form-group">
+          <label for="date">תאריך *</label>
+          <input
+            type="date"
+            id="date"
+            required
+          >
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn-primary btn-submit">
+            <i class="fas fa-paper-plane"></i> שלח דיווח
+          </button>
+        </div>
+      </form>
+
+      <!-- Success Message -->
+      <div id="successMessage" class="message success hidden"></div>
+
+      <!-- Error Message -->
+      <div id="errorMessage" class="message error hidden"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- LOADING OVERLAY -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>שולח דיווח...</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- WHEEL PICKER BACKDROP -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="wheelPickerBackdrop" class="wheel-picker-backdrop"></div>
+
+  <!-- Font Awesome (for icons) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Script -->
+  <script src="js/quick-log.js"></script>
+</body>
+</html>
