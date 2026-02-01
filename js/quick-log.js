@@ -68,6 +68,7 @@
   const clientSearch = document.getElementById('clientSearch');
   const clientResults = document.getElementById('clientResults');
   const dateInput = document.getElementById('date');
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
 
   // ═══════════════════════════════════════════════════════════════════
   // AUTH INITIALIZATION (Persistence + Redirect Result)
@@ -278,14 +279,19 @@
   window.logout = function() {
     console.info('[Quick Log] 🚪 Manual logout - setting flag for re-login requirement');
     sessionStorage.setItem('quickLogManualLogout', 'true');
+
+    // Reset button state immediately
+    if (googleLoginBtn) {
+      googleLoginBtn.disabled = false;
+      googleLoginBtn.classList.remove('loading');
+    }
+
     auth.signOut();
   };
 
   // ═══════════════════════════════════════════════════════════════════
   // GOOGLE SIGN-IN (Mobile-First)
   // ═══════════════════════════════════════════════════════════════════
-
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
 
   if (!googleLoginBtn) {
     console.error('[Quick Log] ❌ googleLoginBtn NOT FOUND - check HTML element ID');
@@ -1431,6 +1437,12 @@ navigator.vibrate(10);
   function showLoginScreen() {
     loginScreen.classList.remove('hidden');
     quickLogScreen.classList.add('hidden');
+
+    // Reset Google button state (important after logout)
+    if (googleLoginBtn) {
+      googleLoginBtn.disabled = false;
+      googleLoginBtn.classList.remove('loading');
+    }
   }
 
   function showQuickLogScreen() {
