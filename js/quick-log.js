@@ -249,6 +249,10 @@
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    // Clear manual logout flag - user is ACTIVELY trying to login
+    sessionStorage.removeItem('quickLogManualLogout');
+    console.info('[Quick Log] 🔓 Cleared manual logout flag - email/password login attempt');
+
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
 
@@ -276,9 +280,8 @@
     }
   });
 
-  window.logout = function() {
-    console.info('[Quick Log] 🚪 Manual logout - setting flag for re-login requirement');
-    sessionStorage.setItem('quickLogManualLogout', 'true');
+  window.logout = async function() {
+    console.info('[Quick Log] 🚪 Manual logout - starting logout process');
 
     // Reset button state immediately
     if (googleLoginBtn) {
@@ -286,7 +289,12 @@
       googleLoginBtn.classList.remove('loading');
     }
 
-    auth.signOut();
+    // Sign out first
+    await auth.signOut();
+
+    // THEN set flag to prevent auto-login on this page
+    sessionStorage.setItem('quickLogManualLogout', 'true');
+    console.info('[Quick Log] ✅ Logout complete - flag set to prevent auto-login');
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -307,6 +315,10 @@
       // CRITICAL: Prevent any default behavior or propagation
       e.preventDefault();
       e.stopPropagation();
+
+      // Clear manual logout flag - user is ACTIVELY trying to login
+      sessionStorage.removeItem('quickLogManualLogout');
+      console.info('[Quick Log] 🔓 Cleared manual logout flag - fresh login attempt');
 
       // CLICK TRACE: Immediate proof of click (PERSISTENT - survives redirect)
       persistentLog('info', '[Quick Log] 🔵 GOOGLE BUTTON CLICKED', {

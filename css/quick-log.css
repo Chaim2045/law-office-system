@@ -216,13 +216,13 @@ body {
 /* Google Login Button */
 .btn-google-login {
   width: 100%;
-  min-height: 52px;
+  min-height: 56px; /* Increased from 52px to 56px for better touch */
   padding: 0.875rem 1.25rem;
   background: var(--white);
   color: var(--gray-700);
   border: 2px solid var(--gray-200);
   border-radius: 14px;
-  font-size: 1rem;
+  font-size: 1rem; /* 16px - prevents iOS zoom */
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -558,6 +558,7 @@ body {
 .header {
   background: linear-gradient(135deg, #1a365d 0%, #0f1f3d 100%);
   padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 4vw, 1.25rem);
+  padding-top: max(clamp(1rem, 3vw, 1.5rem), env(safe-area-inset-top)); /* Safe area for notch */
   position: relative;
   box-shadow: 0 4px 12px rgb(26 54 93 / 25%);
 }
@@ -600,7 +601,7 @@ body {
 }
 
 .user-welcome {
-  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
+  font-size: clamp(0.875rem, 2.5vw, 1rem); /* Min 14px → 16px to prevent iOS zoom */
   color: rgb(255 255 255 / 85%);
   font-weight: var(--font-medium);
   white-space: nowrap;
@@ -610,18 +611,19 @@ body {
 
 .btn-logout {
   position: relative;
-  padding: clamp(0.375rem, 1.5vw, 0.5rem) clamp(0.75rem, 2.5vw, 1rem);
+  padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(0.875rem, 2.5vw, 1rem);
   background: rgb(255 255 255 / 20%);
   color: var(--white);
   border: 1px solid rgb(255 255 255 / 30%);
   border-radius: var(--radius-full);
-  font-size: clamp(0.7rem, 2vw, 0.8125rem);
+  font-size: clamp(0.8125rem, 2vw, 0.875rem); /* Min 13px → 13px (acceptable for buttons) */
   cursor: pointer;
   transition: all 0.15s ease;
   font-weight: var(--font-semibold);
   backdrop-filter: blur(10px);
   flex-shrink: 0;
   white-space: nowrap;
+  min-height: 44px; /* Touch target minimum */
 }
 
 .btn-logout:active {
@@ -660,7 +662,7 @@ body {
   margin-bottom: clamp(0.5rem, 2vw, 0.75rem);
   color: var(--gray-700);
   font-weight: var(--font-semibold);
-  font-size: clamp(0.75rem, 2.5vw, 0.8125rem);
+  font-size: clamp(0.8125rem, 2.5vw, 0.875rem); /* Min 13px (acceptable for labels) */
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -673,12 +675,13 @@ body {
   padding: clamp(0.75rem, 3vw, 1rem) clamp(0.875rem, 3.5vw, 1rem);
   border: none;
   border-radius: var(--radius-xl);
-  font-size: clamp(0.9375rem, 3vw, 1rem);
+  font-size: 1rem; /* CRITICAL: Fixed 16px to prevent iOS auto-zoom */
   font-family: inherit;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--white);
   color: var(--gray-900);
   box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 2px rgb(0 0 0 / 6%);
+  min-height: 44px; /* Touch target minimum */
 }
 
 .form-group input:focus,
@@ -827,14 +830,14 @@ body {
   box-shadow: 0 0 0 4px rgb(26 54 93 / 8%), 0 8px 16px rgb(26 54 93 / 12%);
 }
 
-/* Wheel picker modal (Responsive) */
+/* Wheel picker modal (Mobile-Optimized) */
 .wheel-picker {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: clamp(280px, 35vh, 330px); /* Smaller on tiny screens */
-  max-height: 45vh; /* More conservative on small screens */
+  height: 330px; /* Fixed height - keyboard-safe! */
+  max-height: 80%; /* Percentage-based fallback */
   background: var(--white);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: 0 -4px 20px rgb(0 0 0 / 15%);
@@ -842,6 +845,13 @@ body {
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+}
+
+/* Dynamic viewport height support (modern browsers) */
+@supports (height: 100dvh) {
+  .wheel-picker {
+    max-height: min(330px, 40dvh); /* dvh = dynamic vh (accounts for keyboard) */
+  }
 }
 
 .wheel-picker.active {
@@ -951,7 +961,7 @@ body {
 
 /* Individual items */
 .wheel-picker-item {
-  height: 44px;
+  height: 48px; /* Increased from 44px to 48px for better touch */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1016,10 +1026,17 @@ body {
   pointer-events: auto;
 }
 
-/* Multi-wheel picker (for date: day/month/year) - Responsive */
+/* Multi-wheel picker (for date: day/month/year) - Mobile-Optimized */
 .multi-wheel-picker {
-  height: clamp(300px, 40vh, 380px); /* Adaptive height */
-  max-height: 50vh;
+  height: 380px; /* Fixed height - keyboard-safe! */
+  max-height: 85%; /* Percentage-based fallback */
+}
+
+/* Dynamic viewport height support (modern browsers) */
+@supports (height: 100dvh) {
+  .multi-wheel-picker {
+    max-height: min(380px, 45dvh); /* dvh = dynamic vh (accounts for keyboard) */
+  }
 }
 
 .multi-wheel-container {
@@ -1273,7 +1290,9 @@ body {
   bottom: 0;
   background: var(--white);
   padding: var(--space-5);
-  padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 1.25rem)); /* Safe area for home indicator */
+  padding-left: max(var(--space-5), env(safe-area-inset-left, var(--space-5)));
+  padding-right: max(var(--space-5), env(safe-area-inset-right, var(--space-5)));
   margin: 0 calc(var(--space-5) * -1);
   margin-top: auto;
   border-top: 1px solid var(--gray-200);
@@ -1294,6 +1313,7 @@ body {
   text-transform: uppercase;
   font-size: clamp(0.875rem, 2.8vw, 0.9375rem);
   letter-spacing: 0.05em;
+  min-height: 48px; /* Touch target minimum (Material Design) */
 }
 
 .btn-primary:active {
