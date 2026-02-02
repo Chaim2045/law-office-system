@@ -2093,7 +2093,7 @@ return 'warning';
             }
 
             // בניית פירוט החישוב
-            const breakdownHTML = this.renderReliabilityBreakdown(components, dataReliability?.details || []);
+            const breakdownHTML = this.renderReliabilityBreakdown(components, dataReliability?.details || [], metrics);
 
             return `
                 <div class="drawer-section">
@@ -2133,7 +2133,7 @@ return 'warning';
          * v6.0: Render detailed reliability breakdown
          * הסבר מפורט בשפה מובנת למנהל
          */
-        renderReliabilityBreakdown(components, details) {
+        renderReliabilityBreakdown(components, details, metrics) {
             const temporal = components.temporalReporting || 0;
             const coverage = components.taskCoverage || 0;
             const quality = components.qualityScore || 0;
@@ -2141,7 +2141,6 @@ return 'warning';
             // חילוץ פרטים מספריים מ-details
             const temporalDetails = details.find(d => d.type === 'temporal') || {};
             const coverageDetails = details.find(d => d.type === 'coverage') || {};
-            const qualityDetails = details.find(d => d.type === 'quality') || {};
 
             // בניית טקסטים מפורטים
             const temporalText = temporalDetails.reportingDays !== undefined
@@ -2152,13 +2151,12 @@ return 'warning';
                 ? `${coverageDetails.tasksWithReporting} מתוך ${coverageDetails.totalActiveTasks} משימות עם דיווח שעות`
                 : 'על כמה אחוזים מהמשימות הפעילות יש דיווחי זמן?';
 
+            // Quality text - source of truth: metrics.taskQuality.overdueNoReportCount
+            const overdue = metrics?.taskQuality?.overdueNoReportCount ?? 0;
             let qualityText;
-            if (qualityDetails.overdueNoReportCount > 0) {
-                qualityText = `${qualityDetails.overdueNoReportCount} משימות באיחור ללא דיווח`;
-            } else if (qualityDetails.staleCount > 0) {
-                qualityText = `${qualityDetails.staleCount} משימות ללא עדכון 30+ ימים`;
+            if (overdue > 0) {
+                qualityText = `${overdue} משימות באיחור ללא דיווח`;
             } else {
-                // אין בעיות - מציג 0
                 qualityText = '0 משימות באיחור, כל המשימות מעודכנות';
             }
 
