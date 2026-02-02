@@ -1874,10 +1874,10 @@ return 'warning';
             } else if (score <= 85) {
                 scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>ניצול טוב:</strong> ${activeTasks} משימות פעילות בטווח מאוזן</span></div>`;
             } else if (score <= 110) {
-                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס גבוה:</strong> ניצול ${score}% - ${activeTasks} משימות פעילות, ${this.formatHours(backlogHours)} בצבר</span></div>`;
+                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס גבוה:</strong> ניצול ${score}% - ${activeTasks} משימות פעילות, ${this.formatHours(backlogHours)} שעות עבודה ממתינות</span></div>`;
             } else {
                 const overload = score - 100;
-                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס יתר:</strong> חריגה של ${overload}% מהתקן - ${activeTasks} משימות פעילות</span></div>`;
+                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס יתר:</strong> חריגה של ${overload}% מעל 100% קיבולת שבועית - ${activeTasks} משימות פעילות</span></div>`;
             }
 
             return `
@@ -1948,7 +1948,7 @@ return 'warning';
             } else {
                 const percent = activeTasks > 0 ? Math.round((urgentCount / activeTasks) * 100) : 0;
                 const qualityNote = shouldBeClosed > 0 ? ` | ${shouldBeClosed} משימות צריכות סגירה` : '';
-                urgentInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>דחיפות גבוהה:</strong> ${urgentCount} משימות דחופות (${percent}% מהפעילות)${qualityNote}</span></div>`;
+                urgentInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>דחיפות גבוהה:</strong> ${urgentCount} משימות דחופות (${percent}% מכלל המשימות)${qualityNote}</span></div>`;
             }
 
             let coverageInsight = '';
@@ -2007,16 +2007,16 @@ return 'warning';
             // Backlog behavioral insight
             let backlogInsight = '';
             if (backlogHours === 0) {
-                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>אין צבר:</strong> כל המשימות בוצעו או מתוזמנות</span></div>';
+                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>אין עבודה ממתינה:</strong> כל המשימות בוצעו או מתוזמנות</span></div>';
             } else if (backlogHours <= 40) {
                 const weeksToComplete = availableHours > 0 ? (backlogHours / availableHours).toFixed(1) : '?';
-                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>צבר ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, יסתיים תוך ~${weeksToComplete} שבועות</span></div>`;
+                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עבודה ממתינה ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, הערכה לסיום: ~${weeksToComplete} שבועות</span></div>`;
             } else if (backlogHours <= 80) {
                 const weeksToComplete = availableHours > 0 ? (backlogHours / availableHours).toFixed(1) : '?';
-                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-circle"></i><span><strong>צבר ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, יסתיים תוך ~${weeksToComplete} שבועות</span></div>`;
+                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-circle"></i><span><strong>עבודה ממתינה ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, הערכה לסיום: ~${weeksToComplete} שבועות</span></div>`;
             } else {
                 const weeksToComplete = availableHours > 0 ? (backlogHours / availableHours).toFixed(1) : '?';
-                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>צבר ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, יסתיים תוך ~${weeksToComplete} שבועות</span></div>`;
+                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עבודה ממתינה ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, הערכה לסיום: ~${weeksToComplete} שבועות</span></div>`;
             }
 
             return `
@@ -2028,7 +2028,7 @@ return 'warning';
                     <div class="drawer-metric">
                         <div class="drawer-metric-label">
                             <i class="fas fa-clipboard-list"></i>
-                            צבר משימות (Backlog)
+                            עבודה ממתינה (Backlog)
                         </div>
                         <div class="drawer-metric-value">
                             ${this.formatHours(backlogHours)}
@@ -2145,11 +2145,11 @@ return 'warning';
 
             // בניית טקסטים מפורטים
             const temporalText = temporalDetails.reportingDays !== undefined
-                ? `דיווח ב-${temporalDetails.reportingDays} מתוך ${temporalDetails.workDaysPassed} ימי עבודה`
+                ? `דיווח ב-${temporalDetails.reportingDays} מתוך ${temporalDetails.workDaysPassed} ימי עבודה השבוע`
                 : 'האם העובד דיווח שעות עבודה ברוב ימי השבוע?';
 
             const coverageText = coverageDetails.tasksWithReporting !== undefined
-                ? `${coverageDetails.tasksWithReporting} מתוך ${coverageDetails.totalActiveTasks} משימות יש עליהן דיווח`
+                ? `${coverageDetails.tasksWithReporting} מתוך ${coverageDetails.totalActiveTasks} משימות עם דיווח שעות`
                 : 'על כמה אחוזים מהמשימות הפעילות יש דיווחי זמן?';
 
             let qualityText;
@@ -2303,11 +2303,11 @@ return 'warning';
 
             let weeklyInsight = '';
             if (overloadedDaysCount === 0) {
-                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>שבוע מאוזן:</strong> 0 מתוך 5 ימים מעל תקן - כל הימים מתחת ל-' + this.formatHours(dailyTarget) + '</span></div>';
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>שבוע מאוזן:</strong> 0 מתוך 5 ימים מעל 8 שעות ביום - כל הימים מתחת ל-' + this.formatHours(dailyTarget) + '</span></div>';
             } else if (overloadedDaysCount <= 2) {
-                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס מרוכז:</strong> ' + overloadedDaysCount + ' מתוך 5 ימים מעל תקן - יום שיא ' + this.formatHours(peakDayHours) + ' (' + peakPercent + '%)</span></div>';
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס מרוכז:</strong> ' + overloadedDaysCount + ' מתוך 5 ימים מעל 8 שעות ביום - יום שיא ' + this.formatHours(peakDayHours) + ' (' + peakPercent + '%)</span></div>';
             } else {
-                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס רב-יומי:</strong> ' + overloadedDaysCount + ' מתוך 5 ימים מעל תקן - יום שיא ' + this.formatHours(peakDayHours) + ' (' + peakPercent + '%)</span></div>';
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס רב-יומי:</strong> ' + overloadedDaysCount + ' מתוך 5 ימים מעל 8 שעות ביום - יום שיא ' + this.formatHours(peakDayHours) + ' (' + peakPercent + '%)</span></div>';
             }
 
             // Peak day tasks rendering
