@@ -2051,28 +2051,49 @@ return 'warning';
         }
 
         /**
-         * Section D: Data Quality
+         * Section D: Data Quality (v6.0 - Enhanced with breakdown)
          */
         renderDrawerSectionD(metrics) {
-            const confidence = metrics.dataConfidence?.score;
-            const confidenceDisplay = confidence !== undefined && confidence !== null
-                ? `${Math.round(confidence)}%`
+            const dataReliability = metrics.dataConfidence;
+            const score = dataReliability?.score;
+            const level = dataReliability?.level;
+            const components = dataReliability?.components || {};
+
+            const confidenceDisplay = score !== undefined && score !== null
+                ? `${Math.round(score)}%`
                 : '—';
 
-            let qualityText = '';
+            // קביעת טקסט רמה ותובנה
+            let levelText = '';
+            let levelClass = '';
             let confidenceInsight = '';
-            if (confidence !== undefined) {
-                if (confidence >= 70) {
-                    qualityText = 'דיווח עקבי ואמין';
-                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>נתונים אמינים:</strong> העובד מדווח באופן עקבי - ניתן לסמוך על הנתונים</span></div>';
-                } else if (confidence >= 30) {
-                    qualityText = 'דיווח חלקי';
-                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>דיווח חלקי:</strong> יש פערים בדיווח - המספרים עשויים להיות לא מדויקים</span></div>';
-                } else {
-                    qualityText = 'דיווח חסר';
-                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>חוסר דיווח!</strong> העובד לא מדווח כראוי - קשה להעריך עומס אמיתי</span></div>';
-                }
+
+            if (level === 'high') {
+                levelText = 'גבוהה';
+                levelClass = 'status-success';
+                confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>נתונים אמינים:</strong> ניתן לסמוך על הנתונים לקבלת החלטות</span></div>';
+            } else if (level === 'medium') {
+                levelText = 'בינונית';
+                levelClass = 'status-warning';
+                const mediumDetails = (dataReliability?.details || []).find(d => d.type === 'temporal') || {};
+                const reportingDays = mediumDetails.reportingDays || 0;
+                const workDays = mediumDetails.workDaysPassed || 0;
+                confidenceInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>נתונים חלקיים:</strong> דיווח ב-${reportingDays} מתוך ${workDays} ימים</span></div>`;
+            } else if (level === 'low') {
+                levelText = 'נמוכה';
+                levelClass = 'status-behind';
+                const lowDetails = (dataReliability?.details || []).find(d => d.type === 'coverage') || {};
+                const tasksWithReporting = lowDetails.tasksWithReporting || 0;
+                const totalTasks = lowDetails.totalActiveTasks || 0;
+                confidenceInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>נתונים לא מספיקים:</strong> ${tasksWithReporting}/${totalTasks} משימות עם דיווח</span></div>`;
+            } else if (level === 'critical') {
+                levelText = 'קריטית';
+                levelClass = 'status-critical';
+                confidenceInsight = '<div class="drawer-metric-insight critical"><i class="fas fa-times-circle"></i><span><strong>אין נתונים!</strong> לא ניתן להסתמך על המספרים</span></div>';
             }
+
+            // בניית פירוט החישוב
+            const breakdownHTML = this.renderReliabilityBreakdown(components, dataReliability?.details || []);
 
             return `
                 <div class="drawer-section">
@@ -2086,11 +2107,14 @@ return 'warning';
                             רמת אמינות
                         </div>
                         <div class="drawer-metric-value">
-                            ${confidenceDisplay}
-                            ${qualityText ? `<div class="drawer-metric-context">${qualityText}</div>` : ''}
+                            ${confidenceDisplay} <span class="${levelClass}" style="font-size: 0.875rem; font-weight: 500;">(${levelText})</span>
+                            <div class="drawer-metric-context">מבוסס על 3 פרמטרים</div>
                         </div>
                     </div>
                     ${confidenceInsight}
+
+                    ${breakdownHTML}
+
                     <div class="drawer-metric" style="margin-top: 12px;">
                         <div class="drawer-metric-label">
                             <i class="fas fa-tasks"></i>
@@ -2099,6 +2123,102 @@ return 'warning';
                         <div class="drawer-metric-value">
                             ${metrics.activeTasksCount || 0}
                             <div class="drawer-metric-context">משימות שהעובד עובד עליהן כעת</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * v6.0: Render detailed reliability breakdown
+         * הסבר מפורט בשפה מובנת למנהל
+         */
+        renderReliabilityBreakdown(components, details) {
+            const temporal = components.temporalReporting || 0;
+            const coverage = components.taskCoverage || 0;
+            const quality = components.qualityScore || 0;
+
+            // חילוץ פרטים מספריים מ-details
+            const temporalDetails = details.find(d => d.type === 'temporal') || {};
+            const coverageDetails = details.find(d => d.type === 'coverage') || {};
+            const qualityDetails = details.find(d => d.type === 'quality') || {};
+
+            // בניית טקסטים מפורטים
+            const temporalText = temporalDetails.reportingDays !== undefined
+                ? `דיווח ב-${temporalDetails.reportingDays} מתוך ${temporalDetails.workDaysPassed} ימי עבודה`
+                : 'האם העובד דיווח שעות עבודה ברוב ימי השבוע?';
+
+            const coverageText = coverageDetails.tasksWithReporting !== undefined
+                ? `${coverageDetails.tasksWithReporting} מתוך ${coverageDetails.totalActiveTasks} משימות יש עליהן דיווח`
+                : 'על כמה אחוזים מהמשימות הפעילות יש דיווחי זמן?';
+
+            let qualityText;
+            if (qualityDetails.overdueNoReportCount > 0) {
+                qualityText = `${qualityDetails.overdueNoReportCount} משימות באיחור ללא דיווח`;
+            } else if (qualityDetails.staleCount > 0) {
+                qualityText = `${qualityDetails.staleCount} משימות ללא עדכון 30+ ימים`;
+            } else {
+                // אין בעיות - מציג 0
+                qualityText = '0 משימות באיחור, כל המשימות מעודכנות';
+            }
+
+            return `
+                <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border-right: 3px solid #3b82f6;">
+                    <div style="font-size: 0.875rem; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+                        <i class="fas fa-calculator" style="margin-left: 6px; color: #3b82f6;"></i>
+                        איך הגענו ל-${Math.round(components.temporalReporting * 0.3 + components.taskCoverage * 0.35 + components.qualityScore * 0.35)}%?
+                    </div>
+                    <div class="reliability-calculation" style="font-size: 0.7rem; color: #64748b; margin-bottom: 12px; padding-right: 22px; direction: ltr; text-align: left;">
+                        (${Math.round(temporal)}×30% + ${Math.round(coverage)}×35% + ${Math.round(quality)}×35% = ${Math.round(temporal * 0.3 + coverage * 0.35 + quality * 0.35)}%)
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8125rem;">
+                        <!-- דיווח יומי -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #64748b;">
+                                    <i class="fas fa-calendar-day" style="width: 16px; margin-left: 6px; color: #64748b;"></i>
+                                    דיווח יומי (30%)
+                                </span>
+                                <span style="font-weight: 600; color: ${temporal >= 70 ? '#10b981' : temporal >= 30 ? '#f59e0b' : '#ef4444'};">
+                                    ${Math.round(temporal)}%
+                                </span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px; padding-right: 22px;">
+                                ${temporalText}
+                            </div>
+                        </div>
+
+                        <!-- כיסוי משימות -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #64748b;">
+                                    <i class="fas fa-list-check" style="width: 16px; margin-left: 6px; color: #64748b;"></i>
+                                    כיסוי משימות (35%)
+                                </span>
+                                <span style="font-weight: 600; color: ${coverage >= 80 ? '#10b981' : coverage >= 50 ? '#f59e0b' : '#ef4444'};">
+                                    ${Math.round(coverage)}%
+                                </span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px; padding-right: 22px;">
+                                ${coverageText}
+                            </div>
+                        </div>
+
+                        <!-- איכות ניהול -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #64748b;">
+                                    <i class="fas fa-clipboard-check" style="width: 16px; margin-left: 6px; color: #64748b;"></i>
+                                    איכות ניהול (35%)
+                                </span>
+                                <span style="font-weight: 600; color: ${quality >= 80 ? '#10b981' : quality >= 50 ? '#f59e0b' : '#ef4444'};">
+                                    ${Math.round(quality)}%
+                                </span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px; padding-right: 22px;">
+                                ${qualityText}
+                            </div>
                         </div>
                     </div>
                 </div>
