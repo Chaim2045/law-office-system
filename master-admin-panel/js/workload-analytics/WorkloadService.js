@@ -210,10 +210,10 @@
                         }
 
                         // 🔧 FIX: מיזוג נכון של נתוני עובד מ-UI ומ-Firestore
-                        // נתוני ה-UI עשויים להיות חלקיים, נתוני Firestore הם מלאים
+                        // Firestore data takes priority, but UI data provides fallback
                         const employeeFullData = {
-                            ...employee,  // נתונים מה-UI (email, role, displayName, etc.)
-                            ...(employeeData.employee || {})  // נתונים מ-Firestore (override אם יש)
+                            ...employee,  // נתונים מה-UI (email, role, displayName, dailyHoursTarget, etc.)
+                            ...(employeeData.employee && Object.keys(employeeData.employee).length > 1 ? employeeData.employee : {})  // נתונים מ-Firestore (override רק אם יש נתונים מלאים)
                         };
 
                         // חישוב מדדי עומס עם הנתונים המלאים
