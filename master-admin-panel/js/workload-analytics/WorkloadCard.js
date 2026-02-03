@@ -1863,17 +1863,21 @@ return 'warning';
             const status = metrics.managerRisk?.level || metrics.workloadLevel;
             const statusPill = this.renderStatusPill(status);
             const score = metrics.workloadScore;
+            const activeTasks = metrics.activeTasksCount || 0;
+            const backlogHours = metrics.totalBacklogHours || 0;
+            const availableHours = metrics.availableHoursThisWeek || 0;
 
-            // Manager insight based on score
+            // Behavioral insight based on score
             let scoreInsight = '';
             if (score <= 50) {
-                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>תת-ניצול:</strong> העובד זמין לקבל משימות נוספות</span></div>';
+                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>תת-ניצול:</strong> ${activeTasks} משימות פעילות, ${this.formatHours(availableHours)} זמינות השבוע</span></div>`;
             } else if (score <= 85) {
-                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>ניצול טוב:</strong> עומס עבודה בריא ומאוזן</span></div>';
+                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>ניצול טוב:</strong> ${activeTasks} משימות פעילות בטווח מאוזן</span></div>`;
             } else if (score <= 110) {
-                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס גבוה:</strong> עובד קרוב למקסימום - עקוב אחרי הסטטוס</span></div>';
+                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס גבוה:</strong> ניצול ${score}% - ${activeTasks} משימות פעילות, ${this.formatHours(backlogHours)} שעות עבודה ממתינות</span></div>`;
             } else {
-                scoreInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס יתר!</strong> חריגה מהתקן - עלול להשפיע על איכות ועמידה בזמנים</span></div>';
+                const overload = score - 100;
+                scoreInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס יתר:</strong> חריגה של ${overload}% מעל 100% קיבולת שבועית - ${activeTasks} משימות פעילות</span></div>`;
             }
 
             return `
@@ -1929,15 +1933,22 @@ return 'warning';
 
             const urgentCount = metrics.overduePlusDueSoon || 0;
             const isCritical = urgentCount >= 3;
+            const activeTasks = metrics.activeTasksCount || 0;
+            const taskQuality = metrics.taskQuality || {};
+            const shouldBeClosed = taskQuality.shouldBeClosedCount || 0;
+            const nearComplete = taskQuality.nearCompleteCount || 0;
 
-            // Manager insights
+            // Behavioral insights
             let urgentInsight = '';
             if (urgentCount === 0) {
-                urgentInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>מצוין!</strong> אין משימות דחופות - העובד עובד לפי לוח זמנים</span></div>';
+                urgentInsight = `<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>מצוין:</strong> 0 משימות דחופות מתוך ${activeTasks} פעילות</span></div>`;
             } else if (urgentCount <= 2) {
-                urgentInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>שים לב:</strong> יש מספר קטן של משימות דחופות - כדאי לבדוק עדיפויות</span></div>';
+                const qualityNote = shouldBeClosed > 0 ? ` (${shouldBeClosed} משימות עברו deadline ב-80%+ תקציב)` : '';
+                urgentInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>דחיפות נמוכה:</strong> ${urgentCount} משימות דחופות מתוך ${activeTasks} פעילות${qualityNote}</span></div>`;
             } else {
-                urgentInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>דורש התערבות!</strong> יותר מדי משימות דחופות - העובד עלול להיות מוצף</span></div>';
+                const percent = activeTasks > 0 ? Math.round((urgentCount / activeTasks) * 100) : 0;
+                const qualityNote = shouldBeClosed > 0 ? ` | ${shouldBeClosed} משימות צריכות סגירה` : '';
+                urgentInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>דחיפות גבוהה:</strong> ${urgentCount} משימות דחופות (${percent}% מכלל המשימות)${qualityNote}</span></div>`;
             }
 
             let coverageInsight = '';
@@ -1945,9 +1956,9 @@ return 'warning';
                 if (coverageRatio >= 100) {
                     coverageInsight = '<div class="drawer-metric-insight"><i class="fas fa-shield-check"></i><span><strong>כיסוי מלא:</strong> יש מספיק זמן לכל המשימות ב-5 הימים הקרובים</span></div>';
                 } else if (coverageRatio >= 70) {
-                    coverageInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>כיסוי חלקי:</strong> יש לחץ זמן, כדאי לשקול תעדוף מחדש</span></div>';
+                    coverageInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>כיסוי ${coverageRatio}%:</strong> חסר ${this.formatHours(gap)} ב-5 ימים הקרובים</span></div>`;
                 } else {
-                    coverageInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>חוסר כיסוי!</strong> לא מספיק זמן למשימות הקרובות - דורש פתרון מיידי</span></div>';
+                    coverageInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>כיסוי ${coverageRatio}%:</strong> חסר ${this.formatHours(gap)} ב-5 ימים הקרובים</span></div>`;
                 }
             }
 
@@ -1990,17 +2001,22 @@ return 'warning';
             const peakMultiplier = metrics.dailyBreakdown?.peakMultiplier;
             const peakDisplay = peakMultiplier ? `×${peakMultiplier.toFixed(2)}` : '—';
             const backlogHours = metrics.totalBacklogHours || 0;
+            const availableHours = metrics.availableHoursThisWeek || 0;
+            const activeTasks = metrics.activeTasksCount || 0;
 
-            // Backlog insight
+            // Backlog behavioral insight
             let backlogInsight = '';
             if (backlogHours === 0) {
-                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>אין צבר:</strong> כל המשימות בוצעו או מתוזמנות</span></div>';
+                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>אין עבודה ממתינה:</strong> כל המשימות בוצעו או מתוזמנות</span></div>';
             } else if (backlogHours <= 40) {
-                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>צבר קטן:</strong> עומס עבודה סביר לטווח הבינוני</span></div>';
+                const weeksToComplete = availableHours > 0 ? (backlogHours / availableHours).toFixed(1) : '?';
+                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עבודה ממתינה ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, הערכה לסיום: ~${weeksToComplete} שבועות</span></div>`;
             } else if (backlogHours <= 80) {
-                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-circle"></i><span><strong>צבר גדול:</strong> כדאי לשקול עדיפות מחדש או העברת משימות</span></div>';
+                const weeksToComplete = availableHours > 0 ? (backlogHours / availableHours).toFixed(1) : '?';
+                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-circle"></i><span><strong>עבודה ממתינה ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, הערכה לסיום: ~${weeksToComplete} שבועות</span></div>`;
             } else {
-                backlogInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>צבר קריטי!</strong> צבר גדול מדי - דורש התערבות ניהולית מיידית</span></div>';
+                const weeksToComplete = availableHours > 0 ? (backlogHours / availableHours).toFixed(1) : '?';
+                backlogInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עבודה ממתינה ${this.formatHours(backlogHours)}:</strong> ${activeTasks} משימות פעילות, הערכה לסיום: ~${weeksToComplete} שבועות</span></div>`;
             }
 
             return `
@@ -2012,7 +2028,7 @@ return 'warning';
                     <div class="drawer-metric">
                         <div class="drawer-metric-label">
                             <i class="fas fa-clipboard-list"></i>
-                            צבר משימות (Backlog)
+                            עבודה ממתינה (Backlog)
                         </div>
                         <div class="drawer-metric-value">
                             ${this.formatHours(backlogHours)}
@@ -2035,28 +2051,49 @@ return 'warning';
         }
 
         /**
-         * Section D: Data Quality
+         * Section D: Data Quality (v6.0 - Enhanced with breakdown)
          */
         renderDrawerSectionD(metrics) {
-            const confidence = metrics.dataConfidence?.score;
-            const confidenceDisplay = confidence !== undefined && confidence !== null
-                ? `${Math.round(confidence)}%`
+            const dataReliability = metrics.dataConfidence;
+            const score = dataReliability?.score;
+            const level = dataReliability?.level;
+            const components = dataReliability?.components || {};
+
+            const confidenceDisplay = score !== undefined && score !== null
+                ? `${Math.round(score)}%`
                 : '—';
 
-            let qualityText = '';
+            // קביעת טקסט רמה ותובנה
+            let levelText = '';
+            let levelClass = '';
             let confidenceInsight = '';
-            if (confidence !== undefined) {
-                if (confidence >= 70) {
-                    qualityText = 'דיווח עקבי ואמין';
-                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>נתונים אמינים:</strong> העובד מדווח באופן עקבי - ניתן לסמוך על הנתונים</span></div>';
-                } else if (confidence >= 30) {
-                    qualityText = 'דיווח חלקי';
-                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>דיווח חלקי:</strong> יש פערים בדיווח - המספרים עשויים להיות לא מדויקים</span></div>';
-                } else {
-                    qualityText = 'דיווח חסר';
-                    confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>חוסר דיווח!</strong> העובד לא מדווח כראוי - קשה להעריך עומס אמיתי</span></div>';
-                }
+
+            if (level === 'high') {
+                levelText = 'גבוהה';
+                levelClass = 'status-success';
+                confidenceInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>נתונים אמינים:</strong> ניתן לסמוך על הנתונים לקבלת החלטות</span></div>';
+            } else if (level === 'medium') {
+                levelText = 'בינונית';
+                levelClass = 'status-warning';
+                const mediumDetails = (dataReliability?.details || []).find(d => d.type === 'temporal') || {};
+                const reportingDays = mediumDetails.reportingDays || 0;
+                const workDays = mediumDetails.workDaysPassed || 0;
+                confidenceInsight = `<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>נתונים חלקיים:</strong> דיווח ב-${reportingDays} מתוך ${workDays} ימים</span></div>`;
+            } else if (level === 'low') {
+                levelText = 'נמוכה';
+                levelClass = 'status-behind';
+                const lowDetails = (dataReliability?.details || []).find(d => d.type === 'coverage') || {};
+                const tasksWithReporting = lowDetails.tasksWithReporting || 0;
+                const totalTasks = lowDetails.totalActiveTasks || 0;
+                confidenceInsight = `<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>נתונים לא מספיקים:</strong> ${tasksWithReporting}/${totalTasks} משימות עם דיווח</span></div>`;
+            } else if (level === 'critical') {
+                levelText = 'קריטית';
+                levelClass = 'status-critical';
+                confidenceInsight = '<div class="drawer-metric-insight critical"><i class="fas fa-times-circle"></i><span><strong>אין נתונים!</strong> לא ניתן להסתמך על המספרים</span></div>';
             }
+
+            // בניית פירוט החישוב
+            const breakdownHTML = this.renderReliabilityBreakdown(components, dataReliability?.details || [], metrics);
 
             return `
                 <div class="drawer-section">
@@ -2070,11 +2107,14 @@ return 'warning';
                             רמת אמינות
                         </div>
                         <div class="drawer-metric-value">
-                            ${confidenceDisplay}
-                            ${qualityText ? `<div class="drawer-metric-context">${qualityText}</div>` : ''}
+                            ${confidenceDisplay} <span class="${levelClass}" style="font-size: 0.875rem; font-weight: 500;">(${levelText})</span>
+                            <div class="drawer-metric-context">מבוסס על 3 פרמטרים</div>
                         </div>
                     </div>
                     ${confidenceInsight}
+
+                    ${breakdownHTML}
+
                     <div class="drawer-metric" style="margin-top: 12px;">
                         <div class="drawer-metric-label">
                             <i class="fas fa-tasks"></i>
@@ -2083,6 +2123,100 @@ return 'warning';
                         <div class="drawer-metric-value">
                             ${metrics.activeTasksCount || 0}
                             <div class="drawer-metric-context">משימות שהעובד עובד עליהן כעת</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * v6.0: Render detailed reliability breakdown
+         * הסבר מפורט בשפה מובנת למנהל
+         */
+        renderReliabilityBreakdown(components, details, metrics) {
+            const temporal = components.temporalReporting || 0;
+            const coverage = components.taskCoverage || 0;
+            const quality = components.qualityScore || 0;
+
+            // חילוץ פרטים מספריים מ-details
+            const temporalDetails = details.find(d => d.type === 'temporal') || {};
+            const coverageDetails = details.find(d => d.type === 'coverage') || {};
+
+            // בניית טקסטים מפורטים
+            const temporalText = temporalDetails.reportingDays !== undefined
+                ? `דיווח ב-${temporalDetails.reportingDays} מתוך ${temporalDetails.workDaysPassed} ימי עבודה השבוע`
+                : 'האם העובד דיווח שעות עבודה ברוב ימי השבוע?';
+
+            const coverageText = coverageDetails.tasksWithReporting !== undefined
+                ? `${coverageDetails.tasksWithReporting} מתוך ${coverageDetails.totalActiveTasks} משימות עם דיווח שעות`
+                : 'על כמה אחוזים מהמשימות הפעילות יש דיווחי זמן?';
+
+            // Quality text - source of truth: metrics.taskQuality.overdueNoReportCount
+            const overdue = metrics?.taskQuality?.overdueNoReportCount ?? 0;
+            let qualityText;
+            if (overdue > 0) {
+                qualityText = `${overdue} משימות באיחור ללא דיווח`;
+            } else {
+                qualityText = '0 משימות באיחור, כל המשימות מעודכנות';
+            }
+
+            return `
+                <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border-right: 3px solid #3b82f6;">
+                    <div style="font-size: 0.875rem; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+                        <i class="fas fa-calculator" style="margin-left: 6px; color: #3b82f6;"></i>
+                        איך הגענו ל-${Math.round(components.temporalReporting * 0.3 + components.taskCoverage * 0.35 + components.qualityScore * 0.35)}%?
+                    </div>
+                    <div class="reliability-calculation" style="font-size: 0.7rem; color: #64748b; margin-bottom: 12px; padding-right: 22px; direction: ltr; text-align: left;">
+                        (${Math.round(temporal)}×30% + ${Math.round(coverage)}×35% + ${Math.round(quality)}×35% = ${Math.round(temporal * 0.3 + coverage * 0.35 + quality * 0.35)}%)
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8125rem;">
+                        <!-- דיווח יומי -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #64748b;">
+                                    <i class="fas fa-calendar-day" style="width: 16px; margin-left: 6px; color: #64748b;"></i>
+                                    דיווח יומי (30%)
+                                </span>
+                                <span style="font-weight: 600; color: ${temporal >= 70 ? '#10b981' : temporal >= 30 ? '#f59e0b' : '#ef4444'};">
+                                    ${Math.round(temporal)}%
+                                </span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px; padding-right: 22px;">
+                                ${temporalText}
+                            </div>
+                        </div>
+
+                        <!-- כיסוי משימות -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #64748b;">
+                                    <i class="fas fa-list-check" style="width: 16px; margin-left: 6px; color: #64748b;"></i>
+                                    כיסוי משימות (35%)
+                                </span>
+                                <span style="font-weight: 600; color: ${coverage >= 80 ? '#10b981' : coverage >= 50 ? '#f59e0b' : '#ef4444'};">
+                                    ${Math.round(coverage)}%
+                                </span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px; padding-right: 22px;">
+                                ${coverageText}
+                            </div>
+                        </div>
+
+                        <!-- איכות ניהול -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #64748b;">
+                                    <i class="fas fa-clipboard-check" style="width: 16px; margin-left: 6px; color: #64748b;"></i>
+                                    איכות ניהול (35%)
+                                </span>
+                                <span style="font-weight: 600; color: ${quality >= 80 ? '#10b981' : quality >= 50 ? '#f59e0b' : '#ef4444'};">
+                                    ${Math.round(quality)}%
+                                </span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px; padding-right: 22px;">
+                                ${qualityText}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2160,16 +2294,18 @@ return 'warning';
                 `;
             }).join('');
 
-            // Count overloaded days
+            // Count overloaded days and calculate peak day details
             const overloadedDaysCount = next5Days.filter(d => d.load > dailyTarget).length;
-            let weeklyInsight = '';
+            const peakDayHours = peakDayLoad || Math.max(...next5Days.map(d => d.load));
+            const peakPercent = dailyTarget > 0 ? Math.round((peakDayHours / dailyTarget) * 100) : 0;
 
+            let weeklyInsight = '';
             if (overloadedDaysCount === 0) {
-                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>שבוע מאוזן:</strong> אין ימים עם עומס יתר - העובד יכול לעמוד בלוח הזמנים</span></div>';
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-check-circle"></i><span><strong>שבוע מאוזן:</strong> 0 מתוך 5 ימים מעל 8 שעות ביום - כל הימים מתחת ל-' + this.formatHours(dailyTarget) + '</span></div>';
             } else if (overloadedDaysCount <= 2) {
-                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>ימים עמוסים:</strong> יש ' + overloadedDaysCount + ' ימים עם עומס גבוה (עמודות אדומות) - כדאי לעקוב</span></div>';
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-info-circle"></i><span><strong>עומס מרוכז:</strong> ' + overloadedDaysCount + ' מתוך 5 ימים מעל 8 שעות ביום - יום שיא ' + this.formatHours(peakDayHours) + ' (' + peakPercent + '%)</span></div>';
             } else {
-                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>שבוע קריטי!</strong> יותר מדי ימים עמוסים - העובד עלול להיות מוצף</span></div>';
+                weeklyInsight = '<div class="drawer-metric-insight"><i class="fas fa-exclamation-triangle"></i><span><strong>עומס רב-יומי:</strong> ' + overloadedDaysCount + ' מתוך 5 ימים מעל 8 שעות ביום - יום שיא ' + this.formatHours(peakDayHours) + ' (' + peakPercent + '%)</span></div>';
             }
 
             // Peak day tasks rendering

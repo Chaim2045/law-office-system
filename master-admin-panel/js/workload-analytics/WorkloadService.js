@@ -210,10 +210,12 @@
                         }
 
                         // 🔧 FIX: מיזוג נכון של נתוני עובד מ-UI ומ-Firestore
-                        // נתוני ה-UI עשויים להיות חלקיים, נתוני Firestore הם מלאים
+                        // Firestore data takes priority, but UI data provides fallback for missing fields
                         const employeeFullData = {
-                            ...employee,  // נתונים מה-UI (email, role, displayName, etc.)
-                            ...(employeeData.employee || {})  // נתונים מ-Firestore (override אם יש)
+                            ...employee,  // נתונים מה-UI (email, role, displayName, dailyHoursTarget, etc.)
+                            ...(employeeData.employee && Object.keys(employeeData.employee).length > 1 ? employeeData.employee : {}),  // נתונים מ-Firestore
+                            // שמירת ברירות מחדל מ-UI אם לא קיימים ב-Firestore
+                            dailyHoursTarget: employeeData.employee?.dailyHoursTarget ?? employee.dailyHoursTarget
                         };
 
                         // חישוב מדדי עומס עם הנתונים המלאים
@@ -223,7 +225,11 @@
                             employeeData.timesheetEntries
                         );
 
-                        workloadMap.set(email, metrics);
+                        // 🔧 FIX: שמירה של נתוני העובד + metrics יחד
+                        workloadMap.set(email, {
+                            ...metrics,
+                            employee: employeeFullData  // שמירת נתוני העובד המלאים
+                        });
 
                         // שמירה ב-cache
                         this.saveToCache(email, metrics);

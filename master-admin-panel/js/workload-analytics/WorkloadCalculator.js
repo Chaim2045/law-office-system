@@ -5,7 +5,14 @@
  * אין תלות ב-Firestore או ספריות חיצוניות - רק חישובים מתמטיים טהורים
  *
  * נוצר: 2025-12-30
- * גרסה: 5.1.0 - Single Source of Truth for Workdays
+ * גרסה: 6.0.0 - Data Reliability Metric (מדרגי)
+ *
+ * שינויים בגרסה 6.0.0 (2026-02-01):
+ * ✅ מדד אמינות נתונים מדרגי (High/Medium/Low/Critical)
+ * ✅ calculateTaskCoverage - כיסוי משימות
+ * ✅ calculateDataReliability - שילוב 3 רכיבים (דיווח זמני, כיסוי משימות, איכות)
+ * ✅ זיהוי overdueNoReport - משימות באיחור ללא דיווח
+ * ✅ qualityScore - ציון איכות ניהול עם ניכויים
  *
  * שינויים בגרסה 5.1.0 (2026-01-04):
  * ✅ Single source of truth: WorkHoursCalculator delegated for all workday counting
@@ -261,6 +268,9 @@
             // ═══ v2.1.1: ניתוח איכות ניהול משימות ═══
             const taskQuality = this.analyzeTaskManagementQuality(tasks, now);
 
+            // ═══ v6.0: חישובי אמינות נתונים מתקדמים ═══
+            const taskCoverage = this.calculateTaskCoverage(tasks);
+
             // ═══ חלק 6: התראות חכמות (v5.0) ═══
             const alerts = this.generateSmartAlerts(
                 employee,
@@ -276,8 +286,12 @@
             // ═══ v2.1: פירוט מפורט של עומס יומי ═══
             const dailyBreakdown = this.calculateDailyTaskBreakdown(tasks, employee, now);
 
-            // ═══ Manager Trust Metrics ═══
-            const dataConfidence = this.calculateDataConfidence(capacityMetrics);
+            // ═══ Manager Trust Metrics (משופר!) ═══
+            const dataConfidence = this.calculateDataReliability(
+                capacityMetrics,
+                taskCoverage,
+                taskQuality
+            );
             const managerRisk = this.calculateManagerRisk(
                 dailyLoadAnalysis.next5DaysCoverage,
                 dailyBreakdown.peakMultiplier,
@@ -303,7 +317,7 @@
                 // Metadata
                 calculatedAt: now.toISOString(),
                 employeeEmail: employee.email,
-                version: '5.0.0',
+                version: '6.0.0',
 
                 // 🆕 v5.0: Smart Workload Metrics
                 dataQuality,
@@ -311,7 +325,8 @@
                 weightedBacklog,
                 staleTasks,
 
-                // 🆕 Manager Trust Metrics
+                // 🆕 v6.0: Data Reliability (מדרגי)
+                taskCoverage,
                 dataConfidence,
                 managerRisk,
 
@@ -457,6 +472,55 @@
                 reportingConsistency,  // 🆕 NEW METRIC
                 reportingDays: uniqueDatesReported,  // 🆕 For UI subtext
                 workDaysPassed  // 🆕 For UI subtext
+            };
+        }
+
+        /**
+         * חישוב כיסוי משימות (Task Coverage)
+         * בודק כמה מהמשימות הפעילות יש עליהן דיווח
+         *
+         * @param {Array} tasks - רשימת משימות
+         * @returns {Object} נתוני כיסוי משימות
+         */
+        calculateTaskCoverage(tasks) {
+            // רק משימות פעילות עם תקציב
+            const activeTasks = tasks.filter(t =>
+                t.status === 'פעיל' &&
+                (t.estimatedMinutes || 0) > 0
+            );
+
+            if (activeTasks.length === 0) {
+                return {
+                    percentage: 100,
+                    tasksWithReporting: 0,
+                    totalActiveTasks: 0,
+                    tasksWithoutReporting: []
+                };
+            }
+
+            // משימות עם דיווח (actualMinutes > 0)
+            const tasksWithReporting = activeTasks.filter(t =>
+                (t.actualMinutes || 0) > 0
+            );
+
+            // משימות ללא דיווח
+            const tasksWithoutReporting = activeTasks.filter(t =>
+                (t.actualMinutes || 0) === 0
+            ).map(t => ({
+                taskId: t.id,
+                taskName: t.taskName || t.description || 'ללא שם',
+                clientName: t.clientName || 'ללא לקוח',
+                estimatedHours: this.roundTo((t.estimatedMinutes || 0) / 60, 1),
+                deadline: t.deadline
+            }));
+
+            const percentage = (tasksWithReporting.length / activeTasks.length) * 100;
+
+            return {
+                percentage: this.roundTo(percentage, 1),
+                tasksWithReporting: tasksWithReporting.length,
+                totalActiveTasks: activeTasks.length,
+                tasksWithoutReporting
             };
         }
 
@@ -642,38 +706,109 @@ return;
          * @param {Object} capacityMetrics - מדדי קיבולת
          * @returns {Object} אמינות נתונים
          */
-        calculateDataConfidence(capacityMetrics) {
-            const reportingConsistency = capacityMetrics.reportingConsistency || 0;
-            const uniqueDatesReported = capacityMetrics.reportingDays || 0;
-            const workDaysPassed = capacityMetrics.workDaysPassed || 0;
+        /**
+         * חישוב אמינות נתונים מדרגי (Data Reliability)
+         * משלב 3 רכיבים: דיווח זמני, כיסוי משימות, איכות ניהול
+         *
+         * @param {Object} capacityMetrics - מדדי קיבולת
+         * @param {Object} taskCoverage - כיסוי משימות
+         * @param {Object} taskQuality - איכות ניהול משימות
+         * @returns {Object} ציון אמינות נתונים מדרגי
+         */
+        calculateDataReliability(capacityMetrics, taskCoverage, taskQuality) {
+            // רכיב 1: דיווח זמני (Temporal Reporting)
+            const temporalReporting = capacityMetrics.reportingConsistency || 0;
 
-            // Score = reporting consistency (0-100)
-            const score = Math.max(0, Math.min(100, reportingConsistency));
+            // רכיב 2: כיסוי משימות (Task Coverage)
+            const taskCoveragePercent = taskCoverage.percentage || 0;
 
-            // Level based on thresholds
+            // רכיב 3: איכות ניהול (Task Management Quality)
+            const qualityScore = taskQuality.qualityScore || 0;
+
+            // חישוב ציון משוקלל
+            const weights = this.constants.TASK_QUALITY.DATA_RELIABILITY;
+            const score =
+                (temporalReporting * weights.TEMPORAL_WEIGHT) +
+                (taskCoveragePercent * weights.TASK_COVERAGE_WEIGHT) +
+                (qualityScore * weights.QUALITY_WEIGHT);
+
+            // קביעת רמה מדרגית
             let level;
-            if (score >= 70) {
+            if (score >= weights.HIGH_THRESHOLD) {
                 level = 'high';
-            } else if (score >= 30) {
+            } else if (score >= weights.MEDIUM_THRESHOLD) {
                 level = 'medium';
-            } else {
+            } else if (score >= weights.LOW_THRESHOLD) {
                 level = 'low';
+            } else {
+                level = 'critical';
             }
 
-            // Reasons for low confidence
+            // הסברים מפורטים
             const reasons = [];
-            if (score < 30) {
-                reasons.push('דיווח שעות נמוך — הנתונים פחות אמינים');
-            }
-            if (uniqueDatesReported > workDaysPassed + 2) {
-                reasons.push('דיווחים מחוץ לימי עבודה/כפילויות — בדוק איכות נתונים');
-            }
+            const details = [];
 
-            return {
+            // דיווח זמני
+            if (temporalReporting < 70) {
+                reasons.push(`דיווח זמני נמוך (${this.roundTo(temporalReporting, 1)}%)`);
+            }
+            details.push(`דיווח זמני: ${this.roundTo(temporalReporting, 1)}%`);
+
+            // כיסוי משימות
+            if (taskCoveragePercent < 80) {
+                const missing = taskCoverage.totalActiveTasks - taskCoverage.tasksWithReporting;
+                if (missing > 0) {
+                    reasons.push(`${missing} משימות ללא דיווח`);
+                }
+            }
+            details.push(`כיסוי משימות: ${this.roundTo(taskCoveragePercent, 1)}% (${taskCoverage.tasksWithReporting}/${taskCoverage.totalActiveTasks})`);
+
+            // איכות ניהול
+            if (qualityScore < 80) {
+                if (taskQuality.overdueNoReportCount > 0) {
+                    reasons.push(`${taskQuality.overdueNoReportCount} משימות באיחור ללא דיווח`);
+                } else if (taskQuality.staleCount > 0) {
+                    reasons.push(`${taskQuality.staleCount} משימות ללא עדכון 30+ ימים`);
+                }
+            }
+            details.push(`איכות ניהול: ${this.roundTo(qualityScore, 1)}%`);
+
+            const result = {
                 score: this.roundTo(score, 1),
                 level,
-                reasons
+                reasons: reasons.slice(0, 3),
+                details,
+                components: {
+                    temporalReporting: this.roundTo(temporalReporting, 1),
+                    taskCoverage: this.roundTo(taskCoveragePercent, 1),
+                    qualityScore: this.roundTo(qualityScore, 1)
+                }
             };
+
+            // 🐛 DEBUG: Log data reliability calculation
+            console.log('📊 [DATA RELIABILITY v6.0]', {
+                score: result.score,
+                level: result.level,
+                components: result.components,
+                details: result.details,
+                reasons: result.reasons
+            });
+
+            return result;
+        }
+
+        /**
+         * @deprecated Use calculateDataReliability instead
+         */
+        calculateDataConfidence(capacityMetrics) {
+            console.warn('⚠️ calculateDataConfidence is deprecated. Use calculateDataReliability instead.');
+            const reportingConsistency = capacityMetrics.reportingConsistency || 0;
+            const score = Math.max(0, Math.min(100, reportingConsistency));
+            let level;
+            if (score >= 70) level = 'high';
+            else if (score >= 30) level = 'medium';
+            else level = 'low';
+            return { score: this.roundTo(score, 1), level, reasons: [] };
         }
 
         /**
@@ -1198,36 +1333,45 @@ tasksByDay[dateKey] = [];
                 missingTimeTracking: [], // משימות ללא עדכון שעות בכלל
                 stale: [],               // משימות פתוחות יותר מ-30 ימים ללא התקדמות
                 nearComplete: [],        // משימות קרובות לסיום (90%+) אבל עדיין פתוחות
-                almostDone: []           // משימות עם פחות משעה נותרת (95%+)
+                almostDone: [],          // משימות עם פחות משעה נותרת (95%+)
+                overdueNoReport: []      // משימות באיחור ללא דיווח
             };
+
+            let qualityScore = 100;  // ציון התחלתי
 
             tasks.forEach(task => {
                 const estimated = task.estimatedMinutes || 0;
                 const actual = task.actualMinutes || 0;
-                const remaining = estimated - actual; // 🎯 חישוב מדויק של שעות נותרות!
+                const remaining = estimated - actual;
                 const completionPercent = estimated > 0 ? (actual / estimated) * 100 : 0;
 
-                // 1. משימה ללא עדכון שעות בכלל
-                if (actual === 0 && estimated > 0) {
+                const deadline = task.deadline ? this.parseDeadline(task.deadline) : null;
+                const isOverdue = deadline && deadline < now;
+
+                // 1. משימה באיחור ללא דיווח (הבעיה החמורה ביותר!)
+                if (isOverdue && actual === 0 && estimated > 0) {
+                    issues.overdueNoReport.push({
+                        task,
+                        estimatedHours: this.roundTo(estimated / 60, 1),
+                        daysOverdue: Math.ceil((now - deadline) / (1000 * 60 * 60 * 24))
+                    });
+                    qualityScore -= this.constants.TASK_QUALITY.DATA_RELIABILITY.OVERDUE_NO_REPORT_PENALTY;
+                } else if (actual === 0 && estimated > 0) {
+                    // 2. משימה ללא עדכון שעות בכלל (אם לא כבר ספורה באיחור)
                     issues.missingTimeTracking.push({
                         task,
                         estimatedHours: this.roundTo(estimated / 60, 1)
                     });
                 }
 
-                // 2. משימה שצריך לסגור (80%+ הושלם + deadline עבר)
-                // ✅ v4.0.0: שימוש ב-helper function
-                if (task.deadline) {
-                    const deadline = this.parseDeadline(task.deadline);
-                    const isOverdue = deadline && deadline < now;
-
-                    if (this.constants.shouldTaskBeClosed(completionPercent, isOverdue)) {
-                        issues.shouldBeClosed.push({
-                            task,
-                            completionPercent: Math.round(completionPercent),
-                            daysOverdue: Math.ceil((now - deadline) / (1000 * 60 * 60 * 24))
-                        });
-                    }
+                // 3. משימה שצריך לסגור (80%+ הושלם + deadline עבר)
+                if (this.constants.shouldTaskBeClosed(completionPercent, isOverdue)) {
+                    issues.shouldBeClosed.push({
+                        task,
+                        completionPercent: Math.round(completionPercent),
+                        daysOverdue: isOverdue ? Math.ceil((now - deadline) / (1000 * 60 * 60 * 24)) : 0
+                    });
+                    qualityScore -= this.constants.TASK_QUALITY.DATA_RELIABILITY.SHOULD_CLOSE_PENALTY;
                 }
 
                 // 3. משימה קרובה לסיום (90%+) אבל עדיין פתוחה
@@ -1254,7 +1398,6 @@ tasksByDay[dateKey] = [];
                 }
 
                 // 4. משימות stale (פתוחות יותר מ-30 ימים ללא עדכון)
-                // ✅ v4.0.0: שימוש ב-helper function
                 if (task.createdAt && actual === 0) {
                     const createdAt = task.createdAt.toDate ? task.createdAt.toDate() : new Date(task.createdAt);
                     const daysOpen = Math.ceil((now - createdAt) / (1000 * 60 * 60 * 24));
@@ -1264,20 +1407,27 @@ tasksByDay[dateKey] = [];
                             task,
                             daysOpen
                         });
+                        qualityScore -= this.constants.TASK_QUALITY.DATA_RELIABILITY.STALE_TASK_PENALTY;
                     }
                 }
             });
+
+            // וודא שהציון לא יורד מתחת ל-0
+            qualityScore = Math.max(0, qualityScore);
 
             return {
                 hasIssues: issues.shouldBeClosed.length > 0 ||
                           issues.missingTimeTracking.length > 0 ||
                           issues.nearComplete.length > 0 ||
-                          issues.almostDone.length > 0,
+                          issues.almostDone.length > 0 ||
+                          issues.overdueNoReport.length > 0,
                 shouldBeClosedCount: issues.shouldBeClosed.length,
                 missingTimeTrackingCount: issues.missingTimeTracking.length,
                 nearCompleteCount: issues.nearComplete.length,
                 almostDoneCount: issues.almostDone.length,
                 staleCount: issues.stale.length,
+                overdueNoReportCount: issues.overdueNoReport.length,
+                qualityScore: this.roundTo(qualityScore, 1),
                 issues
             };
         }

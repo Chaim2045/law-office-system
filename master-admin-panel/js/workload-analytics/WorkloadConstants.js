@@ -57,7 +57,26 @@
             MAX_TASKS_BEFORE_ALERT: 8,         // יותר מ-8 משימות = התראה
 
             // סף איכות נתונים
-            DATA_QUALITY_THRESHOLD: 30         // 30%+ משימות לסגירה = בעיית איכות
+            DATA_QUALITY_THRESHOLD: 30,        // 30%+ משימות לסגירה = בעיית איכות
+
+            // Data Reliability - מדד אמינות נתונים מדרגי
+            DATA_RELIABILITY: {
+                // משקלים לחישוב ציון אמינות (סה"כ = 1.0)
+                TEMPORAL_WEIGHT: 0.30,        // 30% - דיווח זמני
+                TASK_COVERAGE_WEIGHT: 0.35,   // 35% - כיסוי משימות
+                QUALITY_WEIGHT: 0.35,         // 35% - איכות ניהול
+
+                // סף רמות אמינות (מדרגי)
+                HIGH_THRESHOLD: 80,           // 80-100% = High
+                MEDIUM_THRESHOLD: 50,         // 50-79% = Medium
+                LOW_THRESHOLD: 20,            // 20-49% = Low
+                                              // 0-19% = Critical
+
+                // ניקוד ניכוי לבעיות איכות
+                OVERDUE_NO_REPORT_PENALTY: 15,    // משימה באיחור ללא דיווח
+                STALE_TASK_PENALTY: 8,            // משימה ללא עדכון 30+ ימים
+                SHOULD_CLOSE_PENALTY: 5           // משימה שצריך לסגור
+            }
         },
 
         // ═══════════════════════════════════════════════════════════════
