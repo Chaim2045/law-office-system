@@ -223,7 +223,11 @@
                             employeeData.timesheetEntries
                         );
 
-                        workloadMap.set(email, metrics);
+                        // 🔧 FIX: שמירה של נתוני העובד + metrics יחד
+                        workloadMap.set(email, {
+                            ...metrics,
+                            employee: employeeFullData  // שמירת נתוני העובד המלאים
+                        });
 
                         // שמירה ב-cache
                         this.saveToCache(email, metrics);
