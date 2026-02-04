@@ -56,6 +56,7 @@ import * as Forms from './modules/forms.js';
 
 // Budget Tasks Module (v5.2.4 - rings fix with 100%+ support)
 import * as BudgetTasks from './modules/budget-tasks.js?v=5.2.4';
+import { BUDGET_TASKS_LOAD_LIMIT } from './modules/budget-tasks.js';
 
 // Timesheet Module
 import * as Timesheet from './modules/timesheet.js';
@@ -756,7 +757,7 @@ class LawOfficeManager {
         this.dataCache.get('clients', () => FirebaseOps.loadClientsFromFirebase()),
         this.dataCache.get(`budgetTasks:${this.currentUser}:${this.currentTaskFilter}`, () =>
           this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
-            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
+            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, BUDGET_TASKS_LOAD_LIMIT)
         ),
         this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
           this.integrationManager?.loadTimesheet(this.currentUser)
@@ -1174,7 +1175,7 @@ return false;
           // Reload tasks with cache (will fetch fresh because invalidated)
           this.budgetTasks = await this.dataCache.get(`budgetTasks:${this.currentUser}:${this.currentTaskFilter}`, () =>
             this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
-              || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
+              || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, BUDGET_TASKS_LOAD_LIMIT)
           );
           this.filterBudgetTasks();
         },
@@ -1237,11 +1238,16 @@ return false;
       return;
     }
 
-    // ✅ budgetTasks is already filtered by server-side (active/completed/all)
-    // So we just search within these pre-filtered tasks
-    // No need to filter again - prevents double filtering and potential mixing
+    // ✅ FIX: Filter by status first (respect currentTaskFilter), then search
     this.filteredBudgetTasks = this.budgetTasks.filter(task => {
-      return (
+      // סנן קודם לפי סטטוס בהתאם ל-currentTaskFilter
+      const matchesStatus =
+        this.currentTaskFilter === 'completed' ? task.status === 'הושלם' :
+        this.currentTaskFilter === 'active' ? task.status === 'פעיל' :
+        true; // 'all' - הצג הכל
+
+      // בדוק אם תואם את החיפוש
+      const matchesSearch = (
         // חיפוש בתיאור המשימה
         task.description?.toLowerCase().includes(trimmed) ||
         task.taskDescription?.toLowerCase().includes(trimmed) ||
@@ -1255,6 +1261,9 @@ return false;
         // חיפוש בכותרת התיק
         task.caseTitle?.toLowerCase().includes(trimmed)
       );
+
+      // ✅ תוצאה: גם תואם סטטוס וגם תואם חיפוש
+      return matchesStatus && matchesSearch;
     });
 
     this.renderBudgetView();
@@ -1314,7 +1323,7 @@ return;
       // Load with cache (will fetch fresh because invalidated)
       const loadedTasks = await this.dataCache.get(
         `budgetTasks:${this.currentUser}:${viewMode}`,
-        () => BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, viewMode, 50)
+        () => BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, viewMode, BUDGET_TASKS_LOAD_LIMIT)
       );
 
       // ✅ RACE CONDITION GUARD: Verify state hasn't changed during async operation
@@ -2752,7 +2761,7 @@ return;
         // Reload tasks
         this.budgetTasks = await (
           this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
-            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
+            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, BUDGET_TASKS_LOAD_LIMIT)
         );
         this.filterBudgetTasks();
 
@@ -2819,7 +2828,7 @@ return;
         // Reload tasks
         this.budgetTasks = await (
           this.integrationManager?.loadBudgetTasks(this.currentUser, this.currentTaskFilter)
-            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, 50)
+            || BudgetTasks.loadBudgetTasksFromFirebase(this.currentUser, this.currentTaskFilter, BUDGET_TASKS_LOAD_LIMIT)
         );
         this.filterBudgetTasks();
 
