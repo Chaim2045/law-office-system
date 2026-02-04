@@ -43,6 +43,9 @@
  * - תמיכה ב-createdAt ו-readAt בהתראות
  */
 
+// Import budget tasks load limit constant
+import { BUDGET_TASKS_LOAD_LIMIT } from './budget-tasks.js';
+
 /**
  * Manager for real-time listeners
  * מנהל מאזינים - מונע memory leaks
@@ -114,7 +117,7 @@ export function startTasksListener(employee, onUpdate, onError) {
     const unsubscribe = db
       .collection('budget_tasks')
       .where('employee', '==', employee)
-      .limit(50)
+      .limit(BUDGET_TASKS_LOAD_LIMIT)
       .onSnapshot(
         (snapshot) => {
           console.log(`📡 Tasks update received: ${snapshot.docs.length} tasks`);

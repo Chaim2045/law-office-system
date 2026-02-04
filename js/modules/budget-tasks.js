@@ -37,6 +37,17 @@ import {
 import DescriptionTooltips from './description-tooltips.js';
 
 /* ===========================
+   CONSTANTS
+   =========================== */
+
+/**
+ * Default limit for loading budget tasks from Firestore
+ * Increased from 50 to 1000 to show all tasks without pagination
+ * @constant {number}
+ */
+export const BUDGET_TASKS_LOAD_LIMIT = 1000;
+
+/* ===========================
    FIREBASE OPERATIONS
    =========================== */
 
@@ -46,10 +57,10 @@ import DescriptionTooltips from './description-tooltips.js';
  *
  * @param {string} employee - Employee email
  * @param {string} statusFilter - Filter type: 'active', 'completed', 'all'
- * @param {number} limit - Max results (default 50)
+ * @param {number} limit - Max results (default 1000)
  * @returns {Promise<Array>} Array of budget tasks
  */
-export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'active', limit = 50) {
+export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'active', limit = BUDGET_TASKS_LOAD_LIMIT) {
   try {
     const db = window.firebaseDB;
     if (!db) {

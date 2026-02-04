@@ -178,15 +178,20 @@ async function logAction(action, userId, username, details = {}) {
 
 /**
  * ניקוי HTML (מניעת XSS)
+ *
+ * ✅ Fixed: רק < ו-> מוחלפים (סיכון XSS אמיתי)
+ * ✅ גרשיים (" ו-') ו-/ לא מוחלפים - שמירת data integrity
+ *
+ * Note: Frontend צריך להשתמש ב-safeText() או textContent בdisplay
  */
 function sanitizeString(str) {
   if (typeof str !== 'string') return str;
   return str
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/>/g, '&gt;');
+    // Removed: .replace(/"/g, '&quot;') - causes data corruption
+    // Removed: .replace(/'/g, '&#x27;') - causes data corruption
+    // Removed: .replace(/\//g, '&#x2F;') - not an XSS risk
 }
 
 /**
