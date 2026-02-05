@@ -29,6 +29,9 @@ import STATE_CONFIG from './config/state-config.js';
 // ✅ NEW v2.0: Add Task System - Organized Component
 import { initAddTaskSystem } from '../components/add-task/index.js';
 
+// ✅ Migration v1→v2: Timesheet adapter for enterprise features
+import { createTimesheetEntryV2 } from './modules/timesheet-adapter.js';
+
 // System Announcement Ticker - News-style ticker for system announcements
 import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
 
@@ -1564,13 +1567,10 @@ completedBadge.style.display = 'none';
 
         Logger.log('📝 Creating internal timesheet entry:', entryData);
 
-        // Architecture v2.0 - FirebaseService with retry
-        Logger.log('  🚀 [v2.0] Using FirebaseService.call for createTimesheetEntry');
+        // ✅ Migration v1→v2: Use adapter for enterprise features (idempotency, event sourcing)
+        Logger.log('  🚀 [Migration v1→v2] Using createTimesheetEntry_v2 via adapter');
 
-        const result = await window.FirebaseService.call('createTimesheetEntry', entryData, {
-          retries: 3,
-          timeout: 15000
-        });
+        const result = await createTimesheetEntryV2(entryData);
 
         if (!result.success) {
           throw new Error(result.error || 'שגיאה ברישום פעילות');
