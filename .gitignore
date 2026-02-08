@@ -40,3 +40,12 @@ nul
 
 # Source maps
 dist/**/*.map
+
+# Dev investigation files
+.dev/
+
+# Build artifacts (Netlify builds from source, not dist)
+dist/
+
+# Netlify local
+.netlify/

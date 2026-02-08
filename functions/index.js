@@ -3376,23 +3376,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // 3️⃣ CLIENT VERIFICATION
-    // ═══════════════════════════════════════════════════════════════════
-
-    const clientDoc = await db.collection('clients').doc(data.clientId).get();
-
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'לקוח לא נמצא במערכת'
-      );
-    }
-
-    const clientData = clientDoc.data();
-    const finalClientName = data.clientName || clientData.clientName || clientData.fullName;
-
-    // ═══════════════════════════════════════════════════════════════════
-    // 4️⃣ CREATE ENTRY DATA (Schema aligned with createTimesheetEntry)
+    // 3️⃣ DATE PARSING (Before transaction)
     // ═══════════════════════════════════════════════════════════════════
 
     // Parse date - supports multiple formats for backward compatibility
@@ -3432,69 +3416,60 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       );
     }
 
-    const entryData = {
-      // Client/Case identifiers
-      clientId: data.clientId,
-      clientName: finalClientName,
-      caseNumber: data.clientId,  // Use clientId as caseNumber (same as createTimesheetEntry line 2959)
-
-      // Service/Stage tracking (null for Quick Log)
-      serviceId: null,
-      serviceName: null,
-      serviceType: null,
-      parentServiceId: null,
-      stageId: null,  // Will be updated by deduction logic if applicable
-      packageId: null,  // Will be updated by deduction logic if applicable
-
-      // Time tracking
-      date: dateTimestamp,  // ✅ FIXED: Use proper Firestore Timestamp
-      minutes: data.minutes,
-      hours: data.minutes / 60,
-
-      // Work description
-      action: sanitizeString(data.description.trim()),
-
-      // User tracking
-      employee: user.email,  // EMAIL for security rules and queries
-      lawyer: user.username,  // Username for display
-      createdBy: user.username,
-      lastModifiedBy: user.username,
-
-      // Branch tracking
-      branch: data.branch || null,
-
-      // Timestamps
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-
-      // Flags
-      isInternal: false,  // Quick Log is always for clients (not internal)
-      isQuickLog: true  // 🆕 NEW FLAG: Mark as Quick Log entry
-    };
-
     // ═══════════════════════════════════════════════════════════════════
-    // 5️⃣ HOURS DEDUCTION (Reuse logic from createTimesheetEntry)
+    // 4️⃣ TRANSACTION - All operations atomic
     // ═══════════════════════════════════════════════════════════════════
 
-    try {
+    const result = await db.runTransaction(async (transaction) => {
+
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
+
+      console.log(`📖 [Quick Log Transaction Phase 1] Reading client...`);
+
+      const clientRef = db.collection('clients').doc(data.clientId);
+      const clientDoc = await transaction.get(clientRef);
+
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'לקוח לא נמצא במערכת'
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const finalClientName = data.clientName || clientData.clientName || clientData.fullName;
+
+      console.log(`✅ [Quick Log Transaction Phase 1] Client read: ${data.clientId}`);
+
+      // ========================================
+      // PHASE 2: CALCULATIONS (No DB access)
+      // ========================================
+
+      console.log(`🧮 [Quick Log Transaction Phase 2] Calculating updates...`);
+
       const hoursWorked = data.minutes / 60;
       let updatedStageId = null;
       let updatedPackageId = null;
+      let clientUpdateData = null;
 
       // ✅ Client hours-based - find active package
       if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
         // 🔍 Find service by serviceId if provided, otherwise use first service
-        let service = null;
+        let serviceIndex = -1;
         if (data.serviceId) {
-          service = clientData.services.find(s => s.id === data.serviceId);
-          if (!service) {
+          serviceIndex = clientData.services.findIndex(s => s.id === data.serviceId);
+          if (serviceIndex === -1) {
             console.warn(`⚠️ [Quick Log] Service ${data.serviceId} not found for client ${data.clientId}, using first service`);
-            service = clientData.services[0];
+            serviceIndex = 0;
           }
         } else {
-          service = clientData.services[0];
+          serviceIndex = 0;
           console.warn(`⚠️ [Quick Log] No serviceId provided, using first service`);
         }
+
+        const service = clientData.services[serviceIndex];
         const activePackage = DeductionSystem.getActivePackage(service);
 
         if (activePackage) {
@@ -3515,24 +3490,42 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
             );
           }
 
-          // Deduct hours from active package
-          DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
-          updatedPackageId = activePackage.id;
+          // ✅ BUG FIX: Capture return value (immutable pattern)
+          const updatedPackage = DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
+          updatedPackageId = updatedPackage.id;
 
           // Update package status to overdraft if negative
           if (afterDeduction < 0 && afterDeduction >= -10) {
-            activePackage.status = 'overdraft';
+            updatedPackage.status = 'overdraft';
           }
 
-          // Update client document
-          await clientDoc.ref.update({
-            services: clientData.services,
+          // ✅ BUG FIX: Immutable update - create new packages array
+          const updatedServicePackages = service.packages.map(pkg =>
+            pkg.id === updatedPackage.id ? updatedPackage : pkg
+          );
+
+          // ✅ BUG FIX: Immutable update - create new service object
+          const updatedService = {
+            ...service,
+            packages: updatedServicePackages,
+            hoursUsed: (service.hoursUsed || 0) + hoursWorked,
+            hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
+            lastActivity: new Date().toISOString()
+          };
+
+          // ✅ BUG FIX: Immutable update - create new services array
+          const updatedServices = clientData.services.map((s, idx) =>
+            idx === serviceIndex ? updatedService : s
+          );
+
+          clientUpdateData = {
+            services: updatedServices,
             minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
             hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
             lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          });
+          };
 
-          console.log(`✅ [Quick Log] קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id}`);
+          console.log(`✅ [Quick Log] יקוזז ${hoursWorked.toFixed(2)} שעות מחבילה ${updatedPackage.id}`);
         } else {
           console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
         }
@@ -3566,20 +3559,39 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
               );
             }
 
-            DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
-            updatedPackageId = activePackage.id;
+            // ✅ BUG FIX: Capture return value (immutable pattern)
+            const updatedPackage = DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
+            updatedPackageId = updatedPackage.id;
 
             if (afterDeduction < 0 && afterDeduction >= -10) {
-              activePackage.status = 'overdraft';
+              updatedPackage.status = 'overdraft';
             }
 
-            await clientDoc.ref.update({
-              stages: stages,
+            // ✅ BUG FIX: Immutable update - create new packages array
+            const updatedStagePackages = currentStage.packages.map(pkg =>
+              pkg.id === updatedPackage.id ? updatedPackage : pkg
+            );
+
+            // ✅ BUG FIX: Immutable update - create new stage object
+            const updatedStage = {
+              ...currentStage,
+              packages: updatedStagePackages,
+              hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
+              hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked
+            };
+
+            // ✅ BUG FIX: Immutable update - create new stages array
+            const updatedStages = stages.map((stage, index) =>
+              index === currentStageIndex ? updatedStage : stage
+            );
+
+            clientUpdateData = {
+              stages: updatedStages,
               hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
               lastActivity: admin.firestore.FieldValue.serverTimestamp()
-            });
+            };
 
-            console.log(`✅ [Quick Log] קוזזו ${hoursWorked.toFixed(2)} שעות משלב ${currentStage.name}`);
+            console.log(`✅ [Quick Log] יקוזז ${hoursWorked.toFixed(2)} שעות משלב ${currentStage.name}`);
           }
         }
       }
@@ -3593,25 +3605,70 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
           const currentStage = stages[currentStageIndex];
           updatedStageId = currentStage.id;
 
-          // Track hours only (no deduction - fixed price)
-          stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
-          stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
+          // ✅ BUG FIX: Immutable update - create new stage object
+          const updatedStage = {
+            ...currentStage,
+            hoursWorked: (currentStage.hoursWorked || 0) + hoursWorked,
+            totalHoursWorked: (currentStage.totalHoursWorked || 0) + hoursWorked
+          };
 
-          await clientDoc.ref.update({
-            stages: stages,
+          // ✅ BUG FIX: Immutable update - create new stages array
+          const updatedStages = stages.map((stage, index) =>
+            index === currentStageIndex ? updatedStage : stage
+          );
+
+          clientUpdateData = {
+            stages: updatedStages,
             totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
             lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          });
+          };
 
-          console.log(`✅ [Quick Log] נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
+          console.log(`✅ [Quick Log] יירשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
         }
       } else {
         console.log(`ℹ️ [Quick Log] לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
       }
 
-      // Update entry with stage/package/service IDs
-      entryData.stageId = updatedStageId;
-      entryData.packageId = updatedPackageId;
+      // Build entry data
+      const entryData = {
+        // Client/Case identifiers
+        clientId: data.clientId,
+        clientName: finalClientName,
+        caseNumber: data.clientId,
+
+        // Service/Stage tracking
+        serviceId: null,
+        serviceName: null,
+        serviceType: null,
+        parentServiceId: null,
+        stageId: updatedStageId,
+        packageId: updatedPackageId,
+
+        // Time tracking
+        date: dateTimestamp,
+        minutes: data.minutes,
+        hours: data.minutes / 60,
+
+        // Work description
+        action: sanitizeString(data.description.trim()),
+
+        // User tracking
+        employee: user.email,
+        lawyer: user.username,
+        createdBy: user.username,
+        lastModifiedBy: user.username,
+
+        // Branch tracking
+        branch: data.branch || null,
+
+        // Timestamps
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+        // Flags
+        isInternal: false,
+        isQuickLog: true
+      };
 
       // Update service information if serviceId was provided
       if (data.serviceId && clientData.services) {
@@ -3624,43 +3681,57 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         }
       }
 
-    } catch (error) {
-      console.error(`⚠️ [Quick Log] שגיאה בקיזוז שעות מלקוח ${data.clientId}:`, error);
+      console.log(`✅ [Quick Log Transaction Phase 2] All calculations completed`);
 
-      // If it's an HttpsError (like resource-exhausted), re-throw it
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`✍️ [Quick Log Transaction Phase 3] Writing updates...`);
+
+      // Write #1: Update client (if needed)
+      if (clientUpdateData) {
+        transaction.update(clientRef, clientUpdateData);
+        console.log(`✅ Client will be updated: ${data.clientId}`);
       }
 
-      // Otherwise, log but don't fail the entire operation
-      console.warn(`⚠️ [Quick Log] ממשיך בכל זאת עם יצירת הרישום`);
-    }
+      // Write #2: Create timesheet entry
+      const timesheetRef = db.collection('timesheet_entries').doc();
+      transaction.set(timesheetRef, entryData);
+      console.log(`✅ Timesheet entry will be created: ${timesheetRef.id}`);
 
-    // ═══════════════════════════════════════════════════════════════════
-    // 6️⃣ SAVE ENTRY TO FIRESTORE
-    // ═══════════════════════════════════════════════════════════════════
+      // Write #3: Audit log
+      const logRef = db.collection('audit_log').doc();
+      transaction.set(logRef, {
+        action: 'CREATE_QUICK_LOG_ENTRY',
+        userId: user.uid,
+        username: user.username,
+        details: {
+          entryId: timesheetRef.id,
+          clientId: data.clientId,
+          clientName: finalClientName,
+          minutes: data.minutes,
+          date: data.date
+        },
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        userAgent: null,
+        ipAddress: null
+      });
+      console.log(`✅ Audit log will be created: ${logRef.id}`);
 
-    const docRef = await db.collection('timesheet_entries').add(entryData);
+      console.log(`✅ [Quick Log Transaction Phase 3] All writes completed`);
 
-    // ═══════════════════════════════════════════════════════════════════
-    // 7️⃣ AUDIT LOG
-    // ═══════════════════════════════════════════════════════════════════
-
-    await logAction('CREATE_QUICK_LOG_ENTRY', user.uid, user.username, {
-      entryId: docRef.id,
-      clientId: data.clientId,
-      clientName: finalClientName,
-      minutes: data.minutes,
-      date: data.date
+      // Return result
+      return {
+        success: true,
+        entryId: timesheetRef.id,
+        message: 'רישום נוצר בהצלחה'
+      };
     });
 
-    console.log(`✅ [Quick Log] רישום נוצר בהצלחה: ${docRef.id} עבור ${finalClientName} (${data.minutes} דקות)`);
+    console.log(`🎉 [Quick Log] רישום נוצר בהצלחה: ${result.entryId} עבור ${data.clientName || data.clientId} (${data.minutes} דקות)`);
 
-    return {
-      success: true,
-      entryId: docRef.id,
-      message: 'רישום נוצר בהצלחה'
-    };
+    return result;
 
   } catch (error) {
     console.error('[Quick Log] Error in createQuickLogEntry:', error);
@@ -3847,6 +3918,29 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 hoursRemaining: activePackage.hoursRemaining || 0
               };
 
+              // ✅ בדיקת חריגה לפני הקיזוז
+              const currentRemaining = activePackage.hoursRemaining || 0;
+              const afterDeduction = currentRemaining - hoursWorked;
+
+              // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
+              if (afterDeduction < -10) {
+                throw new functions.https.HttpsError(
+                  'resource-exhausted',
+                  'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                  {
+                    clientId: clientData.caseNumber,
+                    currentRemaining,
+                    requestedHours: hoursWorked,
+                    wouldBe: afterDeduction
+                  }
+                );
+              }
+
+              // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
+              if (afterDeduction < 0 && afterDeduction >= -10) {
+                activePackage.status = 'overdraft';
+              }
+
               // קיזוז שעות
               DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
@@ -3884,6 +3978,29 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               const activePackage = DeductionSystem.getActivePackage(currentStage);
 
               if (activePackage) {
+                // ✅ בדיקת חריגה לפני הקיזוז
+                const currentRemaining = activePackage.hoursRemaining || 0;
+                const afterDeduction = currentRemaining - hoursWorked;
+
+                // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
+                if (afterDeduction < -10) {
+                  throw new functions.https.HttpsError(
+                    'resource-exhausted',
+                    'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                    {
+                      clientId: clientData.caseNumber,
+                      currentRemaining,
+                      requestedHours: hoursWorked,
+                      wouldBe: afterDeduction
+                    }
+                  );
+                }
+
+                // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
+                if (afterDeduction < 0 && afterDeduction >= -10) {
+                  activePackage.status = 'overdraft';
+                }
+
                 // קיזוז שעות
                 DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
                 updatedPackageId = activePackage.id;
@@ -3923,6 +4040,29 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
             const activePackage = DeductionSystem.getActivePackage(currentStage);
 
             if (activePackage) {
+              // ✅ בדיקת חריגה לפני הקיזוז
+              const currentRemaining = activePackage.hoursRemaining || 0;
+              const afterDeduction = currentRemaining - hoursWorked;
+
+              // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
+              if (afterDeduction < -10) {
+                throw new functions.https.HttpsError(
+                  'resource-exhausted',
+                  'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                  {
+                    clientId: clientData.caseNumber,
+                    currentRemaining,
+                    requestedHours: hoursWorked,
+                    wouldBe: afterDeduction
+                  }
+                );
+              }
+
+              // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
+              if (afterDeduction < 0 && afterDeduction >= -10) {
+                activePackage.status = 'overdraft';
+              }
+
               DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
 
