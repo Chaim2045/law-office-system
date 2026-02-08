@@ -2122,21 +2122,6 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // ✅ בדיקה שהלקוח קיים (במבנה החדש: clientId = caseNumber = Document ID)
-    const clientDoc = await db.collection('clients').doc(clientId).get();
-
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        `לקוח ${clientId} לא נמצא`
-      );
-    }
-
-    const clientData = clientDoc.data();
-
-    // ✅ כל עובד יכול ליצור משימות עבור כל לקוח במשרד
-    // אין צורך בבדיקת הרשאות נוספת
-
     // ✅ בדיקת סניף מטפל
     if (!data.branch || typeof data.branch !== 'string') {
       throw new functions.https.HttpsError(
@@ -2145,86 +2130,143 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
+    // Prepare refs (generate IDs upfront)
+    const taskRef = db.collection('budget_tasks').doc();
+    const approvalRef = db.collection('pending_task_approvals').doc();
+    const clientRef = db.collection('clients').doc(clientId);
 
-    // 🆕 Phase 1: שמירת ערכים מקוריים (לא ישתנו לעולם)
-    const deadlineTimestamp = data.deadline ? admin.firestore.Timestamp.fromDate(new Date(data.deadline)) : null;
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Task + Approval Creation
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = {
-      description: sanitizeString(data.description.trim()),
-      categoryId: data.categoryId || null, // ✅ מזהה קטגוריית עבודה (Work Category ID)
-      categoryName: data.categoryName || null, // ✅ שם קטגוריית העבודה (Work Category Name)
-      clientId: clientId,  // ✅ מספר תיק
-      clientName: clientData.clientName || data.clientName,
-      caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
-      serviceId: data.serviceId || null, // ✅ תמיכה בבחירת שירות ספציפי
-      serviceName: data.serviceName || null, // ✅ שם השירות
-      serviceType: data.serviceType || null, // ✅ סוג השירות (legal_procedure/hours)
-      parentServiceId: data.parentServiceId || null, // ✅ service.id עבור הליך משפטי
-      branch: sanitizeString(data.branch.trim()), // ✅ סניף מטפל
-      estimatedHours: estimatedHours,
-      estimatedMinutes: estimatedMinutes,
-      actualHours: 0,
-      actualMinutes: 0,
+    let clientData;
+    let savedTaskData;
 
-      // 🆕 תקציב ויעד מקוריים (NEVER CHANGE)
-      originalEstimate: estimatedMinutes,
-      originalDeadline: deadlineTimestamp,
+    await db.runTransaction(async (transaction) => {
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
 
-      // 🆕 מערכים לעדכונים
-      budgetAdjustments: [],
-      deadlineExtensions: [],
+      console.log(`📖 [Transaction Phase 1] Reading client...`);
 
-      status: 'פעיל',  // ✅ Always active - no approval needed
-      // Removed: requestedMinutes, approvedMinutes - no longer needed
-      deadline: deadlineTimestamp,
-      employee: user.email, // ✅ EMAIL for security rules and queries
-      lawyer: user.username, // ✅ Username for display
-      createdBy: user.username,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      timeEntries: []
-    };
+      const clientDoc = await transaction.get(clientRef);
 
-    const docRef = await db.collection('budget_tasks').add(taskData);
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
 
-    // ✅ Create approval history record (for tracking/FYI)
-    const approvalRecord = {
-      taskId: docRef.id,
-      requestedBy: user.email,
-      requestedByName: user.employee.name || user.username,  // ✅ Hebrew name preferred
-      requestedMinutes: estimatedMinutes,
-      taskData: {
-        description: taskData.description,
-        clientName: taskData.clientName,
-        clientId: clientId,
-        estimatedMinutes: estimatedMinutes
-      },
-      status: 'auto_approved',  // ✅ Auto-approved - no manual approval needed
-      autoApproved: true,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    };
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
 
-    await db.collection('pending_task_approvals').add(approvalRecord);
-    console.log(`✅ Created approval history record for task ${docRef.id}`);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${clientId} לא נמצא`
+        );
+      }
 
-    // Audit log
-    await logAction('CREATE_TASK', user.uid, user.username, {
-      taskId: docRef.id,
-      clientId: clientId,
-      caseNumber: clientData.caseNumber,
-      estimatedHours: estimatedHours
+      clientData = clientDoc.data();
+
+      console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
+
+      // 🆕 Phase 1: שמירת ערכים מקוריים (לא ישתנו לעולם)
+      const deadlineTimestamp = data.deadline ? admin.firestore.Timestamp.fromDate(new Date(data.deadline)) : null;
+
+      const taskData = {
+        description: sanitizeString(data.description.trim()),
+        categoryId: data.categoryId || null, // ✅ מזהה קטגוריית עבודה (Work Category ID)
+        categoryName: data.categoryName || null, // ✅ שם קטגוריית העבודה (Work Category Name)
+        clientId: clientId,  // ✅ מספר תיק
+        clientName: clientData.clientName || data.clientName,
+        caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
+        serviceId: data.serviceId || null, // ✅ תמיכה בבחירת שירות ספציפי
+        serviceName: data.serviceName || null, // ✅ שם השירות
+        serviceType: data.serviceType || null, // ✅ סוג השירות (legal_procedure/hours)
+        parentServiceId: data.parentServiceId || null, // ✅ service.id עבור הליך משפטי
+        branch: sanitizeString(data.branch.trim()), // ✅ סניף מטפל
+        estimatedHours: estimatedHours,
+        estimatedMinutes: estimatedMinutes,
+        actualHours: 0,
+        actualMinutes: 0,
+
+        // 🆕 תקציב ויעד מקוריים (NEVER CHANGE)
+        originalEstimate: estimatedMinutes,
+        originalDeadline: deadlineTimestamp,
+
+        // 🆕 מערכים לעדכונים
+        budgetAdjustments: [],
+        deadlineExtensions: [],
+
+        status: 'פעיל',  // ✅ Always active - no approval needed
+        // Removed: requestedMinutes, approvedMinutes - no longer needed
+        deadline: deadlineTimestamp,
+        employee: user.email, // ✅ EMAIL for security rules and queries
+        lawyer: user.username, // ✅ Username for display
+        createdBy: user.username,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        timeEntries: []
+      };
+
+      // ✅ Create approval history record (for tracking/FYI)
+      const approvalRecord = {
+        taskId: taskRef.id,
+        requestedBy: user.email,
+        requestedByName: user.employee.name || user.username,  // ✅ Hebrew name preferred
+        requestedMinutes: estimatedMinutes,
+        taskData: {
+          description: taskData.description,
+          clientName: taskData.clientName,
+          clientId: clientId,
+          estimatedMinutes: estimatedMinutes
+        },
+        status: 'auto_approved',  // ✅ Auto-approved - no manual approval needed
+        autoApproved: true,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing task and approval...`);
+
+      // Save taskData for response (before it goes out of scope)
+      savedTaskData = taskData;
+
+      // Write #1: Task
+      transaction.set(taskRef, taskData);
+      console.log(`  ✅ Task creation queued: ${taskRef.id}`);
+
+      // Write #2: Approval
+      transaction.set(approvalRef, approvalRecord);
+      console.log(`  ✅ Approval creation queued: ${approvalRef.id}`);
+
+      console.log(`🔒 [Transaction] All writes queued, committing...`);
     });
 
-    console.log(`✅ Created task ${docRef.id} for client ${clientId}`);
+    console.log(`✅ Created task ${taskRef.id} for client ${clientId} (atomic)`);
+    console.log(`✅ Created approval history record for task ${taskRef.id}`);
+
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('CREATE_TASK', user.uid, user.username, {
+        taskId: taskRef.id,
+        clientId: clientId,
+        caseNumber: clientData.caseNumber,
+        estimatedHours: estimatedHours
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the task creation if audit logging fails
+    }
 
     return {
       success: true,
-      taskId: docRef.id,
+      taskId: taskRef.id,
       task: {
-        id: docRef.id,
-        ...taskData
+        id: taskRef.id,
+        ...savedTaskData
       }
     };
 
@@ -2352,30 +2394,53 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+    // Prepare ref
+    const taskRef = db.collection('budget_tasks').doc(data.taskId);
 
-    if (!taskDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'משימה לא נמצאה'
-      );
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Task Completion
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = taskDoc.data();
+    let taskData, gapPercent, isCritical;
 
-    if (taskData.employee !== user.email && user.role !== 'admin') { // ✅ Check by EMAIL
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לסמן משימה זו כהושלמה'
-      );
-    }
+    await db.runTransaction(async (transaction) => {
 
-    // ✅ NEW: בדיקה שיש רישומי זמן לפני סיום המשימה
-    const actualHours = taskData.actualHours || 0;
-    if (actualHours === 0) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        `❌ לא ניתן לסיים משימה ללא רישומי זמן!
+      // ========================================
+      // PHASE 1: READ OPERATION
+      // ========================================
+
+      console.log(`📖 [Transaction Phase 1] Reading task...`);
+
+      const taskDoc = await transaction.get(taskRef);
+
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
+
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
+
+      if (!taskDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'משימה לא נמצאה'
+        );
+      }
+
+      taskData = taskDoc.data();
+
+      if (taskData.employee !== user.email && user.role !== 'admin') {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'אין הרשאה לסמן משימה זו כהושלמה'
+        );
+      }
+
+      // ✅ NEW: בדיקה שיש רישומי זמן לפני סיום המשימה
+      const actualHours = taskData.actualHours || 0;
+      if (actualHours === 0) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `❌ לא ניתן לסיים משימה ללא רישומי זמן!
 
 משימה: ${taskData.title}
 תקציב: ${taskData.budgetHours || 0} שעות
@@ -2383,47 +2448,55 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
 
 אנא רשום זמן לפני סיום המשימה.
 זה מבטיח מעקב מדויק ונתונים אמיתיים.`
-      );
-    }
-
-    // ✨ NEW: Calculate time gap for validation tracking
-    const estimatedMinutes = taskData.estimatedMinutes || 0;
-    const actualMinutes = taskData.actualMinutes || 0;
-    const gapMinutes = actualMinutes - estimatedMinutes;
-    const gapPercent = estimatedMinutes > 0 ? Math.abs((gapMinutes / estimatedMinutes) * 100) : 0;
-    const isCritical = gapPercent >= 50;
-
-    // Prepare update object
-    const updateData = {
-      status: 'הושלם',
-      completedAt: admin.firestore.FieldValue.serverTimestamp(),
-      completedBy: user.username,
-      completionNotes: data.completionNotes ? sanitizeString(data.completionNotes) : '',
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      // ✨ NEW: Add completion metadata
-      completion: {
-        gapPercent: Math.round(gapPercent),
-        gapMinutes: Math.abs(gapMinutes),
-        estimatedMinutes,
-        actualMinutes,
-        isOver: gapMinutes > 0,
-        isUnder: gapMinutes < 0,
-        gapReason: data.gapReason || null,
-        gapNotes: data.gapNotes || null,
-        requiresReview: isCritical,
-        completedAt: admin.firestore.FieldValue.serverTimestamp()
+        );
       }
-    };
 
-    // Update task
-    await db.collection('budget_tasks').doc(data.taskId).update(updateData);
+      // ✨ NEW: Calculate time gap for validation tracking
+      const estimatedMinutes = taskData.estimatedMinutes || 0;
+      const actualMinutes = taskData.actualMinutes || 0;
+      const gapMinutes = actualMinutes - estimatedMinutes;
+      gapPercent = estimatedMinutes > 0 ? Math.abs((gapMinutes / estimatedMinutes) * 100) : 0;
+      isCritical = gapPercent >= 50;
 
-    console.log(`✅ משימה סומנה כהושלמה: ${data.taskId}`);
+      // Prepare update object
+      const updateData = {
+        status: 'הושלם',
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        completedBy: user.username,
+        completionNotes: data.completionNotes ? sanitizeString(data.completionNotes) : '',
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        // ✨ NEW: Add completion metadata
+        completion: {
+          gapPercent: Math.round(gapPercent),
+          gapMinutes: Math.abs(gapMinutes),
+          estimatedMinutes,
+          actualMinutes,
+          isOver: gapMinutes > 0,
+          isUnder: gapMinutes < 0,
+          gapReason: data.gapReason || null,
+          gapNotes: data.gapNotes || null,
+          requiresReview: isCritical,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        }
+      };
+
+      // ========================================
+      // PHASE 3: WRITE OPERATION
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing task update...`);
+
+      transaction.update(taskRef, updateData);
+
+      console.log(`🔒 [Transaction] Task completion queued, committing...`);
+    });
+
+    console.log(`✅ משימה סומנה כהושלמה: ${data.taskId} (atomic)`);
     console.log(`ℹ️ קיזוז שעות כבר בוצע בעת רישום השעתון (createTimesheetEntry)`);
-    console.log(`📊 פער זמן: ${Math.round(gapPercent)}% (${Math.abs(gapMinutes)} דקות)`);
+    console.log(`📊 פער זמן: ${Math.round(gapPercent)}% (${Math.abs(gapPercent)} דקות)`);
 
-    // ✨ NEW: Create admin alert for critical gaps
+    // ✨ NEW: Create admin alert for critical gaps (OUTSIDE transaction - eventual consistency)
     if (isCritical) {
       try {
         await db.collection('task_completion_alerts').add({
@@ -2434,10 +2507,10 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
           employeeEmail: user.email,
           completedAt: admin.firestore.FieldValue.serverTimestamp(),
           gapPercent: Math.round(gapPercent),
-          gapMinutes: Math.abs(gapMinutes),
-          isOver: gapMinutes > 0,
-          estimatedMinutes,
-          actualMinutes,
+          gapMinutes: Math.abs(Math.abs(taskData.actualMinutes || 0) - (taskData.estimatedMinutes || 0)),
+          isOver: (taskData.actualMinutes || 0) > (taskData.estimatedMinutes || 0),
+          estimatedMinutes: taskData.estimatedMinutes || 0,
+          actualMinutes: taskData.actualMinutes || 0,
           gapReason: data.gapReason || null,
           gapNotes: data.gapNotes || null,
           completionNotes: data.completionNotes || '',
@@ -2454,13 +2527,18 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // Audit log
-    await logAction('COMPLETE_TASK', user.uid, user.username, {
-      taskId: data.taskId,
-      actualMinutes: taskData.actualMinutes || 0,
-      gapPercent: Math.round(gapPercent),
-      isCritical
-    });
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('COMPLETE_TASK', user.uid, user.username, {
+        taskId: data.taskId,
+        actualMinutes: taskData.actualMinutes || 0,
+        gapPercent: Math.round(gapPercent),
+        isCritical
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the completion if audit logging fails
+    }
 
     return {
       success: true,
@@ -2534,96 +2612,134 @@ exports.cancelBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // Fetch task
-    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+    // Prepare refs
+    const taskRef = db.collection('budget_tasks').doc(data.taskId);
 
-    if (!taskDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'משימה לא נמצאה'
-      );
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Task + Approval Cancellation
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = taskDoc.data();
+    let taskData;
 
-    // Authorization: Allow admin OR task owner
-    const isAdmin = user.employee.isAdmin === true || user.role === 'admin';
-    const isOwner = taskData.employee === user.email;
+    await db.runTransaction(async (transaction) => {
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
 
-    if (!isAdmin && !isOwner) {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לבטל משימה זו. רק בעל המשימה או מנהל מערכת יכולים לבטל משימה.'
-      );
-    }
+      console.log(`📖 [Transaction Phase 1] Reading task and approval...`);
 
-    // Validate task status
-    if (taskData.status !== 'פעיל') {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        `לא ניתן לבטל משימה עם סטטוס: ${taskData.status}. ניתן לבטל רק משימות פעילות.`
-      );
-    }
+      const taskDoc = await transaction.get(taskRef);
 
-    // Block if task has time entries
-    const actualMinutes = taskData.actualMinutes || 0;
-    if (actualMinutes > 0) {
-      const actualHours = (actualMinutes / 60).toFixed(2);
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        `לא ניתן לבטל משימה עם רישומי זמן (${actualHours} שעות נרשמו). נא לפנות למנהל/ת לטיפול במשימה.`
-      );
-    }
-
-    // Prepare update
-    const updateData = {
-      status: 'בוטל',
-      cancelReason: reason,
-      cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
-      cancelledBy: user.username,
-      cancelledByEmail: user.email,
-      cancelledByUid: user.uid,
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    };
-
-    // Update task
-    await db.collection('budget_tasks').doc(data.taskId).update(updateData);
-
-    console.log(`✅ משימה בוטלה: ${data.taskId}`);
-    console.log(`📝 סיבה: ${reason}`);
-
-    // ✅ NEW: Sync approval record to prevent cancelled tasks from showing in approval screen
-    try {
+      // Query for approval record
       const approvalSnapshot = await db.collection('pending_task_approvals')
         .where('taskId', '==', data.taskId)
         .limit(1)
         .get();
 
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
+
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
+
+      if (!taskDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'משימה לא נמצאה'
+        );
+      }
+
+      taskData = taskDoc.data();
+
+      // Authorization: Allow admin OR task owner
+      const isAdmin = user.employee.isAdmin === true || user.role === 'admin';
+      const isOwner = taskData.employee === user.email;
+
+      if (!isAdmin && !isOwner) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'אין הרשאה לבטל משימה זו. רק בעל המשימה או מנהל מערכת יכולים לבטל משימה.'
+        );
+      }
+
+      // Validate task status
+      if (taskData.status !== 'פעיל') {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `לא ניתן לבטל משימה עם סטטוס: ${taskData.status}. ניתן לבטל רק משימות פעילות.`
+        );
+      }
+
+      // Block if task has time entries
+      const actualMinutes = taskData.actualMinutes || 0;
+      if (actualMinutes > 0) {
+        const actualHours = (actualMinutes / 60).toFixed(2);
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `לא ניתן לבטל משימה עם רישומי זמן (${actualHours} שעות נרשמו). נא לפנות למנהל/ת לטיפול במשימה.`
+        );
+      }
+
+      // Prepare task update
+      const taskUpdateData = {
+        status: 'בוטל',
+        cancelReason: reason,
+        cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+        cancelledBy: user.username,
+        cancelledByEmail: user.email,
+        cancelledByUid: user.uid,
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      // Prepare approval update (if exists)
+      let approvalUpdateData = null;
+      let approvalRef = null;
       if (!approvalSnapshot.empty) {
-        const approvalDoc = approvalSnapshot.docs[0];
-        await approvalDoc.ref.update({
+        approvalRef = approvalSnapshot.docs[0].ref;
+        approvalUpdateData = {
           status: 'task_cancelled',
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
           cancelledBy: user.username,
           cancelledByEmail: user.email
-        });
-        console.log(`✅ רשומת אישור עודכנה: ${approvalDoc.id} → task_cancelled`);
-      } else {
-        console.warn(`⚠️ לא נמצאה רשומת אישור עבור משימה ${data.taskId} (אין צורך בעדכון)`);
+        };
+        console.log(`  🔗 עדכון approval מוכן: ${approvalRef.id}`);
       }
-    } catch (approvalError) {
-      // Don't fail the cancellation if approval update fails
-      console.error(`❌ שגיאה בעדכון רשומת אישור (הביטול בוצע בהצלחה):`, approvalError);
-    }
 
-    // Audit log
-    await logAction('CANCEL_TASK', user.uid, user.username, {
-      taskId: data.taskId,
-      reason: reason,
-      clientId: taskData.clientId || null,
-      clientName: taskData.clientName || null
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing updates...`);
+
+      // Write #1: Task (always)
+      transaction.update(taskRef, taskUpdateData);
+      console.log(`  ✅ Task update queued`);
+
+      // Write #2: Approval (if exists)
+      if (approvalRef && approvalUpdateData) {
+        transaction.update(approvalRef, approvalUpdateData);
+        console.log(`  ✅ Approval update queued`);
+      }
+
+      console.log(`🔒 [Transaction] All updates queued, committing...`);
     });
+
+    console.log(`✅ משימה בוטלה: ${data.taskId} (atomic)`);
+    console.log(`📝 סיבה: ${reason}`);
+
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('CANCEL_TASK', user.uid, user.username, {
+        taskId: data.taskId,
+        reason: reason,
+        clientId: taskData.clientId || null,
+        clientName: taskData.clientName || null
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the cancellation if audit logging fails
+    }
 
     return {
       success: true,
@@ -2668,68 +2784,106 @@ exports.adjustTaskBudget = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // בדיקה שהמשימה קיימת
-    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+    // Prepare ref
+    const taskRef = db.collection('budget_tasks').doc(data.taskId);
 
-    if (!taskDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'משימה לא נמצאה'
-      );
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Budget Adjustment
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = taskDoc.data();
+    let taskData, oldEstimate, addedMinutes;
 
-    // רק בעל המשימה או admin יכולים לעדכן תקציב
-    if (taskData.employee !== user.email && user.role !== 'admin') {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לעדכן תקציב משימה זו'
-      );
-    }
+    await db.runTransaction(async (transaction) => {
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
 
-    // לא ניתן לעדכן תקציב של משימה שהושלמה
-    if (taskData.status === 'הושלם') {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'לא ניתן לעדכן תקציב של משימה שכבר הושלמה'
-      );
-    }
+      console.log(`📖 [Transaction Phase 1] Reading task...`);
 
-    const oldEstimate = taskData.estimatedMinutes || 0;
-    const addedMinutes = data.newEstimate - oldEstimate;
+      const taskDoc = await transaction.get(taskRef);
 
-    // יצירת רשומת עדכון
-    const adjustment = {
-      timestamp: new Date().toISOString(),
-      type: addedMinutes > 0 ? 'increase' : 'decrease',
-      oldEstimate,
-      newEstimate: data.newEstimate,
-      addedMinutes,
-      reason: data.reason ? sanitizeString(data.reason) : 'לא צוין',
-      adjustedBy: user.username,
-      actualAtTime: taskData.actualMinutes || 0
-    };
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
 
-    // עדכון המשימה
-    await db.collection('budget_tasks').doc(data.taskId).update({
-      estimatedMinutes: data.newEstimate,
-      estimatedHours: data.newEstimate / 60,
-      budgetAdjustments: admin.firestore.FieldValue.arrayUnion(adjustment),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
+
+      if (!taskDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'משימה לא נמצאה'
+        );
+      }
+
+      taskData = taskDoc.data();
+
+      // רק בעל המשימה או admin יכולים לעדכן תקציב
+      if (taskData.employee !== user.email && user.role !== 'admin') {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'אין הרשאה לעדכן תקציב משימה זו'
+        );
+      }
+
+      // לא ניתן לעדכן תקציב של משימה שהושלמה
+      if (taskData.status === 'הושלם') {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'לא ניתן לעדכן תקציב של משימה שכבר הושלמה'
+        );
+      }
+
+      oldEstimate = taskData.estimatedMinutes || 0;
+      addedMinutes = data.newEstimate - oldEstimate;
+
+      // יצירת רשומת עדכון
+      const adjustment = {
+        timestamp: new Date().toISOString(),
+        type: addedMinutes > 0 ? 'increase' : 'decrease',
+        oldEstimate,
+        newEstimate: data.newEstimate,
+        addedMinutes,
+        reason: data.reason ? sanitizeString(data.reason) : 'לא צוין',
+        adjustedBy: user.username,
+        actualAtTime: taskData.actualMinutes || 0
+      };
+
+      // Prepare update data
+      const updateData = {
+        estimatedMinutes: data.newEstimate,
+        estimatedHours: data.newEstimate / 60,
+        budgetAdjustments: admin.firestore.FieldValue.arrayUnion(adjustment),
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing budget adjustment...`);
+
+      transaction.update(taskRef, updateData);
+      console.log(`  ✅ Budget adjustment queued`);
+
+      console.log(`🔒 [Transaction] Update queued, committing...`);
     });
 
-    console.log(`✅ תקציב משימה ${data.taskId} עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות`);
+    console.log(`✅ תקציב משימה ${data.taskId} עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות (atomic)`);
 
-    // Audit log
-    await logAction('ADJUST_BUDGET', user.uid, user.username, {
-      taskId: data.taskId,
-      oldEstimate,
-      newEstimate: data.newEstimate,
-      addedMinutes,
-      reason: data.reason
-    });
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('ADJUST_BUDGET', user.uid, user.username, {
+        taskId: data.taskId,
+        oldEstimate,
+        newEstimate: data.newEstimate,
+        addedMinutes,
+        reason: data.reason
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the budget adjustment if audit logging fails
+    }
 
     return {
       success: true,
@@ -4347,105 +4501,111 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // Get the entry
+    // Prepare refs
     const entryRef = db.collection('timesheet_entries').doc(data.entryId);
-    const entryDoc = await entryRef.get();
+    const taskRef = data.taskId ? db.collection('budget_tasks').doc(data.taskId) : null;
+    const clientRef = data.clientId ? db.collection('clients').doc(data.clientId) : null;
 
-    if (!entryDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'רשומת שעתון לא נמצאה'
-      );
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - All-or-Nothing Guarantee
+    // ═══════════════════════════════════════════════════════════════════
 
-    const entryData = entryDoc.data();
+    await db.runTransaction(async (transaction) => {
 
-    // Security: רק העובד עצמו או מנהל יכולים לערוך
-    if (user.role !== 'admin' && entryData.employee !== user.email) {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לערוך רשומה זו'
-      );
-    }
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
 
-    console.log(`📝 עדכון רשומת שעתון ${data.entryId} עבור ${user.username}`);
-    console.log(`  תאריך: ${entryData.date} → ${data.date}`);
-    console.log(`  דקות: ${entryData.minutes} → ${data.minutes}`);
-    console.log(`  תיאור: ${entryData.action} → ${data.action}`);
+      console.log(`📖 [Transaction Phase 1] Reading documents...`);
 
-    // Calculate minutesDiff on SERVER (not trusting client)
-    const minutesDiff = data.minutes - entryData.minutes;
-    console.log(`  הפרש דקות (SERVER CALCULATED): ${minutesDiff}`);
+      const entryDoc = await transaction.get(entryRef);
+      const taskDoc = taskRef && data.autoGenerated ? await transaction.get(taskRef) : null;
+      const clientDoc = clientRef && data.autoGenerated && data.clientId ? await transaction.get(clientRef) : null;
 
-    // Fix editHistory timestamps - convert ISO strings to Firestore Timestamps
-    // Keep existing Firestore timestamps intact!
-    // Note: Cannot use serverTimestamp() inside arrays, so we convert ISO to Timestamp
-    const fixedEditHistory = data.editHistory.map(edit => {
-      const editedAt = edit.editedAt;
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
 
-      // Check if editedAt is a FieldValue.serverTimestamp() placeholder object
-      // This happens with old buggy data that wasn't converted properly
-      if (editedAt && typeof editedAt === 'object' && editedAt._methodName === 'FieldValue.serverTimestamp') {
-        // Convert placeholder to actual current timestamp
-        console.warn(`  ⚠️  Found serverTimestamp placeholder in editHistory - converting to current time`);
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
+
+      // Validation: Entry exists
+      if (!entryDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'רשומת שעתון לא נמצאה'
+        );
+      }
+
+      const entryData = entryDoc.data();
+
+      // Security: רק העובד עצמו או מנהל יכולים לערוך
+      if (user.role !== 'admin' && entryData.employee !== user.email) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'אין הרשאה לערוך רשומה זו'
+        );
+      }
+
+      console.log(`📝 עדכון רשומת שעתון ${data.entryId} עבור ${user.username}`);
+      console.log(`  תאריך: ${entryData.date} → ${data.date}`);
+      console.log(`  דקות: ${entryData.minutes} → ${data.minutes}`);
+      console.log(`  תיאור: ${entryData.action} → ${data.action}`);
+
+      // Calculate minutesDiff on SERVER (not trusting client)
+      const minutesDiff = data.minutes - entryData.minutes;
+      const hoursDiff = minutesDiff / 60;
+      console.log(`  הפרש דקות (SERVER CALCULATED): ${minutesDiff}`);
+
+      // Fix editHistory timestamps - convert ISO strings to Firestore Timestamps
+      const fixedEditHistory = data.editHistory.map(edit => {
+        const editedAt = edit.editedAt;
+
+        if (editedAt && typeof editedAt === 'object' && editedAt._methodName === 'FieldValue.serverTimestamp') {
+          console.warn(`  ⚠️  Found serverTimestamp placeholder in editHistory - converting to current time`);
+          return {
+            ...edit,
+            editedAt: admin.firestore.Timestamp.now()
+          };
+        }
+
+        if (typeof editedAt === 'string') {
+          return {
+            ...edit,
+            editedAt: admin.firestore.Timestamp.fromDate(new Date(editedAt))
+          };
+        }
+
+        if (editedAt && editedAt.seconds !== undefined && editedAt.nanoseconds !== undefined) {
+          return edit;
+        }
+
+        console.warn(`  ⚠️  Unknown editedAt format in editHistory:`, typeof editedAt, editedAt);
         return {
           ...edit,
           editedAt: admin.firestore.Timestamp.now()
         };
-      }
+      });
 
-      // If editedAt is an ISO string (from new edit), convert to Firestore Timestamp
-      if (typeof editedAt === 'string') {
-        return {
-          ...edit,
-          editedAt: admin.firestore.Timestamp.fromDate(new Date(editedAt))
-        };
-      }
-
-      // If it's already a valid Firestore timestamp with seconds/nanoseconds, keep it as-is
-      if (editedAt && editedAt.seconds !== undefined && editedAt.nanoseconds !== undefined) {
-        return edit;
-      }
-
-      // Fallback: convert to current timestamp if we don't recognize the format
-      console.warn(`  ⚠️  Unknown editedAt format in editHistory:`, typeof editedAt, editedAt);
-      return {
-        ...edit,
-        editedAt: admin.firestore.Timestamp.now()
+      // Prepare entry update data
+      const entryUpdateData = {
+        date: data.date,
+        minutes: data.minutes,
+        hours: data.minutes / 60,
+        editHistory: fixedEditHistory,
+        lastEditedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastEditedBy: user.username
       };
-    });
 
-    // עדכון בסיסי של הרשומה
-    const updateData = {
-      date: data.date,
-      minutes: data.minutes,
-      hours: data.minutes / 60,
-      editHistory: fixedEditHistory,
-      lastEditedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastEditedBy: user.username
-    };
+      if (data.action !== undefined) {
+        entryUpdateData.action = data.action;
+        console.log(`  ✅ Updating action field to: "${data.action}"`);
+      }
 
-    // Add action field if provided
-    if (data.action !== undefined) {
-      updateData.action = data.action;
-      console.log(`  ✅ Updating action field to: "${data.action}"`);
-    }
-
-    console.log(`  💾 Writing to Firestore...`);
-    await entryRef.update(updateData);
-    console.log(`  ✅ Firestore update completed`);
-
-    // עדכון נוסף לפי סוג הרשומה
-    if (data.autoGenerated && data.taskId) {
-      // רשומה auto-generated - צריך לעדכן גם את המשימה
-      console.log(`  🔗 עדכון משימה ${data.taskId}`);
-
-      const taskRef = db.collection('budget_tasks').doc(data.taskId);
-      const taskDoc = await taskRef.get();
-
-      if (taskDoc.exists) {
+      // Prepare task update (if needed)
+      let taskUpdateData = null;
+      if (taskDoc && taskDoc.exists) {
         const taskData = taskDoc.data();
-        const updateObj = {
+        taskUpdateData = {
           actualMinutes: admin.firestore.FieldValue.increment(minutesDiff),
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
@@ -4454,7 +4614,6 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
         if (taskData.timeEntries && Array.isArray(taskData.timeEntries)) {
           let foundEntry = false;
           const updatedTimeEntries = taskData.timeEntries.map(entry => {
-            // Find the matching entry by entryId
             if (entry.entryId === data.entryId) {
               foundEntry = true;
               console.log(`  🔄 Updating timeEntry in task.timeEntries array`);
@@ -4474,90 +4633,152 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
             console.warn(`  Task ID: ${data.taskId}, timeEntries count: ${taskData.timeEntries.length}`);
           }
 
-          updateObj.timeEntries = updatedTimeEntries;
+          taskUpdateData.timeEntries = updatedTimeEntries;
         }
 
-        await taskRef.update(updateObj);
-
-        console.log(`  ✅ משימה ${data.taskId} עודכנה (הפרש: ${minutesDiff} דקות)`);
+        console.log(`  🔗 עדכון משימה ${data.taskId} מוכן`);
       }
 
-      // עדכון גם את הלקוח אם יש clientId
-      if (data.clientId) {
-        console.log(`  🔗 עדכון לקוח ${data.clientId}`);
+      // Prepare client update (if needed)
+      let clientUpdateData = null;
+      if (clientDoc && clientDoc.exists) {
+        const clientData = clientDoc.data();
 
-        const clientRef = db.collection('clients').doc(data.clientId);
-        const clientDoc = await clientRef.get();
+        // עדכון לקוח שעתי - עדכון החבילה
+        if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+          let service = null;
 
-        if (clientDoc.exists) {
-          const clientData = clientDoc.data();
-          const hoursDiff = minutesDiff / 60;
+          if (data.serviceId) {
+            service = clientData.services.find(s => s.id === data.serviceId);
+          }
 
-          // עדכון לקוח שעתי - עדכון החבילה
-          if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
-            // מציאת השירות הרלוונטי
-            let service = null;
+          if (!service) {
+            service = clientData.services[0];
+          }
 
-            if (data.serviceId) {
-              service = clientData.services.find(s => s.id === data.serviceId);
+          if (service) {
+            const activePackage = DeductionSystem.getActivePackage(service);
+
+            if (activePackage) {
+              // ✅ IMMUTABLE PATTERN: Create new package object
+              const updatedPackage = {
+                ...activePackage,
+                hoursUsed: (activePackage.hoursUsed || 0) + hoursDiff,
+                hoursRemaining: (activePackage.hoursRemaining || 0) - hoursDiff
+              };
+
+              // ✅ IMMUTABLE PATTERN: Create new packages array
+              const updatedPackages = service.packages.map(pkg =>
+                pkg.id === updatedPackage.id ? updatedPackage : pkg
+              );
+
+              // ✅ IMMUTABLE PATTERN: Create new service object
+              const updatedService = {
+                ...service,
+                packages: updatedPackages
+              };
+
+              // ✅ IMMUTABLE PATTERN: Create new services array
+              const updatedServices = clientData.services.map(s =>
+                s.id === updatedService.id ? updatedService : s
+              );
+
+              clientUpdateData = {
+                services: updatedServices,
+                minutesRemaining: admin.firestore.FieldValue.increment(-minutesDiff),
+                hoursRemaining: admin.firestore.FieldValue.increment(-hoursDiff),
+                lastActivity: admin.firestore.FieldValue.serverTimestamp()
+              };
+
+              console.log(`  🔗 עדכון לקוח ${data.clientId} מוכן (hours, הפרש: ${hoursDiff.toFixed(2)} שעות)`);
             }
+          }
+        }
+        // הליך משפטי - עדכון השלב
+        else if (data.serviceType === 'legal_procedure' && data.serviceId) {
+          const service = clientData.services?.find(s => s.id === data.serviceId);
 
-            if (!service) {
-              service = clientData.services[0];
-            }
+          if (service && service.type === 'legal_procedure') {
+            const stages = service.stages || [];
+            const currentStageIndex = stages.findIndex(s => s.id === service.currentStage);
 
-            if (service) {
-              const activePackage = DeductionSystem.getActivePackage(service);
+            if (currentStageIndex !== -1) {
+              const currentStage = stages[currentStageIndex];
+              const activePackage = DeductionSystem.getActivePackage(currentStage);
 
               if (activePackage) {
-                // הפרש חיובי = הוספנו זמן → נקזז יותר מהחבילה
-                // הפרש שלילי = הפחתנו זמן → נחזיר לחבילה
-                activePackage.hoursUsed = (activePackage.hoursUsed || 0) + hoursDiff;
-                activePackage.hoursRemaining = (activePackage.hoursRemaining || 0) - hoursDiff;
+                // ✅ IMMUTABLE PATTERN: Create new package object
+                const updatedPackage = {
+                  ...activePackage,
+                  hoursUsed: (activePackage.hoursUsed || 0) + hoursDiff,
+                  hoursRemaining: (activePackage.hoursRemaining || 0) - hoursDiff
+                };
 
-                // עדכון הלקוח
-                await clientRef.update({
-                  services: clientData.services,
-                  minutesRemaining: admin.firestore.FieldValue.increment(-minutesDiff),
-                  hoursRemaining: admin.firestore.FieldValue.increment(-hoursDiff),
+                // ✅ IMMUTABLE PATTERN: Create new packages array
+                const updatedPackages = currentStage.packages.map(pkg =>
+                  pkg.id === updatedPackage.id ? updatedPackage : pkg
+                );
+
+                // ✅ IMMUTABLE PATTERN: Create new stage object
+                const updatedStage = {
+                  ...currentStage,
+                  packages: updatedPackages
+                };
+
+                // ✅ IMMUTABLE PATTERN: Create new stages array
+                const updatedStages = stages.map((stage, idx) =>
+                  idx === currentStageIndex ? updatedStage : stage
+                );
+
+                // ✅ IMMUTABLE PATTERN: Create new service object
+                const updatedService = {
+                  ...service,
+                  stages: updatedStages
+                };
+
+                // ✅ IMMUTABLE PATTERN: Create new services array
+                const updatedServices = clientData.services.map(s =>
+                  s.id === updatedService.id ? updatedService : s
+                );
+
+                clientUpdateData = {
+                  services: updatedServices,
                   lastActivity: admin.firestore.FieldValue.serverTimestamp()
-                });
+                };
 
-                console.log(`  ✅ לקוח ${data.clientId} עודכן (הפרש: ${hoursDiff.toFixed(2)} שעות)`);
-              }
-            }
-          }
-          // הליך משפטי - עדכון השלב
-          else if (data.serviceType === 'legal_procedure' && data.serviceId) {
-            const service = clientData.services?.find(s => s.id === data.serviceId);
-
-            if (service && service.type === 'legal_procedure') {
-              const stages = service.stages || [];
-              const currentStageIndex = stages.findIndex(s => s.id === service.currentStage);
-
-              if (currentStageIndex !== -1) {
-                const currentStage = stages[currentStageIndex];
-                const activePackage = DeductionSystem.getActivePackage(currentStage);
-
-                if (activePackage) {
-                  activePackage.hoursUsed = (activePackage.hoursUsed || 0) + hoursDiff;
-                  activePackage.hoursRemaining = (activePackage.hoursRemaining || 0) - hoursDiff;
-
-                  await clientRef.update({
-                    services: clientData.services,
-                    lastActivity: admin.firestore.FieldValue.serverTimestamp()
-                  });
-
-                  console.log(`  ✅ הליך משפטי ${data.serviceId} עודכן (הפרש: ${hoursDiff.toFixed(2)} שעות)`);
-                }
+                console.log(`  🔗 עדכון לקוח ${data.clientId} מוכן (legal_procedure, הפרש: ${hoursDiff.toFixed(2)} שעות)`);
               }
             }
           }
         }
       }
-    }
 
-    console.log(`✅ רשומת שעתון ${data.entryId} עודכנה בהצלחה`);
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing updates...`);
+
+      // Write #1: Entry (always)
+      transaction.update(entryRef, entryUpdateData);
+      console.log(`  ✅ Entry update queued`);
+
+      // Write #2: Task (if needed)
+      if (taskDoc && taskDoc.exists && taskUpdateData) {
+        transaction.update(taskRef, taskUpdateData);
+        console.log(`  ✅ Task update queued`);
+      }
+
+      // Write #3: Client (if needed)
+      if (clientDoc && clientDoc.exists && clientUpdateData) {
+        transaction.update(clientRef, clientUpdateData);
+        console.log(`  ✅ Client update queued`);
+      }
+
+      console.log(`🔒 [Transaction] All updates queued, committing...`);
+    });
+
+    console.log(`✅ רשומת שעתון ${data.entryId} עודכנה בהצלחה (atomic)`);
 
     return {
       success: true,

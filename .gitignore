@@ -44,8 +44,7 @@ dist/**/*.map
 # Dev investigation files
 .dev/
 
-# Build artifacts (Netlify builds from source, not dist)
-dist/
+# Build artifacts restored to git for Netlify deployment
 
 # Netlify local
 .netlify/
