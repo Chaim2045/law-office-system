@@ -2352,30 +2352,53 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+    // Prepare ref
+    const taskRef = db.collection('budget_tasks').doc(data.taskId);
 
-    if (!taskDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'משימה לא נמצאה'
-      );
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Task Completion
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = taskDoc.data();
+    let taskData, gapPercent, isCritical;
 
-    if (taskData.employee !== user.email && user.role !== 'admin') { // ✅ Check by EMAIL
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לסמן משימה זו כהושלמה'
-      );
-    }
+    await db.runTransaction(async (transaction) => {
 
-    // ✅ NEW: בדיקה שיש רישומי זמן לפני סיום המשימה
-    const actualHours = taskData.actualHours || 0;
-    if (actualHours === 0) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        `❌ לא ניתן לסיים משימה ללא רישומי זמן!
+      // ========================================
+      // PHASE 1: READ OPERATION
+      // ========================================
+
+      console.log(`📖 [Transaction Phase 1] Reading task...`);
+
+      const taskDoc = await transaction.get(taskRef);
+
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
+
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
+
+      if (!taskDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'משימה לא נמצאה'
+        );
+      }
+
+      taskData = taskDoc.data();
+
+      if (taskData.employee !== user.email && user.role !== 'admin') {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'אין הרשאה לסמן משימה זו כהושלמה'
+        );
+      }
+
+      // ✅ NEW: בדיקה שיש רישומי זמן לפני סיום המשימה
+      const actualHours = taskData.actualHours || 0;
+      if (actualHours === 0) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `❌ לא ניתן לסיים משימה ללא רישומי זמן!
 
 משימה: ${taskData.title}
 תקציב: ${taskData.budgetHours || 0} שעות
@@ -2383,47 +2406,55 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
 
 אנא רשום זמן לפני סיום המשימה.
 זה מבטיח מעקב מדויק ונתונים אמיתיים.`
-      );
-    }
-
-    // ✨ NEW: Calculate time gap for validation tracking
-    const estimatedMinutes = taskData.estimatedMinutes || 0;
-    const actualMinutes = taskData.actualMinutes || 0;
-    const gapMinutes = actualMinutes - estimatedMinutes;
-    const gapPercent = estimatedMinutes > 0 ? Math.abs((gapMinutes / estimatedMinutes) * 100) : 0;
-    const isCritical = gapPercent >= 50;
-
-    // Prepare update object
-    const updateData = {
-      status: 'הושלם',
-      completedAt: admin.firestore.FieldValue.serverTimestamp(),
-      completedBy: user.username,
-      completionNotes: data.completionNotes ? sanitizeString(data.completionNotes) : '',
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      // ✨ NEW: Add completion metadata
-      completion: {
-        gapPercent: Math.round(gapPercent),
-        gapMinutes: Math.abs(gapMinutes),
-        estimatedMinutes,
-        actualMinutes,
-        isOver: gapMinutes > 0,
-        isUnder: gapMinutes < 0,
-        gapReason: data.gapReason || null,
-        gapNotes: data.gapNotes || null,
-        requiresReview: isCritical,
-        completedAt: admin.firestore.FieldValue.serverTimestamp()
+        );
       }
-    };
 
-    // Update task
-    await db.collection('budget_tasks').doc(data.taskId).update(updateData);
+      // ✨ NEW: Calculate time gap for validation tracking
+      const estimatedMinutes = taskData.estimatedMinutes || 0;
+      const actualMinutes = taskData.actualMinutes || 0;
+      const gapMinutes = actualMinutes - estimatedMinutes;
+      gapPercent = estimatedMinutes > 0 ? Math.abs((gapMinutes / estimatedMinutes) * 100) : 0;
+      isCritical = gapPercent >= 50;
 
-    console.log(`✅ משימה סומנה כהושלמה: ${data.taskId}`);
+      // Prepare update object
+      const updateData = {
+        status: 'הושלם',
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        completedBy: user.username,
+        completionNotes: data.completionNotes ? sanitizeString(data.completionNotes) : '',
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        // ✨ NEW: Add completion metadata
+        completion: {
+          gapPercent: Math.round(gapPercent),
+          gapMinutes: Math.abs(gapMinutes),
+          estimatedMinutes,
+          actualMinutes,
+          isOver: gapMinutes > 0,
+          isUnder: gapMinutes < 0,
+          gapReason: data.gapReason || null,
+          gapNotes: data.gapNotes || null,
+          requiresReview: isCritical,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        }
+      };
+
+      // ========================================
+      // PHASE 3: WRITE OPERATION
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing task update...`);
+
+      transaction.update(taskRef, updateData);
+
+      console.log(`🔒 [Transaction] Task completion queued, committing...`);
+    });
+
+    console.log(`✅ משימה סומנה כהושלמה: ${data.taskId} (atomic)`);
     console.log(`ℹ️ קיזוז שעות כבר בוצע בעת רישום השעתון (createTimesheetEntry)`);
-    console.log(`📊 פער זמן: ${Math.round(gapPercent)}% (${Math.abs(gapMinutes)} דקות)`);
+    console.log(`📊 פער זמן: ${Math.round(gapPercent)}% (${Math.abs(gapPercent)} דקות)`);
 
-    // ✨ NEW: Create admin alert for critical gaps
+    // ✨ NEW: Create admin alert for critical gaps (OUTSIDE transaction - eventual consistency)
     if (isCritical) {
       try {
         await db.collection('task_completion_alerts').add({
@@ -2434,10 +2465,10 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
           employeeEmail: user.email,
           completedAt: admin.firestore.FieldValue.serverTimestamp(),
           gapPercent: Math.round(gapPercent),
-          gapMinutes: Math.abs(gapMinutes),
-          isOver: gapMinutes > 0,
-          estimatedMinutes,
-          actualMinutes,
+          gapMinutes: Math.abs(Math.abs(taskData.actualMinutes || 0) - (taskData.estimatedMinutes || 0)),
+          isOver: (taskData.actualMinutes || 0) > (taskData.estimatedMinutes || 0),
+          estimatedMinutes: taskData.estimatedMinutes || 0,
+          actualMinutes: taskData.actualMinutes || 0,
           gapReason: data.gapReason || null,
           gapNotes: data.gapNotes || null,
           completionNotes: data.completionNotes || '',
@@ -2454,13 +2485,18 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // Audit log
-    await logAction('COMPLETE_TASK', user.uid, user.username, {
-      taskId: data.taskId,
-      actualMinutes: taskData.actualMinutes || 0,
-      gapPercent: Math.round(gapPercent),
-      isCritical
-    });
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('COMPLETE_TASK', user.uid, user.username, {
+        taskId: data.taskId,
+        actualMinutes: taskData.actualMinutes || 0,
+        gapPercent: Math.round(gapPercent),
+        isCritical
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the completion if audit logging fails
+    }
 
     return {
       success: true,
