@@ -2570,96 +2570,134 @@ exports.cancelBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // Fetch task
-    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+    // Prepare refs
+    const taskRef = db.collection('budget_tasks').doc(data.taskId);
 
-    if (!taskDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'משימה לא נמצאה'
-      );
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Task + Approval Cancellation
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = taskDoc.data();
+    let taskData;
 
-    // Authorization: Allow admin OR task owner
-    const isAdmin = user.employee.isAdmin === true || user.role === 'admin';
-    const isOwner = taskData.employee === user.email;
+    await db.runTransaction(async (transaction) => {
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
 
-    if (!isAdmin && !isOwner) {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לבטל משימה זו. רק בעל המשימה או מנהל מערכת יכולים לבטל משימה.'
-      );
-    }
+      console.log(`📖 [Transaction Phase 1] Reading task and approval...`);
 
-    // Validate task status
-    if (taskData.status !== 'פעיל') {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        `לא ניתן לבטל משימה עם סטטוס: ${taskData.status}. ניתן לבטל רק משימות פעילות.`
-      );
-    }
+      const taskDoc = await transaction.get(taskRef);
 
-    // Block if task has time entries
-    const actualMinutes = taskData.actualMinutes || 0;
-    if (actualMinutes > 0) {
-      const actualHours = (actualMinutes / 60).toFixed(2);
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        `לא ניתן לבטל משימה עם רישומי זמן (${actualHours} שעות נרשמו). נא לפנות למנהל/ת לטיפול במשימה.`
-      );
-    }
-
-    // Prepare update
-    const updateData = {
-      status: 'בוטל',
-      cancelReason: reason,
-      cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
-      cancelledBy: user.username,
-      cancelledByEmail: user.email,
-      cancelledByUid: user.uid,
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-    };
-
-    // Update task
-    await db.collection('budget_tasks').doc(data.taskId).update(updateData);
-
-    console.log(`✅ משימה בוטלה: ${data.taskId}`);
-    console.log(`📝 סיבה: ${reason}`);
-
-    // ✅ NEW: Sync approval record to prevent cancelled tasks from showing in approval screen
-    try {
+      // Query for approval record
       const approvalSnapshot = await db.collection('pending_task_approvals')
         .where('taskId', '==', data.taskId)
         .limit(1)
         .get();
 
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
+
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
+
+      if (!taskDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'משימה לא נמצאה'
+        );
+      }
+
+      taskData = taskDoc.data();
+
+      // Authorization: Allow admin OR task owner
+      const isAdmin = user.employee.isAdmin === true || user.role === 'admin';
+      const isOwner = taskData.employee === user.email;
+
+      if (!isAdmin && !isOwner) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'אין הרשאה לבטל משימה זו. רק בעל המשימה או מנהל מערכת יכולים לבטל משימה.'
+        );
+      }
+
+      // Validate task status
+      if (taskData.status !== 'פעיל') {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `לא ניתן לבטל משימה עם סטטוס: ${taskData.status}. ניתן לבטל רק משימות פעילות.`
+        );
+      }
+
+      // Block if task has time entries
+      const actualMinutes = taskData.actualMinutes || 0;
+      if (actualMinutes > 0) {
+        const actualHours = (actualMinutes / 60).toFixed(2);
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `לא ניתן לבטל משימה עם רישומי זמן (${actualHours} שעות נרשמו). נא לפנות למנהל/ת לטיפול במשימה.`
+        );
+      }
+
+      // Prepare task update
+      const taskUpdateData = {
+        status: 'בוטל',
+        cancelReason: reason,
+        cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+        cancelledBy: user.username,
+        cancelledByEmail: user.email,
+        cancelledByUid: user.uid,
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      // Prepare approval update (if exists)
+      let approvalUpdateData = null;
+      let approvalRef = null;
       if (!approvalSnapshot.empty) {
-        const approvalDoc = approvalSnapshot.docs[0];
-        await approvalDoc.ref.update({
+        approvalRef = approvalSnapshot.docs[0].ref;
+        approvalUpdateData = {
           status: 'task_cancelled',
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
           cancelledBy: user.username,
           cancelledByEmail: user.email
-        });
-        console.log(`✅ רשומת אישור עודכנה: ${approvalDoc.id} → task_cancelled`);
-      } else {
-        console.warn(`⚠️ לא נמצאה רשומת אישור עבור משימה ${data.taskId} (אין צורך בעדכון)`);
+        };
+        console.log(`  🔗 עדכון approval מוכן: ${approvalRef.id}`);
       }
-    } catch (approvalError) {
-      // Don't fail the cancellation if approval update fails
-      console.error(`❌ שגיאה בעדכון רשומת אישור (הביטול בוצע בהצלחה):`, approvalError);
-    }
 
-    // Audit log
-    await logAction('CANCEL_TASK', user.uid, user.username, {
-      taskId: data.taskId,
-      reason: reason,
-      clientId: taskData.clientId || null,
-      clientName: taskData.clientName || null
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing updates...`);
+
+      // Write #1: Task (always)
+      transaction.update(taskRef, taskUpdateData);
+      console.log(`  ✅ Task update queued`);
+
+      // Write #2: Approval (if exists)
+      if (approvalRef && approvalUpdateData) {
+        transaction.update(approvalRef, approvalUpdateData);
+        console.log(`  ✅ Approval update queued`);
+      }
+
+      console.log(`🔒 [Transaction] All updates queued, committing...`);
     });
+
+    console.log(`✅ משימה בוטלה: ${data.taskId} (atomic)`);
+    console.log(`📝 סיבה: ${reason}`);
+
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('CANCEL_TASK', user.uid, user.username, {
+        taskId: data.taskId,
+        reason: reason,
+        clientId: taskData.clientId || null,
+        clientName: taskData.clientName || null
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the cancellation if audit logging fails
+    }
 
     return {
       success: true,
