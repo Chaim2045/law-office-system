@@ -2122,21 +2122,6 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // ✅ בדיקה שהלקוח קיים (במבנה החדש: clientId = caseNumber = Document ID)
-    const clientDoc = await db.collection('clients').doc(clientId).get();
-
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        `לקוח ${clientId} לא נמצא`
-      );
-    }
-
-    const clientData = clientDoc.data();
-
-    // ✅ כל עובד יכול ליצור משימות עבור כל לקוח במשרד
-    // אין צורך בבדיקת הרשאות נוספת
-
     // ✅ בדיקת סניף מטפל
     if (!data.branch || typeof data.branch !== 'string') {
       throw new functions.https.HttpsError(
@@ -2145,86 +2130,143 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
-    console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
+    // Prepare refs (generate IDs upfront)
+    const taskRef = db.collection('budget_tasks').doc();
+    const approvalRef = db.collection('pending_task_approvals').doc();
+    const clientRef = db.collection('clients').doc(clientId);
 
-    // 🆕 Phase 1: שמירת ערכים מקוריים (לא ישתנו לעולם)
-    const deadlineTimestamp = data.deadline ? admin.firestore.Timestamp.fromDate(new Date(data.deadline)) : null;
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Task + Approval Creation
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = {
-      description: sanitizeString(data.description.trim()),
-      categoryId: data.categoryId || null, // ✅ מזהה קטגוריית עבודה (Work Category ID)
-      categoryName: data.categoryName || null, // ✅ שם קטגוריית העבודה (Work Category Name)
-      clientId: clientId,  // ✅ מספר תיק
-      clientName: clientData.clientName || data.clientName,
-      caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
-      serviceId: data.serviceId || null, // ✅ תמיכה בבחירת שירות ספציפי
-      serviceName: data.serviceName || null, // ✅ שם השירות
-      serviceType: data.serviceType || null, // ✅ סוג השירות (legal_procedure/hours)
-      parentServiceId: data.parentServiceId || null, // ✅ service.id עבור הליך משפטי
-      branch: sanitizeString(data.branch.trim()), // ✅ סניף מטפל
-      estimatedHours: estimatedHours,
-      estimatedMinutes: estimatedMinutes,
-      actualHours: 0,
-      actualMinutes: 0,
+    let clientData;
+    let savedTaskData;
 
-      // 🆕 תקציב ויעד מקוריים (NEVER CHANGE)
-      originalEstimate: estimatedMinutes,
-      originalDeadline: deadlineTimestamp,
+    await db.runTransaction(async (transaction) => {
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
 
-      // 🆕 מערכים לעדכונים
-      budgetAdjustments: [],
-      deadlineExtensions: [],
+      console.log(`📖 [Transaction Phase 1] Reading client...`);
 
-      status: 'פעיל',  // ✅ Always active - no approval needed
-      // Removed: requestedMinutes, approvedMinutes - no longer needed
-      deadline: deadlineTimestamp,
-      employee: user.email, // ✅ EMAIL for security rules and queries
-      lawyer: user.username, // ✅ Username for display
-      createdBy: user.username,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      timeEntries: []
-    };
+      const clientDoc = await transaction.get(clientRef);
 
-    const docRef = await db.collection('budget_tasks').add(taskData);
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
 
-    // ✅ Create approval history record (for tracking/FYI)
-    const approvalRecord = {
-      taskId: docRef.id,
-      requestedBy: user.email,
-      requestedByName: user.employee.name || user.username,  // ✅ Hebrew name preferred
-      requestedMinutes: estimatedMinutes,
-      taskData: {
-        description: taskData.description,
-        clientName: taskData.clientName,
-        clientId: clientId,
-        estimatedMinutes: estimatedMinutes
-      },
-      status: 'auto_approved',  // ✅ Auto-approved - no manual approval needed
-      autoApproved: true,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    };
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
 
-    await db.collection('pending_task_approvals').add(approvalRecord);
-    console.log(`✅ Created approval history record for task ${docRef.id}`);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${clientId} לא נמצא`
+        );
+      }
 
-    // Audit log
-    await logAction('CREATE_TASK', user.uid, user.username, {
-      taskId: docRef.id,
-      clientId: clientId,
-      caseNumber: clientData.caseNumber,
-      estimatedHours: estimatedHours
+      clientData = clientDoc.data();
+
+      console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
+
+      // 🆕 Phase 1: שמירת ערכים מקוריים (לא ישתנו לעולם)
+      const deadlineTimestamp = data.deadline ? admin.firestore.Timestamp.fromDate(new Date(data.deadline)) : null;
+
+      const taskData = {
+        description: sanitizeString(data.description.trim()),
+        categoryId: data.categoryId || null, // ✅ מזהה קטגוריית עבודה (Work Category ID)
+        categoryName: data.categoryName || null, // ✅ שם קטגוריית העבודה (Work Category Name)
+        clientId: clientId,  // ✅ מספר תיק
+        clientName: clientData.clientName || data.clientName,
+        caseNumber: clientData.caseNumber || clientId,  // ✅ מספר תיק
+        serviceId: data.serviceId || null, // ✅ תמיכה בבחירת שירות ספציפי
+        serviceName: data.serviceName || null, // ✅ שם השירות
+        serviceType: data.serviceType || null, // ✅ סוג השירות (legal_procedure/hours)
+        parentServiceId: data.parentServiceId || null, // ✅ service.id עבור הליך משפטי
+        branch: sanitizeString(data.branch.trim()), // ✅ סניף מטפל
+        estimatedHours: estimatedHours,
+        estimatedMinutes: estimatedMinutes,
+        actualHours: 0,
+        actualMinutes: 0,
+
+        // 🆕 תקציב ויעד מקוריים (NEVER CHANGE)
+        originalEstimate: estimatedMinutes,
+        originalDeadline: deadlineTimestamp,
+
+        // 🆕 מערכים לעדכונים
+        budgetAdjustments: [],
+        deadlineExtensions: [],
+
+        status: 'פעיל',  // ✅ Always active - no approval needed
+        // Removed: requestedMinutes, approvedMinutes - no longer needed
+        deadline: deadlineTimestamp,
+        employee: user.email, // ✅ EMAIL for security rules and queries
+        lawyer: user.username, // ✅ Username for display
+        createdBy: user.username,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        timeEntries: []
+      };
+
+      // ✅ Create approval history record (for tracking/FYI)
+      const approvalRecord = {
+        taskId: taskRef.id,
+        requestedBy: user.email,
+        requestedByName: user.employee.name || user.username,  // ✅ Hebrew name preferred
+        requestedMinutes: estimatedMinutes,
+        taskData: {
+          description: taskData.description,
+          clientName: taskData.clientName,
+          clientId: clientId,
+          estimatedMinutes: estimatedMinutes
+        },
+        status: 'auto_approved',  // ✅ Auto-approved - no manual approval needed
+        autoApproved: true,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing task and approval...`);
+
+      // Save taskData for response (before it goes out of scope)
+      savedTaskData = taskData;
+
+      // Write #1: Task
+      transaction.set(taskRef, taskData);
+      console.log(`  ✅ Task creation queued: ${taskRef.id}`);
+
+      // Write #2: Approval
+      transaction.set(approvalRef, approvalRecord);
+      console.log(`  ✅ Approval creation queued: ${approvalRef.id}`);
+
+      console.log(`🔒 [Transaction] All writes queued, committing...`);
     });
 
-    console.log(`✅ Created task ${docRef.id} for client ${clientId}`);
+    console.log(`✅ Created task ${taskRef.id} for client ${clientId} (atomic)`);
+    console.log(`✅ Created approval history record for task ${taskRef.id}`);
+
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('CREATE_TASK', user.uid, user.username, {
+        taskId: taskRef.id,
+        clientId: clientId,
+        caseNumber: clientData.caseNumber,
+        estimatedHours: estimatedHours
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the task creation if audit logging fails
+    }
 
     return {
       success: true,
-      taskId: docRef.id,
+      taskId: taskRef.id,
       task: {
-        id: docRef.id,
-        ...taskData
+        id: taskRef.id,
+        ...savedTaskData
       }
     };
 
