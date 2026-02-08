@@ -2784,68 +2784,106 @@ exports.adjustTaskBudget = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // בדיקה שהמשימה קיימת
-    const taskDoc = await db.collection('budget_tasks').doc(data.taskId).get();
+    // Prepare ref
+    const taskRef = db.collection('budget_tasks').doc(data.taskId);
 
-    if (!taskDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'משימה לא נמצאה'
-      );
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // 🔒 ATOMIC TRANSACTION - Budget Adjustment
+    // ═══════════════════════════════════════════════════════════════════
 
-    const taskData = taskDoc.data();
+    let taskData, oldEstimate, addedMinutes;
 
-    // רק בעל המשימה או admin יכולים לעדכן תקציב
-    if (taskData.employee !== user.email && user.role !== 'admin') {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'אין הרשאה לעדכן תקציב משימה זו'
-      );
-    }
+    await db.runTransaction(async (transaction) => {
+      // ========================================
+      // PHASE 1: READ OPERATIONS
+      // ========================================
 
-    // לא ניתן לעדכן תקציב של משימה שהושלמה
-    if (taskData.status === 'הושלם') {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'לא ניתן לעדכן תקציב של משימה שכבר הושלמה'
-      );
-    }
+      console.log(`📖 [Transaction Phase 1] Reading task...`);
 
-    const oldEstimate = taskData.estimatedMinutes || 0;
-    const addedMinutes = data.newEstimate - oldEstimate;
+      const taskDoc = await transaction.get(taskRef);
 
-    // יצירת רשומת עדכון
-    const adjustment = {
-      timestamp: new Date().toISOString(),
-      type: addedMinutes > 0 ? 'increase' : 'decrease',
-      oldEstimate,
-      newEstimate: data.newEstimate,
-      addedMinutes,
-      reason: data.reason ? sanitizeString(data.reason) : 'לא צוין',
-      adjustedBy: user.username,
-      actualAtTime: taskData.actualMinutes || 0
-    };
+      // ========================================
+      // PHASE 2: VALIDATIONS + CALCULATIONS
+      // ========================================
 
-    // עדכון המשימה
-    await db.collection('budget_tasks').doc(data.taskId).update({
-      estimatedMinutes: data.newEstimate,
-      estimatedHours: data.newEstimate / 60,
-      budgetAdjustments: admin.firestore.FieldValue.arrayUnion(adjustment),
-      lastModifiedBy: user.username,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      console.log(`🧮 [Transaction Phase 2] Validations and calculations...`);
+
+      if (!taskDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'משימה לא נמצאה'
+        );
+      }
+
+      taskData = taskDoc.data();
+
+      // רק בעל המשימה או admin יכולים לעדכן תקציב
+      if (taskData.employee !== user.email && user.role !== 'admin') {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'אין הרשאה לעדכן תקציב משימה זו'
+        );
+      }
+
+      // לא ניתן לעדכן תקציב של משימה שהושלמה
+      if (taskData.status === 'הושלם') {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'לא ניתן לעדכן תקציב של משימה שכבר הושלמה'
+        );
+      }
+
+      oldEstimate = taskData.estimatedMinutes || 0;
+      addedMinutes = data.newEstimate - oldEstimate;
+
+      // יצירת רשומת עדכון
+      const adjustment = {
+        timestamp: new Date().toISOString(),
+        type: addedMinutes > 0 ? 'increase' : 'decrease',
+        oldEstimate,
+        newEstimate: data.newEstimate,
+        addedMinutes,
+        reason: data.reason ? sanitizeString(data.reason) : 'לא צוין',
+        adjustedBy: user.username,
+        actualAtTime: taskData.actualMinutes || 0
+      };
+
+      // Prepare update data
+      const updateData = {
+        estimatedMinutes: data.newEstimate,
+        estimatedHours: data.newEstimate / 60,
+        budgetAdjustments: admin.firestore.FieldValue.arrayUnion(adjustment),
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      // ========================================
+      // PHASE 3: WRITE OPERATIONS
+      // ========================================
+
+      console.log(`💾 [Transaction Phase 3] Writing budget adjustment...`);
+
+      transaction.update(taskRef, updateData);
+      console.log(`  ✅ Budget adjustment queued`);
+
+      console.log(`🔒 [Transaction] Update queued, committing...`);
     });
 
-    console.log(`✅ תקציב משימה ${data.taskId} עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות`);
+    console.log(`✅ תקציב משימה ${data.taskId} עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות (atomic)`);
 
-    // Audit log
-    await logAction('ADJUST_BUDGET', user.uid, user.username, {
-      taskId: data.taskId,
-      oldEstimate,
-      newEstimate: data.newEstimate,
-      addedMinutes,
-      reason: data.reason
-    });
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    try {
+      await logAction('ADJUST_BUDGET', user.uid, user.username, {
+        taskId: data.taskId,
+        oldEstimate,
+        newEstimate: data.newEstimate,
+        addedMinutes,
+        reason: data.reason
+      });
+    } catch (auditError) {
+      console.error('❌ שגיאה ב-audit log:', auditError);
+      // Don't fail the budget adjustment if audit logging fails
+    }
 
     return {
       success: true,
