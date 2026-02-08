@@ -57,6 +57,8 @@ import {
 
 import DescriptionTooltips from './description-tooltips.js';
 
+import { createTimesheetEntryV2 } from './timesheet-adapter.js';
+
 // Utility functions (assumed to be available globally)
 // - safeText(): Sanitizes text for HTML display
 // - formatDate(): Formats dates for display
@@ -125,7 +127,7 @@ return -1;
 export async function saveTimesheetToFirebase(entryData) {
   try {
     // Call Firebase Function for secure validation and creation
-    const result = await callFunction('createTimesheetEntry', entryData);
+    const result = await createTimesheetEntryV2(entryData);
 
     if (!result.success) {
       throw new Error(result.message || 'שגיאה בשמירת שעתון');

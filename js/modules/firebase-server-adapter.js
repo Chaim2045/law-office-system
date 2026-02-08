@@ -131,8 +131,8 @@
       logger.log(`✅ Loaded ${entries.length} timesheet entries via Firebase Functions`);
       return entries;
     } catch (error) {
-      logger.error('Failed to load timesheet from Functions, falling back:', error);
-      return await loadTimesheetFromFirebase_ORIGINAL(employee);
+      logger.error('❌ Failed to load timesheet from Functions:', error);
+      throw error;  // לא נופלים ל-v1
     }
   }
 
@@ -148,8 +148,8 @@
       const result = await apiClientV2.saveTimesheetAndUpdateClient(entry);
       return result;
     } catch (error) {
-      logger.error('Failed to save timesheet via Functions, falling back:', error);
-      return await saveTimesheetToFirebase_ORIGINAL(entry);
+      logger.error('❌ Failed to save timesheet via Functions:', error);
+      throw error;  // לא נופלים ל-v1, מעדיפים שגיאה על פני נתונים שבורים
     }
   }
 
@@ -165,8 +165,8 @@
       const result = await apiClientV2.updateTimesheetEntry(entryId, updates);
       return result;
     } catch (error) {
-      logger.error('Failed to update timesheet via Functions, falling back:', error);
-      return await updateTimesheetEntryFirebase_ORIGINAL(entryId, updates);
+      logger.error('❌ Failed to update timesheet via Functions:', error);
+      throw error;  // לא נופלים ל-v1, מעדיפים שגיאה על פני נתונים שבורים
     }
   }
 
@@ -285,7 +285,7 @@
         date
       });
 
-      logger.log(`✅ addTimeToTask completed:`, result.data);
+      logger.log('✅ addTimeToTask completed:', result.data);
       return result.data;
     } catch (error) {
       logger.error('Error calling addTimeToTask:', error);
