@@ -35,6 +35,9 @@ import { createTimesheetEntryV2 } from './modules/timesheet-adapter.js';
 // System Announcement Ticker - News-style ticker for system announcements
 import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
 
+// System Announcement Popup - Modal popup for unread announcements on login
+import SystemAnnouncementPopup from './modules/system-announcement-popup.js';
+
 // Notification System
 // NotificationBellSystem is loaded via script tag and available on window.notificationBell
 // No import needed here - it's initialized globally
@@ -147,6 +150,7 @@ class LawOfficeManager {
     this.notificationBell = window.notificationBell; // Use globally initialized instance
     this.clientValidation = new ClientValidation(this); // Pass 'this' as manager
     this.announcementTicker = new SystemAnnouncementTicker(); // System Announcement Ticker
+    this.announcementPopup = new SystemAnnouncementPopup(); // System Announcement Popup
 
     // Activity Logger & Task Actions (initialized after Firebase)
     this.activityLogger = null;
@@ -335,6 +339,10 @@ class LawOfficeManager {
           } catch (error) {
             console.error('❌ Failed to initialize System Announcement Ticker:', error);
           }
+
+          if (this.announcementPopup) {
+            this.announcementPopup.init(user, window.firebaseDB);
+          }
         } else if (!isInApp) {
           console.log('ℹ️ User on login screen - ticker will init after login');
         }
@@ -346,6 +354,10 @@ class LawOfficeManager {
         // ✅ Cleanup System Announcement Ticker
         if (this.announcementTicker) {
           this.announcementTicker.cleanup();
+        }
+        // ✅ Cleanup System Announcement Popup
+        if (this.announcementPopup) {
+          this.announcementPopup.cleanup();
         }
       } else {
         console.warn('⚠️ Cannot start services - missing dependencies:', {
@@ -368,6 +380,22 @@ class LawOfficeManager {
         console.log('✅ System Announcement Ticker initialized successfully');
       } catch (error) {
         console.error('❌ Failed to initialize System Announcement Ticker:', error);
+      }
+    }
+  }
+
+  /**
+   * Initialize Popup - Called from showApp() in authentication.js
+   */
+  initPopup() {
+    const user = firebase.auth().currentUser;
+    if (user && window.firebaseDB && this.announcementPopup) {
+      console.log('📢 Initializing System Announcement Popup from showApp()...');
+      try {
+        this.announcementPopup.init(user, window.firebaseDB);
+        console.log('✅ System Announcement Popup initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize System Announcement Popup:', error);
       }
     }
   }

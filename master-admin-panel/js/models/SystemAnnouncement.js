@@ -36,6 +36,7 @@
             this.id = data.id || null;
             this.title = data.title || ''; // Optional - for future modal support
             this.message = data.message || '';
+            this.tenantId = data.tenantId || 'default';
             this.type = data.type || ANNOUNCEMENT_TYPES.INFO;
             this.priority = data.priority || 3; // 1-10
             this.active = data.active !== undefined ? data.active : true;
@@ -151,6 +152,8 @@ return false;
                 data.title = this.title;
             }
 
+            data.tenantId = this.tenantId;
+
             return data;
         }
 
@@ -163,7 +166,7 @@ return false;
             const data = doc.data();
             return new SystemAnnouncement({
                 id: doc.id,
-                title: data.title,
+                title: data.title || '',
                 message: data.message,
                 type: data.type,
                 priority: data.priority,
@@ -171,6 +174,7 @@ return false;
                 startDate: data.startDate?.toDate(),
                 endDate: data.endDate?.toDate(),
                 targetAudience: data.targetAudience,
+                tenantId: data.tenantId || 'default',
                 createdBy: data.createdBy,
                 createdAt: data.createdAt?.toDate(),
                 updatedAt: data.updatedAt?.toDate(),
@@ -227,6 +231,8 @@ return false;
             if (this.title) {
                 data.title = this.title;
             }
+
+            data.tenantId = this.tenantId;
 
             return new SystemAnnouncement(data);
         }

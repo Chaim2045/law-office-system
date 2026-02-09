@@ -358,6 +358,11 @@ bubblesContainer.classList.add('hidden');
   if (window.manager && typeof window.manager.initTicker === 'function') {
     window.manager.initTicker();
   }
+
+  // ✅ Initialize System Announcement Popup when entering the app
+  if (window.manager && typeof window.manager.initPopup === 'function') {
+    window.manager.initPopup();
+  }
 }
 
 function logout() {

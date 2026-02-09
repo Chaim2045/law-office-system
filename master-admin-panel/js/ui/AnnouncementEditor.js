@@ -109,6 +109,21 @@ return;
                                         <span>מידע בסיסי</span>
                                     </div>
                                     <div class="card-body">
+                                        <!-- Title (Optional - for popup) -->
+                                        <div class="form-group">
+                                            <label class="form-label">
+                                                כותרת ההודעה <span class="optional">(אופציונלי)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="announcementTitle"
+                                                class="form-input"
+                                                placeholder="כותרת קצרה (אופציונלי)"
+                                                maxlength="100"
+                                            />
+                                            <div class="form-hint">עד 100 תווים - כותרת שתוצג בפופאפ (אם ריק, תוצג ההודעה בלבד)</div>
+                                        </div>
+
                                         <!-- Message (Ticker Text) -->
                                         <div class="form-group">
                                             <label class="form-label">
@@ -426,6 +441,7 @@ return;
 }
 
             // Basic fields
+            this.panel.querySelector('#announcementTitle').value = announcement.title || '';
             this.panel.querySelector('#announcementMessage').value = announcement.message;
             this.panel.querySelector('#announcementType').value = announcement.type;
             this.panel.querySelector('#announcementPriority').value = announcement.priority;
@@ -496,6 +512,7 @@ return;
 
                 // Create announcement object
                 const announcementData = {
+                    title: formData.title,
                     message: formData.message,
                     type: formData.type,
                     priority: parseInt(formData.priority),
@@ -582,6 +599,7 @@ return {};
                 parseInt(this.panel.querySelector('#displayStyleRepeat').value) : null;
 
             return {
+                title: this.panel.querySelector('#announcementTitle').value.trim(),
                 message: this.panel.querySelector('#announcementMessage').value.trim(),
                 type: this.panel.querySelector('#announcementType').value,
                 priority: this.panel.querySelector('#announcementPriority').value,
