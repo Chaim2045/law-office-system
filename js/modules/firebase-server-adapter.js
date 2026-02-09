@@ -113,7 +113,6 @@
    * שמירת הפונקציות המקוריות
    */
   const loadTimesheetFromFirebase_ORIGINAL = window.loadTimesheetFromFirebase;
-  const saveTimesheetToFirebase_ORIGINAL = window.saveTimesheetToFirebase;
   const updateTimesheetEntryFirebase_ORIGINAL = window.updateTimesheetEntryFirebase;
 
   /**
@@ -141,7 +140,7 @@
    */
   async function saveTimesheetToFirebase_NEW(entry) {
     if (!initializeClientV2()) {
-      return await saveTimesheetToFirebase_ORIGINAL(entry);
+      throw new Error('apiClientV2 not initialized - v1 fallback removed');
     }
 
     try {
@@ -149,7 +148,7 @@
       return result;
     } catch (error) {
       logger.error('❌ Failed to save timesheet via Functions:', error);
-      throw error;  // לא נופלים ל-v1, מעדיפים שגיאה על פני נתונים שבורים
+      throw error;
     }
   }
 
@@ -182,11 +181,10 @@
   };
 
   window.saveTimesheetToFirebase = async function(entry) {
-    if (FEATURE_FLAGS.USE_FUNCTIONS_FOR_TIMESHEET) {
-      return await saveTimesheetToFirebase_NEW(entry);
-    } else {
-      return await saveTimesheetToFirebase_ORIGINAL(entry);
+    if (!FEATURE_FLAGS.USE_FUNCTIONS_FOR_TIMESHEET) {
+      throw new Error('USE_FUNCTIONS_FOR_TIMESHEET must be true - v1 removed');
     }
+    return await saveTimesheetToFirebase_NEW(entry);
   };
 
   window.updateTimesheetEntryFirebase = async function(entryId, updates) {
@@ -388,7 +386,6 @@
     _original: {
       loadClientsFromFirebase: loadClientsFromFirebase_ORIGINAL,
       loadTimesheetFromFirebase: loadTimesheetFromFirebase_ORIGINAL,
-      saveTimesheetToFirebase: saveTimesheetToFirebase_ORIGINAL,
       updateTimesheetEntryFirebase: updateTimesheetEntryFirebase_ORIGINAL,
       loadBudgetTasksFromFirebase: loadBudgetTasksFromFirebase_ORIGINAL,
       saveBudgetTaskToFirebase: saveBudgetTaskToFirebase_ORIGINAL

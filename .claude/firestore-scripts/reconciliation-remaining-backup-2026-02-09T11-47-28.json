@@ -1,0 +1,1197 @@
+{
+  "timestamp": "2026-02-09T11:47:28.278Z",
+  "mode": "EXECUTE",
+  "clientsChanged": 66,
+  "clientsUnchanged": 32,
+  "servicesChanged": 18,
+  "servicesSkippedManual": 9,
+  "backups": [
+    {
+      "clientId": "2025001",
+      "clientName": "שריאל אילון",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "2.42",
+        "oldHoursRemaining": "-1.42",
+        "newHoursRemaining": "-1.42",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "145",
+        "oldMinutesRemaining": "-85",
+        "newMinutesRemaining": "-85"
+      }
+    },
+    {
+      "clientId": "2025002",
+      "clientName": "אהוד ולטר",
+      "services": [
+        {
+          "serviceId": "srv_1766504401851",
+          "serviceName": "תוספת צו מניעה (סעד זמני)",
+          "oldHoursUsed": "0.00",
+          "newHoursUsed": "2.00",
+          "oldHoursRemaining": "15.00",
+          "newHoursRemaining": "13.00",
+          "totalHours": 15,
+          "timesheetEntries": 1
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "84.08",
+        "oldHoursRemaining": "-5.00",
+        "newHoursRemaining": "13.22",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "5045",
+        "oldMinutesRemaining": "-300",
+        "newMinutesRemaining": "793"
+      }
+    },
+    {
+      "clientId": "2025005",
+      "clientName": "ברוך פאוקמן",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "31.18",
+        "oldHoursRemaining": "18.82",
+        "newHoursRemaining": "18.82",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1871",
+        "oldMinutesRemaining": "1129",
+        "newMinutesRemaining": "1129"
+      }
+    },
+    {
+      "clientId": "2025006",
+      "clientName": "תמיר אקווע",
+      "services": [
+        {
+          "serviceId": "srv_1765177554252",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "157.13",
+          "newHoursUsed": "157.13",
+          "oldHoursRemaining": "-10.80",
+          "newHoursRemaining": "-97.13",
+          "totalHours": 60,
+          "timesheetEntries": 64
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "3.33",
+        "newHoursUsed": "160.47",
+        "oldHoursRemaining": "-14.13",
+        "newHoursRemaining": "79.53",
+        "oldMinutesUsed": "200",
+        "newMinutesUsed": "9628",
+        "oldMinutesRemaining": "-848",
+        "newMinutesRemaining": "4772"
+      }
+    },
+    {
+      "clientId": "2025008",
+      "clientName": "עבדל עזר בתי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "2.18",
+        "oldHoursRemaining": "17.82",
+        "newHoursRemaining": "17.82",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "131",
+        "oldMinutesRemaining": "1069",
+        "newMinutesRemaining": "1069"
+      }
+    },
+    {
+      "clientId": "2025009",
+      "clientName": "שייקסטופ",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "3.00",
+        "newHoursUsed": "13.92",
+        "oldHoursRemaining": "16.08",
+        "newHoursRemaining": "136.58",
+        "oldMinutesUsed": "180",
+        "newMinutesUsed": "835",
+        "oldMinutesRemaining": "965",
+        "newMinutesRemaining": "8195"
+      }
+    },
+    {
+      "clientId": "2025011",
+      "clientName": "ליאורה מילבאום",
+      "services": [
+        {
+          "serviceId": "srv_1766574628760",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "40.28",
+          "newHoursUsed": "40.28",
+          "oldHoursRemaining": "10.08",
+          "newHoursRemaining": "9.72",
+          "totalHours": 50,
+          "timesheetEntries": 29
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "40.28",
+        "oldHoursRemaining": "0.00",
+        "newHoursRemaining": "9.72",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "2417",
+        "oldMinutesRemaining": "0",
+        "newMinutesRemaining": "583"
+      }
+    },
+    {
+      "clientId": "2025012",
+      "clientName": "אלון ולדזי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "5.02",
+        "oldHoursRemaining": "4.98",
+        "newHoursRemaining": "4.98",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "301",
+        "oldMinutesRemaining": "299",
+        "newMinutesRemaining": "299"
+      }
+    },
+    {
+      "clientId": "2025014",
+      "clientName": "אושרה גיעאן",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "2.75",
+        "oldHoursRemaining": "12.25",
+        "newHoursRemaining": "12.25",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "165",
+        "oldMinutesRemaining": "735",
+        "newMinutesRemaining": "735"
+      }
+    },
+    {
+      "clientId": "2025015",
+      "clientName": "ביינגולד",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "9.83",
+        "oldHoursRemaining": "40.17",
+        "newHoursRemaining": "40.17",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "590",
+        "oldMinutesRemaining": "2410",
+        "newMinutesRemaining": "2410"
+      }
+    },
+    {
+      "clientId": "2025017",
+      "clientName": "גבריאל מוסטצה",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.83",
+        "oldHoursRemaining": "29.17",
+        "newHoursRemaining": "29.17",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "50",
+        "oldMinutesRemaining": "1750",
+        "newMinutesRemaining": "1750"
+      }
+    },
+    {
+      "clientId": "2025019",
+      "clientName": "רבקה דרמר",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "8.83",
+        "oldHoursRemaining": "11.17",
+        "newHoursRemaining": "11.17",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "530",
+        "oldMinutesRemaining": "670",
+        "newMinutesRemaining": "670"
+      }
+    },
+    {
+      "clientId": "2025020",
+      "clientName": "וינקלר יהונתן",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "4.50",
+        "oldHoursRemaining": "45.50",
+        "newHoursRemaining": "45.50",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "270",
+        "oldMinutesRemaining": "2730",
+        "newMinutesRemaining": "2730"
+      }
+    },
+    {
+      "clientId": "2025023",
+      "clientName": "תומר אגבאבא",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "5.25",
+        "oldHoursRemaining": "-0.25",
+        "newHoursRemaining": "-0.25",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "315",
+        "oldMinutesRemaining": "-15",
+        "newMinutesRemaining": "-15"
+      }
+    },
+    {
+      "clientId": "2025024",
+      "clientName": "יהונתן ראובן",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "2.00",
+        "oldHoursRemaining": "48.50",
+        "newHoursRemaining": "48.50",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "120",
+        "oldMinutesRemaining": "2910",
+        "newMinutesRemaining": "2910"
+      }
+    },
+    {
+      "clientId": "20251000",
+      "clientName": "משה קידר",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "12.75",
+        "oldHoursRemaining": "-7.50",
+        "newHoursRemaining": "7.25",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "765",
+        "oldMinutesRemaining": "-450",
+        "newMinutesRemaining": "435"
+      }
+    },
+    {
+      "clientId": "2025128",
+      "clientName": "משה כהן",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "9.25",
+        "oldHoursRemaining": "290.75",
+        "newHoursRemaining": "290.75",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "555",
+        "oldMinutesRemaining": "17445",
+        "newMinutesRemaining": "17445"
+      }
+    },
+    {
+      "clientId": "2025306",
+      "clientName": "בן ניסן ייעוץ סיייבר בעמ",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "22.58",
+        "oldHoursRemaining": "0.00",
+        "newHoursRemaining": "27.42",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1355",
+        "oldMinutesRemaining": "0",
+        "newMinutesRemaining": "1645"
+      }
+    },
+    {
+      "clientId": "2025333",
+      "clientName": "דן אלדובי בעמ",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "31.17",
+        "oldHoursRemaining": "0.00",
+        "newHoursRemaining": "18.83",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1870",
+        "oldMinutesRemaining": "0",
+        "newMinutesRemaining": "1130"
+      }
+    },
+    {
+      "clientId": "2025337",
+      "clientName": "אבי רחמיקו",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "2.92",
+        "oldHoursRemaining": "27.08",
+        "newHoursRemaining": "27.08",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "175",
+        "oldMinutesRemaining": "1625",
+        "newMinutesRemaining": "1625"
+      }
+    },
+    {
+      "clientId": "2025413",
+      "clientName": "מיכאל בן בסט",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "1.25",
+        "oldHoursRemaining": "18.75",
+        "newHoursRemaining": "18.75",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "75",
+        "oldMinutesRemaining": "1125",
+        "newMinutesRemaining": "1125"
+      }
+    },
+    {
+      "clientId": "2025430",
+      "clientName": "הפודקסטיה - שלום סיונוב",
+      "services": [
+        {
+          "serviceId": "srv_1765299566466",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "3.47",
+          "newHoursUsed": "3.47",
+          "oldHoursRemaining": "17.62",
+          "newHoursRemaining": "16.53",
+          "totalHours": 20,
+          "timesheetEntries": 4
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "3.47",
+        "oldHoursRemaining": "16.53",
+        "newHoursRemaining": "16.53",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "208",
+        "oldMinutesRemaining": "992",
+        "newMinutesRemaining": "992"
+      }
+    },
+    {
+      "clientId": "2025456",
+      "clientName": "רויטל זילביגר",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "9.75",
+        "oldHoursRemaining": "-8.75",
+        "newHoursRemaining": "-8.75",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "585",
+        "oldMinutesRemaining": "-525",
+        "newMinutesRemaining": "-525"
+      }
+    },
+    {
+      "clientId": "2025549",
+      "clientName": "רעות ואוריאל חליבה",
+      "services": [
+        {
+          "serviceId": "srv_1766392968349",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "56.25",
+          "newHoursUsed": "56.25",
+          "oldHoursRemaining": "-10.00",
+          "newHoursRemaining": "-36.25",
+          "totalHours": 20,
+          "timesheetEntries": 35
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "56.25",
+        "oldHoursRemaining": "-10.00",
+        "newHoursRemaining": "13.75",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "3375",
+        "oldMinutesRemaining": "-600",
+        "newMinutesRemaining": "825"
+      }
+    },
+    {
+      "clientId": "2025562",
+      "clientName": "אבי אליהו",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "8.38",
+        "oldHoursRemaining": "-7.38",
+        "newHoursRemaining": "-7.38",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "503",
+        "oldMinutesRemaining": "-443",
+        "newMinutesRemaining": "-443"
+      }
+    },
+    {
+      "clientId": "2025578",
+      "clientName": "דריה ששונוב",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "10.75",
+        "oldHoursRemaining": "19.25",
+        "newHoursRemaining": "19.25",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "645",
+        "oldMinutesRemaining": "1155",
+        "newMinutesRemaining": "1155"
+      }
+    },
+    {
+      "clientId": "2025634",
+      "clientName": "קרגו ייעוץ לוגיסטי",
+      "services": [
+        {
+          "serviceId": "srv_1765273248005",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "18.97",
+          "newHoursUsed": "18.97",
+          "oldHoursRemaining": "2.03",
+          "newHoursRemaining": "1.03",
+          "totalHours": 20,
+          "timesheetEntries": 15
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "21.30",
+        "oldHoursRemaining": "-0.30",
+        "newHoursRemaining": "28.70",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1278",
+        "oldMinutesRemaining": "-18",
+        "newMinutesRemaining": "1722"
+      }
+    },
+    {
+      "clientId": "2025660",
+      "clientName": "ציפורה דרוול",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "12.97",
+        "oldHoursRemaining": "2.03",
+        "newHoursRemaining": "2.03",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "778",
+        "oldMinutesRemaining": "122",
+        "newMinutesRemaining": "122"
+      }
+    },
+    {
+      "clientId": "2025724",
+      "clientName": "מאפיית הכפר",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "3.75",
+        "oldHoursRemaining": "16.25",
+        "newHoursRemaining": "16.25",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "225",
+        "oldMinutesRemaining": "975",
+        "newMinutesRemaining": "975"
+      }
+    },
+    {
+      "clientId": "2025815",
+      "clientName": "ציפי דרוול",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "20.75",
+        "oldHoursRemaining": "-0.75",
+        "newHoursRemaining": "-0.75",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1245",
+        "oldMinutesRemaining": "-45",
+        "newMinutesRemaining": "-45"
+      }
+    },
+    {
+      "clientId": "2025831",
+      "clientName": "ארטפרו (קובי חליפה)",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "3.47",
+        "oldHoursRemaining": "-3.47",
+        "newHoursRemaining": "3.53",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "208",
+        "oldMinutesRemaining": "-208",
+        "newMinutesRemaining": "212"
+      }
+    },
+    {
+      "clientId": "2025863",
+      "clientName": "סיון אזרד",
+      "services": [
+        {
+          "serviceId": "srv_1765464200615",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "15.98",
+          "newHoursUsed": "15.98",
+          "oldHoursRemaining": "32.18",
+          "newHoursRemaining": "34.02",
+          "totalHours": 50,
+          "timesheetEntries": 23
+        },
+        {
+          "serviceId": "srv_1765464802356",
+          "serviceName": "כתב הגנה ותביעה שכנגד",
+          "oldHoursUsed": "15.40",
+          "newHoursUsed": "15.40",
+          "oldHoursRemaining": "-0.38",
+          "newHoursRemaining": "4.60",
+          "totalHours": 20,
+          "timesheetEntries": 11
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "38.38",
+        "oldHoursRemaining": "8.62",
+        "newHoursRemaining": "53.62",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "2303",
+        "oldMinutesRemaining": "517",
+        "newMinutesRemaining": "3217"
+      }
+    },
+    {
+      "clientId": "2025864",
+      "clientName": "ענבר לזר ויזל",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "5.00",
+        "oldHoursRemaining": "25.00",
+        "newHoursRemaining": "25.00",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "300",
+        "oldMinutesRemaining": "1500",
+        "newMinutesRemaining": "1500"
+      }
+    },
+    {
+      "clientId": "2025897",
+      "clientName": "שרית רוזנס",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.78",
+        "oldHoursRemaining": "4.22",
+        "newHoursRemaining": "64.22",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "47",
+        "oldMinutesRemaining": "253",
+        "newMinutesRemaining": "3853"
+      }
+    },
+    {
+      "clientId": "2025916",
+      "clientName": "מורדי דבח",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "4.67",
+        "oldHoursRemaining": "15.33",
+        "newHoursRemaining": "15.33",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "280",
+        "oldMinutesRemaining": "920",
+        "newMinutesRemaining": "920"
+      }
+    },
+    {
+      "clientId": "2025992",
+      "clientName": "רועי סבח (אופיין גט)",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "11.50",
+        "oldHoursRemaining": "23.50",
+        "newHoursRemaining": "23.50",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "690",
+        "oldMinutesRemaining": "1410",
+        "newMinutesRemaining": "1410"
+      }
+    },
+    {
+      "clientId": "2025993",
+      "clientName": "דני הללי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "5.33",
+        "oldHoursRemaining": "-0.33",
+        "newHoursRemaining": "-0.33",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "320",
+        "oldMinutesRemaining": "-20",
+        "newMinutesRemaining": "-20"
+      }
+    },
+    {
+      "clientId": "2025994",
+      "clientName": "קובי הראל",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "44.00",
+        "newHoursUsed": "47.50",
+        "oldHoursRemaining": "102.50",
+        "newHoursRemaining": "282.00",
+        "oldMinutesUsed": "2640",
+        "newMinutesUsed": "2850",
+        "oldMinutesRemaining": "6150",
+        "newMinutesRemaining": "16920"
+      }
+    },
+    {
+      "clientId": "2025996",
+      "clientName": "בינגולד",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.00",
+        "oldHoursRemaining": "0.00",
+        "newHoursRemaining": "70.00",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "0",
+        "oldMinutesRemaining": "0",
+        "newMinutesRemaining": "4200"
+      }
+    },
+    {
+      "clientId": "2025997",
+      "clientName": "אורן קניג",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "18.33",
+        "oldHoursRemaining": "-18.33",
+        "newHoursRemaining": "31.67",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1100",
+        "oldMinutesRemaining": "-1100",
+        "newMinutesRemaining": "1900"
+      }
+    },
+    {
+      "clientId": "2025998",
+      "clientName": "משה אדרי",
+      "services": [
+        {
+          "serviceId": "srv_1765746948255",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "21.85",
+          "newHoursUsed": "21.85",
+          "oldHoursRemaining": "28.98",
+          "newHoursRemaining": "28.15",
+          "totalHours": 50,
+          "timesheetEntries": 15
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "21.85",
+        "oldHoursRemaining": "28.15",
+        "newHoursRemaining": "28.15",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1311",
+        "oldMinutesRemaining": "1689",
+        "newMinutesRemaining": "1689"
+      }
+    },
+    {
+      "clientId": "2026001",
+      "clientName": "מירב שרגא",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "6.10",
+        "oldHoursRemaining": "43.90",
+        "newHoursRemaining": "43.90",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "366",
+        "oldMinutesRemaining": "2634",
+        "newMinutesRemaining": "2634"
+      }
+    },
+    {
+      "clientId": "2026005",
+      "clientName": "בלוני יו אס אי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.12",
+        "oldHoursRemaining": "29.88",
+        "newHoursRemaining": "29.88",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "7",
+        "oldMinutesRemaining": "1793",
+        "newMinutesRemaining": "1793"
+      }
+    },
+    {
+      "clientId": "2026006",
+      "clientName": "אביב חרש",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "4.05",
+        "oldHoursRemaining": "0.95",
+        "newHoursRemaining": "0.95",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "243",
+        "oldMinutesRemaining": "57",
+        "newMinutesRemaining": "57"
+      }
+    },
+    {
+      "clientId": "2026007",
+      "clientName": "גיא אורן",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "53.67",
+        "oldHoursRemaining": "-3.67",
+        "newHoursRemaining": "-3.67",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "3220",
+        "oldMinutesRemaining": "-220",
+        "newMinutesRemaining": "-220"
+      }
+    },
+    {
+      "clientId": "2026008",
+      "clientName": "חזי מאנע",
+      "services": [
+        {
+          "serviceId": "srv_1767719279651",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "81.42",
+          "newHoursUsed": "81.42",
+          "oldHoursRemaining": "-12.48",
+          "newHoursRemaining": "-31.42",
+          "totalHours": 50,
+          "timesheetEntries": 27
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "81.42",
+        "oldHoursRemaining": "-12.82",
+        "newHoursRemaining": "-31.42",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "4885",
+        "oldMinutesRemaining": "-769",
+        "newMinutesRemaining": "-1885"
+      }
+    },
+    {
+      "clientId": "2026010",
+      "clientName": "דני הללי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "4.92",
+        "oldHoursRemaining": "1.08",
+        "newHoursRemaining": "1.08",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "295",
+        "oldMinutesRemaining": "65",
+        "newMinutesRemaining": "65"
+      }
+    },
+    {
+      "clientId": "2026012",
+      "clientName": "אמיר עלויוה",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "2.50",
+        "oldHoursRemaining": "7.50",
+        "newHoursRemaining": "7.50",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "150",
+        "oldMinutesRemaining": "450",
+        "newMinutesRemaining": "450"
+      }
+    },
+    {
+      "clientId": "2026013",
+      "clientName": "בלוני יו אס איי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "10.00",
+        "oldHoursRemaining": "10.00",
+        "newHoursRemaining": "10.00",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "600",
+        "oldMinutesRemaining": "600",
+        "newMinutesRemaining": "600"
+      }
+    },
+    {
+      "clientId": "2026016",
+      "clientName": "אמיר הרצברג",
+      "services": [
+        {
+          "serviceId": "srv_1769066020456",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "1.00",
+          "newHoursUsed": "1.17",
+          "oldHoursRemaining": "19.00",
+          "newHoursRemaining": "18.83",
+          "totalHours": 20,
+          "timesheetEntries": 2
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "1.17",
+        "oldHoursRemaining": "18.83",
+        "newHoursRemaining": "18.83",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "70",
+        "oldMinutesRemaining": "1130",
+        "newMinutesRemaining": "1130"
+      }
+    },
+    {
+      "clientId": "2026018",
+      "clientName": "אופק עמר",
+      "services": [
+        {
+          "serviceId": "srv_legal_1769066470209",
+          "serviceName": "תביעת נדלן",
+          "oldHoursUsed": "3.25",
+          "newHoursUsed": "3.25",
+          "oldHoursRemaining": "220.50",
+          "newHoursRemaining": "221.75",
+          "totalHours": 225,
+          "timesheetEntries": 3
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "4.50",
+        "newHoursUsed": "3.25",
+        "oldHoursRemaining": "220.50",
+        "newHoursRemaining": "221.75",
+        "oldMinutesUsed": "270",
+        "newMinutesUsed": "195",
+        "oldMinutesRemaining": "13230",
+        "newMinutesRemaining": "13305"
+      }
+    },
+    {
+      "clientId": "2026019",
+      "clientName": "ביקון אבטחת מידע",
+      "services": [
+        {
+          "serviceId": "srv_1769066811801",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "11.08",
+          "newHoursUsed": "11.08",
+          "oldHoursRemaining": "12.33",
+          "newHoursRemaining": "8.92",
+          "totalHours": 20,
+          "timesheetEntries": 8
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "11.08",
+        "oldHoursRemaining": "8.92",
+        "newHoursRemaining": "8.92",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "665",
+        "oldMinutesRemaining": "535",
+        "newMinutesRemaining": "535"
+      }
+    },
+    {
+      "clientId": "2026020",
+      "clientName": "חיים פרץ",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "3.33",
+        "oldHoursRemaining": "46.67",
+        "newHoursRemaining": "46.67",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "200",
+        "oldMinutesRemaining": "2800",
+        "newMinutesRemaining": "2800"
+      }
+    },
+    {
+      "clientId": "2026021",
+      "clientName": "חיים פרץ",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "5.57",
+        "oldHoursRemaining": "3.43",
+        "newHoursRemaining": "3.43",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "334",
+        "oldMinutesRemaining": "206",
+        "newMinutesRemaining": "206"
+      }
+    },
+    {
+      "clientId": "2026022",
+      "clientName": "טפאוטו",
+      "services": [
+        {
+          "serviceId": "srv_1769416212328",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "7.77",
+          "newHoursUsed": "7.77",
+          "oldHoursRemaining": "1.40",
+          "newHoursRemaining": "0.23",
+          "totalHours": 8,
+          "timesheetEntries": 4
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "7.77",
+        "oldHoursRemaining": "0.23",
+        "newHoursRemaining": "0.23",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "466",
+        "oldMinutesRemaining": "14",
+        "newMinutesRemaining": "14"
+      }
+    },
+    {
+      "clientId": "2026023",
+      "clientName": "מזל זויץ",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.83",
+        "oldHoursRemaining": "29.17",
+        "newHoursRemaining": "29.17",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "50",
+        "oldMinutesRemaining": "1750",
+        "newMinutesRemaining": "1750"
+      }
+    },
+    {
+      "clientId": "2026025",
+      "clientName": "משכנות גדרה",
+      "services": [
+        {
+          "serviceId": "srv_legal_1769878319417",
+          "serviceName": "תביעה בגין איחור מסירה",
+          "oldHoursUsed": "0.00",
+          "newHoursUsed": "1.00",
+          "oldHoursRemaining": "0.00",
+          "newHoursRemaining": "-1.00",
+          "totalHours": 0,
+          "timesheetEntries": 1
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "1.00",
+        "oldHoursRemaining": "0.00",
+        "newHoursRemaining": "-1.00",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "60",
+        "oldMinutesRemaining": "0",
+        "newMinutesRemaining": "-60"
+      }
+    },
+    {
+      "clientId": "2026026",
+      "clientName": "רדה רביבו",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "4.00",
+        "oldHoursRemaining": "1.00",
+        "newHoursRemaining": "1.00",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "240",
+        "oldMinutesRemaining": "60",
+        "newMinutesRemaining": "60"
+      }
+    },
+    {
+      "clientId": "2026029",
+      "clientName": "טיק טק",
+      "services": [
+        {
+          "serviceId": "srv_1770046877833",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "0.00",
+          "newHoursUsed": "0.67",
+          "oldHoursRemaining": "10.00",
+          "newHoursRemaining": "9.33",
+          "totalHours": 10,
+          "timesheetEntries": 1
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.67",
+        "oldHoursRemaining": "9.33",
+        "newHoursRemaining": "9.33",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "40",
+        "oldMinutesRemaining": "560",
+        "newMinutesRemaining": "560"
+      }
+    },
+    {
+      "clientId": "2026030",
+      "clientName": "טריידניג סקילס",
+      "services": [
+        {
+          "serviceId": "srv_1770059800343",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "21.32",
+          "newHoursUsed": "21.32",
+          "oldHoursRemaining": "84.37",
+          "newHoursRemaining": "68.68",
+          "totalHours": 90,
+          "timesheetEntries": 19
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "21.32",
+        "oldHoursRemaining": "68.68",
+        "newHoursRemaining": "68.68",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "1279",
+        "oldMinutesRemaining": "4121",
+        "newMinutesRemaining": "4121"
+      }
+    },
+    {
+      "clientId": "2026031",
+      "clientName": "נתנאל מיכאלי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.00",
+        "oldHoursRemaining": "0.00",
+        "newHoursRemaining": "64.00",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "0",
+        "oldMinutesRemaining": "0",
+        "newMinutesRemaining": "3840"
+      }
+    },
+    {
+      "clientId": "2026036",
+      "clientName": "ניהול רועי",
+      "services": [
+        {
+          "serviceId": "srv_1770109189428",
+          "serviceName": "תוכנית שעות #1",
+          "oldHoursUsed": "3.00",
+          "newHoursUsed": "9.25",
+          "oldHoursRemaining": "147.00",
+          "newHoursRemaining": "140.75",
+          "totalHours": 150,
+          "timesheetEntries": 6
+        }
+      ],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "9.25",
+        "oldHoursRemaining": "140.75",
+        "newHoursRemaining": "140.75",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "555",
+        "oldMinutesRemaining": "8445",
+        "newMinutesRemaining": "8445"
+      }
+    },
+    {
+      "clientId": "2026038",
+      "clientName": "דורין פפרמן",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "2.83",
+        "oldHoursRemaining": "2.17",
+        "newHoursRemaining": "2.17",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "170",
+        "oldMinutesRemaining": "130",
+        "newMinutesRemaining": "130"
+      }
+    },
+    {
+      "clientId": "2026039",
+      "clientName": "ליל מנשה",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.50",
+        "oldHoursRemaining": "4.50",
+        "newHoursRemaining": "4.50",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "30",
+        "oldMinutesRemaining": "270",
+        "newMinutesRemaining": "270"
+      }
+    },
+    {
+      "clientId": "2026040",
+      "clientName": "עפרה לוין",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.33",
+        "oldHoursRemaining": "0.67",
+        "newHoursRemaining": "0.67",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "20",
+        "oldMinutesRemaining": "40",
+        "newMinutesRemaining": "40"
+      }
+    },
+    {
+      "clientId": "2026041",
+      "clientName": "מידן לוי",
+      "services": [],
+      "root": {
+        "oldHoursUsed": "0.00",
+        "newHoursUsed": "0.50",
+        "oldHoursRemaining": "9.50",
+        "newHoursRemaining": "9.50",
+        "oldMinutesUsed": "0",
+        "newMinutesUsed": "30",
+        "oldMinutesRemaining": "570",
+        "newMinutesRemaining": "570"
+      }
+    }
+  ]
+}

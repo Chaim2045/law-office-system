@@ -231,42 +231,6 @@ async function saveBudgetTaskToFirebase(taskData) {
  * Save timesheet entry to Firebase
  * @deprecated Use FirebaseService.call('createTimesheetEntry') instead
  */
-async function saveTimesheetToFirebase(entryData) {
-  console.warn('⚠️ [DEPRECATED] saveTimesheetToFirebase is deprecated. Use FirebaseService.call("createTimesheetEntry") instead.');
-
-  try {
-    // ✅ Check internet connection first
-    if (!navigator.onLine) {
-      throw new Error('אין חיבור לאינטרנט. אנא בדוק את החיבור ונסה שוב.');
-    }
-
-    // Call Firebase Function for secure validation and creation
-    const result = await callFunction('createTimesheetEntry', entryData);
-
-    if (!result.success) {
-      throw new Error(result.message || 'שגיאה בשמירת שעתון');
-    }
-
-    return result.entryId;
-  } catch (error) {
-    console.error('Firebase error:', error);
-
-    // ✅ Provide better error messages
-    if (error.message?.includes('אין חיבור לאינטרנט')) {
-      throw error;
-    }
-
-    if (error.code === 'unavailable' || error.message?.includes('network')) {
-      throw new Error('בעיית תקשורת עם השרת. אנא בדוק את החיבור ונסה שוב.');
-    }
-
-    if (error.code === 'permission-denied') {
-      throw new Error('אין לך הרשאה לבצע פעולה זו.');
-    }
-
-    throw error;
-  }
-}
 
 /**
  * ✅ ENTERPRISE v2.0: Save timesheet entry with absolute accuracy
@@ -494,8 +458,7 @@ export {
   loadTimesheetFromFirebase,
   // ✅ saveClientToFirebase removed
   saveBudgetTaskToFirebase,
-  saveTimesheetToFirebase,
-  saveTimesheetToFirebase_v2,  // ✅ NEW: Enterprise v2.0 with absolute accuracy
+  saveTimesheetToFirebase_v2,  // ✅ Enterprise v2.0 with absolute accuracy
   updateTimesheetEntryFirebase,
   addTimeToTaskFirebase,
   completeTaskFirebase,
