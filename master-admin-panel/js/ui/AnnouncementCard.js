@@ -58,6 +58,13 @@
                                 <i class="fas ${announcement.active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
                             </button>
 
+                            <!-- Read Status -->
+                            <button class="btn-icon"
+                                    onclick="window.announcementCardHandlers.onReadStatus('${announcement.id}')"
+                                    title="סטטוס קריאה">
+                                <i class="fas fa-eye"></i>
+                            </button>
+
                             <!-- Edit -->
                             <button class="btn-icon"
                                     onclick="window.announcementCardHandlers.onEdit('${announcement.id}')"
@@ -107,6 +114,12 @@
                             '<span class="setting-badge"><i class="fas fa-window-maximize"></i> הצג בכותרת</span>' : ''}
                         ${announcement.displaySettings.dismissible ?
                             '<span class="setting-badge"><i class="fas fa-times-circle"></i> ניתן לסגירה</span>' : ''}
+                    </div>
+
+                    <!-- Read Summary -->
+                    <div class="announcement-card-read-summary">
+                        <i class="fas fa-eye"></i>
+                        <span>נקרא על ידי ${Object.keys(announcement.readBy || {}).length} משתמשים</span>
                     </div>
 
                     <!-- Footer -->
@@ -296,6 +309,19 @@ return;
                     border-radius: 50px;
                     font-size: 0.75rem;
                     color: #475569;
+                }
+
+                .announcement-card-read-summary {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 0.813rem;
+                    color: #6366f1;
+                    margin-bottom: 1rem;
+                }
+
+                .announcement-card-read-summary i {
+                    font-size: 12px;
                 }
 
                 .announcement-card-footer {

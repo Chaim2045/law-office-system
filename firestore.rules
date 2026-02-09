@@ -403,14 +403,16 @@ service cloud.firestore {
       // Reason: Users need to see system messages
       allow read: if isAuthenticated();
 
-      // Update: Admins can update any field, users can only add themselves to dismissedBy
+      // Update: Admins can update any field, users can mark as read
       allow update: if isAuthenticated() && (
         // Admins can update everything
         isAdmin() ||
-        // Users can only add their email to dismissedBy array
+        // Legacy: Users can add themselves to dismissedBy array
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissedBy']) &&
          request.resource.data.dismissedBy.hasAll(resource.data.dismissedBy) &&
-         request.resource.data.dismissedBy.hasOnly([request.auth.token.email].toSet().union(resource.data.dismissedBy.toSet())))
+         request.resource.data.dismissedBy.hasOnly([request.auth.token.email].toSet().union(resource.data.dismissedBy.toSet()))) ||
+        // New: Users can add their own entry to readBy map
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']))
       );
 
       // Delete: Only admins can delete announcements

@@ -16,6 +16,7 @@
             this.service = null;
             this.announcements = [];
             this.editor = null;
+            this.readStatusModal = null;
         }
 
         /**
@@ -40,6 +41,7 @@
 
             this.service = new window.AnnouncementService(window.firebaseDB);
             this.editor = new window.AnnouncementEditor();
+            this.readStatusModal = new window.ReadStatusModal(window.firebaseDB);
 
             // Render initial UI
             this.render();
@@ -160,7 +162,8 @@ return;
             window.announcementCardHandlers = {
                 onEdit: (id) => this.handleEdit(id),
                 onDelete: (id) => this.handleDelete(id),
-                onToggle: (id, active) => this.handleToggle(id, active)
+                onToggle: (id, active) => this.handleToggle(id, active),
+                onReadStatus: (id) => this.handleReadStatus(id)
             };
         }
 
@@ -309,6 +312,16 @@ return;
                 if (window.Notifications) {
                     window.Notifications.show('שגיאה בשינוי סטטוס: ' + error.message, 'error');
                 }
+            }
+        }
+
+        /**
+         * Handle read status view
+         */
+        handleReadStatus(id) {
+            const announcement = this.announcements.find(a => a.id === id);
+            if (announcement && this.readStatusModal) {
+                this.readStatusModal.open(announcement);
             }
         }
 

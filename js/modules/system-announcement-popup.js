@@ -22,6 +22,8 @@ class SystemAnnouncementPopup {
     this.user = null;
     this.userRole = null;
     this.escapeHandler = null;
+    this.countdownInterval = null;
+    this.overlayClickDisabled = false;
   }
 
   /**
@@ -97,7 +99,9 @@ class SystemAnnouncementPopup {
             startDate: data.startDate?.toDate(),
             endDate: data.endDate?.toDate(),
             displaySettings: data.displaySettings || {},
-            dismissedBy: data.dismissedBy || []
+            readBy: data.readBy || {},
+            dismissedBy: data.dismissedBy || [],
+            popupSettings: data.popupSettings || { requireReadConfirmation: true, readTimer: 'auto' }
           };
         })
         .filter(a => {
@@ -121,8 +125,8 @@ return false;
 return false;
 }
 
-          // Check Firestore dismissedBy
-          if (a.dismissedBy.includes(userEmail)) {
+          // Check readBy (new) OR dismissedBy (legacy)
+          if (a.readBy[userEmail] || a.dismissedBy.includes(userEmail)) {
 return false;
 }
 
@@ -139,8 +143,6 @@ return false;
           return true;
         })
         .sort((a, b) => b.priority - a.priority);
-
-      console.log(`📢 [AnnouncementPopup] ${this.announcements.length} unread announcements`);
     } catch (error) {
       console.error('❌ [AnnouncementPopup] Error fetching announcements:', error);
       this.announcements = [];
@@ -249,7 +251,7 @@ return;
 
     // Overlay click (outside modal)
     this.overlay.addEventListener('click', (e) => {
-      if (e.target === this.overlay) {
+      if (e.target === this.overlay && !this.overlayClickDisabled) {
 this.dismiss();
 }
     });
@@ -290,7 +292,7 @@ this.markAsRead(current.id);
 
     // Escape key
     this.escapeHandler = (e) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !this.overlayClickDisabled) {
 this.dismiss();
 }
     };
@@ -343,6 +345,66 @@ return;
     const nextBtn = this.overlay.querySelector('#apNext');
     prevBtn.disabled = index === 0;
     nextBtn.disabled = index === this.announcements.length - 1;
+
+    // Clear previous timer
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+
+    const announcement = this.announcements[index];
+    const readBtn = this.overlay.querySelector('.announcement-popup-mark-read');
+    const seconds = this.getReadTimer(announcement);
+
+    // Start countdown
+    readBtn.disabled = true;
+    let remaining = seconds;
+    readBtn.innerHTML = `קראתי (${remaining})`;
+
+    this.countdownInterval = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+        readBtn.disabled = false;
+        readBtn.innerHTML = '✓ קראתי';
+      } else {
+        readBtn.innerHTML = `קראתי (${remaining})`;
+      }
+    }, 1000);
+
+    // requireReadConfirmation — control close/escape/overlay
+    const requireRead = announcement.popupSettings?.requireReadConfirmation !== false;
+    const closeBtn = this.overlay.querySelector('.announcement-popup-close-btn');
+
+    if (requireRead) {
+      closeBtn.style.display = 'none';
+      this.overlayClickDisabled = true;
+    } else {
+      closeBtn.style.display = '';
+      this.overlayClickDisabled = false;
+    }
+  }
+
+  /**
+   * Calculate read timer seconds based on settings or content length
+   * @param {Object} announcement
+   * @returns {number}
+   */
+  getReadTimer(announcement) {
+    const settings = announcement.popupSettings || {};
+    if (settings.readTimer && settings.readTimer !== 'auto') {
+      return parseInt(settings.readTimer);
+    }
+    // Auto — לפי אורך הודעה
+    const len = (announcement.title || '').length + (announcement.message || '').length;
+    if (len <= 50) {
+return 3;
+}
+    if (len <= 150) {
+return 5;
+}
+    return 8;
   }
 
   /**
@@ -352,7 +414,10 @@ return;
   async markAsRead(announcementId) {
     try {
       await this.db.collection('system_announcements').doc(announcementId).update({
-        dismissedBy: firebase.firestore.FieldValue.arrayUnion(this.user.email)
+        [`readBy.${this.user.email}`]: {
+          readAt: firebase.firestore.FieldValue.serverTimestamp(),
+          displayName: this.user.displayName || this.user.email
+        }
       });
 
       // Remove localStorage temp dismiss if exists
@@ -380,7 +445,10 @@ return;
     try {
       const promises = this.announcements.map(a =>
         this.db.collection('system_announcements').doc(a.id).update({
-          dismissedBy: firebase.firestore.FieldValue.arrayUnion(this.user.email)
+          [`readBy.${this.user.email}`]: {
+            readAt: firebase.firestore.FieldValue.serverTimestamp(),
+            displayName: this.user.displayName || this.user.email
+          }
         })
       );
 
@@ -447,6 +515,10 @@ return;
    * Close and remove from DOM
    */
   close() {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
     if (this.escapeHandler) {
       document.removeEventListener('keydown', this.escapeHandler);
       this.escapeHandler = null;

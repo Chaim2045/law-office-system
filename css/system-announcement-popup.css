@@ -2,7 +2,7 @@
  * System Announcement Popup Styles
  * Popup modal for system announcements on login
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @created 2026-02-09
  */
 
@@ -13,13 +13,15 @@
 .announcement-popup-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 50%);
+  background: rgb(15 23 42 / 40%);
+  backdrop-filter: blur(4px);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   direction: rtl;
-  animation: announcement-popup-fadeIn 0.2s ease;
+  font-family: inherit;
+  animation: announcement-popup-fadeIn 0.2s ease-out;
 }
 
 @keyframes announcement-popup-fadeIn {
@@ -35,17 +37,18 @@
 .announcement-popup-modal {
   background: #fff;
   border-radius: 16px;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgb(0 0 0 / 15%);
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
+  border: 1px solid #e5e7eb;
   overflow: hidden;
-  animation: announcement-popup-slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: announcement-popup-slideUp 0.3s ease-out;
 }
 
 @keyframes announcement-popup-slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    transform: translateY(20px) scale(0.98);
   }
 
   to {
@@ -59,7 +62,7 @@
    ======================================== */
 
 .announcement-popup-header {
-  padding: 20px 24px;
+  padding: 24px 28px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -77,30 +80,29 @@
 }
 
 .announcement-popup-type-icon.announcement-popup-type-info {
-  background: rgb(14 165 233 / 10%);
-  color: #0ea5e9;
+  background: #eff6ff;
+  color: #3b82f6;
 }
 
 .announcement-popup-type-icon.announcement-popup-type-success {
-  background: rgb(16 185 129 / 10%);
+  background: #f0fdf4;
   color: #10b981;
 }
 
 .announcement-popup-type-icon.announcement-popup-type-warning {
-  background: rgb(245 158 11 / 10%);
+  background: #fffbeb;
   color: #f59e0b;
 }
 
 .announcement-popup-type-icon.announcement-popup-type-error {
-  background: rgb(239 68 68 / 10%);
+  background: #fef2f2;
   color: #ef4444;
 }
 
 .announcement-popup-counter {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: #9ca3af;
-  letter-spacing: 0.5px;
 }
 
 .announcement-popup-close-btn {
@@ -121,7 +123,7 @@
 
 .announcement-popup-close-btn:hover {
   background: #f3f4f6;
-  color: #1f2937;
+  color: #374151;
 }
 
 /* ========================================
@@ -129,22 +131,24 @@
    ======================================== */
 
 .announcement-popup-body {
-  padding: 0 24px 20px;
-  text-align: right;
+  padding: 0 28px 20px;
+  direction: rtl;
 }
 
 .announcement-popup-title {
   font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 8px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
   line-height: 1.4;
 }
 
 .announcement-popup-message {
   font-size: 15px;
-  color: #4b5563;
-  line-height: 1.6;
+  font-weight: 400;
+  color: #475569;
+  line-height: 1.7;
+  letter-spacing: -0.01em;
   margin: 0;
   white-space: pre-wrap;
 }
@@ -154,8 +158,8 @@
    ======================================== */
 
 .announcement-popup-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #e5e7eb;
+  padding: 16px 28px 24px;
+  border-top: 1px solid #f3f4f6;
 }
 
 /* Navigation Row */
@@ -169,11 +173,11 @@
 
 .announcement-popup-prev,
 .announcement-popup-next {
-  width: 32px;
-  height: 32px;
-  background: #f3f4f6;
+  width: 28px;
+  height: 28px;
+  background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   color: #6b7280;
   font-size: 14px;
   cursor: pointer;
@@ -186,7 +190,7 @@
 
 .announcement-popup-prev:hover,
 .announcement-popup-next:hover {
-  background: #e5e7eb;
+  background: #f3f4f6;
   color: #1f2937;
 }
 
@@ -219,7 +223,7 @@
 }
 
 .announcement-popup-dot.announcement-popup-dot-active {
-  background: #0f172a;
+  background: #3b82f6;
   width: 20px;
   border-radius: 4px;
 }
@@ -233,11 +237,11 @@
 
 .announcement-popup-mark-read {
   flex: 1;
-  padding: 10px 20px;
+  padding: 10px 24px;
   background: #0f172a;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -253,12 +257,17 @@
   background: #1e293b;
 }
 
+.announcement-popup-mark-read:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 .announcement-popup-mark-all-read {
-  padding: 10px 16px;
+  padding: 8px 12px;
   background: transparent;
   color: #6b7280;
   border: none;
-  border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -268,7 +277,6 @@
 }
 
 .announcement-popup-mark-all-read:hover {
-  background: #f3f4f6;
   color: #374151;
 }
 
@@ -298,15 +306,16 @@
 
 @media (width <= 480px) {
   .announcement-popup-modal {
-    max-width: 95%;
+    width: 95%;
+    margin: 16px;
   }
 
   .announcement-popup-header {
-    padding: 16px 18px;
+    padding: 20px 20px 14px;
   }
 
   .announcement-popup-body {
-    padding: 0 18px 16px;
+    padding: 0 20px 16px;
   }
 
   .announcement-popup-title {
@@ -318,7 +327,7 @@
   }
 
   .announcement-popup-footer {
-    padding: 14px 18px;
+    padding: 14px 20px 20px;
   }
 
   .announcement-popup-mark-read {
@@ -328,6 +337,5 @@
 
   .announcement-popup-mark-all-read {
     font-size: 12px;
-    padding: 10px 12px;
   }
 }

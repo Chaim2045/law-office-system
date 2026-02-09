@@ -58,6 +58,12 @@
                 mode: data.displayStyle?.mode || 'auto', // 'auto' or 'manual'
                 repeatCount: data.displayStyle?.repeatCount || null // null for auto, 1/3/5 for manual
             };
+
+            this.readBy = data.readBy || {};
+            this.popupSettings = data.popupSettings || {
+                requireReadConfirmation: true,
+                readTimer: 'auto'
+            };
         }
 
         /**
@@ -153,6 +159,8 @@ return false;
             }
 
             data.tenantId = this.tenantId;
+            data.readBy = this.readBy;
+            data.popupSettings = this.popupSettings;
 
             return data;
         }
@@ -178,7 +186,9 @@ return false;
                 createdBy: data.createdBy,
                 createdAt: data.createdAt?.toDate(),
                 updatedAt: data.updatedAt?.toDate(),
-                displaySettings: data.displaySettings
+                displaySettings: data.displaySettings,
+                readBy: data.readBy || {},
+                popupSettings: data.popupSettings || { requireReadConfirmation: true, readTimer: 'auto' }
             });
         }
 
@@ -233,6 +243,8 @@ return false;
             }
 
             data.tenantId = this.tenantId;
+            data.readBy = JSON.parse(JSON.stringify(this.readBy));
+            data.popupSettings = { ...this.popupSettings };
 
             return new SystemAnnouncement(data);
         }
