@@ -8397,4 +8397,125 @@ exports.deleteFeeAgreement = functions.https.onCall(async (data, context) => {
 const { getTeamWorkloadData } = require('./workload-analytics');
 exports.getTeamWorkloadData = getTeamWorkloadData;
 
-console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Smart Bot 🤖 + Delete User Data + Delete User Data Selective 🔒 + Fee Agreements 📄 + Workload Analytics 📊)');
+// ═══════════════════════════════════════════════════════════════
+// 🔍 Daily Invariant Check - Data Integrity Monitor
+// ═══════════════════════════════════════════════════════════════
+
+// TODO: כשישודרג Twilio — להוסיף שליחת SMS בפער
+// מספר יעד: +972549539238
+
+exports.dailyInvariantCheck = onSchedule({
+  schedule: '0 6 * * *',
+  timeZone: 'Asia/Jerusalem',
+  region: 'us-central1'
+}, async () => {
+  const SKIP_CLIENTS = ['2025003'];
+  const TOLERANCE = 0.02;
+  const discrepancies = [];
+
+  try {
+    console.log('🔍 Starting daily invariant check...');
+
+    const clientsSnapshot = await db.collection('clients').get();
+    console.log(`📊 Checking ${clientsSnapshot.size} clients`);
+
+    for (const clientDoc of clientsSnapshot.docs) {
+      const clientId = clientDoc.id;
+
+      if (SKIP_CLIENTS.includes(clientId)) {
+        continue;
+      }
+
+      try {
+        const clientData = clientDoc.data();
+        const clientName = clientData.clientName || clientData.name || clientId;
+        const services = clientData.services || [];
+
+        if (services.length === 0) {
+          continue;
+        }
+
+        // Read all timesheet entries for this client
+        const timesheetSnapshot = await db.collection('timesheet_entries')
+          .where('clientId', '==', clientId)
+          .get();
+
+        // Group minutes by serviceId
+        const serviceMinutes = {};
+        timesheetSnapshot.forEach(doc => {
+          const entry = doc.data();
+          const serviceId = entry.serviceId;
+          if (serviceId) {
+            serviceMinutes[serviceId] = (serviceMinutes[serviceId] || 0) + (entry.minutes || 0);
+          }
+        });
+
+        // Check each service
+        for (const service of services) {
+          const serviceId = service.id;
+          if (!serviceId) continue;
+
+          const cardHoursUsed = service.hoursUsed || 0;
+          const timesheetMinutes = serviceMinutes[serviceId] || 0;
+          const timesheetHoursUsed = timesheetMinutes / 60;
+          const gap = Math.abs(cardHoursUsed - timesheetHoursUsed);
+
+          if (gap > TOLERANCE) {
+            discrepancies.push({
+              clientId,
+              clientName,
+              serviceId,
+              serviceName: service.name || service.type || serviceId,
+              cardHoursUsed: parseFloat(cardHoursUsed.toFixed(2)),
+              timesheetHoursUsed: parseFloat(timesheetHoursUsed.toFixed(2)),
+              gap: parseFloat(gap.toFixed(2))
+            });
+          }
+        }
+      } catch (clientError) {
+        console.error(`⚠️ Error checking client ${clientId}:`, clientError.message);
+        // Continue to next client
+      }
+    }
+
+    // Save result to system_health_checks
+    if (discrepancies.length > 0) {
+      await db.collection('system_health_checks').add({
+        type: 'invariant_check',
+        status: 'FAIL',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        discrepanciesCount: discrepancies.length,
+        discrepancies,
+        message: `נמצאו ${discrepancies.length} פערים בנתוני שעות`
+      });
+      console.log(`❌ Invariant check FAILED — ${discrepancies.length} discrepancies found`);
+    } else {
+      await db.collection('system_health_checks').add({
+        type: 'invariant_check',
+        status: 'PASS',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        discrepanciesCount: 0,
+        discrepancies: [],
+        message: 'כל הנתונים תקינים'
+      });
+      console.log('✅ Invariant check PASSED — no discrepancies');
+    }
+
+  } catch (error) {
+    console.error('❌ Invariant check ERROR:', error);
+    try {
+      await db.collection('system_health_checks').add({
+        type: 'invariant_check',
+        status: 'ERROR',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        discrepanciesCount: 0,
+        discrepancies: [],
+        message: `שגיאה בבדיקת תקינות: ${error.message}`
+      });
+    } catch (saveError) {
+      console.error('❌ Failed to save error status:', saveError);
+    }
+  }
+});
+
+console.log('✅ Law Office Functions loaded successfully (including 10 Master Admin functions + Nuclear Cleanup + Data Fixes + User Metrics + setAdminClaims + Task Approval System + WhatsApp Broadcast + WhatsApp Smart Bot 🤖 + Delete User Data + Delete User Data Selective 🔒 + Fee Agreements 📄 + Workload Analytics 📊 + Daily Invariant Check 🔍)');
