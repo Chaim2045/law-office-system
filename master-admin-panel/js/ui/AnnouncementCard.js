@@ -166,17 +166,16 @@ return;
             style.textContent = `
                 .announcement-card {
                     background: white;
-                    border: 1px solid #e2e8f0;
+                    border: none;
                     border-radius: 10px;
                     padding: 1.5rem;
                     margin-bottom: 1rem;
-                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
                     transition: all 0.3s ease;
                 }
 
                 .announcement-card:hover {
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
                 }
 
                 .announcement-card.inactive {

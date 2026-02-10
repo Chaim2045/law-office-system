@@ -236,25 +236,23 @@
 }
 
 .announcement-popup-mark-read {
-  flex: 1;
-  padding: 10px 24px;
-  background: #0f172a;
-  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #3b82f6;
+  color: white;
   border: none;
+  padding: 10px 24px;
   border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: all 0.15s ease;
+  transition: all 0.2s;
   font-family: inherit;
 }
 
 .announcement-popup-mark-read:hover {
-  background: #1e293b;
+  background: #2563eb;
 }
 
 .announcement-popup-mark-read:disabled {
