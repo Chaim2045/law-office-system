@@ -446,9 +446,22 @@ return;
                 }
 
                 .announcements-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 1rem;
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 16px;
+                    padding: 0;
+                }
+
+                @media (max-width: 1200px) {
+                    .announcements-list {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .announcements-list {
+                        grid-template-columns: 1fr;
+                    }
                 }
 
                 /* Loading State */

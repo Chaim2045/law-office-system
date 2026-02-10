@@ -37,8 +37,7 @@
 
             return `
                 <div class="announcement-card ${isActive ? 'active' : 'inactive'}"
-                     data-id="${announcement.id}"
-                     style="border-right: 4px solid ${typeColor}">
+                     data-id="${announcement.id}">
 
                     <!-- Header -->
                     <div class="announcement-card-header">
@@ -169,7 +168,6 @@ return;
                     border: none;
                     border-radius: 10px;
                     padding: 1.5rem;
-                    margin-bottom: 1rem;
                     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
                     transition: all 0.3s ease;
                 }
