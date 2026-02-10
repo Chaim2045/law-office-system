@@ -89,7 +89,7 @@ return;
                             </div>
                             <div class="panel-title-section">
                                 <h1 class="panel-title">הודעות מערכת</h1>
-                                <p class="panel-subtitle">ניהול הודעות גלובליות למשתמשים - News Ticker</p>
+                                <p class="panel-subtitle">ניהול הודעות גלובליות למשתמשים</p>
                             </div>
                         </div>
                         <button class="btn-create-announcement" id="btnCreateAnnouncement">
@@ -367,11 +367,11 @@ return;
                 }
 
                 .panel-header {
-                    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-                    border-radius: 16px;
-                    padding: 2rem;
+                    background: #f8fafc;
+                    border-bottom: 1px solid #e2e8f0;
+                    border-radius: 12px 12px 0 0;
+                    padding: 20px 24px;
                     margin-bottom: 2rem;
-                    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
@@ -386,15 +386,15 @@ return;
                 }
 
                 .panel-icon {
-                    width: 64px;
-                    height: 64px;
-                    background: rgba(255, 255, 255, 0.2);
-                    border-radius: 16px;
+                    width: 40px;
+                    height: 40px;
+                    background: #eff6ff;
+                    border-radius: 10px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 28px;
-                    color: white;
+                    font-size: 20px;
+                    color: #3b82f6;
                 }
 
                 .panel-title-section {
@@ -402,41 +402,39 @@ return;
                 }
 
                 .panel-title {
-                    font-size: 2rem;
+                    font-size: 20px;
                     font-weight: 700;
-                    color: white;
+                    color: #0f172a;
                     margin: 0 0 0.5rem 0;
                 }
 
                 .panel-subtitle {
-                    font-size: 1rem;
-                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 13px;
+                    color: #64748b;
                     margin: 0;
                 }
 
                 .btn-create-announcement {
-                    background: white;
-                    color: #f97316;
+                    background: #0f172a;
+                    color: white;
                     border: none;
-                    padding: 0.875rem 1.5rem;
-                    border-radius: 12px;
-                    font-size: 1rem;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 13px;
                     font-weight: 600;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
                     transition: all 0.2s ease;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
                 }
 
                 .btn-create-announcement:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+                    background: #1e293b;
                 }
 
                 .btn-create-announcement i {
-                    font-size: 16px;
+                    font-size: 14px;
                 }
 
                 .panel-content {
@@ -477,33 +475,32 @@ return;
                 /* Empty State */
                 .empty-state {
                     text-align: center;
-                    padding: 4rem 2rem;
+                    padding: 60px 20px;
                 }
 
                 .empty-state-icon {
-                    width: 120px;
-                    height: 120px;
-                    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-                    border-radius: 50%;
+                    width: 60px;
+                    height: 60px;
+                    background: #f1f5f9;
+                    border-radius: 12px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     margin: 0 auto 2rem;
-                    font-size: 48px;
-                    color: white;
-                    box-shadow: 0 8px 24px rgba(249, 115, 22, 0.3);
+                    font-size: 28px;
+                    color: #94a3b8;
                 }
 
                 .empty-state h3 {
-                    font-size: 1.5rem;
+                    font-size: 16px;
                     font-weight: 600;
-                    color: #1e293b;
+                    color: #334155;
                     margin: 0 0 1rem 0;
                 }
 
                 .empty-state p {
-                    font-size: 1rem;
-                    color: #64748b;
+                    font-size: 13px;
+                    color: #94a3b8;
                     margin: 0 0 2rem 0;
                 }
 
@@ -542,24 +539,23 @@ return;
 
                 /* Buttons */
                 .btn-primary {
-                    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-                    color: white;
-                    border: none;
-                    padding: 0.875rem 1.5rem;
-                    border-radius: 12px;
-                    font-size: 1rem;
-                    font-weight: 600;
+                    background: #f8fafc;
+                    color: #475569;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 10px 20px;
+                    font-size: 13px;
+                    font-weight: 500;
                     cursor: pointer;
+                    transition: all 0.2s;
                     display: inline-flex;
                     align-items: center;
-                    gap: 0.5rem;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+                    gap: 6px;
                 }
 
                 .btn-primary:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+                    background: #f1f5f9;
+                    border-color: #cbd5e1;
                 }
 
                 .btn-secondary {

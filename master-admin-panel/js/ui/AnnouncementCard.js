@@ -166,15 +166,16 @@ return;
             style.textContent = `
                 .announcement-card {
                     background: white;
-                    border-radius: 12px;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 10px;
                     padding: 1.5rem;
                     margin-bottom: 1rem;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
                     transition: all 0.3s ease;
                 }
 
                 .announcement-card:hover {
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
                     transform: translateY(-2px);
                 }
 
@@ -198,15 +199,15 @@ return;
                     display: inline-flex;
                     align-items: center;
                     gap: 0.5rem;
-                    padding: 0.25rem 0.75rem;
-                    border-radius: 50px;
-                    font-size: 0.813rem;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 11px;
                     font-weight: 600;
                     margin-bottom: 0.5rem;
                 }
 
                 .announcement-card-title {
-                    font-size: 1.25rem;
+                    font-size: 16px;
                     font-weight: 700;
                     color: #1e293b;
                     margin: 0;
@@ -252,7 +253,7 @@ return;
                 }
 
                 .announcement-card-message {
-                    font-size: 1rem;
+                    font-size: 14px;
                     color: #475569;
                     line-height: 1.6;
                     margin-bottom: 1rem;
