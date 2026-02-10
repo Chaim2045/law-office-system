@@ -361,7 +361,10 @@ return;
             style.id = 'systemAnnouncementsPanelStyles';
             style.textContent = `
                 .panel-container {
-                    padding: 2rem;
+                    background: transparent;
+                    border: none;
+                    box-shadow: none;
+                    padding: 0;
                     max-width: 1400px;
                     margin: 0 auto;
                 }
@@ -438,10 +441,11 @@ return;
                 }
 
                 .panel-content {
-                    background: white;
-                    border-radius: 16px;
-                    padding: 2rem;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                    padding: 0;
+                    background: transparent;
+                    border: none;
+                    box-shadow: none;
+                    border-radius: 0;
                     min-height: 400px;
                 }
 
