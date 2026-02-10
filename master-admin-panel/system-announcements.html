@@ -170,53 +170,20 @@
 
     <!-- ===== Page Initialization ===== -->
     <script>
-        (function() {
-            'use strict';
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📢 System Announcements Page Loaded');
 
-            // Wait for Firebase to initialize
-            let authStateListenerStarted = false;
-
-            function startAuthListener() {
-                // Prevent duplicate listeners
-                if (authStateListenerStarted) {
-                    console.log('⚠️ Auth listener already started, skipping');
-                    return;
-                }
-                authStateListenerStarted = true;
-
-                console.log('✅ Starting Firebase auth listener...');
-
-                // Check if user is already logged in
-                firebase.auth().onAuthStateChanged((user) => {
-                    if (user) {
-                        console.log('✅ User logged in:', user.email);
-                        showDashboard();
-                    } else {
-                        console.log('⚠️ User not logged in');
-                        showLogin();
-                    }
-                });
+            // Initialize Authentication System
+            if (window.AuthSystem) {
+                window.AuthSystem.init();
+            } else {
+                console.error('❌ AuthSystem not loaded');
             }
 
-            // Listen for firebase:ready event
-            window.addEventListener('firebase:ready', () => {
-                console.log('📢 Received firebase:ready event');
-                startAuthListener();
-            });
-
-            // Fallback: Try after a short delay if event didn't fire
-            setTimeout(() => {
-                if (!authStateListenerStarted && typeof firebase !== 'undefined' && firebase.auth) {
-                    console.log('⏰ Fallback: Starting auth listener after timeout');
-                    startAuthListener();
-                }
-            }, 1000);
-
-            // Show dashboard
-            function showDashboard() {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('dashboardScreen').style.display = 'block';
-                document.body.classList.remove('login-page');
+            // Initialize when user is authenticated
+            window.addEventListener('dashboard:ready', async () => {
+                console.log('📢 Initializing System Announcements...');
 
                 // Initialize navigation
                 if (window.Navigation) {
@@ -228,62 +195,26 @@
                     const panel = new window.SystemAnnouncementsPanel();
                     panel.init('announcement-manager-section');
                 }
-            }
+            });
+        });
 
-            // Show login
-            function showLogin() {
-                document.getElementById('loginScreen').style.display = 'flex';
-                document.getElementById('dashboardScreen').style.display = 'none';
-                document.body.classList.add('login-page');
-            }
+        // Password Toggle Functionality
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('passwordInput');
 
-            // Password toggle
-            const togglePassword = document.getElementById('togglePassword');
-            const passwordInput = document.getElementById('passwordInput');
+        togglePassword?.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
 
-            if (togglePassword && passwordInput) {
-                togglePassword.addEventListener('click', () => {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
+            const icon = togglePassword.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
 
-                    const icon = togglePassword.querySelector('i');
-                    icon.classList.toggle('fa-eye');
-                    icon.classList.toggle('fa-eye-slash');
-                });
-            }
-
-            // Login form submission
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-
-                    const email = document.getElementById('emailInput').value.trim();
-                    const password = document.getElementById('passwordInput').value;
-                    const loginButton = document.getElementById('loginButton');
-                    const errorMessage = document.getElementById('errorMessage');
-
-                    // Disable button
-                    loginButton.disabled = true;
-                    loginButton.querySelector('.btn-text').textContent = 'מתחבר...';
-
-                    try {
-                        await firebase.auth().signInWithEmailAndPassword(email, password);
-                        // onAuthStateChanged will handle the redirect
-                    } catch (error) {
-                        console.error('Login error:', error);
-
-                        // Show error message
-                        errorMessage.style.display = 'flex';
-                        document.getElementById('errorText').textContent = 'אימייל או סיסמה שגויים';
-
-                        // Re-enable button
-                        loginButton.disabled = false;
-                        loginButton.querySelector('.btn-text').textContent = 'כניסה למערכת';
-                    }
-                });
-            }
-        })();
+        // Prevent form submission on Enter (handled by auth.js)
+        document.getElementById('loginForm')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+        });
     </script>
 </body>
 </html>
