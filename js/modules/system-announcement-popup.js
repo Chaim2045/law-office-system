@@ -413,12 +413,14 @@ return 5;
    */
   async markAsRead(announcementId) {
     try {
-      await this.db.collection('system_announcements').doc(announcementId).update({
-        [`readBy.${this.user.email}`]: {
-          readAt: firebase.firestore.FieldValue.serverTimestamp(),
-          displayName: this.user.displayName || this.user.email
+      await this.db.collection('system_announcements').doc(announcementId).set({
+        readBy: {
+          [this.user.email]: {
+            readAt: firebase.firestore.FieldValue.serverTimestamp(),
+            displayName: this.user.displayName || this.user.email
+          }
         }
-      });
+      }, { merge: true });
 
       // Remove localStorage temp dismiss if exists
       localStorage.removeItem('announcement_popup_dismissed_' + announcementId);
@@ -444,12 +446,14 @@ return 5;
   async markAllAsRead() {
     try {
       const promises = this.announcements.map(a =>
-        this.db.collection('system_announcements').doc(a.id).update({
-          [`readBy.${this.user.email}`]: {
-            readAt: firebase.firestore.FieldValue.serverTimestamp(),
-            displayName: this.user.displayName || this.user.email
+        this.db.collection('system_announcements').doc(a.id).set({
+          readBy: {
+            [this.user.email]: {
+              readAt: firebase.firestore.FieldValue.serverTimestamp(),
+              displayName: this.user.displayName || this.user.email
+            }
           }
-        })
+        }, { merge: true })
       );
 
       await Promise.all(promises);
