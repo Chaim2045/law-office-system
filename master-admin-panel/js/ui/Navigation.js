@@ -54,7 +54,8 @@ return;
             const navItems = [
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
                 { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
-                { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' }
+                { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' },
+                { id: 'announcements', label: 'הודעות מערכת', icon: 'fa-bullhorn', href: 'system-announcements.html' }
             ];
 
             this.container.innerHTML = `
@@ -76,10 +77,6 @@ return;
                         </div>
                     </div>
                     <div class="nav-user">
-                        <button class="btn-announcements ${this.currentPage === 'announcements' ? 'active' : ''}" id="navAnnouncementsBtn" title="הודעות מערכת">
-                            <i class="fas fa-bullhorn"></i>
-                            <span>הודעות מערכת</span>
-                        </button>
                         <button class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" id="navApprovalsBtn" title="אישורי תקציב משימות" style="position: relative;">
                             <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
                             <i class="fas fa-clipboard-check"></i>
@@ -452,20 +449,6 @@ return;
          * הגדרת מאזיני אירועים
          */
         setupEventListeners() {
-            // Announcements button
-            const announcementsBtn = document.getElementById('navAnnouncementsBtn');
-            if (announcementsBtn) {
-                announcementsBtn.addEventListener('click', () => {
-                    console.log('📢 Opening System Announcements Modal');
-                    if (window.AnnouncementsModal) {
-                        window.AnnouncementsModal.open();
-                    } else {
-                        console.error('❌ AnnouncementsModal not found');
-                        alert('מודל הודעות לא נטען כראוי');
-                    }
-                });
-            }
-
             // Approvals button - open side panel
             const approvalsBtn = document.getElementById('navApprovalsBtn');
             if (approvalsBtn) {

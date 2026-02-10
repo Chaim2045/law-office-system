@@ -189,7 +189,6 @@
     <script src="js/models/SystemAnnouncement.js"></script>
     <script src="js/services/AnnouncementService.js"></script>
     <script src="js/ui/AnnouncementEditor.js"></script>
-    <script src="js/ui/AnnouncementsModal.js"></script>
 
     <!-- ===== Phase 2: Data & UI Components ===== -->
     <script src="js/managers/DataManager.js?v=933e079"></script>
@@ -295,13 +294,6 @@
                     window.Navigation.init('users');
                 } else {
                     console.error('❌ Navigation not loaded');
-                }
-
-                // Initialize Announcements Modal
-                if (window.AnnouncementsModal) {
-                    window.AnnouncementsModal.init();
-                } else {
-                    console.error('❌ AnnouncementsModal not loaded');
                 }
 
                 // Initialize Dashboard UI

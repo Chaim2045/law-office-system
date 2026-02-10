@@ -570,7 +570,6 @@
     <script src="js/models/SystemAnnouncement.js"></script>
     <script src="js/services/AnnouncementService.js"></script>
     <script src="js/ui/AnnouncementEditor.js"></script>
-    <script src="js/ui/AnnouncementsModal.js"></script>
 
     <!-- ===== Clients Management Scripts ===== -->
     <script src="js/managers/ClientsDataManager.js?v=20251205-DATE-FIX"></script>
@@ -640,11 +639,6 @@
                     // Initialize Navigation
                     if (window.Navigation) {
                         window.Navigation.init('clients');
-                    }
-
-                    // Initialize Announcements Modal
-                    if (window.AnnouncementsModal) {
-                        window.AnnouncementsModal.init();
                     }
 
                     // Initialize Clients Data Manager
