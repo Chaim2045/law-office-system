@@ -213,7 +213,6 @@ return;
                 }
 
                 .btn-approvals,
-                .btn-announcements,
                 .btn-chat,
                 .btn-send-message,
                 .btn-logout {
@@ -241,15 +240,6 @@ return;
                     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
                 }
 
-                .btn-announcements:hover,
-                .btn-announcements.active {
-                    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-                    border-color: #f97316;
-                    color: white;
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
-                }
-
                 .btn-chat:hover {
                     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                     border-color: #10b981;
@@ -275,7 +265,6 @@ return;
                 }
 
                 .btn-approvals i,
-                .btn-announcements i,
                 .btn-chat i,
                 .btn-send-message i,
                 .btn-logout i {
