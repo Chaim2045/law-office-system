@@ -41,7 +41,7 @@
          * Initialize Firebase
          * אתחול Firebase
          */
-        init() {
+        async init() {
             try {
                 // Check if Firebase SDK is loaded
                 if (typeof firebase === 'undefined') {
@@ -71,7 +71,7 @@
 
                 // CRITICAL: Set persistence to SESSION for production security
                 // זה מבטיח התנתקות אוטומטית בסגירת הדפדפן (בטוח לייצור)
-                this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+                await this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
                     .then(() => {
                         console.log('✅ Master Admin: Using SESSION persistence (logout on browser close)');
                     })
