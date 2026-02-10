@@ -136,37 +136,19 @@ return false;
    * @returns {boolean}
    */
   shouldShowToUser(targetAudience) {
-    // If no target audience specified, show to everyone (backward compatibility)
     if (!targetAudience || targetAudience === 'all') {
       console.log(`✅ shouldShowToUser: targetAudience='${targetAudience}' → showing to all users`);
       return true;
     }
 
-    // If user role is not fetched, show to be safe (backward compatibility)
-    if (!this.userRole) {
-      console.warn(`⚠️ shouldShowToUser: userRole not available → showing by default (targetAudience='${targetAudience}')`);
-      return true;
+    if (targetAudience === 'admins') {
+      const show = this.userRole === 'admin';
+      console.log(`${show ? '✅' : '❌'} shouldShowToUser: targetAudience='admins', userRole='${this.userRole}' → ${show ? 'SHOW' : 'HIDE'}`);
+      return show;
     }
 
-    // Check audience match
-    if (targetAudience === 'admins' && this.userRole === 'admin') {
-      console.log('✅ shouldShowToUser: targetAudience=\'admins\', userRole=\'admin\' → SHOW');
-      return true;
-    }
-
-    if (targetAudience === 'employees' && this.userRole === 'employee') {
-      console.log('✅ shouldShowToUser: targetAudience=\'employees\', userRole=\'employee\' → SHOW');
-      return true;
-    }
-
-    // Admins should also see employee announcements
-    if (targetAudience === 'employees' && this.userRole === 'admin') {
-      console.log('✅ shouldShowToUser: targetAudience=\'employees\', userRole=\'admin\' → SHOW (admins see employee announcements)');
-      return true;
-    }
-
-    console.log(`❌ shouldShowToUser: targetAudience='${targetAudience}', userRole='${this.userRole}' → HIDE`);
-    return false;
+    console.log(`✅ shouldShowToUser: targetAudience='${targetAudience}' → showing to all non-admin-restricted`);
+    return true;
   }
 
   /**
