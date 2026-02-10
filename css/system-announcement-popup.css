@@ -1,0 +1,341 @@
+/**
+ * System Announcement Popup Styles
+ * Popup modal for system announcements on login
+ *
+ * @version 2.0.0
+ * @created 2026-02-09
+ */
+
+/* ========================================
+   OVERLAY
+   ======================================== */
+
+.announcement-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 40%);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  direction: rtl;
+  font-family: inherit;
+  animation: announcement-popup-fadeIn 0.2s ease-out;
+}
+
+@keyframes announcement-popup-fadeIn {
+  from { opacity: 0; }
+
+  to { opacity: 1; }
+}
+
+/* ========================================
+   MODAL
+   ======================================== */
+
+.announcement-popup-modal {
+  background: #fff;
+  border-radius: 16px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  animation: announcement-popup-slideUp 0.3s ease-out;
+}
+
+@keyframes announcement-popup-slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+
+.announcement-popup-header {
+  padding: 24px 28px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.announcement-popup-type-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.announcement-popup-type-icon.announcement-popup-type-info {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.announcement-popup-type-icon.announcement-popup-type-success {
+  background: #f0fdf4;
+  color: #10b981;
+}
+
+.announcement-popup-type-icon.announcement-popup-type-warning {
+  background: #fffbeb;
+  color: #f59e0b;
+}
+
+.announcement-popup-type-icon.announcement-popup-type-error {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.announcement-popup-counter {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.announcement-popup-close-btn {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.announcement-popup-close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ========================================
+   BODY
+   ======================================== */
+
+.announcement-popup-body {
+  padding: 0 28px 20px;
+  direction: rtl;
+}
+
+.announcement-popup-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.announcement-popup-message {
+  font-size: 15px;
+  font-weight: 400;
+  color: #475569;
+  line-height: 1.7;
+  letter-spacing: -0.01em;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+.announcement-popup-footer {
+  padding: 16px 28px 24px;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* Navigation Row */
+.announcement-popup-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.announcement-popup-prev,
+.announcement-popup-next {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.announcement-popup-prev:hover,
+.announcement-popup-next:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.announcement-popup-prev:disabled,
+.announcement-popup-next:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Dots */
+.announcement-popup-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.announcement-popup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.announcement-popup-dot:hover {
+  background: #9ca3af;
+}
+
+.announcement-popup-dot.announcement-popup-dot-active {
+  background: #3b82f6;
+  width: 20px;
+  border-radius: 4px;
+}
+
+/* Actions Row */
+.announcement-popup-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.announcement-popup-mark-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.announcement-popup-mark-read:hover {
+  background: #2563eb;
+}
+
+.announcement-popup-mark-read:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.announcement-popup-mark-all-read {
+  padding: 8px 12px;
+  background: transparent;
+  color: #6b7280;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.announcement-popup-mark-all-read:hover {
+  color: #374151;
+}
+
+/* ========================================
+   HIDDEN STATES
+   ======================================== */
+
+.announcement-popup-nav-hidden {
+  display: none !important;
+}
+
+.announcement-popup-title-hidden {
+  display: none !important;
+}
+
+.announcement-popup-mark-all-hidden {
+  display: none !important;
+}
+
+.announcement-popup-counter-hidden {
+  visibility: hidden;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (width <= 480px) {
+  .announcement-popup-modal {
+    width: 95%;
+    margin: 16px;
+  }
+
+  .announcement-popup-header {
+    padding: 20px 20px 14px;
+  }
+
+  .announcement-popup-body {
+    padding: 0 20px 16px;
+  }
+
+  .announcement-popup-title {
+    font-size: 16px;
+  }
+
+  .announcement-popup-message {
+    font-size: 14px;
+  }
+
+  .announcement-popup-footer {
+    padding: 14px 20px 20px;
+  }
+
+  .announcement-popup-mark-read {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .announcement-popup-mark-all-read {
+    font-size: 12px;
+  }
+}

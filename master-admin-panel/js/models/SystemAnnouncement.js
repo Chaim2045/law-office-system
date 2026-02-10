@@ -36,6 +36,7 @@
             this.id = data.id || null;
             this.title = data.title || ''; // Optional - for future modal support
             this.message = data.message || '';
+            this.tenantId = data.tenantId || 'default';
             this.type = data.type || ANNOUNCEMENT_TYPES.INFO;
             this.priority = data.priority || 3; // 1-10
             this.active = data.active !== undefined ? data.active : true;
@@ -56,6 +57,12 @@
             this.displayStyle = {
                 mode: data.displayStyle?.mode || 'auto', // 'auto' or 'manual'
                 repeatCount: data.displayStyle?.repeatCount || null // null for auto, 1/3/5 for manual
+            };
+
+            this.readBy = data.readBy || {};
+            this.popupSettings = data.popupSettings || {
+                requireReadConfirmation: true,
+                readTimer: 'auto'
             };
         }
 
@@ -151,6 +158,10 @@ return false;
                 data.title = this.title;
             }
 
+            data.tenantId = this.tenantId;
+            data.readBy = this.readBy;
+            data.popupSettings = this.popupSettings;
+
             return data;
         }
 
@@ -163,7 +174,7 @@ return false;
             const data = doc.data();
             return new SystemAnnouncement({
                 id: doc.id,
-                title: data.title,
+                title: data.title || '',
                 message: data.message,
                 type: data.type,
                 priority: data.priority,
@@ -171,10 +182,13 @@ return false;
                 startDate: data.startDate?.toDate(),
                 endDate: data.endDate?.toDate(),
                 targetAudience: data.targetAudience,
+                tenantId: data.tenantId || 'default',
                 createdBy: data.createdBy,
                 createdAt: data.createdAt?.toDate(),
                 updatedAt: data.updatedAt?.toDate(),
-                displaySettings: data.displaySettings
+                displaySettings: data.displaySettings,
+                readBy: data.readBy || {},
+                popupSettings: data.popupSettings || { requireReadConfirmation: true, readTimer: 'auto' }
             });
         }
 
@@ -227,6 +241,10 @@ return false;
             if (this.title) {
                 data.title = this.title;
             }
+
+            data.tenantId = this.tenantId;
+            data.readBy = JSON.parse(JSON.stringify(this.readBy));
+            data.popupSettings = { ...this.popupSettings };
 
             return new SystemAnnouncement(data);
         }

@@ -478,6 +478,7 @@ this.passwordInput.value = '';
          * הצגת מסך כניסה
          */
         showLoginScreen() {
+            document.documentElement.classList.remove('auth-optimistic');
             if (this.loginScreen) {
                 this.loginScreen.style.display = 'flex';
             }

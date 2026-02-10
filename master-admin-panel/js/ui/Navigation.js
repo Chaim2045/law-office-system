@@ -54,7 +54,8 @@ return;
             const navItems = [
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
                 { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
-                { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' }
+                { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' },
+                { id: 'announcements', label: 'הודעות מערכת', icon: 'fa-bullhorn', href: 'system-announcements.html' }
             ];
 
             this.container.innerHTML = `
@@ -76,10 +77,6 @@ return;
                         </div>
                     </div>
                     <div class="nav-user">
-                        <button class="btn-announcements ${this.currentPage === 'announcements' ? 'active' : ''}" id="navAnnouncementsBtn" title="הודעות מערכת">
-                            <i class="fas fa-bullhorn"></i>
-                            <span>הודעות מערכת</span>
-                        </button>
                         <button class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" id="navApprovalsBtn" title="אישורי תקציב משימות" style="position: relative;">
                             <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
                             <i class="fas fa-clipboard-check"></i>
@@ -216,7 +213,6 @@ return;
                 }
 
                 .btn-approvals,
-                .btn-announcements,
                 .btn-chat,
                 .btn-send-message,
                 .btn-logout {
@@ -244,15 +240,6 @@ return;
                     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
                 }
 
-                .btn-announcements:hover,
-                .btn-announcements.active {
-                    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-                    border-color: #f97316;
-                    color: white;
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
-                }
-
                 .btn-chat:hover {
                     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                     border-color: #10b981;
@@ -278,7 +265,6 @@ return;
                 }
 
                 .btn-approvals i,
-                .btn-announcements i,
                 .btn-chat i,
                 .btn-send-message i,
                 .btn-logout i {
@@ -452,20 +438,6 @@ return;
          * הגדרת מאזיני אירועים
          */
         setupEventListeners() {
-            // Announcements button
-            const announcementsBtn = document.getElementById('navAnnouncementsBtn');
-            if (announcementsBtn) {
-                announcementsBtn.addEventListener('click', () => {
-                    console.log('📢 Opening System Announcements Modal');
-                    if (window.AnnouncementsModal) {
-                        window.AnnouncementsModal.open();
-                    } else {
-                        console.error('❌ AnnouncementsModal not found');
-                        alert('מודל הודעות לא נטען כראוי');
-                    }
-                });
-            }
-
             // Approvals button - open side panel
             const approvalsBtn = document.getElementById('navApprovalsBtn');
             if (approvalsBtn) {

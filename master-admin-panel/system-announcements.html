@@ -15,6 +15,37 @@
     <meta name="robots" content="noindex, nofollow">
     <title>הודעות מערכת | Admin Panel</title>
 
+    <!-- ===== UNIFIED AUTH GUARD (NO PRE-FLIGHT REDIRECT) ===== -->
+    <!-- Auth Guard will handle authentication check after Firebase loads -->
+    <!-- Pre-flight only shows loading overlay, NO redirect -->
+    <script>
+        // Optimistic pre-check: Only used to decide overlay text
+        // NO REDIRECT happens here - only Firebase Auth decides!
+        (function() {
+            'use strict';
+            try {
+                const authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    const state = JSON.parse(authState);
+                    const age = Date.now() - (state.timestamp || 0);
+                    if (state.isAuthenticated && age < 5 * 60 * 1000) {
+                        console.log('✅ [Announcements Pre-Flight] Recent auth detected - showing optimistic overlay');
+                        window._announcementsOptimistic = true;
+                    } else {
+                        console.log('⚠️ [Announcements Pre-Flight] Stale/missing auth - will verify with Firebase');
+                        window._announcementsOptimistic = false;
+                    }
+                } else {
+                    console.log('⚠️ [Announcements Pre-Flight] No auth state - will verify with Firebase');
+                    window._announcementsOptimistic = false;
+                }
+            } catch (error) {
+                console.warn('⚠️ [Announcements Pre-Flight] Parse error:', error);
+                window._announcementsOptimistic = false;
+            }
+        })();
+    </script>
+
     <!-- ===== Firebase SDK ===== -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -30,116 +61,16 @@
     <link rel="stylesheet" href="css/components.css">
 </head>
 
-<body class="login-page">
-    <!-- ===== Login Screen ===== -->
-    <div id="loginScreen" class="login-container">
-        <!-- Background Animation -->
-        <div class="login-background">
-            <div class="gradient-orb orb-1"></div>
-            <div class="gradient-orb orb-2"></div>
-            <div class="gradient-orb orb-3"></div>
+<body class="admin-page">
+    <!-- ===== Navigation Bar ===== -->
+    <div id="navigationContainer"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="dashboard-main">
+        <div id="announcement-manager-section" class="dashboard-content">
+            <!-- System Announcement Manager will be rendered here -->
         </div>
-
-        <!-- Login Box -->
-        <div class="login-box">
-            <!-- Logo & Title -->
-            <div class="login-header">
-                <div class="logo-circle">
-                    <i class="fas fa-bullhorn"></i>
-                </div>
-                <h1 class="login-title">הודעות מערכת</h1>
-                <p class="login-subtitle">מערכת ניהול הודעות גלובליות</p>
-            </div>
-
-            <!-- Login Form -->
-            <form id="loginForm" class="login-form">
-                <!-- Email Input -->
-                <div class="form-group">
-                    <label for="emailInput" class="form-label">
-                        <i class="fas fa-envelope"></i>
-                        אימייל
-                    </label>
-                    <input
-                        type="email"
-                        id="emailInput"
-                        class="form-input"
-                        placeholder="admin@example.com"
-                        autocomplete="email"
-                        required
-                    >
-                </div>
-
-                <!-- Password Input -->
-                <div class="form-group">
-                    <label for="passwordInput" class="form-label">
-                        <i class="fas fa-lock"></i>
-                        סיסמה
-                    </label>
-                    <div class="password-wrapper">
-                        <input
-                            type="password"
-                            id="passwordInput"
-                            class="form-input"
-                            placeholder="••••••••"
-                            autocomplete="current-password"
-                            required
-                        >
-                        <button
-                            type="button"
-                            class="password-toggle"
-                            id="togglePassword"
-                            aria-label="הצג/הסתר סיסמה"
-                        >
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Remember Me -->
-                <div class="form-group checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="rememberMe">
-                        <span class="checkbox-custom"></span>
-                        <span class="checkbox-text">זכור אותי</span>
-                    </label>
-                </div>
-
-                <!-- Error Message -->
-                <div id="errorMessage" class="error-message" style="display: none;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span id="errorText"></span>
-                </div>
-
-                <!-- Submit Button -->
-                <button type="submit" class="btn-login" id="loginButton">
-                    <span class="btn-text">כניסה למערכת</span>
-                    <i class="fas fa-arrow-left btn-icon"></i>
-                </button>
-            </form>
-
-            <!-- Footer Info -->
-            <div class="login-footer">
-                <p class="footer-text">
-                    <i class="fas fa-info-circle"></i>
-                    גישה למנהלי מערכת בלבד
-                </p>
-                <p class="footer-version">v1.0.0</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== Dashboard Screen (Hidden by default) ===== -->
-    <div id="dashboardScreen" class="dashboard-container" style="display: none;">
-        <!-- Navigation Bar -->
-        <div id="navigationContainer"></div>
-
-        <!-- Main Content -->
-        <main class="dashboard-main">
-            <div id="announcement-manager-section" class="dashboard-content">
-                <!-- System Announcement Manager will be rendered here -->
-            </div>
-        </main>
-    </div>
+    </main>
 
     <!-- ===== Loading Overlay ===== -->
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
@@ -154,6 +85,9 @@
     <script src="js/core/auth.js"></script>
     <script src="js/core/constants.js"></script>
 
+    <!-- ===== Auth Guard (Unified Authentication) ===== -->
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+
     <!-- ===== Navigation Component ===== -->
     <script src="js/ui/Navigation.js"></script>
 
@@ -162,6 +96,7 @@
     <script src="js/services/AnnouncementService.js"></script>
     <script src="js/ui/AnnouncementCard.js"></script>
     <script src="js/ui/AnnouncementEditor.js"></script>
+    <script src="js/ui/ReadStatusModal.js"></script>
     <script src="js/ui/SystemAnnouncementsPanel.js"></script>
 
     <!-- ===== Notifications ===== -->
@@ -169,121 +104,51 @@
 
     <!-- ===== Page Initialization ===== -->
     <script>
-        (function() {
-            'use strict';
-
-            // Wait for Firebase to initialize
-            let authStateListenerStarted = false;
-
-            function startAuthListener() {
-                // Prevent duplicate listeners
-                if (authStateListenerStarted) {
-                    console.log('⚠️ Auth listener already started, skipping');
-                    return;
-                }
-                authStateListenerStarted = true;
-
-                console.log('✅ Starting Firebase auth listener...');
-
-                // Check if user is already logged in
-                firebase.auth().onAuthStateChanged((user) => {
-                    if (user) {
-                        console.log('✅ User logged in:', user.email);
-                        showDashboard();
-                    } else {
-                        console.log('⚠️ User not logged in');
-                        showLogin();
-                    }
-                });
+        // Cross-tab logout synchronization
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'logoutEvent') {
+                console.log('🔒 Logout detected in another tab');
+                sessionStorage.removeItem('authState');
+                window.location.replace('index.html');
             }
+        });
 
-            // Listen for firebase:ready event
-            window.addEventListener('firebase:ready', () => {
-                console.log('📢 Received firebase:ready event');
-                startAuthListener();
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📢 System Announcements Page - Loading...');
+
+            // ════════════════════════════════════════════════════════════════════
+            // 🔐 UNIFIED AUTH GUARD - Only Firebase Auth decides redirects
+            // ════════════════════════════════════════════════════════════════════
+            window.initAuthGuard({
+                pageName: 'announcements',
+                timeoutMs: 5000, // 5 seconds timeout
+
+                // ✅ Called when user IS authenticated
+                onAuthenticated: async (user) => {
+                    console.log('✅ [Announcements] User authenticated, initializing page...');
+
+                    // Initialize Navigation
+                    if (window.Navigation) {
+                        window.Navigation.init('announcements');
+                    }
+
+                    // Initialize System Announcements Panel
+                    if (window.SystemAnnouncementsPanel) {
+                        const panel = new window.SystemAnnouncementsPanel();
+                        panel.init('announcement-manager-section');
+                    }
+
+                    console.log('✅ System Announcements Page - Ready');
+                },
+
+                // ❌ Called when user is NOT authenticated
+                onUnauthenticated: () => {
+                    console.log('🔒 [Announcements] User not authenticated, redirecting to login...');
+                    window.location.replace('index.html');
+                }
             });
-
-            // Fallback: Try after a short delay if event didn't fire
-            setTimeout(() => {
-                if (!authStateListenerStarted && typeof firebase !== 'undefined' && firebase.auth) {
-                    console.log('⏰ Fallback: Starting auth listener after timeout');
-                    startAuthListener();
-                }
-            }, 1000);
-
-            // Show dashboard
-            function showDashboard() {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('dashboardScreen').style.display = 'block';
-                document.body.classList.remove('login-page');
-
-                // Initialize navigation
-                if (window.Navigation) {
-                    const nav = new window.Navigation();
-                    nav.init('announcements');
-                }
-
-                // Initialize System Announcements Panel
-                if (window.SystemAnnouncementsPanel) {
-                    const panel = new window.SystemAnnouncementsPanel();
-                    panel.init('announcement-manager-section');
-                }
-            }
-
-            // Show login
-            function showLogin() {
-                document.getElementById('loginScreen').style.display = 'flex';
-                document.getElementById('dashboardScreen').style.display = 'none';
-                document.body.classList.add('login-page');
-            }
-
-            // Password toggle
-            const togglePassword = document.getElementById('togglePassword');
-            const passwordInput = document.getElementById('passwordInput');
-
-            if (togglePassword && passwordInput) {
-                togglePassword.addEventListener('click', () => {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-
-                    const icon = togglePassword.querySelector('i');
-                    icon.classList.toggle('fa-eye');
-                    icon.classList.toggle('fa-eye-slash');
-                });
-            }
-
-            // Login form submission
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-
-                    const email = document.getElementById('emailInput').value.trim();
-                    const password = document.getElementById('passwordInput').value;
-                    const loginButton = document.getElementById('loginButton');
-                    const errorMessage = document.getElementById('errorMessage');
-
-                    // Disable button
-                    loginButton.disabled = true;
-                    loginButton.querySelector('.btn-text').textContent = 'מתחבר...';
-
-                    try {
-                        await firebase.auth().signInWithEmailAndPassword(email, password);
-                        // onAuthStateChanged will handle the redirect
-                    } catch (error) {
-                        console.error('Login error:', error);
-
-                        // Show error message
-                        errorMessage.style.display = 'flex';
-                        document.getElementById('errorText').textContent = 'אימייל או סיסמה שגויים';
-
-                        // Re-enable button
-                        loginButton.disabled = false;
-                        loginButton.querySelector('.btn-text').textContent = 'כניסה למערכת';
-                    }
-                });
-            }
-        })();
+        });
     </script>
 </body>
 </html>

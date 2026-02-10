@@ -77,11 +77,41 @@
             throw new Error('Auth Guard: pageName, onAuthenticated, and onUnauthenticated are required');
         }
 
-        // Check Firebase availability
-        if (!window.firebaseAuth) {
-            console.error('❌ [Auth Guard] Firebase Auth not available');
-            throw new Error('Auth Guard: Firebase Auth not initialized');
+        // אם Firebase כבר מוכן — רוץ מיד
+        if (window.firebaseAuth) {
+            _startAuthGuard(config);
+            return;
         }
+
+        // אם לא — חכה ל-firebase:ready
+        console.log(`⏳ [Auth Guard: ${pageName}] Waiting for Firebase...`);
+        window.addEventListener('firebase:ready', () => {
+            _startAuthGuard(config);
+        });
+
+        // Timeout — אם firebase:ready לא מגיע תוך X שניות
+        setTimeout(() => {
+            if (!window.firebaseAuth) {
+                console.error(`❌ [Auth Guard: ${pageName}] Firebase not ready after timeout`);
+                if (onUnauthenticated) {
+onUnauthenticated();
+}
+            }
+        }, timeoutMs);
+    }
+
+    /**
+     * Start Authentication Guard (core logic)
+     * @private
+     */
+    function _startAuthGuard(config) {
+        const {
+            pageName,
+            onAuthenticated,
+            onUnauthenticated,
+            timeoutMs = 5000,
+            overlayMode = 'auto'
+        } = config;
 
         console.log(`🔐 [Auth Guard: ${pageName}] Initializing...`);
 

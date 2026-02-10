@@ -37,8 +37,7 @@
 
             return `
                 <div class="announcement-card ${isActive ? 'active' : 'inactive'}"
-                     data-id="${announcement.id}"
-                     style="border-right: 4px solid ${typeColor}">
+                     data-id="${announcement.id}">
 
                     <!-- Header -->
                     <div class="announcement-card-header">
@@ -56,6 +55,13 @@
                                     onclick="window.announcementCardHandlers.onToggle('${announcement.id}', ${!announcement.active})"
                                     title="${announcement.active ? 'השבת הודעה' : 'הפעל הודעה'}">
                                 <i class="fas ${announcement.active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                            </button>
+
+                            <!-- Read Status -->
+                            <button class="btn-icon"
+                                    onclick="window.announcementCardHandlers.onReadStatus('${announcement.id}')"
+                                    title="סטטוס קריאה">
+                                <i class="fas fa-eye"></i>
                             </button>
 
                             <!-- Edit -->
@@ -109,6 +115,12 @@
                             '<span class="setting-badge"><i class="fas fa-times-circle"></i> ניתן לסגירה</span>' : ''}
                     </div>
 
+                    <!-- Read Summary -->
+                    <div class="announcement-card-read-summary">
+                        <i class="fas fa-eye"></i>
+                        <span>נקרא על ידי ${Object.keys(announcement.readBy || {}).length} משתמשים</span>
+                    </div>
+
                     <!-- Footer -->
                     <div class="announcement-card-footer">
                         <small>נוצר על ידי: ${this.escapeHtml(announcement.createdBy)}</small>
@@ -153,16 +165,15 @@ return;
             style.textContent = `
                 .announcement-card {
                     background: white;
-                    border-radius: 12px;
+                    border: none;
+                    border-radius: 10px;
                     padding: 1.5rem;
-                    margin-bottom: 1rem;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
                     transition: all 0.3s ease;
                 }
 
                 .announcement-card:hover {
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
                 }
 
                 .announcement-card.inactive {
@@ -185,15 +196,15 @@ return;
                     display: inline-flex;
                     align-items: center;
                     gap: 0.5rem;
-                    padding: 0.25rem 0.75rem;
-                    border-radius: 50px;
-                    font-size: 0.813rem;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 11px;
                     font-weight: 600;
                     margin-bottom: 0.5rem;
                 }
 
                 .announcement-card-title {
-                    font-size: 1.25rem;
+                    font-size: 16px;
                     font-weight: 700;
                     color: #1e293b;
                     margin: 0;
@@ -239,7 +250,7 @@ return;
                 }
 
                 .announcement-card-message {
-                    font-size: 1rem;
+                    font-size: 14px;
                     color: #475569;
                     line-height: 1.6;
                     margin-bottom: 1rem;
@@ -296,6 +307,19 @@ return;
                     border-radius: 50px;
                     font-size: 0.75rem;
                     color: #475569;
+                }
+
+                .announcement-card-read-summary {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 0.813rem;
+                    color: #6366f1;
+                    margin-bottom: 1rem;
+                }
+
+                .announcement-card-read-summary i {
+                    font-size: 12px;
                 }
 
                 .announcement-card-footer {

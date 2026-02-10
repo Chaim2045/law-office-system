@@ -44,7 +44,7 @@
 # Production-Stable Branch - הייצור האמיתי!
 # URL: https://gh-law-office-system.netlify.app (ה-URL הרגיל)
 [context.production-stable]
-  command = "npm run type-check && npm run compile-ts"
+  command = "echo 'dist already in git - skip build'"
 
 [context.production-stable.environment]
   NODE_VERSION = "18"

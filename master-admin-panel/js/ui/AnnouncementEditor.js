@@ -109,6 +109,21 @@ return;
                                         <span>מידע בסיסי</span>
                                     </div>
                                     <div class="card-body">
+                                        <!-- Title (Optional - for popup) -->
+                                        <div class="form-group">
+                                            <label class="form-label">
+                                                כותרת ההודעה <span class="optional">(אופציונלי)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="announcementTitle"
+                                                class="form-input"
+                                                placeholder="כותרת קצרה (אופציונלי)"
+                                                maxlength="100"
+                                            />
+                                            <div class="form-hint">עד 100 תווים - כותרת שתוצג בפופאפ (אם ריק, תוצג ההודעה בלבד)</div>
+                                        </div>
+
                                         <!-- Message (Ticker Text) -->
                                         <div class="form-group">
                                             <label class="form-label">
@@ -218,73 +233,92 @@ return;
                                     </div>
                                 </div>
 
-                                <!-- Display Options -->
+                                <!-- ═══ CARD 4: טיקר ═══ -->
                                 <div class="form-card">
                                     <div class="card-header">
-                                        <i class="fas fa-eye"></i>
-                                        <span>אפשרויות תצוגה</span>
+                                        <i class="fas fa-stream"></i>
+                                        <span>טיקר (רצועה עליונה)</span>
                                     </div>
                                     <div class="card-body">
-                                        <!-- Display Style -->
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="displayShowInHeader" checked>
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">הצג כרצועה בראש המסך</span>
+                                            </label>
+                                        </div>
+
                                         <div class="form-group">
                                             <label class="form-label">
-                                                סגנון תצוגה בטיקר <span class="required">*</span>
+                                                סגנון תצוגה בטיקר
                                             </label>
-                                            <select id="displayStyleMode" class="form-select" required>
-                                                <option value="auto" selected>⚙️ אוטומטי (מומלץ) - המערכת תבחר לפי אורך ההודעה</option>
-                                                <option value="manual">🎛️ דריסה ידנית - אני רוצה לבחור בעצמי</option>
+                                            <select id="displayStyleMode" class="form-select">
+                                                <option value="auto" selected>אוטומטי (מומלץ)</option>
+                                                <option value="manual">דריסה ידנית</option>
                                             </select>
                                         </div>
 
-                                        <!-- Manual Override (hidden by default) -->
                                         <div class="form-group" id="manualRepeatGroup" style="display: none;">
                                             <label class="form-label">
-                                                כמה פעמים להציג? <span class="required">*</span>
+                                                כמה פעמים להציג?
                                             </label>
                                             <select id="displayStyleRepeat" class="form-select">
-                                                <option value="2">📄 פעמיים (הודעות ארוכות)</option>
-                                                <option value="3" selected>🔄 3 חזרות (הודעות בינוניות)</option>
-                                                <option value="5">🔄 5 חזרות (הודעות קצרות)</option>
+                                                <option value="2">פעמיים (הודעות ארוכות)</option>
+                                                <option value="3" selected>3 חזרות (הודעות בינוניות)</option>
+                                                <option value="5">5 חזרות (הודעות קצרות)</option>
                                             </select>
-                                            <div class="form-hint">
-                                                <strong>טיפ:</strong> הודעות קצרות (עד 40 תווים) → 5 חזרות |
-                                                בינוניות (40-100) → 3 חזרות |
-                                                ארוכות (100+) → פעמיים (מינימום לאנימציה חלקה)
-                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ═══ CARD 5: חלון קופץ ═══ -->
+                                <div class="form-card">
+                                    <div class="card-header">
+                                        <i class="fas fa-window-restore"></i>
+                                        <span>חלון קופץ (פופאפ בכניסה)</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="displayShowOnLogin" checked>
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">הצג חלון קופץ כשעובד נכנס למערכת</span>
+                                            </label>
                                         </div>
 
-                                        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e2e8f0;">
+                                        <!-- הגדרות פופאפ — מוצגות רק כש-showOnLogin מסומן -->
+                                        <div id="popupSettingsSection">
+                                            <hr style="margin: 1rem 0; border: none; border-top: 1px solid #e2e8f0;">
 
-                                        <div class="options-list">
-                                            <!-- Show on Login -->
-                                            <label class="option-item">
-                                                <input type="checkbox" id="displayShowOnLogin" checked />
-                                                <span class="option-check"></span>
-                                                <span class="option-label">
-                                                    <i class="fas fa-sign-in-alt"></i>
-                                                    הצג בכניסה למערכת
-                                                </span>
-                                            </label>
+                                            <div class="form-group">
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="requireReadConfirmation" checked>
+                                                    <span class="checkbox-custom"></span>
+                                                    <span class="checkbox-text">חובה ללחוץ "קראתי" (לא ניתן לסגור בלי אישור)</span>
+                                                </label>
+                                            </div>
 
-                                            <!-- Show in Header -->
-                                            <label class="option-item">
-                                                <input type="checkbox" id="displayShowInHeader" checked />
-                                                <span class="option-check"></span>
-                                                <span class="option-label">
-                                                    <i class="fas fa-window-maximize"></i>
-                                                    הצג בכותרת עליונה
-                                                </span>
-                                            </label>
+                                            <div class="form-group">
+                                                <label class="form-label">
+                                                    <i class="fas fa-clock" style="color: #6b7280; margin-left: 4px;"></i>
+                                                    זמן מינימלי לקריאה
+                                                </label>
+                                                <select id="readTimerSetting" class="form-select">
+                                                    <option value="auto" selected>אוטומטי (לפי אורך הודעה)</option>
+                                                    <option value="3">3 שניות</option>
+                                                    <option value="5">5 שניות</option>
+                                                    <option value="8">8 שניות</option>
+                                                    <option value="15">15 שניות</option>
+                                                </select>
+                                            </div>
 
-                                            <!-- Dismissible -->
-                                            <label class="option-item">
-                                                <input type="checkbox" id="displayDismissible" checked />
-                                                <span class="option-check"></span>
-                                                <span class="option-label">
-                                                    <i class="fas fa-times-circle"></i>
-                                                    אפשר סגירה למשתמש
-                                                </span>
-                                            </label>
+                                            <div class="form-group">
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="displayDismissible" checked>
+                                                    <span class="checkbox-custom"></span>
+                                                    <span class="checkbox-text">ניתן לסגירה זמנית (חוזר אחרי 4 שעות)</span>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -376,6 +410,18 @@ return;
                 }
             });
 
+            // Popup settings toggle visibility
+            const showOnLoginCheckbox = this.panel.querySelector('#displayShowOnLogin');
+            const popupSettingsSection = this.panel.querySelector('#popupSettingsSection');
+
+            if (showOnLoginCheckbox && popupSettingsSection) {
+                const togglePopupSettings = () => {
+                    popupSettingsSection.style.display = showOnLoginCheckbox.checked ? 'block' : 'none';
+                };
+                showOnLoginCheckbox.addEventListener('change', togglePopupSettings);
+                togglePopupSettings();
+            }
+
             // Character counters
             this.setupCharacterCounters();
         }
@@ -426,6 +472,7 @@ return;
 }
 
             // Basic fields
+            this.panel.querySelector('#announcementTitle').value = announcement.title || '';
             this.panel.querySelector('#announcementMessage').value = announcement.message;
             this.panel.querySelector('#announcementType').value = announcement.type;
             this.panel.querySelector('#announcementPriority').value = announcement.priority;
@@ -452,6 +499,25 @@ return;
                 announcement.displaySettings.showInHeader;
             this.panel.querySelector('#displayDismissible').checked =
                 announcement.displaySettings.dismissible;
+
+            // Popup settings
+            const popupSettings = announcement.popupSettings || {};
+
+            const requireReadCheckbox = this.panel.querySelector('#requireReadConfirmation');
+            if (requireReadCheckbox) {
+                requireReadCheckbox.checked = popupSettings.requireReadConfirmation !== false;
+            }
+
+            const readTimerSelect = this.panel.querySelector('#readTimerSetting');
+            if (readTimerSelect) {
+                readTimerSelect.value = popupSettings.readTimer || 'auto';
+            }
+
+            // Trigger toggle visibility
+            const showOnLoginCheckbox = this.panel.querySelector('#displayShowOnLogin');
+            if (showOnLoginCheckbox) {
+                showOnLoginCheckbox.dispatchEvent(new Event('change'));
+            }
 
             // Display style (new field - backward compatible)
             if (announcement.displayStyle) {
@@ -496,6 +562,7 @@ return;
 
                 // Create announcement object
                 const announcementData = {
+                    title: formData.title,
                     message: formData.message,
                     type: formData.type,
                     priority: parseInt(formData.priority),
@@ -511,6 +578,10 @@ return;
                     displayStyle: {
                         mode: formData.displayStyleMode,
                         repeatCount: formData.displayStyleRepeat
+                    },
+                    popupSettings: {
+                        requireReadConfirmation: formData.requireReadConfirmation,
+                        readTimer: formData.readTimer
                     }
                 };
 
@@ -582,6 +653,7 @@ return {};
                 parseInt(this.panel.querySelector('#displayStyleRepeat').value) : null;
 
             return {
+                title: this.panel.querySelector('#announcementTitle').value.trim(),
                 message: this.panel.querySelector('#announcementMessage').value.trim(),
                 type: this.panel.querySelector('#announcementType').value,
                 priority: this.panel.querySelector('#announcementPriority').value,
@@ -592,6 +664,8 @@ return {};
                 showOnLogin: this.panel.querySelector('#displayShowOnLogin').checked,
                 showInHeader: this.panel.querySelector('#displayShowInHeader').checked,
                 dismissible: this.panel.querySelector('#displayDismissible').checked,
+                requireReadConfirmation: this.panel.querySelector('#requireReadConfirmation').checked,
+                readTimer: this.panel.querySelector('#readTimerSetting').value,
                 displayStyleMode: displayMode,
                 displayStyleRepeat: displayRepeat
             };
