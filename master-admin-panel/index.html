@@ -52,6 +52,29 @@
     <link rel="stylesheet" href="css/performance-tab.css?v=933e079">
     <link rel="stylesheet" href="css/task-approval-side-panel.css?v=933e079">
     <link rel="stylesheet" href="components/task-approval-system/styles/task-approval-dialog.css?v=933e079">
+
+    <!-- ===== Pre-Flight Auth Check ===== -->
+    <script>
+        (function() {
+            'use strict';
+            try {
+                var authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    var parsed = JSON.parse(authState);
+                    var age = Date.now() - parsed.timestamp;
+                    if (parsed.isAuthenticated && age < 300000) {
+                        console.log('✅ [Index Pre-Flight] Recent auth detected - hiding login');
+                        document.documentElement.classList.add('auth-optimistic');
+                    }
+                }
+            } catch(e) {}
+        })();
+    </script>
+
+    <style>
+        .auth-optimistic #loginScreen { display: none !important; }
+        .auth-optimistic #dashboardScreen { display: flex !important; }
+    </style>
 </head>
 
 <body class="login-page">
