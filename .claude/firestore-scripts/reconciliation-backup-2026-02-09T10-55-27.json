@@ -1,0 +1,139 @@
+{
+  "timestamp": "2026-02-09T10:55:27.950Z",
+  "mode": "DRY_RUN",
+  "clientsProcessed": 12,
+  "servicesFixed": 13,
+  "servicesSkipped": 4,
+  "backups": [
+    {
+      "clientId": "2025006",
+      "clientName": "2025006",
+      "serviceId": "srv_1765177554252",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "70.80",
+      "newHoursUsed": "157.13",
+      "difference": "86.33",
+      "timesheetEntries": 66
+    },
+    {
+      "clientId": "2025011",
+      "clientName": "2025011",
+      "serviceId": "srv_1766574628760",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "39.92",
+      "newHoursUsed": "40.28",
+      "difference": "0.37",
+      "timesheetEntries": 29
+    },
+    {
+      "clientId": "2025430",
+      "clientName": "2025430",
+      "serviceId": "srv_1765299566466",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "2.38",
+      "newHoursUsed": "3.47",
+      "difference": "1.08",
+      "timesheetEntries": 4
+    },
+    {
+      "clientId": "2025549",
+      "clientName": "2025549",
+      "serviceId": "srv_1766392968349",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "30.00",
+      "newHoursUsed": "56.25",
+      "difference": "26.25",
+      "timesheetEntries": 35
+    },
+    {
+      "clientId": "2025634",
+      "clientName": "2025634",
+      "serviceId": "srv_1765273248005",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "17.97",
+      "newHoursUsed": "18.97",
+      "difference": "1.00",
+      "timesheetEntries": 17
+    },
+    {
+      "clientId": "2025863",
+      "clientName": "2025863",
+      "serviceId": "srv_1765464200615",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "17.82",
+      "newHoursUsed": "15.98",
+      "difference": "1.83",
+      "timesheetEntries": 39
+    },
+    {
+      "clientId": "2025863",
+      "clientName": "2025863",
+      "serviceId": "srv_1765464802356",
+      "serviceName": "כתב הגנה ותביעה שכנגד",
+      "oldHoursUsed": "20.38",
+      "newHoursUsed": "15.40",
+      "difference": "4.98",
+      "timesheetEntries": 39
+    },
+    {
+      "clientId": "2025998",
+      "clientName": "2025998",
+      "serviceId": "srv_1765746948255",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "21.02",
+      "newHoursUsed": "21.85",
+      "difference": "0.83",
+      "timesheetEntries": 15
+    },
+    {
+      "clientId": "2026008",
+      "clientName": "2026008",
+      "serviceId": "srv_1767719279651",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "62.48",
+      "newHoursUsed": "81.42",
+      "difference": "18.93",
+      "timesheetEntries": 27
+    },
+    {
+      "clientId": "2026018",
+      "clientName": "2026018",
+      "serviceId": "srv_legal_1769066470209",
+      "serviceName": "תביעת נדלן",
+      "oldHoursUsed": "4.50",
+      "newHoursUsed": "3.25",
+      "difference": "1.25",
+      "timesheetEntries": 6
+    },
+    {
+      "clientId": "2026019",
+      "clientName": "2026019",
+      "serviceId": "srv_1769066811801",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "7.67",
+      "newHoursUsed": "11.08",
+      "difference": "3.42",
+      "timesheetEntries": 8
+    },
+    {
+      "clientId": "2026022",
+      "clientName": "2026022",
+      "serviceId": "srv_1769416212328",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "6.60",
+      "newHoursUsed": "7.77",
+      "difference": "1.17",
+      "timesheetEntries": 4
+    },
+    {
+      "clientId": "2026030",
+      "clientName": "2026030",
+      "serviceId": "srv_1770059800343",
+      "serviceName": "תוכנית שעות #1",
+      "oldHoursUsed": "5.63",
+      "newHoursUsed": "21.32",
+      "difference": "15.68",
+      "timesheetEntries": 19
+    }
+  ]
+}

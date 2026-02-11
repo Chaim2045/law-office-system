@@ -301,6 +301,19 @@
 }
 
 /* ========================================
+   PERSONAL ANNOUNCEMENT
+   ======================================== */
+
+.announcement-popup-personal .announcement-popup-header {
+  border-top: 3px solid #6366f1;
+}
+
+.announcement-popup-personal .announcement-popup-type-icon {
+  background: #eef2ff;
+  color: #6366f1;
+}
+
+/* ========================================
    RESPONSIVE
    ======================================== */
 
