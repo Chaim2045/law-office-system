@@ -170,7 +170,7 @@
       ClientCaseSelector.cacheListener = db.collection('clients')
         .where('status', '==', 'active')
         .orderBy('createdAt', 'desc')
-        .limit(100)
+        .limit(1000)
         .onSnapshot(
         (snapshot) => {
           snapshot.docChanges().forEach((change) => {
