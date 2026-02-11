@@ -101,7 +101,8 @@ class SystemAnnouncementPopup {
             displaySettings: data.displaySettings || {},
             readBy: data.readBy || {},
             dismissedBy: data.dismissedBy || [],
-            popupSettings: data.popupSettings || { requireReadConfirmation: true, readTimer: 'auto' }
+            popupSettings: data.popupSettings || { requireReadConfirmation: true, readTimer: 'auto' },
+            targetEmail: data.targetEmail || null
           };
         })
         .filter(a => {
@@ -117,6 +118,11 @@ return false;
 
           // Check end date
           if (a.endDate && a.endDate < now) {
+return false;
+}
+
+          // Check personal announcement — only for target user
+          if (a.targetEmail && a.targetEmail !== userEmail) {
 return false;
 }
 
@@ -156,6 +162,9 @@ return false;
    */
   shouldShowToUser(targetAudience) {
     if (!targetAudience || targetAudience === 'all') {
+return true;
+}
+    if (targetAudience === 'specific') {
 return true;
 }
     if (targetAudience === 'admins') {
@@ -302,6 +311,14 @@ return;
     this.currentIndex = index;
     const a = this.announcements[index];
     const typeConf = TYPE_CONFIG[a.type] || TYPE_CONFIG.info;
+
+    // Personal announcement styling
+    const modal = this.overlay.querySelector('.announcement-popup-modal');
+    if (a.targetEmail) {
+      modal.classList.add('announcement-popup-personal');
+    } else {
+      modal.classList.remove('announcement-popup-personal');
+    }
 
     // Type icon
     const iconEl = this.overlay.querySelector('#apTypeIcon');

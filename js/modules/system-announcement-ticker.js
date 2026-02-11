@@ -141,6 +141,11 @@ return false;
       return true;
     }
 
+    if (targetAudience === 'specific') {
+      console.log('✅ shouldShowToUser: targetAudience=\'specific\' → filtered by targetEmail');
+      return true;
+    }
+
     if (targetAudience === 'admins') {
       const show = this.userRole === 'admin';
       console.log(`${show ? '✅' : '❌'} shouldShowToUser: targetAudience='admins', userRole='${this.userRole}' → ${show ? 'SHOW' : 'HIDE'}`);
@@ -181,7 +186,8 @@ return false;
                 targetAudience: data.targetAudience || 'all', // Add target audience
                 startDate: data.startDate?.toDate(),
                 endDate: data.endDate?.toDate(),
-                displaySettings: data.displaySettings || {}
+                displaySettings: data.displaySettings || {},
+                targetEmail: data.targetEmail || null
               };
             })
             .filter(announcement => {
@@ -200,6 +206,12 @@ return false;
               // Filter: check expiry
               if (announcement.endDate && announcement.endDate < now) {
                 console.log(`🚫 Announcement ${announcement.id} filtered out: expired`);
+                return false;
+              }
+
+              // Filter: check personal announcement — only for target user
+              if (announcement.targetEmail && announcement.targetEmail !== this.user.email) {
+                console.log(`🚫 Announcement ${announcement.id} filtered out: personal for ${announcement.targetEmail}`);
                 return false;
               }
 

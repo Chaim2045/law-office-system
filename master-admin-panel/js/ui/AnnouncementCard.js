@@ -31,7 +31,8 @@
             const audienceLabels = {
                 'all': 'כולם',
                 'employees': 'עובדים',
-                'admins': 'מנהלים'
+                'admins': 'מנהלים',
+                'specific': 'אישי'
             };
             const audienceLabel = audienceLabels[announcement.targetAudience] || 'כולם';
 
@@ -95,6 +96,11 @@
                             <i class="fas fa-users"></i>
                             <span>${audienceLabel}</span>
                         </div>
+                        ${announcement.targetEmail ? `
+                        <div class="meta-item meta-item-personal">
+                            <i class="fas fa-user"></i>
+                            <span>${this.escapeHtml(announcement.targetEmail)}</span>
+                        </div>` : ''}
                         <div class="meta-item">
                             <i class="fas fa-star"></i>
                             <span>עדיפות ${announcement.priority}</span>
@@ -289,6 +295,15 @@ return;
 
                 .meta-item.status-inactive {
                     color: #64748b;
+                }
+
+                .meta-item-personal {
+                    color: #6366f1;
+                    font-weight: 600;
+                }
+
+                .meta-item-personal i {
+                    color: #6366f1;
                 }
 
                 .announcement-card-settings {
