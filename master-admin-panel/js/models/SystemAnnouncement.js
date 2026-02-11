@@ -25,7 +25,8 @@
     const TARGET_AUDIENCE = {
         ALL: 'all',
         EMPLOYEES: 'employees',
-        ADMINS: 'admins'
+        ADMINS: 'admins',
+        SPECIFIC: 'specific'
     };
 
     /**
