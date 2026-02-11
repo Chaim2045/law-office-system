@@ -316,8 +316,18 @@ return;
     const modal = this.overlay.querySelector('.announcement-popup-modal');
     if (a.targetEmail) {
       modal.classList.add('announcement-popup-personal');
+      if (!modal.querySelector('.announcement-popup-personal-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'announcement-popup-personal-badge';
+        badge.textContent = 'הודעה אישית';
+        modal.appendChild(badge);
+      }
     } else {
       modal.classList.remove('announcement-popup-personal');
+      const existingBadge = modal.querySelector('.announcement-popup-personal-badge');
+      if (existingBadge) {
+existingBadge.remove();
+}
     }
 
     // Type icon
