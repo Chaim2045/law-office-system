@@ -42,12 +42,6 @@
 
             // Filter by target audience
             const relevantEmployees = allEmployees.filter(emp => {
-                if (targetAudience === 'all') {
-return true;
-}
-                if (targetAudience === 'employees') {
-return emp.role === 'employee' || emp.role === 'admin';
-}
                 if (targetAudience === 'admins') {
 return emp.role === 'admin';
 }

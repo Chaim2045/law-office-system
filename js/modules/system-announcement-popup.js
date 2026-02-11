@@ -158,19 +158,10 @@ return false;
     if (!targetAudience || targetAudience === 'all') {
 return true;
 }
-    if (!this.userRole) {
-return true;
+    if (targetAudience === 'admins') {
+return this.userRole === 'admin';
 }
-    if (targetAudience === 'admins' && this.userRole === 'admin') {
-return true;
-}
-    if (targetAudience === 'employees' && this.userRole === 'employee') {
-return true;
-}
-    if (targetAudience === 'employees' && this.userRole === 'admin') {
-return true;
-}
-    return false;
+    return true;
   }
 
   /**
@@ -413,7 +404,7 @@ return 5;
    */
   async markAsRead(announcementId) {
     try {
-      await this.db.collection('system_announcements').doc(announcementId).set({
+      const writePromise = this.db.collection('system_announcements').doc(announcementId).set({
         readBy: {
           [this.user.email]: {
             readAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -421,6 +412,12 @@ return 5;
           }
         }
       }, { merge: true });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 10000)
+      );
+
+      await Promise.race([writePromise, timeoutPromise]);
 
       // Remove localStorage temp dismiss if exists
       localStorage.removeItem('announcement_popup_dismissed_' + announcementId);
@@ -437,6 +434,26 @@ return 5;
       }
     } catch (error) {
       console.error('❌ [AnnouncementPopup] Error marking as read:', error);
+
+      // Remove from local array so user is not stuck
+      this.announcements = this.announcements.filter(a => a.id !== announcementId);
+
+      // Re-enable close controls in case requireReadConfirmation blocked them
+      if (this.overlay) {
+        const closeBtn = this.overlay.querySelector('.announcement-popup-close-btn');
+        if (closeBtn) {
+closeBtn.style.display = '';
+}
+        this.overlayClickDisabled = false;
+      }
+
+      if (this.announcements.length > 0) {
+        const newIndex = Math.min(this.currentIndex, this.announcements.length - 1);
+        this.updateNavVisibility();
+        this.showAnnouncement(newIndex);
+      } else {
+        this.close();
+      }
     }
   }
 
@@ -456,7 +473,11 @@ return 5;
         }, { merge: true })
       );
 
-      await Promise.all(promises);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 10000)
+      );
+
+      await Promise.race([Promise.all(promises), timeoutPromise]);
 
       // Clean up localStorage
       this.announcements.forEach(a => {
@@ -467,6 +488,8 @@ return 5;
       this.close();
     } catch (error) {
       console.error('❌ [AnnouncementPopup] Error marking all as read:', error);
+      this.announcements = [];
+      this.close();
     }
   }
 
