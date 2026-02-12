@@ -34,6 +34,8 @@
 }
 
 .sidebar-break-icon svg {
+  width: 18px;
+  height: 18px;
   color: #64748b;
   transition: all 0.18s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -90,25 +92,25 @@
 .sidebar-break-icon::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border-radius: 50%;
-  border: 1.5px solid transparent;
-  background: conic-gradient(from 0deg, transparent 60%, #3b82f6) border-box;
+  border: 2px solid transparent;
+  background: conic-gradient(from 0deg, transparent 0%, #60a5fa 30%, transparent 60%) border-box;
   mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   animation: break-orbit 8s linear infinite;
   pointer-events: none;
-  opacity: 0.4;
+  opacity: 0.6;
   transition: opacity 0.3s;
 }
 
 .sidebar-break-btn.active .sidebar-break-icon::before {
-  opacity: 0.8;
-  border-width: 2px;
-  inset: -5px;
-  background: conic-gradient(from 0deg, transparent 40%, #3b82f6) border-box;
+  opacity: 1;
+  border-width: 2.5px;
+  inset: -7px;
+  background: conic-gradient(from 0deg, transparent 0%, #60a5fa 30%, transparent 60%) border-box;
   animation: break-orbit 3s linear infinite;
 }
 
