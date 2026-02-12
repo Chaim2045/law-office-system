@@ -4,35 +4,34 @@
    ======================================== */
 
 /* ========================================
-   A. FLOATING ACTION BUTTON (FAB)
+   A. SIDEBAR BREAK BUTTON
    ======================================== */
 
-.break-fab {
-  position: fixed;
-  bottom: 104px;
-  left: 24px;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgb(15 23 42 / 8%), 0 1px 2px rgb(15 23 42 / 4%);
-  cursor: pointer;
-  z-index: 1003;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-  outline: none;
+/* Active state (break in progress) */
+.sidebar-break-btn.active {
+  background: rgb(59 130 246 / 15%);
+  color: #60a5fa;
+  border-color: rgb(59 130 246 / 30%);
+  box-shadow: 0 0 16px rgb(59 130 246 / 15%);
+  animation: break-pulse 2s ease-in-out infinite;
+}
+
+.sidebar-break-btn.active:hover {
+  background: rgb(59 130 246 / 22%);
+  color: #93bbfd;
+  border-color: rgb(59 130 246 / 45%);
+}
+
+.sidebar-break-btn.active span {
+  opacity: 1;
 }
 
 /* Orbiting ring */
-.break-fab::before {
+.sidebar-break-btn::before {
   content: '';
   position: absolute;
   inset: -4px;
-  border-radius: 50%;
+  border-radius: 10px;
   border: 1.5px solid transparent;
   background: conic-gradient(from 0deg, transparent 60%, rgb(59 130 246 / 30%)) border-box;
   mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
@@ -41,9 +40,12 @@
   -webkit-mask-composite: xor;
   animation: break-orbit 8s linear infinite;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
-.break-fab.active::before {
+.sidebar-break-btn.active::before {
+  opacity: 1;
   border-width: 2px;
   inset: -5px;
   background: conic-gradient(from 0deg, transparent 40%, rgb(59 130 246 / 60%)) border-box;
@@ -56,82 +58,13 @@
   }
 }
 
-.break-fab svg {
-  width: 22px;
-  height: 22px;
-  color: #64748b;
-  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-}
-
-/* Tooltip */
-.break-fab-tooltip {
-  position: absolute;
-  top: -36px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #0f172a;
-  color: #f8fafc;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.break-fab-tooltip::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  width: 8px;
-  height: 8px;
-  background: #0f172a;
-  border-radius: 1px;
-  transform: translateX(-50%) rotate(45deg);
-}
-
-/* Hover */
-.break-fab:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgb(15 23 42 / 12%), 0 2px 4px rgb(15 23 42 / 6%);
-  border-color: #94a3b8;
-}
-
-.break-fab:hover .break-fab-tooltip {
-  opacity: 1;
-}
-
-/* Active state (break in progress) */
-.break-fab.active {
-  background: #3b82f6;
-  border: none;
-  animation: break-pulse 2s ease-in-out infinite;
-  box-shadow: 0 0 0 0 rgb(59 130 246 / 40%);
-}
-
-.break-fab.active svg {
-  color: #fff;
-}
-
-.break-fab.active:hover {
-  transform: translateY(-2px);
-}
-
-.break-fab.active .break-fab-tooltip {
-  display: none;
-}
-
 @keyframes break-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgb(59 130 246 / 40%);
+    box-shadow: 0 0 16px rgb(59 130 246 / 15%);
   }
 
   50% {
-    box-shadow: 0 0 0 12px rgb(59 130 246 / 0%);
+    box-shadow: 0 0 16px rgb(59 130 246 / 35%), 0 0 0 6px rgb(59 130 246 / 0%);
   }
 }
 
@@ -554,11 +487,6 @@
    ======================================== */
 
 @media (width <= 768px) {
-  .break-fab {
-    bottom: 96px;
-    left: 16px;
-  }
-
   .break-timer {
     font-size: 42px;
   }

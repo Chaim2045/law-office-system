@@ -2,7 +2,7 @@
  * Break Manager — כפתור הפסקה
  * User App — GH Law Office System
  *
- * מנהל מצב הפסקה: כפתור צף, overlay, timer, recording,
+ * מנהל מצב הפסקה: כפתור בסרגל צד, overlay, timer, recording,
  * idle timeout pause, multi-tab sync, recovery.
  *
  * @version 1.0.0
@@ -21,7 +21,7 @@ class BreakManager {
     this.db = null;
 
     // DOM references
-    this.fabElement = null;
+    this.buttonElement = null;
     this.overlayElement = null;
     this.recoveryElement = null;
     this.timerElement = null;
@@ -65,7 +65,7 @@ return;
     this._pauseIdleTimeout();
     this._showOverlay();
     this._startTimer();
-    this._updateFabState();
+    this._updateButtonState();
   }
 
   endBreak() {
@@ -81,7 +81,7 @@ return;
     this._clearState();
     this.active = false;
     this.startTime = null;
-    this._updateFabState();
+    this._updateButtonState();
   }
 
   endBreakWithCustomTime(endTimestamp) {
@@ -98,7 +98,7 @@ return;
     this._clearState();
     this.active = false;
     this.startTime = null;
-    this._updateFabState();
+    this._updateButtonState();
   }
 
   cleanup() {
@@ -121,20 +121,8 @@ return;
   // ============================
 
   _createDOM() {
-    // --- FAB ---
-    this.fabElement = document.createElement('button');
-    this.fabElement.className = 'break-fab';
-    this.fabElement.setAttribute('aria-label', 'הפסקה');
-    this.fabElement.innerHTML = `
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 8h1a4 4 0 0 1 0 8h-1"/>
-        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/>
-        <line x1="6" y1="1" x2="6" y2="4"/>
-        <line x1="10" y1="1" x2="10" y2="4"/>
-        <line x1="14" y1="1" x2="14" y2="4"/>
-      </svg>
-      <span class="break-fab-tooltip">הפסקה</span>
-    `;
+    // --- Sidebar button (exists in HTML) ---
+    this.buttonElement = document.getElementById('sidebarBreakBtn');
 
     // --- Overlay ---
     this.overlayElement = document.createElement('div');
@@ -202,7 +190,6 @@ return;
     this.toastElement.style.display = 'none';
 
     // Append to body
-    document.body.appendChild(this.fabElement);
     document.body.appendChild(this.overlayElement);
     document.body.appendChild(this.recoveryElement);
     document.body.appendChild(this.toastElement);
@@ -213,8 +200,8 @@ return;
   // ============================
 
   _attachEvents() {
-    // FAB click
-    this.fabElement.addEventListener('click', () => {
+    // Sidebar break button click
+    this.buttonElement.addEventListener('click', () => {
       if (this.active) {
         this.endBreak();
       } else {
@@ -308,11 +295,11 @@ return;
     this.overlayElement.addEventListener('transitionend', handler);
   }
 
-  _updateFabState() {
+  _updateButtonState() {
     if (this.active) {
-      this.fabElement.classList.add('active');
+      this.buttonElement.classList.add('active');
     } else {
-      this.fabElement.classList.remove('active');
+      this.buttonElement.classList.remove('active');
     }
   }
 
@@ -422,7 +409,7 @@ return;
       this._pauseIdleTimeout();
       this._showOverlay();
       this._startTimer();
-      this._updateFabState();
+      this._updateButtonState();
     } else {
       // Another tab ended break
       this._stopTimer();
@@ -431,7 +418,7 @@ return;
       this._resumeIdleTimeout();
       this.active = false;
       this.startTime = null;
-      this._updateFabState();
+      this._updateButtonState();
     }
   }
 
@@ -479,7 +466,7 @@ timeInput.value = '';
       this.recoveryElement.classList.add('visible');
     });
 
-    this._updateFabState();
+    this._updateButtonState();
   }
 
   _hideRecoveryDialog() {
