@@ -27,13 +27,19 @@
 }
 
 .sidebar-break-icon {
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  transition: background 0.18s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .sidebar-break-icon svg {
-  color: #f5f5f5;
+  color: #64748b;
   transition: all 0.18s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -62,9 +68,11 @@
 
 /* Active state (break in progress) */
 .sidebar-break-btn.active {
-  background: #3b82f6;
-  border-color: transparent;
   animation: break-pulse 2s ease-in-out infinite;
+}
+
+.sidebar-break-btn.active .sidebar-break-icon {
+  background: #3b82f6;
 }
 
 .sidebar-break-btn.active .sidebar-break-icon svg {
@@ -77,33 +85,36 @@
 }
 
 .sidebar-break-btn.active:hover {
-  background: #2563eb;
   transform: translateY(-2px);
 }
 
-/* Orbiting ring */
-.sidebar-break-btn::before {
+.sidebar-break-btn.active:hover .sidebar-break-icon {
+  background: #2563eb;
+}
+
+/* Orbiting ring (always on, on the icon circle) */
+.sidebar-break-icon::before {
   content: '';
   position: absolute;
   inset: -4px;
   border-radius: 50%;
   border: 1.5px solid transparent;
-  background: conic-gradient(from 0deg, transparent 60%, rgb(59 130 246 / 30%)) border-box;
+  background: conic-gradient(from 0deg, transparent 60%, #3b82f6) border-box;
   mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   animation: break-orbit 8s linear infinite;
   pointer-events: none;
-  opacity: 0;
+  opacity: 0.4;
   transition: opacity 0.3s;
 }
 
-.sidebar-break-btn.active::before {
-  opacity: 1;
+.sidebar-break-btn.active .sidebar-break-icon::before {
+  opacity: 0.8;
   border-width: 2px;
   inset: -5px;
-  background: conic-gradient(from 0deg, transparent 40%, rgb(59 130 246 / 60%)) border-box;
+  background: conic-gradient(from 0deg, transparent 40%, #3b82f6) border-box;
   animation: break-orbit 3s linear infinite;
 }
 
