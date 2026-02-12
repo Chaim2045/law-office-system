@@ -9,7 +9,7 @@
 
 .break-fab {
   position: fixed;
-  bottom: 24px;
+  bottom: 104px;
   left: 24px;
   width: 52px;
   height: 52px;
@@ -555,7 +555,7 @@
 
 @media (width <= 768px) {
   .break-fab {
-    bottom: 16px;
+    bottom: 96px;
     left: 16px;
   }
 
