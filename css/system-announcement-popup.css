@@ -35,13 +35,14 @@
    ======================================== */
 
 .announcement-popup-modal {
+  position: relative;
   background: #fff;
   border-radius: 16px;
   max-width: 480px;
   width: 90%;
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
   border: 1px solid #e5e7eb;
-  overflow: hidden;
+  overflow: visible;
   animation: announcement-popup-slideUp 0.3s ease-out;
 }
 
@@ -298,6 +299,45 @@
 
 .announcement-popup-counter-hidden {
   visibility: hidden;
+}
+
+/* ========================================
+   PERSONAL ANNOUNCEMENT
+   ======================================== */
+
+.announcement-popup-personal {
+  border-top: 3px solid #6366f1;
+  border-radius: 16px;
+}
+
+.announcement-popup-personal .announcement-popup-header {
+  border-top: none;
+}
+
+.announcement-popup-personal .announcement-popup-type-icon {
+  background: #eef2ff;
+  color: #6366f1;
+}
+
+.announcement-popup-personal .announcement-popup-mark-read {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: transparent;
+}
+
+.announcement-popup-personal-badge {
+  position: absolute;
+  top: -12px;
+  right: 50%;
+  transform: translateX(50%);
+  padding: 5px 16px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 10px rgb(99 102 241 / 35%);
+  z-index: 1;
 }
 
 /* ========================================

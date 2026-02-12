@@ -42,9 +42,12 @@
 
             // Filter by target audience
             const relevantEmployees = allEmployees.filter(emp => {
+                if (targetAudience === 'specific' && announcement.targetEmail) {
+                    return emp.email === announcement.targetEmail;
+                }
                 if (targetAudience === 'admins') {
-return emp.role === 'admin';
-}
+                    return emp.role === 'admin';
+                }
                 return true;
             });
 

@@ -25,7 +25,8 @@
     const TARGET_AUDIENCE = {
         ALL: 'all',
         EMPLOYEES: 'employees',
-        ADMINS: 'admins'
+        ADMINS: 'admins',
+        SPECIFIC: 'specific'
     };
 
     /**
@@ -43,6 +44,7 @@
             this.startDate = data.startDate || new Date();
             this.endDate = data.endDate || null;
             this.targetAudience = data.targetAudience || TARGET_AUDIENCE.ALL;
+            this.targetEmail = data.targetEmail || null;
             this.createdBy = data.createdBy || '';
             this.createdAt = data.createdAt || new Date();
             this.updatedAt = data.updatedAt || new Date();
@@ -88,6 +90,10 @@
 
             if (!Object.values(TARGET_AUDIENCE).includes(this.targetAudience)) {
                 errors.push('קהל יעד לא תקין');
+            }
+
+            if (this.targetAudience === 'specific' && !this.targetEmail) {
+                errors.push('יש לבחור עובד יעד');
             }
 
             if (this.endDate && this.startDate > this.endDate) {
@@ -145,6 +151,7 @@ return false;
                         this.endDate) :
                     null,
                 targetAudience: this.targetAudience,
+                targetEmail: this.targetEmail,
                 createdBy: this.createdBy,
                 createdAt: this.createdAt instanceof Date ?
                     firebase.firestore.Timestamp.fromDate(this.createdAt) :
@@ -182,6 +189,7 @@ return false;
                 startDate: data.startDate?.toDate(),
                 endDate: data.endDate?.toDate(),
                 targetAudience: data.targetAudience,
+                targetEmail: data.targetEmail || null,
                 tenantId: data.tenantId || 'default',
                 createdBy: data.createdBy,
                 createdAt: data.createdAt?.toDate(),

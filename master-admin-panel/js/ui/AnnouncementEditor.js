@@ -192,7 +192,23 @@ return;
                                                 <option value="all">◉ כל המשתמשים</option>
                                                 <option value="employees">◎ עובדים בלבד</option>
                                                 <option value="admins">◈ מנהלים בלבד</option>
+                                                <option value="specific">◉ עובד ספציפי</option>
                                             </select>
+                                        </div>
+
+                                        <!-- Target Email (visible only when audience=specific) -->
+                                        <div class="form-group" id="targetEmailGroup" style="display: none;">
+                                            <label class="form-label">
+                                                בחר עובד <span class="required">*</span>
+                                            </label>
+                                            <select id="targetEmailSelect" class="form-select">
+                                                <option value="">— בחר עובד —</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-hint personal-hint" id="personalAnnouncementHint" style="display: none;">
+                                            <i class="fas fa-info-circle"></i>
+                                            ההודעה תוצג רק לעובד הנבחר — גם ב-ticker וגם ב-popup
                                         </div>
                                     </div>
                                 </div>
@@ -410,6 +426,23 @@ return;
                 }
             });
 
+            // Target audience change — show/hide employee dropdown + hint
+            const audienceSelect = this.panel.querySelector('#announcementAudience');
+            const targetEmailGroup = this.panel.querySelector('#targetEmailGroup');
+            const personalHint = this.panel.querySelector('#personalAnnouncementHint');
+
+            audienceSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'specific') {
+                    targetEmailGroup.style.display = 'block';
+                    personalHint.style.display = 'flex';
+                    this.loadEmployees();
+                } else {
+                    targetEmailGroup.style.display = 'none';
+                    personalHint.style.display = 'none';
+                    this.panel.querySelector('#targetEmailSelect').value = '';
+                }
+            });
+
             // Popup settings toggle visibility
             const showOnLoginCheckbox = this.panel.querySelector('#displayShowOnLogin');
             const popupSettingsSection = this.panel.querySelector('#popupSettingsSection');
@@ -450,6 +483,55 @@ return;
         }
 
         /**
+         * Load active employees into target email dropdown
+         */
+        async loadEmployees() {
+            if (this.employeesList) {
+                this.populateEmployeeSelect(this.employeesList);
+                return;
+            }
+
+            try {
+                const snapshot = await window.firebaseDB.collection('employees')
+                    .where('isActive', '==', true)
+                    .get();
+
+                this.employeesList = snapshot.docs.map(doc => ({
+                    email: doc.id,
+                    displayName: doc.data().displayName || doc.data().name || doc.id
+                }));
+
+                this.populateEmployeeSelect(this.employeesList);
+            } catch (error) {
+                console.error('❌ Error loading employees:', error);
+            }
+        }
+
+        /**
+         * Populate employee select with options
+         */
+        populateEmployeeSelect(employees) {
+            if (!this.panel) {
+return;
+}
+
+            const select = this.panel.querySelector('#targetEmailSelect');
+            const currentValue = select.value;
+
+            select.innerHTML = '<option value="">— בחר עובד —</option>';
+            employees.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp.email;
+                option.textContent = `${emp.displayName} (${emp.email})`;
+                select.appendChild(option);
+            });
+
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        }
+
+        /**
          * Set default start date to now
          */
         setDefaultStartDate() {
@@ -477,6 +559,18 @@ return;
             this.panel.querySelector('#announcementType').value = announcement.type;
             this.panel.querySelector('#announcementPriority').value = announcement.priority;
             this.panel.querySelector('#announcementAudience').value = announcement.targetAudience;
+
+            // Load target email for specific audience
+            if (announcement.targetAudience === 'specific' && announcement.targetEmail) {
+                const targetEmailGroup = this.panel.querySelector('#targetEmailGroup');
+                targetEmailGroup.style.display = 'block';
+                this.panel.querySelector('#personalAnnouncementHint').style.display = 'flex';
+                this.panel.querySelector('#targetEmailSelect').value = announcement.targetEmail;
+                this.loadEmployees().then(() => {
+                    this.panel.querySelector('#targetEmailSelect').value = announcement.targetEmail;
+                });
+            }
+
             this.panel.querySelector('#announcementActive').checked = announcement.active;
 
             // Dates
@@ -570,6 +664,7 @@ return;
                     startDate: new Date(formData.startDate),
                     endDate: formData.endDate ? new Date(formData.endDate) : null,
                     targetAudience: formData.audience,
+                    targetEmail: formData.audience === 'specific' ? formData.targetEmail : null,
                     displaySettings: {
                         showOnLogin: formData.showOnLogin,
                         showInHeader: formData.showInHeader,
@@ -658,6 +753,7 @@ return {};
                 type: this.panel.querySelector('#announcementType').value,
                 priority: this.panel.querySelector('#announcementPriority').value,
                 audience: this.panel.querySelector('#announcementAudience').value,
+                targetEmail: this.panel.querySelector('#targetEmailSelect')?.value || null,
                 startDate: this.panel.querySelector('#announcementStartDate').value,
                 endDate: this.panel.querySelector('#announcementEndDate').value,
                 active: this.panel.querySelector('#announcementActive').checked,
@@ -987,6 +1083,26 @@ return;
                 .form-hint strong {
                     color: #3b82f6;
                     font-weight: 700;
+                }
+
+                .personal-hint {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 8px 12px;
+                    background: #eef2ff;
+                    border: 1px solid #c7d2fe;
+                    border-radius: 6px;
+                    color: #4338ca;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    margin-top: -4px;
+                }
+
+                .personal-hint i {
+                    color: #6366f1;
+                    font-size: 0.75rem;
+                    flex-shrink: 0;
                 }
 
                 .form-row {
