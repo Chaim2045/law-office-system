@@ -42,7 +42,7 @@
   width: 90%;
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
   border: 1px solid #e5e7eb;
-  overflow: hidden;
+  overflow: visible;
   animation: announcement-popup-slideUp 0.3s ease-out;
 }
 
