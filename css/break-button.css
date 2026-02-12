@@ -10,7 +10,7 @@
 .break-fab {
   position: fixed;
   bottom: 24px;
-  right: 24px;
+  left: 24px;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -25,6 +25,35 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
   outline: none;
+}
+
+/* Orbiting ring */
+.break-fab::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  background: conic-gradient(from 0deg, transparent 60%, rgb(59 130 246 / 30%)) border-box;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  animation: break-orbit 8s linear infinite;
+  pointer-events: none;
+}
+
+.break-fab.active::before {
+  border-width: 2px;
+  inset: -5px;
+  background: conic-gradient(from 0deg, transparent 40%, rgb(59 130 246 / 60%)) border-box;
+  animation: break-orbit 3s linear infinite;
+}
+
+@keyframes break-orbit {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .break-fab svg {
@@ -527,7 +556,7 @@
 @media (width <= 768px) {
   .break-fab {
     bottom: 16px;
-    right: 16px;
+    left: 16px;
   }
 
   .break-timer {
