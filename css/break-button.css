@@ -1,0 +1,573 @@
+/* ========================================
+   BREAK BUTTON — Luxury Minimal Design
+   GH Law Office System — User App
+   ======================================== */
+
+/* ========================================
+   A. SIDEBAR BREAK BUTTON (Round, in footer)
+   ======================================== */
+
+.sidebar-break-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #f5f5f5;
+  cursor: pointer;
+  margin: 0 auto;
+  transition: all 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+  gap: 4px;
+}
+
+.sidebar-break-icon {
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sidebar-break-icon svg {
+  width: 18px;
+  height: 18px;
+  color: #64748b;
+  transition: all 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sidebar-break-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #f5f5f5;
+  opacity: 0.85;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+/* Hover */
+.sidebar-break-btn:hover {
+  transform: translateY(-2px);
+}
+
+.sidebar-break-btn:hover .sidebar-break-icon svg {
+  transform: scale(1.08);
+}
+
+.sidebar-break-btn:hover .sidebar-break-label {
+  opacity: 1;
+}
+
+/* Active state (break in progress) */
+.sidebar-break-btn.active {
+  animation: break-pulse 2s ease-in-out infinite;
+}
+
+.sidebar-break-btn.active .sidebar-break-icon {
+  background: #3b82f6;
+}
+
+.sidebar-break-btn.active .sidebar-break-icon svg {
+  color: #fff;
+}
+
+.sidebar-break-btn.active .sidebar-break-label {
+  color: #fff;
+  opacity: 1;
+}
+
+.sidebar-break-btn.active:hover {
+  transform: translateY(-2px);
+}
+
+.sidebar-break-btn.active:hover .sidebar-break-icon {
+  background: #2563eb;
+}
+
+/* Orbiting ring (always on, on the icon circle) */
+.sidebar-break-icon::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: conic-gradient(from 0deg, transparent 0%, #60a5fa 30%, transparent 60%) border-box;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  animation: break-orbit 8s linear infinite;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+.sidebar-break-btn.active .sidebar-break-icon::before {
+  opacity: 1;
+  border-width: 2.5px;
+  inset: -7px;
+  background: conic-gradient(from 0deg, transparent 0%, #60a5fa 30%, transparent 60%) border-box;
+  animation: break-orbit 3s linear infinite;
+}
+
+@keyframes break-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes break-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(59 130 246 / 40%);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px rgb(59 130 246 / 0%);
+  }
+}
+
+/* ========================================
+   B. BREAK OVERLAY
+   ======================================== */
+
+.break-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  background: rgb(15 23 42 / 88%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  direction: rtl;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s;
+}
+
+.break-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ========================================
+   C. OVERLAY CONTENT
+   ======================================== */
+
+.break-overlay-content {
+  text-align: center;
+  color: #f8fafc;
+  max-width: 400px;
+  padding: 40px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+}
+
+.break-overlay.visible .break-overlay-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ========================================
+   D. BREAK ICON (Coffee Cup + Steam)
+   ======================================== */
+
+.break-icon {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 24px;
+}
+
+.break-icon svg {
+  width: 64px;
+  height: 64px;
+  color: #f8fafc;
+  opacity: 0.9;
+}
+
+/* Steam effect */
+.break-steam {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+
+.break-steam-line {
+  width: 2px;
+  height: 16px;
+  background: #f8fafc;
+  border-radius: 2px;
+  opacity: 0;
+  animation: break-steam-rise 3s ease-in-out infinite;
+}
+
+.break-steam-line:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.break-steam-line:nth-child(2) {
+  animation-delay: 0.4s;
+  height: 12px;
+}
+
+.break-steam-line:nth-child(3) {
+  animation-delay: 0.8s;
+  height: 14px;
+}
+
+@keyframes break-steam-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 0.5;
+  }
+
+  70% {
+    opacity: 0.3;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* ========================================
+   E. TITLE
+   ======================================== */
+
+.break-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+  margin: 0 0 32px;
+}
+
+/* ========================================
+   F. TIMER
+   ======================================== */
+
+.break-timer {
+  font-size: 56px;
+  font-weight: 300;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  color: #f8fafc;
+  letter-spacing: 0.05em;
+  margin-bottom: 40px;
+  line-height: 1;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.break-timer-colon {
+  animation: break-blink 1s steps(1) infinite;
+}
+
+@keyframes break-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+
+  50%, 100% {
+    opacity: 0.3;
+  }
+}
+
+/* ========================================
+   G. RETURN BUTTON
+   ======================================== */
+
+.break-return-btn {
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 14px 36px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+
+.break-return-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgb(248 250 252 / 30%);
+}
+
+.break-return-btn:active {
+  transform: translateY(0);
+  opacity: 0.9;
+}
+
+/* ========================================
+   H. RECOVERY DIALOG
+   ======================================== */
+
+.break-recovery {
+  position: fixed;
+  inset: 0;
+  z-index: 50001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  direction: rtl;
+  background: rgb(15 23 42 / 88%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s;
+}
+
+.break-recovery.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.break-recovery-card {
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+              transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+}
+
+.break-recovery.visible .break-recovery-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.break-recovery-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.break-recovery-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.break-recovery-question {
+  font-size: 15px;
+  font-weight: 500;
+  margin: 0 0 16px;
+  color: #334155;
+}
+
+/* Radio options */
+.break-recovery-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  color: #334155;
+}
+
+.break-recovery-option:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.break-recovery-option.selected {
+  border-color: #3b82f6;
+  background: rgb(59 130 246 / 5%);
+}
+
+/* Hide native radio */
+.break-recovery-option input[type="radio"] {
+  display: none;
+}
+
+/* Custom radio circle */
+.break-recovery-radio {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 50%;
+  border: 2px solid #94a3b8;
+  transition: all 0.2s;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.break-recovery-option.selected .break-recovery-radio {
+  border-color: #3b82f6;
+}
+
+.break-recovery-option.selected .break-recovery-radio::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+
+/* Custom time input */
+.break-recovery-custom {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  display: none;
+}
+
+.break-recovery-custom.visible {
+  display: block;
+}
+
+.break-recovery-custom input[type="time"] {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #334155;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+  direction: ltr;
+  text-align: center;
+}
+
+.break-recovery-custom input[type="time"]:focus {
+  border-color: #3b82f6;
+}
+
+/* Submit button */
+.break-recovery-submit {
+  background: #0f172a;
+  color: #f8fafc;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.break-recovery-submit:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+.break-recovery-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   I. SUCCESS / ERROR TOAST
+   ======================================== */
+
+.break-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50002;
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 20%);
+  animation: break-toastIn 0.3s ease-out, break-toastOut 0.3s ease-in 2.7s forwards;
+  direction: rtl;
+  white-space: nowrap;
+}
+
+.break-toast.error {
+  animation: break-toastIn 0.3s ease-out, break-toastOut 0.3s ease-in 4.7s forwards;
+}
+
+/* ========================================
+   J. ANIMATIONS
+   ======================================== */
+
+@keyframes break-toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes break-toastOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   K. RESPONSIVE
+   ======================================== */
+
+@media (width <= 768px) {
+  .break-timer {
+    font-size: 42px;
+  }
+
+  .break-title {
+    font-size: 22px;
+  }
+
+  .break-return-btn {
+    padding: 12px 28px;
+    font-size: 15px;
+  }
+
+  .break-recovery-card {
+    padding: 24px;
+    margin: 16px;
+  }
+
+  .break-overlay-content {
+    padding: 24px;
+  }
+}

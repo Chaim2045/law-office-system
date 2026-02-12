@@ -38,6 +38,9 @@ import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
 // System Announcement Popup - Modal popup for unread announcements on login
 import SystemAnnouncementPopup from './modules/system-announcement-popup.js';
 
+// Break Manager - Floating break button with timer and timesheet recording
+import BreakManager from './modules/break-manager.js';
+
 // Notification System
 // NotificationBellSystem is loaded via script tag and available on window.notificationBell
 // No import needed here - it's initialized globally
@@ -151,6 +154,7 @@ class LawOfficeManager {
     this.clientValidation = new ClientValidation(this); // Pass 'this' as manager
     this.announcementTicker = new SystemAnnouncementTicker(); // System Announcement Ticker
     this.announcementPopup = new SystemAnnouncementPopup(); // System Announcement Popup
+    this.breakManager = new BreakManager(); // Break Button
 
     // Activity Logger & Task Actions (initialized after Firebase)
     this.activityLogger = null;
@@ -398,6 +402,26 @@ class LawOfficeManager {
         console.error('❌ Failed to initialize System Announcement Popup:', error);
       }
     }
+
+    // Initialize Break Manager after popup
+    this.initBreakManager();
+  }
+
+  /**
+   * Initialize Break Manager - Called from initPopup() after login
+   */
+  initBreakManager() {
+    if (this.breakManager && this.currentUser) {
+      try {
+        this.breakManager.init(
+          { email: this.currentUser, username: this.currentUsername },
+          window.firebaseDB
+        );
+        console.log('✅ Break Manager initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize Break Manager:', error);
+      }
+    }
   }
 
   /**
@@ -471,6 +495,10 @@ class LawOfficeManager {
 
     // ✅ Stop real-time listeners
     this.stopRealTimeListeners();
+
+    if (this.breakManager?.cleanup) {
+      this.breakManager.cleanup();
+    }
 
     Logger.log('✅ Manager cleanup completed');
   }
