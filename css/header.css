@@ -7,7 +7,8 @@
   display: none !important;
 }
 
-/* סרגל עליון קבוע - סגנון מקצועי */
+/* === OLD TOP BAR CSS — NEUTRALIZED BY gh-sidebar component === */
+#__neutralized_top_bar__ {
 .top-user-bar {
   position: fixed;
   top: 0;
@@ -22,17 +23,15 @@
   align-items: center;
   height: 68px;
   box-shadow: 0 2px 12px rgb(0 0 0 / 6%);
-  transition: top 0.18s ease; /* Smooth transition for ticker */
+  transition: top 0.18s ease;
 }
 
-/* Wrapper לכפתורי ניווט - ממרכז אותם */
 .top-nav-buttons-wrapper {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
 }
 
-/* כפתורי ניווט מרכזיים - תקצוב ושעתון */
 .top-nav-buttons {
   display: flex;
   gap: 8px;
@@ -79,66 +78,10 @@
   box-shadow: 0 4px 12px rgb(59 130 246 / 50%);
 }
 
-/* רספונסיבי - מובייל */
-@media screen and (width <= 768px) {
-  .top-user-bar {
-    padding: 10px 16px;
-    height: 58px;
-  }
-
-  .top-nav-buttons {
-    gap: 6px;
-  }
-
-  .top-nav-btn {
-    padding: 7px 16px;
-    font-size: 12px;
-  }
-
-  .top-nav-btn i {
-    font-size: 13px;
-  }
-
-  .user-dropdown-top {
-    padding: 7px 14px;
-    font-size: 12px;
-  }
-}
-
-@media screen and (width <= 480px) {
-  .top-nav-btn span {
-    display: none; /* הסתרת הטקסט במסכים קטנים */
-  }
-
-  .top-nav-btn {
-    padding: 9px;
-    min-width: 38px;
-    justify-content: center;
-  }
-
-  .top-nav-btn i {
-    margin: 0;
-  }
-
-  .user-dropdown-top span {
-    display: none;
-  }
-
-  .user-dropdown-top {
-    padding: 9px 12px;
-    min-width: 38px;
-    justify-content: center;
-  }
-
-  .user-dropdown-top i {
-    margin: 0;
-  }
-}
-
 .user-dropdown-top {
   background: #f8fafc;
   border: 1.5px solid #e2e8f0;
-  border-radius: 50px; /* פינות מעוגלות לחלוטין */
+  border-radius: 50px;
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
@@ -150,7 +93,7 @@
   transition: all 0.2s ease;
   white-space: nowrap;
   position: absolute;
-  right: calc(88px + 12px); /* ממש אחרי הסיידבר משמאל */
+  right: calc(88px + 12px);
 }
 
 .user-dropdown-top:hover {
@@ -168,8 +111,12 @@
 .user-dropdown-top:hover i {
   transform: rotate(180deg);
 }
+}
 
-/* SIDEBAR - Modern 2025 UI */
+/* === END OLD TOP BAR CSS === */
+
+/* === OLD SIDEBAR CSS — NEUTRALIZED BY gh-sidebar component === */
+#__neutralized_sidebar__ {
 .minimal-sidebar {
   position: fixed !important;
   top: 0 !important;
@@ -476,6 +423,9 @@
     transform: scale(1.1);
   }
 }
+}
+
+/* === END OLD SIDEBAR CSS === */
 
 /* כפתור פלוס מתחת לסרגל */
 .plus-container-new {
