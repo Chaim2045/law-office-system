@@ -280,7 +280,7 @@ export function startTimesheetListener(employee, onUpdate, onError) {
     const unsubscribe = db
       .collection('timesheet_entries')
       .where('employee', '==', employee)
-      .limit(50)
+      .limit(1000)
       .onSnapshot(
         (snapshot) => {
           console.log(`📡 Timesheet update received: ${snapshot.docs.length} entries`);

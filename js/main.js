@@ -847,6 +847,7 @@ class LawOfficeManager {
       this.clients = clients;
       this.budgetTasks = budgetTasks;
       this.timesheetEntries = timesheetEntries;
+      await this.loadMonthlyTimesheetStats();
 
       // ✅ Expose to window for backward compatibility with old code
       window.clients = clients;
@@ -1641,6 +1642,7 @@ completedBadge.style.display = 'none';
             || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         );
         this.filterTimesheetEntries();
+        this.loadMonthlyTimesheetStats();
 
         // Emit EventBus event
         window.EventBus.emit('timesheet:entry-created', {
@@ -1690,14 +1692,66 @@ plusButton.classList.remove('active');
     this.renderTimesheetView();
   }
 
+  async loadMonthlyTimesheetStats() {
+    try {
+      const now = new Date();
+      const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+      const snapshot = await window.firebaseDB
+        .collection('timesheet_entries')
+        .where('employee', '==', this.currentUser)
+        .where('date', '>=', startOfMonth)
+        .get();
+
+      // Store full month entries for accurate statistics
+      this.monthlyEntries = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Week calculation
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+
+      let monthMinutes = 0;
+      let weekMinutes = 0;
+
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const minutes = data.minutes || 0;
+        monthMinutes += minutes;
+
+        const entryDate = (data.date || '').substring(0, 10);
+        if (entryDate >= startOfWeekStr) {
+          weekMinutes += minutes;
+        }
+      });
+
+      this.monthlyStats = {
+        monthMinutes: monthMinutes,
+        monthHours: Math.round((monthMinutes / 60) * 10) / 10,
+        weekMinutes: weekMinutes,
+        weekHours: Math.round((weekMinutes / 60) * 10) / 10,
+        monthEntries: snapshot.docs.length
+      };
+    } catch (error) {
+      console.error('Failed to load monthly stats:', error);
+      this.monthlyStats = null;
+    }
+  }
+
   renderTimesheetView() {
-    // Calculate statistics on ALL entries (not filtered) to show total counts
+    // Use full monthly entries if available, fallback to pagination
+    const statsEntries = this.monthlyEntries || this.timesheetEntries;
+
     const stats = window.StatisticsModule
-      ? window.StatisticsModule.calculateTimesheetStatistics(this.timesheetEntries)
+      ? window.StatisticsModule.calculateTimesheetStatistics(statsEntries)
       : {
-          totalMinutes: Timesheet.getTotalMinutes(this.filteredTimesheetEntries),
-          totalHours: Math.round((Timesheet.getTotalMinutes(this.filteredTimesheetEntries) / 60) * 10) / 10,
-          totalEntries: this.filteredTimesheetEntries.length
+          totalMinutes: Timesheet.getTotalMinutes(statsEntries),
+          totalHours: Math.round((Timesheet.getTotalMinutes(statsEntries) / 60) * 10) / 10,
+          totalEntries: statsEntries.length
         };
 
     const paginationStatus = {
@@ -1907,6 +1961,7 @@ existingError.remove();
             || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         );
         this.filterTimesheetEntries();
+        this.loadMonthlyTimesheetStats();
 
         // Emit EventBus event
         window.EventBus.emit('timesheet:entry-updated', {
