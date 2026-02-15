@@ -3199,6 +3199,7 @@ return;
   if (root) {
     beitMidrashInstance = new BeitMidrash(root);
     beitMidrashInstance.init();
+    window.beitMidrashInstance = beitMidrashInstance;
   }
 }
 

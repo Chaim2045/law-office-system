@@ -33,6 +33,11 @@ timesheetFormContainer.classList.add('hidden');
     plusContainer.style.display = '';
   }
 
+  // Hide beit midrash bar when switching away
+  if (window.beitMidrashInstance) {
+window.beitMidrashInstance.hide();
+}
+
   // הסרת active מכל הכפתורים והתכנים
   document.querySelectorAll('.tab-button, .top-nav-btn').forEach((btn) => {
     btn.classList.remove('active');
@@ -54,6 +59,9 @@ timesheetFormContainer.classList.add('hidden');
     if (window.initBeitMidrash) {
       window.initBeitMidrash();
     }
+    if (window.beitMidrashInstance) {
+window.beitMidrashInstance.show();
+}
     window.currentActiveTab = tabName;
     return;
   }

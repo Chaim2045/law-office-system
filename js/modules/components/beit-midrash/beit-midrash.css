@@ -9,56 +9,94 @@
   direction: rtl;
 }
 
-/* ─── Header with background ─── */
-.gh-bm-header {
-  position: relative;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  padding: 32px 24px 40px;
-  margin-bottom: 30px;
-  border-radius: 0 0 16px 16px;
-}
-
-.gh-bm-header-content {
+/* ─── Beit Midrash Top Bar ─── */
+.gh-bm-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: var(--gh-sidebar-width, 72px);
+  height: 80px;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
+  z-index: 1000;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
   direction: rtl;
+  transform: translateY(-100%);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgb(79 70 229 / 30%);
 }
 
-.gh-bm-header-title {
+.gh-bm-topbar.visible {
+  transform: translateY(0);
+}
+
+.gh-bm-topbar-content {
+  text-align: center;
+  color: white;
+}
+
+.gh-bm-topbar-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+}
+
+.gh-bm-topbar-title i {
   font-size: 22px;
-  font-weight: 700;
-  color: #1e293b;
+  opacity: 0.9;
 }
 
-.gh-bm-header-title i {
-  color: #6366f1;
-  font-size: 24px;
+.gh-bm-topbar-subtitle {
+  font-size: 13px;
+  color: rgb(255 255 255 / 75%);
+  margin-top: 2px;
 }
 
-.gh-bm-header-count {
-  font-size: 14px;
-  color: #64748b;
-}
-
-/* ─── Floating Search Bar — overlaps header bottom ─── */
+/* ─── Floating Search Bar ─── */
 .gh-bm-search-float {
-  position: absolute;
-  bottom: -22px;
+  position: fixed;
+  top: 58px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(-100%);
   width: 90%;
   max-width: 500px;
-  z-index: 10;
+  z-index: 1001;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+}
+
+.gh-bm-search-float.visible {
+  transform: translateX(-50%) translateY(0);
 }
 
 .gh-bm-search-container {
   position: relative;
 }
 
+.gh-bm-search {
+  width: 100%;
+  padding: 14px 20px 14px 44px;
+  border: 2px solid transparent;
+  border-radius: 50px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  box-shadow: 0 4px 24px rgb(0 0 0 / 12%);
+  outline: none;
+  direction: rtl;
+  transition: all 0.3s ease;
+}
+
+.gh-bm-search:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgb(129 140 248 / 20%), 0 4px 24px rgb(0 0 0 / 12%);
+}
+
+/* ─── Animated gradient border ─── */
 .gh-bm-search-container::before {
   content: '';
   position: absolute;
@@ -84,26 +122,6 @@
   100% { background-position: 0% 50%; }
 }
 
-.gh-bm-search {
-  width: 100%;
-  padding: 14px 20px 14px 44px;
-  border: 2px solid transparent;
-  border-radius: 50px;
-  font-size: 14px;
-  font-family: inherit;
-  background: white;
-  box-shadow: 0 4px 24px rgb(0 0 0 / 10%);
-  outline: none;
-  direction: rtl;
-  color: #0f172a;
-  transition: all 0.3s ease;
-}
-
-.gh-bm-search:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgb(129 140 248 / 15%), 0 4px 24px rgb(0 0 0 / 10%);
-}
-
 .gh-bm-search::placeholder {
   color: #94a3b8;
 }
@@ -115,7 +133,24 @@
   transform: translateY(-50%);
   color: #94a3b8;
   font-size: 14px;
-  pointer-events: none;
+}
+
+/* ─── Top user bar transition ─── */
+.top-user-bar.bm-hidden {
+  transform: translateY(-100%);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-user-bar {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Count ─── */
+.gh-bm-count {
+  text-align: center;
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 16px;
 }
 
 /* ─── Grid ─── */
@@ -123,6 +158,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+  padding-top: 60px;
 }
 
 /* ─── Card ─── */
@@ -589,13 +625,8 @@
     padding: 16px;
   }
 
-  .gh-bm-header {
-    padding: 24px 16px 36px;
-    margin-bottom: 24px;
-  }
-
-  .gh-bm-header-title {
-    font-size: 18px;
+  .gh-bm-topbar-title {
+    font-size: 16px;
   }
 
   .gh-bm-search-float {

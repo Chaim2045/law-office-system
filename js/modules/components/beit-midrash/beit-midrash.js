@@ -51,6 +51,15 @@ export class BeitMidrash {
   }
 
   destroy() {
+    this.hide();
+    if (this.topbar) {
+      this.topbar.remove();
+      this.topbar = null;
+    }
+    if (this.searchFloat) {
+      this.searchFloat.remove();
+      this.searchFloat = null;
+    }
     this._listeners.forEach(({ el, event, handler }) => {
       el.removeEventListener(event, handler);
     });
@@ -121,26 +130,72 @@ export class BeitMidrash {
   // ════════════════════════════════════
 
   render() {
+    // Create topbar (fixed, outside container)
+    this.topbar = document.createElement('div');
+    this.topbar.className = 'gh-bm-topbar';
+    this.topbar.innerHTML = `
+      <div class="gh-bm-topbar-content">
+        <div class="gh-bm-topbar-title">
+          <i class="fas fa-book-open"></i>
+          <span>ברוכים הבאים לבית המדרש</span>
+        </div>
+        <div class="gh-bm-topbar-subtitle">ספריית הלמידה של משרד עו"ד גיא הרשקוביץ</div>
+      </div>
+    `;
+    document.body.appendChild(this.topbar);
+
+    // Create floating search (fixed, outside container)
+    this.searchFloat = document.createElement('div');
+    this.searchFloat.className = 'gh-bm-search-float';
+    this.searchFloat.innerHTML = `
+      <div class="gh-bm-search-container">
+        <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
+        <i class="fas fa-search gh-bm-search-icon"></i>
+      </div>
+    `;
+    document.body.appendChild(this.searchFloat);
+
+    // Container content (count + grid)
     this.container.innerHTML = `
       <div class="gh-bm-root">
-        <div class="gh-bm-header">
-          <div class="gh-bm-header-content">
-            <div class="gh-bm-header-title">
-              <i class="fas fa-book-open"></i>
-              <span>בית מדרש</span>
-            </div>
-            <div class="gh-bm-header-count"></div>
-          </div>
-          <div class="gh-bm-search-float">
-            <div class="gh-bm-search-container">
-              <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
-              <i class="fas fa-search gh-bm-search-icon"></i>
-            </div>
-          </div>
-        </div>
+        <div class="gh-bm-count"></div>
         <div class="gh-bm-grid"></div>
       </div>
     `;
+  }
+
+  show() {
+    // Hide top-user-bar
+    const topBar = document.querySelector('.top-user-bar');
+    if (topBar) {
+topBar.classList.add('bm-hidden');
+}
+
+    // Show beit midrash topbar + search
+    requestAnimationFrame(() => {
+      if (this.topbar) {
+this.topbar.classList.add('visible');
+}
+      if (this.searchFloat) {
+this.searchFloat.classList.add('visible');
+}
+    });
+  }
+
+  hide() {
+    // Show top-user-bar
+    const topBar = document.querySelector('.top-user-bar');
+    if (topBar) {
+topBar.classList.remove('bm-hidden');
+}
+
+    // Hide beit midrash topbar + search
+    if (this.topbar) {
+this.topbar.classList.remove('visible');
+}
+    if (this.searchFloat) {
+this.searchFloat.classList.remove('visible');
+}
   }
 
   _renderLoading() {
@@ -232,7 +287,7 @@ return;
   }
 
   _updateCount(count) {
-    const countEl = this.container.querySelector('.gh-bm-header-count');
+    const countEl = this.container.querySelector('.gh-bm-count');
     if (countEl) {
       countEl.textContent = count > 0 ? `${count} מצגות` : '';
     }
@@ -245,8 +300,10 @@ return;
   _bindEvents() {
     const root = this.container;
 
-    // Search
-    const searchInput = root.querySelector('.gh-bm-search');
+    // Search (input lives in this.searchFloat, outside container)
+    const searchInput = this.searchFloat
+      ? this.searchFloat.querySelector('.gh-bm-search')
+      : null;
     if (searchInput) {
       const handler = () => this._handleSearch(searchInput.value);
       searchInput.addEventListener('input', handler);
