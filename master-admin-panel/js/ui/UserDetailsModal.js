@@ -70,6 +70,10 @@
             this.hoursSortBy = 'date'; // date / client / hours
             this.hoursSortDirection = 'desc'; // asc / desc
 
+            // Tasks tab state
+            this.tasksSubTab = 'active'; // 'active' or 'completed'
+            this.tasksPanelSubTab = 'active'; // 'active' or 'completed' (for slide-in panel)
+
             // Messages tab state
             this.messageFilter = 'all'; // all / unread / read / archived
         }
@@ -299,10 +303,10 @@
                     .get()
                     .catch(() => ({ docs: [] })),
 
-                // Get user's tasks (active only)
-                db.collection('tasks')
-                    .where('assignedTo', '==', userEmail)
-                    .where('status', '!=', 'completed')
+                // Get user's tasks
+                db.collection('budget_tasks')
+                    .where('employee', '==', userEmail)
+                    .orderBy('createdAt', 'desc')
                     .limit(50)
                     .get()
                     .catch(() => ({ docs: [] })),
@@ -1084,24 +1088,51 @@ return;
             const tasks = this.userData?.tasks || [];
 
             if (tasks.length === 0) {
-                return this.renderEmptyState('fas fa-tasks', 'אין משימות', 'משתמש זה לא מקושר למשימות פעילות');
+                return this.renderEmptyState('fas fa-tasks', 'אין משימות', 'משתמש זה לא מקושר למשימות');
             }
 
+            // Filter by sub-tab
+            const activeTasks = tasks.filter(t => t.status === 'פעיל' || t.status === 'active' || t.status === 'פעילה');
+            const completedTasks = tasks.filter(t => t.status === 'הושלם' || t.status === 'completed' || t.status === 'הושלמה');
+            const currentTasks = this.tasksSubTab === 'completed' ? completedTasks : activeTasks;
+
+            const activeCount = activeTasks.length;
+            const completedCount = completedTasks.length;
+
             // Show first 3 tasks
-            const displayedTasks = tasks.slice(0, 3);
-            const hasMoreTasks = tasks.length > 3;
+            const displayedTasks = currentTasks.slice(0, 3);
+            const hasMoreTasks = currentTasks.length > 3;
 
             return `
                 <div class="tab-panel tab-tasks">
-                    <div class="tasks-list">
-                        ${displayedTasks.map(task => this.renderTaskCard(task)).join('')}
-                    </div>
-                    ${hasMoreTasks ? `
-                        <button class="show-all-tasks-btn" data-action="show-all-tasks">
-                            <i class="fas fa-list"></i>
-                            <span>הצג את כל המשימות (${tasks.length})</span>
+                    <!-- Sub-tabs -->
+                    <div style="display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px;">
+                        <button class="tasks-sub-tab ${this.tasksSubTab === 'active' ? 'active' : ''}" data-sub-tab="active"
+                            style="padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; background: none; cursor: pointer; color: ${this.tasksSubTab === 'active' ? '#1e293b' : '#94a3b8'}; border-bottom: 2px solid ${this.tasksSubTab === 'active' ? '#3b82f6' : 'transparent'}; margin-bottom: -2px; transition: all 0.2s;">
+                            פעיל <span style="font-weight: 400; color: ${this.tasksSubTab === 'active' ? '#64748b' : '#cbd5e1'};">(${activeCount})</span>
                         </button>
-                    ` : ''}
+                        <button class="tasks-sub-tab ${this.tasksSubTab === 'completed' ? 'active' : ''}" data-sub-tab="completed"
+                            style="padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; background: none; cursor: pointer; color: ${this.tasksSubTab === 'completed' ? '#1e293b' : '#94a3b8'}; border-bottom: 2px solid ${this.tasksSubTab === 'completed' ? '#3b82f6' : 'transparent'}; margin-bottom: -2px; transition: all 0.2s;">
+                            הושלם <span style="font-weight: 400; color: ${this.tasksSubTab === 'completed' ? '#64748b' : '#cbd5e1'};">(${completedCount})</span>
+                        </button>
+                    </div>
+
+                    ${currentTasks.length === 0 ? `
+                        <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+                            <i class="fas fa-${this.tasksSubTab === 'completed' ? 'check-circle' : 'tasks'}" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                            <p style="font-size: 14px;">${this.tasksSubTab === 'completed' ? 'אין משימות שהושלמו' : 'אין משימות פעילות'}</p>
+                        </div>
+                    ` : `
+                        <div class="tasks-list">
+                            ${displayedTasks.map(task => this.renderTaskCard(task)).join('')}
+                        </div>
+                        ${hasMoreTasks ? `
+                            <button class="show-all-tasks-btn" data-action="show-all-tasks">
+                                <i class="fas fa-list"></i>
+                                <span>הצג את כל המשימות (${currentTasks.length})</span>
+                            </button>
+                        ` : ''}
+                    `}
                 </div>
             `;
         }
@@ -2648,16 +2679,16 @@ return;
             // פורמט תאריך יעד (compact)
             // תמיכה ב-Firestore Timestamp, JavaScript Date, String, ו-Number
             let deadlineText = null; // null = לא להציג כלל
+            let deadlineDate = null;
+            let diffDays = null;
             if (task.deadline) {
                 try {
-                    let deadlineDate;
-
                     // בדיקה אם זה Firestore Timestamp עם מתודת toDate()
                     if (task.deadline.toDate && typeof task.deadline.toDate === 'function') {
                         deadlineDate = task.deadline.toDate();
-                    } else if (task.deadline.seconds) {
-                        // בדיקה אם זה אובייקט Timestamp עם seconds (לאחר JSON serialization)
-                        deadlineDate = new Date(task.deadline.seconds * 1000);
+                    } else if (task.deadline._seconds) {
+                        // בדיקה אם זה אובייקט Timestamp עם _seconds (לאחר JSON serialization)
+                        deadlineDate = new Date(task.deadline._seconds * 1000);
                     } else {
                         // אחרת, נסה המרה רגילה (String, Number, או Date)
                         deadlineDate = new Date(task.deadline);
@@ -2679,6 +2710,24 @@ return;
                 }
             }
 
+            // חישוב זמן נותר — רק למשימות פעילות עם deadline תקין
+            let timeRemainingText = null;
+            if (deadlineText && task.status !== 'הושלם' && task.status !== 'completed' && task.status !== 'בוטל' && task.status !== 'cancelled') {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const deadlineMidnight = new Date(deadlineDate);
+                deadlineMidnight.setHours(0, 0, 0, 0);
+                diffDays = Math.ceil((deadlineMidnight - now) / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 0) {
+                    timeRemainingText = `נותרו ${diffDays} ימים`;
+                } else if (diffDays === 0) {
+                    timeRemainingText = 'היום אחרון!';
+                } else {
+                    timeRemainingText = `באיחור ${Math.abs(diffDays)} ימים`;
+                }
+            }
+
             // סטטוס progress - בחירת צבע (רק לבר התקדמות!)
             const progressColor = progress > 100 ? '#ef4444' : progress >= 80 ? '#f59e0b' : '#10b981';
 
@@ -2686,7 +2735,7 @@ return;
                 <div class="task-card ${statusClass}-task" data-task-id="${task.id}">
                     <!-- Header: כותרת ותג סטטוס -->
                     <div class="task-header">
-                        <h4 class="task-title">${this.escapeHtml(task.title)}</h4>
+                        <h4 class="task-title">${this.escapeHtml(task.description || task.serviceName || 'ללא כותרת')}</h4>
                         <span class="task-status-badge ${statusClass}-badge" style="background-color: ${status.badgeColor};">${status.label}</span>
                     </div>
 
@@ -2703,8 +2752,29 @@ return;
                         <div class="task-info-row">
                             <i class="fas fa-calendar-alt"></i>
                             <span>יעד: ${deadlineText}</span>
+                            ${timeRemainingText ? `<span class="task-time-remaining ${diffDays < 0 ? 'overdue' : diffDays <= 3 ? 'urgent' : ''}">${timeRemainingText}</span>` : ''}
                         </div>
                         ` : ''}
+
+                        <!-- תאריך השלמה (רק למשימות שהושלמו) -->
+                        ${task.completedAt ? (() => {
+                            let completedDate;
+                            if (task.completedAt.toDate && typeof task.completedAt.toDate === 'function') {
+                                completedDate = task.completedAt.toDate();
+                            } else if (task.completedAt._seconds) {
+                                completedDate = new Date(task.completedAt._seconds * 1000);
+                            } else {
+                                completedDate = new Date(task.completedAt);
+                            }
+                            const completedText = !isNaN(completedDate.getTime())
+                                ? completedDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })
+                                : null;
+                            return completedText ? `
+                        <div class="task-info-row">
+                            <i class="fas fa-check-circle"></i>
+                            <span>הושלם: ${completedText}</span>
+                        </div>` : '';
+                        })() : ''}
 
                         <!-- תקציב - אייקון אפור -->
                         ${task.estimatedHours > 0 ? `
@@ -3337,6 +3407,15 @@ return;
                 });
             }
 
+            // Tasks sub-tab buttons
+            const tasksSubTabs = modal.querySelectorAll('.tasks-sub-tab');
+            tasksSubTabs.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.tasksSubTab = btn.getAttribute('data-sub-tab');
+                    this.switchTab('tasks');
+                });
+            });
+
             // Edit Task buttons
             const editTaskButtons = modal.querySelectorAll('.btn-edit-task');
             editTaskButtons.forEach(btn => {
@@ -3731,8 +3810,8 @@ return;
                     const endOfMonth = new Date(this.selectedYear, this.selectedMonth, 0, 23, 59, 59);
 
                     // Load timesheet from Firestore
-                    const timesheetSnapshot = await db.collection('timesheet')
-                        .where('employeeEmail', '==', userEmail)
+                    const timesheetSnapshot = await db.collection('timesheet_entries')
+                        .where('employee', '==', userEmail)
                         .where('date', '>=', startOfMonth)
                         .where('date', '<=', endOfMonth)
                         .orderBy('date', 'desc')
@@ -4450,11 +4529,18 @@ return '';
                 : 0;
             const progressColor = progress >= 100 ? '#ef4444' : progress >= 80 ? '#f97316' : '#22c55e';
 
-            // תיקון פורמט תאריך - המרה מ-ISO ל-YYYY-MM-DD
+            // תיקון פורמט תאריך - המרה מ-Timestamp/ISO ל-YYYY-MM-DD
             let deadlineValue = '';
             if (task.deadline) {
                 try {
-                    const date = new Date(task.deadline);
+                    let date;
+                    if (task.deadline.toDate && typeof task.deadline.toDate === 'function') {
+                        date = task.deadline.toDate();
+                    } else if (task.deadline._seconds) {
+                        date = new Date(task.deadline._seconds * 1000);
+                    } else {
+                        date = new Date(task.deadline);
+                    }
                     if (!isNaN(date.getTime())) {
                         deadlineValue = date.toISOString().split('T')[0];
                     }
@@ -5354,7 +5440,12 @@ return;
          * פתיחת פאנל הזזה עם כל המשימות
          */
         openTasksPanel() {
-            const tasks = this.userData?.tasks || [];
+            const allTasks = this.userData?.tasks || [];
+
+            // Filter by sub-tab
+            const filteredByStatus = this.filterTasksBySubTab(allTasks, this.tasksPanelSubTab);
+            const activeCount = this.filterTasksBySubTab(allTasks, 'active').length;
+            const completedCount = this.filterTasksBySubTab(allTasks, 'completed').length;
 
             // Create overlay
             const overlay = document.createElement('div');
@@ -5371,7 +5462,7 @@ return;
                 <div class="tasks-panel-header">
                     <div class="tasks-panel-title-row">
                         <h3>כל המשימות של ${this.escapeHtml(this.userData.displayName || this.userData.email)}</h3>
-                        <span class="tasks-count-badge">${tasks.length} משימות</span>
+                        <span class="tasks-count-badge" id="tasksPanelCount">${filteredByStatus.length} משימות</span>
                     </div>
                     <button class="tasks-panel-close" id="tasksPanelClose">
                         <i class="fas fa-times"></i>
@@ -5388,9 +5479,20 @@ return;
                     >
                 </div>
 
+                <div style="display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin: 0 20px 16px 20px;">
+                    <button class="tasks-panel-sub-tab ${this.tasksPanelSubTab === 'active' ? 'active' : ''}" data-panel-sub-tab="active"
+                        style="padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; background: none; cursor: pointer; color: ${this.tasksPanelSubTab === 'active' ? '#1e293b' : '#94a3b8'}; border-bottom: 2px solid ${this.tasksPanelSubTab === 'active' ? '#3b82f6' : 'transparent'}; margin-bottom: -2px; transition: all 0.2s;">
+                        פעיל <span style="font-weight: 400; color: ${this.tasksPanelSubTab === 'active' ? '#64748b' : '#cbd5e1'};">(${activeCount})</span>
+                    </button>
+                    <button class="tasks-panel-sub-tab ${this.tasksPanelSubTab === 'completed' ? 'active' : ''}" data-panel-sub-tab="completed"
+                        style="padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; background: none; cursor: pointer; color: ${this.tasksPanelSubTab === 'completed' ? '#1e293b' : '#94a3b8'}; border-bottom: 2px solid ${this.tasksPanelSubTab === 'completed' ? '#3b82f6' : 'transparent'}; margin-bottom: -2px; transition: all 0.2s;">
+                        הושלם <span style="font-weight: 400; color: ${this.tasksPanelSubTab === 'completed' ? '#64748b' : '#cbd5e1'};">(${completedCount})</span>
+                    </button>
+                </div>
+
                 <div class="tasks-panel-body">
                     <div class="tasks-panel-grid" id="tasksPanelGrid">
-                        ${tasks.map(task => this.renderTaskCard(task)).join('')}
+                        ${filteredByStatus.map(task => this.renderTaskCard(task)).join('')}
                     </div>
                 </div>
             `;
@@ -5438,6 +5540,31 @@ return;
                 setTimeout(() => searchInput.focus(), 100);
             }
 
+            // Sub-tab buttons in panel
+            const panelSubTabs = panel.querySelectorAll('.tasks-panel-sub-tab');
+            panelSubTabs.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const subTab = btn.getAttribute('data-panel-sub-tab');
+                    this.tasksPanelSubTab = subTab;
+                    // Update active class on sub-tab buttons
+                    panel.querySelectorAll('.tasks-panel-sub-tab').forEach(b => {
+                        b.classList.toggle('active', b.dataset.panelSubTab === subTab);
+                        b.style.color = b.dataset.panelSubTab === subTab ? '#1e293b' : '#94a3b8';
+                        b.style.borderBottom = b.dataset.panelSubTab === subTab ? '2px solid #3b82f6' : '2px solid transparent';
+                    });
+                    // Re-filter and render grid
+                    this.filterTasksInPanel(
+                        document.getElementById('tasksPanelSearch')?.value || ''
+                    );
+                    // Update badge count
+                    const filteredTasks = this.getFilteredPanelTasks();
+                    const badge = panel.querySelector('.tasks-count-badge');
+                    if (badge) {
+badge.textContent = `${filteredTasks.length} משימות`;
+}
+                });
+            });
+
             // ========== EVENT DELEGATION FOR TASK BUTTONS IN PANEL ==========
             // Same functionality as in regular tasks tab
             const panelGrid = document.getElementById('tasksPanelGrid');
@@ -5448,17 +5575,37 @@ return;
 
                     if (editBtn) {
                         const taskId = editBtn.getAttribute('data-task-id');
-                        this.editTask(taskId);
+                        this.closeTasksPanel();
+                        setTimeout(() => this.editTask(taskId), 450);
                     }
 
                     if (deleteBtn) {
                         const taskId = deleteBtn.getAttribute('data-task-id');
                         // Note: deleteTask functionality would go here if it exists
-                        console.log('🗑️ Delete task clicked:', taskId);
                         alert('פונקציית מחיקה טרם מוכנה');
                     }
                 });
             }
+        }
+
+        /**
+         * Filter tasks by sub-tab status
+         * סינון משימות לפי סטטוס sub-tab
+         */
+        filterTasksBySubTab(tasks, subTab) {
+            if (subTab === 'completed') {
+                return tasks.filter(t => t.status === 'הושלם' || t.status === 'completed' || t.status === 'הושלמה');
+            }
+            return tasks.filter(t => t.status === 'פעיל' || t.status === 'active' || t.status === 'פעילה' || t.status === 'בהמתנה' || t.status === 'pending');
+        }
+
+        /**
+         * Get filtered panel tasks by current sub-tab
+         * קבלת משימות מסוננות לפי sub-tab נוכחי
+         */
+        getFilteredPanelTasks() {
+            const tasks = this.userData?.tasks || [];
+            return this.filterTasksBySubTab(tasks, this.tasksPanelSubTab);
         }
 
         /**
@@ -5657,39 +5804,41 @@ panel.remove();
          * סינון משימות בפאנל
          */
         filterTasksInPanel(searchText) {
-            const tasks = this.userData?.tasks || [];
+            const statusFiltered = this.getFilteredPanelTasks();
             const grid = document.getElementById('tasksPanelGrid');
+            const countBadge = document.getElementById('tasksPanelCount');
 
             if (!grid) {
 return;
 }
 
-            // Filter tasks
-            const filteredTasks = tasks.filter(task => {
-                const searchLower = searchText.toLowerCase();
-
-                // Search in title
-                if (task.title?.toLowerCase().includes(searchLower)) {
+            // Then filter by search text
+            const filteredTasks = statusFiltered.filter(task => {
+                if (!searchText) {
 return true;
 }
+                const searchLower = searchText.toLowerCase();
 
-                // Search in description
                 if (task.description?.toLowerCase().includes(searchLower)) {
 return true;
 }
-
-                // Search in client name
+                if (task.serviceName?.toLowerCase().includes(searchLower)) {
+return true;
+}
                 if (task.clientName?.toLowerCase().includes(searchLower)) {
 return true;
 }
-
-                // Search in status
                 if (task.status?.toLowerCase().includes(searchLower)) {
 return true;
 }
 
                 return false;
             });
+
+            // Update badge count
+            if (countBadge) {
+                countBadge.textContent = `${filteredTasks.length} משימות`;
+            }
 
             // Update grid
             if (filteredTasks.length > 0) {

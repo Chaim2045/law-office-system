@@ -610,15 +610,14 @@
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   padding: 14px;
-  padding-bottom: 48px;
-  min-height: 220px;
-  max-height: 220px;
+  padding-bottom: 14px;
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 10px;
   transition: var(--transition);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* NO border-right accent - removed per user request */
@@ -726,6 +725,26 @@
   padding-top: 10px;
   border-top: 1px solid var(--gray-100);
   margin-top: 8px;
+}
+
+/* Time Remaining Badge - next to deadline */
+.task-time-remaining {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-right: 8px;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.task-time-remaining.urgent {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.task-time-remaining.overdue {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .btn-icon {
