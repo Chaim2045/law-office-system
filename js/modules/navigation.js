@@ -27,6 +27,12 @@ timesheetFormContainer.classList.add('hidden');
     plusButton.classList.remove('active');
   }
 
+  // Restore plus container by default (beit-midrash overrides below)
+  const plusContainer = document.querySelector('.plus-container-new');
+  if (plusContainer) {
+    plusContainer.style.display = '';
+  }
+
   // הסרת active מכל הכפתורים והתכנים
   document.querySelectorAll('.tab-button, .top-nav-btn').forEach((btn) => {
     btn.classList.remove('active');
@@ -40,15 +46,14 @@ timesheetFormContainer.classList.add('hidden');
   if (tabName === 'beit-midrash') {
     const bmTab = document.getElementById('beitMidrashTab');
     if (bmTab) {
-bmTab.classList.add('active');
-}
-    const plusContainer = document.querySelector('.plus-container-new');
+      bmTab.classList.add('active');
+    }
     if (plusContainer) {
-plusContainer.style.display = 'none';
-}
+      plusContainer.style.display = 'none';
+    }
     if (window.initBeitMidrash) {
-window.initBeitMidrash();
-}
+      window.initBeitMidrash();
+    }
     window.currentActiveTab = tabName;
     return;
   }
@@ -111,12 +116,6 @@ reportsTab.classList.add('active');
     plusButton.style.visibility = 'visible';
     plusButton.style.opacity = '1';
   }
-
-  // Restore plus container (hidden by beit-midrash tab)
-  const plusContainer = document.querySelector('.plus-container-new');
-  if (plusContainer) {
-plusContainer.style.display = '';
-}
 
   // Update global state (imported as reference, but we need to update the original)
   // This will be handled by the importing module

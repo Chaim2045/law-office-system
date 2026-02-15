@@ -124,13 +124,9 @@ export class BeitMidrash {
     this.container.innerHTML = `
       <div class="gh-bm-root">
         <div class="gh-bm-header">
-          <h2 class="gh-bm-title">
-            <i class="fas fa-book-open"></i>
-            בית מדרש
-          </h2>
-          <div class="gh-bm-search">
+          <div class="gh-bm-search-container">
+            <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
             <i class="fas fa-search gh-bm-search-icon"></i>
-            <input type="text" class="gh-bm-search-input" placeholder="חיפוש לפי נושא, כותרת..." />
           </div>
           <div class="gh-bm-count"></div>
         </div>
@@ -242,7 +238,7 @@ return;
     const root = this.container;
 
     // Search
-    const searchInput = root.querySelector('.gh-bm-search-input');
+    const searchInput = root.querySelector('.gh-bm-search');
     if (searchInput) {
       const handler = () => this._handleSearch(searchInput.value);
       searchInput.addEventListener('input', handler);
