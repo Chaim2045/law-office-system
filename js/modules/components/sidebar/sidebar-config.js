@@ -42,12 +42,20 @@ export const SIDEBAR_CONFIG = {
       icon: 'fa-book-open',
       tabName: 'beit-midrash',
       badge: 'new'
+    },
+    {
+      id: 'new-case',
+      label: 'תיק חדש',
+      icon: 'fa-folder-plus',
+      flyout: [
+        { id: 'new-client', label: 'לקוח חדש', icon: 'fa-user-plus', actionType: 'new-client' },
+        { id: 'existing-client', label: 'לקוח קיים', icon: 'fa-user-check', actionType: 'existing-client' }
+      ]
     }
   ],
 
   // Action buttons
   actions: [
-    { id: 'new-case', label: 'תיק חדש', icon: 'fa-folder-plus', actionType: 'new-case' },
     { id: 'refresh', label: 'רענן', icon: 'fa-sync-alt', actionType: 'refresh' }
   ],
 

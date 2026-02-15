@@ -118,7 +118,9 @@ export class Sidebar {
 
   _renderFlyout(item) {
     const items = item.flyout.map(sub => `
-      <button class="gh-sidebar-flyout-item" data-flyout-id="${sub.id}" data-tab-name="${sub.tabName}">
+      <button class="gh-sidebar-flyout-item" data-flyout-id="${sub.id}"
+              ${sub.tabName ? `data-tab-name="${sub.tabName}"` : ''}
+              ${sub.actionType ? `data-action-type="${sub.actionType}"` : ''}>
         <i class="fas ${sub.icon}"></i>
         ${sub.label}
       </button>
@@ -250,6 +252,7 @@ return;
 
       const flyoutId = flyoutItem.dataset.flyoutId;
       const tabName = flyoutItem.dataset.tabName;
+      const actionType = flyoutItem.dataset.actionType;
 
       // Find parent nav
       const wrapper = flyoutItem.closest('.gh-sidebar-item-wrapper');
@@ -260,7 +263,10 @@ return;
 
       if (tabName && window.switchTab) {
         window.switchTab(tabName);
+      } else if (actionType) {
+        this._handleAction(actionType);
       }
+
       if (this._onNavigateCallback) {
         this._onNavigateCallback(navId, flyoutId);
       }
@@ -278,25 +284,7 @@ return;
 return;
 }
 
-      const action = actionBtn.dataset.action;
-
-      switch (action) {
-        case 'new-case':
-          if (window.CaseCreationDialog) {
-            new window.CaseCreationDialog().open();
-          }
-          break;
-        case 'refresh':
-          if (window.manager?.loadDataFromFirebase) {
-            window.manager.loadDataFromFirebase();
-          }
-          break;
-        case 'logout':
-          if (window.logout) {
-            window.logout();
-          }
-          break;
-      }
+      this._handleAction(actionBtn.dataset.action);
     });
 
     // Collapse button (future use)
@@ -310,6 +298,32 @@ return;
   _on(el, event, handler) {
     el.addEventListener(event, handler);
     this._listeners.push({ el, event, handler });
+  }
+
+  _handleAction(actionType) {
+    switch (actionType) {
+      case 'new-client':
+        if (window.CaseCreationDialog) {
+          new window.CaseCreationDialog().open();
+        }
+        break;
+      case 'existing-client':
+        if (window.CaseCreationDialog) {
+          new window.CaseCreationDialog().open();
+          // TODO: בעתיד — לפתוח ישר במצב לקוח קיים
+        }
+        break;
+      case 'refresh':
+        if (window.manager?.loadDataFromFirebase) {
+          window.manager.loadDataFromFirebase();
+        }
+        break;
+      case 'logout':
+        if (window.logout) {
+          window.logout();
+        }
+        break;
+    }
   }
 
   // ════════════════════════════════════
