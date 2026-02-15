@@ -206,7 +206,12 @@ return;
         <div class="gh-bm-card-body">
           <div class="gh-bm-card-topic">${presentation.topic || ''}</div>
           <div class="gh-bm-card-title">${presentation.title || 'ללא כותרת'}</div>
-          ${presentation.description ? `<div class="gh-bm-card-desc">${presentation.description}</div>` : ''}
+          ${presentation.description ? `
+            <div class="gh-bm-card-desc">
+              <span class="gh-bm-card-desc-text">${presentation.description}</span>
+              <button class="gh-bm-card-read-more">קרא עוד</button>
+            </div>
+          ` : ''}
           <div class="gh-bm-card-footer">
             <span class="gh-bm-card-date">
               <i class="fas fa-calendar-alt"></i>
@@ -243,6 +248,18 @@ return;
       searchInput.addEventListener('input', handler);
       this._listeners.push({ el: searchInput, event: 'input', handler });
     }
+
+    // Read more toggle
+    this._on(root, 'click', (e) => {
+      if (e.target.classList.contains('gh-bm-card-read-more')) {
+        e.stopPropagation();
+        const descText = e.target.previousElementSibling;
+        if (descText) {
+          descText.classList.toggle('expanded');
+          e.target.textContent = descText.classList.contains('expanded') ? 'פחות' : 'קרא עוד';
+        }
+      }
+    });
 
     // Card click → open viewer
     this._on(root, 'click', (e) => {

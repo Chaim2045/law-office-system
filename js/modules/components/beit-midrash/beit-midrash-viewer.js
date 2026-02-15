@@ -15,6 +15,7 @@ export class PresentationViewer {
     this._keyHandler = null;
     this._touchStartX = 0;
     this._touchEndX = 0;
+    this.preloadedImages = [];
   }
 
   // ════════════════════════════════════
@@ -66,7 +67,49 @@ export class PresentationViewer {
 return;
 }
     this.currentSlide = index;
-    this._updateSlide();
+
+    const slideImg = this.overlay.querySelector('.gh-bm-viewer-slide');
+    if (!slideImg) {
+return;
+}
+
+    const preloaded = this.preloadedImages?.[index];
+
+    if (preloaded && preloaded.complete) {
+      slideImg.src = preloaded.src;
+      slideImg.style.opacity = '1';
+    } else {
+      slideImg.style.opacity = '0.3';
+      const img = preloaded || new Image();
+      img.onload = () => {
+        slideImg.src = img.src;
+        slideImg.style.opacity = '1';
+      };
+      if (!preloaded) {
+img.src = this.presentation.slides[index].url;
+}
+    }
+
+    // Update counter + dots
+    const counter = this.overlay.querySelector('.gh-bm-viewer-counter');
+    if (counter) {
+counter.textContent = `${this.totalSlides} / ${index + 1}`;
+}
+
+    const dots = this.overlay.querySelectorAll('.gh-bm-viewer-dot');
+    dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+
+    // Update arrows
+    const arrowRight = this.overlay.querySelector('.gh-bm-viewer-arrow-right');
+    const arrowLeft = this.overlay.querySelector('.gh-bm-viewer-arrow-left');
+    if (arrowRight) {
+      arrowRight.style.opacity = this.currentSlide > 0 ? '1' : '0.3';
+      arrowRight.style.pointerEvents = this.currentSlide > 0 ? 'auto' : 'none';
+    }
+    if (arrowLeft) {
+      arrowLeft.style.opacity = this.currentSlide < this.totalSlides - 1 ? '1' : '0.3';
+      arrowLeft.style.pointerEvents = this.currentSlide < this.totalSlides - 1 ? 'auto' : 'none';
+    }
   }
 
   next() {
@@ -87,6 +130,7 @@ return;
 
   _render() {
     const hasVideo = !!this.presentation.videoUrl;
+    const hasInfographic = !!this.presentation.infographic?.url;
 
     this.overlay = document.createElement('div');
     this.overlay.className = 'gh-bm-viewer-overlay';
@@ -95,14 +139,21 @@ return;
         <div class="gh-bm-viewer-header">
           <div class="gh-bm-viewer-title">${this.presentation.title || ''}</div>
           <div class="gh-bm-viewer-controls">
-            ${hasVideo ? `
+            ${(hasVideo || hasInfographic) ? `
               <div class="gh-bm-viewer-mode-toggle">
                 <button class="gh-bm-viewer-mode active" data-mode="slides">
                   <i class="fas fa-images"></i> שקפים
                 </button>
-                <button class="gh-bm-viewer-mode" data-mode="video">
-                  <i class="fas fa-video"></i> סרטון
-                </button>
+                ${hasVideo ? `
+                  <button class="gh-bm-viewer-mode" data-mode="video">
+                    <i class="fas fa-video"></i> סרטון
+                  </button>
+                ` : ''}
+                ${hasInfographic ? `
+                  <button class="gh-bm-viewer-mode" data-mode="infographic">
+                    <i class="fas fa-chart-bar"></i> אינפוגרפיקה
+                  </button>
+                ` : ''}
               </div>
             ` : ''}
             <span class="gh-bm-viewer-counter">
@@ -132,6 +183,11 @@ return;
               </video>
             ` : ''}
           </div>
+          <div class="gh-bm-viewer-infographic-container" style="display: none;">
+            ${hasInfographic ? `
+              <img class="gh-bm-viewer-infographic" src="${this.presentation.infographic.url}" alt="אינפוגרפיקה" />
+            ` : ''}
+          </div>
           <button class="gh-bm-viewer-arrow gh-bm-viewer-arrow-left" title="הבא">
             <i class="fas fa-chevron-left"></i>
           </button>
@@ -145,52 +201,24 @@ return;
     `;
     document.body.appendChild(this.overlay);
 
+    this._preloadSlides();
+
     requestAnimationFrame(() => {
       this.overlay.classList.add('visible');
     });
   }
 
-  _updateSlide() {
-    if (!this.overlay) {
-return;
-}
-
-    const img = this.overlay.querySelector('.gh-bm-viewer-slide');
-    const counter = this.overlay.querySelector('.gh-bm-viewer-counter');
-    const dots = this.overlay.querySelectorAll('.gh-bm-viewer-dot');
-    const arrowRight = this.overlay.querySelector('.gh-bm-viewer-arrow-right');
-    const arrowLeft = this.overlay.querySelector('.gh-bm-viewer-arrow-left');
-
-    // Update image
-    const slide = this.presentation.slides[this.currentSlide];
-    if (img && slide) {
+  _preloadSlides() {
+    this.preloadedImages = [];
+    this.presentation.slides.forEach((slide, i) => {
+      const img = new Image();
       img.src = slide.url;
-      img.alt = `Slide ${this.currentSlide + 1}`;
-    }
-
-    // Update counter (RTL: total / current)
-    if (counter) {
-      counter.textContent = `${this.totalSlides} / ${this.currentSlide + 1}`;
-    }
-
-    // Update dots
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('active', i === this.currentSlide);
+      this.preloadedImages[i] = img;
     });
-
-    // Update arrows
-    if (arrowRight) {
-      arrowRight.style.opacity = this.currentSlide > 0 ? '1' : '0.3';
-      arrowRight.style.pointerEvents = this.currentSlide > 0 ? 'auto' : 'none';
-    }
-    if (arrowLeft) {
-      arrowLeft.style.opacity = this.currentSlide < this.totalSlides - 1 ? '1' : '0.3';
-      arrowLeft.style.pointerEvents = this.currentSlide < this.totalSlides - 1 ? 'auto' : 'none';
-    }
   }
 
   // ════════════════════════════════════
-  // Mode switching (slides / video)
+  // Mode switching (slides / video / infographic)
   // ════════════════════════════════════
 
   _switchMode(mode) {
@@ -200,6 +228,7 @@ return;
 
     const slideContainer = this.overlay.querySelector('.gh-bm-viewer-slide-container');
     const videoContainer = this.overlay.querySelector('.gh-bm-viewer-video-container');
+    const infographicContainer = this.overlay.querySelector('.gh-bm-viewer-infographic-container');
     const arrows = this.overlay.querySelectorAll('.gh-bm-viewer-arrow');
     const dots = this.overlay.querySelector('.gh-bm-viewer-dots');
     const counter = this.overlay.querySelector('.gh-bm-viewer-counter');
@@ -209,10 +238,18 @@ return;
       btn.classList.toggle('active', btn.dataset.mode === mode);
     });
 
-    if (mode === 'video') {
-      if (slideContainer) {
+    // Hide all containers
+    if (slideContainer) {
 slideContainer.style.display = 'none';
 }
+    if (videoContainer) {
+videoContainer.style.display = 'none';
+}
+    if (infographicContainer) {
+infographicContainer.style.display = 'none';
+}
+
+    if (mode === 'video') {
       if (videoContainer) {
         videoContainer.style.display = 'flex';
         const video = videoContainer.querySelector('video');
@@ -222,7 +259,7 @@ slideContainer.style.display = 'none';
             source.src = this.presentation.videoUrl;
             video.load();
           }
-          video.play().catch(() => {}); // autoplay may be blocked
+          video.play().catch(() => {});
         }
       }
       arrows.forEach(a => a.style.display = 'none');
@@ -232,23 +269,38 @@ dots.style.display = 'none';
       if (counter) {
 counter.style.display = 'none';
 }
+    } else if (mode === 'infographic') {
+      if (infographicContainer) {
+infographicContainer.style.display = 'flex';
+}
+      arrows.forEach(a => a.style.display = 'none');
+      if (dots) {
+dots.style.display = 'none';
+}
+      if (counter) {
+counter.style.display = 'none';
+}
+      // Pause video if playing
+      const video = videoContainer?.querySelector('video');
+      if (video) {
+video.pause();
+}
     } else {
+      // slides
       if (slideContainer) {
 slideContainer.style.display = 'flex';
 }
-      if (videoContainer) {
-        videoContainer.style.display = 'none';
-        const video = videoContainer.querySelector('video');
-        if (video) {
-video.pause();
-}
-      }
       arrows.forEach(a => a.style.display = 'flex');
       if (dots) {
 dots.style.display = 'flex';
 }
       if (counter) {
 counter.style.display = '';
+}
+      // Pause video if playing
+      const video = videoContainer?.querySelector('video');
+      if (video) {
+video.pause();
 }
     }
   }
@@ -283,7 +335,7 @@ return;
       });
     });
 
-    // Mode toggle (slides / video)
+    // Mode toggle (slides / video / infographic)
     this.overlay.querySelectorAll('.gh-bm-viewer-mode').forEach(btn => {
       btn.addEventListener('click', () => {
         this._switchMode(btn.dataset.mode);

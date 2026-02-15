@@ -112,6 +112,12 @@ reportsTab.classList.add('active');
     plusButton.style.opacity = '1';
   }
 
+  // Restore plus container (hidden by beit-midrash tab)
+  const plusContainer = document.querySelector('.plus-container-new');
+  if (plusContainer) {
+plusContainer.style.display = '';
+}
+
   // Update global state (imported as reference, but we need to update the original)
   // This will be handled by the importing module
   window.currentActiveTab = tabName;
