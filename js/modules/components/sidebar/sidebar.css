@@ -1,0 +1,332 @@
+/* ═══════════════════════════════════════
+   GH Sidebar Component
+   prefix: gh-sidebar-*
+   ═══════════════════════════════════════ */
+
+/* Root */
+.gh-sidebar-root {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 72px;
+  height: 100vh;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  z-index: 1000;
+  border-left: 1px solid #1e293b;
+  box-shadow: -4px 0 24px rgb(0 0 0 / 20%);
+  transition: transform 0.3s ease;
+}
+
+.gh-sidebar-root.hidden {
+  display: none;
+}
+
+/* Push main content */
+.gh-sidebar-root:not(.hidden) ~ .main-content,
+.gh-sidebar-root:not(.hidden) ~ * .main-content {
+  margin-right: 72px;
+}
+
+/* ─── Brand ─── */
+.gh-sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #1e293b;
+  width: 100%;
+}
+
+.gh-sidebar-brand-logo {
+  width: 34px;
+  height: 34px;
+  background: url('/images/logo.png') center/contain no-repeat;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 5px;
+  filter: brightness(0) invert(1);
+}
+
+.gh-sidebar-brand-name {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ─── Nav Group ─── */
+.gh-sidebar-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.gh-sidebar-group + .gh-sidebar-group {
+  border-top: 1px solid #1e293b;
+}
+
+/* ─── Nav Item Wrapper (item + flyout) ─── */
+.gh-sidebar-item-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+/* ─── Nav Item ─── */
+.gh-sidebar-item {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  font-family: inherit;
+}
+
+.gh-sidebar-item i {
+  font-size: 17px;
+  transition: all 0.2s ease;
+}
+
+.gh-sidebar-item span {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.gh-sidebar-item:hover {
+  background: rgb(255 255 255 / 8%);
+  color: #f1f5f9;
+}
+
+/* Active state */
+.gh-sidebar-item.active {
+  background: rgb(59 130 246 / 15%);
+  color: #3b82f6;
+}
+
+.gh-sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 22px;
+  background: #3b82f6;
+  border-radius: 0 3px 3px 0;
+}
+
+/* CTA style (תיק חדש) */
+.gh-sidebar-item--cta {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  box-shadow: 0 3px 10px rgb(59 130 246 / 30%);
+}
+
+.gh-sidebar-item--cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgb(59 130 246 / 30%);
+  color: white;
+}
+
+/* Danger style (יציאה) */
+.gh-sidebar-item--danger {
+  color: #f87171;
+}
+
+.gh-sidebar-item--danger:hover {
+  background: rgb(239 68 68 / 12%);
+  color: #fca5a5;
+}
+
+/* Break style (הפסקה) */
+.gh-sidebar-item--break {
+  color: #f59e0b;
+}
+
+.gh-sidebar-item--break:hover {
+  background: rgb(245 158 11 / 12%);
+}
+
+/* New badge (green dot) */
+.gh-sidebar-badge-new {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgb(34 197 94 / 50%);
+  animation: gh-sidebar-pulse 2s ease infinite;
+}
+
+@keyframes gh-sidebar-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+
+  50% { opacity: 0.6; transform: scale(1.4); }
+}
+
+/* ─── Flyout Submenu ─── */
+.gh-sidebar-flyout {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) translateX(8px);
+  left: calc(-200px - 12px);
+  width: 200px;
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 8px 0;
+  box-shadow: -8px 4px 24px rgb(0 0 0 / 35%), 0 0 0 1px rgb(255 255 255 / 5%);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+/* Bridge — prevents flyout from closing when moving mouse to it */
+.gh-sidebar-flyout::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -16px;
+  width: 20px;
+  height: 100%;
+}
+
+.gh-sidebar-item-wrapper:hover .gh-sidebar-flyout {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+  pointer-events: auto;
+}
+
+.gh-sidebar-flyout-header {
+  padding: 8px 16px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  border-bottom: 1px solid rgb(255 255 255 / 6%);
+  margin-bottom: 4px;
+}
+
+.gh-sidebar-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: right;
+  font-family: inherit;
+}
+
+.gh-sidebar-flyout-item:hover {
+  background: rgb(255 255 255 / 6%);
+  color: #f1f5f9;
+}
+
+.gh-sidebar-flyout-item.active {
+  color: #3b82f6;
+  background: rgb(59 130 246 / 8%);
+}
+
+.gh-sidebar-flyout-item i {
+  font-size: 13px;
+  width: 18px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* ─── Footer ─── */
+.gh-sidebar-footer {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px solid #1e293b;
+  gap: 2px;
+}
+
+/* ─── Collapse ─── */
+.gh-sidebar-collapse {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 2px;
+}
+
+.gh-sidebar-collapse:hover {
+  background: rgb(255 255 255 / 8%);
+  color: #94a3b8;
+}
+
+/* ─── Mobile ─── */
+@media (width <= 768px) {
+  .gh-sidebar-root {
+    transform: translateX(100%);
+  }
+
+  .gh-sidebar-root.open {
+    transform: translateX(0);
+  }
+
+  .gh-sidebar-root:not(.hidden) ~ .main-content,
+  .gh-sidebar-root:not(.hidden) ~ * .main-content {
+    margin-right: 0;
+  }
+}
+
+@media (width <= 480px) {
+  .gh-sidebar-root {
+    transform: translateX(100%);
+  }
+
+  .gh-sidebar-root.open {
+    transform: translateX(0);
+  }
+}
+
+/* ─── Print ─── */
+@media print {
+  .gh-sidebar-root { display: none; }
+}
