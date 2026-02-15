@@ -9,18 +9,53 @@
   direction: rtl;
 }
 
-/* ─── Header ─── */
+/* ─── Header with background ─── */
 .gh-bm-header {
-  position: sticky;
-  top: 0;
+  position: relative;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 32px 24px 40px;
+  margin-bottom: 30px;
+  border-radius: 0 0 16px 16px;
+}
+
+.gh-bm-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  direction: rtl;
+}
+
+.gh-bm-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.gh-bm-header-title i {
+  color: #6366f1;
+  font-size: 24px;
+}
+
+.gh-bm-header-count {
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* ─── Floating Search Bar — overlaps header bottom ─── */
+.gh-bm-search-float {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 500px;
   z-index: 10;
-  padding: 16px 24px 12px;
-  background: transparent;
 }
 
 .gh-bm-search-container {
-  max-width: 500px;
-  margin: 0 auto;
   position: relative;
 }
 
@@ -33,7 +68,7 @@
   background-size: 300% 300%;
   animation: gh-bm-search-glow 4s ease infinite;
   z-index: -1;
-  opacity: 0.5;
+  opacity: 0.4;
   transition: opacity 0.3s ease;
 }
 
@@ -51,13 +86,13 @@
 
 .gh-bm-search {
   width: 100%;
-  padding: 12px 20px 12px 44px;
+  padding: 14px 20px 14px 44px;
   border: 2px solid transparent;
   border-radius: 50px;
   font-size: 14px;
   font-family: inherit;
-  background: rgb(255 255 255 / 95%);
-  box-shadow: 0 4px 20px rgb(0 0 0 / 8%);
+  background: white;
+  box-shadow: 0 4px 24px rgb(0 0 0 / 10%);
   outline: none;
   direction: rtl;
   color: #0f172a;
@@ -66,7 +101,7 @@
 
 .gh-bm-search:focus {
   border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgb(129 140 248 / 15%), 0 4px 20px rgb(0 0 0 / 8%);
+  box-shadow: 0 0 0 3px rgb(129 140 248 / 15%), 0 4px 24px rgb(0 0 0 / 10%);
 }
 
 .gh-bm-search::placeholder {
@@ -81,14 +116,6 @@
   color: #94a3b8;
   font-size: 14px;
   pointer-events: none;
-}
-
-.gh-bm-count {
-  font-size: 13px;
-  color: #64748b;
-  white-space: nowrap;
-  text-align: center;
-  margin-top: 8px;
 }
 
 /* ─── Grid ─── */
@@ -563,11 +590,16 @@
   }
 
   .gh-bm-header {
-    padding: 12px 16px 8px;
+    padding: 24px 16px 36px;
+    margin-bottom: 24px;
   }
 
-  .gh-bm-search-container {
-    max-width: 100%;
+  .gh-bm-header-title {
+    font-size: 18px;
+  }
+
+  .gh-bm-search-float {
+    width: 94%;
   }
 
   .gh-bm-grid {

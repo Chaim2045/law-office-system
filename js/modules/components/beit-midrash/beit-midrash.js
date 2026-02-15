@@ -124,11 +124,19 @@ export class BeitMidrash {
     this.container.innerHTML = `
       <div class="gh-bm-root">
         <div class="gh-bm-header">
-          <div class="gh-bm-search-container">
-            <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
-            <i class="fas fa-search gh-bm-search-icon"></i>
+          <div class="gh-bm-header-content">
+            <div class="gh-bm-header-title">
+              <i class="fas fa-book-open"></i>
+              <span>בית מדרש</span>
+            </div>
+            <div class="gh-bm-header-count"></div>
           </div>
-          <div class="gh-bm-count"></div>
+          <div class="gh-bm-search-float">
+            <div class="gh-bm-search-container">
+              <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
+              <i class="fas fa-search gh-bm-search-icon"></i>
+            </div>
+          </div>
         </div>
         <div class="gh-bm-grid"></div>
       </div>
@@ -224,7 +232,7 @@ return;
   }
 
   _updateCount(count) {
-    const countEl = this.container.querySelector('.gh-bm-count');
+    const countEl = this.container.querySelector('.gh-bm-header-count');
     if (countEl) {
       countEl.textContent = count > 0 ? `${count} מצגות` : '';
     }
