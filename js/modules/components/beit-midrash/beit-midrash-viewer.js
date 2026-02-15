@@ -40,6 +40,13 @@ export class PresentationViewer {
   }
 
   destroy() {
+    // Stop video if playing
+    if (this.overlay) {
+      const iframe = this.overlay.querySelector('.gh-bm-viewer-video');
+      if (iframe) {
+iframe.src = '';
+}
+    }
     if (this._keyHandler) {
       document.removeEventListener('keydown', this._keyHandler);
       this._keyHandler = null;
@@ -80,6 +87,8 @@ return;
   // ════════════════════════════════════
 
   _render() {
+    const hasVideo = !!this.presentation.videoUrl;
+
     this.overlay = document.createElement('div');
     this.overlay.className = 'gh-bm-viewer-overlay';
     this.overlay.innerHTML = `
@@ -87,6 +96,16 @@ return;
         <div class="gh-bm-viewer-header">
           <div class="gh-bm-viewer-title">${this.presentation.title || ''}</div>
           <div class="gh-bm-viewer-controls">
+            ${hasVideo ? `
+              <div class="gh-bm-viewer-mode-toggle">
+                <button class="gh-bm-viewer-mode active" data-mode="slides">
+                  <i class="fas fa-images"></i> שקפים
+                </button>
+                <button class="gh-bm-viewer-mode" data-mode="video">
+                  <i class="fas fa-video"></i> סרטון
+                </button>
+              </div>
+            ` : ''}
             <span class="gh-bm-viewer-counter">
               ${this.totalSlides} / 1
             </span>
@@ -107,6 +126,16 @@ return;
           <div class="gh-bm-viewer-slide-container">
             <img class="gh-bm-viewer-slide" src="${this.presentation.slides[0].url}" alt="Slide 1" />
           </div>
+          <div class="gh-bm-viewer-video-container" style="display: none;">
+            ${hasVideo ? `
+              <iframe class="gh-bm-viewer-video"
+                      src=""
+                      frameborder="0"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowfullscreen>
+              </iframe>
+            ` : ''}
+          </div>
           <button class="gh-bm-viewer-arrow gh-bm-viewer-arrow-left" title="הבא">
             <i class="fas fa-chevron-left"></i>
           </button>
@@ -120,7 +149,6 @@ return;
     `;
     document.body.appendChild(this.overlay);
 
-    // Fade in
     requestAnimationFrame(() => {
       this.overlay.classList.add('visible');
     });
@@ -166,6 +194,65 @@ return;
   }
 
   // ════════════════════════════════════
+  // Mode switching (slides / video)
+  // ════════════════════════════════════
+
+  _switchMode(mode) {
+    if (!this.overlay) {
+return;
+}
+
+    const slideContainer = this.overlay.querySelector('.gh-bm-viewer-slide-container');
+    const videoContainer = this.overlay.querySelector('.gh-bm-viewer-video-container');
+    const arrows = this.overlay.querySelectorAll('.gh-bm-viewer-arrow');
+    const dots = this.overlay.querySelector('.gh-bm-viewer-dots');
+    const counter = this.overlay.querySelector('.gh-bm-viewer-counter');
+    const modeButtons = this.overlay.querySelectorAll('.gh-bm-viewer-mode');
+
+    modeButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    if (mode === 'video') {
+      if (slideContainer) {
+slideContainer.style.display = 'none';
+}
+      if (videoContainer) {
+        videoContainer.style.display = 'flex';
+        const iframe = videoContainer.querySelector('iframe');
+        if (iframe && !iframe.src) {
+          iframe.src = this.presentation.videoUrl;
+        }
+      }
+      arrows.forEach(a => a.style.display = 'none');
+      if (dots) {
+dots.style.display = 'none';
+}
+      if (counter) {
+counter.style.display = 'none';
+}
+    } else {
+      if (slideContainer) {
+slideContainer.style.display = 'flex';
+}
+      if (videoContainer) {
+        videoContainer.style.display = 'none';
+        const iframe = videoContainer.querySelector('iframe');
+        if (iframe) {
+iframe.src = '';
+}  // Stop video playback
+      }
+      arrows.forEach(a => a.style.display = 'flex');
+      if (dots) {
+dots.style.display = 'flex';
+}
+      if (counter) {
+counter.style.display = '';
+}
+    }
+  }
+
+  // ════════════════════════════════════
   // Events
   // ════════════════════════════════════
 
@@ -192,6 +279,13 @@ return;
     this.overlay.querySelectorAll('.gh-bm-viewer-dot').forEach(dot => {
       dot.addEventListener('click', () => {
         this.goTo(parseInt(dot.dataset.index));
+      });
+    });
+
+    // Mode toggle (slides / video)
+    this.overlay.querySelectorAll('.gh-bm-viewer-mode').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._switchMode(btn.dataset.mode);
       });
     });
 

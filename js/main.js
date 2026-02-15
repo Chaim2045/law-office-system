@@ -83,6 +83,9 @@ import * as DebugTools from './modules/debug-tools.js';
 // Sidebar Component
 import { Sidebar } from './modules/components/sidebar/sidebar.js';
 
+// Beit Midrash Component
+import { BeitMidrash } from './modules/components/beit-midrash/beit-midrash.js';
+
 
 /* ========================================
    MAIN APPLICATION CLASS
@@ -3184,6 +3187,22 @@ function initSidebar() {
     window.toggleSidebar = () => sidebar.toggle();
   }
 }
+
+// Initialize Beit Midrash Component (lazy — first visit only)
+let beitMidrashInstance = null;
+
+function initBeitMidrash() {
+  if (beitMidrashInstance) {
+return;
+}
+  const root = document.getElementById('beitMidrashRoot');
+  if (root) {
+    beitMidrashInstance = new BeitMidrash(root);
+    beitMidrashInstance.init();
+  }
+}
+
+window.initBeitMidrash = initBeitMidrash;
 
 // Initialize listeners when DOM is ready
 if (document.readyState === 'loading') {

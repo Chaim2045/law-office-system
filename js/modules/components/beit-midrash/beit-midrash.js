@@ -159,8 +159,11 @@ return;
 }
     grid.innerHTML = `
       <div class="gh-bm-empty">
-        <i class="fas fa-book-open"></i>
-        <span>${message}</span>
+        <div class="gh-bm-empty-icon">
+          <i class="fas fa-book-open"></i>
+        </div>
+        <h3 class="gh-bm-empty-title">${message}</h3>
+        <p class="gh-bm-empty-subtitle">תכנים חדשים יתווספו בקרוב</p>
       </div>
     `;
     this._updateCount(0);
@@ -187,14 +190,14 @@ return;
       : '';
 
     const thumbnail = presentation.thumbnail || '';
-    const thumbnailStyle = thumbnail
-      ? `background-image: url('${thumbnail}')`
-      : '';
+    const thumbnailStyle = thumbnail ? `background-image: url('${thumbnail}')` : '';
+    const hasVideo = !!presentation.videoUrl;
 
     return `
       <div class="gh-bm-card" data-presentation-id="${presentation.id}">
         <div class="gh-bm-card-thumbnail" style="${thumbnailStyle}">
           ${!thumbnail ? '<i class="fas fa-file-powerpoint"></i>' : ''}
+          ${hasVideo ? '<div class="gh-bm-card-video-badge"><i class="fas fa-play-circle"></i> סרטון</div>' : ''}
           <div class="gh-bm-card-slides-count">
             <i class="fas fa-images"></i>
             ${presentation.slidesCount || 0} שקפים
@@ -209,6 +212,10 @@ return;
               <i class="fas fa-calendar-alt"></i>
               ${date}
             </span>
+            <div class="gh-bm-card-tags">
+              ${hasVideo ? '<span class="gh-bm-tag gh-bm-tag-video"><i class="fas fa-video"></i></span>' : ''}
+              <span class="gh-bm-tag gh-bm-tag-slides"><i class="fas fa-images"></i></span>
+            </div>
           </div>
         </div>
       </div>

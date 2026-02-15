@@ -36,6 +36,23 @@ timesheetFormContainer.classList.add('hidden');
     content.classList.remove('active');
   });
 
+  // Beit Midrash — separate flow (lazy init, hide plus)
+  if (tabName === 'beit-midrash') {
+    const bmTab = document.getElementById('beitMidrashTab');
+    if (bmTab) {
+bmTab.classList.add('active');
+}
+    const plusContainer = document.querySelector('.plus-container-new');
+    if (plusContainer) {
+plusContainer.style.display = 'none';
+}
+    if (window.initBeitMidrash) {
+window.initBeitMidrash();
+}
+    window.currentActiveTab = tabName;
+    return;
+  }
+
   // הוספת active לכפתור ולתוכן הנכונים
   if (tabName === 'budget') {
     const budgetTab = document.getElementById('budgetTab');
