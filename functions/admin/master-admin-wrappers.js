@@ -593,8 +593,9 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
     const targetYear = data.year || new Date().getFullYear();
 
     // חישוב תאריכי התחלה וסוף חודש
-    const startOfMonth = new Date(targetYear, targetMonth - 1, 1).toISOString().split('T')[0]; // YYYY-MM-DD
-    const endOfMonth = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0]; // Last day of month
+    const startOfMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+    const endOfMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     // שליפה מקבילה של כל הנתונים (Performance Optimization)
     // ✅ REFACTOR: activitySnapshot removed - loaded lazily via getUserActivity
@@ -618,7 +619,6 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       db.collection('budget_tasks')
         .where('employee', '==', data.email) // ✅ Use EMAIL (not username)
         .orderBy('createdAt', 'desc')
-        .limit(50)
         .get(),
 
       // שליפת שעות (לפי חודש נבחר)

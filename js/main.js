@@ -847,6 +847,7 @@ class LawOfficeManager {
       this.clients = clients;
       this.budgetTasks = budgetTasks;
       this.timesheetEntries = timesheetEntries;
+      await this.loadMonthlyTimesheetStats();
 
       // ✅ Expose to window for backward compatibility with old code
       window.clients = clients;
@@ -1641,6 +1642,7 @@ completedBadge.style.display = 'none';
             || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         );
         this.filterTimesheetEntries();
+        this.loadMonthlyTimesheetStats();
 
         // Emit EventBus event
         window.EventBus.emit('timesheet:entry-created', {
@@ -1690,15 +1692,48 @@ plusButton.classList.remove('active');
     this.renderTimesheetView();
   }
 
+  async loadMonthlyTimesheetStats() {
+    try {
+      const now = new Date();
+      const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+      const snapshot = await window.firebaseDB
+        .collection('timesheet_entries')
+        .where('employee', '==', this.currentUser)
+        .where('date', '>=', startOfMonth)
+        .get();
+
+      const monthMinutes = snapshot.docs.reduce((sum, doc) => {
+        return sum + (doc.data().minutes || 0);
+      }, 0);
+
+      this.monthlyStats = {
+        monthMinutes: monthMinutes,
+        monthHours: Math.round((monthMinutes / 60) * 10) / 10,
+        monthEntries: snapshot.docs.length
+      };
+    } catch (error) {
+      console.error('Failed to load monthly stats:', error);
+      this.monthlyStats = null;
+    }
+  }
+
   renderTimesheetView() {
     // Calculate statistics on ALL entries (not filtered) to show total counts
-    const stats = window.StatisticsModule
+    const paginationStats = window.StatisticsModule
       ? window.StatisticsModule.calculateTimesheetStatistics(this.timesheetEntries)
       : {
           totalMinutes: Timesheet.getTotalMinutes(this.filteredTimesheetEntries),
           totalHours: Math.round((Timesheet.getTotalMinutes(this.filteredTimesheetEntries) / 60) * 10) / 10,
           totalEntries: this.filteredTimesheetEntries.length
         };
+
+    // Override monthly stats with accurate query if available
+    const stats = {
+      ...paginationStats,
+      monthMinutes: this.monthlyStats?.monthMinutes ?? paginationStats.monthMinutes,
+      monthHours: this.monthlyStats?.monthHours ?? paginationStats.monthHours
+    };
 
     const paginationStatus = {
       currentPage: this.currentTimesheetPage,
@@ -1907,6 +1942,7 @@ existingError.remove();
             || FirebaseOps.loadTimesheetFromFirebase(this.currentUser)
         );
         this.filterTimesheetEntries();
+        this.loadMonthlyTimesheetStats();
 
         // Emit EventBus event
         window.EventBus.emit('timesheet:entry-updated', {

@@ -144,7 +144,7 @@ async function loadTimesheetFromFirebase(employee) {
     const snapshot = await db
       .collection('timesheet_entries')
       .where('employee', '==', employee)
-      .limit(50) // ✅ Safety net - prevents loading all entries in fallback mode
+      .limit(1000) // Safety net - high limit to capture all entries
       .get();
 
     const entries = [];

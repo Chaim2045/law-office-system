@@ -307,22 +307,22 @@
                 db.collection('budget_tasks')
                     .where('employee', '==', userEmail)
                     .orderBy('createdAt', 'desc')
-                    .limit(50)
                     .get()
                     .catch(() => ({ docs: [] })),
 
                 // Get timesheet entries for selected month/year
                 (() => {
                     // ✅ סינון לפי חודש ושנה נבחרים
-                    const startOfMonth = new Date(this.selectedYear, this.selectedMonth - 1, 1);
-                    const endOfMonth = new Date(this.selectedYear, this.selectedMonth, 0, 23, 59, 59);
+                    const startOfMonth = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-01`;
+                    const lastDay = new Date(this.selectedYear, this.selectedMonth, 0).getDate();
+                    const endOfMonth = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`;
 
                     // ✅ FIX: שימוש בקולקציה timesheet_entries במקום timesheet
                     // ✅ FIX: שימוש בשדה employee במקום employeeEmail
                     return db.collection('timesheet_entries')
                         .where('employee', '==', userEmail)
-                        .where('date', '>=', startOfMonth.toISOString().split('T')[0])
-                        .where('date', '<=', endOfMonth.toISOString().split('T')[0])
+                        .where('date', '>=', startOfMonth)
+                        .where('date', '<=', endOfMonth)
                         .orderBy('date', 'desc')
                         .get()
                         .catch(() => ({ docs: [] }));
