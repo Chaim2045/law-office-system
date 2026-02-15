@@ -25,9 +25,9 @@
   display: none;
 }
 
-/* Push main content */
-.gh-sidebar-root:not(.hidden) ~ .main-content,
-.gh-sidebar-root:not(.hidden) ~ * .main-content {
+/* Push main content — #sidebarRoot is the actual DOM sibling of .main-content.
+   .gh-sidebar-root is rendered INSIDE #sidebarRoot, so ~ won't work from it. */
+#sidebarRoot:has(.gh-sidebar-root:not(.hidden)) ~ .main-content {
   margin-right: 72px;
 }
 
@@ -320,8 +320,7 @@
     transform: translateX(0);
   }
 
-  .gh-sidebar-root:not(.hidden) ~ .main-content,
-  .gh-sidebar-root:not(.hidden) ~ * .main-content {
+  #sidebarRoot:has(.gh-sidebar-root:not(.hidden)) ~ .main-content {
     margin-right: 0;
   }
 }

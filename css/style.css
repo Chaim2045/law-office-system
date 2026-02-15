@@ -213,6 +213,7 @@ body.logged-in .app-container {
 body.logged-in .main-content {
   padding: var(--space-lg) 0; /* רק למעלה ולמטה - ללא שוליים בצדדים */
   padding-bottom: 0;
+  margin-right: 72px; /* sidebar width — always visible when logged in */
   overflow: visible; /* vertical — body handles scroll */
   overflow-x: hidden; /* prevent horizontal spill behind sidebar */
   justify-content: flex-start;
