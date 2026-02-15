@@ -12,7 +12,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 72px;
+  right: var(--gh-sidebar-width);
   background: white;
   border-bottom: 1px solid #e5e7eb;
   padding: 16px 24px;
@@ -123,7 +123,7 @@
   top: 0 !important;
   right: 0 !important;
   transform: none !important;
-  width: 88px;
+  width: var(--gh-sidebar-width);
   height: 100vh;
   background: #1e293b;
   border-left: 1px solid #0f172a;
@@ -140,7 +140,7 @@
 /* When sidebar is visible, add margin to main content */
 .minimal-sidebar:not(.hidden) ~ .main-content,
 .minimal-sidebar:not(.hidden) ~ * .main-content {
-  margin-right: 88px;
+  margin-right: var(--gh-sidebar-width);
 }
 
 .sidebar-brand {

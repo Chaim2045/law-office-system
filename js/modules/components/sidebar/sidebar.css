@@ -3,12 +3,16 @@
    prefix: gh-sidebar-*
    ═══════════════════════════════════════ */
 
+:root {
+  --gh-sidebar-width: 72px;
+}
+
 /* Root */
 .gh-sidebar-root {
   position: fixed;
   top: 0;
   right: 0;
-  width: 72px;
+  width: var(--gh-sidebar-width);
   height: 100vh;
   background: #0f172a;
   display: flex;
@@ -28,7 +32,7 @@
 /* Push main content — #sidebarRoot is the actual DOM sibling of .main-content.
    .gh-sidebar-root is rendered INSIDE #sidebarRoot, so ~ won't work from it. */
 #sidebarRoot:has(.gh-sidebar-root:not(.hidden)) ~ .main-content {
-  margin-right: 72px;
+  margin-right: var(--gh-sidebar-width);
 }
 
 /* ─── Brand ─── */

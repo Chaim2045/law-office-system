@@ -14,7 +14,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 72px; /* Start after sidebar (72px width) */
+  right: var(--gh-sidebar-width); /* Start after sidebar */
   height: 32px;
   display: flex;
   align-items: center;

@@ -213,7 +213,7 @@ body.logged-in .app-container {
 body.logged-in .main-content {
   padding: var(--space-lg) 0; /* רק למעלה ולמטה - ללא שוליים בצדדים */
   padding-bottom: 0;
-  margin-right: 72px; /* sidebar width — always visible when logged in */
+  margin-right: var(--gh-sidebar-width); /* sidebar width — always visible when logged in */
   overflow: visible; /* vertical — body handles scroll */
   overflow-x: hidden; /* prevent horizontal spill behind sidebar */
   justify-content: flex-start;
@@ -511,7 +511,7 @@ body.logged-in .main-content::before {
 .notifications-dropdown {
   position: fixed;
   top: 68px;
-  right: calc(72px + 16px);
+  right: calc(var(--gh-sidebar-width) + 16px);
   width: 400px;
   max-width: calc(100vw - 32px);
   max-height: 540px;
@@ -930,7 +930,7 @@ body.logged-in .main-content::before {
 .toast-notification {
   position: fixed;
   top: 20px;
-  right: calc(72px + 20px);
+  right: calc(var(--gh-sidebar-width) + 20px);
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
