@@ -1,0 +1,413 @@
+/* ═══════════════════════════════════════
+   Beit Midrash Component
+   prefix: gh-bm-*
+   ═══════════════════════════════════════ */
+
+/* ─── Root ─── */
+.gh-bm-root {
+  padding: 24px;
+  direction: rtl;
+}
+
+/* ─── Header ─── */
+.gh-bm-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.gh-bm-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gh-bm-title i {
+  color: #3b82f6;
+  font-size: 20px;
+}
+
+.gh-bm-search {
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+  position: relative;
+}
+
+.gh-bm-search-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.gh-bm-search-input {
+  width: 100%;
+  padding: 10px 40px 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gh-bm-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
+  background: white;
+}
+
+.gh-bm-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.gh-bm-count {
+  font-size: 13px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* ─── Grid ─── */
+.gh-bm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* ─── Card ─── */
+.gh-bm-card {
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%), 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.gh-bm-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgb(0 0 0 / 8%), 0 4px 10px rgb(0 0 0 / 4%);
+}
+
+.gh-bm-card-thumbnail {
+  height: 160px;
+  background: #f1f5f9;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gh-bm-card-thumbnail > i {
+  font-size: 40px;
+  color: #cbd5e1;
+}
+
+.gh-bm-card-slides-count {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgb(0 0 0 / 60%);
+  color: white;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gh-bm-card-body {
+  padding: 14px 16px 16px;
+}
+
+.gh-bm-card-topic {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.gh-bm-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.gh-bm-card-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gh-bm-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gh-bm-card-date {
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ─── Loading ─── */
+.gh-bm-loading {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.gh-bm-loading i {
+  font-size: 28px;
+  color: #3b82f6;
+}
+
+/* ─── Empty ─── */
+.gh-bm-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #94a3b8;
+  font-size: 15px;
+}
+
+.gh-bm-empty i {
+  font-size: 40px;
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════
+   Viewer Overlay (Fullscreen Carousel)
+   ═══════════════════════════════════════ */
+
+.gh-bm-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 92%);
+  z-index: 60000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.gh-bm-viewer-overlay.visible {
+  opacity: 1;
+}
+
+.gh-bm-viewer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  direction: rtl;
+}
+
+/* ─── Viewer Header ─── */
+.gh-bm-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  color: white;
+}
+
+.gh-bm-viewer-title {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.gh-bm-viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gh-bm-viewer-counter {
+  font-size: 14px;
+  color: rgb(255 255 255 / 70%);
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-bm-viewer-download {
+  color: rgb(255 255 255 / 70%);
+  font-size: 16px;
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.gh-bm-viewer-download:hover {
+  color: white;
+}
+
+.gh-bm-viewer-close {
+  background: none;
+  border: none;
+  color: rgb(255 255 255 / 70%);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.gh-bm-viewer-close:hover {
+  color: white;
+  background: rgb(255 255 255 / 10%);
+}
+
+/* ─── Viewer Stage ─── */
+.gh-bm-viewer-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 24px;
+  position: relative;
+  min-height: 0;
+}
+
+.gh-bm-viewer-slide-container {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.gh-bm-viewer-slide {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 4px 30px rgb(0 0 0 / 30%);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ─── Viewer Arrows ─── */
+.gh-bm-viewer-arrow {
+  background: rgb(255 255 255 / 8%);
+  border: none;
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.gh-bm-viewer-arrow:hover {
+  background: rgb(255 255 255 / 15%);
+}
+
+/* ─── Viewer Dots ─── */
+.gh-bm-viewer-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 0 20px;
+}
+
+.gh-bm-viewer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 25%);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.gh-bm-viewer-dot.active {
+  background: white;
+  transform: scale(1.3);
+}
+
+.gh-bm-viewer-dot:hover:not(.active) {
+  background: rgb(255 255 255 / 50%);
+}
+
+/* ─── Responsive ─── */
+@media (width <= 768px) {
+  .gh-bm-root {
+    padding: 16px;
+  }
+
+  .gh-bm-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .gh-bm-search {
+    max-width: 100%;
+  }
+
+  .gh-bm-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+  }
+
+  .gh-bm-viewer-arrow {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .gh-bm-viewer-stage {
+    padding: 0 8px;
+    gap: 8px;
+  }
+}
+
+/* ─── Print ─── */
+@media print {
+  .gh-bm-viewer-overlay { display: none; }
+}
