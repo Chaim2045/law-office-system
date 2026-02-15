@@ -1703,6 +1703,12 @@ plusButton.classList.remove('active');
         .where('date', '>=', startOfMonth)
         .get();
 
+      // Store full month entries for accurate statistics
+      this.monthlyEntries = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
       // Week calculation
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay());
@@ -1737,32 +1743,16 @@ plusButton.classList.remove('active');
   }
 
   renderTimesheetView() {
-    // Calculate statistics on ALL entries (not filtered) to show total counts
-    const paginationStats = window.StatisticsModule
-      ? window.StatisticsModule.calculateTimesheetStatistics(this.timesheetEntries)
+    // Use full monthly entries if available, fallback to pagination
+    const statsEntries = this.monthlyEntries || this.timesheetEntries;
+
+    const stats = window.StatisticsModule
+      ? window.StatisticsModule.calculateTimesheetStatistics(statsEntries)
       : {
-          totalMinutes: Timesheet.getTotalMinutes(this.filteredTimesheetEntries),
-          totalHours: Math.round((Timesheet.getTotalMinutes(this.filteredTimesheetEntries) / 60) * 10) / 10,
-          totalEntries: this.filteredTimesheetEntries.length
+          totalMinutes: Timesheet.getTotalMinutes(statsEntries),
+          totalHours: Math.round((Timesheet.getTotalMinutes(statsEntries) / 60) * 10) / 10,
+          totalEntries: statsEntries.length
         };
-
-    // Override monthly stats with accurate query if available
-    const accurateMonthHours = this.monthlyStats?.monthHours ?? paginationStats.monthHours;
-    const accurateMonthMinutes = this.monthlyStats?.monthMinutes ?? paginationStats.monthMinutes;
-    const monthlyGoal = paginationStats.monthlyGoal || 156;
-
-    const stats = {
-      ...paginationStats,
-      monthMinutes: accurateMonthMinutes,
-      monthHours: accurateMonthHours,
-      weekMinutes: this.monthlyStats?.weekMinutes ?? paginationStats.weekMinutes,
-      weekHours: this.monthlyStats?.weekHours ?? paginationStats.weekHours,
-      hoursRemaining: Math.round(Math.max(0, monthlyGoal - accurateMonthHours)),
-      progressPercent: Math.round((accurateMonthHours / monthlyGoal) * 100),
-      totalMinutes: accurateMonthMinutes,
-      totalHours: accurateMonthHours,
-      totalEntries: this.monthlyStats?.monthEntries ?? paginationStats.totalEntries
-    };
 
     const paginationStatus = {
       currentPage: this.currentTimesheetPage,
