@@ -253,6 +253,7 @@ return;
     this._on(root, 'click', (e) => {
       if (e.target.classList.contains('gh-bm-card-read-more')) {
         e.stopPropagation();
+        e.preventDefault();
         const descText = e.target.previousElementSibling;
         if (descText) {
           descText.classList.toggle('expanded');
@@ -263,6 +264,9 @@ return;
 
     // Card click → open viewer
     this._on(root, 'click', (e) => {
+      if (e.target.closest('.gh-bm-card-read-more')) {
+return;
+}
       const card = e.target.closest('.gh-bm-card');
       if (!card) {
 return;

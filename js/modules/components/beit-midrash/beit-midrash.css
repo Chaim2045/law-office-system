@@ -155,6 +155,8 @@
 .gh-bm-card-desc {
   position: relative;
   margin-bottom: 10px;
+  text-align: right;
+  direction: rtl;
 }
 
 .gh-bm-card-desc-text {
@@ -182,6 +184,8 @@
   padding: 2px 0;
   margin-top: 2px;
   font-family: inherit;
+  display: block;
+  text-align: right;
 }
 
 .gh-bm-card-read-more:hover {

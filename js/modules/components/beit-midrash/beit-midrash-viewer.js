@@ -255,8 +255,8 @@ infographicContainer.style.display = 'none';
         const video = videoContainer.querySelector('video');
         if (video) {
           const source = video.querySelector('source');
-          if (source && !source.src) {
-            source.src = this.presentation.videoUrl;
+          if (source && (!source.getAttribute('src') || source.getAttribute('src') === '')) {
+            source.setAttribute('src', this.presentation.videoUrl);
             video.load();
           }
           video.play().catch(() => {});
@@ -341,6 +341,14 @@ return;
         this._switchMode(btn.dataset.mode);
       });
     });
+
+    // Video error logging
+    const video = this.overlay?.querySelector('video');
+    if (video) {
+      video.addEventListener('error', () => {
+        console.error('Video error:', video.error?.message, video.error?.code);
+      });
+    }
 
     // Keyboard
     this._keyHandler = (e) => {
