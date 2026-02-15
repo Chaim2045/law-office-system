@@ -304,13 +304,12 @@ return;
     switch (actionType) {
       case 'new-client':
         if (window.CaseCreationDialog) {
-          new window.CaseCreationDialog().open();
+          new window.CaseCreationDialog().open({ mode: 'new' });
         }
         break;
       case 'existing-client':
         if (window.CaseCreationDialog) {
-          new window.CaseCreationDialog().open();
-          // TODO: בעתיד — לפתוח ישר במצב לקוח קיים
+          new window.CaseCreationDialog().open({ mode: 'existing' });
         }
         break;
       case 'refresh':

@@ -312,8 +312,11 @@
     /**
      * פתיחת הדיאלוג
      */
-    async open() {
+    async open(options = {}) {
       try {
+        // Set initial mode from options (default: 'new')
+        this.currentMode = options.mode || 'new';
+
         // בדיקה שהמערכות מאותחלות
         if (!window.CaseNumberGenerator?.isInitialized) {
           await window.CaseNumberGenerator.initialize();
@@ -332,6 +335,11 @@
         // בניית ועקירת הדיאלוג
         this.renderDialog();
         this.attachEventListeners();
+
+        // Apply requested mode (switchMode sets tabs, title, steps, selector)
+        if (this.currentMode !== 'new') {
+          this.switchMode(this.currentMode);
+        }
 
         // 🎨 החל סטיילים ראשוניים על כל הטאבים הפעילים
         this.initializeActiveTabStyles();
