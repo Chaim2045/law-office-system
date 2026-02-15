@@ -567,8 +567,13 @@
         <!-- ===== תוכן האפליקציה (מוסתר עד כניסה) ===== -->
         <!-- APP CONTENT (Hidden until login) -->
         <div id="appContent" class="hidden">
-          <!-- currentUserDisplay — preserved for ui-components.js + virtual-assistant -->
-          <span id="currentUserDisplay" style="display:none;">טוען...</span>
+          <!-- Top user bar — user display only (nav moved to sidebar) -->
+          <div class="top-user-bar">
+            <div class="user-dropdown-top">
+              <span id="currentUserDisplay">טוען...</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+          </div>
 
           <!-- ===== כפתור פלוס חכם ===== -->
           <!-- SMART PLUS BUTTON -->

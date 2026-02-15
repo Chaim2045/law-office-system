@@ -33,8 +33,7 @@ export const SIDEBAR_CONFIG = {
       defaultPage: 'budget',
       flyout: [
         { id: 'budget', label: 'תקצוב משימות', icon: 'fa-tasks', tabName: 'budget' },
-        { id: 'timesheet', label: 'שעתון', icon: 'fa-clock', tabName: 'timesheet' },
-        { id: 'approvals', label: 'אישורים', icon: 'fa-check-circle', tabName: 'budget' }
+        { id: 'timesheet', label: 'שעתון', icon: 'fa-clock', tabName: 'timesheet' }
       ]
     },
     {

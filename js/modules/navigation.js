@@ -133,21 +133,15 @@ function clearAllNotifications() {
 
 function openSmartForm() {
   const plusButton = document.getElementById('smartPlusBtn');
-  const activeTab = document.querySelector('.tab-button.active');
-  if (!activeTab) {
-return;
-}
+  const activeTab = window.currentActiveTab || 'budget';
 
   let currentForm;
-  let formType; // Track which form we're opening
+  let formType;
 
-  if (activeTab.onclick && activeTab.onclick.toString().includes('budget')) {
+  if (activeTab === 'budget') {
     currentForm = document.getElementById('budgetFormContainer');
     formType = 'budget';
-  } else if (
-    activeTab.onclick &&
-    activeTab.onclick.toString().includes('timesheet')
-  ) {
+  } else if (activeTab === 'timesheet') {
     currentForm = document.getElementById('timesheetFormContainer');
     formType = 'timesheet';
   }
