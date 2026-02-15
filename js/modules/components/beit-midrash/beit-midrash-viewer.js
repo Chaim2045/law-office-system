@@ -41,11 +41,10 @@ export class PresentationViewer {
 
   destroy() {
     // Stop video if playing
-    if (this.overlay) {
-      const iframe = this.overlay.querySelector('.gh-bm-viewer-video');
-      if (iframe) {
-iframe.src = '';
-}
+    const video = this.overlay?.querySelector('video');
+    if (video) {
+      video.pause();
+      video.src = '';
     }
     if (this._keyHandler) {
       document.removeEventListener('keydown', this._keyHandler);
@@ -128,12 +127,9 @@ return;
           </div>
           <div class="gh-bm-viewer-video-container" style="display: none;">
             ${hasVideo ? `
-              <iframe class="gh-bm-viewer-video"
-                      src=""
-                      frameborder="0"
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowfullscreen>
-              </iframe>
+              <video class="gh-bm-viewer-video" controls>
+                <source src="" type="video/mp4">
+              </video>
             ` : ''}
           </div>
           <button class="gh-bm-viewer-arrow gh-bm-viewer-arrow-left" title="הבא">
@@ -219,9 +215,14 @@ slideContainer.style.display = 'none';
 }
       if (videoContainer) {
         videoContainer.style.display = 'flex';
-        const iframe = videoContainer.querySelector('iframe');
-        if (iframe && !iframe.src) {
-          iframe.src = this.presentation.videoUrl;
+        const video = videoContainer.querySelector('video');
+        if (video) {
+          const source = video.querySelector('source');
+          if (source && !source.src) {
+            source.src = this.presentation.videoUrl;
+            video.load();
+          }
+          video.play().catch(() => {}); // autoplay may be blocked
         }
       }
       arrows.forEach(a => a.style.display = 'none');
@@ -237,10 +238,10 @@ slideContainer.style.display = 'flex';
 }
       if (videoContainer) {
         videoContainer.style.display = 'none';
-        const iframe = videoContainer.querySelector('iframe');
-        if (iframe) {
-iframe.src = '';
-}  // Stop video playback
+        const video = videoContainer.querySelector('video');
+        if (video) {
+video.pause();
+}
       }
       arrows.forEach(a => a.style.display = 'flex');
       if (dots) {
