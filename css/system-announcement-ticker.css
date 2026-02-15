@@ -14,7 +14,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 88px; /* Start after sidebar (88px width) */
+  right: 72px; /* Start after sidebar (72px width) */
   height: 32px;
   display: flex;
   align-items: center;
@@ -296,6 +296,7 @@ nav[class*="nav"] {
 /* Tablets and below */
 @media (width <= 768px) {
   .ticker-container {
+    right: 0; /* sidebar hidden on mobile */
     height: 30px;
     padding: 0 16px;
     gap: 8px;

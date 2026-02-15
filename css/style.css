@@ -509,7 +509,7 @@ body.logged-in .main-content::before {
 .notifications-dropdown {
   position: fixed;
   top: 68px;
-  right: 16px;
+  right: calc(72px + 16px);
   width: 400px;
   max-width: calc(100vw - 32px);
   max-height: 540px;
@@ -928,7 +928,7 @@ body.logged-in .main-content::before {
 .toast-notification {
   position: fixed;
   top: 20px;
-  right: 20px;
+  right: calc(72px + 20px);
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 12px;

@@ -81,7 +81,7 @@
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 /* ─── Nav Item ─── */
@@ -118,6 +118,11 @@
 .gh-sidebar-item:hover {
   background: rgb(255 255 255 / 8%);
   color: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+.gh-sidebar-item:active {
+  transform: scale(0.95);
 }
 
 /* Active state */
@@ -253,6 +258,11 @@
 .gh-sidebar-flyout-item:hover {
   background: rgb(255 255 255 / 6%);
   color: #f1f5f9;
+  padding-right: 20px;
+}
+
+.gh-sidebar-flyout-item:active {
+  background: rgb(255 255 255 / 10%);
 }
 
 .gh-sidebar-flyout-item.active {
@@ -274,9 +284,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 6px;
+  padding-top: 8px;
   border-top: 1px solid #1e293b;
-  gap: 2px;
+  gap: 4px;
 }
 
 /* ─── Collapse ─── */

@@ -37,17 +37,17 @@ export const SIDEBAR_CONFIG = {
       ]
     },
     {
-      id: 'presentations',
-      label: 'מצגות',
-      icon: 'fa-chalkboard-teacher',
-      tabName: 'presentations',
+      id: 'beit-midrash',
+      label: 'בית מדרש',
+      icon: 'fa-book-open',
+      tabName: 'beit-midrash',
       badge: 'new'
     }
   ],
 
   // Action buttons
   actions: [
-    { id: 'new-case', label: 'תיק חדש', icon: 'fa-folder-plus', style: 'cta', actionType: 'new-case' },
+    { id: 'new-case', label: 'תיק חדש', icon: 'fa-folder-plus', actionType: 'new-case' },
     { id: 'refresh', label: 'רענן', icon: 'fa-sync-alt', actionType: 'refresh' }
   ],
 

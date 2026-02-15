@@ -126,7 +126,10 @@
 
 /* Mobile (max-width: 768px) */
 @media (width <= 768px) {
-  /* Old .minimal-sidebar rules — handled by gh-sidebar component CSS */
+  /* Sidebar hidden on mobile — reset right offsets */
+  .top-user-bar {
+    right: 0;
+  }
 
   .main-content {
     margin-right: 0;
