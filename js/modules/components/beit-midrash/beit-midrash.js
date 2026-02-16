@@ -45,7 +45,7 @@ export class BeitMidrash {
   // ════════════════════════════════════
 
   async init() {
-    this._injectCSS();
+    await this._injectCSS();
     this.render();
     this._bindEvents();
     await this.fetchPresentations();

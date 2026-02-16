@@ -56,12 +56,17 @@ window.beitMidrashInstance.hide();
     if (plusContainer) {
       plusContainer.style.display = 'none';
     }
-    if (window.initBeitMidrash) {
+    if (!window.beitMidrashInstance && window.initBeitMidrash) {
       window.initBeitMidrash();
+      // Give browser time to paint initial state before showing
+      setTimeout(() => {
+        if (window.beitMidrashInstance) {
+          window.beitMidrashInstance.show();
+        }
+      }, 50);
+    } else if (window.beitMidrashInstance) {
+      window.beitMidrashInstance.show();
     }
-    if (window.beitMidrashInstance) {
-window.beitMidrashInstance.show();
-}
     window.currentActiveTab = tabName;
     return;
   }
