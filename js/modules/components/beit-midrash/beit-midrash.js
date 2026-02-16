@@ -139,13 +139,13 @@ export class BeitMidrash {
 
     this.topbar.innerHTML = `
       <div class="gh-bm-topbar-right">
-        <div class="gh-bm-topbar-logo">
-          <i class="fas fa-book-open"></i>
+        <div class="gh-bm-topbar-greeting">
+          <span class="gh-bm-topbar-greeting-name">שלום, ${userName}</span>
+          <span class="gh-bm-topbar-greeting-sub">טוב לראות אותך פה</span>
         </div>
-        <div class="gh-bm-topbar-info">
-          <div class="gh-bm-topbar-welcome">שלום, ${userName}</div>
-          <div class="gh-bm-topbar-subtitle"></div>
-        </div>
+      </div>
+      <div class="gh-bm-topbar-left-info">
+        <div class="gh-bm-topbar-subtitle"></div>
       </div>
     `;
     document.body.appendChild(this.topbar);
@@ -155,6 +155,9 @@ export class BeitMidrash {
     this.searchFloat.className = 'gh-bm-search-float';
     this.searchFloat.innerHTML = `
       <div class="gh-bm-search-container">
+        <div class="gh-bm-search-book-icon">
+          <i class="fas fa-book-open"></i>
+        </div>
         <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
         <i class="fas fa-search gh-bm-search-icon"></i>
       </div>

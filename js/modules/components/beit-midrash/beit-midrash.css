@@ -49,43 +49,48 @@
   pointer-events: auto;
 }
 
-/* ─── Topbar Right — Logo + User ─── */
+/* ═══════════════════════════════════
+   TOPBAR LAYOUT
+   ═══════════════════════════════════ */
+
+/* ─── Right — Greeting badge ─── */
 .gh-bm-topbar-right {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
-.gh-bm-topbar-logo {
-  width: 36px;
-  height: 36px;
-  background: rgb(255 255 255 / 15%);
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.gh-bm-topbar-logo i {
-  font-size: 16px;
-  color: white;
-}
-
-.gh-bm-topbar-info {
+.gh-bm-topbar-greeting {
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 12px;
+  padding: 6px 16px;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(4px);
 }
 
-.gh-bm-topbar-welcome {
+.gh-bm-topbar-greeting-name {
   font-size: 14px;
   font-weight: 600;
   color: white;
 }
 
-.gh-bm-topbar-subtitle {
+.gh-bm-topbar-greeting-sub {
   font-size: 11px;
   color: rgb(255 255 255 / 70%);
   margin-top: 1px;
+}
+
+/* ─── Left — Library info ─── */
+.gh-bm-topbar-left-info {
+  display: flex;
+  align-items: center;
+}
+
+.gh-bm-topbar-subtitle {
+  font-size: 13px;
+  color: rgb(255 255 255 / 75%);
+  font-weight: 500;
 }
 
 /* ═══════════════════════════════════
@@ -151,7 +156,7 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  padding: 12px 20px 12px 44px;
+  padding: 12px 52px 12px 44px;
   border: none;
   border-radius: 48px;
   font-size: 14px;
@@ -173,6 +178,46 @@
   color: #94a3b8;
   font-size: 14px;
   z-index: 2;
+}
+
+/* ═══════════════════════════════════
+   SEARCH — BOOK ICON WITH ANIMATION
+   ═══════════════════════════════════ */
+
+.gh-bm-search-book-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: gh-bm-book-spin 4s ease-in-out infinite;
+}
+
+.gh-bm-search-book-icon i {
+  font-size: 16px;
+  color: #0369a1;
+  transition: color 0.3s ease;
+}
+
+.gh-bm-search-container:focus-within .gh-bm-search-book-icon i {
+  color: #0ea5e9;
+}
+
+@keyframes gh-bm-book-spin {
+  0% { transform: translateY(-50%) rotateY(0deg); }
+
+  25% { transform: translateY(-50%) rotateY(180deg); }
+
+  50% { transform: translateY(-50%) rotateY(360deg); }
+
+  75% { transform: translateY(-50%) rotateY(360deg); }
+
+  100% { transform: translateY(-50%) rotateY(360deg); }
 }
 
 @keyframes gh-bm-search-glow {
