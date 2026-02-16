@@ -59,14 +59,16 @@
   transform: rotate(180deg);
 }
 
-/* === OLD NAV BUTTONS CSS — NEUTRALIZED (nav moved to sidebar) === */
-#__neutralized_top_nav__ {
+/* === NAV BUTTONS CSS — re-enabled for top-user-bar === */
+
+/* Wrapper לכפתורי ניווט - ממרכז אותם */
 .top-nav-buttons-wrapper {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
 }
 
+/* כפתורי ניווט מרכזיים - תקצוב ושעתון */
 .top-nav-buttons {
   display: flex;
   gap: 8px;
@@ -112,9 +114,6 @@
   color: white;
   box-shadow: 0 4px 12px rgb(59 130 246 / 50%);
 }
-}
-
-/* === END OLD NAV BUTTONS CSS === */
 
 /* === OLD SIDEBAR CSS — NEUTRALIZED BY gh-sidebar component === */
 #__neutralized_sidebar__ {
