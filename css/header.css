@@ -22,7 +22,7 @@
   align-items: center;
   height: 68px;
   box-shadow: 0 2px 12px rgb(0 0 0 / 6%);
-  transition: top 0.18s ease;
+  transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .user-dropdown-top {

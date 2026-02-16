@@ -14,10 +14,6 @@
    ═══════════════════════════════════ */
 
 /* ─── Top user bar transition ─── */
-.top-user-bar {
-  transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
 .top-user-bar.bm-hidden {
   top: -80px !important;
 }
