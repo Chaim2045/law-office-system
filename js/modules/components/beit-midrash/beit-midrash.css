@@ -15,13 +15,11 @@
 
 /* ─── Top user bar transition ─── */
 .top-user-bar {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateY(0);
-  will-change: transform;
+  transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .top-user-bar.bm-hidden {
-  transform: translateY(-100%);
+  top: -80px !important;
 }
 
 /* ─── Topbar ─── */
