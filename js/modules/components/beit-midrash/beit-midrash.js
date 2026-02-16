@@ -38,6 +38,8 @@ export class BeitMidrash {
     this._listeners = [];
     this._cssElement = null;
     this._cssLoaded = false;
+    this._showTimeout = null;
+    this._hideTimeout = null;
   }
 
   // ════════════════════════════════════
@@ -188,39 +190,23 @@ export class BeitMidrash {
   }
 
   async show() {
-    // Clear any pending hide timeout
+    // Cancel any pending hide
     if (this._hideTimeout) {
       clearTimeout(this._hideTimeout);
       this._hideTimeout = null;
     }
 
-    // Ensure CSS is loaded before animating
+    // Ensure CSS loaded
     await this._injectCSS();
 
+    // ALWAYS hide top-user-bar
     const topBar = document.querySelector('.top-user-bar');
-
-    // If already hidden, just show BM elements immediately
-    if (topBar && topBar.classList.contains('bm-hidden')) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (this.topbar) {
-            this.topbar.classList.add('visible');
-          }
-          if (this.searchFloat) {
-            this.searchFloat.classList.add('visible');
-          }
-        });
-      });
-      return;
-    }
-
-    // Hide top-user-bar first
     if (topBar) {
       topBar.classList.add('bm-hidden');
     }
 
-    // Wait for top-user-bar to slide up, then show BM elements
-    setTimeout(() => {
+    // Show BM elements after bar starts hiding
+    this._showTimeout = setTimeout(() => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (this.topbar) {
@@ -231,10 +217,17 @@ export class BeitMidrash {
           }
         });
       });
-    }, 500);
+    }, 300);
   }
 
   hide() {
+    // Cancel any pending show
+    if (this._showTimeout) {
+      clearTimeout(this._showTimeout);
+      this._showTimeout = null;
+    }
+
+    // ALWAYS hide BM elements
     if (this.topbar) {
       this.topbar.classList.remove('visible');
     }
@@ -242,11 +235,13 @@ export class BeitMidrash {
       this.searchFloat.classList.remove('visible');
     }
 
-    setTimeout(() => {
+    // ALWAYS show top-user-bar after BM elements hide
+    this._hideTimeout = setTimeout(() => {
       const topBar = document.querySelector('.top-user-bar');
       if (topBar) {
         topBar.classList.remove('bm-hidden');
       }
+      this._hideTimeout = null;
     }, 400);
   }
 
