@@ -133,14 +133,24 @@ export class BeitMidrash {
     // Create topbar (fixed, outside container)
     this.topbar = document.createElement('div');
     this.topbar.className = 'gh-bm-topbar';
+
+    const userEmail = window.currentUser?.email || '';
+    const userName = window.currentUser?.displayName || userEmail.split('@')[0] || '';
+
     this.topbar.innerHTML = `
-      <div class="gh-bm-topbar-content">
-        <div class="gh-bm-topbar-title">
+      <div class="gh-bm-topbar-right">
+        <div class="gh-bm-topbar-logo">
           <i class="fas fa-book-open"></i>
-          <span>ברוכים הבאים לבית המדרש</span>
         </div>
-        <div class="gh-bm-topbar-subtitle">ספריית הלמידה של משרד עו"ד גיא הרשקוביץ</div>
+        <div class="gh-bm-topbar-info">
+          <div class="gh-bm-topbar-welcome">שלום, ${userName}</div>
+          <div class="gh-bm-topbar-subtitle"></div>
+        </div>
       </div>
+      <div class="gh-bm-topbar-center">
+        <div class="gh-bm-topbar-title">ברוכים הבאים לבית המדרש</div>
+      </div>
+      <div class="gh-bm-topbar-left"></div>
     `;
     document.body.appendChild(this.topbar);
 
@@ -164,37 +174,37 @@ export class BeitMidrash {
   }
 
   show() {
-    // Hide top-user-bar
     const topBar = document.querySelector('.top-user-bar');
     if (topBar) {
-topBar.classList.add('bm-hidden');
-}
+      topBar.classList.add('bm-hidden');
+    }
 
-    // Show beit midrash topbar + search
-    requestAnimationFrame(() => {
-      if (this.topbar) {
-this.topbar.classList.add('visible');
-}
-      if (this.searchFloat) {
-this.searchFloat.classList.add('visible');
-}
-    });
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        if (this.topbar) {
+          this.topbar.classList.add('visible');
+        }
+        if (this.searchFloat) {
+          this.searchFloat.classList.add('visible');
+        }
+      });
+    }, 500);
   }
 
   hide() {
-    // Show top-user-bar
-    const topBar = document.querySelector('.top-user-bar');
-    if (topBar) {
-topBar.classList.remove('bm-hidden');
-}
-
-    // Hide beit midrash topbar + search
     if (this.topbar) {
-this.topbar.classList.remove('visible');
-}
+      this.topbar.classList.remove('visible');
+    }
     if (this.searchFloat) {
-this.searchFloat.classList.remove('visible');
-}
+      this.searchFloat.classList.remove('visible');
+    }
+
+    setTimeout(() => {
+      const topBar = document.querySelector('.top-user-bar');
+      if (topBar) {
+        topBar.classList.remove('bm-hidden');
+      }
+    }, 400);
   }
 
   _renderLoading() {
@@ -288,7 +298,7 @@ return;
   _updateCount(count) {
     const subtitle = this.topbar?.querySelector('.gh-bm-topbar-subtitle');
     if (subtitle) {
-      subtitle.textContent = `ספריית הלמידה של משרד עו"ד גיא הרשקוביץ • ${count} מצגות`;
+      subtitle.textContent = `ספריית הלמידה • ${count} מצגות`;
     }
   }
 

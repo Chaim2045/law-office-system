@@ -9,25 +9,38 @@
   direction: rtl;
 }
 
-/* ─── Beit Midrash Top Bar ─── */
+/* ═══════════════════════════════════
+   BEIT MIDRASH TOPBAR
+   ═══════════════════════════════════ */
+
+/* ─── Top user bar transition ─── */
+.top-user-bar {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-user-bar.bm-hidden {
+  transform: translateY(-100%);
+}
+
+/* ─── Topbar ─── */
 .gh-bm-topbar {
   position: fixed;
   top: 0;
   left: 0;
   right: var(--gh-sidebar-width, 72px);
-  height: 90px;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  height: 64px;
+  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 35%, #0ea5e9 70%, #38bdf8 100%);
   z-index: 1000;
   display: flex;
-  align-items: flex-start;
-  padding-top: 14px;
-  justify-content: center;
+  align-items: center;
+  padding: 0 24px;
+  justify-content: space-between;
   direction: rtl;
   transform: translateY(-100%);
   opacity: 0;
   pointer-events: none;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-  box-shadow: 0 4px 20px rgb(30 41 59 / 30%);
+  box-shadow: 0 4px 20px rgb(12 74 110 / 25%);
 }
 
 .gh-bm-topbar.visible {
@@ -36,44 +49,80 @@
   pointer-events: auto;
 }
 
-.gh-bm-topbar-content {
-  text-align: center;
-  color: white;
-}
-
-.gh-bm-topbar-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: white;
+/* ─── Topbar Right — Logo + User ─── */
+.gh-bm-topbar-right {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
 }
 
-.gh-bm-topbar-title i {
-  font-size: 22px;
-  opacity: 0.9;
+.gh-bm-topbar-logo {
+  width: 36px;
+  height: 36px;
+  background: rgb(255 255 255 / 15%);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gh-bm-topbar-logo i {
+  font-size: 16px;
+  color: white;
+}
+
+.gh-bm-topbar-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.gh-bm-topbar-welcome {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
 }
 
 .gh-bm-topbar-subtitle {
-  font-size: 13px;
-  color: rgb(255 255 255 / 75%);
-  margin-top: 2px;
+  font-size: 11px;
+  color: rgb(255 255 255 / 70%);
+  margin-top: 1px;
 }
 
-/* ─── Floating Search Bar ─── */
+/* ─── Topbar Center — Title ─── */
+.gh-bm-topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.gh-bm-topbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.3px;
+}
+
+/* ─── Topbar Left — Spacer ─── */
+.gh-bm-topbar-left {
+  width: 80px;
+}
+
+/* ═══════════════════════════════════
+   FLOATING SEARCH BAR
+   ═══════════════════════════════════ */
+
 .gh-bm-search-float {
   position: fixed;
-  top: 66px;
+  top: 40px;
   left: 50%;
-  transform: translateX(-50%) translateY(-200%);
-  width: 90%;
-  max-width: 500px;
+  transform: translateX(-50%) translateY(-100%);
+  width: 85%;
+  max-width: 480px;
   z-index: 1001;
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s, opacity 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.15s, opacity 0.3s ease 0.15s;
 }
 
 .gh-bm-search-float.visible {
@@ -82,40 +131,35 @@
   pointer-events: auto;
 }
 
+/* ─── Search Container with Rotating Border ─── */
 .gh-bm-search-container {
   position: relative;
-}
-
-.gh-bm-search {
-  width: 100%;
-  padding: 14px 20px 14px 44px;
-  border: 2px solid transparent;
+  overflow: hidden;
   border-radius: 50px;
-  font-size: 14px;
-  font-family: inherit;
-  background: white;
-  box-shadow: 0 4px 24px rgb(0 0 0 / 12%);
-  outline: none;
-  direction: rtl;
-  transition: all 0.3s ease;
+  padding: 2px;
 }
 
-.gh-bm-search:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgb(129 140 248 / 20%), 0 4px 24px rgb(0 0 0 / 12%);
-}
-
-/* ─── Animated gradient border ─── */
 .gh-bm-search-container::before {
   content: '';
   position: absolute;
-  inset: -2px;
-  border-radius: 52px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #3b82f6, #6366f1);
-  background-size: 300% 300%;
-  animation: gh-bm-search-glow 4s ease infinite;
-  z-index: -1;
-  opacity: 0.4;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    #0ea5e9,
+    #38bdf8,
+    #818cf8,
+    #6366f1,
+    #0ea5e9,
+    #38bdf8,
+    #818cf8,
+    #0ea5e9
+  );
+  animation: gh-bm-search-glow 3s linear infinite;
+  z-index: 0;
+  opacity: 0.6;
   transition: opacity 0.3s ease;
 }
 
@@ -123,12 +167,18 @@
   opacity: 1;
 }
 
-@keyframes gh-bm-search-glow {
-  0% { background-position: 0% 50%; }
-
-  50% { background-position: 100% 50%; }
-
-  100% { background-position: 0% 50%; }
+.gh-bm-search {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 12px 20px 12px 44px;
+  border: none;
+  border-radius: 48px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  outline: none;
+  direction: rtl;
 }
 
 .gh-bm-search::placeholder {
@@ -142,26 +192,26 @@
   transform: translateY(-50%);
   color: #94a3b8;
   font-size: 14px;
+  z-index: 2;
 }
 
-/* ─── Top user bar transition ─── */
-.top-user-bar.bm-hidden {
-  transform: translateY(-100%);
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+@keyframes gh-bm-search-glow {
+  0% { transform: rotate(0deg); }
+
+  100% { transform: rotate(360deg); }
 }
 
-.top-user-bar {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* ═══════════════════════════════════
+   GRID
+   ═══════════════════════════════════ */
 
-/* ─── Grid ─── */
 .gh-bm-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 380px));
   gap: 24px;
-  padding: 60px 24px 24px;
+  padding: 40px 24px 24px;
   direction: rtl;
-  justify-content: center;
+  justify-content: start;
   max-width: 1200px;
   margin: 0 auto;
 }
