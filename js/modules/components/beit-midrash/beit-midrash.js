@@ -135,7 +135,7 @@ export class BeitMidrash {
     this.topbar.className = 'gh-bm-topbar';
 
     const userEmail = window.currentUser?.email || '';
-    const userName = window.currentUser?.displayName || userEmail.split('@')[0] || '';
+    const userName = window.manager?.currentUsername || localStorage.getItem('userName') || userEmail.split('@')[0] || 'אורח';
 
     this.topbar.innerHTML = `
       <div class="gh-bm-topbar-right">
@@ -156,8 +156,20 @@ export class BeitMidrash {
     this.searchFloat.className = 'gh-bm-search-float';
     this.searchFloat.innerHTML = `
       <div class="gh-bm-search-container">
-        <div class="gh-bm-search-book-icon">
-          <i class="fas fa-book-open"></i>
+        <div class="gh-bm-search-sparkle">
+          <svg class="gh-bm-sparkle-svg" viewBox="0 0 24 24" width="24" height="24">
+            <defs>
+              <linearGradient id="gh-sparkle-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#0369a1">
+                  <animate attributeName="stop-color" values="#0369a1;#0ea5e9;#6366f1;#0369a1" dur="4s" repeatCount="indefinite"/>
+                </stop>
+                <stop offset="100%" style="stop-color:#0ea5e9">
+                  <animate attributeName="stop-color" values="#0ea5e9;#6366f1;#0369a1;#0ea5e9" dur="4s" repeatCount="indefinite"/>
+                </stop>
+              </linearGradient>
+            </defs>
+            <path d="M12 0L14.59 8.41L23 12L14.59 15.59L12 24L9.41 15.59L1 12L9.41 8.41L12 0Z" fill="url(#gh-sparkle-grad)" />
+          </svg>
         </div>
         <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
         <i class="fas fa-search gh-bm-search-icon"></i>
