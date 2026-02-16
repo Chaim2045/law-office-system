@@ -306,12 +306,14 @@ return;
 
     return `
       <div class="gh-bm-card" data-presentation-id="${presentation.id}">
-        <div class="gh-bm-card-thumbnail" style="${thumbnailStyle}">
-          ${!thumbnail ? '<i class="fas fa-file-powerpoint"></i>' : ''}
-          ${hasVideo ? '<div class="gh-bm-card-video-badge"><i class="fas fa-play-circle"></i> סרטון</div>' : ''}
-          <div class="gh-bm-card-slides-count">
-            <i class="fas fa-images"></i>
-            ${presentation.slidesCount || 0} שקפים
+        <div class="gh-bm-card-thumb">
+          <div class="gh-bm-card-thumbnail" style="${thumbnailStyle}">
+            ${!thumbnail ? '<i class="fas fa-file-powerpoint"></i>' : ''}
+            ${hasVideo ? '<div class="gh-bm-card-video-badge"><i class="fas fa-play-circle"></i> סרטון</div>' : ''}
+            <div class="gh-bm-card-slides-count">
+              <i class="fas fa-images"></i>
+              ${presentation.slidesCount || 0} שקפים
+            </div>
           </div>
         </div>
         <div class="gh-bm-card-body">
