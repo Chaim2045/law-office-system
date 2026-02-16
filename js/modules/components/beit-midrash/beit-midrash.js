@@ -155,10 +155,9 @@ export class BeitMidrash {
     `;
     document.body.appendChild(this.searchFloat);
 
-    // Container content (count + grid)
+    // Container content (grid only)
     this.container.innerHTML = `
       <div class="gh-bm-root">
-        <div class="gh-bm-count"></div>
         <div class="gh-bm-grid"></div>
       </div>
     `;
@@ -287,9 +286,9 @@ return;
   }
 
   _updateCount(count) {
-    const countEl = this.container.querySelector('.gh-bm-count');
-    if (countEl) {
-      countEl.textContent = count > 0 ? `${count} מצגות` : '';
+    const subtitle = this.topbar?.querySelector('.gh-bm-topbar-subtitle');
+    if (subtitle) {
+      subtitle.textContent = `ספריית הלמידה של משרד עו"ד גיא הרשקוביץ • ${count} מצגות`;
     }
   }
 
