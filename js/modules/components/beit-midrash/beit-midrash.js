@@ -37,6 +37,7 @@ export class BeitMidrash {
     this.viewer = null;
     this._listeners = [];
     this._cssElement = null;
+    this._cssLoaded = false;
   }
 
   // ════════════════════════════════════
@@ -186,7 +187,10 @@ export class BeitMidrash {
     `;
   }
 
-  show() {
+  async show() {
+    // Ensure CSS is loaded before animating
+    await this._injectCSS();
+
     const topBar = document.querySelector('.top-user-bar');
     if (topBar) {
       topBar.classList.add('bm-hidden');
@@ -383,15 +387,33 @@ return;
   // ════════════════════════════════════
 
   _injectCSS() {
-    if (document.getElementById('gh-bm-css')) {
-return;
-}
-    const link = document.createElement('link');
-    link.id = 'gh-bm-css';
-    link.rel = 'stylesheet';
-    link.href = '/js/modules/components/beit-midrash/beit-midrash.css';
-    document.head.appendChild(link);
-    this._cssElement = link;
+    return new Promise((resolve) => {
+      if (this._cssLoaded) {
+        resolve();
+        return;
+      }
+
+      const existing = document.getElementById('gh-bm-css');
+      if (existing) {
+        this._cssLoaded = true;
+        resolve();
+        return;
+      }
+
+      const link = document.createElement('link');
+      link.id = 'gh-bm-css';
+      link.rel = 'stylesheet';
+      link.href = '/js/modules/components/beit-midrash/beit-midrash.css';
+      link.onload = () => {
+        this._cssLoaded = true;
+        resolve();
+      };
+      link.onerror = () => {
+        resolve(); // don't block on error
+      };
+      document.head.appendChild(link);
+      this._cssElement = link;
+    });
   }
 
   _removeCSS() {
