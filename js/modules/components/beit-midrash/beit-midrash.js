@@ -42,6 +42,15 @@ export class BeitMidrash {
     this._hideTimeout = null;
   }
 
+  _escapeHtml(text) {
+    if (!text) {
+return '';
+}
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   // ════════════════════════════════════
   // Lifecycle
   // ════════════════════════════════════
@@ -143,7 +152,7 @@ export class BeitMidrash {
     this.topbar.innerHTML = `
       <div class="gh-bm-topbar-right">
         <div class="gh-bm-topbar-greeting">
-          <span class="gh-bm-topbar-greeting-name">שלום, ${userName}</span>
+          <span class="gh-bm-topbar-greeting-name">שלום, ${this._escapeHtml(userName)}</span>
           <span class="gh-bm-topbar-greeting-dot">•</span>
           <span class="gh-bm-topbar-greeting-sub">טוב לראות אותך פה</span>
         </div>
@@ -295,15 +304,16 @@ return;
       ? presentation.date.toDate().toLocaleDateString('he-IL')
       : '';
 
-    const thumbnail = presentation.thumbnail || '';
-    const thumbnailStyle = thumbnail ? `background-image: url('${thumbnail}')` : '';
+    const safeThumbnail = presentation.thumbnail?.startsWith('http') ?
+      encodeURI(presentation.thumbnail) : '';
+    const thumbnailStyle = safeThumbnail ? `background-image: url('${safeThumbnail}')` : '';
     const hasVideo = !!presentation.videoUrl;
 
     return `
       <div class="gh-bm-card" data-presentation-id="${presentation.id}">
         <div class="gh-bm-card-thumb">
           <div class="gh-bm-card-thumbnail" style="${thumbnailStyle}">
-            ${!thumbnail ? '<i class="fas fa-file-powerpoint"></i>' : ''}
+            ${!safeThumbnail ? '<i class="fas fa-file-powerpoint"></i>' : ''}
             <div class="gh-bm-card-slides-count">
               <i class="fas fa-images"></i>
               ${presentation.slidesCount || 0} שקפים
@@ -311,11 +321,11 @@ return;
           </div>
         </div>
         <div class="gh-bm-card-body">
-          <div class="gh-bm-card-topic">${presentation.topic || ''}</div>
-          <div class="gh-bm-card-title">${presentation.title || 'ללא כותרת'}</div>
+          <div class="gh-bm-card-topic">${this._escapeHtml(presentation.topic)}</div>
+          <div class="gh-bm-card-title">${this._escapeHtml(presentation.title) || 'ללא כותרת'}</div>
           ${presentation.description ? `
             <div class="gh-bm-card-desc">
-              <span class="gh-bm-card-desc-text">${presentation.description}</span>
+              <span class="gh-bm-card-desc-text">${this._escapeHtml(presentation.description)}</span>
               <button class="gh-bm-card-read-more">קרא עוד</button>
             </div>
           ` : ''}
