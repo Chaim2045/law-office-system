@@ -395,7 +395,7 @@
 #scrollToTopBtn {
   position: fixed;
   bottom: 100px;
-  right: 38px;
+  right: calc(var(--gh-sidebar-width) + 16px);
   width: 44px;
   height: 44px;
   background: #1f2937;

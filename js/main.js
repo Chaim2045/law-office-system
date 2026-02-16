@@ -80,6 +80,12 @@ import { ActionFlowManager } from './modules/ui-components.js';
 // Debug Tools (Development Only)
 import * as DebugTools from './modules/debug-tools.js';
 
+// Sidebar Component
+import { Sidebar } from './modules/components/sidebar/sidebar.js';
+
+// Beit Midrash Component
+import { BeitMidrash } from './modules/components/beit-midrash/beit-midrash.js';
+
 
 /* ========================================
    MAIN APPLICATION CLASS
@@ -3171,14 +3177,44 @@ function initializeUIListeners() {
   Logger.log('✅ UI EventBus listeners initialized (v2.0)');
 }
 
+// Initialize Sidebar Component (must run before manager.init → showLogin)
+function initSidebar() {
+  const sidebarRoot = document.getElementById('sidebarRoot');
+  if (sidebarRoot) {
+    const sidebar = new Sidebar(sidebarRoot);
+    sidebar.init();
+    window.sidebarInstance = sidebar;
+    window.toggleSidebar = () => sidebar.toggle();
+  }
+}
+
+// Initialize Beit Midrash Component (lazy — first visit only)
+let beitMidrashInstance = null;
+
+function initBeitMidrash() {
+  if (beitMidrashInstance) {
+return;
+}
+  const root = document.getElementById('beitMidrashRoot');
+  if (root) {
+    beitMidrashInstance = new BeitMidrash(root);
+    beitMidrashInstance.init();
+    window.beitMidrashInstance = beitMidrashInstance;
+  }
+}
+
+window.initBeitMidrash = initBeitMidrash;
+
 // Initialize listeners when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
+    initSidebar(); // Sidebar first — auth needs #minimalSidebar
     Auth.initOAuthFeatureFlags(); // Apply feature flags
     initializeUIListeners();
     manager.init();
   });
 } else {
+  initSidebar(); // Sidebar first — auth needs #minimalSidebar
   Auth.initOAuthFeatureFlags(); // Apply feature flags
   initializeUIListeners();
   manager.init();

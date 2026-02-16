@@ -392,6 +392,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ✅ Presentations (Beit Midrash): Read-only for authenticated users
+    // Purpose: Presentation slides library for all employees
+    // Write: Only through Admin SDK (upload script) — bypasses rules
+    match /presentations/{presentationId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ✅ System Announcements: Global announcements banner system
     // Purpose: Admins broadcast system-wide messages to all users
     // Features: User-specific dismissal tracking, expiry dates, severity levels

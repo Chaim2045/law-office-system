@@ -357,67 +357,8 @@
     <!-- ===== מכל האפליקציה הראשי ===== -->
     <!-- MAIN APPLICATION CONTAINER -->
     <div class="app-container" id="appContainer">
-      <!-- ===== ניווט צדדי ===== -->
-      <!-- SIDEBAR NAVIGATION -->
-      <div class="minimal-sidebar hidden" id="minimalSidebar">
-        <div class="sidebar-brand">
-          <div class="brand-icon">
-            <i class="fas fa-balance-scale"></i>
-          </div>
-          <div class="brand-text">משרד ע"ד</div>
-        </div>
-
-        <nav class="sidebar-nav">
-          <button
-            class="nav-item"
-            onclick="new CaseCreationDialog().open();"
-            title="הוסף לקוח חדש או תיק חדש ללקוח קיים"
-          >
-            <i class="fas fa-folder-plus"></i>
-            <span>תיק חדש</span>
-          </button>
-
-          <button
-            class="nav-item"
-            onclick="manager.loadDataFromFirebase();"
-            title="רענן נתונים"
-          >
-            <i class="fas fa-sync-alt"></i>
-            <span>רענן</span>
-          </button>
-
-          <button class="nav-item" onclick="sendFeedback();" title="שלח משוב">
-            <i class="fas fa-comments"></i>
-            <span>משוב</span>
-          </button>
-
-          <div class="nav-divider"></div>
-
-          <button
-            class="nav-item logout"
-            onclick="logout();"
-            title="יציאה מהמערכת"
-          >
-            <i class="fas fa-power-off"></i>
-            <span>יציאה</span>
-          </button>
-        </nav>
-
-        <div class="sidebar-footer">
-          <div class="sidebar-break-btn" id="sidebarBreakBtn" title="הפסקה">
-            <div class="sidebar-break-icon">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 8h1a4 4 0 0 1 0 8h-1"/>
-                <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/>
-                <line x1="6" y1="1" x2="6" y2="4"/>
-                <line x1="10" y1="1" x2="10" y2="4"/>
-                <line x1="14" y1="1" x2="14" y2="4"/>
-              </svg>
-            </div>
-            <span class="sidebar-break-label">הפסקה</span>
-          </div>
-        </div>
-      </div>
+      <!-- ===== סיידבר חדש (gh-sidebar component) ===== -->
+      <div id="sidebarRoot"></div>
 
       <!-- ===== כותרת ראשית ===== -->
       <!-- MAIN HEADER -->
@@ -428,7 +369,7 @@
           <div class="user-info hidden" id="userInfo"></div>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary" onclick="toggleSidebar()">
+          <button class="btn btn-secondary" onclick="window.sidebarInstance && window.sidebarInstance.toggle()">
             <i class="fas fa-bars"></i>
             תפריט
           </button>
@@ -626,15 +567,13 @@
         <!-- ===== תוכן האפליקציה (מוסתר עד כניסה) ===== -->
         <!-- APP CONTENT (Hidden until login) -->
         <div id="appContent" class="hidden">
-          <!-- ===== שורת משתמש עליונה ===== -->
-          <!-- TOP USER BAR -->
+          <!-- Top user bar — user display only (nav moved to sidebar) -->
           <div class="top-user-bar">
             <div class="user-dropdown-top">
               <span id="currentUserDisplay">טוען...</span>
               <i class="fas fa-chevron-down"></i>
             </div>
 
-            <!-- כפתורי ניווט מרכזיים -->
             <div class="top-nav-buttons-wrapper">
               <div class="top-nav-buttons">
                 <button class="top-nav-btn active" onclick="switchTab('budget')">
@@ -647,7 +586,6 @@
                 </button>
               </div>
             </div>
-
           </div>
 
           <!-- ===== כפתור פלוס חכם ===== -->
@@ -662,20 +600,7 @@
             </button>
           </div>
 
-          <!-- ===== ניווט לשוניות ראשיות ===== -->
-          <!-- MAIN TABS NAVIGATION -->
-          <div class="main-tabs-container">
-            <div class="main-tabs">
-              <button id="budgetTabButton" class="tab-button active" onclick="switchTab('budget')">
-                <i class="fas fa-chart-bar"></i>
-                תקצוב משימות
-              </button>
-              <button id="timesheetTabButton" class="tab-button" onclick="switchTab('timesheet')">
-                <i class="fas fa-clock"></i>
-                שעתון
-              </button>
-            </div>
-          </div>
+          <!-- main-tabs-container removed — navigation handled by gh-sidebar component -->
 
           <!-- ===== תוכן לשונית תקצוב ===== -->
           <!-- BUDGET TAB CONTENT -->
@@ -1218,6 +1143,13 @@
               <div id="reportsResults"></div>
             </div>
           </div>
+
+          <!-- ===== תוכן לשונית בית מדרש ===== -->
+          <!-- BEIT MIDRASH TAB CONTENT -->
+          <div id="beitMidrashTab" class="tab-content">
+            <div id="beitMidrashRoot"></div>
+          </div>
+
         </div>
 
         <!-- ===== כותרת תחתונה ראשית ===== -->

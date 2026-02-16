@@ -22,7 +22,7 @@
 .notification-container {
   position: fixed;
   top: 80px;
-  right: 20px;
+  right: calc(var(--gh-sidebar-width) + 16px);
   z-index: 10000;
   display: flex;
   flex-direction: column;

@@ -1,0 +1,457 @@
+/**
+ * Beit Midrash Component — Presentations Library
+ * GH Law Office System
+ *
+ * Displays a grid of presentation cards fetched from Firestore.
+ * Clicking a card opens PresentationViewer (fullscreen carousel).
+ *
+ * Dependencies:
+ *   - Firebase Firestore (window.firebaseDB)
+ *   - PresentationViewer from ./beit-midrash-viewer.js
+ *
+ * Firestore collection: presentations
+ * Document structure:
+ *   {
+ *     title: string,
+ *     topic: string,
+ *     description: string,
+ *     date: Timestamp,
+ *     slidesCount: number,
+ *     slides: [{ url: string, order: number }],
+ *     pdfUrl: string,
+ *     thumbnail: string,
+ *     active: boolean
+ *   }
+ */
+
+import { PresentationViewer } from './beit-midrash-viewer.js';
+
+export class BeitMidrash {
+  constructor(container) {
+    this.container = typeof container === 'string'
+      ? document.getElementById(container)
+      : container;
+    this.db = window.firebaseDB;
+    this.presentations = [];
+    this.filteredPresentations = [];
+    this.viewer = null;
+    this._listeners = [];
+    this._cssElement = null;
+    this._cssLoaded = false;
+    this._showTimeout = null;
+    this._hideTimeout = null;
+  }
+
+  _escapeHtml(text) {
+    if (!text) {
+return '';
+}
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ════════════════════════════════════
+  // Lifecycle
+  // ════════════════════════════════════
+
+  async init() {
+    await this._injectCSS();
+    this.render();
+    this._bindEvents();
+    await this.fetchPresentations();
+  }
+
+  destroy() {
+    this.hide();
+    if (this.topbar) {
+      this.topbar.remove();
+      this.topbar = null;
+    }
+    if (this.searchFloat) {
+      this.searchFloat.remove();
+      this.searchFloat = null;
+    }
+    this._listeners.forEach(({ el, event, handler }) => {
+      el.removeEventListener(event, handler);
+    });
+    this._listeners = [];
+    if (this.viewer) {
+      this.viewer.destroy();
+      this.viewer = null;
+    }
+    this._removeCSS();
+    if (this.container) {
+      this.container.innerHTML = '';
+    }
+  }
+
+  // ════════════════════════════════════
+  // Data
+  // ════════════════════════════════════
+
+  async fetchPresentations() {
+    if (!this.db) {
+      console.error('BeitMidrash: Firestore not available');
+      this._renderEmpty('לא ניתן להתחבר למסד הנתונים');
+      return;
+    }
+
+    try {
+      this._renderLoading();
+
+      const snapshot = await this.db
+        .collection('presentations')
+        .where('active', '==', true)
+        .orderBy('date', 'desc')
+        .get();
+
+      this.presentations = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      this.filteredPresentations = [...this.presentations];
+      this._renderCards();
+    } catch (error) {
+      console.error('BeitMidrash: Failed to fetch presentations', error);
+      this._renderEmpty('שגיאה בטעינת המצגות');
+    }
+  }
+
+  // ════════════════════════════════════
+  // Search
+  // ════════════════════════════════════
+
+  _handleSearch(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      this.filteredPresentations = [...this.presentations];
+    } else {
+      this.filteredPresentations = this.presentations.filter(p =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.topic || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q)
+      );
+    }
+    this._renderCards();
+  }
+
+  // ════════════════════════════════════
+  // Rendering
+  // ════════════════════════════════════
+
+  render() {
+    // Create topbar (fixed, outside container)
+    this.topbar = document.createElement('div');
+    this.topbar.className = 'gh-bm-topbar';
+
+    const userEmail = window.currentUser?.email || '';
+    const userName = window.manager?.currentUsername || localStorage.getItem('userName') || userEmail.split('@')[0] || 'אורח';
+
+    this.topbar.innerHTML = `
+      <div class="gh-bm-topbar-right">
+        <div class="gh-bm-topbar-greeting">
+          <span class="gh-bm-topbar-greeting-name">שלום, ${this._escapeHtml(userName)}</span>
+          <span class="gh-bm-topbar-greeting-dot">•</span>
+          <span class="gh-bm-topbar-greeting-sub">טוב לראות אותך פה</span>
+        </div>
+      </div>
+      <div class="gh-bm-topbar-left-info">
+        <div class="gh-bm-topbar-subtitle"></div>
+      </div>
+    `;
+    document.body.appendChild(this.topbar);
+
+    // Create floating search (fixed, outside container)
+    this.searchFloat = document.createElement('div');
+    this.searchFloat.className = 'gh-bm-search-float';
+    this.searchFloat.innerHTML = `
+      <div class="gh-bm-search-container">
+        <div class="gh-bm-search-sparkle">
+          <svg class="gh-bm-sparkle-svg" viewBox="0 0 24 24" width="24" height="24">
+            <defs>
+              <linearGradient id="gh-sparkle-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#0369a1">
+                  <animate attributeName="stop-color" values="#0369a1;#0ea5e9;#6366f1;#0369a1" dur="4s" repeatCount="indefinite"/>
+                </stop>
+                <stop offset="100%" style="stop-color:#0ea5e9">
+                  <animate attributeName="stop-color" values="#0ea5e9;#6366f1;#0369a1;#0ea5e9" dur="4s" repeatCount="indefinite"/>
+                </stop>
+              </linearGradient>
+            </defs>
+            <path d="M12 0L14.59 8.41L23 12L14.59 15.59L12 24L9.41 15.59L1 12L9.41 8.41L12 0Z" fill="url(#gh-sparkle-grad)" />
+          </svg>
+        </div>
+        <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
+        <i class="fas fa-search gh-bm-search-icon"></i>
+      </div>
+      <div class="gh-bm-search-welcome">ברוכים הבאים לבית המדרש</div>
+    `;
+    document.body.appendChild(this.searchFloat);
+
+    // Container content (grid only)
+    this.container.innerHTML = `
+      <div class="gh-bm-root">
+        <div class="gh-bm-grid"></div>
+      </div>
+    `;
+  }
+
+  async show() {
+    // Cancel any pending hide
+    if (this._hideTimeout) {
+      clearTimeout(this._hideTimeout);
+      this._hideTimeout = null;
+    }
+
+    // Ensure CSS loaded
+    await this._injectCSS();
+
+    // ALWAYS hide top-user-bar
+    const topBar = document.querySelector('.top-user-bar');
+    if (topBar) {
+      topBar.classList.add('bm-hidden');
+    }
+
+    // Show BM elements after bar starts hiding
+    this._showTimeout = setTimeout(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (this.topbar) {
+            this.topbar.classList.add('visible');
+          }
+          if (this.searchFloat) {
+            this.searchFloat.classList.add('visible');
+          }
+        });
+      });
+    }, 300);
+  }
+
+  hide() {
+    // Cancel any pending show
+    if (this._showTimeout) {
+      clearTimeout(this._showTimeout);
+      this._showTimeout = null;
+    }
+
+    // ALWAYS hide BM elements
+    if (this.topbar) {
+      this.topbar.classList.remove('visible');
+    }
+    if (this.searchFloat) {
+      this.searchFloat.classList.remove('visible');
+    }
+
+    // ALWAYS show top-user-bar after BM elements hide
+    this._hideTimeout = setTimeout(() => {
+      const topBar = document.querySelector('.top-user-bar');
+      if (topBar) {
+        topBar.classList.remove('bm-hidden');
+      }
+      this._hideTimeout = null;
+    }, 400);
+  }
+
+  _renderLoading() {
+    const grid = this.container.querySelector('.gh-bm-grid');
+    if (!grid) {
+return;
+}
+    grid.innerHTML = `
+      <div class="gh-bm-loading">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>טוען מצגות...</span>
+      </div>
+    `;
+  }
+
+  _renderEmpty(message = 'אין מצגות להצגה') {
+    const grid = this.container.querySelector('.gh-bm-grid');
+    if (!grid) {
+return;
+}
+    grid.innerHTML = `
+      <div class="gh-bm-empty">
+        <div class="gh-bm-empty-icon">
+          <i class="fas fa-book-open"></i>
+        </div>
+        <h3 class="gh-bm-empty-title">${message}</h3>
+        <p class="gh-bm-empty-subtitle">תכנים חדשים יתווספו בקרוב</p>
+      </div>
+    `;
+    this._updateCount(0);
+  }
+
+  _renderCards() {
+    const grid = this.container.querySelector('.gh-bm-grid');
+    if (!grid) {
+return;
+}
+
+    if (this.filteredPresentations.length === 0) {
+      this._renderEmpty();
+      return;
+    }
+
+    grid.innerHTML = this.filteredPresentations.map(p => this._renderCard(p)).join('');
+    this._updateCount(this.filteredPresentations.length);
+  }
+
+  _renderCard(presentation) {
+    const date = presentation.date?.toDate
+      ? presentation.date.toDate().toLocaleDateString('he-IL')
+      : '';
+
+    const safeThumbnail = presentation.thumbnail?.startsWith('http') ?
+      encodeURI(presentation.thumbnail) : '';
+    const thumbnailStyle = safeThumbnail ? `background-image: url('${safeThumbnail}')` : '';
+    const hasVideo = !!presentation.videoUrl;
+
+    return `
+      <div class="gh-bm-card" data-presentation-id="${presentation.id}">
+        <div class="gh-bm-card-thumb">
+          <div class="gh-bm-card-thumbnail" style="${thumbnailStyle}">
+            ${!safeThumbnail ? '<i class="fas fa-file-powerpoint"></i>' : ''}
+            <div class="gh-bm-card-slides-count">
+              <i class="fas fa-images"></i>
+              ${presentation.slidesCount || 0} שקפים
+            </div>
+          </div>
+        </div>
+        <div class="gh-bm-card-body">
+          <div class="gh-bm-card-topic">${this._escapeHtml(presentation.topic)}</div>
+          <div class="gh-bm-card-title">${this._escapeHtml(presentation.title) || 'ללא כותרת'}</div>
+          ${presentation.description ? `
+            <div class="gh-bm-card-desc">
+              <span class="gh-bm-card-desc-text">${this._escapeHtml(presentation.description)}</span>
+              <button class="gh-bm-card-read-more">קרא עוד</button>
+            </div>
+          ` : ''}
+          <div class="gh-bm-card-footer">
+            <span class="gh-bm-card-date">
+              <i class="fas fa-calendar-alt"></i>
+              ${date}
+            </span>
+            <div class="gh-bm-card-tags">
+              ${hasVideo ? '<span class="gh-bm-tag gh-bm-tag-video"><i class="fas fa-video"></i></span>' : ''}
+              <span class="gh-bm-tag gh-bm-tag-slides"><i class="fas fa-images"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  _updateCount(count) {
+    const subtitle = this.topbar?.querySelector('.gh-bm-topbar-subtitle');
+    if (subtitle) {
+      subtitle.textContent = `ספריית הלמידה • ${count} מצגות`;
+    }
+  }
+
+  // ════════════════════════════════════
+  // Events
+  // ════════════════════════════════════
+
+  _bindEvents() {
+    const root = this.container;
+
+    // Search (input lives in this.searchFloat, outside container)
+    const searchInput = this.searchFloat
+      ? this.searchFloat.querySelector('.gh-bm-search')
+      : null;
+    if (searchInput) {
+      const handler = () => this._handleSearch(searchInput.value);
+      searchInput.addEventListener('input', handler);
+      this._listeners.push({ el: searchInput, event: 'input', handler });
+    }
+
+    // Read more toggle
+    this._on(root, 'click', (e) => {
+      if (e.target.classList.contains('gh-bm-card-read-more')) {
+        e.stopPropagation();
+        e.preventDefault();
+        const descText = e.target.previousElementSibling;
+        if (descText) {
+          descText.classList.toggle('expanded');
+          e.target.textContent = descText.classList.contains('expanded') ? 'פחות' : 'קרא עוד';
+        }
+      }
+    });
+
+    // Card click → open viewer
+    this._on(root, 'click', (e) => {
+      if (e.target.closest('.gh-bm-card-read-more')) {
+return;
+}
+      const card = e.target.closest('.gh-bm-card');
+      if (!card) {
+return;
+}
+
+      const id = card.dataset.presentationId;
+      const presentation = this.presentations.find(p => p.id === id);
+      if (!presentation) {
+return;
+}
+
+      this._openViewer(presentation);
+    });
+  }
+
+  _openViewer(presentation) {
+    if (this.viewer) {
+      this.viewer.destroy();
+    }
+    this.viewer = new PresentationViewer();
+    this.viewer.open(presentation);
+  }
+
+  _on(el, event, handler) {
+    el.addEventListener(event, handler);
+    this._listeners.push({ el, event, handler });
+  }
+
+  // ════════════════════════════════════
+  // CSS Injection
+  // ════════════════════════════════════
+
+  _injectCSS() {
+    return new Promise((resolve) => {
+      if (this._cssLoaded) {
+        resolve();
+        return;
+      }
+
+      const existing = document.getElementById('gh-bm-css');
+      if (existing) {
+        this._cssLoaded = true;
+        resolve();
+        return;
+      }
+
+      const link = document.createElement('link');
+      link.id = 'gh-bm-css';
+      link.rel = 'stylesheet';
+      link.href = '/js/modules/components/beit-midrash/beit-midrash.css';
+      link.onload = () => {
+        this._cssLoaded = true;
+        resolve();
+      };
+      link.onerror = () => {
+        resolve(); // don't block on error
+      };
+      document.head.appendChild(link);
+      this._cssElement = link;
+    });
+  }
+
+  _removeCSS() {
+    if (this._cssElement) {
+      this._cssElement.remove();
+      this._cssElement = null;
+    }
+  }
+}

@@ -7,12 +7,12 @@
   display: none !important;
 }
 
-/* סרגל עליון קבוע - סגנון מקצועי */
+/* === TOP USER BAR — user display only (nav moved to sidebar) === */
 .top-user-bar {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
+  right: var(--gh-sidebar-width);
   background: white;
   border-bottom: 1px solid #e5e7eb;
   padding: 16px 24px;
@@ -22,14 +22,52 @@
   align-items: center;
   height: 68px;
   box-shadow: 0 2px 12px rgb(0 0 0 / 6%);
-  transition: top 0.18s ease; /* Smooth transition for ticker */
+  transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.user-dropdown-top {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 50px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  position: absolute;
+  right: 12px;
+}
+
+.user-dropdown-top:hover {
+  background: white;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.user-dropdown-top i {
+  font-size: 10px;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+
+.user-dropdown-top:hover i {
+  transform: rotate(180deg);
+}
+
+/* === NAV BUTTONS CSS — re-enabled for top-user-bar === */
 
 /* Wrapper לכפתורי ניווט - ממרכז אותם */
 .top-nav-buttons-wrapper {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  bottom: -22px;
+  z-index: 10;
 }
 
 /* כפתורי ניווט מרכזיים - תקצוב ושעתון */
@@ -40,8 +78,8 @@
   background: #f1f5f9;
   border-radius: 50px;
   padding: 6px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
-  border: 1px solid #e2e8f0;
+  border: 2px solid #93c5fd;
+  box-shadow: 0 2px 8px rgb(59 130 246 / 12%);
 }
 
 .top-nav-btn {
@@ -79,103 +117,14 @@
   box-shadow: 0 4px 12px rgb(59 130 246 / 50%);
 }
 
-/* רספונסיבי - מובייל */
-@media screen and (width <= 768px) {
-  .top-user-bar {
-    padding: 10px 16px;
-    height: 58px;
-  }
-
-  .top-nav-buttons {
-    gap: 6px;
-  }
-
-  .top-nav-btn {
-    padding: 7px 16px;
-    font-size: 12px;
-  }
-
-  .top-nav-btn i {
-    font-size: 13px;
-  }
-
-  .user-dropdown-top {
-    padding: 7px 14px;
-    font-size: 12px;
-  }
-}
-
-@media screen and (width <= 480px) {
-  .top-nav-btn span {
-    display: none; /* הסתרת הטקסט במסכים קטנים */
-  }
-
-  .top-nav-btn {
-    padding: 9px;
-    min-width: 38px;
-    justify-content: center;
-  }
-
-  .top-nav-btn i {
-    margin: 0;
-  }
-
-  .user-dropdown-top span {
-    display: none;
-  }
-
-  .user-dropdown-top {
-    padding: 9px 12px;
-    min-width: 38px;
-    justify-content: center;
-  }
-
-  .user-dropdown-top i {
-    margin: 0;
-  }
-}
-
-.user-dropdown-top {
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 50px; /* פינות מעוגלות לחלוטין */
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  position: absolute;
-  right: calc(88px + 12px); /* ממש אחרי הסיידבר משמאל */
-}
-
-.user-dropdown-top:hover {
-  background: white;
-  border-color: #cbd5e1;
-  color: #1e293b;
-}
-
-.user-dropdown-top i {
-  font-size: 10px;
-  color: #94a3b8;
-  transition: transform 0.2s ease;
-}
-
-.user-dropdown-top:hover i {
-  transform: rotate(180deg);
-}
-
-/* SIDEBAR - Modern 2025 UI */
+/* === OLD SIDEBAR CSS — NEUTRALIZED BY gh-sidebar component === */
+#__neutralized_sidebar__ {
 .minimal-sidebar {
   position: fixed !important;
   top: 0 !important;
   right: 0 !important;
   transform: none !important;
-  width: 88px;
+  width: var(--gh-sidebar-width);
   height: 100vh;
   background: #1e293b;
   border-left: 1px solid #0f172a;
@@ -192,7 +141,7 @@
 /* When sidebar is visible, add margin to main content */
 .minimal-sidebar:not(.hidden) ~ .main-content,
 .minimal-sidebar:not(.hidden) ~ * .main-content {
-  margin-right: 88px;
+  margin-right: var(--gh-sidebar-width);
 }
 
 .sidebar-brand {
@@ -476,6 +425,9 @@
     transform: scale(1.1);
   }
 }
+}
+
+/* === END OLD SIDEBAR CSS === */
 
 /* כפתור פלוס מתחת לסרגל */
 .plus-container-new {

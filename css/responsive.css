@@ -17,11 +17,12 @@
     background-attachment: scroll;
   }
 
-  .minimal-sidebar {
-    display: none;
+  .gh-sidebar-root {
+    transform: translateX(100%);
   }
 
-  .main-content {
+  .main-content,
+  body.logged-in .main-content {
     min-height: calc(100vh - 80px);
     padding: var(--space-md);
     margin-right: 0;
@@ -126,16 +127,13 @@
 
 /* Mobile (max-width: 768px) */
 @media (width <= 768px) {
-  .minimal-sidebar {
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
+  /* Sidebar hidden on mobile — reset right offsets */
+  .top-user-bar {
+    right: 0;
   }
 
-  .minimal-sidebar.open {
-    transform: translateX(0);
-  }
-
-  .main-content {
+  .main-content,
+  body.logged-in .main-content {
     margin-right: 0;
     padding: 15px 0; /* רק למעלה ולמטה - ללא שוליים בצדדים */
   }

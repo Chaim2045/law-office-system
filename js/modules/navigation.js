@@ -27,6 +27,17 @@ timesheetFormContainer.classList.add('hidden');
     plusButton.classList.remove('active');
   }
 
+  // Restore plus container by default (beit-midrash overrides below)
+  const plusContainer = document.querySelector('.plus-container-new');
+  if (plusContainer) {
+    plusContainer.style.display = '';
+  }
+
+  // Hide beit midrash bar when switching away
+  if (window.beitMidrashInstance) {
+window.beitMidrashInstance.hide();
+}
+
   // הסרת active מכל הכפתורים והתכנים
   document.querySelectorAll('.tab-button, .top-nav-btn').forEach((btn) => {
     btn.classList.remove('active');
@@ -35,6 +46,30 @@ timesheetFormContainer.classList.add('hidden');
   document.querySelectorAll('.tab-content').forEach((content) => {
     content.classList.remove('active');
   });
+
+  // Beit Midrash — separate flow (lazy init, hide plus)
+  if (tabName === 'beit-midrash') {
+    const bmTab = document.getElementById('beitMidrashTab');
+    if (bmTab) {
+      bmTab.classList.add('active');
+    }
+    if (plusContainer) {
+      plusContainer.style.display = 'none';
+    }
+    if (!window.beitMidrashInstance && window.initBeitMidrash) {
+      window.initBeitMidrash();
+      // Give browser time to paint initial state before showing
+      setTimeout(() => {
+        if (window.beitMidrashInstance) {
+          window.beitMidrashInstance.show();
+        }
+      }, 50);
+    } else if (window.beitMidrashInstance) {
+      window.beitMidrashInstance.show();
+    }
+    window.currentActiveTab = tabName;
+    return;
+  }
 
   // הוספת active לכפתור ולתוכן הנכונים
   if (tabName === 'budget') {
@@ -133,21 +168,15 @@ function clearAllNotifications() {
 
 function openSmartForm() {
   const plusButton = document.getElementById('smartPlusBtn');
-  const activeTab = document.querySelector('.tab-button.active');
-  if (!activeTab) {
-return;
-}
+  const activeTab = window.currentActiveTab || 'budget';
 
   let currentForm;
-  let formType; // Track which form we're opening
+  let formType;
 
-  if (activeTab.onclick && activeTab.onclick.toString().includes('budget')) {
+  if (activeTab === 'budget') {
     currentForm = document.getElementById('budgetFormContainer');
     formType = 'budget';
-  } else if (
-    activeTab.onclick &&
-    activeTab.onclick.toString().includes('timesheet')
-  ) {
+  } else if (activeTab === 'timesheet') {
     currentForm = document.getElementById('timesheetFormContainer');
     formType = 'timesheet';
   }

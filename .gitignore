@@ -48,3 +48,6 @@ dist/**/*.map
 
 # Netlify local
 .netlify/
+
+# Uploaded presentations (use Firebase Storage)
+.claude/presentations/
