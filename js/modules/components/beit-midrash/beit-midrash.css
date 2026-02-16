@@ -237,33 +237,51 @@
    ═══════════════════════════════════ */
 
 .gh-bm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 380px));
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   padding: 40px 24px 24px;
   direction: rtl;
-  justify-content: start;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 800px;
+  margin: 0 auto 0 0; /* מיושר לימין ב-RTL context */
 }
 
 /* ─── Card ─── */
 .gh-bm-card {
+  display: flex;
+  flex-direction: row;
   background: white;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 6%);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 6%), 0 1px 2px rgb(0 0 0 / 4%);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  border: 1px solid #e2e8f0;
+  max-width: 700px;
 }
 
 .gh-bm-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgb(0 0 0 / 8%), 0 4px 10px rgb(0 0 0 / 4%);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 10%);
+  transform: translateY(-2px);
+}
+
+.gh-bm-card-thumb {
+  width: 280px;
+  min-width: 280px;
+  height: 180px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.gh-bm-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .gh-bm-card-thumbnail {
-  height: 160px;
+  height: 100%;
   background: #f1f5f9;
   background-size: cover;
   background-position: center;
@@ -293,7 +311,19 @@
 }
 
 .gh-bm-card-body {
-  padding: 14px 16px 16px;
+  flex: 1;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  direction: rtl;
+}
+
+.gh-bm-card-category {
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
 .gh-bm-card-topic {
@@ -308,16 +338,27 @@
 .gh-bm-card-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 6px;
+  color: #1e293b;
   line-height: 1.3;
+  margin-bottom: 8px;
 }
 
 .gh-bm-card-desc {
-  position: relative;
-  margin-bottom: 10px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
   text-align: right;
   direction: rtl;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.gh-bm-card-desc.expanded {
+  -webkit-line-clamp: unset;
 }
 
 .gh-bm-card-desc-text {
@@ -336,17 +377,17 @@
 }
 
 .gh-bm-card-read-more {
+  font-size: 12px;
+  color: #3b82f6;
+  cursor: pointer;
+  font-weight: 600;
+  text-align: right;
+  margin-top: 4px;
   background: none;
   border: none;
-  color: #3b82f6;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
   padding: 2px 0;
-  margin-top: 2px;
   font-family: inherit;
   display: block;
-  text-align: right;
 }
 
 .gh-bm-card-read-more:hover {
@@ -357,6 +398,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
 }
 
 .gh-bm-card-date {
@@ -365,6 +409,11 @@
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.gh-bm-card-icons {
+  display: flex;
+  gap: 8px;
 }
 
 /* ─── Loading ─── */
@@ -720,8 +769,19 @@
   }
 
   .gh-bm-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 14px;
+    padding: 24px 16px;
+  }
+
+  .gh-bm-card {
+    flex-direction: column;
+    max-width: 100%;
+  }
+
+  .gh-bm-card-thumb {
+    width: 100%;
+    min-width: unset;
+    height: 160px;
   }
 
   .gh-bm-viewer-arrow {
