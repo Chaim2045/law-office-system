@@ -62,10 +62,12 @@
 .gh-bm-topbar-greeting {
   background: rgb(255 255 255 / 12%);
   border: 1px solid rgb(255 255 255 / 20%);
-  border-radius: 12px;
-  padding: 6px 16px;
+  border-radius: 20px;
+  padding: 8px 18px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   backdrop-filter: blur(4px);
 }
 
@@ -78,7 +80,11 @@
 .gh-bm-topbar-greeting-sub {
   font-size: 11px;
   color: rgb(255 255 255 / 70%);
-  margin-top: 1px;
+}
+
+.gh-bm-topbar-greeting-dot {
+  color: rgb(255 255 255 / 40%);
+  font-size: 10px;
 }
 
 /* ─── Left — Library info ─── */
@@ -142,7 +148,7 @@
     #818cf8,
     #0ea5e9
   );
-  animation: gh-bm-search-glow 3s linear infinite;
+  animation: gh-bm-search-glow 8s linear infinite;
   z-index: 0;
   opacity: 0.6;
   transition: opacity 0.3s ease;
@@ -195,29 +201,43 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: gh-bm-book-spin 4s ease-in-out infinite;
+  animation: gh-bm-book-float 5s ease-in-out infinite;
 }
 
 .gh-bm-search-book-icon i {
   font-size: 16px;
-  color: #0369a1;
-  transition: color 0.3s ease;
+  background: linear-gradient(135deg, #0369a1, #0ea5e9, #6366f1, #0369a1);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gh-bm-book-color 6s ease-in-out infinite;
 }
 
 .gh-bm-search-container:focus-within .gh-bm-search-book-icon i {
-  color: #0ea5e9;
+  animation-duration: 3s;
 }
 
-@keyframes gh-bm-book-spin {
-  0% { transform: translateY(-50%) rotateY(0deg); }
+@keyframes gh-bm-book-float {
+  0% { transform: translateY(-50%) scale(1) rotate(0deg); }
 
-  25% { transform: translateY(-50%) rotateY(180deg); }
+  20% { transform: translateY(-50%) scale(1.15) rotate(5deg); }
 
-  50% { transform: translateY(-50%) rotateY(360deg); }
+  40% { transform: translateY(-50%) scale(1) rotate(-3deg); }
 
-  75% { transform: translateY(-50%) rotateY(360deg); }
+  60% { transform: translateY(-50%) scale(1.1) rotate(3deg); }
 
-  100% { transform: translateY(-50%) rotateY(360deg); }
+  80% { transform: translateY(-50%) scale(1) rotate(-2deg); }
+
+  100% { transform: translateY(-50%) scale(1) rotate(0deg); }
+}
+
+@keyframes gh-bm-book-color {
+  0% { background-position: 0% 50%; }
+
+  50% { background-position: 100% 50%; }
+
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes gh-bm-search-glow {

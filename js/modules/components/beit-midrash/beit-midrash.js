@@ -141,6 +141,7 @@ export class BeitMidrash {
       <div class="gh-bm-topbar-right">
         <div class="gh-bm-topbar-greeting">
           <span class="gh-bm-topbar-greeting-name">שלום, ${userName}</span>
+          <span class="gh-bm-topbar-greeting-dot">•</span>
           <span class="gh-bm-topbar-greeting-sub">טוב לראות אותך פה</span>
         </div>
       </div>
