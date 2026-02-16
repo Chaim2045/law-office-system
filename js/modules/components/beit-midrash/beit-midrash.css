@@ -29,8 +29,8 @@
   left: 0;
   right: var(--gh-sidebar-width, 72px);
   height: 64px;
-  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 35%, #0ea5e9 70%, #38bdf8 100%);
-  z-index: 1000;
+  background: linear-gradient(135deg, #0c4a6e 0%, #0c4a6e 40%, #0369a1 100%);
+  z-index: 99;
   display: flex;
   align-items: center;
   padding: 0 24px;
@@ -40,7 +40,7 @@
   opacity: 0;
   pointer-events: none;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-  box-shadow: 0 4px 20px rgb(12 74 110 / 25%);
+  box-shadow: 0 4px 20px rgb(12 74 110 / 35%);
 }
 
 .gh-bm-topbar.visible {
@@ -88,26 +88,6 @@
   margin-top: 1px;
 }
 
-/* ─── Topbar Center — Title ─── */
-.gh-bm-topbar-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-}
-
-.gh-bm-topbar-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: white;
-  letter-spacing: 0.3px;
-}
-
-/* ─── Topbar Left — Spacer ─── */
-.gh-bm-topbar-left {
-  width: 80px;
-}
-
 /* ═══════════════════════════════════
    FLOATING SEARCH BAR
    ═══════════════════════════════════ */
@@ -119,7 +99,7 @@
   transform: translateX(-50%) translateY(-100%);
   width: 85%;
   max-width: 480px;
-  z-index: 1001;
+  z-index: 100;
   opacity: 0;
   pointer-events: none;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.15s, opacity 0.3s ease 0.15s;
@@ -199,6 +179,15 @@
   0% { transform: rotate(0deg); }
 
   100% { transform: rotate(360deg); }
+}
+
+.gh-bm-search-welcome {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(12 74 110 / 50%);
+  margin-top: 8px;
+  letter-spacing: 0.3px;
 }
 
 /* ═══════════════════════════════════

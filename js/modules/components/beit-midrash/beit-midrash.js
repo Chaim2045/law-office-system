@@ -147,10 +147,6 @@ export class BeitMidrash {
           <div class="gh-bm-topbar-subtitle"></div>
         </div>
       </div>
-      <div class="gh-bm-topbar-center">
-        <div class="gh-bm-topbar-title">ברוכים הבאים לבית המדרש</div>
-      </div>
-      <div class="gh-bm-topbar-left"></div>
     `;
     document.body.appendChild(this.topbar);
 
@@ -162,6 +158,7 @@ export class BeitMidrash {
         <input type="text" class="gh-bm-search" placeholder="חיפוש לפי נושא, כותרת..." />
         <i class="fas fa-search gh-bm-search-icon"></i>
       </div>
+      <div class="gh-bm-search-welcome">ברוכים הבאים לבית המדרש</div>
     `;
     document.body.appendChild(this.searchFloat);
 
