@@ -188,22 +188,48 @@ export class BeitMidrash {
   }
 
   async show() {
+    // Clear any pending hide timeout
+    if (this._hideTimeout) {
+      clearTimeout(this._hideTimeout);
+      this._hideTimeout = null;
+    }
+
     // Ensure CSS is loaded before animating
     await this._injectCSS();
 
     const topBar = document.querySelector('.top-user-bar');
+
+    // If already hidden, just show BM elements immediately
+    if (topBar && topBar.classList.contains('bm-hidden')) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (this.topbar) {
+            this.topbar.classList.add('visible');
+          }
+          if (this.searchFloat) {
+            this.searchFloat.classList.add('visible');
+          }
+        });
+      });
+      return;
+    }
+
+    // Hide top-user-bar first
     if (topBar) {
       topBar.classList.add('bm-hidden');
     }
 
+    // Wait for top-user-bar to slide up, then show BM elements
     setTimeout(() => {
       requestAnimationFrame(() => {
-        if (this.topbar) {
-          this.topbar.classList.add('visible');
-        }
-        if (this.searchFloat) {
-          this.searchFloat.classList.add('visible');
-        }
+        requestAnimationFrame(() => {
+          if (this.topbar) {
+            this.topbar.classList.add('visible');
+          }
+          if (this.searchFloat) {
+            this.searchFloat.classList.add('visible');
+          }
+        });
       });
     }, 500);
   }
