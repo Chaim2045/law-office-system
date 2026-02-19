@@ -1464,8 +1464,21 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     services[serviceIndex] = service;
 
     // שמירה
+    const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+    const clientHoursUsed = services.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+    const clientHoursRemaining = services.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+    const clientMinutesRemaining = clientHoursRemaining * 60;
+    const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+    const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+
     await clientRef.update({
       services: services,
+      totalHours: clientTotalHours,
+      hoursUsed: clientHoursUsed,
+      hoursRemaining: clientHoursRemaining,
+      minutesRemaining: clientMinutesRemaining,
+      isBlocked: clientIsBlocked,
+      isCritical: clientIsCritical,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username
     });
@@ -1753,11 +1766,18 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         sum + (service.hoursRemaining || 0), 0);
 
       // 💾 Step 9: שמירה אטומית
+      const clientMinutesRemaining = clientHoursRemaining * 60;
+      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+
       transaction.update(clientRef, {
         services: services,
         totalHours: clientTotalHours,
         hoursUsed: clientHoursUsed,
         hoursRemaining: clientHoursRemaining,
+        minutesRemaining: clientMinutesRemaining,
+        isBlocked: clientIsBlocked,
+        isCritical: clientIsCritical,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });
