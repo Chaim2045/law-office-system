@@ -1319,10 +1319,23 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
     services.push(newService);
 
     // עדכון הלקוח
+    const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+    const clientHoursUsed = services.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+    const clientHoursRemaining = services.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+    const clientMinutesRemaining = clientHoursRemaining * 60;
+    const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+    const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+
     const updates = {
       services: services,
       totalServices: services.length,
       activeServices: services.filter(s => s.status === 'active').length,
+      totalHours: clientTotalHours,
+      hoursUsed: clientHoursUsed,
+      hoursRemaining: clientHoursRemaining,
+      minutesRemaining: clientMinutesRemaining,
+      isBlocked: clientIsBlocked,
+      isCritical: clientIsCritical,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username
     };
@@ -1464,8 +1477,21 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     services[serviceIndex] = service;
 
     // שמירה
+    const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+    const clientHoursUsed = services.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+    const clientHoursRemaining = services.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+    const clientMinutesRemaining = clientHoursRemaining * 60;
+    const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+    const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+
     await clientRef.update({
       services: services,
+      totalHours: clientTotalHours,
+      hoursUsed: clientHoursUsed,
+      hoursRemaining: clientHoursRemaining,
+      minutesRemaining: clientMinutesRemaining,
+      isBlocked: clientIsBlocked,
+      isCritical: clientIsCritical,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username
     });
@@ -1753,11 +1779,18 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         sum + (service.hoursRemaining || 0), 0);
 
       // 💾 Step 9: שמירה אטומית
+      const clientMinutesRemaining = clientHoursRemaining * 60;
+      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+
       transaction.update(clientRef, {
         services: services,
         totalHours: clientTotalHours,
         hoursUsed: clientHoursUsed,
         hoursRemaining: clientHoursRemaining,
+        minutesRemaining: clientMinutesRemaining,
+        isBlocked: clientIsBlocked,
+        isCritical: clientIsCritical,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });
@@ -3245,10 +3278,17 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
             idx === serviceIndex ? updatedService : s
           );
 
+          const currentHoursRemaining = clientData.hoursRemaining || 0;
+          const newHoursRemaining = currentHoursRemaining - hoursWorked;
+          const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+          const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
           clientUpdateData = {
             services: updatedServices,
             minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
             hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+            isBlocked: newIsBlocked,
+            isCritical: newIsCritical,
             lastActivity: admin.firestore.FieldValue.serverTimestamp()
           };
 
@@ -3312,9 +3352,16 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
               index === currentStageIndex ? updatedStage : stage
             );
 
+            const currentHoursRemaining = clientData.hoursRemaining || 0;
+            const newHoursRemaining = currentHoursRemaining - hoursWorked;
+            const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+            const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
             clientUpdateData = {
               stages: updatedStages,
               hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+              isBlocked: newIsBlocked,
+              isCritical: newIsCritical,
               lastActivity: admin.firestore.FieldValue.serverTimestamp()
             };
 
@@ -3673,12 +3720,19 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               updatedPackageId = activePackage.id;
 
               // ✅ VERSION CONTROL: עדכון עם גרסה חדשה
+              const currentHoursRemaining = clientData.hoursRemaining || 0;
+              const newHoursRemaining = currentHoursRemaining - hoursWorked;
+              const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+              const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
               transaction.update(clientRef, {
                 services: clientData.services,
                 minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
                 hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+                isBlocked: newIsBlocked,
+                isCritical: newIsCritical,
                 lastActivity: admin.firestore.FieldValue.serverTimestamp(),
-                _version: clientVersionInfo.nextVersion,  // ✅ גרסה חדשה!
+                _version: clientVersionInfo.nextVersion,
                 _lastModified: admin.firestore.FieldValue.serverTimestamp(),
                 _modifiedBy: user.username
               });
@@ -3739,10 +3793,17 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 service.stages = stages;
 
                 // ✅ VERSION CONTROL
+                const currentHoursRemaining = clientData.hoursRemaining || 0;
+                const newHoursRemaining = currentHoursRemaining - hoursWorked;
+                const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+                const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
                 transaction.update(clientRef, {
                   services: clientData.services,
                   hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
                   minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                  isBlocked: newIsBlocked,
+                  isCritical: newIsCritical,
                   lastActivity: admin.firestore.FieldValue.serverTimestamp(),
                   _version: clientVersionInfo.nextVersion,
                   _lastModified: admin.firestore.FieldValue.serverTimestamp(),
@@ -3797,10 +3858,17 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
 
               // ✅ VERSION CONTROL
+              const currentHoursRemaining = clientData.hoursRemaining || 0;
+              const newHoursRemaining = currentHoursRemaining - hoursWorked;
+              const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+              const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
               transaction.update(clientRef, {
                 stages: stages,
                 hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
                 minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
+                isBlocked: newIsBlocked,
+                isCritical: newIsCritical,
                 lastActivity: admin.firestore.FieldValue.serverTimestamp(),
                 _version: clientVersionInfo.nextVersion,
                 _lastModified: admin.firestore.FieldValue.serverTimestamp(),
@@ -4256,10 +4324,17 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
                 s.id === updatedService.id ? updatedService : s
               );
 
+              const currentHoursRemaining = clientData.hoursRemaining || 0;
+              const newHoursRemaining = currentHoursRemaining - hoursDiff;
+              const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+              const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
               clientUpdateData = {
                 services: updatedServices,
                 minutesRemaining: admin.firestore.FieldValue.increment(-minutesDiff),
                 hoursRemaining: admin.firestore.FieldValue.increment(-hoursDiff),
+                isBlocked: newIsBlocked,
+                isCritical: newIsCritical,
                 lastActivity: admin.firestore.FieldValue.serverTimestamp()
               };
 

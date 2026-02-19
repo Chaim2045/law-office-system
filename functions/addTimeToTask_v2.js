@@ -246,12 +246,19 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
               s.id === updatedService.id ? updatedService : s
             );
 
+            const currentHoursRemaining = clientData.hoursRemaining || 0;
+            const newHoursRemaining = currentHoursRemaining - hoursWorked;
+            const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+            const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
             updates.clientUpdate = {
               services: updatedServices,
               hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
               hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
               minutesUsed: admin.firestore.FieldValue.increment(minutesToAdd),
               minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
+              isBlocked: newIsBlocked,
+              isCritical: newIsCritical,
               lastActivity: admin.firestore.FieldValue.serverTimestamp()
             };
 
@@ -313,10 +320,17 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           s.id === updatedService.id ? updatedService : s
         );
 
+        const currentHoursRemaining = clientData.hoursRemaining || 0;
+        const newHoursRemaining = currentHoursRemaining - hoursWorked;
+        const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+        const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
         updates.clientUpdate = {
           services: updatedServices,
           minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
           hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+          isBlocked: newIsBlocked,
+          isCritical: newIsCritical,
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
 
@@ -362,10 +376,17 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           s.id === updatedService.id ? updatedService : s
         );
 
+        const currentHoursRemaining = clientData.hoursRemaining || 0;
+        const newHoursRemaining = currentHoursRemaining - hoursWorked;
+        const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+        const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
         updates.clientUpdate = {
           services: updatedServices,
           minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
           hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
+          isBlocked: newIsBlocked,
+          isCritical: newIsCritical,
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
 
@@ -413,10 +434,17 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
           index === currentStageIndex ? updatedStage : stage
         );
 
+        const currentHoursRemaining = clientData.hoursRemaining || 0;
+        const newHoursRemaining = currentHoursRemaining - hoursWorked;
+        const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
+        const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
+
         updates.clientUpdate = {
           stages: updatedStages,
           hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
           minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
+          isBlocked: newIsBlocked,
+          isCritical: newIsCritical,
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
 

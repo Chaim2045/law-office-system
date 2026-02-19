@@ -76,9 +76,13 @@ return 0;
 
     // Regular service with packages
     if (entity.packages && Array.isArray(entity.packages) && entity.packages.length > 0) {
-      return entity.packages
-        .filter(pkg => pkg.status === 'active' || !pkg.status)
-        .reduce((sum, pkg) => sum + (pkg.hoursRemaining || 0), 0);
+      const activePackages = entity.packages
+        .filter(pkg => pkg.status === 'active' || !pkg.status);
+      if (activePackages.length > 0) {
+        return activePackages.reduce((sum, pkg) => sum + (pkg.hoursRemaining || 0), 0);
+      }
+      // fallback — אין packages פעילים, קרא מ-service level
+      return entity.hoursRemaining || 0;
     }
 
     return entity.hoursRemaining || 0;
