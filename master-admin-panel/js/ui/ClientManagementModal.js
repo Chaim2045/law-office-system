@@ -768,6 +768,7 @@ return '';
                 id: 'service_' + Date.now(),
                 serviceName: serviceName,
                 serviceType: serviceType,
+                type: serviceType,
                 status: 'active',
                 createdAt: new Date().toISOString(),
                 startedAt: new Date().toISOString()
@@ -845,9 +846,14 @@ return '';
 
                 // ✅ If this is an hours-based service, sync direct fields for User Interface compatibility
                 if (newService.serviceType === 'hours') {
+                    const clientIsBlocked = (totalRemainingFromAllServices <= 0) && (this.currentClient.type === 'hours');
+                    const clientIsCritical = (!clientIsBlocked) && (totalRemainingFromAllServices <= 5) && (totalRemainingFromAllServices > 0) && (this.currentClient.type === 'hours');
+
                     updateData.totalHours = totalHoursFromAllServices;
                     updateData.hoursRemaining = totalRemainingFromAllServices;
                     updateData.minutesRemaining = Math.round(totalRemainingFromAllServices * 60);
+                    updateData.isBlocked = clientIsBlocked;
+                    updateData.isCritical = clientIsCritical;
                     updateData.type = 'hours'; // Ensure client type is set
                 }
 
@@ -883,7 +889,7 @@ return '';
 
         renewHours() {
             // Find all hours-based services and prompt for renewal
-            const hoursServices = this.currentClient.services.filter(s => s.serviceType === 'hours');
+            const hoursServices = this.currentClient.services.filter(s => s.type === 'hours' || s.serviceType === 'hours');
 
             if (hoursServices.length === 0) {
                 this.showNotification('אין שירותי שעות פעילים', 'info');
@@ -1082,7 +1088,7 @@ return;
          */
         calculateTotalHoursFromServices(services) {
             return services.reduce((sum, service) => {
-                if (service.serviceType === 'hours') {
+                if (service.type === 'hours' || service.serviceType === 'hours') {
                     return sum + (service.totalHours || 0);
                 }
                 return sum;
@@ -1095,7 +1101,7 @@ return;
          */
         calculateRemainingHoursFromServices(services) {
             return services.reduce((sum, service) => {
-                if (service.serviceType === 'hours') {
+                if (service.type === 'hours' || service.serviceType === 'hours') {
                     return sum + (service.hoursRemaining || 0);
                 }
                 return sum;
@@ -1155,12 +1161,17 @@ return;
                 const totalHoursFromAllServices = this.calculateTotalHoursFromServices(updatedServices);
                 const totalRemainingFromAllServices = this.calculateRemainingHoursFromServices(updatedServices);
 
+                const clientIsBlocked = (totalRemainingFromAllServices <= 0) && (this.currentClient.type === 'hours');
+                const clientIsCritical = (!clientIsBlocked) && (totalRemainingFromAllServices <= 5) && (totalRemainingFromAllServices > 0) && (this.currentClient.type === 'hours');
+
                 await clientRef.update({
                     services: updatedServices,
                     // ✅ Sync direct fields for User Interface compatibility
                     totalHours: totalHoursFromAllServices,
                     hoursRemaining: totalRemainingFromAllServices,
                     minutesRemaining: Math.round(totalRemainingFromAllServices * 60),
+                    isBlocked: clientIsBlocked,
+                    isCritical: clientIsCritical,
                     type: 'hours', // Ensure client type is set
                     updatedAt: new Date().toISOString()
                 });
