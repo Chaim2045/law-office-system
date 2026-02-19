@@ -1139,10 +1139,24 @@ return;
                         const currentTotal = s.totalHours || 0;
                         const currentRemaining = s.hoursRemaining || 0;
 
+                        const newPackage = {
+                            id: 'pkg_' + Date.now(),
+                            type: 'renewal',
+                            hours: hours,
+                            hoursUsed: 0,
+                            hoursRemaining: hours,
+                            status: 'active',
+                            addedAt: new Date().toISOString(),
+                            addedBy: window.currentUser?.email || 'admin'
+                        };
+
+                        const updatedPackages = [...(s.packages || []), newPackage];
+
                         return {
                             ...s,
                             totalHours: currentTotal + hours,
                             hoursRemaining: currentRemaining + hours,
+                            packages: updatedPackages,
                             lastRenewalDate: new Date().toISOString(),
                             renewalHistory: [
                                 ...(s.renewalHistory || []),
