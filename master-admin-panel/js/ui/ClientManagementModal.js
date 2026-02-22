@@ -1126,84 +1126,37 @@ return;
             }
 
             try {
-                // Show loading
                 this.showLoading('מוסיף שעות...');
 
-                // Get Firestore instance
-                const db = window.firebaseApp.firestore();
-
-                // Update service hours
-                const clientRef = db.collection('clients').doc(this.currentClient.id);
-                const updatedServices = this.currentClient.services.map(s => {
-                    if (s.id === service.id) {
-                        const currentTotal = s.totalHours || 0;
-                        const currentRemaining = s.hoursRemaining || 0;
-
-                        const newPackage = {
-                            id: 'pkg_' + Date.now(),
-                            type: 'renewal',
-                            hours: hours,
-                            hoursUsed: 0,
-                            hoursRemaining: hours,
-                            status: 'active',
-                            addedAt: new Date().toISOString(),
-                            addedBy: window.currentUser?.email || 'admin'
-                        };
-
-                        const updatedPackages = [...(s.packages || []), newPackage];
-
-                        return {
-                            ...s,
-                            totalHours: currentTotal + hours,
-                            hoursRemaining: currentRemaining + hours,
-                            packages: updatedPackages,
-                            lastRenewalDate: new Date().toISOString(),
-                            renewalHistory: [
-                                ...(s.renewalHistory || []),
-                                {
-                                    date: new Date().toISOString(),
-                                    hours: hours,
-                                    addedBy: window.currentUser?.email || 'admin'
-                                }
-                            ]
-                        };
-                    }
-                    return s;
+                // Call Cloud Function instead of direct Firestore write
+                const addPackageFn = window.firebaseFunctions.httpsCallable('addPackageToService');
+                const result = await addPackageFn({
+                    clientId: this.currentClient.id,
+                    serviceId: service.id,
+                    hours: hours,
+                    description: `חידוש שעות - ${new Date().toLocaleDateString('he-IL')}`
                 });
 
-                // ✅ Calculate totals from all services for backward compatibility
-                const totalHoursFromAllServices = this.calculateTotalHoursFromServices(updatedServices);
-                const totalRemainingFromAllServices = this.calculateRemainingHoursFromServices(updatedServices);
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה בהוספת שעות');
+                }
 
-                const clientIsBlocked = (totalRemainingFromAllServices <= 0) && (this.currentClient.type === 'hours');
-                const clientIsCritical = (!clientIsBlocked) && (totalRemainingFromAllServices <= 5) && (totalRemainingFromAllServices > 0) && (this.currentClient.type === 'hours');
+                // Update local state from CF result
+                const localService = this.currentClient.services.find(s => s.id === service.id);
+                if (localService) {
+                    localService.totalHours = result.data.service.totalHours;
+                    localService.hoursRemaining = result.data.service.hoursRemaining;
+                    if (!localService.packages) {
+localService.packages = [];
+}
+                    localService.packages.push(result.data.package);
+                }
 
-                await clientRef.update({
-                    services: updatedServices,
-                    // ✅ Sync direct fields for User Interface compatibility
-                    totalHours: totalHoursFromAllServices,
-                    hoursRemaining: totalRemainingFromAllServices,
-                    minutesRemaining: Math.round(totalRemainingFromAllServices * 60),
-                    isBlocked: clientIsBlocked,
-                    isCritical: clientIsCritical,
-                    type: 'hours', // Ensure client type is set
-                    updatedAt: new Date().toISOString()
-                });
-
-                // Update local data
-                this.currentClient.services = updatedServices;
-                this.currentClient.totalHours = totalHoursFromAllServices;
-                this.currentClient.hoursRemaining = totalRemainingFromAllServices;
-                this.currentClient.minutesRemaining = Math.round(totalRemainingFromAllServices * 60);
-
-                // Re-render services
                 this.renderServices();
-
-                // Show success message
+                this.renderClientInfo();
                 this.hideLoading();
                 this.showNotification(`נוספו ${hours} שעות בהצלחה`, 'success');
 
-                // Refresh data in parent component
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
                     await window.ClientsDataManager.loadClients();
                 }
