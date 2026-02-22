@@ -17,176 +17,9 @@
 
 // ===== חישוב שעות לקוחות =====
 
-/**
- * Calculate accurate client hours from all timesheet entries
- * חישוב מדויק של שעות לקוח מכל רשומות השעתון
- * @param {string} clientName - שם הלקוח
- * @returns {Promise<Object>} נתוני שעות מפורטים
- */
-async function calculateClientHoursAccurate(clientName) {
-  try {
-    const db = window.firebaseDB;
-    if (!db) {
-throw new Error('Firebase לא מחובר');
-}
+// REMOVED: calculateClientHoursAccurate — duplicate of js/modules/client-hours.js
 
-    // Get client data
-    const clientsSnapshot = await db
-      .collection('clients')
-      .where('fullName', '==', clientName)
-      .get();
-
-    if (clientsSnapshot.empty) {
-      throw new Error('לקוח לא נמצא');
-    }
-
-    const client = clientsSnapshot.docs[0].data();
-
-    // Get all timesheet entries for this client (from ALL users)
-    const timesheetSnapshot = await db
-      .collection('timesheet_entries')
-      .where('clientName', '==', clientName)
-      .get();
-
-    let totalMinutesUsed = 0;
-    const entriesByLawyer = {};
-
-    timesheetSnapshot.forEach((doc) => {
-      const entry = doc.data();
-      const minutes = entry.minutes || 0;
-      const lawyer = entry.employee || entry.lawyer || 'לא ידוע';
-
-      totalMinutesUsed += minutes;
-
-      if (!entriesByLawyer[lawyer]) {
-        entriesByLawyer[lawyer] = 0;
-      }
-      entriesByLawyer[lawyer] += minutes;
-    });
-
-    // Calculate remaining hours
-    const totalHours = client.totalHours || 0;
-    const totalMinutesAllocated = totalHours * 60;
-    const remainingMinutes = Math.max(
-      0,
-      totalMinutesAllocated - totalMinutesUsed
-    );
-    const remainingHours = remainingMinutes / 60;
-
-    // Determine status
-    let status = 'פעיל';
-    let isBlocked = false;
-    let isCritical = false;
-
-    if (client.type === 'hours') {
-      if (remainingMinutes <= 0) {
-        status = 'חסום - נגמרו השעות';
-        isBlocked = true;
-      } else if (remainingHours <= 5) {
-        status = 'קריטי - מעט שעות';
-        isCritical = true;
-      }
-    }
-
-    const result = {
-      clientName,
-      clientData: client,
-      totalHours,
-      totalMinutesUsed,
-      remainingHours: Math.round(remainingHours * 100) / 100,
-      remainingMinutes,
-      status,
-      isBlocked,
-      isCritical,
-      entriesCount: timesheetSnapshot.size,
-      entriesByLawyer,
-      uniqueLawyers: Object.keys(entriesByLawyer),
-      lastCalculated: new Date()
-    };
-
-    return result;
-  } catch (error) {
-    console.error('שגיאה בחישוב שעות:', error);
-    throw error;
-  }
-}
-
-/**
- * Update client hours immediately in Firebase
- * עדכון מיידי של שעות לקוח ב-Firebase
- * @param {string} clientName - שם הלקוח
- * @param {number} minutesUsed - דקות שנוספו
- * @returns {Promise<Object>} תוצאת העדכון
- */
-async function updateClientHoursImmediately(clientName, minutesUsed) {
-  try {
-    const db = window.firebaseDB;
-    if (!db) {
-throw new Error('Firebase לא מחובר');
-}
-
-    // Find the client
-    const clientsSnapshot = await db
-      .collection('clients')
-      .where('fullName', '==', clientName)
-      .get();
-
-    if (clientsSnapshot.empty) {
-      console.warn(`לקוח ${clientName} לא נמצא - לא ניתן לעדכן שעות`);
-      return { success: false, message: 'לקוח לא נמצא' };
-    }
-
-    const clientDoc = clientsSnapshot.docs[0];
-    const clientData = clientDoc.data();
-
-    // Only for hours-based clients
-    if (clientData.type !== 'hours') {
-      return { success: true, message: 'לקוח פיקס - לא נדרש עדכון' };
-    }
-
-    // Recalculate using accurate function
-    const hoursData = await calculateClientHoursAccurate(clientName);
-
-    // Update Firebase document with accurate data
-    await clientDoc.ref.update({
-      minutesRemaining: Math.max(0, hoursData.remainingMinutes),
-      hoursRemaining: Math.max(0, hoursData.remainingHours),
-      lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-      lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-      totalMinutesUsed: hoursData.totalMinutesUsed,
-      isBlocked: hoursData.isBlocked,
-      isCritical: hoursData.isCritical
-    });
-
-    // Update local system data
-    if (window.manager && window.manager.clients) {
-      const localClientIndex = window.manager.clients.findIndex(
-        (c) => c.fullName === clientName
-      );
-      if (localClientIndex !== -1) {
-        window.manager.clients[localClientIndex].hoursRemaining = Math.max(
-          0,
-          hoursData.remainingHours
-        );
-        window.manager.clients[localClientIndex].minutesRemaining = Math.max(
-          0,
-          hoursData.remainingMinutes
-        );
-        window.manager.clients[localClientIndex].isBlocked = hoursData.isBlocked;
-        window.manager.clients[localClientIndex].isCritical = hoursData.isCritical;
-      }
-    }
-
-    return {
-      success: true,
-      message: 'שעות לקוח עודכנו בהצלחה',
-      data: hoursData
-    };
-  } catch (error) {
-    console.error('שגיאה בעדכון שעות לקוח:', error);
-    return { success: false, message: error.message };
-  }
-}
+// REMOVED: updateClientHoursImmediately — duplicate of js/modules/client-hours.js
 
 // ===== חישובי התקדמות משימות =====
 
@@ -643,10 +476,6 @@ function createTimesheetStatsBar(stats) {
 // Export as module for modern usage
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    // Client hours calculations
-    calculateClientHoursAccurate,
-    updateClientHoursImmediately,
-
     // Task progress calculations
     calculateSimpleProgress,
     getProgressStatusText,
@@ -667,29 +496,6 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-// Export to global window for browser usage
-window.StatisticsCalculator = {
-  // Client hours calculations
-  calculateClientHoursAccurate,
-  updateClientHoursImmediately,
-
-  // Task progress calculations
-  calculateSimpleProgress,
-  getProgressStatusText,
-
-  // Task counting
-  getActiveTasksCount,
-  getCompletedTasksCount,
-  getTotalHours,
-
-  // Budget statistics
-  calculateBudgetStatistics,
-  createBudgetStatsBar,
-
-  // Timesheet statistics
-  calculateTimesheetStatistics,
-  createTimesheetStatsBar,
-  calculateSmartGoals
-};
-
-Logger.log('Statistics Calculator Module loaded successfully');
+// REMOVED: window.StatisticsCalculator export — dead code, 0 callers
+// All statistics functions are provided by js/modules/statistics.js (window.StatisticsModule)
+// Client hours functions are provided by js/modules/client-hours.js

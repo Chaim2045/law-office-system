@@ -1443,7 +1443,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     const service = services[serviceIndex];
 
     // בדיקה שזה שירות שעות
-    if (service.type !== 'hours') {
+    if (service.type !== 'hours' && service.serviceType !== 'hours') {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'ניתן להוסיף חבילה רק לתוכנית שעות'
@@ -1503,7 +1503,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       serviceId: data.serviceId,
       packageId: packageId,
       hours: data.hours,
-      serviceName: service.name
+      serviceName: service.name || service.serviceName
     });
 
     console.log(`✅ Added package ${packageId} (${data.hours}h) to service ${data.serviceId} for client ${clientId}`);
@@ -1514,7 +1514,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       package: newPackage,
       service: {
         id: service.id,
-        name: service.name,
+        name: service.name || service.serviceName,
         totalHours: service.totalHours,
         hoursRemaining: service.hoursRemaining,
         packagesCount: service.packages.length
