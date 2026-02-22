@@ -1892,6 +1892,168 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 });
 
 /**
+ * מעבר לשלב הבא בהליך משפטי
+ * CF מחשבת בעצמה מי השלב הנוכחי ומי הבא
+ *
+ * @param {Object} data
+ * @param {string} data.clientId - מספר תיק (Document ID)
+ * @param {string} data.serviceId - מזהה השירות (legal_procedure)
+ * @returns {Object} { success, serviceId, fromStage, toStage, isLastStage, message }
+ */
+exports.moveToNextStage = functions.https.onCall(async (data, context) => {
+  try {
+    // 1. Auth
+    const user = await checkUserPermissions(context);
+
+    // 2. Validation
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    if (!data.serviceId || typeof data.serviceId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה שירות חובה'
+      );
+    }
+
+    // 3. Transaction
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      // 3a. שליפת client doc
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      // 3b. מציאת service
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'שירות לא נמצא עבור לקוח זה'
+        );
+      }
+
+      const service = services[serviceIndex];
+
+      // 3c. בדיקת סוג שירות
+      if (service.type !== 'legal_procedure' && service.serviceType !== 'legal_procedure') {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'ניתן להעביר שלבים רק בהליך משפטי'
+        );
+      }
+
+      // 3d. בדיקת stages
+      if (!service.stages || !Array.isArray(service.stages) || service.stages.length === 0) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'אין שלבים בשירות זה'
+        );
+      }
+
+      // 3e. מציאת active stage
+      const activeIndex = service.stages.findIndex(s => s.status === 'active');
+      if (activeIndex === -1) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'אין שלב פעיל בשירות'
+        );
+      }
+
+      // 3f. בדיקת שלב אחרון
+      if (activeIndex >= service.stages.length - 1) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'השירות נמצא בשלב האחרון — אין שלב הבא'
+        );
+      }
+
+      const currentStage = service.stages[activeIndex];
+      const nextStage = service.stages[activeIndex + 1];
+      const now = new Date().toISOString();
+
+      // 3g. Immutable update — stages
+      const updatedStages = service.stages.map((stage, idx) => {
+        if (idx === activeIndex) return { ...stage, status: 'completed', completedAt: now };
+        if (idx === activeIndex + 1) return { ...stage, status: 'active', startedAt: now };
+        return stage;
+      });
+      const updatedService = { ...service, stages: updatedStages };
+      const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
+
+      // 3h. כתיבה ל-Firestore (Transaction)
+      const isLastStage = (activeIndex + 1) === service.stages.length - 1;
+
+      transaction.update(clientRef, {
+        services: updatedServices,
+        currentStage: nextStage.id,
+        currentStageName: nextStage.name || nextStage.id,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      // 3i. return data from transaction
+      return {
+        currentStage: { id: currentStage.id, name: currentStage.name || currentStage.id },
+        nextStage: { id: nextStage.id, name: nextStage.name || nextStage.id },
+        updatedStages: updatedStages,
+        isLastStage: isLastStage,
+        serviceName: service.name || service.serviceName
+      };
+    });
+
+    // 4. Audit log (outside transaction)
+    await logAction('MOVE_TO_NEXT_STAGE', user.uid, user.username, {
+      clientId: data.clientId,
+      caseNumber: data.clientId,
+      serviceId: data.serviceId,
+      fromStageId: result.currentStage.id,
+      fromStageName: result.currentStage.name,
+      toStageId: result.nextStage.id,
+      toStageName: result.nextStage.name,
+      serviceName: result.serviceName
+    });
+
+    // 5. Return
+    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId}`);
+
+    return {
+      success: true,
+      serviceId: data.serviceId,
+      fromStage: result.currentStage,
+      toStage: result.nextStage,
+      updatedStages: result.updatedStages,
+      isLastStage: result.isLastStage,
+      message: `עברת לשלב "${result.nextStage.name}"`
+    };
+
+  } catch (error) {
+    console.error('Error in moveToNextStage:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במעבר שלב: ${error.message}`
+    );
+  }
+});
+
+/**
  * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  * @param {Object} data - פרמטרים
  * @param {boolean} data.includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)

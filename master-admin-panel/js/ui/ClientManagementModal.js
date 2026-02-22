@@ -1195,70 +1195,32 @@ localService.packages = [];
             }
 
             try {
-                // Show loading
                 this.showLoading('מעדכן שלב...');
 
-                // Get Firestore instance
-                const db = window.firebaseApp.firestore();
-
-                // Update stages
-                const clientRef = db.collection('clients').doc(this.currentClient.id);
-                const updatedServices = this.currentClient.services.map(s => {
-                    if (s.id === service.id) {
-                        const updatedStages = s.stages.map((stage, index) => {
-                            if (index === activeStageIndex) {
-                                // Mark current stage as completed
-                                return {
-                                    ...stage,
-                                    status: 'completed',
-                                    completedAt: new Date().toISOString()
-                                };
-                            } else if (index === activeStageIndex + 1) {
-                                // Mark next stage as active
-                                return {
-                                    ...stage,
-                                    status: 'active',
-                                    startedAt: new Date().toISOString()
-                                };
-                            }
-                            return stage;
-                        });
-
-                        return {
-                            ...s,
-                            stages: updatedStages
-                        };
-                    }
-                    return s;
+                const moveToNextStageFn = window.firebaseFunctions.httpsCallable('moveToNextStage');
+                const result = await moveToNextStageFn({
+                    clientId: this.currentClient.id,
+                    serviceId: service.id
                 });
 
-                // ✅ FIX BUG #1: Update currentStage field
-                const updateData = {
-                    services: updatedServices,
-                    updatedAt: new Date().toISOString()
-                };
-
-                // If this client has a currentStage field (legal_procedure), update it
-                if (this.currentClient.procedureType === 'legal_procedure' || this.currentClient.type === 'legal_procedure') {
-                    updateData.currentStage = nextStage.id;
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה במעבר שלב');
                 }
 
-                await clientRef.update(updateData);
-
-                // Update local data
-                this.currentClient.services = updatedServices;
-                if (updateData.currentStage) {
-                    this.currentClient.currentStage = updateData.currentStage;
+                // Update local data from CF response
+                const localService = this.currentClient.services.find(s => s.id === service.id);
+                if (localService && result.data.updatedStages) {
+                    localService.stages = result.data.updatedStages;
+                }
+                if (result.data.toStage) {
+                    this.currentClient.currentStage = result.data.toStage.id;
+                    this.currentClient.currentStageName = result.data.toStage.name;
                 }
 
-                // Re-render services
                 this.renderServices();
-
-                // Show success message
                 this.hideLoading();
-                this.showNotification(`עברת לשלב "${nextStage.name}"`, 'success');
+                this.showNotification(`עברת לשלב "${result.data.toStage?.name || nextStage.name}"`, 'success');
 
-                // Refresh data in parent component
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
                     await window.ClientsDataManager.loadClients();
                 }
