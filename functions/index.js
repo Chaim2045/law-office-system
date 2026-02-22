@@ -3835,14 +3835,18 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         // לקוח שעתי עם שירותים
         if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
           let service = null;
+          let serviceIndex = -1;
 
           if (data.serviceId) {
-            service = clientData.services.find(s => s.id === data.serviceId);
+            serviceIndex = clientData.services.findIndex(s => s.id === data.serviceId);
+            service = serviceIndex >= 0 ? clientData.services[serviceIndex] : null;
             if (!service) {
               console.warn(`⚠️ שירות ${data.serviceId} לא נמצא - משתמש בראשון`);
+              serviceIndex = 0;
               service = clientData.services[0];
             }
           } else {
+            serviceIndex = 0;
             service = clientData.services[0];
           }
 
@@ -3880,8 +3884,24 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               }
 
               // קיזוז שעות
-              DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
-              updatedPackageId = activePackage.id;
+              const updatedPackage = DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
+              updatedPackageId = updatedPackage.id;
+
+              const updatedServicePackages = service.packages.map(pkg =>
+                pkg.id === updatedPackage.id ? updatedPackage : pkg
+              );
+
+              const updatedService = {
+                ...service,
+                packages: updatedServicePackages,
+                hoursUsed: (service.hoursUsed || 0) + hoursWorked,
+                hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
+                lastActivity: new Date().toISOString()
+              };
+
+              const updatedServices = clientData.services.map((s, idx) =>
+                idx === serviceIndex ? updatedService : s
+              );
 
               // ✅ VERSION CONTROL: עדכון עם גרסה חדשה
               const currentHoursRemaining = clientData.hoursRemaining || 0;
@@ -3890,7 +3910,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
 
               transaction.update(clientRef, {
-                services: clientData.services,
+                services: updatedServices,
                 hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
                 minutesUsed: admin.firestore.FieldValue.increment(data.minutes),
                 minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
