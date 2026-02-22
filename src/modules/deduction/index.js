@@ -18,7 +18,7 @@
  * הוספתי ייצוא global (window) לפונקציות חישוב נוספות:
  * - window.calculateHoursUsed() - חדש!
  * - window.calculateTotalHours() - חדש!
- * - window.calculateProgress() - חדש!
+ * - window.calculateProgress() - REMOVED (dead code)
  * - window.calculateRemainingHours() - היה קיים
  *
  * למה זה חשוב:
@@ -65,10 +65,7 @@ const DeductionSystem = {
   calculateRemainingHours: Calculators.calculateRemainingHours,
   calculateTotalHours: Calculators.calculateTotalHours,
   calculateHoursUsed: Calculators.calculateHoursUsed,
-  calculateProgress: Calculators.calculateProgress,
-  minutesToHours: Calculators.minutesToHours,
-  hoursToMinutes: Calculators.hoursToMinutes,
-  formatHours: Calculators.formatHours,
+  // REMOVED: calculateProgress, minutesToHours, hoursToMinutes, formatHours — dead code
 
   // Validators
   validateTimeEntry: Validators.validateTimeEntry,
@@ -107,7 +104,7 @@ if (typeof window !== 'undefined') {
   window.calculateRemainingHours = Calculators.calculateRemainingHours;
   window.calculateHoursUsed = Calculators.calculateHoursUsed;
   window.calculateTotalHours = Calculators.calculateTotalHours;
-  window.calculateProgress = Calculators.calculateProgress;
+  // REMOVED: window.calculateProgress — dead code, 0 callers
 }
 
 // CommonJS Export

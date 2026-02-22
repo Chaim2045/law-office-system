@@ -126,77 +126,17 @@ function calculateHoursUsed(entity) {
   return entity.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
 }
 
-/**
- * Calculate progress percentage
- *
- * @param {Object} entity - Service or stage
- * @returns {number} Progress percentage (0-100)
- */
-function calculateProgress(entity) {
-  const total = calculateTotalHours(entity);
-  if (total === 0) {
-return 0;
-}
-
-  const used = calculateHoursUsed(entity);
-  return Math.round((used / total) * 100 * 10) / 10;
-}
-
-/**
- * Convert minutes to hours
- *
- * @param {number} minutes - Minutes to convert
- * @param {number} [decimals=2] - Decimal places
- * @returns {number} Hours
- */
-function minutesToHours(minutes, decimals = 2) {
-  return Math.round((minutes / 60) * Math.pow(10, decimals)) / Math.pow(10, decimals);
-}
-
-/**
- * Convert hours to minutes
- *
- * @param {number} hours - Hours to convert
- * @returns {number} Minutes
- */
-function hoursToMinutes(hours) {
-  return Math.round(hours * 60);
-}
-
-/**
- * Format hours for display
- *
- * @param {number} hours - Hours to format
- * @param {boolean} [showMinutes=false] - Show minutes part
- * @returns {string} Formatted string
- */
-function formatHours(hours, showMinutes = false) {
-  if (!hours || hours === 0) {
-return '0 שעות';
-}
-
-  if (showMinutes) {
-    const h = Math.floor(hours);
-    const m = Math.round((hours - h) * 60);
-    if (m === 0) {
-return `${h} שעות`;
-}
-    return `${h}:${m.toString().padStart(2, '0')} שעות`;
-  }
-
-  return `${hours.toFixed(1)} שעות`;
-}
+// REMOVED: calculateProgress — 0 callers in production code
+// REMOVED: minutesToHours — 0 callers (WorkloadCalculator has its own implementation)
+// REMOVED: hoursToMinutes — 0 callers in production code
+// REMOVED: formatHours — 0 callers (cases.js/legal-procedures.js have local this.formatHours)
 
 // Exports - CommonJS (for Node.js / Firebase Functions)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     calculateRemainingHours,
     calculateTotalHours,
-    calculateHoursUsed,
-    calculateProgress,
-    minutesToHours,
-    hoursToMinutes,
-    formatHours
+    calculateHoursUsed
   };
 }
 
@@ -204,9 +144,5 @@ if (typeof module !== 'undefined' && module.exports) {
 export {
   calculateRemainingHours,
   calculateTotalHours,
-  calculateHoursUsed,
-  calculateProgress,
-  minutesToHours,
-  hoursToMinutes,
-  formatHours
+  calculateHoursUsed
 };
