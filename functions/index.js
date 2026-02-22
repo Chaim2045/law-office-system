@@ -3447,6 +3447,8 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
 
           clientUpdateData = {
             services: updatedServices,
+            hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
+            minutesUsed: admin.firestore.FieldValue.increment(data.minutes),
             minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
             hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
             isBlocked: newIsBlocked,
@@ -3889,6 +3891,8 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
 
               transaction.update(clientRef, {
                 services: clientData.services,
+                hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
+                minutesUsed: admin.firestore.FieldValue.increment(data.minutes),
                 minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
                 hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
                 isBlocked: newIsBlocked,
