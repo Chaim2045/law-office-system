@@ -2705,6 +2705,187 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * סגירת תיק — העברה לארכיון + השלמת כל השירותים
+ * closeCase — archive client + complete all services
+ * @param {Object} data
+ * @param {string} data.clientId — מזהה לקוח (חובה)
+ * @param {string} [data.note] — הערת סגירה (אופציונלי, עד 500 תווים)
+ */
+exports.closeCase = functions.https.onCall(async (data, context) => {
+  try {
+    // ═══════════════════════════════════════
+    // 1. AUTH — only admin
+    // ═══════════════════════════════════════
+    const user = await checkUserPermissions(context);
+
+    // ═══════════════════════════════════════
+    // 2. VALIDATION
+    // ═══════════════════════════════════════
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    const note = (data.note && typeof data.note === 'string')
+      ? data.note.trim().substring(0, 500)
+      : null;
+
+    // ═══════════════════════════════════════
+    // 3. TRANSACTION
+    // ═══════════════════════════════════════
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      // ── Phase 1: READ ──
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      // ── Phase 2: VALIDATIONS + CALCULATIONS ──
+
+      // Same-state guard
+      if (clientData.status === 'inactive' && clientData.isArchived === true) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'התיק כבר סגור ומועבר לארכיון'
+        );
+      }
+
+      const now = new Date().toISOString();
+      let servicesCompleted = 0;
+      let servicesAlreadyCompleted = 0;
+
+      // Immutable map — complete all non-completed services
+      const updatedServices = services.map(service => {
+        if (service.status === 'completed') {
+          servicesAlreadyCompleted++;
+          return service;
+        }
+        servicesCompleted++;
+        return {
+          ...service,
+          status: 'completed',
+          completedAt: now
+        };
+      });
+
+      // Recalculate client-level aggregates
+      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+      const clientMinutesRemaining = clientHoursRemaining * 60;
+      const totalServices = updatedServices.length;
+      const activeServices = 0;
+
+      // ── Phase 3: WRITE ──
+      transaction.update(clientRef, {
+        status: 'inactive',
+        isArchived: true,
+        isBlocked: false,
+        isCritical: false,
+        archivedAt: now,
+        services: updatedServices,
+        totalServices: totalServices,
+        activeServices: activeServices,
+        totalHours: clientTotalHours,
+        hoursUsed: clientHoursUsed,
+        hoursRemaining: clientHoursRemaining,
+        minutesRemaining: clientMinutesRemaining,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      return {
+        clientName: clientData.fullName || clientData.clientName,
+        previousStatus: clientData.status || 'active',
+        servicesCompleted,
+        servicesAlreadyCompleted,
+        closedAt: now,
+        aggregates: {
+          totalHours: clientTotalHours,
+          hoursUsed: clientHoursUsed,
+          hoursRemaining: clientHoursRemaining,
+          minutesRemaining: clientMinutesRemaining,
+          isBlocked: false,
+          isCritical: false,
+          totalServices: totalServices,
+          activeServices: activeServices
+        }
+      };
+    });
+
+    // ═══════════════════════════════════════
+    // 4. INFORMATIONAL — count active budget_tasks (outside transaction)
+    // ═══════════════════════════════════════
+    let activeBudgetTasks = 0;
+    try {
+      const tasksSnapshot = await db.collection('budget_tasks')
+        .where('clientId', '==', data.clientId)
+        .where('status', '==', 'פעיל')
+        .get();
+      activeBudgetTasks = tasksSnapshot.size;
+    } catch (e) {
+      console.error('Warning: failed to count active budget_tasks:', e);
+    }
+
+    // ═══════════════════════════════════════
+    // 5. AUDIT LOG (outside transaction)
+    // ═══════════════════════════════════════
+    try {
+      await logAction('CLOSE_CASE', user.uid, user.username, {
+        clientId: data.clientId,
+        clientName: result.clientName,
+        previousStatus: result.previousStatus,
+        servicesCompleted: result.servicesCompleted,
+        servicesAlreadyCompleted: result.servicesAlreadyCompleted,
+        activeBudgetTasksRemaining: activeBudgetTasks,
+        note: note
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError);
+    }
+
+    // ═══════════════════════════════════════
+    // 6. RETURN
+    // ═══════════════════════════════════════
+    console.log(`✅ Case closed: ${data.clientId} (${result.clientName})`);
+
+    return {
+      success: true,
+      clientId: data.clientId,
+      clientName: result.clientName,
+      closedAt: result.closedAt,
+      servicesCompleted: result.servicesCompleted,
+      servicesAlreadyCompleted: result.servicesAlreadyCompleted,
+      clientAggregates: result.aggregates,
+      activeBudgetTasks: activeBudgetTasks,
+      message: `התיק "${result.clientName}" נסגר. ${result.servicesCompleted} שירותים הושלמו.${activeBudgetTasks > 0 ? ` שים לב: ${activeBudgetTasks} משימות תקציב עדיין פעילות.` : ''}`
+    };
+
+  } catch (error) {
+    console.error('Error in closeCase:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בסגירת תיק: ${error.message}`
+    );
+  }
+});
+
+/**
  * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  * @param {Object} data - פרמטרים
  * @param {boolean} data.includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
