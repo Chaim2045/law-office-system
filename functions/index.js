@@ -2054,6 +2054,153 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * סימון שירות כהושלם
+ * Complete a service — mark as completed + recalculate client aggregates
+ *
+ * @param {Object} data
+ * @param {string} data.clientId - Client document ID
+ * @param {string} data.serviceId - Service ID within the client
+ * @returns {Object} { success, serviceId, serviceName, serviceType, completedAt, clientAggregates, message }
+ */
+exports.completeService = functions.https.onCall(async (data, context) => {
+  try {
+    // 1. Auth
+    const user = await checkUserPermissions(context);
+
+    // 2. Validation
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    if (!data.serviceId || typeof data.serviceId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה שירות חובה'
+      );
+    }
+
+    // 3. Transaction
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      // 3a. Read client
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      // 3b. Find service
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `שירות ${data.serviceId} לא נמצא`
+        );
+      }
+
+      const service = services[serviceIndex];
+
+      // 3c. Check not already completed
+      if (service.status === 'completed') {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'השירות כבר מסומן כהושלם'
+        );
+      }
+
+      // 3d. Immutable update — service
+      const now = new Date().toISOString();
+      const updatedService = { ...service, status: 'completed', completedAt: now };
+      const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
+
+      // 3e. Recalculate client-level aggregates (same logic as addPackageToService)
+      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+      const clientMinutesRemaining = clientHoursRemaining * 60;
+      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+      const totalServices = updatedServices.length;
+      const activeServices = updatedServices.filter(s => s.status === 'active').length;
+
+      // 3f. Write to Firestore (Transaction)
+      transaction.update(clientRef, {
+        services: updatedServices,
+        totalServices: totalServices,
+        activeServices: activeServices,
+        totalHours: clientTotalHours,
+        hoursUsed: clientHoursUsed,
+        hoursRemaining: clientHoursRemaining,
+        minutesRemaining: clientMinutesRemaining,
+        isBlocked: clientIsBlocked,
+        isCritical: clientIsCritical,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      // 3g. Return data from transaction
+      return {
+        serviceName: service.name || service.serviceName,
+        serviceType: service.type || service.serviceType,
+        completedAt: now,
+        aggregates: {
+          totalHours: clientTotalHours,
+          hoursRemaining: clientHoursRemaining,
+          minutesRemaining: clientMinutesRemaining,
+          isBlocked: clientIsBlocked,
+          isCritical: clientIsCritical,
+          totalServices: totalServices,
+          activeServices: activeServices
+        }
+      };
+    });
+
+    // 4. Audit log (outside transaction)
+    await logAction('COMPLETE_SERVICE', user.uid, user.username, {
+      clientId: data.clientId,
+      caseNumber: data.clientId,
+      serviceId: data.serviceId,
+      serviceName: result.serviceName,
+      serviceType: result.serviceType
+    });
+
+    // 5. Return
+    console.log(`✅ Service ${data.serviceId} completed for client ${data.clientId}`);
+
+    return {
+      success: true,
+      serviceId: data.serviceId,
+      serviceName: result.serviceName,
+      serviceType: result.serviceType,
+      completedAt: result.completedAt,
+      clientAggregates: result.aggregates,
+      message: `השירות "${result.serviceName}" סומן כהושלם`
+    };
+
+  } catch (error) {
+    console.error('Error in completeService:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בסימון שירות: ${error.message}`
+    );
+  }
+});
+
+/**
  * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  * @param {Object} data - פרמטרים
  * @param {boolean} data.includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
