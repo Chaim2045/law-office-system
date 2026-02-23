@@ -1033,41 +1033,44 @@ return;
 
             try {
                 this.showLoading('סוגר תיק...');
-                const db = window.firebaseApp.firestore();
-                const clientRef = db.collection('clients').doc(this.currentClient.id);
 
-                // Complete all active services
-                const updatedServices = this.currentClient.services.map(service => {
+                // Call CF instead of direct Firestore write
+                const closeCaseFn = window.firebaseFunctions.httpsCallable('closeCase');
+                const result = await closeCaseFn({ clientId: this.currentClient.id });
+                const responseData = result.data;
+
+                // Update local state from CF response
+                this.currentClient.status = 'inactive';
+                this.currentClient.isArchived = true;
+                this.currentClient.isBlocked = false;
+                this.currentClient.isCritical = false;
+                this.currentClient.services = (this.currentClient.services || []).map(service => {
                     if (service.status !== 'completed') {
-                        return {
-                            ...service,
-                            status: 'completed',
-                            completedAt: new Date().toISOString()
-                        };
+                        return { ...service, status: 'completed', completedAt: responseData.closedAt };
                     }
                     return service;
                 });
-
-                // Update client to inactive and archived
-                await clientRef.update({
-                    status: 'inactive',
-                    isArchived: true,
-                    archivedAt: new Date().toISOString(),
-                    services: updatedServices,
-                    updatedAt: new Date().toISOString()
-                });
-
-                // Update local state
-                this.currentClient.status = 'inactive';
-                this.currentClient.isArchived = true;
-                this.currentClient.services = updatedServices;
+                if (responseData.clientAggregates) {
+                    this.currentClient.totalHours = responseData.clientAggregates.totalHours;
+                    this.currentClient.hoursUsed = responseData.clientAggregates.hoursUsed;
+                    this.currentClient.hoursRemaining = responseData.clientAggregates.hoursRemaining;
+                    this.currentClient.minutesRemaining = responseData.clientAggregates.minutesRemaining;
+                    this.currentClient.totalServices = responseData.clientAggregates.totalServices;
+                    this.currentClient.activeServices = responseData.clientAggregates.activeServices;
+                }
 
                 // Re-render
                 this.renderClientInfo();
                 this.renderServices();
 
                 this.hideLoading();
-                this.showNotification('התיק נסגר והועבר לארכיון', 'success');
+
+                // Notification with budget_tasks warning if needed
+                let notification = responseData.message || 'התיק נסגר והועבר לארכיון';
+                if (responseData.activeBudgetTasks > 0) {
+                    notification += `\n⚠️ ${responseData.activeBudgetTasks} משימות תקציב עדיין פעילות — יש לטפל בהן ידנית`;
+                }
+                this.showNotification(notification, 'success');
 
                 // Refresh parent data
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
@@ -1082,7 +1085,8 @@ return;
             } catch (error) {
                 console.error('❌ Error closing case:', error);
                 this.hideLoading();
-                this.showNotification('שגיאה בסגירת תיק: ' + error.message, 'error');
+                const errorMsg = error.message || 'שגיאה בסגירת תיק';
+                this.showNotification(errorMsg, 'error');
             }
         }
 
