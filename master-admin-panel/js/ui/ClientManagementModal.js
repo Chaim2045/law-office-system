@@ -1371,8 +1371,8 @@ localService.packages = [];
             // Handle confirm
             confirmBtn.addEventListener('click', async () => {
                 if (!selectedStatus) {
-return;
-}
+                    return;
+                }
 
                 const note = noteTextarea.value.trim();
 
@@ -1381,59 +1381,53 @@ return;
                     confirmBtn.disabled = true;
                     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
 
-                    const db = window.firebaseApp.firestore();
-                    const clientRef = db.collection('clients').doc(this.currentClient.id);
-
-                    // Build status change history entry
-                    const historyEntry = {
-                        from: currentStatus,
-                        to: selectedStatus,
-                        changedAt: new Date().toISOString(),
-                        changedBy: window.currentUser?.email || 'unknown',
+                    // Call CF instead of direct Firestore write
+                    const changeStatusFn = window.firebaseFunctions.httpsCallable('changeServiceStatus');
+                    const result = await changeStatusFn({
+                        clientId: this.currentClient.id,
+                        serviceId: service.id,
+                        newStatus: selectedStatus,
                         note: note || null
-                    };
-
-                    // Update service in services array
-                    const updatedServices = this.currentClient.services.map(s => {
-                        if (s.id === service.id) {
-                            return {
-                                ...s,
-                                status: selectedStatus,
-                                statusChangedAt: new Date().toISOString(),
-                                statusChangedBy: window.currentUser?.email || 'unknown',
-                                previousStatus: currentStatus,
-                                statusChangeHistory: [
-                                    ...(s.statusChangeHistory || []),
-                                    historyEntry
-                                ]
-                            };
-                        }
-                        return s;
                     });
 
-                    await clientRef.update({
-                        services: updatedServices,
-                        updatedAt: new Date().toISOString()
-                    });
+                    if (!result.data.success) {
+                        throw new Error(result.data.message || 'שגיאה בשינוי סטטוס');
+                    }
 
-                    // Update local data
-                    this.currentClient.services = updatedServices;
+                    // Update local service data from CF response
+                    const localService = this.currentClient.services.find(s => s.id === service.id);
+                    if (localService) {
+                        localService.status = result.data.newStatus;
+                        localService.statusChangedAt = result.data.statusChangedAt;
+                        localService.previousStatus = result.data.previousStatus;
+                    }
+
+                    // Update client-level aggregates from CF response
+                    if (result.data.clientAggregates) {
+                        this.currentClient.totalHours = result.data.clientAggregates.totalHours;
+                        this.currentClient.hoursUsed = result.data.clientAggregates.hoursUsed;
+                        this.currentClient.hoursRemaining = result.data.clientAggregates.hoursRemaining;
+                        this.currentClient.minutesRemaining = result.data.clientAggregates.minutesRemaining;
+                        this.currentClient.isBlocked = result.data.clientAggregates.isBlocked;
+                        this.currentClient.isCritical = result.data.clientAggregates.isCritical;
+                        this.currentClient.totalServices = result.data.clientAggregates.totalServices;
+                        this.currentClient.activeServices = result.data.clientAggregates.activeServices;
+                    }
 
                     // Close modal
                     overlay.remove();
 
-                    // ⚠️ DON'T re-render services here!
-                    // Firestore real-time listener will trigger re-render automatically
-                    // this.renderServices(); // REMOVED - causes double render
+                    // Re-render UI with updated data
+                    this.renderServices();
+                    this.renderClientInfo();
 
                     // Show success
-                    this.showNotification(
-                        `הסטטוס שונה ל-"${statusOptions[selectedStatus].label}"`,
-                        'success'
-                    );
+                    this.showNotification(result.data.message, 'success');
 
-                    // ⚠️ DON'T refresh parent data here - it causes infinite loop!
-                    // The modal already has the updated data from Firestore
+                    // Refresh parent data
+                    if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
+                        await window.ClientsDataManager.loadClients();
+                    }
 
                 } catch (error) {
                     console.error('❌ Error changing service status:', error);
@@ -1441,7 +1435,7 @@ return;
 
                     // Re-enable button
                     confirmBtn.disabled = false;
-                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> שמור שינויים';
+                    confirmBtn.innerHTML = 'שמור';
                 }
             });
 
