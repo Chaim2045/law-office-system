@@ -2558,6 +2558,153 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * שינוי סטטוס לקוח
+ * @param {Object} data
+ * @param {string} data.clientId - מזהה לקוח
+ * @param {string} data.newStatus - סטטוס חדש: active | inactive
+ * @param {boolean} [data.isBlocked] - האם חסום (ברירת מחדל: false)
+ * @param {boolean} [data.isCritical] - האם קריטי (ברירת מחדל: false)
+ * @param {string} [data.note] - הערה אופציונלית
+ */
+exports.changeClientStatus = functions.https.onCall(async (data, context) => {
+  try {
+    // 1. Auth
+    const user = await checkUserPermissions(context);
+
+    // 2. Validation
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    const VALID_STATUSES = ['active', 'inactive'];
+    if (!data.newStatus || !VALID_STATUSES.includes(data.newStatus)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `סטטוס לא תקין. ערכים מותרים: ${VALID_STATUSES.join(', ')}`
+      );
+    }
+
+    const newIsBlocked = data.isBlocked === true;
+    const newIsCritical = data.isCritical === true;
+
+    // Can't be both blocked AND critical
+    if (newIsBlocked && newIsCritical) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'לא ניתן להיות חסום וקריטי בו-זמנית'
+      );
+    }
+
+    // Blocked/Critical only valid with 'active' status
+    if (data.newStatus === 'inactive' && (newIsBlocked || newIsCritical)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'לא ניתן לסמן לקוח לא-פעיל כחסום או קריטי'
+      );
+    }
+
+    const note = (data.note && typeof data.note === 'string')
+      ? data.note.trim().substring(0, 500)
+      : null;
+
+    // 3. Transaction
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      // 3a. Read client
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const currentStatus = clientData.status || 'active';
+      const currentIsBlocked = clientData.isBlocked || false;
+      const currentIsCritical = clientData.isCritical || false;
+
+      // 3b. Same state guard
+      if (currentStatus === data.newStatus &&
+          currentIsBlocked === newIsBlocked &&
+          currentIsCritical === newIsCritical) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'הסטטוס כבר זהה'
+        );
+      }
+
+      const now = new Date().toISOString();
+
+      // 3c. Write
+      transaction.update(clientRef, {
+        status: data.newStatus,
+        isBlocked: newIsBlocked,
+        isCritical: newIsCritical,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      return {
+        clientName: clientData.fullName || clientData.clientName,
+        previousStatus: currentStatus,
+        previousIsBlocked: currentIsBlocked,
+        previousIsCritical: currentIsCritical,
+        statusChangedAt: now
+      };
+    });
+
+    // 4. Audit log (outside transaction)
+    await logAction('CHANGE_CLIENT_STATUS', user.uid, user.username, {
+      clientId: data.clientId,
+      clientName: result.clientName,
+      previousStatus: result.previousStatus,
+      newStatus: data.newStatus,
+      previousIsBlocked: result.previousIsBlocked,
+      previousIsCritical: result.previousIsCritical,
+      newIsBlocked: newIsBlocked,
+      newIsCritical: newIsCritical,
+      note: note
+    });
+
+    // 5. Build display text
+    let statusText = data.newStatus === 'active' ? 'פעיל' : 'לא פעיל';
+    if (newIsBlocked) statusText = 'חסום';
+    if (newIsCritical) statusText = 'קריטי';
+
+    console.log(`✅ Client ${data.clientId} status changed to ${statusText}`);
+
+    return {
+      success: true,
+      previousStatus: result.previousStatus,
+      newStatus: data.newStatus,
+      previousIsBlocked: result.previousIsBlocked,
+      previousIsCritical: result.previousIsCritical,
+      isBlocked: newIsBlocked,
+      isCritical: newIsCritical,
+      statusChangedAt: result.statusChangedAt,
+      message: `סטטוס הלקוח "${result.clientName}" שונה ל-"${statusText}"`
+    };
+
+  } catch (error) {
+    console.error('Error in changeClientStatus:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בשינוי סטטוס לקוח: ${error.message}`
+    );
+  }
+});
+
+/**
  * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  * @param {Object} data - פרמטרים
  * @param {boolean} data.includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
