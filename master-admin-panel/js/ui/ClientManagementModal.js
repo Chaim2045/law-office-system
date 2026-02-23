@@ -1462,32 +1462,42 @@ localService.packages = [];
             }
 
             try {
-                // Show loading
                 this.showLoading('מוחק שירות...');
 
-                // Get Firestore instance
-                const db = window.firebaseApp.firestore();
-
-                // Delete service from client's services array
-                const clientRef = db.collection('clients').doc(this.currentClient.id);
-                const updatedServices = this.currentClient.services.filter(s => s.id !== service.id);
-
-                await clientRef.update({
-                    services: updatedServices,
-                    updatedAt: new Date().toISOString()
+                // Call CF instead of direct Firestore write
+                const deleteServiceFn = window.firebaseFunctions.httpsCallable('deleteService');
+                const result = await deleteServiceFn({
+                    clientId: this.currentClient.id,
+                    serviceId: service.id,
+                    confirmDelete: true
                 });
 
-                // Update local data
-                this.currentClient.services = updatedServices;
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה במחיקת שירות');
+                }
 
-                // Re-render services
+                // Remove from local data
+                this.currentClient.services = this.currentClient.services.filter(
+                    s => s.id !== service.id
+                );
+
+                // Update client-level aggregates from CF response
+                if (result.data.clientAggregates) {
+                    this.currentClient.totalHours = result.data.clientAggregates.totalHours;
+                    this.currentClient.hoursUsed = result.data.clientAggregates.hoursUsed;
+                    this.currentClient.hoursRemaining = result.data.clientAggregates.hoursRemaining;
+                    this.currentClient.minutesRemaining = result.data.clientAggregates.minutesRemaining;
+                    this.currentClient.isBlocked = result.data.clientAggregates.isBlocked;
+                    this.currentClient.isCritical = result.data.clientAggregates.isCritical;
+                    this.currentClient.totalServices = result.data.clientAggregates.totalServices;
+                    this.currentClient.activeServices = result.data.clientAggregates.activeServices;
+                }
+
                 this.renderServices();
-
-                // Show success message
+                this.renderClientInfo();
                 this.hideLoading();
-                this.showNotification('השירות נמחק בהצלחה', 'success');
+                this.showNotification(result.data.message, 'success');
 
-                // Refresh data in parent component
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
                     await window.ClientsDataManager.loadClients();
                 }
@@ -1495,7 +1505,14 @@ localService.packages = [];
             } catch (error) {
                 console.error('❌ Error deleting service:', error);
                 this.hideLoading();
-                this.showNotification('שגיאה במחיקת השירות: ' + error.message, 'error');
+
+                // Friendly message for referential integrity rejection
+                const errorMsg = error.message || '';
+                if (errorMsg.includes('ארכיון') || errorMsg.includes('רישומי שעות')) {
+                    this.showNotification('לא ניתן למחוק שירות עם רישומי שעות. שנה את הסטטוס ל-"ארכיון" במקום.', 'error');
+                } else {
+                    this.showNotification('שגיאה במחיקת השירות: ' + errorMsg, 'error');
+                }
             }
         }
 
