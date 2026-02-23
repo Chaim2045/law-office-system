@@ -2201,6 +2201,200 @@ exports.completeService = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * שינוי סטטוס שירות
+ * @param {Object} data
+ * @param {string} data.clientId - מזהה לקוח
+ * @param {string} data.serviceId - מזהה שירות
+ * @param {string} data.newStatus - סטטוס חדש: active | completed | on_hold | archived
+ * @param {string} [data.note] - הערה אופציונלית
+ */
+exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
+  try {
+    // 1. Auth
+    const user = await checkUserPermissions(context);
+
+    // 2. Validation
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    if (!data.serviceId || typeof data.serviceId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה שירות חובה'
+      );
+    }
+
+    const VALID_STATUSES = ['active', 'completed', 'on_hold', 'archived'];
+    if (!data.newStatus || !VALID_STATUSES.includes(data.newStatus)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `סטטוס לא תקין. ערכים מותרים: ${VALID_STATUSES.join(', ')}`
+      );
+    }
+
+    const note = (data.note && typeof data.note === 'string')
+      ? data.note.trim().substring(0, 500)
+      : null;
+
+    // 3. Transaction
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      // 3a. Read client
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      // 3b. Find service
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `שירות ${data.serviceId} לא נמצא`
+        );
+      }
+
+      const service = services[serviceIndex];
+      const currentStatus = service.status || 'active';
+
+      // 3c. Same status guard
+      if (currentStatus === data.newStatus) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'הסטטוס כבר זהה'
+        );
+      }
+
+      // 3d. Immutable update — service
+      const now = new Date().toISOString();
+
+      const historyEntry = {
+        from: currentStatus,
+        to: data.newStatus,
+        changedAt: now,
+        changedBy: user.username,
+        note: note
+      };
+
+      const updatedService = {
+        ...service,
+        status: data.newStatus,
+        statusChangedAt: now,
+        statusChangedBy: user.username,
+        previousStatus: currentStatus,
+        statusChangeHistory: [
+          ...(service.statusChangeHistory || []),
+          historyEntry
+        ]
+      };
+
+      // If moving to completed — also set completedAt
+      if (data.newStatus === 'completed' && !service.completedAt) {
+        updatedService.completedAt = now;
+      }
+
+      // 3e. Immutable array replacement
+      const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
+
+      // 3f. Recalculate client-level aggregates (same logic as completeService / addPackageToService)
+      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+      const clientMinutesRemaining = clientHoursRemaining * 60;
+      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+      const totalServices = updatedServices.length;
+      const activeServices = updatedServices.filter(s => s.status === 'active').length;
+
+      // 3g. Write to Firestore (Transaction)
+      transaction.update(clientRef, {
+        services: updatedServices,
+        totalServices: totalServices,
+        activeServices: activeServices,
+        totalHours: clientTotalHours,
+        hoursUsed: clientHoursUsed,
+        hoursRemaining: clientHoursRemaining,
+        minutesRemaining: clientMinutesRemaining,
+        isBlocked: clientIsBlocked,
+        isCritical: clientIsCritical,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      // 3h. Return data from transaction
+      const serviceName = service.name || service.serviceName;
+      const serviceType = service.type || service.serviceType;
+
+      return {
+        serviceName,
+        serviceType,
+        previousStatus: currentStatus,
+        newStatus: data.newStatus,
+        statusChangedAt: now,
+        aggregates: {
+          totalHours: clientTotalHours,
+          hoursUsed: clientHoursUsed,
+          hoursRemaining: clientHoursRemaining,
+          minutesRemaining: clientMinutesRemaining,
+          isBlocked: clientIsBlocked,
+          isCritical: clientIsCritical,
+          totalServices: totalServices,
+          activeServices: activeServices
+        }
+      };
+    });
+
+    // 4. Audit log (outside transaction)
+    await logAction('CHANGE_SERVICE_STATUS', user.uid, user.username, {
+      clientId: data.clientId,
+      serviceId: data.serviceId,
+      serviceName: result.serviceName,
+      serviceType: result.serviceType,
+      previousStatus: result.previousStatus,
+      newStatus: result.newStatus,
+      note: note
+    });
+
+    // 5. Return
+    console.log(`✅ Service ${data.serviceId} status changed: ${result.previousStatus} → ${result.newStatus} for client ${data.clientId}`);
+
+    return {
+      success: true,
+      serviceId: data.serviceId,
+      serviceName: result.serviceName,
+      previousStatus: result.previousStatus,
+      newStatus: result.newStatus,
+      statusChangedAt: result.statusChangedAt,
+      clientAggregates: result.aggregates,
+      message: `סטטוס השירות "${result.serviceName}" שונה מ-"${result.previousStatus}" ל-"${result.newStatus}"`
+    };
+
+  } catch (error) {
+    console.error('Error in changeServiceStatus:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בשינוי סטטוס שירות: ${error.message}`
+    );
+  }
+});
+
+/**
  * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  * @param {Object} data - פרמטרים
  * @param {boolean} data.includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
