@@ -980,26 +980,30 @@ return;
 
             try {
                 this.showLoading('משנה סטטוס...');
-                const db = window.firebaseApp.firestore();
-                const clientRef = db.collection('clients').doc(this.currentClient.id);
 
-                await clientRef.update({
-                    status: newStatus,
+                // Call CF instead of direct Firestore write
+                const changeStatusFn = window.firebaseFunctions.httpsCallable('changeClientStatus');
+                const result = await changeStatusFn({
+                    clientId: this.currentClient.id,
+                    newStatus: newStatus,
                     isBlocked: newIsBlocked,
-                    isCritical: newIsCritical,
-                    updatedAt: new Date().toISOString()
+                    isCritical: newIsCritical
                 });
 
-                // Update local state
-                this.currentClient.status = newStatus;
-                this.currentClient.isBlocked = newIsBlocked;
-                this.currentClient.isCritical = newIsCritical;
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה בשינוי סטטוס');
+                }
+
+                // Update local state from CF response
+                this.currentClient.status = result.data.newStatus;
+                this.currentClient.isBlocked = result.data.isBlocked;
+                this.currentClient.isCritical = result.data.isCritical;
 
                 // Re-render client info
                 this.renderClientInfo();
 
                 this.hideLoading();
-                this.showNotification(`הסטטוס שונה ל-"${statusText}"`, 'success');
+                this.showNotification(result.data.message, 'success');
 
                 // Refresh parent data
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
