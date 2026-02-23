@@ -1238,41 +1238,39 @@ localService.packages = [];
             }
 
             try {
-                // Show loading
                 this.showLoading('מסמן כהושלם...');
 
-                // Get Firestore instance
-                const db = window.firebaseApp.firestore();
-
-                // Update service status
-                const clientRef = db.collection('clients').doc(this.currentClient.id);
-                const updatedServices = this.currentClient.services.map(s => {
-                    if (s.id === service.id) {
-                        return {
-                            ...s,
-                            status: 'completed',
-                            completedAt: new Date().toISOString()
-                        };
-                    }
-                    return s;
+                const completeServiceFn = window.firebaseFunctions.httpsCallable('completeService');
+                const result = await completeServiceFn({
+                    clientId: this.currentClient.id,
+                    serviceId: service.id
                 });
 
-                await clientRef.update({
-                    services: updatedServices,
-                    updatedAt: new Date().toISOString()
-                });
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה בסימון שירות');
+                }
 
-                // Update local data
-                this.currentClient.services = updatedServices;
+                // Update local data from CF response
+                const localService = this.currentClient.services.find(s => s.id === service.id);
+                if (localService) {
+                    localService.status = 'completed';
+                    localService.completedAt = result.data.completedAt;
+                }
 
-                // Re-render services
+                // Update client-level aggregates from CF response
+                if (result.data.clientAggregates) {
+                    this.currentClient.totalHours = result.data.clientAggregates.totalHours;
+                    this.currentClient.hoursRemaining = result.data.clientAggregates.hoursRemaining;
+                    this.currentClient.minutesRemaining = result.data.clientAggregates.minutesRemaining;
+                    this.currentClient.isBlocked = result.data.clientAggregates.isBlocked;
+                    this.currentClient.isCritical = result.data.clientAggregates.isCritical;
+                }
+
                 this.renderServices();
-
-                // Show success message
+                this.renderClientInfo();
                 this.hideLoading();
-                this.showNotification('השירות סומן כהושלם', 'success');
+                this.showNotification(result.data.message || 'השירות סומן כהושלם', 'success');
 
-                // Refresh data in parent component
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
                     await window.ClientsDataManager.loadClients();
                 }
