@@ -2395,6 +2395,169 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * מחיקת שירות מלקוח (hard delete)
+ * ⚠️ פעולה בלתי הפיכה — audit log שומר full snapshot לשחזור ידני
+ * @param {Object} data
+ * @param {string} data.clientId - מזהה לקוח
+ * @param {string} data.serviceId - מזהה שירות
+ * @param {boolean} data.confirmDelete - חובה true (double confirmation)
+ */
+exports.deleteService = functions.https.onCall(async (data, context) => {
+  try {
+    // 1. Auth
+    const user = await checkUserPermissions(context);
+
+    // 2. Validation
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    if (!data.serviceId || typeof data.serviceId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה שירות חובה'
+      );
+    }
+
+    if (data.confirmDelete !== true) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'נדרש אישור מחיקה (confirmDelete: true)'
+      );
+    }
+
+    // 3. Transaction
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      // 3a. Read client
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      // 3b. Find service
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `שירות ${data.serviceId} לא נמצא`
+        );
+      }
+
+      const service = services[serviceIndex];
+
+      // 3c. Referential integrity check — timesheet_entries
+      const entriesSnapshot = await transaction.get(
+        db.collection('timesheet_entries')
+          .where('serviceId', '==', data.serviceId)
+          .limit(1)
+      );
+
+      if (!entriesSnapshot.empty) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'לא ניתן למחוק שירות עם רישומי שעות. השתמש בשינוי סטטוס ל-"ארכיון" במקום.'
+        );
+      }
+
+      // 3d. Full snapshot for audit log & recovery
+      const deletedServiceSnapshot = { ...service };
+
+      // 3e. Immutable removal
+      const updatedServices = services.filter((s, idx) => idx !== serviceIndex);
+
+      // 3f. Recalculate client-level aggregates (same logic as completeService / changeServiceStatus)
+      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
+      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
+      const clientMinutesRemaining = clientHoursRemaining * 60;
+      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
+      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+      const totalServices = updatedServices.length;
+      const activeServices = updatedServices.filter(s => s.status === 'active').length;
+
+      // 3g. Write to Firestore (Transaction)
+      transaction.update(clientRef, {
+        services: updatedServices,
+        totalServices: totalServices,
+        activeServices: activeServices,
+        totalHours: clientTotalHours,
+        hoursUsed: clientHoursUsed,
+        hoursRemaining: clientHoursRemaining,
+        minutesRemaining: clientMinutesRemaining,
+        isBlocked: clientIsBlocked,
+        isCritical: clientIsCritical,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      // 3h. Return data from transaction
+      const serviceName = service.name || service.serviceName;
+      const serviceType = service.type || service.serviceType;
+
+      return {
+        deletedService: deletedServiceSnapshot,
+        serviceName,
+        serviceType,
+        aggregates: {
+          totalHours: clientTotalHours,
+          hoursUsed: clientHoursUsed,
+          hoursRemaining: clientHoursRemaining,
+          minutesRemaining: clientMinutesRemaining,
+          isBlocked: clientIsBlocked,
+          isCritical: clientIsCritical,
+          totalServices: totalServices,
+          activeServices: activeServices
+        }
+      };
+    });
+
+    // 4. Audit log (outside transaction) — FULL snapshot for recovery
+    await logAction('DELETE_SERVICE', user.uid, user.username, {
+      clientId: data.clientId,
+      serviceId: data.serviceId,
+      serviceName: result.serviceName,
+      serviceType: result.serviceType,
+      deletedServiceSnapshot: result.deletedService
+    });
+
+    // 5. Return
+    console.log(`✅ Service ${data.serviceId} (${result.serviceName}) deleted from client ${data.clientId}`);
+
+    return {
+      success: true,
+      serviceId: data.serviceId,
+      serviceName: result.serviceName,
+      deletedService: result.deletedService,
+      clientAggregates: result.aggregates,
+      message: `השירות "${result.serviceName}" נמחק בהצלחה`
+    };
+
+  } catch (error) {
+    console.error('Error in deleteService:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה במחיקת שירות: ${error.message}`
+    );
+  }
+});
+
+/**
  * קריאת לקוחות - כל המשרד רואה את כל הלקוחות
  * @param {Object} data - פרמטרים
  * @param {boolean} data.includeInternal - האם לכלול תיקים פנימיים (ברירת מחדל: false)
