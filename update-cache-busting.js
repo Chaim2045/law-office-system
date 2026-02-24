@@ -33,7 +33,7 @@ try {
 // קבצים לעדכן
 const filesToUpdate = [
   'apps/user-app/index.html',
-  'master-admin-panel/index.html'
+  'apps/admin-panel/index.html'
 ];
 
 let totalUpdates = 0;

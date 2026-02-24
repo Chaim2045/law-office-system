@@ -57,7 +57,7 @@
         isEmployeesPage() {
             // Check if we're on index.html (employees page)
             const path = window.location.pathname;
-            return path.includes('index.html') || path.endsWith('/master-admin-panel/') || path.endsWith('/master-admin-panel');
+            return path.includes('index.html') || path.endsWith('/admin-panel/') || path.endsWith('/admin-panel');
         }
 
         /**

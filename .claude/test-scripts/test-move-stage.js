@@ -185,7 +185,7 @@ return match[1].trim();
   // Fallback: read from firebase web config in HTML
   const htmlPaths = [
     path.join(__dirname, '../../index.html'),
-    path.join(__dirname, '../../master-admin-panel/index.html')
+    path.join(__dirname, '../../apps/admin-panel/index.html')
   ];
 
   for (const p of htmlPaths) {
