@@ -32,7 +32,7 @@ try {
 
 // קבצים לעדכן
 const filesToUpdate = [
-  'index.html',
+  'apps/user-app/index.html',
   'master-admin-panel/index.html'
 ];
 

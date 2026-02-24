@@ -10,7 +10,7 @@
     "resolveJsonModule": true,                   /* תמיכה ב-JSON imports */
 
     /* Emit */
-    "outDir": "./dist",                          /* תיקיית פלט */
+    "outDir": "./apps/user-app/dist",             /* תיקיית פלט */
     "declaration": true,                         /* יצירת קבצי .d.ts */
     "declarationMap": true,                      /* source maps לdeclarations */
     "sourceMap": true,                           /* יצירת source maps */
@@ -39,15 +39,15 @@
 
   "include": [
     "*.ts",
-    "src/**/*.ts",
+    "apps/user-app/**/*.ts",
     "types/**/*.ts",
-    "js/**/*.ts",
     "functions/**/*.ts"
   ],
 
   "exclude": [
     "node_modules",
     "dist",
+    "apps/user-app/dist",
     "**/*.spec.ts",
     "**/*.test.ts"
   ]

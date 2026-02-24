@@ -1,0 +1,49 @@
+import {B as f} from './index-BOViCrMs.js';class u {
+constructor() {
+this.listeners=new Map;
+}register(t,s) {
+this.listeners.has(t)&&this.listeners.get(t)(),this.listeners.set(t,s),console.log(`✅ Listener registered: ${t}`);
+}unregister(t) {
+this.listeners.has(t)&&(this.listeners.get(t)(),this.listeners.delete(t),console.log(`🔌 Listener unregistered: ${t}`));
+}cleanup() {
+this.listeners.forEach((t,s) => {
+console.log(`🧹 Cleaning up listener: ${s}`),t();
+}),this.listeners.clear();
+}
+} const c=new u;function p(o,t,s) {
+try {
+const r=window.firebaseDB;if (!r) {
+throw new Error('Firebase לא מחובר');
+}console.log(`🎧 Starting real-time tasks listener for: ${o}`);const n=r.collection('budget_tasks').where('employee','==',o).limit(f).onSnapshot(i => {
+console.log(`📡 Tasks update received: ${i.docs.length} tasks`);const l=[];i.docChanges().forEach(e => {
+(e.type==='added'||e.type==='modified')&&console.log(`  ${e.type==='added'?'➕':'✏️'} Task ${e.doc.id}`),e.type==='removed'&&console.log(`  ➖ Task ${e.doc.id} removed`);
+}),i.forEach(e => {
+const d=e.data(),a={...window.DatesModule.convertTimestampFields(d,['createdAt','updatedAt','completedAt','deadline','lastModifiedAt']),firebaseDocId:e.id,id:d.id||e.id};l.push(a);
+}),t&&t(l);
+},i => {
+console.error('❌ Tasks listener error:',i),s&&s(i);
+});return c.register('tasks',n),n;
+} catch (r) {
+return console.error('❌ Error starting tasks listener:',r),s&&s(r),() => {};
+}
+} function m(o,t,s) {
+try {
+const r=window.firebaseDB;if (!r) {
+throw new Error('Firebase לא מחובר');
+}console.log(`🕐 Starting real-time timesheet listener for: ${o}`);const n=r.collection('timesheet_entries').where('employee','==',o).limit(50).onSnapshot(i => {
+console.log(`📡 Timesheet update received: ${i.docs.length} entries`);const l=[];i.docChanges().forEach(e => {
+(e.type==='added'||e.type==='modified')&&console.log(`  ${e.type==='added'?'➕':'✏️'} Entry ${e.doc.id}`),e.type==='removed'&&console.log(`  ➖ Entry ${e.doc.id} removed`);
+}),i.forEach(e => {
+const d=e.data(),a={...window.DatesModule.convertTimestampFields(d,['createdAt','updatedAt']),id:e.id};l.push(a);
+}),t&&t(l);
+},i => {
+console.error('❌ Timesheet listener error:',i),s&&s(i);
+});return c.register('timesheet',n),n;
+} catch (r) {
+return console.error('❌ Error starting timesheet listener:',r),s&&s(r),() => {};
+}
+} function h() {
+console.log('🛑 Stopping all real-time listeners'),c.cleanup();
+}window.addEventListener('beforeunload',() => {
+h();
+});export {c as listenerManager,p as startTasksListener,m as startTimesheetListener,h as stopAllListeners};

@@ -121,9 +121,9 @@ jobs:
       - name: 📊 Code Statistics
         run: |
           echo "📊 Code Statistics:"
-          echo "JavaScript files: $(find js -name '*.js' ! -path '*/node_modules/*' 2>/dev/null | wc -l)"
+          echo "JavaScript files: $(find apps/user-app/js -name '*.js' ! -path '*/node_modules/*' 2>/dev/null | wc -l)"
           echo "TypeScript files: $(find . -name '*.ts' ! -path '*/node_modules/*' 2>/dev/null | wc -l)"
-          echo "CSS files: $(find css -name '*.css' 2>/dev/null | wc -l)"
+          echo "CSS files: $(find apps/user-app/css -name '*.css' 2>/dev/null | wc -l)"
           echo "Total lines of code: $(find . -name '*.js' -o -name '*.ts' -o -name '*.css' ! -path '*/node_modules/*' 2>/dev/null | xargs wc -l 2>/dev/null | tail -1 || echo 'N/A')"
 
   # ═════════════════════════════════════════════════════════════
@@ -278,9 +278,9 @@ jobs:
       - name: 📊 Build Artifacts Info
         run: |
           echo "📊 Build Output:"
-          if [ -d "dist" ]; then
+          if [ -d "apps/user-app/dist" ]; then
             echo "Compiled files in dist/:"
-            find dist -type f | head -20
+            find apps/user-app/dist -type f | head -20
           else
             echo "No dist directory (expected for some configurations)"
           fi

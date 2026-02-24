@@ -2,7 +2,7 @@
   "name": "law-office-system",
   "version": "4.27.0",
   "description": "מערכת ניהול מתקדמת למשרד עורכי דין",
-  "main": "index.html",
+  "main": "apps/user-app/index.html",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -11,7 +11,7 @@
     "cache-bust": "node update-cache-busting.js",
     "compile-ts": "npx tsc",
     "compile:watch": "tsc --watch",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf apps/user-app/dist",
     "lint": "eslint . --ext .js,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.ts,.tsx --fix",
     "format": "echo 'Add Prettier for formatting'",

@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════════╗
+    ║                  ⚠️ ממשק משתמשים - EMPLOYEE INTERFACE ⚠️              ║
+    ╠═══════════════════════════════════════════════════════════════════════╣
+    ║  קובץ זה הוא ממשק עובדים בלבד - לא מנהלים!                          ║
+    ║  תכונות מותרות: תקצוב, שעתון, דוחות, לקוחות                         ║
+    ║  ❌ אסור להוסיף: ניהול עובדים, משתמשים חיים, הרשאות                 ║
+    ║                                                                       ║
+    ║  📚 קרא את PROJECT_STRUCTURE.md לפני עריכה!                         ║
+    ║  👉 דשבורד מנהלים נמצא ב-admin/ בלבד                                 ║
+    ╚═══════════════════════════════════════════════════════════════════════╝
+
+    מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ
+    נוצר: 28/08/2025
+    גרסה: 2.0.0 - קוד HTML מסודר ומנוקה
+  -->
+
+    <!-- ===== ספריות חיצוניות ו-Firebase ===== -->
+    <!-- FIREBASE & EXTERNAL LIBRARIES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ✨ Lottie Animation Library - for modern loading animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <!-- 🛡️ DOMPurify - XSS Protection: Sanitizes HTML to prevent script injection -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script><!-- ✅ Realtime Database for Presence -->
+
+    <script>
+      // Firebase Configuration - מהיר ומאופטמ
+      const firebaseConfig = {
+        apiKey: "AIzaSyAlVbkAEBklF6lnxI_LsSg8ZXGlp0pgeMw",
+        authDomain: "law-office-system-e4801.firebaseapp.com",
+        databaseURL: "https://law-office-system-e4801-default-rtdb.firebaseio.com",
+        projectId: "law-office-system-e4801",
+        storageBucket: "law-office-system-e4801.firebasestorage.app",
+        messagingSenderId: "199682320505",
+        appId: "1:199682320505:web:8e4f5e34653476479b4ca8",
+      };
+
+      try {
+        // Initialize Firebase with performance settings
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // 🔐 CRITICAL: Set persistence to SESSION to prevent user mixing across tabs
+        // Each tab gets isolated session - prevents cross-tab identity confusion
+        auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+          .then(() => {
+            console.log('✅ User Interface: Using SESSION persistence (isolated tabs)');
+          })
+          .catch((error) => {
+            console.warn('⚠️ Failed to set persistence:', error);
+          });
+
+        // אופטימיזציות ביצועים + דיכוי לוגים
+        db.settings({
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, // Unlimited cache for offline support
+          merge: true,
+          ignoreUndefinedProperties: true
+        });
+
+        // ⚡ הפעלת Offline Persistence - תמיכה בעבודה ללא אינטרנט
+        db.enablePersistence({ synchronizeTabs: true })
+          .catch((err) => {
+            if (err.code === 'failed-precondition') {
+              console.warn('⚠️ Offline persistence: נפתחו מספר טאבים, persistence פעיל רק בטאב הראשון');
+            } else if (err.code === 'unimplemented') {
+              console.warn('⚠️ Offline persistence: הדפדפן לא תומך בפיצ\'ר זה');
+            } else {
+              console.error('❌ Offline persistence error:', err);
+            }
+          });
+
+        // 🔍 Firestore logs - error level (מאפשר לוגים חשובים)
+        firebase.firestore.setLogLevel('error');
+
+        // הפוך זמין למערכת
+        window.firebaseDB = db;
+        window.firebaseAuth = auth;
+        window.firebaseApp = firebase.app();
+
+        // פונקציות פשוטות ומהירות
+        window.firebaseUtils = {
+          collection: (name) => db.collection(name),
+          doc: (collection, id) => db.collection(collection).doc(id),
+          addDoc: (collectionRef, data) => collectionRef.add(data),
+          getDocs: (query) => query.get(),
+          updateDoc: (docRef, data) => docRef.update(data),
+          deleteDoc: (docRef) => docRef.delete(),
+          where: (field, operator, value) =>
+            firebase.firestore.FieldPath.documentId(),
+          orderBy: (field, direction = "asc") => direction,
+        };
+
+        // Production mode - Firebase initialized silently (no log)
+      } catch (error) {
+        console.error("❌ Firebase Error:", error);
+        alert("שגיאה בחיבור לFirebase: " + error.message);
+      }
+
+      // 🔍 מצב פיתוח - כל השגיאות מוצגות (ללא חסימה)
+    </script>
+
+    <!-- ===== תגי מטא והגדרות בסיסיות ===== -->
+    <!-- META TAGS & BASIC SETUP -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>מערכת ניהול מתקדמת - משרד עו"ד גיא הרשקוביץ</title>
+
+    <!-- ===== משאבים חיצוניים ===== -->
+    <!-- EXTERNAL RESOURCES -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <!-- ===== DESIGN SYSTEM - Must be loaded first ===== -->
+
+    <!-- TaskTimeline Component -->
+    <!-- Utility Classes - כלי עזר -->
+    <!-- Smart Combo Selector - בורר תיאורים חכם -->
+    <!-- Responsive Design - מדיה queries -->
+
+    <!-- Virtual Assistant Styles - TEMPORARILY DISABLED -->
+    <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=974152d" /> -->
+
+    <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
+
+    <!-- ===== SYSTEM ANNOUNCEMENT TICKER ===== -->
+
+    <!-- ===== SYSTEM ANNOUNCEMENT POPUP ===== -->
+
+    <!-- ===== BREAK BUTTON ===== -->
+
+    <!-- ===== SECURITY MODALS STYLES ===== -->
+    <!-- Google Fonts - Inter for Linear-style Idle Warning -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      /* ═══════════════════════════════════════════════════════════
+         IDLE WARNING - LINEAR-INSPIRED DESIGN
+         ═══════════════════════════════════════════════════════════ */
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .idle-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        animation: fadeIn 0.15s ease;
+      }
+
+      .idle-dialog {
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        max-width: 400px;
+        width: 90%;
+        padding: 28px 24px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        animation: slideUp 0.2s ease;
+      }
+
+      .idle-header {
+        margin-bottom: 4px;
+      }
+
+      .idle-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #18181b;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .idle-title i {
+        font-size: 18px;
+        color: #71717a;
+      }
+
+      .idle-message {
+        color: #71717a;
+        font-size: 14px;
+        margin: 0 0 24px 0;
+        line-height: 1.5;
+        font-weight: 400;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .idle-message strong {
+        color: #18181b;
+        font-weight: 600;
+      }
+
+      .idle-countdown {
+        font-size: 40px;
+        font-weight: 600;
+        color: #18181b;
+        margin: 24px 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1;
+        letter-spacing: -0.025em;
+        font-feature-settings: 'tnum';
+        font-variant-numeric: tabular-nums;
+      }
+
+      .idle-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .idle-btn {
+        flex: 1;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        transition: all 0.15s ease;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+
+      .idle-btn-secondary {
+        background: transparent;
+        color: #52525b;
+        border: 1px solid #e4e4e7;
+      }
+
+      .idle-btn-secondary:hover {
+        background: #fafafa;
+        border-color: #d4d4d8;
+      }
+
+      .idle-btn-secondary:active {
+        background: #f4f4f5;
+      }
+
+      .idle-btn-primary {
+        background: #3b82f6;
+        color: white;
+        border: 1px solid #3b82f6;
+        font-weight: 500;
+      }
+
+      .idle-btn-primary:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+
+      .idle-btn-primary:active {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+      }
+    </style>
+
+    <script type="module" crossorigin src="/assets/index-BPwXV1JT.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C2-IqJ8G.css">
+  </head>
+
+  <body>
+    <!-- ===== מערכת התראות (מוסתרת עד כניסה למערכת) ===== -->
+    <!-- NOTIFICATION SYSTEM (Hidden until login) -->
+    <div id="interfaceElements" class="hidden">
+      <div class="notifications-dropdown" id="notificationsDropdown">
+        <div class="notifications-header">
+          <div class="notifications-title">
+            <i class="fas fa-bell"></i>
+            <span>התראות מערכת</span>
+          </div>
+          <button class="clear-all-btn" onclick="clearAllNotifications()">
+            <i class="fas fa-trash"></i>
+            <span class="clear-all-text">נקה הכל</span>
+          </button>
+        </div>
+        <div class="notifications-content" id="notificationsContent">
+          <!-- Dynamic notifications will be inserted here -->
+        </div>
+        <div class="notifications-footer">
+          <button class="clear-all-btn-mobile" onclick="clearAllNotifications()">
+            <i class="fas fa-trash"></i>
+            נקה את כל ההתראות
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== מכל האפליקציה הראשי ===== -->
+    <!-- MAIN APPLICATION CONTAINER -->
+    <div class="app-container" id="appContainer">
+      <!-- ===== סיידבר חדש (gh-sidebar component) ===== -->
+      <div id="sidebarRoot"></div>
+
+      <!-- ===== כותרת ראשית ===== -->
+      <!-- MAIN HEADER -->
+      <header class="header">
+        <div class="header-content">
+          <h1>מערכת ניהול מתקדמת</h1>
+          <p>משרד עו"ד גיא הרשקוביץ</p>
+          <div class="user-info hidden" id="userInfo"></div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="window.sidebarInstance && window.sidebarInstance.toggle()">
+            <i class="fas fa-bars"></i>
+            תפריט
+          </button>
+        </div>
+      </header>
+
+      <!-- ===== אזור תוכן ראשי ===== -->
+      <!-- MAIN CONTENT AREA -->
+      <main class="main-content">
+        <!-- ===== אזור כניסה למערכת ===== -->
+        <!-- LOGIN SECTION - MODERN DESIGN -->
+        <div class="login-wrapper hidden" id="loginSection">
+          <!-- Modern Login Card -->
+          <div class="login-card">
+            <!-- Logo Section -->
+            <div class="logo-section">
+              <div class="logo-content">
+                <div class="logo-icon">
+                  <img src="/assets/logo-BrjAJTL5.png" alt="Hershlo Logo">
+                </div>
+                <div class="logo-text">Hershlo</div>
+              </div>
+              <div class="logo-subtitle">Professional Management System</div>
+            </div>
+
+            <!-- Form Section -->
+            <div class="form-section">
+              <!-- Header -->
+              <div class="card-header">
+                <h1 class="card-title">התחברות למערכת</h1>
+                <p class="card-subtitle">בחר את דרך הכניסה המועדפת עליך</p>
+              </div>
+
+              <!-- Error Alert -->
+              <div class="error-alert" id="errorAlert">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorMessage"></span>
+              </div>
+
+              <!-- Social Login -->
+              <div class="social-section">
+                <div class="social-grid">
+                  <button class="social-btn google" id="googleBtn" onclick="window.manager.loginWithGoogle()">
+                    <i class="fab fa-google"></i>
+                    <span>Google</span>
+                  </button>
+                  <button class="social-btn apple" id="appleBtn" onclick="window.manager.loginWithApple()">
+                    <i class="fab fa-apple"></i>
+                    <span>Apple</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Divider -->
+              <div class="divider">
+                <span>או</span>
+              </div>
+
+              <!-- Form -->
+              <form id="loginForm" class="login-form">
+                <!-- Email -->
+                <div class="input-group">
+                  <input
+                    type="email"
+                    id="email"
+                    class="input-field"
+                    placeholder="אימייל (name@company.com)"
+                    required
+                    autocomplete="email"
+                  >
+                </div>
+
+                <!-- Password -->
+                <div class="input-group">
+                  <input
+                    type="password"
+                    id="password"
+                    class="input-field"
+                    placeholder="סיסמה"
+                    required
+                    autocomplete="current-password"
+                  >
+                  <button type="button" class="toggle-password" onclick="togglePasswordVisibility()" aria-label="הצג/הסתר סיסמה">
+                    <i class="fas fa-eye" id="toggleIcon"></i>
+                  </button>
+                </div>
+
+                <!-- Options -->
+                <div class="form-options">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="remember">
+                    <span>זכור אותי</span>
+                  </label>
+                  <a href="#" class="forgot-link" onclick="showForgotPassword(); return false;">
+                    שכחת סיסמה?
+                  </a>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn submit-btn" id="submitBtn">
+                  <span class="btn-text">
+                    כניסה
+                    <i class="fas fa-arrow-left"></i>
+                  </span>
+                  <div class="btn-spinner"></div>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== מסך שחזור סיסמה ===== -->
+        <!-- PASSWORD RESET SECTION -->
+        <div class="login-wrapper hidden" id="forgotPasswordSection">
+          <!-- Logo -->
+          <div class="login-logo">
+            <img src="/assets/logo-BrjAJTL5.png" alt="משרד עו&quot;ד גיא הרשקוביץ" class="logo-image" />
+            <h1>משרד עו"ד גיא הרשקוביץ</h1>
+            <p>שחזור סיסמה</p>
+          </div>
+
+          <!-- Reset Card -->
+          <div class="login-card">
+            <h3>שכחת את הסיסמה?</h3>
+            <p class="reset-description">
+              הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה
+            </p>
+
+            <form id="forgotPasswordForm">
+              <div class="form-group">
+                <label for="resetEmail">אימייל</label>
+                <input
+                  type="email"
+                  id="resetEmail"
+                  placeholder="your@email.com"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+
+              <div class="error-message hidden" id="resetErrorMessage">
+                שגיאה בשליחת מייל
+              </div>
+
+              <div class="success-message hidden" id="resetSuccessMessage">
+                <i class="fas fa-check-circle"></i>
+                קישור לאיפוס סיסמה נשלח למייל שלך
+              </div>
+
+              <br />
+
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i>
+                שלח קישור לאיפוס
+              </button>
+
+              <button type="button" class="btn btn-secondary" onclick="showLogin()">
+                <i class="fas fa-arrow-right"></i>
+                חזור למסך כניסה
+              </button>
+            </form>
+          </div>
+
+          <!-- Footer -->
+          <div class="login-footer">
+            <p>© 2025 כל הזכויות שמורות למשרד עורכי דין גיא הרשקוביץ וחיים פרץ</p>
+          </div>
+        </div>
+
+        <!-- ===== מסך ברוך הבא ===== -->
+        <!-- WELCOME SCREEN -->
+        <div id="welcomeScreen" class="welcome-screen hidden">
+          <div class="welcome-container">
+            <div class="welcome-logo">
+              <img
+                src="/assets/logo-BrjAJTL5.png"
+                alt="Hershkovich & Co Law Firm"
+                class="logo-image"
+              />
+            </div>
+            <h2 class="welcome-title" id="welcomeTitle">ברוך הבא</h2>
+            <p class="welcome-subtitle" id="welcomeSubtitle">
+              כניסה אחרונה: <span id="lastLoginTime">טוען...</span>
+            </p>
+            <div class="welcome-loader">
+              <!-- Gmail-style Progress Bar -->
+              <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+              </div>
+              <p class="loader-text" id="loaderText">טוען את המערכת...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== תוכן האפליקציה (מוסתר עד כניסה) ===== -->
+        <!-- APP CONTENT (Hidden until login) -->
+        <div id="appContent" class="hidden">
+          <!-- Top user bar — user display only (nav moved to sidebar) -->
+          <div class="top-user-bar">
+            <div class="user-dropdown-top">
+              <span id="currentUserDisplay">טוען...</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <div class="top-nav-buttons-wrapper">
+              <div class="top-nav-buttons">
+                <button class="top-nav-btn active" onclick="switchTab('budget')">
+                  <i class="fas fa-tasks"></i>
+                  <span>תקצוב משימות</span>
+                </button>
+                <button class="top-nav-btn" onclick="switchTab('timesheet')">
+                  <i class="fas fa-clock"></i>
+                  <span>שעתון</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== כפתור פלוס חכם ===== -->
+          <!-- SMART PLUS BUTTON -->
+          <div class="plus-container-new">
+            <button
+              class="plus-button-top"
+              id="smartPlusBtn"
+              onclick="openSmartForm()"
+            >
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+
+          <!-- main-tabs-container removed — navigation handled by gh-sidebar component -->
+
+          <!-- ===== תוכן לשונית תקצוב ===== -->
+          <!-- BUDGET TAB CONTENT -->
+          <div id="budgetTab" class="tab-content active">
+            <!-- Budget Form (Hidden by default) -->
+            <div class="compact-form hidden" id="budgetFormContainer">
+              <form id="budgetForm">
+                <!-- ✅ NEW: Unified Client-Case Selector -->
+                <div id="budgetClientCaseSelector"></div>
+
+                <!-- Compact Row: סניף + תאריך + דקות - הכל בשורה אחת מאוזנת -->
+                <div class="form-row" style="grid-template-columns: 1fr 1fr 160px; gap: 12px;">
+                  <div class="form-group">
+                    <label for="budgetBranch"
+                      ><i class="fas fa-map-marker-alt"></i> סניף מטפל
+                      <span class="category-required">*</span></label
+                    >
+                    <select id="budgetBranch" required>
+                      <option value="">בחר סניף</option>
+                      <option value="רחובות">רחובות</option>
+                      <option value="תל אביב">תל אביב</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="budgetDeadline"
+                      ><i class="fas fa-calendar-alt"></i> תאריך יעד
+                      <span class="category-required">*</span></label
+                    >
+                    <input
+                      type="datetime-local"
+                      id="budgetDeadline"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="estimatedTime"
+                      ><i class="fas fa-hourglass-half"></i> דקות
+                      <span class="category-required">*</span></label
+                    >
+                    <input
+                      type="number"
+                      id="estimatedTime"
+                      placeholder="120"
+                      min="1"
+                      max="99999"
+                      autocomplete="off"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <!-- תיאור המשימה - Guided Text Input -->
+                <div class="form-row">
+                  <div class="form-group full-width">
+                    <label for="budgetDescriptionGuided"
+                      ><i class="fas fa-align-right"></i> תיאור המשימה
+                      <span class="category-required">*</span></label
+                    >
+                    <div id="budgetDescriptionGuided"></div>
+                  </div>
+                </div>
+
+                <div class="form-buttons">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="document.getElementById('budgetFormContainer').classList.add('hidden')"
+                  >
+                    <i class="fas fa-times"></i>
+                    ביטול
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    הוסף לתקצוב
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Search and View Controls -->
+            <div class="search-and-view-controls">
+              <div class="view-tabs">
+                <button
+                  class="view-tab active"
+                  data-view="cards"
+                  onclick="manager.switchBudgetView('cards')"
+                >
+                  <i class="fas fa-th-large"></i>
+                  כרטיסיות
+                </button>
+                <button
+                  class="view-tab"
+                  data-view="table"
+                  onclick="manager.switchBudgetView('table')"
+                >
+                  <i class="fas fa-table"></i>
+                  טבלה
+                </button>
+              </div>
+
+              <div class="search-filter-row">
+                <!-- Task Filter Icon Buttons -->
+                <div class="task-filter-buttons">
+                  <button
+                    class="task-filter-btn active"
+                    data-filter="active"
+                    id="activeFilterBtn"
+                    onclick="manager.toggleTaskView('active')"
+                    title="משימות פעילות"
+                  >
+                    <i class="fas fa-tasks"></i>
+                    <span class="task-count-badge" id="activeCountBadge">0</span>
+                  </button>
+                  <button
+                    class="task-filter-btn"
+                    data-filter="completed"
+                    id="completedFilterBtn"
+                    onclick="manager.toggleTaskView('completed')"
+                    title="משימות הושלמו"
+                  >
+                    <i class="fas fa-check-circle"></i>
+                    <span class="task-count-badge" id="completedCountBadge">0</span>
+                  </button>
+                </div>
+
+                <div class="search-container">
+                  <input
+                    type="text"
+                    class="search-box"
+                    id="budgetSearchBox"
+                    placeholder="חפש משימות..."
+                    autocomplete="off"
+                  />
+                  <i class="fas fa-search search-icon"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Budget Tasks Container -->
+            <div>
+              <div id="budgetContainer">
+                <div class="loading-message">
+                  <div class="loader"></div>
+                  <span>טוען משימות...</span>
+                </div>
+              </div>
+
+              <div id="budgetTableContainer" class="hidden">
+                <div class="modern-table-container">
+                  <div class="modern-table-header">
+                    <h3 class="modern-table-title">
+                      <i class="fas fa-chart-bar"></i>
+                      משימות מתוקצבות
+                    </h3>
+                    <div class="modern-table-subtitle">
+                      רשימת המשימות המתוקצבות
+                    </div>
+                  </div>
+
+                  <div class="table-wrapper">
+                    <table class="modern-budget-table">
+                      <thead>
+                        <tr>
+                          <th class="text-center" style="width: 50px">#</th>
+                          <th style="width: 200px">תיאור משימה</th>
+                          <th style="width: 150px">לקוח</th>
+                          <th class="text-center" style="width: 80px">תקצוב</th>
+                          <th class="text-center" style="width: 80px">בוצע</th>
+                          <th class="text-center" style="width: 80px">נותר</th>
+                          <th class="text-center" style="width: 100px">
+                            תאריך יעד
+                          </th>
+                          <th class="text-center" style="width: 80px">סטטוס</th>
+                          <th class="text-center" style="width: 100px">
+                            פעולות
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td
+                            colspan="9"
+                            style="text-align: center; padding: 40px"
+                          >
+                            <div class="loading-message">
+                              <div class="loader"></div>
+                              <span>טוען משימות...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== תוכן לשונית שעתון ===== -->
+          <!-- TIMESHEET TAB CONTENT -->
+          <div id="timesheetTab" class="tab-content">
+            <!-- Timesheet Form (Hidden by default) -->
+            <div class="compact-form hidden" id="timesheetFormContainer">
+              <form id="timesheetForm">
+                <!-- Info Box: Client Time Tracking -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.2);">
+                  <div style="display: flex; align-items: start; gap: 12px;">
+                    <i class="fas fa-info-circle" style="font-size: 24px; margin-top: 2px; opacity: 0.9;"></i>
+                    <div>
+                      <div style="font-weight: 600; font-size: 15px; margin-bottom: 6px;">
+                        רישום זמן על לקוחות
+                      </div>
+                      <div style="font-size: 13px; line-height: 1.6; opacity: 0.95;">
+                        זמן עבודה על לקוחות נרשם <strong>אוטומטית</strong> כשמוסיפים זמן למשימה.<br>
+                        כאן רושמים רק <strong>פעילות פנימית</strong> (ישיבות, הדרכות, ניהול).
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Compact Row: תאריך + דקות - שווים ברוחב -->
+                <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <div class="form-group">
+                    <label for="actionDate"
+                      ><i class="fas fa-calendar-alt"></i> תאריך ושעה
+                      <span class="category-required">*</span></label
+                    >
+                    <input
+                      type="datetime-local"
+                      id="actionDate"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="actionMinutes"
+                      ><i class="fas fa-hourglass-half"></i> דקות
+                      <span class="category-required">*</span></label
+                    >
+                    <input
+                      type="number"
+                      id="actionMinutes"
+                      placeholder="60"
+                      min="1"
+                      max="99999"
+                      autocomplete="off"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <!-- תיאור המשימה -->
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="actionDescription"
+                      ><i class="fas fa-align-right"></i> תיאור הפעילות הפנימית
+                      <span class="category-required">*</span></label
+                    >
+                    <textarea
+                      id="actionDescription"
+                      placeholder="למשל: ישיבת צוות שבועית, הדרכת מערכת חדשה, ניהול משרד..."
+                      rows="2"
+                      autocomplete="off"
+                      required
+                      style="resize: vertical; min-height: 50px;"
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div class="form-buttons">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    הוסף פעילות פנימית
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="document.getElementById('timesheetFormContainer').classList.add('hidden')"
+                  >
+                    <i class="fas fa-times"></i>
+                    ביטול
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Timesheet Search and View Controls -->
+            <div class="search-and-view-controls">
+              <div class="view-tabs">
+                <button
+                  class="view-tab"
+                  data-view="cards"
+                  onclick="manager.switchTimesheetView('cards')"
+                >
+                  <i class="fas fa-th-large"></i>
+                  כרטיסיות
+                </button>
+                <button
+                  class="view-tab active"
+                  data-view="table"
+                  onclick="manager.switchTimesheetView('table')"
+                >
+                  <i class="fas fa-table"></i>
+                  טבלה
+                </button>
+              </div>
+
+              <div class="search-filter-row">
+                <div class="filter-container">
+                  <span class="filter-label">הצג:</span>
+                  <select
+                    class="filter-select"
+                    id="timesheetFilter"
+                    onchange="manager.filterTimesheetEntries()"
+                  >
+                    <option value="month">חודש אחרון</option>
+                    <option value="today">היום בלבד</option>
+                    <option value="all">הכל</option>
+                  </select>
+                </div>
+
+                <div class="search-container">
+                  <input
+                    type="text"
+                    class="search-box"
+                    id="timesheetSearchBox"
+                    placeholder="חפש רשומות..."
+                    autocomplete="off"
+                  />
+                  <i class="fas fa-search search-icon"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timesheet Entries Container -->
+            <div>
+              <div id="timesheetContainer" class="hidden">
+                <div class="loading-message">
+                  <div class="loader"></div>
+                  <span>טוען רשומות...</span>
+                </div>
+              </div>
+
+              <div id="timesheetTableContainer">
+                <table class="timesheet-table" id="timesheetTable">
+                  <thead>
+                    <tr>
+                      <th class="sortable" data-sort="date">תאריך</th>
+                      <th class="sortable" data-sort="action">פעולה</th>
+                      <th class="sortable" data-sort="minutes">זמן</th>
+                      <th class="sortable" data-sort="clientName">לקוח</th>
+                      <th>נוצר</th>
+                      <th>הערות</th>
+                      <th>פעולות</th>
+                    </tr>
+                  </thead>
+                  <tbody id="timesheetTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== תוכן לשונית דוחות ===== -->
+          <!-- REPORTS TAB CONTENT -->
+          <div id="reportsTab" class="tab-content">
+            <div class="reports-container">
+              <!-- Reports Header -->
+              <div class="reports-header">
+                <div>
+                  <div class="reports-title">
+                    <i class="fas fa-chart-line"></i>
+                    דוחות וניתוח נתונים
+                  </div>
+                  <div class="reports-subtitle">
+                    צפייה מפורטת בנתונים, השוואות ומגמות לאורך זמן
+                  </div>
+                </div>
+              </div>
+
+              <!-- Reports Controls -->
+              <div class="reports-controls">
+                <div class="reports-controls-header">
+                  <div class="reports-controls-title">
+                    <i class="fas fa-filter"></i>
+                    בחירת תקופה וסינון
+                  </div>
+                </div>
+
+                <div class="reports-controls-grid">
+                  <!-- Data Type Selection -->
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">סוג נתונים</label>
+                    <select id="reportsDataType" class="reports-control-select">
+                      <option value="timesheet">שעתון</option>
+                      <option value="budget">תקצוב משימות</option>
+                    </select>
+                  </div>
+
+                  <!-- Report Type Selection -->
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">סוג דוח</label>
+                    <select id="reportsType" class="reports-control-select">
+                      <option value="monthly">חודשי</option>
+                      <option value="yearly">שנתי</option>
+                      <option value="range">טווח מותאם</option>
+                      <option value="comparison">השוואה</option>
+                    </select>
+                  </div>
+
+                  <!-- Month Selection -->
+                  <div class="reports-control-group" id="monthSelect">
+                    <label class="reports-control-label">חודש</label>
+                    <select id="reportsMonth" class="reports-control-select">
+                      <option value="0">ינואר</option>
+                      <option value="1">פברואר</option>
+                      <option value="2">מרץ</option>
+                      <option value="3">אפריל</option>
+                      <option value="4">מאי</option>
+                      <option value="5">יוני</option>
+                      <option value="6">יולי</option>
+                      <option value="7">אוגוסט</option>
+                      <option value="8">ספטמבר</option>
+                      <option value="9">אוקטובר</option>
+                      <option value="10">נובמבר</option>
+                      <option value="11">דצמבר</option>
+                    </select>
+                  </div>
+
+                  <!-- Year Selection -->
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">שנה</label>
+                    <select id="reportsYear" class="reports-control-select">
+                      <!-- Will be populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Range Dates (Hidden by default) -->
+                <div class="reports-controls-grid" id="rangeDates" style="display: none">
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תאריך התחלה</label>
+                    <input
+                      type="date"
+                      id="reportsStartDate"
+                      class="reports-control-input"
+                    />
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תאריך סיום</label>
+                    <input
+                      type="date"
+                      id="reportsEndDate"
+                      class="reports-control-input"
+                    />
+                  </div>
+                </div>
+
+                <!-- Comparison Dates (Hidden by default) -->
+                <div
+                  class="reports-controls-grid"
+                  id="comparisonDates"
+                  style="display: none"
+                >
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 1 - חודש</label>
+                    <select id="reportsMonth1" class="reports-control-select">
+                      <option value="0">ינואר</option>
+                      <option value="1">פברואר</option>
+                      <option value="2">מרץ</option>
+                      <option value="3">אפריל</option>
+                      <option value="4">מאי</option>
+                      <option value="5">יוני</option>
+                      <option value="6">יולי</option>
+                      <option value="7">אוגוסט</option>
+                      <option value="8">ספטמבר</option>
+                      <option value="9">אוקטובר</option>
+                      <option value="10">נובמבר</option>
+                      <option value="11">דצמבר</option>
+                    </select>
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 1 - שנה</label>
+                    <select id="reportsYear1" class="reports-control-select">
+                      <!-- Will be populated dynamically -->
+                    </select>
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 2 - חודש</label>
+                    <select id="reportsMonth2" class="reports-control-select">
+                      <option value="0">ינואר</option>
+                      <option value="1">פברואר</option>
+                      <option value="2">מרץ</option>
+                      <option value="3">אפריל</option>
+                      <option value="4">מאי</option>
+                      <option value="5">יוני</option>
+                      <option value="6">יולי</option>
+                      <option value="7">אוגוסט</option>
+                      <option value="8">ספטמבר</option>
+                      <option value="9">אוקטובר</option>
+                      <option value="10">נובמבר</option>
+                      <option value="11">דצמבר</option>
+                    </select>
+                  </div>
+                  <div class="reports-control-group">
+                    <label class="reports-control-label">תקופה 2 - שנה</label>
+                    <select id="reportsYear2" class="reports-control-select">
+                      <!-- Will be populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="reports-actions">
+                  <button
+                    class="reports-btn reports-btn-primary"
+                    onclick="manager.generateReport()"
+                  >
+                    <i class="fas fa-chart-bar"></i>
+                    צור דוח
+                  </button>
+                  <button
+                    class="reports-btn reports-btn-secondary"
+                    onclick="manager.resetReportsForm()"
+                  >
+                    <i class="fas fa-redo"></i>
+                    איפוס
+                  </button>
+                  <button
+                    class="reports-btn reports-btn-export"
+                    onclick="manager.exportReport()"
+                    id="exportReportBtn"
+                    style="display: none"
+                  >
+                    <i class="fas fa-file-export"></i>
+                    ייצוא
+                  </button>
+                </div>
+              </div>
+
+              <!-- Reports Results Container -->
+              <div id="reportsResults"></div>
+            </div>
+          </div>
+
+          <!-- ===== תוכן לשונית בית מדרש ===== -->
+          <!-- BEIT MIDRASH TAB CONTENT -->
+          <div id="beitMidrashTab" class="tab-content">
+            <div id="beitMidrashRoot"></div>
+          </div>
+
+        </div>
+
+        <!-- ===== כותרת תחתונה ראשית ===== -->
+        <!-- MAIN FOOTER -->
+        <footer class="main-footer" id="mainFooter">
+          <div class="footer-content">
+            <span class="footer-brand">מערכת ניהול • משרד עו"ד גיא הרשקוביץ</span>
+            <div class="footer-divider"></div>
+            <div class="system-status">
+              <span class="status-dot"></span>
+              <span>מחובר ופעיל</span>
+            </div>
+            <div class="footer-divider"></div>
+            <a href="#" class="footer-link" data-help-trigger onclick="return false;">
+              <i class="fas fa-question-circle"></i>
+              עזרה
+            </a>
+          </div>
+        </footer>
+      </main>
+    </div>
+
+    <!-- ===== טפסים קופצים ===== -->
+    <!-- POPUP FORMS -->
+    <!-- הפופאפ הישן הוסר - עכשיו משתמשים בפופאפ החדש מ-cases.js -->
+
+    <!-- ===== הודעת טוסט ===== -->
+    <!-- NOTIFICATION TOAST - REMOVED: Now using NotificationSystem -->
+    <!-- Old element removed to prevent conflicts with new notification system -->
+
+    <!-- ===== סקריפטים וסגנונות ===== -->
+    <!-- SCRIPTS AND STYLES -->
+    <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
+    <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
+    <script src="js/modules/logger.js?v=974152d"></script>
+
+    <!-- ===== ⚡ Lazy Loader - Dynamic Script Loading ===== -->
+    <!-- טעינה דינמית של סקריפטים - שיפור ביצועים -->
+    <script src="js/modules/lazy-loader.js?v=974152d"></script>
+
+    <script src="js/modules/dates.js?v=974152d"></script>
+    <script defer src="js/modules/statistics.js?v=974152d"></script>
+    <script src="js/modules/pagination.js?v=974152d"></script>
+    <script src="js/modules/activity-logger.js?v=974152d"></script>
+
+    <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Event-Driven System ===== -->
+    <!-- Type-safe Event Bus + Firebase Facade -->
+
+    <!-- ✨ NEW: Modular Deduction System -->
+    <!-- Shared library for hours calculation and deduction logic -->
+
+    <script src="js/modules/task-actions.js?v=974152d"></script>
+    <!-- ✨ NEW: Task Completion Validation System -->
+    <!-- Industry-standard task completion with time gap validation -->
+    <script src="js/modules/task-completion-validation.js?v=974152d"></script>
+    <!-- ✨ NEW: TaskTimeline Component -->
+    <!-- Unified timeline display for task history -->
+    <script src="components/task-timeline/TaskTimeline.js?v=974152d"></script>
+    <script src="js/modules/integration-manager.js?v=974152d"></script>
+    <!-- Firebase Functions Migration - Server-side Integration -->
+    <script src="js/modules/api-client-v2.js?v=974152d"></script>
+    <script src="js/modules/firebase-server-adapter.js?v=974152d"></script>
+    <!-- Employees Management System - ניהול עובדים -->
+    <!-- ✅ Presence System - מעקב משתמשים בזמן אמת (Realtime Database) -->
+    <script src="js/modules/presence-system.js?v=974152d"></script>
+    <!-- ✅ NEW: Idle Timeout Manager - התנתקות אוטומטית אחרי חוסר פעילות -->
+    <script src="js/modules/idle-timeout-manager.js?v=974152d"></script>
+
+    <!-- Cases Management System - ניהול תיקים -->
+    <script src="js/cases.js?v=974152d"></script>
+    <script src="js/cases-integration.js?v=974152d"></script>
+    <!-- Legal Procedures System - ניהול הליכים משפטיים -->
+    <script src="js/legal-procedures.js?v=974152d"></script>
+
+    <!-- ===== Lottie Animations Configuration ===== -->
+    <!-- MUST BE LOADED BEFORE NotificationSystem -->
+    <script src="js/modules/lottie-animations.js?v=974152d"></script>
+    <script src="js/modules/lottie-manager.js?v=974152d"></script>
+
+    <!-- ===== Notification System ===== -->
+    <!-- Toast notifications with Lottie animations -->
+    <script src="js/modules/notification-messages.js?v=974152d"></script>
+    <script src="js/modules/notification-system.js?v=974152d"></script>
+
+    <!-- ===== 🎯 NEW: Unified UI System - Step 1: Load Components ===== -->
+    <!-- Feature Flags - Controls whether to use new or legacy system -->
+    <script src="shared/config/feature-flags.js"></script>
+    <!-- Unified Loading Overlay -->
+    <script src="shared/ui/loading/LoadingOverlay.js"></script>
+
+    <!-- ===== Notification Messages Library ===== -->
+    <!-- Context-aware messages for all notifications -->
+
+    <!-- ===== 🎯 NEW: Unified UI System - Step 2: Compatibility Wrapper ===== -->
+    <!-- MUST load AFTER NotificationSystem to wrap it properly -->
+    <script src="shared/compatibility/loading-wrapper.js"></script>
+
+    <!-- ===== NEW: Modals Manager System ===== -->
+    <!-- Centralized modal management -->
+    <script src="js/modules/modals-manager.js?v=974152d"></script>
+    <!-- Compatibility layer for smooth migration -->
+    <script src="js/modules/modals-compat.js?v=974152d"></script>
+
+    <!-- ===== Shared Service Card Renderer ===== -->
+    <!-- Prevents code duplication between modules -->
+    <script src="js/modules/service-card-renderer.js?v=974152d"></script>
+
+    <!-- ===== Shared Client Search Component ===== -->
+    <!-- Unified client search and filtering logic -->
+    <script src="js/modules/ui/client-search.js?v=974152d"></script>
+
+    <!-- ===== NEW: Client-Case Selector Component ===== -->
+    <!-- Unified two-step client→case selection -->
+    <script src="js/modules/client-case-selector.js?v=974152d"></script>
+    <!-- Client-Case Selectors Initialization -->
+    <script src="js/modules/selectors-init.js?v=974152d"></script>
+
+    <!-- ===== 🔍 Performance Monitoring System ===== -->
+    <!-- Real-time performance tracking for critical operations -->
+    <script src="js/modules/monitoring/performance-monitor.js?v=974152d"></script>
+
+    <!-- ===== 🧪 TESTING: New Case Creation Module ===== -->
+    <!-- Modern modular case creation system - currently in testing -->
+    <script src="js/modules/case-creation/case-number-generator.js?v=974152d"></script>
+    <script src="js/modules/case-creation/case-form-validator.js?v=974152d"></script>
+    <script src="js/modules/case-creation/case-creation-dialog.js?v=974152d"></script>
+
+    <!-- ===== Smart Descriptions System ===== -->
+    <!-- Structured descriptions manager for tasks and work entries -->
+    <script src="js/modules/descriptions/category-mapping.js?v=974152d"></script>
+    <script src="js/modules/descriptions/descriptions-manager.js?v=974152d"></script>
+    <script src="js/modules/descriptions/smart-combo-selector.js?v=974152d"></script>
+    <script src="js/modules/descriptions/GuidedTextInput.js?v=974152d"></script>
+
+    <!-- ===== Core Utilities Module ===== -->
+    <!-- Must load before dialogs.js (provides safeText) -->
+
+    <!-- ===== Dialogs Module ===== -->
+    <!-- Task completion, advanced dialogs, and other modals + Smart Descriptions -->
+    <script src="js/modules/dialogs.js?v=974152d"></script>
+
+    <!-- ===== System Diagnostics & Snapshot Tool ===== -->
+    <!-- Full system state comparison for debugging -->
+    <script defer src="js/modules/system-snapshot.js?v=974152d"></script>
+    <!-- Event Flow Analyzer - DEV ONLY - removed to prevent CSP errors in production -->
+    <!-- <script defer src="js/modules/event-analyzer.js?v=974152d"></script> -->
+
+    <!-- ===== SVG RINGS MODULE ===== -->
+    <script src="js/modules/svg-rings.js?v=974152d"></script>
+
+    <!-- ===== INLINE EXPANSION POPOVER (CSS-only) ===== -->
+    <!-- popover-positioning.js removed - file does not exist -->
+
+    <!-- ===== Messaging System ===== -->
+    <!-- ===== NEW: Main Application (ES6 Modules) ===== -->
+    <!-- Modern modular architecture with ActionFlowManager + Smart Descriptions -->
+
+    <!-- ===== SYSTEM ANNOUNCEMENT TICKER ===== -->
+    <!-- Loaded as module by main.js -->
+
+    <!-- Work Hours Calculator - Smart Calendar System -->
+    <script src="js/modules/work-hours-calculator.js?v=974152d"></script>
+
+    <!-- ===== 🔍 FUNCTION MONITOR - POC ===== -->
+    <!-- Advanced monitoring and debugging system -->
+    <script defer src="js/modules/function-monitor.js?v=974152d"></script>
+    <script defer src="js/modules/function-monitor-dashboard.js?v=974152d"></script>
+    <script defer src="js/modules/function-monitor-init.js?v=974152d"></script>
+
+    <!-- ===== KNOWLEDGE BASE 1.0.0 - מרכז עזרה וידע ===== -->
+    <!-- 🎓 NEW: Knowledge Base / FAQ System - Simple and Clear -->
+    <!-- 📚 Professional FAQ with categories, search, and articles -->
+    <!-- 🎯 For users age 40-60 - Direct answers, no chat needed -->
+    <!-- ✅ Replaces Virtual Assistant chatbot with classic help center -->
+    <!-- 💡 Click "עזרה" or the floating 💡 button to open -->
+
+    <!-- CSS -->
+
+    <!-- Icons System -->
+    <script defer src="js/modules/knowledge-base/kb-icons.js?v=974152d"></script>
+
+    <!-- Analytics System -->
+    <script defer src="js/modules/knowledge-base/kb-analytics.js?v=974152d"></script>
+
+    <!-- Data -->
+    <script defer src="js/modules/knowledge-base/kb-data.js?v=974152d"></script>
+
+    <!-- Search Engine -->
+    <script defer src="js/modules/knowledge-base/kb-search.js?v=974152d"></script>
+
+    <!-- Main Logic -->
+    <script defer src="js/modules/knowledge-base/knowledge-base.js?v=974152d"></script>
+
+    <!-- ===== Virtual Assistant 3.9.0 - TEMPORARILY DISABLED ===== -->
+    <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=974152d"></script> -->
+
+    <!-- ===== AI CHAT SYSTEM (NEW) - LAZY LOADED ===== -->
+    <!-- ⚡ NotificationBell is also lazy-loaded (requires authenticated user) -->
+    <!-- ⚡ Performance Optimization: AI Chat scripts are now loaded AFTER login -->
+    <!-- This reduces initial page load time by ~70KB and improves login screen performance -->
+    <!-- Scripts are dynamically loaded in authentication.js after successful login -->
+    <!-- See: authentication.js -> initAIChatSystem() -->
+
+    <!-- OLD: Legacy FAQ Bot (backup) -->
+    <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=974152d"></script> -->
+
+    <!-- ===== OLD: Legacy script.js (DEPRECATED - will be removed) ===== -->
+    <!-- <script src="script.js?v=974152d"></script> -->
+
+    <!-- 🔧 Admin Migration Tools (Console-based) -->
+    <script src="js/admin-migration-tools.js?v=974152d"></script>
+
+    <!-- 🔍 Validation Script (Post-Migration Testing) -->
+    <script src="js/validation-script.js?v=974152d"></script>
+
+    <!-- 🔧 Fix Old Clients Tool -->
+    <script src="js/fix-old-clients.js?v=974152d"></script>
+
+    <!-- Additional CSS for animations -->
+    <style>
+      /* ===== Welcome Screen Styles ===== */
+      .welcome-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.5s ease-out;
+      }
+
+      .welcome-screen.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .welcome-container {
+        text-align: center;
+        color: #2c3e50;
+        animation: welcomeSlideIn 0.6s ease-out;
+        background: white;
+        padding: 50px 70px;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        min-width: 450px;
+        max-width: 500px;
+      }
+
+      @keyframes welcomeSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .welcome-logo {
+        margin-bottom: 30px;
+      }
+
+      .logo-image {
+        width: 140px;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+        animation: logoFadeIn 0.8s ease-out;
+      }
+
+      @keyframes logoFadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .welcome-title {
+        font-size: 32px;
+        font-weight: 600;
+        margin: 0 0 12px 0;
+        color: #1a202c;
+        letter-spacing: -0.5px;
+      }
+
+      .welcome-subtitle {
+        font-size: 15px;
+        margin: 0 0 10px 0;
+        color: #718096;
+        font-weight: 400;
+      }
+
+      .welcome-loader {
+        margin-top: 40px;
+        padding-top: 30px;
+        border-top: 1px solid #e9ecef;
+      }
+
+      /* Gmail-style Progress Bar */
+      .progress-bar-container {
+        width: 100%;
+        height: 4px;
+        background: #e2e8f0;
+        border-radius: 2px;
+        overflow: hidden;
+        margin: 0 auto 20px;
+        position: relative;
+      }
+
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #4299e1 0%, #3b82f6 50%, #2563eb 100%);
+        border-radius: 2px;
+        width: 0%;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        box-shadow: 0 0 10px rgba(66, 153, 225, 0.5);
+      }
+
+      /* Shimmer effect like Gmail */
+      .progress-bar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.3) 50%,
+          transparent 100%
+        );
+        animation: shimmer 1.5s infinite;
+      }
+
+      @keyframes shimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      .loader-text {
+        font-size: 14px;
+        color: #718096;
+        margin: 0;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+      }
+    </style>
+
+    <!-- ===== Scroll to Top Button ===== -->
+    <button id="scrollToTopBtn" title="חזור למעלה" aria-label="חזור למעלה">
+      <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Debug Mode ===== -->
+
+    <!-- ===== Scroll to Top Button Logic ===== -->
+    <script>
+      (function() {
+        'use strict';
+
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        const scrollThreshold = 300; // Show button after scrolling 300px
+
+        // Show/hide button based on scroll position
+        function toggleScrollButton() {
+          if (window.pageYOffset > scrollThreshold) {
+            scrollToTopBtn.classList.add('show');
+          } else {
+            scrollToTopBtn.classList.remove('show');
+          }
+        }
+
+        // Smooth scroll to top
+        function scrollToTop() {
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        }
+
+        // Event listeners
+        window.addEventListener('scroll', toggleScrollButton, { passive: true });
+        scrollToTopBtn.addEventListener('click', scrollToTop);
+
+        // Check initial scroll position
+        toggleScrollButton();
+      })();
+    </script>
+
+    <!-- Set default values for datetime-local inputs -->
+    <script>
+      (function() {
+        // Set current datetime as default for datetime-local inputs
+        function setDateTimeDefaults() {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+
+          // Format: YYYY-MM-DDTHH:MM
+          const datetimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+          // Set default for budgetDeadline
+          const budgetDeadline = document.getElementById('budgetDeadline');
+          if (budgetDeadline && !budgetDeadline.value) {
+            budgetDeadline.value = datetimeValue;
+          }
+
+          // Set default for actionDate
+          const actionDate = document.getElementById('actionDate');
+          if (actionDate && !actionDate.value) {
+            actionDate.value = datetimeValue;
+          }
+        }
+
+        // Run when DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', setDateTimeDefaults);
+        } else {
+          setDateTimeDefaults();
+        }
+      })();
+    </script>
+
+    <!-- Notification Bell Helper Functions -->
+    <script>
+      // Global helper function for clearing notifications
+      // NotificationBell is lazy-loaded, so this provides safe fallback
+      function clearAllNotifications() {
+        if (window.notificationBell) {
+          window.notificationBell.clearAllNotifications();
+        } else {
+          console.warn('NotificationBell not loaded yet');
+        }
+      }
+    </script>
+  </body>
+</html>

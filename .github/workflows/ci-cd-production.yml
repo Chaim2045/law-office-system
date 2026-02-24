@@ -108,8 +108,8 @@ jobs:
       - name: 📝 Check CSS Stats
         run: |
           echo "📊 CSS Statistics:"
-          find css -name "*.css" -exec wc -l {} + 2>/dev/null | tail -1 || echo "No CSS files"
-          echo "Total CSS files: $(find css -name '*.css' 2>/dev/null | wc -l)"
+          find apps/user-app/css -name "*.css" -exec wc -l {} + 2>/dev/null | tail -1 || echo "No CSS files"
+          echo "Total CSS files: $(find apps/user-app/css -name '*.css' 2>/dev/null | wc -l)"
 
       - name: 🔍 Check for TODO/FIXME
         run: |
@@ -160,7 +160,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: typescript-dist
-          path: dist/
+          path: apps/user-app/dist/
           retention-days: 7
 
   # ═════════════════════════════════════════════════════════════
@@ -363,18 +363,18 @@ jobs:
       - name: 📊 Build Statistics
         run: |
           echo "📊 Build Statistics:"
-          echo "JavaScript files: $(find js -name '*.js' ! -path '*/node_modules/*' 2>/dev/null | wc -l)"
+          echo "JavaScript files: $(find apps/user-app/js -name '*.js' ! -path '*/node_modules/*' 2>/dev/null | wc -l)"
           echo "TypeScript files: $(find . -name '*.ts' ! -path '*/node_modules/*' 2>/dev/null | wc -l)"
-          echo "CSS files: $(find css -name '*.css' 2>/dev/null | wc -l)"
+          echo "CSS files: $(find apps/user-app/css -name '*.css' 2>/dev/null | wc -l)"
 
       - name: 📦 Package Build Artifacts
         run: |
           mkdir -p build-output
-          cp -r dist build-output/ 2>/dev/null || echo "No dist directory"
-          cp -r css build-output/
-          cp -r js build-output/
-          cp -r images build-output/ 2>/dev/null || echo "No images directory"
-          cp index.html build-output/
+          cp -r apps/user-app/dist build-output/ 2>/dev/null || echo "No dist directory"
+          cp -r apps/user-app/css build-output/
+          cp -r apps/user-app/js build-output/
+          cp -r apps/user-app/images build-output/ 2>/dev/null || echo "No images directory"
+          cp apps/user-app/index.html build-output/
           cp firebase.json build-output/ 2>/dev/null || echo "No firebase.json"
 
       - name: 📤 Upload Build Artifacts

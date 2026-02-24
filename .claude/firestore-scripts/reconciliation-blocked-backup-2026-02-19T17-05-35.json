@@ -1,0 +1,603 @@
+{
+  "timestamp": "2026-02-19T17:05:35.560Z",
+  "mode": "EXECUTE",
+  "totalClients": 109,
+  "mismatchCount": 35,
+  "mismatches": [
+    {
+      "docId": "2025001",
+      "name": "שריאל אילון",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -3.4166666666666665,
+        "minutesRemaining": -205,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025002",
+      "name": "אהוד ולטר",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": -2,
+        "minutesRemaining": -120,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 15,
+        "minutesRemaining": 900,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025004",
+      "name": "אושר לוי",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -0.583333333333333,
+        "minutesRemaining": -35,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025005",
+      "name": "ברוך פאוקמן",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": 18.81666666666667,
+        "minutesRemaining": 1129.0000000000002,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 19.36666666666667,
+        "minutesRemaining": 1162.0000000000002,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025006",
+      "name": "תמיר אקווע",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 79.53333333333333,
+        "minutesRemaining": 4772,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 176.66666666666666,
+        "minutesRemaining": 10600,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025009",
+      "name": "שייקסטופ",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 113.58333333333334,
+        "minutesRemaining": 6815,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 117.5,
+        "minutesRemaining": 7050,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025011",
+      "name": "ליאורה מילבאום",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": 14.550000000000002,
+        "minutesRemaining": 873,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": true,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025023",
+      "name": "תומר אגבאבא",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -0.25,
+        "minutesRemaining": -15,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "20251000",
+      "name": "משה קידר",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": 7.25,
+        "minutesRemaining": 435,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": true,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025306",
+      "name": "בן ניסן ייעוץ סיייבר בעמ",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": 27.416666666666668,
+        "minutesRemaining": 1645,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": true,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025333",
+      "name": "דן אלדובי בעמ",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": 18.333333333333336,
+        "minutesRemaining": 1100.0000000000002,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": true,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025364",
+      "name": "אלעד מידר",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 140.5,
+        "minutesRemaining": 8430,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 440.5,
+        "minutesRemaining": 26430,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025366",
+      "name": "ד\"ר אילן וסרמן",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 86.01666666666662,
+        "minutesRemaining": 5161,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 98.26666666666667,
+        "minutesRemaining": 5896,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025430",
+      "name": "הפודקסטיה - שלום סיונוב",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 11.383333333333331,
+        "minutesRemaining": 682.9999999999999,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 12.466666666666667,
+        "minutesRemaining": 748,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025456",
+      "name": "רויטל זילביגר",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -8.75,
+        "minutesRemaining": -525,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025549",
+      "name": "רעות ואוריאל חליבה",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 13.75,
+        "minutesRemaining": 825,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 50,
+        "minutesRemaining": 3000,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025562",
+      "name": "אבי אליהו",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -10.2,
+        "minutesRemaining": -612,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025634",
+      "name": "קרגו ייעוץ לוגיסטי",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 28.700000000000003,
+        "minutesRemaining": 1722.0000000000002,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 29.700000000000003,
+        "minutesRemaining": 1782.0000000000002,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025815",
+      "name": "ציפי דרוול",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -3.1666666666666647,
+        "minutesRemaining": -189.9999999999999,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025863",
+      "name": "סיון אזרד",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 44.61666666666667,
+        "minutesRemaining": 2677,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 38.183333333333344,
+        "minutesRemaining": 2291.0000000000005,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025993",
+      "name": "דני הללי",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -0.33333333333333326,
+        "minutesRemaining": -19.999999999999996,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2025998",
+      "name": "משה אדרי",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 23.98333333333333,
+        "minutesRemaining": 1439,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 24.816666666666663,
+        "minutesRemaining": 1488.9999999999998,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026007",
+      "name": "גיא אורן",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -3.666666666666668,
+        "minutesRemaining": -220.00000000000006,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026008",
+      "name": "חזי מאנע",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": true,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026010",
+      "name": "דני הללי",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -0.08333333333333348,
+        "minutesRemaining": -5,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026016",
+      "name": "אמיר הרצברג",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 11.349999999999998,
+        "minutesRemaining": 681,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 11.516666666666666,
+        "minutesRemaining": 691,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026018",
+      "name": "אופק עמר",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 221.75,
+        "minutesRemaining": 13305,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 220.5,
+        "minutesRemaining": 13230,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026019",
+      "name": "ביקון אבטחת מידע",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -4.833333333333335,
+        "minutesRemaining": -290,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026022",
+      "name": "טפאוטו",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 0.2333333333333334,
+        "minutesRemaining": 14.000000000000004,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 1.3999999999999997,
+        "minutesRemaining": 83.99999999999999,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026025",
+      "name": "משכנות גדרה",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -1,
+        "minutesRemaining": -60,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026029",
+      "name": "טיק טק",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 1.333333333333334,
+        "minutesRemaining": 80,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 2,
+        "minutesRemaining": 120,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026030",
+      "name": "טריידניג סקילס",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 58.45,
+        "minutesRemaining": 3507,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 74.13333333333334,
+        "minutesRemaining": 4448,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026036",
+      "name": "ניהול רועי",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": 129.75,
+        "minutesRemaining": 7785,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 136,
+        "minutesRemaining": 8160,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026044",
+      "name": "נועה סבג",
+      "type": "unknown",
+      "current": {
+        "hoursRemaining": -0.7333333333333334,
+        "minutesRemaining": -44,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      }
+    },
+    {
+      "docId": "2026045",
+      "name": "חיים פרץ",
+      "type": "hours",
+      "current": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": false,
+        "isCritical": false
+      },
+      "expected": {
+        "hoursRemaining": 0,
+        "minutesRemaining": 0,
+        "isBlocked": true,
+        "isCritical": false
+      }
+    }
+  ]
+}
