@@ -1300,7 +1300,7 @@ return;
             try {
                 console.log('📡 Loading activity for:', this.currentUser.email);
 
-                const getUserActivityFunction = firebase.app('master-admin-panel')
+                const getUserActivityFunction = firebase.app()
                     .functions()
                     .httpsCallable('getUserActivity');
 
@@ -1349,7 +1349,7 @@ return;
             }
 
             try {
-                const getUserActivityFunction = firebase.app('master-admin-panel')
+                const getUserActivityFunction = firebase.app()
                     .functions()
                     .httpsCallable('getUserActivity');
 

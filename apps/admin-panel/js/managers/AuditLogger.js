@@ -112,7 +112,7 @@
                     userAgent: navigator.userAgent,
 
                     // Source
-                    source: 'master-admin-panel'
+                    source: 'admin-panel'
                 };
 
                 // Save to Firestore

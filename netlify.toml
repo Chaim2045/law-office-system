@@ -68,7 +68,7 @@
 
 # Block access to admin panel from main site
 [[redirects]]
-  from = "/master-admin-panel/*"
+  from = "/apps/admin-panel/*"
   to = "https://admin-gh-law-office-system.netlify.app/:splat"
   status = 301
   force = true
