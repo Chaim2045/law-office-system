@@ -7,6 +7,7 @@ law-office-firebase/
 serviceAccountKey.json
 service-account*.json
 firebase-admin-key.json
+service-account-key.json
 
 # Claude AI data cache
 .claude/firestore-data/*.json

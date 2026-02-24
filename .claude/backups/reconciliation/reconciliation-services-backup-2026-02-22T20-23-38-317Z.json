@@ -1,0 +1,458 @@
+[
+  {
+    "clientId": "2025002",
+    "name": "אהוד ולטר",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 52.3,
+    "old": {
+      "hoursUsed": 52.25,
+      "hoursRemaining": 0.05000000000000071
+    },
+    "new": {
+      "hoursUsed": 88.25,
+      "hoursRemaining": -35.95
+    },
+    "diffUsed": 36,
+    "diffRemaining": 36,
+    "timesheetEntries": 33,
+    "timesheetMinutes": 5295
+  },
+  {
+    "clientId": "2025002",
+    "name": "אהוד ולטר",
+    "serviceIndex": 1,
+    "serviceName": "תוספת צו מניעה (סעד זמני)",
+    "totalHours": 15,
+    "old": {
+      "hoursUsed": 2,
+      "hoursRemaining": 13
+    },
+    "new": {
+      "hoursUsed": 88.25,
+      "hoursRemaining": -73.25
+    },
+    "diffUsed": 86.25,
+    "diffRemaining": 86.25,
+    "timesheetEntries": 33,
+    "timesheetMinutes": 5295
+  },
+  {
+    "clientId": "2025002",
+    "name": "אהוד ולטר",
+    "serviceIndex": 2,
+    "serviceName": "עריכת הסכם מכר",
+    "totalHours": 51,
+    "old": {
+      "hoursUsed": 34,
+      "hoursRemaining": 16.999999999999996
+    },
+    "new": {
+      "hoursUsed": 88.25,
+      "hoursRemaining": -37.25
+    },
+    "diffUsed": 54.25,
+    "diffRemaining": 54.25,
+    "timesheetEntries": 33,
+    "timesheetMinutes": 5295
+  },
+  {
+    "clientId": "2025005",
+    "name": "ברוך פאוקמן",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 20,
+    "old": {
+      "hoursUsed": 20.55,
+      "hoursRemaining": -0.55
+    },
+    "new": {
+      "hoursUsed": 31.18,
+      "hoursRemaining": -11.18
+    },
+    "diffUsed": 10.63,
+    "diffRemaining": 10.63,
+    "timesheetEntries": 27,
+    "timesheetMinutes": 1871
+  },
+  {
+    "clientId": "2025005",
+    "name": "ברוך פאוקמן",
+    "serviceIndex": 1,
+    "serviceName": "ייעוץ משפטי רכישת ספא",
+    "totalHours": 30,
+    "old": {
+      "hoursUsed": 10.633333333333335,
+      "hoursRemaining": 19.36666666666667
+    },
+    "new": {
+      "hoursUsed": 31.18,
+      "hoursRemaining": -1.18
+    },
+    "diffUsed": 20.55,
+    "diffRemaining": 20.55,
+    "timesheetEntries": 27,
+    "timesheetMinutes": 1871
+  },
+  {
+    "clientId": "2025006",
+    "name": "תמיר אקווע",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 160,
+    "old": {
+      "hoursUsed": 158.79999999999998,
+      "hoursRemaining": 1.2000000000000075
+    },
+    "new": {
+      "hoursUsed": 200.7,
+      "hoursRemaining": -40.7
+    },
+    "diffUsed": 41.9,
+    "diffRemaining": 41.9,
+    "timesheetEntries": 83,
+    "timesheetMinutes": 12042
+  },
+  {
+    "clientId": "2025009",
+    "name": "שייקסטופ",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 30,
+    "old": {
+      "hoursUsed": 37.41666666666667,
+      "hoursRemaining": -7.416666666666668
+    },
+    "new": {
+      "hoursUsed": 42.9,
+      "hoursRemaining": -12.9
+    },
+    "diffUsed": 5.48,
+    "diffRemaining": 5.48,
+    "timesheetEntries": 25,
+    "timesheetMinutes": 2574
+  },
+  {
+    "clientId": "2025011",
+    "name": "ליאורה מילבאום",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 55,
+    "old": {
+      "hoursUsed": 40.449999999999996,
+      "hoursRemaining": 14.550000000000002
+    },
+    "new": {
+      "hoursUsed": 42.7,
+      "hoursRemaining": 12.3
+    },
+    "diffUsed": 2.25,
+    "diffRemaining": 2.25,
+    "timesheetEntries": 34,
+    "timesheetMinutes": 2562
+  },
+  {
+    "clientId": "2025549",
+    "name": "רעות ואוריאל חליבה",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 20,
+    "old": {
+      "hoursUsed": 56.25,
+      "hoursRemaining": -36.25
+    },
+    "new": {
+      "hoursUsed": 61.08,
+      "hoursRemaining": -41.08
+    },
+    "diffUsed": 4.83,
+    "diffRemaining": 4.83,
+    "timesheetEntries": 40,
+    "timesheetMinutes": 3665
+  },
+  {
+    "clientId": "2025549",
+    "name": "רעות ואוריאל חליבה",
+    "serviceIndex": 1,
+    "serviceName": "סיום הליך שלב א",
+    "totalHours": 50,
+    "old": {
+      "hoursUsed": 0,
+      "hoursRemaining": 50
+    },
+    "new": {
+      "hoursUsed": 61.08,
+      "hoursRemaining": -11.08
+    },
+    "diffUsed": 61.08,
+    "diffRemaining": 61.08,
+    "timesheetEntries": 40,
+    "timesheetMinutes": 3665
+  },
+  {
+    "clientId": "2025634",
+    "name": "קרגו ייעוץ לוגיסטי",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 20,
+    "old": {
+      "hoursUsed": 18.966666666666665,
+      "hoursRemaining": 1.033333333333335
+    },
+    "new": {
+      "hoursUsed": 21.3,
+      "hoursRemaining": -1.3
+    },
+    "diffUsed": 2.33,
+    "diffRemaining": 2.33,
+    "timesheetEntries": 17,
+    "timesheetMinutes": 1278
+  },
+  {
+    "clientId": "2025634",
+    "name": "קרגו ייעוץ לוגיסטי",
+    "serviceIndex": 1,
+    "serviceName": "תוכנית 30 שעות לווי וייעוץ משפטי שוטף",
+    "totalHours": 30,
+    "old": {
+      "hoursUsed": 2.333333333333333,
+      "hoursRemaining": 27.666666666666668
+    },
+    "new": {
+      "hoursUsed": 21.3,
+      "hoursRemaining": 8.7
+    },
+    "diffUsed": 18.97,
+    "diffRemaining": 18.97,
+    "timesheetEntries": 17,
+    "timesheetMinutes": 1278
+  },
+  {
+    "clientId": "2025831",
+    "name": "ארטפרו (קובי חליפה)",
+    "serviceIndex": 1,
+    "serviceName": "לווי משפטי שוטף לעסק",
+    "totalHours": 7,
+    "old": {
+      "hoursUsed": 5.716666666666666,
+      "hoursRemaining": 1.283333333333334
+    },
+    "new": {
+      "hoursUsed": 7,
+      "hoursRemaining": 0
+    },
+    "diffUsed": 1.28,
+    "diffRemaining": 1.28,
+    "timesheetEntries": 15,
+    "timesheetMinutes": 420
+  },
+  {
+    "clientId": "2025863",
+    "name": "סיון אזרד",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 50,
+    "old": {
+      "hoursUsed": 24.98333333333333,
+      "hoursRemaining": 25.016666666666666
+    },
+    "new": {
+      "hoursUsed": 50.38,
+      "hoursRemaining": -0.38
+    },
+    "diffUsed": 25.4,
+    "diffRemaining": 25.4,
+    "timesheetEntries": 42,
+    "timesheetMinutes": 3023
+  },
+  {
+    "clientId": "2025863",
+    "name": "סיון אזרד",
+    "serviceIndex": 1,
+    "serviceName": "כתב הגנה ותביעה שכנגד",
+    "totalHours": 20,
+    "old": {
+      "hoursUsed": 15.4,
+      "hoursRemaining": 4.6
+    },
+    "new": {
+      "hoursUsed": 50.38,
+      "hoursRemaining": -30.38
+    },
+    "diffUsed": 34.98,
+    "diffRemaining": 34.98,
+    "timesheetEntries": 42,
+    "timesheetMinutes": 3023
+  },
+  {
+    "clientId": "2025863",
+    "name": "סיון אזרד",
+    "serviceIndex": 2,
+    "serviceName": "ייעוץ עסקי משפטי",
+    "totalHours": 22,
+    "old": {
+      "hoursUsed": 7,
+      "hoursRemaining": 15
+    },
+    "new": {
+      "hoursUsed": 50.38,
+      "hoursRemaining": -28.38
+    },
+    "diffUsed": 43.38,
+    "diffRemaining": 43.38,
+    "timesheetEntries": 42,
+    "timesheetMinutes": 3023
+  },
+  {
+    "clientId": "2025897",
+    "name": "שרית רוזנס",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 5,
+    "old": {
+      "hoursUsed": 0.7833333333333333,
+      "hoursRemaining": 4.216666666666667
+    },
+    "new": {
+      "hoursUsed": 2.93,
+      "hoursRemaining": 2.07
+    },
+    "diffUsed": 2.15,
+    "diffRemaining": 2.15,
+    "timesheetEntries": 9,
+    "timesheetMinutes": 176
+  },
+  {
+    "clientId": "2025897",
+    "name": "שרית רוזנס",
+    "serviceIndex": 2,
+    "serviceName": "התנגדות לביצוע שטר נגד טומהוק",
+    "totalHours": 30,
+    "old": {
+      "hoursUsed": 0,
+      "hoursRemaining": 30
+    },
+    "new": {
+      "hoursUsed": 2.93,
+      "hoursRemaining": 27.07
+    },
+    "diffUsed": 2.93,
+    "diffRemaining": 2.93,
+    "timesheetEntries": 9,
+    "timesheetMinutes": 176
+  },
+  {
+    "clientId": "2025897",
+    "name": "שרית רוזנס",
+    "serviceIndex": 3,
+    "serviceName": "התנגדות לביצוע שטר נגד חמים וטעים",
+    "totalHours": 30,
+    "old": {
+      "hoursUsed": 0,
+      "hoursRemaining": 30
+    },
+    "new": {
+      "hoursUsed": 2.93,
+      "hoursRemaining": 27.07
+    },
+    "diffUsed": 2.93,
+    "diffRemaining": 2.93,
+    "timesheetEntries": 9,
+    "timesheetMinutes": 176
+  },
+  {
+    "clientId": "2025994",
+    "name": "קובי הראל",
+    "serviceIndex": 1,
+    "serviceName": "בקשה לסעד זמני (במסגרת שלב א של ההליך המשפטי)",
+    "totalHours": 35,
+    "old": {
+      "hoursUsed": 0,
+      "hoursRemaining": 35
+    },
+    "new": {
+      "hoursUsed": 49.67,
+      "hoursRemaining": -14.67
+    },
+    "diffUsed": 49.67,
+    "diffRemaining": 49.67,
+    "timesheetEntries": 12,
+    "timesheetMinutes": 2980
+  },
+  {
+    "clientId": "2025994",
+    "name": "קובי הראל",
+    "serviceIndex": 3,
+    "serviceName": "עריכת מכתב תגובה למכתב + מחש + עיריית תא",
+    "totalHours": 10,
+    "old": {
+      "hoursUsed": 3.5,
+      "hoursRemaining": 6.5
+    },
+    "new": {
+      "hoursUsed": 49.67,
+      "hoursRemaining": -39.67
+    },
+    "diffUsed": 46.17,
+    "diffRemaining": 46.17,
+    "timesheetEntries": 12,
+    "timesheetMinutes": 2980
+  },
+  {
+    "clientId": "2025997",
+    "name": "אורן קניג",
+    "serviceIndex": 2,
+    "serviceName": "רייטנר",
+    "totalHours": 50,
+    "old": {
+      "hoursUsed": 20.366666666666667,
+      "hoursRemaining": 29.633333333333333
+    },
+    "new": {
+      "hoursUsed": 59.13,
+      "hoursRemaining": -9.13
+    },
+    "diffUsed": 38.76,
+    "diffRemaining": 38.76,
+    "timesheetEntries": 35,
+    "timesheetMinutes": 3548
+  },
+  {
+    "clientId": "2026008",
+    "name": "חזי מאנע",
+    "serviceIndex": 0,
+    "serviceName": "תוכנית שעות #1",
+    "totalHours": 65,
+    "old": {
+      "hoursUsed": 81.41666666666667,
+      "hoursRemaining": -16.41666666666667
+    },
+    "new": {
+      "hoursUsed": 125.17,
+      "hoursRemaining": -60.17
+    },
+    "diffUsed": 43.75,
+    "diffRemaining": 43.75,
+    "timesheetEntries": 43,
+    "timesheetMinutes": 7510
+  },
+  {
+    "clientId": "2026031",
+    "name": "נתנאל מיכאלי",
+    "serviceIndex": 1,
+    "serviceName": "שעות טיפול משפטי",
+    "totalHours": 64,
+    "old": {
+      "hoursUsed": 0,
+      "hoursRemaining": 64
+    },
+    "new": {
+      "hoursUsed": 31.08,
+      "hoursRemaining": 32.92
+    },
+    "diffUsed": 31.08,
+    "diffRemaining": 31.08,
+    "timesheetEntries": 10,
+    "timesheetMinutes": 1865
+  }
+]
