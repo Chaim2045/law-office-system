@@ -12,7 +12,7 @@ import {
   minutesToHours,
   hoursToMinutes,
   formatHours
-} from '../../../src/modules/deduction/calculators.js';
+} from '../../../apps/user-app/src/modules/deduction/calculators.js';
 
 describe('Deduction Calculators - calculateRemainingHours', () => {
   it('should calculate remaining hours from active packages', () => {

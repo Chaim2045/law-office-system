@@ -18,7 +18,7 @@
 # עם בדיקות מלאות - אם יש שגיאות הדפלוי ייכשל
 # ════════════════════════════════════════════════════════════════
 [build]
-  publish = "."
+  publish = "apps/user-app"
   # שלבים: Cache-bust → TypeScript → Lint → Build
   # Cache-bust רץ רק ב-Netlify (לא ב-git commits!)
   # אם אחד נכשל - הכל נעצר!

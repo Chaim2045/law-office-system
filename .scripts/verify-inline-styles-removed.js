@@ -16,8 +16,8 @@ console.log('\n🔍 VERIFICATION: Inline Styles Removed\n');
 console.log('═'.repeat(70));
 
 // Read files
-const jsFile = path.join(__dirname, '../js/modules/case-creation/case-creation-dialog.js');
-const cssFile = path.join(__dirname, '../css/tabs.css');
+const jsFile = path.join(__dirname, '../apps/user-app/js/modules/case-creation/case-creation-dialog.js');
+const cssFile = path.join(__dirname, '../apps/user-app/css/tabs.css');
 
 const jsContent = fs.readFileSync(jsFile, 'utf-8');
 const cssContent = fs.readFileSync(cssFile, 'utf-8');

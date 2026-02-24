@@ -33,7 +33,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
         type: 'hours',
         totalHours: 100,
         hoursRemaining: 40,
-        minutesRemaining: 2400,
+        minutesRemaining: 2400
       })
     };
 
@@ -196,7 +196,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
   describe('calculateClientHoursByCaseNumber() - NEW FUNCTION', () => {
     it('should calculate hours correctly using caseNumber', async () => {
       // Import the function (in actual implementation)
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const result = await calculateClientHoursByCaseNumber('2025001');
 
@@ -210,7 +210,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should use .doc() for direct document access (faster)', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await calculateClientHoursByCaseNumber('2025001');
 
@@ -220,7 +220,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should query timesheet by caseNumber (consistent field)', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await calculateClientHoursByCaseNumber('2025001');
 
@@ -230,7 +230,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should calculate breakdown by lawyer', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const result = await calculateClientHoursByCaseNumber('2025001');
 
@@ -246,10 +246,10 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
         caseNumber: '2025001',
         clientName: 'משה כהן',
         type: 'hours',
-        totalHours: 4.5, // 270 minutes = all used up
+        totalHours: 4.5 // 270 minutes = all used up
       });
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const result = await calculateClientHoursByCaseNumber('2025001');
 
       expect(result.isBlocked).toBe(true);
@@ -262,10 +262,10 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
         caseNumber: '2025001',
         clientName: 'משה כהן',
         type: 'hours',
-        totalHours: 7, // 420 minutes total, 270 used = 150 remaining (2.5 hours)
+        totalHours: 7 // 420 minutes total, 270 used = 150 remaining (2.5 hours)
       });
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const result = await calculateClientHoursByCaseNumber('2025001');
 
       expect(result.isCritical).toBe(true);
@@ -273,7 +273,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should throw error for invalid caseNumber', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await expect(calculateClientHoursByCaseNumber(null)).rejects.toThrow('מספר תיק לא תקין');
       await expect(calculateClientHoursByCaseNumber(undefined)).rejects.toThrow('מספר תיק לא תקין');
@@ -281,13 +281,13 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should throw error for non-existent case', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await expect(calculateClientHoursByCaseNumber('9999999')).rejects.toThrow('לא נמצא');
     });
 
     it('should include performance metrics', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const result = await calculateClientHoursByCaseNumber('2025001');
 
@@ -299,7 +299,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
 
   describe('updateClientHoursImmediatelyByCaseNumber() - NEW FUNCTION', () => {
     it('should update client hours using caseNumber', async () => {
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const result = await updateClientHoursImmediatelyByCaseNumber('2025001', 60);
 
@@ -309,7 +309,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should use .doc() for direct document access', async () => {
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await updateClientHoursImmediatelyByCaseNumber('2025001', 60);
 
@@ -317,7 +317,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should update Firebase with accurate data', async () => {
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await updateClientHoursImmediatelyByCaseNumber('2025001', 60);
 
@@ -326,7 +326,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should update local window.manager.clients', async () => {
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const initialHours = window.manager.clients[0].hoursRemaining;
 
@@ -337,7 +337,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should call clientValidation.updateBlockedClients()', async () => {
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await updateClientHoursImmediatelyByCaseNumber('2025001', 60);
 
@@ -350,10 +350,10 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
         caseNumber: '2025001',
         clientName: 'לקוח פיקס',
         type: 'fixed',
-        totalHours: 0,
+        totalHours: 0
       });
 
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const result = await updateClientHoursImmediatelyByCaseNumber('2025001', 60);
 
       expect(result.success).toBe(true);
@@ -361,7 +361,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should handle non-existent case gracefully', async () => {
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const result = await updateClientHoursImmediatelyByCaseNumber('9999999', 60);
 
@@ -375,7 +375,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
       const {
         calculateClientHoursAccurate,
         calculateClientHoursByCaseNumber
-      } = await import('../../js/modules/client-hours.js');
+      } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       // Call old function (by name)
       const oldResult = await calculateClientHoursAccurate('משה כהן');
@@ -395,7 +395,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
       const {
         calculateClientHoursAccurate,
         calculateClientHoursByCaseNumber
-      } = await import('../../js/modules/client-hours.js');
+      } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const startOld = performance.now();
       await calculateClientHoursAccurate('משה כהן');
@@ -435,7 +435,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
         }
       });
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const result = await calculateClientHoursByCaseNumber('2025001');
 
       expect(result.totalMinutesUsed).toBe(0);
@@ -461,7 +461,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
         docs: docsWithoutEmployee
       };
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const result = await calculateClientHoursByCaseNumber('2025001');
 
       expect(result.entriesByLawyer['לא ידוע']).toBe(60);
@@ -470,7 +470,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     it('should handle Firebase connection failure', async () => {
       window.firebaseDB = null;
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await expect(calculateClientHoursByCaseNumber('2025001')).rejects.toThrow('Firebase לא מחובר');
     });
@@ -478,7 +478,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
 
   describe('Data Consistency', () => {
     it('should always use caseNumber as primary key', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const result = await calculateClientHoursByCaseNumber('2025001');
 
@@ -499,7 +499,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
         totalHours: 100
       });
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       // Should still work perfectly because it uses caseNumber!
       const result = await calculateClientHoursByCaseNumber('2025001');
@@ -512,7 +512,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
 
   describe('Backward Compatibility', () => {
     it('should keep OLD functions working (no breaking changes)', async () => {
-      const { calculateClientHoursAccurate } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursAccurate } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       // OLD function should still work
       const result = await calculateClientHoursAccurate('משה כהן');
@@ -522,7 +522,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should export both OLD and NEW functions', async () => {
-      const ClientHours = await import('../../js/modules/client-hours.js');
+      const ClientHours = await import('../../apps/user-app/js/modules/client-hours.js');
 
       // NEW functions
       expect(ClientHours.calculateClientHoursByCaseNumber).toBeDefined();
@@ -536,7 +536,7 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
 
   describe('Input Validation', () => {
     it('should validate caseNumber is a string', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await expect(calculateClientHoursByCaseNumber(123)).rejects.toThrow();
       await expect(calculateClientHoursByCaseNumber({})).rejects.toThrow();
@@ -544,13 +544,13 @@ describe('Client Hours Migration - caseNumber-based Functions', () => {
     });
 
     it('should validate caseNumber is not empty', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       await expect(calculateClientHoursByCaseNumber('')).rejects.toThrow();
     });
 
     it('should handle caseNumber with special characters', async () => {
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       // Should work with any string caseNumber
       await expect(calculateClientHoursByCaseNumber('2025-001-ABC')).rejects.toThrow('לא נמצא');
@@ -565,10 +565,10 @@ describe('Statistics Calculator - caseNumber-based Functions', () => {
 
   it('should have identical implementation to client-hours.js', async () => {
     // Verify both modules have the same functions
-    const ClientHours = await import('../../js/modules/client-hours.js');
+    const ClientHours = await import('../../apps/user-app/js/modules/client-hours.js');
 
     // Import statistics-calculator to trigger window.StatisticsCalculator assignment
-    await import('../../js/modules/statistics-calculator.js');
+    await import('../../apps/user-app/js/modules/statistics-calculator.js');
 
     expect(typeof ClientHours.calculateClientHoursByCaseNumber).toBe('function');
     expect(typeof window.StatisticsCalculator?.calculateClientHoursByCaseNumber).toBe('function');

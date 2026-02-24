@@ -176,7 +176,7 @@ describe('Client Hours - Full Integration Flow', () => {
       expect(entriesSnapshot.size).toBe(2);
 
       // STEP 3: Calculate hours using NEW function
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const hoursData = await calculateClientHoursByCaseNumber(caseNumber);
 
       expect(hoursData.totalMinutesUsed).toBe(300); // 120 + 180
@@ -187,7 +187,7 @@ describe('Client Hours - Full Integration Flow', () => {
       expect(hoursData.isCritical).toBe(false);
 
       // STEP 4: Update client hours
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const updateResult = await updateClientHoursImmediatelyByCaseNumber(caseNumber);
 
       expect(updateResult.success).toBe(true);
@@ -231,7 +231,7 @@ describe('Client Hours - Full Integration Flow', () => {
       });
 
       // STEP 3: Calculate with original name - should work
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const beforeChange = await calculateClientHoursByCaseNumber(caseNumber);
 
       expect(beforeChange.totalMinutesUsed).toBe(600); // 240 + 360
@@ -285,7 +285,7 @@ describe('Client Hours - Full Integration Flow', () => {
       });
 
       // Calculate BEFORE name change with OLD function
-      const { calculateClientHoursAccurate } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursAccurate } = await import('../../apps/user-app/js/modules/client-hours.js');
       const beforeChange = await calculateClientHoursAccurate('יוסי אברהם');
 
       expect(beforeChange.totalMinutesUsed).toBe(120);
@@ -345,7 +345,7 @@ describe('Client Hours - Full Integration Flow', () => {
       });
 
       // Calculate hours
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const hoursData = await calculateClientHoursByCaseNumber(caseNumber);
 
       expect(hoursData.totalMinutesUsed).toBe(180);
@@ -381,7 +381,7 @@ describe('Client Hours - Full Integration Flow', () => {
         date: '2025-01-25'
       });
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const hoursData = await calculateClientHoursByCaseNumber(caseNumber);
 
       expect(hoursData.remainingHours).toBe(3);
@@ -404,7 +404,7 @@ describe('Client Hours - Full Integration Flow', () => {
         totalHours: 0
       });
 
-      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { updateClientHoursImmediatelyByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const result = await updateClientHoursImmediatelyByCaseNumber(caseNumber, 60);
 
       expect(result.success).toBe(true);
@@ -462,7 +462,7 @@ describe('Client Hours - Full Integration Flow', () => {
         date: '2025-01-31'
       });
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
       const hoursData = await calculateClientHoursByCaseNumber(caseNumber);
 
       expect(hoursData.totalMinutesUsed).toBe(315); // 60+90+120+45
@@ -498,7 +498,7 @@ describe('Client Hours - Full Integration Flow', () => {
         });
       }
 
-      const { calculateClientHoursByCaseNumber } = await import('../../js/modules/client-hours.js');
+      const { calculateClientHoursByCaseNumber } = await import('../../apps/user-app/js/modules/client-hours.js');
 
       const startTime = performance.now();
       const hoursData = await calculateClientHoursByCaseNumber(caseNumber);
@@ -535,7 +535,7 @@ describe('Client Hours - Full Integration Flow', () => {
       });
 
       const { calculateClientHoursByCaseNumber, updateClientHoursImmediatelyByCaseNumber } =
-        await import('../../js/modules/client-hours.js');
+        await import('../../apps/user-app/js/modules/client-hours.js');
 
       // Calculate
       const calc1 = await calculateClientHoursByCaseNumber(caseNumber);

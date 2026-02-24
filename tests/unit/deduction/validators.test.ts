@@ -10,7 +10,7 @@ import {
   validateHoursPackage,
   validateStages,
   validateDeduction
-} from '../../../src/modules/deduction/validators.js';
+} from '../../../apps/user-app/src/modules/deduction/validators.js';
 
 describe('Deduction Validators - validateTimeEntry', () => {
   it('should validate a complete time entry', () => {
