@@ -1,0 +1,582 @@
+[
+  {
+    "clientId": "2025001",
+    "name": "שריאל אילון",
+    "oldHoursUsed": 2.4166666666666665,
+    "oldMinutesUsed": 145,
+    "newHoursUsed": 4.42,
+    "newMinutesUsed": 265,
+    "diff": 2,
+    "timesheetEntries": 9
+  },
+  {
+    "clientId": "2025002",
+    "name": "אהוד ולטר",
+    "oldHoursUsed": 84.08333333333333,
+    "oldMinutesUsed": 5045,
+    "newHoursUsed": 88.25,
+    "newMinutesUsed": 5295,
+    "diff": 4.17,
+    "timesheetEntries": 33
+  },
+  {
+    "clientId": "2025004",
+    "name": "אושר לוי",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 6.72,
+    "newMinutesUsed": 403,
+    "diff": 6.72,
+    "timesheetEntries": 4
+  },
+  {
+    "clientId": "2025006",
+    "name": "תמיר אקווע",
+    "oldHoursUsed": 160.46666666666667,
+    "oldMinutesUsed": 9628,
+    "newHoursUsed": 200.7,
+    "newMinutesUsed": 12042,
+    "diff": 40.23,
+    "timesheetEntries": 83
+  },
+  {
+    "clientId": "2025009",
+    "name": "שייקסטופ",
+    "oldHoursUsed": 15.416666666666668,
+    "oldMinutesUsed": 925.0000000000001,
+    "newHoursUsed": 42.9,
+    "newMinutesUsed": 2574,
+    "diff": 27.48,
+    "timesheetEntries": 25
+  },
+  {
+    "clientId": "2025011",
+    "name": "ליאורה מילבאום",
+    "oldHoursUsed": 40.28333333333333,
+    "oldMinutesUsed": 2417,
+    "newHoursUsed": 42.7,
+    "newMinutesUsed": 2562,
+    "diff": 2.42,
+    "timesheetEntries": 34
+  },
+  {
+    "clientId": "2025013",
+    "name": "רון מאושר",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 5.5,
+    "newMinutesUsed": 330,
+    "diff": 5.5,
+    "timesheetEntries": 3
+  },
+  {
+    "clientId": "2025014",
+    "name": "אושרה גיעאן",
+    "oldHoursUsed": 2.75,
+    "oldMinutesUsed": 165,
+    "newHoursUsed": 5.25,
+    "newMinutesUsed": 315,
+    "diff": 2.5,
+    "timesheetEntries": 6
+  },
+  {
+    "clientId": "2025015",
+    "name": "ביינגולד",
+    "oldHoursUsed": 9.833333333333332,
+    "oldMinutesUsed": 589.9999999999999,
+    "newHoursUsed": 12.17,
+    "newMinutesUsed": 730,
+    "diff": 2.33,
+    "timesheetEntries": 12
+  },
+  {
+    "clientId": "2025019",
+    "name": "רבקה דרמר",
+    "oldHoursUsed": 8.833333333333332,
+    "oldMinutesUsed": 529.9999999999999,
+    "newHoursUsed": 9.92,
+    "newMinutesUsed": 595,
+    "diff": 1.08,
+    "timesheetEntries": 5
+  },
+  {
+    "clientId": "2025020",
+    "name": "וינקלר יהונתן",
+    "oldHoursUsed": 4.500000000000001,
+    "oldMinutesUsed": 270.00000000000006,
+    "newHoursUsed": 4.92,
+    "newMinutesUsed": 295,
+    "diff": 0.42,
+    "timesheetEntries": 6
+  },
+  {
+    "clientId": "2025021",
+    "name": "רוזה אבוחצירא",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 3.45,
+    "newMinutesUsed": 207,
+    "diff": 3.45,
+    "timesheetEntries": 4
+  },
+  {
+    "clientId": "2025022",
+    "name": "אלחסן אבו מודעים",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 17.67,
+    "newMinutesUsed": 1060,
+    "diff": 17.67,
+    "timesheetEntries": 11
+  },
+  {
+    "clientId": "2025128",
+    "name": "משה כהן",
+    "oldHoursUsed": 9.25,
+    "oldMinutesUsed": 555,
+    "newHoursUsed": 14,
+    "newMinutesUsed": 840,
+    "diff": 4.75,
+    "timesheetEntries": 13
+  },
+  {
+    "clientId": "2025153",
+    "name": "מרום הנדסה (אבי יוגב)",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 21.83,
+    "newMinutesUsed": 1310,
+    "diff": 21.83,
+    "timesheetEntries": 19
+  },
+  {
+    "clientId": "2025333",
+    "name": "דן אלדובי בעמ",
+    "oldHoursUsed": 31.166666666666668,
+    "oldMinutesUsed": 1870,
+    "newHoursUsed": 31.67,
+    "newMinutesUsed": 1900,
+    "diff": 0.5,
+    "timesheetEntries": 19
+  },
+  {
+    "clientId": "2025337",
+    "name": "אבי רחמיקו",
+    "oldHoursUsed": 2.9166666666666665,
+    "oldMinutesUsed": 175,
+    "newHoursUsed": 9.08,
+    "newMinutesUsed": 545,
+    "diff": 6.17,
+    "timesheetEntries": 15
+  },
+  {
+    "clientId": "2025366",
+    "name": "ד\"ר אילן וסרמן",
+    "oldHoursUsed": 63.98333333333333,
+    "oldMinutesUsed": 3839,
+    "newHoursUsed": 64.23,
+    "newMinutesUsed": 3854,
+    "diff": 0.25,
+    "timesheetEntries": 46
+  },
+  {
+    "clientId": "2025413",
+    "name": "מיכאל בן בסט",
+    "oldHoursUsed": 1.25,
+    "oldMinutesUsed": 75,
+    "newHoursUsed": 5.83,
+    "newMinutesUsed": 350,
+    "diff": 4.58,
+    "timesheetEntries": 12
+  },
+  {
+    "clientId": "2025430",
+    "name": "הפודקסטיה - שלום סיונוב",
+    "oldHoursUsed": 3.466666666666667,
+    "oldMinutesUsed": 208,
+    "newHoursUsed": 8.62,
+    "newMinutesUsed": 517,
+    "diff": 5.15,
+    "timesheetEntries": 7
+  },
+  {
+    "clientId": "2025472",
+    "name": "תמר ארפי",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 1,
+    "newMinutesUsed": 60,
+    "diff": 1,
+    "timesheetEntries": 4
+  },
+  {
+    "clientId": "2025549",
+    "name": "רעות ואוריאל חליבה",
+    "oldHoursUsed": 56.25,
+    "oldMinutesUsed": 3375,
+    "newHoursUsed": 61.08,
+    "newMinutesUsed": 3665,
+    "diff": 4.83,
+    "timesheetEntries": 40
+  },
+  {
+    "clientId": "2025562",
+    "name": "אבי אליהו",
+    "oldHoursUsed": 8.383333333333333,
+    "oldMinutesUsed": 503,
+    "newHoursUsed": 11.2,
+    "newMinutesUsed": 672,
+    "diff": 2.82,
+    "timesheetEntries": 12
+  },
+  {
+    "clientId": "2025578",
+    "name": "דריה ששונוב",
+    "oldHoursUsed": 10.75,
+    "oldMinutesUsed": 645,
+    "newHoursUsed": 11.92,
+    "newMinutesUsed": 715,
+    "diff": 1.17,
+    "timesheetEntries": 18
+  },
+  {
+    "clientId": "2025600",
+    "name": "דניאל רוזקובסקי",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 1.65,
+    "newMinutesUsed": 99,
+    "diff": 1.65,
+    "timesheetEntries": 3
+  },
+  {
+    "clientId": "2025658",
+    "name": "שרי פדרגרין",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 14.5,
+    "newMinutesUsed": 870,
+    "diff": 14.5,
+    "timesheetEntries": 7
+  },
+  {
+    "clientId": "2025815",
+    "name": "ציפי דרוול",
+    "oldHoursUsed": 20.75,
+    "oldMinutesUsed": 1245,
+    "newHoursUsed": 23.17,
+    "newMinutesUsed": 1390,
+    "diff": 2.42,
+    "timesheetEntries": 25
+  },
+  {
+    "clientId": "2025831",
+    "name": "ארטפרו (קובי חליפה)",
+    "oldHoursUsed": 3.4666666666666663,
+    "oldMinutesUsed": 207.99999999999997,
+    "newHoursUsed": 7,
+    "newMinutesUsed": 420,
+    "diff": 3.53,
+    "timesheetEntries": 15
+  },
+  {
+    "clientId": "2025863",
+    "name": "סיון אזרד",
+    "oldHoursUsed": 38.38333333333333,
+    "oldMinutesUsed": 2303,
+    "newHoursUsed": 50.38,
+    "newMinutesUsed": 3023,
+    "diff": 12,
+    "timesheetEntries": 42
+  },
+  {
+    "clientId": "2025864",
+    "name": "ענבר לזר ויזל",
+    "oldHoursUsed": 5,
+    "oldMinutesUsed": 300,
+    "newHoursUsed": 5.25,
+    "newMinutesUsed": 315,
+    "diff": 0.25,
+    "timesheetEntries": 8
+  },
+  {
+    "clientId": "2025897",
+    "name": "שרית רוזנס",
+    "oldHoursUsed": 0.7833333333333333,
+    "oldMinutesUsed": 47,
+    "newHoursUsed": 2.93,
+    "newMinutesUsed": 176,
+    "diff": 2.15,
+    "timesheetEntries": 9
+  },
+  {
+    "clientId": "2025916",
+    "name": "מורדי דבח",
+    "oldHoursUsed": 4.666666666666666,
+    "oldMinutesUsed": 279.99999999999994,
+    "newHoursUsed": 24.67,
+    "newMinutesUsed": 1480,
+    "diff": 20,
+    "timesheetEntries": 18
+  },
+  {
+    "clientId": "2025990",
+    "name": "אודי חסדאי",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 32.65,
+    "newMinutesUsed": 1959,
+    "diff": 32.65,
+    "timesheetEntries": 23
+  },
+  {
+    "clientId": "2025994",
+    "name": "קובי הראל",
+    "oldHoursUsed": 47.5,
+    "oldMinutesUsed": 2850,
+    "newHoursUsed": 49.67,
+    "newMinutesUsed": 2980,
+    "diff": 2.17,
+    "timesheetEntries": 12
+  },
+  {
+    "clientId": "2025995",
+    "name": "ארנון פטר",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 1,
+    "newMinutesUsed": 60,
+    "diff": 1,
+    "timesheetEntries": 1
+  },
+  {
+    "clientId": "2025997",
+    "name": "אורן קניג",
+    "oldHoursUsed": 18.333333333333336,
+    "oldMinutesUsed": 1100.0000000000002,
+    "newHoursUsed": 59.13,
+    "newMinutesUsed": 3548,
+    "diff": 40.8,
+    "timesheetEntries": 35
+  },
+  {
+    "clientId": "2025998",
+    "name": "משה אדרי",
+    "oldHoursUsed": 21.85,
+    "oldMinutesUsed": 1311,
+    "newHoursUsed": 26.02,
+    "newMinutesUsed": 1561,
+    "diff": 4.17,
+    "timesheetEntries": 18
+  },
+  {
+    "clientId": "2026003",
+    "name": "רון פישמן",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 19.47,
+    "newMinutesUsed": 1168,
+    "diff": 19.47,
+    "timesheetEntries": 18
+  },
+  {
+    "clientId": "2026004",
+    "name": "נעמה בידני",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 3,
+    "newMinutesUsed": 180,
+    "diff": 3,
+    "timesheetEntries": 3
+  },
+  {
+    "clientId": "2026008",
+    "name": "חזי מאנע",
+    "oldHoursUsed": 81.41666666666667,
+    "oldMinutesUsed": 4885,
+    "newHoursUsed": 125.17,
+    "newMinutesUsed": 7510,
+    "diff": 43.75,
+    "timesheetEntries": 43
+  },
+  {
+    "clientId": "2026010",
+    "name": "דני הללי",
+    "oldHoursUsed": 4.916666666666667,
+    "oldMinutesUsed": 295,
+    "newHoursUsed": 6.08,
+    "newMinutesUsed": 365,
+    "diff": 1.17,
+    "timesheetEntries": 6
+  },
+  {
+    "clientId": "2026016",
+    "name": "אמיר הרצברג",
+    "oldHoursUsed": 1.1666666666666667,
+    "oldMinutesUsed": 70,
+    "newHoursUsed": 8.65,
+    "newMinutesUsed": 519,
+    "diff": 7.48,
+    "timesheetEntries": 4
+  },
+  {
+    "clientId": "2026018",
+    "name": "אופק עמר",
+    "oldHoursUsed": 3.25,
+    "oldMinutesUsed": 195,
+    "newHoursUsed": 7.75,
+    "newMinutesUsed": 465,
+    "diff": 4.5,
+    "timesheetEntries": 6
+  },
+  {
+    "clientId": "2026019",
+    "name": "ביקון אבטחת מידע",
+    "oldHoursUsed": 11.083333333333334,
+    "oldMinutesUsed": 665,
+    "newHoursUsed": 24.83,
+    "newMinutesUsed": 1490,
+    "diff": 13.75,
+    "timesheetEntries": 16
+  },
+  {
+    "clientId": "2026023",
+    "name": "מזל זויץ",
+    "oldHoursUsed": 0.8333333333333334,
+    "oldMinutesUsed": 50,
+    "newHoursUsed": 1.67,
+    "newMinutesUsed": 100,
+    "diff": 0.83,
+    "timesheetEntries": 3
+  },
+  {
+    "clientId": "2026024",
+    "name": "אנה ברודצקי",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 2,
+    "newMinutesUsed": 120,
+    "diff": 2,
+    "timesheetEntries": 1
+  },
+  {
+    "clientId": "2026025",
+    "name": "משכנות גדרה",
+    "oldHoursUsed": 1,
+    "oldMinutesUsed": 60,
+    "newHoursUsed": 2,
+    "newMinutesUsed": 120,
+    "diff": 1,
+    "timesheetEntries": 3
+  },
+  {
+    "clientId": "2026029",
+    "name": "טיק טק",
+    "oldHoursUsed": 0.6666666666666666,
+    "oldMinutesUsed": 40,
+    "newHoursUsed": 8.67,
+    "newMinutesUsed": 520,
+    "diff": 8,
+    "timesheetEntries": 4
+  },
+  {
+    "clientId": "2026030",
+    "name": "טריידניג סקילס",
+    "oldHoursUsed": 21.316666666666666,
+    "oldMinutesUsed": 1279,
+    "newHoursUsed": 31.75,
+    "newMinutesUsed": 1905,
+    "diff": 10.43,
+    "timesheetEntries": 27
+  },
+  {
+    "clientId": "2026031",
+    "name": "נתנאל מיכאלי",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 31.08,
+    "newMinutesUsed": 1865,
+    "diff": 31.08,
+    "timesheetEntries": 10
+  },
+  {
+    "clientId": "2026032",
+    "name": "לאה לוי",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 4,
+    "newMinutesUsed": 240,
+    "diff": 4,
+    "timesheetEntries": 4
+  },
+  {
+    "clientId": "2026033",
+    "name": "היראקלי אורטדזה",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 0.42,
+    "newMinutesUsed": 25,
+    "diff": 0.42,
+    "timesheetEntries": 1
+  },
+  {
+    "clientId": "2026036",
+    "name": "ניהול רועי",
+    "oldHoursUsed": 9.25,
+    "oldMinutesUsed": 555,
+    "newHoursUsed": 20.25,
+    "newMinutesUsed": 1215,
+    "diff": 11,
+    "timesheetEntries": 8
+  },
+  {
+    "clientId": "2026041",
+    "name": "מידן לוי",
+    "oldHoursUsed": 0.5,
+    "oldMinutesUsed": 30,
+    "newHoursUsed": 0.83,
+    "newMinutesUsed": 50,
+    "diff": 0.33,
+    "timesheetEntries": 2
+  },
+  {
+    "clientId": "2026042",
+    "name": "גבריאל טנא",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 1.25,
+    "newMinutesUsed": 75,
+    "diff": 1.25,
+    "timesheetEntries": 2
+  },
+  {
+    "clientId": "2026043",
+    "name": "זיאת שמוליק",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 3.5,
+    "newMinutesUsed": 210,
+    "diff": 3.5,
+    "timesheetEntries": 3
+  },
+  {
+    "clientId": "2026044",
+    "name": "נועה סבג",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 2.73,
+    "newMinutesUsed": 164,
+    "diff": 2.73,
+    "timesheetEntries": 6
+  },
+  {
+    "clientId": "internal_office",
+    "name": "משרד - פעילות פנימית",
+    "oldHoursUsed": 0,
+    "oldMinutesUsed": 0,
+    "newHoursUsed": 534.1,
+    "newMinutesUsed": 32046,
+    "diff": 534.1,
+    "timesheetEntries": 638
+  }
+]
