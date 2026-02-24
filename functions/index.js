@@ -7,6 +7,12 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+
+// אתחול Admin SDK — חייב להיות לפני כל require שמשתמש ב-admin.firestore()
+admin.initializeApp();
+const db = admin.firestore();
+const auth = admin.auth();
+
 const { onRequest } = require('firebase-functions/v2/https');
 const { addTimeToTaskWithTransaction } = require('./addTimeToTask_v2');
 const { updateBudgetTask, markNotificationAsRead } = require('./task-update-realtime');
@@ -19,11 +25,6 @@ const DeductionSystem = require('./src/modules/deduction');
 
 // ✅ NEW: Import case number transaction module
 const { generateCaseNumberWithTransaction } = require('./case-number-transaction');
-
-// אתחול Admin SDK
-admin.initializeApp();
-const db = admin.firestore();
-const auth = admin.auth();
 
 // ===============================
 // CORS Configuration
