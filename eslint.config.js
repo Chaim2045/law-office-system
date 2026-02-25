@@ -26,6 +26,7 @@ const commonIgnores = [
   'dist/**',
   'archive/**',
   'tools/**',
+  'devtools/**',
   'docs/**',
   '.github/**',
   'functions/**', // ✅ Server-side code (Node.js) - different linting rules
@@ -61,6 +62,19 @@ const commonJsRules = {
 };
 
 export default [
+  // Global ignores (applied to all files)
+  {
+    ignores: [
+      'node_modules/**',
+      '**/dist/**',
+      'archive/**',
+      'tools/**',
+      'devtools/**',
+      'docs/**',
+      '.github/**',
+      'functions/**'
+    ]
+  },
   // TypeScript files - with type checking
   {
     files: ['**/*.ts', '**/*.tsx'],

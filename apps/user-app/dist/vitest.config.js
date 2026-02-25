@@ -33,8 +33,8 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, './js'),
-            '@modules': path.resolve(__dirname, './js/modules'),
+            '@': path.resolve(__dirname, './apps/user-app/js'),
+            '@modules': path.resolve(__dirname, './apps/user-app/js/modules'),
             '@ts': path.resolve(__dirname, './ts')
         }
     }

@@ -153,7 +153,7 @@ Write: "js/modules/bug-fix.js"
 
 אחרי כל שינוי משמעותי, **חובה** ליצור קובץ תיעוד ב:
 ```
-.claude/work-documentation/YYYY-MM-DD_description.md
+devtools/docs/YYYY-MM-DD_description.md
 ```
 
 **מבנה קובץ התיעוד:**
