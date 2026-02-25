@@ -63,16 +63,7 @@
     "zod": "^4.1.12"
   },
   "lint-staged": {
-    "*.{js,ts,tsx}": [
-      "eslint --fix",
-      "git add"
-    ],
-    "*.css": [
-      "stylelint --fix",
-      "git add"
-    ],
-    "*.ts": [
-      "tsc --noEmit"
-    ]
+    "*.{js,ts,tsx}": "eslint --fix --no-warn-ignored",
+    "*.css": "stylelint --fix"
   }
 }
