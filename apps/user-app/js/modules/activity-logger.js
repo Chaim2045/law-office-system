@@ -7,7 +7,7 @@
  *
  * תכונות:
  * - רישום כל פעולה במערכת
- * - שמירה ב-Firebase: activityLogs collection
+ * - שמירה ב-Firebase: activity_log collection
  * - מידע מפורט על כל פעולה
  * - תמיכה ב-Dashboard לצפייה
  */
@@ -66,7 +66,7 @@
     constructor(firebaseApp) {
       this.db = firebaseApp ? firebase.firestore() : null;
       this.currentUser = null;
-      this.collectionName = 'activityLogs';
+      this.collectionName = 'activity_log';
       this.enabled = true;
       this.offlineQueue = []; // תור לפעולות כש-offline
     }
