@@ -64,12 +64,12 @@ Write: "fix.js"                 // בשורש! ❌
 // ✅ נכון!
 // צריך להוסיף CSS לכפתור:
 1. Glob: "**/*button*.css"      // מצא את הקובץ הנכון
-2. Read: "css/buttons.css"      // קרא אותו
+2. Read: "apps/user-app/css/buttons.css"      // קרא אותו
 3. Edit: הוסף את הקוד בקובץ הקיים!
 
 // ✅ אם אין קובץ מתאים - שים במקום הנכון!
-Write: "css/new-feature.css"    // לא בשורש!
-Write: "js/modules/new-module.js"  // לא בשורש!
+Write: "apps/user-app/css/new-feature.css"    // לא בשורש!
+Write: "apps/user-app/js/modules/new-module.js"  // לא בשורש!
 ```
 
 ### ❌ קבצים בשורש הפרויקט
@@ -80,9 +80,9 @@ Write: "temp.css"               // בשורש! ❌
 Write: "fix-bug.js"             // בשורש! ❌
 
 // ✅ נכון - תיקייה מתאימה!
-Write: "js/modules/my-new-file.js"
-Write: "css/temp-feature.css"
-Write: "js/modules/bug-fix.js"
+Write: "apps/user-app/js/modules/my-new-file.js"
+Write: "apps/user-app/css/temp-feature.css"
+Write: "apps/user-app/js/modules/bug-fix.js"
 
 // ⚠️ יוצאים מהכלל (מותר בשורש):
 - index.html (כבר קיים)
@@ -115,7 +115,7 @@ Write: "js/modules/bug-fix.js"
    Edit: old_code → new_code
 
 3. אם לא קיים → צור במקום הנכון:
-   Write: "js/modules/new-file.js"  // לא בשורש!
+   Write: "apps/user-app/js/modules/new-file.js"  // לא בשורש!
 
 // ❌ תהליך שגוי:
 1. Write: "new-file.js"  // יצירה מיידית בשורש!
@@ -277,20 +277,19 @@ devtools/docs/YYYY-MM-DD_description.md
 
 ```
 law-office-system/
-├── js/                     ← הקוד הראשי (JavaScript + TypeScript)
-│   ├── core/              ← ארכיטקטורה מרכזית
-│   │   └── event-bus.ts   ← EventBus v2.0 ⭐ (המאזין המרכזי!)
-│   ├── services/          ← שירותים
-│   │   └── firebase-service.ts ← FirebaseService ⭐ (כל קריאות Firebase!)
-│   ├── schemas/           ← Zod validation schemas
-│   └── modules/           ← 45+ מודולים (כל אחד עושה דבר אחד)
-├── css/                   ← עיצוב (15 קבצי CSS)
-├── dist/                  ← קבצים מקומפלים מ-TypeScript (אל תערוך!)
-├── docs/                  ← תיעוד (55 קבצי markdown)
-├── functions/             ← Firebase Backend (שרת)
-├── admin/                 ← ממשק ניהול
-├── images/                ← תמונות
-└── index.html             ← נקודת כניסה ראשית (51KB)
+├── apps/
+│   ├── user-app/              ← אפליקציית העובדים
+│   │   ├── js/core/           ← ארכיטקטורה (event-bus.ts, firebase-service.ts)
+│   │   ├── js/modules/        ← 45+ מודולים (כל אחד עושה דבר אחד)
+│   │   ├── js/schemas/        ← Zod validation schemas
+│   │   ├── css/               ← עיצוב (15+ קבצי CSS מודולריים)
+│   │   ├── dist/              ← TypeScript compiled (אל תערוך!)
+│   │   └── index.html         ← נקודת כניסה ראשית
+│   └── admin-panel/           ← פאנל ניהול למנהלים
+├── functions/                 ← Firebase Backend (10 מודולים)
+├── tests/                     ← בדיקות (unit, integration, e2e)
+├── devtools/                  ← כלי פיתוח
+└── docs/                      ← תיעוד ארכיטקטורה
 ```
 
 ---
@@ -328,7 +327,7 @@ EventBus.on('client:selected', (data) => {
 **1. כשרוצים להוסיף feature חדש:**
 ```javascript
 // ✅ לא צריך לערוך קוד קיים - רק תיצור קובץ חדש!
-// js/modules/analytics.js (קובץ חדש)
+// apps/user-app/js/modules/analytics.js (קובץ חדש)
 
 window.EventBus.on('task:created', (data) => {
   Analytics.track('task_created', {
@@ -401,7 +400,7 @@ async function assignTask(taskId, employeeEmail) {
 
 **שלב 3: האזן לאירוע (on)**
 ```javascript
-// js/modules/notifications.js - קובץ מאזין
+// apps/user-app/js/modules/notifications.js - קובץ מאזין
 
 window.EventBus.on('task:assigned', (data) => {
   // הצג הודעה
@@ -413,7 +412,7 @@ window.EventBus.on('task:assigned', (data) => {
   Logger.log(`👂 [Notifications] Task assigned: ${data.taskId}`);
 });
 
-// js/modules/statistics.js - מאזין נוסף
+// apps/user-app/js/modules/statistics.js - מאזין נוסף
 
 window.EventBus.on('task:assigned', (data) => {
   updateTaskAssignmentStats();
@@ -431,7 +430,7 @@ EventAnalyzer.visualizeFlow('task:assigned')
 
 // צפוי לראות:
 // 📤 EMITTERS: js/main.js
-// 👂 LISTENERS: js/modules/notifications.js, js/modules/statistics.js
+// 👂 LISTENERS: apps/user-app/js/modules/notifications.js, apps/user-app/js/modules/statistics.js
 ```
 
 #### 🧪 דיבאג ובדיקה:
@@ -472,7 +471,7 @@ EventBus.emit('task:created', {
 #### 📚 מסמכים נוספים:
 - `docs/EVENTBUS_MIGRATION_GUIDE.md` - מדריך המיגרציה המלא
 - `docs/FEATURE_PLANNING_TEMPLATE.md` - תבנית תכנון feature
-- `js/modules/event-analyzer.js` - כלי ניתוח אירועים
+- `apps/user-app/js/modules/event-analyzer.js` - כלי ניתוח אירועים
 
 #### 🎯 דוגמאות נוספות:
 
@@ -562,16 +561,16 @@ await firebase.functions().httpsCallable('createClient')(data);
 
 ### מודול חדש:
 ```
-js/modules/your-module.js      ← קוד המודול
-css/your-module.css            ← עיצוב (אם צריך)
-docs/YOUR_MODULE_GUIDE.md      ← תיעוד (אם גדול)
+apps/user-app/js/modules/your-module.js      ← קוד המודול
+apps/user-app/css/your-module.css            ← עיצוב (אם צריך)
+docs/YOUR_MODULE_GUIDE.md                    ← תיעוד (אם גדול)
 ```
 
 ### פונקציה קטנה:
-- אם קשורה לתקציב → `js/modules/budget-tasks.js`
-- אם קשורה לשעתון → `js/modules/timesheet-manager.js`
-- אם קשורה ללקוחות → `js/cases.js` או `js/modules/client-case-selector.js`
-- אם כללית → `js/modules/utilities.js`
+- אם קשורה לתקציב → `apps/user-app/js/modules/budget-tasks.js`
+- אם קשורה לשעתון → `apps/user-app/js/modules/timesheet-manager.js`
+- אם קשורה ללקוחות → `apps/user-app/js/cases.js` או `apps/user-app/js/modules/client-case-selector.js`
+- אם כללית → `apps/user-app/js/modules/utilities.js`
 
 ### TypeScript חדש:
 ```
@@ -585,12 +584,12 @@ dist/js/core/your-file.js      ← הפלט (אוטומטי)
 ## 🎨 CSS - איפה לשים?
 
 ```
-css/style.css                  ← הקובץ הראשי (גדול: 12,528 שורות)
-css/buttons.css                ← כפתורים
-css/forms.css                  ← טפסים
-css/modals.css                 ← חלונות קופצים
-css/tables.css                 ← טבלאות
-css/notifications.css          ← התראות
+apps/user-app/css/style.css           ← הקובץ הראשי
+apps/user-app/css/buttons.css         ← כפתורים
+apps/user-app/css/forms.css           ← טפסים
+apps/user-app/css/modals.css          ← חלונות קופצים
+apps/user-app/css/tables.css          ← טבלאות
+apps/user-app/css/notifications.css   ← התראות
 ... ועוד 10 קבצים מודולריים
 ```
 
@@ -653,8 +652,8 @@ Read: "path/to/similar-file.js"
 ### שלב 2: תכנון
 ```javascript
 // תשאל את עצמך:
-1. איפה הקוד הזה שייך? (js/modules/...?)
-2. האם צריך CSS? (css/...?)
+1. איפה הקוד הזה שייך? (apps/user-app/js/modules/...?)
+2. האם צריך CSS? (apps/user-app/css/...?)
 3. האם צריך אירוע EventBus חדש?
 4. האם צריך קריאת Firebase? (דרך FirebaseService!)
 5. האם צריך validation? (schemas/index.ts)
@@ -663,8 +662,8 @@ Read: "path/to/similar-file.js"
 ### שלב 3: ביצוע
 ```javascript
 // סדר פעולות:
-1. צור/ערוך את הקוד (js/modules/...)
-2. הוסף CSS אם צריך (css/...)
+1. צור/ערוך את הקוד (apps/user-app/js/modules/...)
+2. הוסף CSS אם צריך (apps/user-app/css/...)
 3. עדכן index.html אם צריך (script tags)
 4. צור commit נקי
 5. הצע למשתמש לבדוק
@@ -696,10 +695,11 @@ Read: "path/to/similar-file.js"
 - `package.json` - dependencies
 
 ## ניתן לערוך:
-- `js/modules/**/*.js` - כל המודולים
-- `css/**/*.css` - כל העיצוב
+- `apps/user-app/js/modules/**/*.js` - כל המודולים
+- `apps/user-app/css/**/*.css` - כל העיצוב
+- `apps/admin-panel/**` - פאנל ניהול
 - `docs/**/*.md` - כל התיעוד
-- `js/*.js` - קבצים ראשיים (בזהירות!)
+- `apps/user-app/js/*.js` - קבצים ראשיים (בזהירות!)
 
 ---
 
@@ -828,13 +828,13 @@ FirebaseService.getStats();
 Glob: "**/*similar-feature*.js"
 
 // 2. צור מודול חדש
-js/modules/new-feature.js
+apps/user-app/js/modules/new-feature.js
 
 // 3. השתלב עם EventBus
 EventBus.emit('feature:action', data);
 
 // 4. הוסף CSS
-css/new-feature.css
+apps/user-app/css/new-feature.css
 
 // 5. עדכן index.html
 <script src="js/modules/new-feature.js"></script>
@@ -941,8 +941,8 @@ const workWithThisProject = {
   ],
 
   // מבנה:
-  newModules: "js/modules/your-module.js",
-  styling: "css/your-style.css",
+  newModules: "apps/user-app/js/modules/your-module.js",
+  styling: "apps/user-app/css/your-style.css",
   docs: "docs/YOUR_DOC.md",
 
   // תהליך:
@@ -1049,7 +1049,7 @@ SETUP-CI-CD.md             ← מדריך התקנה מהיר
 #### שיטה 1: עבודה ישירה על main (פשוט)
 ```bash
 # 1. עבוד על קוד
-vim js/modules/my-feature.js
+vim apps/user-app/js/modules/my-feature.js
 
 # 2. Commit
 git add .
@@ -1069,7 +1069,7 @@ git push origin main
 git checkout -b feature/new-thing
 
 # 2. עבוד על קוד
-vim js/modules/my-feature.js
+vim apps/user-app/js/modules/my-feature.js
 git add .
 git commit -m "✨ Feature: דבר חדש"
 
@@ -1365,10 +1365,9 @@ const cicdWorkflow = {
 
 ---
 
-**תאריך עדכון אחרון:** 3 נובמבר 2025
+**תאריך עדכון אחרון:** פברואר 2026
 **CI/CD הוסף:** 3 נובמבר 2025
 **Owner:** Chaim
-**Claude Code Version:** 4.5
 
 ---
 
