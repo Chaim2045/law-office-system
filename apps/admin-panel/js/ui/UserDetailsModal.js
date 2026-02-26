@@ -329,7 +329,7 @@
                 })(),
 
                 // Get user's activity logs (last 100 entries)
-                db.collection('activityLogs')
+                db.collection('activity_log')
                     .where('userId', '==', userId)
                     .orderBy('timestamp', 'desc')
                     .limit(100)
