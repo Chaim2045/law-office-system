@@ -9,10 +9,10 @@ const { logAction } = require('../shared/audit');
 
 const db = admin.firestore();
 
-// Twilio environment variables for v1 functions compatibility
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || 'fed2170530e4ed34d3b1b3407e0f0f5f';
-const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+// Twilio environment variables (must be set via Firebase Functions config or .env)
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER;
 
 /**
  * ✅ OPTIMIZATION: Firestore Trigger for WhatsApp notifications
@@ -504,11 +504,11 @@ const whatsappWebhook = onRequest({
     }
 
     // Send response via Twilio
-    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
-    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || 'fed2170530e4ed34d3b1b3407e0f0f5f';
-    const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || TWILIO_ACCOUNT_SID;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || TWILIO_AUTH_TOKEN;
+    const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || TWILIO_WHATSAPP_NUMBER;
 
-    if (twilioAccountSid && response) {
+    if (twilioAccountSid && twilioAuthToken && response) {
       const twilio = require('twilio');
       const client = twilio(twilioAccountSid, twilioAuthToken);
 
@@ -555,11 +555,11 @@ const whatsappWebhook = onRequest({
     // Try to send error message to user
     try {
       const { From } = req.body;
-      const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'AC9e5e9e3c953a5bbb878622b6e70201b6';
-      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || 'fed2170530e4ed34d3b1b3407e0f0f5f';
-      const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+      const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || TWILIO_ACCOUNT_SID;
+      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || TWILIO_AUTH_TOKEN;
+      const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || TWILIO_WHATSAPP_NUMBER;
 
-      if (twilioAccountSid && From) {
+      if (twilioAccountSid && twilioAuthToken && From) {
         const twilio = require('twilio');
         const client = twilio(twilioAccountSid, twilioAuthToken);
         await client.messages.create({

@@ -9,6 +9,12 @@ service-account*.json
 firebase-admin-key.json
 service-account-key.json
 
+# Environment variables (contain API secrets)
+functions/.env
+.env
+.env.local
+.env.*.local
+
 # Claude AI data cache
 .claude/firestore-data/*.json
 .claude/firestore-data/*.txt
