@@ -18,6 +18,7 @@ functions/.env
 # Claude AI data cache
 .claude/firestore-data/*.json
 .claude/firestore-data/*.txt
+.claude/backups/
 
 # Backup files
 *.backup

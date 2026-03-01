@@ -258,7 +258,8 @@ function validate(schema, data) {
             success: true,
             data: result.data
         };
-    } else {
+    }
+    else {
         return {
             success: false,
             errors: result.error.issues.map((err) => {
