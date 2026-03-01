@@ -608,30 +608,11 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
 
     const result = await db.runTransaction(async (transaction) => {
       // ------------------------------------------------
-      // 5.1: עדכון משימה (אם קיימת)
+      // 5.1: (Removed — Trigger handles task updates)
       // ------------------------------------------------
-      if (data.taskId) {
-        const taskRef = db.collection('budget_tasks').doc(data.taskId);
-        const taskDoc = await transaction.get(taskRef);
-
-        if (taskDoc.exists) {
-          const taskData = taskDoc.data();
-          const currentActualHours = taskData.actualHours || 0;
-          const newActualHours = currentActualHours + hoursWorked;
-
-          transaction.update(taskRef, {
-            actualHours: newActualHours,
-            actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
-            lastModifiedBy: user.username,
-            lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-
-          console.log(`📊 [v2.0] עדכון משימה: ${currentActualHours} → ${newActualHours} שעות`);
-        }
-      }
 
       // ------------------------------------------------
-      // 5.2: קיזוז שעות מהלקוח (CLIENT = CASE)
+      // 5.2: Lookup + validation (deduction handled by Trigger)
       // ------------------------------------------------
       if (data.isInternal !== true) {
         // לקוח שעתי עם שירותים
@@ -656,12 +637,6 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
             const activePackage = DeductionSystem.getActivePackage(service);
 
             if (activePackage) {
-              // שמירת מצב לפני
-              const packageBefore = {
-                hoursUsed: activePackage.hoursUsed || 0,
-                hoursRemaining: activePackage.hoursRemaining || 0
-              };
-
               // ✅ בדיקת חריגה לפני הקיזוז
               const currentRemaining = activePackage.hoursRemaining || 0;
               const afterDeduction = currentRemaining - hoursWorked;
@@ -680,52 +655,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 );
               }
 
-              // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
-              if (afterDeduction < 0 && afterDeduction >= -10) {
-                activePackage.status = 'overdraft';
-              }
-
-              // קיזוז שעות
-              const updatedPackage = DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
-              updatedPackageId = updatedPackage.id;
-
-              const updatedServicePackages = service.packages.map(pkg =>
-                pkg.id === updatedPackage.id ? updatedPackage : pkg
-              );
-
-              const updatedService = {
-                ...service,
-                packages: updatedServicePackages,
-                hoursUsed: (service.hoursUsed || 0) + hoursWorked,
-                hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
-                lastActivity: new Date().toISOString()
-              };
-
-              const updatedServices = clientData.services.map((s, idx) =>
-                idx === serviceIndex ? updatedService : s
-              );
-
-              // ✅ VERSION CONTROL: עדכון עם גרסה חדשה
-              const currentHoursRemaining = clientData.hoursRemaining || 0;
-              const newHoursRemaining = currentHoursRemaining - hoursWorked;
-              const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-              const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-              transaction.update(clientRef, {
-                services: updatedServices,
-                hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
-                minutesUsed: admin.firestore.FieldValue.increment(data.minutes),
-                minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-                hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-                isBlocked: newIsBlocked,
-                isCritical: newIsCritical,
-                lastActivity: admin.firestore.FieldValue.serverTimestamp(),
-                _version: clientVersionInfo.nextVersion,
-                _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-                _modifiedBy: user.username
-              });
-
-              console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${activePackage.id} (גרסה ${clientVersionInfo.currentVersion} → ${clientVersionInfo.nextVersion})`);
+              updatedPackageId = activePackage.id;
             } else {
               console.warn(`⚠️ אין חבילה פעילה!`);
             }
@@ -765,40 +695,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                   );
                 }
 
-                // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
-                if (afterDeduction < 0 && afterDeduction >= -10) {
-                  activePackage.status = 'overdraft';
-                }
-
-                // קיזוז שעות
-                DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
                 updatedPackageId = activePackage.id;
-
-                // עדכון שלב
-                stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
-                stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
-
-                service.stages = stages;
-
-                // ✅ VERSION CONTROL
-                const currentHoursRemaining = clientData.hoursRemaining || 0;
-                const newHoursRemaining = currentHoursRemaining - hoursWorked;
-                const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-                const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-                transaction.update(clientRef, {
-                  services: clientData.services,
-                  hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-                  minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-                  isBlocked: newIsBlocked,
-                  isCritical: newIsCritical,
-                  lastActivity: admin.firestore.FieldValue.serverTimestamp(),
-                  _version: clientVersionInfo.nextVersion,
-                  _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-                  _modifiedBy: user.username
-                });
-
-                console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}`);
               }
             }
           }
@@ -834,36 +731,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 );
               }
 
-              // ✅ עדכון סטטוס החבילה ל-overdraft אם במינוס
-              if (afterDeduction < 0 && afterDeduction >= -10) {
-                activePackage.status = 'overdraft';
-              }
-
-              DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
               updatedPackageId = activePackage.id;
-
-              stages[currentStageIndex].hoursUsed = (currentStage.hoursUsed || 0) + hoursWorked;
-              stages[currentStageIndex].hoursRemaining = (currentStage.hoursRemaining || 0) - hoursWorked;
-
-              // ✅ VERSION CONTROL
-              const currentHoursRemaining = clientData.hoursRemaining || 0;
-              const newHoursRemaining = currentHoursRemaining - hoursWorked;
-              const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-              const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-              transaction.update(clientRef, {
-                stages: stages,
-                hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-                minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-                isBlocked: newIsBlocked,
-                isCritical: newIsCritical,
-                lastActivity: admin.firestore.FieldValue.serverTimestamp(),
-                _version: clientVersionInfo.nextVersion,
-                _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-                _modifiedBy: user.username
-              });
-
-              console.log(`✅ [v2.0] קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name}`);
             }
           }
         }
@@ -876,23 +744,16 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
           if (currentStageIndex !== -1) {
             const currentStage = stages[currentStageIndex];
             updatedStageId = currentStage.id;
-
-            stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
-            stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
-
-            // ✅ VERSION CONTROL
-            transaction.update(clientRef, {
-              stages: stages,
-              totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
-              lastActivity: admin.firestore.FieldValue.serverTimestamp(),
-              _version: clientVersionInfo.nextVersion,
-              _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-              _modifiedBy: user.username
-            });
-
-            console.log(`✅ [v2.0] נרשמו ${hoursWorked.toFixed(2)} שעות (מחיר קבוע)`);
           }
         }
+
+        // ── Metadata write (deduction handled by Trigger) ──
+        transaction.update(clientRef, {
+          _version: clientVersionInfo.nextVersion,
+          _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+          _modifiedBy: user.username,
+          lastActivity: admin.firestore.FieldValue.serverTimestamp()
+        });
       }
 
       // ------------------------------------------------
