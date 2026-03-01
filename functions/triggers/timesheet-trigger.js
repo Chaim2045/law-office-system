@@ -266,6 +266,18 @@ const onTimesheetEntryChanged = onDocumentWritten({
     return null;
   }
 
+  // ── Guard: skip self-writes (trigger writing isOverage/overageMinutes back to entry) ──
+  if (eventType === 'UPDATE') {
+    const triggerFields = ['isOverage', 'overageMinutes'];
+    const changedKeys = Object.keys(afterData).filter((key) => {
+      return JSON.stringify(beforeData[key]) !== JSON.stringify(afterData[key]);
+    });
+    if (changedKeys.length > 0 && changedKeys.every((key) => triggerFields.includes(key))) {
+      console.log(`⏭️ [timesheet-trigger] Trigger self-write detected for entry ${entryId} — skipping`);
+      return null;
+    }
+  }
+
   // Use after data for CREATE/UPDATE, before data for DELETE
   const entry = afterData || beforeData;
 
