@@ -1,7 +1,32 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(sed 's/?.*//')",
+      "Read(//c/Users/haim/Projects/**)",
+      "Bash(git -C /c/Users/haim/Projects/law-office-system ls-files --error-unmatch firebase-admin-key.json service-account-key.json functions/.env)",
+      "Bash(git -C /c/Users/haim/Projects/law-office-system ls-files functions/.env)",
+      "Bash(gcloud run services list --project law-office-system-e4801)",
+      "Bash(gcloud scheduler jobs list --project law-office-system-e4801 --location us-central1)",
+      "Bash(firebase ext:list --project law-office-system-e4801)",
+      "Bash(firebase auth:export /tmp/auth-users.json --project law-office-system-e4801 --format json)",
+      "Read(//tmp/**)",
+      "Bash(firebase database:get / --project law-office-system-e4801 --shallow)",
+      "Bash(sed 's/^ *//')",
+      "Bash(comm -23 /tmp/code.txt /tmp/deployed.txt)",
+      "Bash(comm -13 /tmp/code.txt /tmp/deployed.txt)",
+      "Bash(tr '│' '|')",
+      "Bash(cut -d'|' -f2)",
+      "Bash(sed 's/ *$//')",
+      "Bash(sort -t'|' -k3)",
+      "Bash(for hash in 03110c5 954ca22 7e6a356 8e1e0ef 55ae009 dc323ed 13c4ef7 2be1c01 d693c1c ba41bb5 52e609a 71dbe16 a3d794c 238897d 6d40cf5 1a2e5eb 770f648 dec6db4 8242ede cdc70d5 074da1c ae49950 f980ce5)",
+      "Bash(do echo \"=== $hash ===\")",
+      "Bash(for f in .claude/settings.json apps/user-app/dist/apps/user-app/js/core/event-bus.d.ts apps/user-app/dist/apps/user-app/js/core/event-bus.js apps/user-app/dist/apps/user-app/js/schemas/index.d.ts apps/user-app/dist/apps/user-app/js/schemas/index.js apps/user-app/dist/apps/user-app/js/services/firebase-service.d.ts apps/user-app/dist/apps/user-app/js/services/firebase-service.js)",
+      "Bash(do echo \"=== $f ===\")",
+      "Bash(for f in apps/user-app/dist/playwright.config.d.ts.map apps/user-app/dist/playwright.config.js.map apps/user-app/dist/types/index.d.ts.map apps/user-app/dist/vitest.config.d.ts.map apps/user-app/dist/vitest.config.js apps/user-app/dist/vitest.config.js.map)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\haim\\Projects\\law-office-system\\devtools"
     ]
   }
 }
