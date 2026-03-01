@@ -176,9 +176,8 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       const hoursWorked = data.minutes / 60;
       let updatedStageId = null;
       let updatedPackageId = null;
-      let clientUpdateData = null;
 
-      // ✅ Client hours-based - find active package
+      // ✅ Client hours-based - find active package (deduction handled by Trigger)
       if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
         // 🔍 Find service by serviceId if provided, otherwise use first service
         let serviceIndex = -1;
@@ -214,56 +213,12 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
             );
           }
 
-          // ✅ BUG FIX: Capture return value (immutable pattern)
-          const updatedPackage = DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
-          updatedPackageId = updatedPackage.id;
-
-          // Update package status to overdraft if negative
-          if (afterDeduction < 0 && afterDeduction >= -10) {
-            updatedPackage.status = 'overdraft';
-          }
-
-          // ✅ BUG FIX: Immutable update - create new packages array
-          const updatedServicePackages = service.packages.map(pkg =>
-            pkg.id === updatedPackage.id ? updatedPackage : pkg
-          );
-
-          // ✅ BUG FIX: Immutable update - create new service object
-          const updatedService = {
-            ...service,
-            packages: updatedServicePackages,
-            hoursUsed: (service.hoursUsed || 0) + hoursWorked,
-            hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
-            lastActivity: new Date().toISOString()
-          };
-
-          // ✅ BUG FIX: Immutable update - create new services array
-          const updatedServices = clientData.services.map((s, idx) =>
-            idx === serviceIndex ? updatedService : s
-          );
-
-          const currentHoursRemaining = clientData.hoursRemaining || 0;
-          const newHoursRemaining = currentHoursRemaining - hoursWorked;
-          const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-          const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-          clientUpdateData = {
-            services: updatedServices,
-            hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
-            minutesUsed: admin.firestore.FieldValue.increment(data.minutes),
-            minutesRemaining: admin.firestore.FieldValue.increment(-data.minutes),
-            hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-            isBlocked: newIsBlocked,
-            isCritical: newIsCritical,
-            lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          };
-
-          console.log(`✅ [Quick Log] יקוזז ${hoursWorked.toFixed(2)} שעות מחבילה ${updatedPackage.id}`);
+          updatedPackageId = activePackage.id;
         } else {
           console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
         }
       }
-      // ✅ Legal procedure - hourly pricing
+      // ✅ Legal procedure - hourly pricing (deduction handled by Trigger)
       else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
         const targetStageId = clientData.currentStage || 'stage_a';
         const stages = clientData.stages || [];
@@ -292,50 +247,11 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
               );
             }
 
-            // ✅ BUG FIX: Capture return value (immutable pattern)
-            const updatedPackage = DeductionSystem.deductHoursFromPackage(activePackage, hoursWorked);
-            updatedPackageId = updatedPackage.id;
-
-            if (afterDeduction < 0 && afterDeduction >= -10) {
-              updatedPackage.status = 'overdraft';
-            }
-
-            // ✅ BUG FIX: Immutable update - create new packages array
-            const updatedStagePackages = currentStage.packages.map(pkg =>
-              pkg.id === updatedPackage.id ? updatedPackage : pkg
-            );
-
-            // ✅ BUG FIX: Immutable update - create new stage object
-            const updatedStage = {
-              ...currentStage,
-              packages: updatedStagePackages,
-              hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
-              hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked
-            };
-
-            // ✅ BUG FIX: Immutable update - create new stages array
-            const updatedStages = stages.map((stage, index) =>
-              index === currentStageIndex ? updatedStage : stage
-            );
-
-            const currentHoursRemaining = clientData.hoursRemaining || 0;
-            const newHoursRemaining = currentHoursRemaining - hoursWorked;
-            const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-            const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-            clientUpdateData = {
-              stages: updatedStages,
-              hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-              isBlocked: newIsBlocked,
-              isCritical: newIsCritical,
-              lastActivity: admin.firestore.FieldValue.serverTimestamp()
-            };
-
-            console.log(`✅ [Quick Log] יקוזז ${hoursWorked.toFixed(2)} שעות משלב ${currentStage.name}`);
+            updatedPackageId = activePackage.id;
           }
         }
       }
-      // ✅ Legal procedure - fixed price (track hours only)
+      // ✅ Legal procedure - fixed price (deduction handled by Trigger)
       else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
         const targetStageId = clientData.currentStage || 'stage_a';
         const stages = clientData.stages || [];
@@ -344,26 +260,6 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         if (currentStageIndex !== -1) {
           const currentStage = stages[currentStageIndex];
           updatedStageId = currentStage.id;
-
-          // ✅ BUG FIX: Immutable update - create new stage object
-          const updatedStage = {
-            ...currentStage,
-            hoursWorked: (currentStage.hoursWorked || 0) + hoursWorked,
-            totalHoursWorked: (currentStage.totalHoursWorked || 0) + hoursWorked
-          };
-
-          // ✅ BUG FIX: Immutable update - create new stages array
-          const updatedStages = stages.map((stage, index) =>
-            index === currentStageIndex ? updatedStage : stage
-          );
-
-          clientUpdateData = {
-            stages: updatedStages,
-            totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
-            lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          };
-
-          console.log(`✅ [Quick Log] יירשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
         }
       } else {
         console.log(`ℹ️ [Quick Log] לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
@@ -429,11 +325,10 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
 
       console.log(`✍️ [Quick Log Transaction Phase 3] Writing updates...`);
 
-      // Write #1: Update client (if needed)
-      if (clientUpdateData) {
-        transaction.update(clientRef, clientUpdateData);
-        console.log(`✅ Client will be updated: ${data.clientId}`);
-      }
+      // Write #1: Metadata only — deduction handled by Trigger
+      transaction.update(clientRef, {
+        lastActivity: admin.firestore.FieldValue.serverTimestamp()
+      });
 
       // Write #2: Create timesheet entry
       const timesheetRef = db.collection('timesheet_entries').doc();
