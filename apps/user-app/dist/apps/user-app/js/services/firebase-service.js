@@ -160,7 +160,8 @@ class FirebaseServiceClass {
             // Update statistics
             if (response.success) {
                 this.stats.successfulCalls++;
-            } else {
+            }
+            else {
                 this.stats.failedCalls++;
             }
             const duration = performance.now() - startTime;
@@ -178,7 +179,8 @@ class FirebaseServiceClass {
                 ...response,
                 duration
             };
-        } catch (error) {
+        }
+        catch (error) {
             this.stats.failedCalls++;
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             if (this.debugMode) {
@@ -223,7 +225,8 @@ class FirebaseServiceClass {
                     duration: 0,
                     retries: retryCount
                 };
-            } catch (error) {
+            }
+            catch (error) {
                 lastError = error;
                 // Check if error is retryable
                 if (!this.isRetryableError(error)) {
@@ -343,7 +346,8 @@ class FirebaseServiceClass {
             try {
                 const response = await this.call(request.functionName, request.data, { ...request.options, skipRateLimit: true });
                 request.resolve(response);
-            } catch (error) {
+            }
+            catch (error) {
                 request.reject(error);
             }
         }

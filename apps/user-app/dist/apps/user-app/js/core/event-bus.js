@@ -110,7 +110,8 @@ class TypedEventBus {
                 if (listener.once) {
                     eventListeners.delete(listener);
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 errors++;
                 console.error(`❌ [EventBus] Error in listener for ${String(event)}:`, error);
                 this.emit('system:error', {
