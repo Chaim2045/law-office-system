@@ -400,17 +400,10 @@ const onTimesheetEntryChanged = onDocumentWritten({
       // ── Write 2: Update overage flags on entry (CREATE/UPDATE only, not DELETE) ──
       if (afterData) {
         const entryRef = db.collection('timesheet_entries').doc(entryId);
-        if (isOverage) {
-          transaction.update(entryRef, {
-            isOverage: true,
-            overageMinutes: overageMinutes
-          });
-        } else if (eventType === 'UPDATE') {
-          transaction.update(entryRef, {
-            isOverage: false,
-            overageMinutes: 0
-          });
-        }
+        transaction.update(entryRef, {
+          isOverage: isOverage,
+          overageMinutes: isOverage ? overageMinutes : 0
+        });
       }
 
       // ── Write 3: Update budget_task if taskId exists ──
