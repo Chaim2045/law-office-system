@@ -295,6 +295,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
     return null;
   }
 
+  const parentServiceId = entry.parentServiceId || null;
   const stageId = entry.stageId || null;
   const packageId = entry.packageId || null;
   const taskId = entry.taskId || null;
@@ -331,7 +332,8 @@ const onTimesheetEntryChanged = onDocumentWritten({
       const services = clientData.services || [];
 
       // ── Determine service type from the target service ──
-      const targetService = services.find((svc) => svc.id === serviceId);
+      const lookupServiceId = parentServiceId || serviceId;
+      const targetService = services.find((svc) => svc.id === lookupServiceId);
       if (!targetService) {
         console.error(`❌ [timesheet-trigger] Service ${serviceId} not found on client ${clientId}`);
         return;
