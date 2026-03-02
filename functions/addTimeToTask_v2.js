@@ -174,307 +174,66 @@ function sanitizeString(str) {
   return str.trim().replace(/[<>]/g, '');
 }
 
-/**
- * לוגיקת קיזוז שעות מלקוח
- * מחזיר אובייקט עם השינויים שצריך לעשות
- */
-function calculateClientUpdates(clientData, taskData, minutesToAdd) {
-  const hoursWorked = minutesToAdd / 60;
-  const updates = {
-    clientUpdate: null,
-    logs: []
-  };
+function lookupServiceIds(clientData, taskData) {
+  const result = { stageId: null, packageId: null };
 
-  // ✅ הליך משפטי - תמחור שעתי (מבנה חדש: שירות בתוך services)
+  // PATH 1: legal_procedure חדש (services)
   if (taskData.serviceType === 'legal_procedure' && taskData.parentServiceId) {
-    const services = clientData.services || [];
-    const targetService = services.find(s => s.id === taskData.parentServiceId);
-
-    if (targetService && targetService.type === 'legal_procedure') {
-      const isHourly = !targetService.pricingType || targetService.pricingType === 'hourly';
-
-      if (isHourly) {
-        const currentStageId = taskData.serviceId || 'stage_a';
-        const stages = targetService.stages || [];
-        const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
-
-        if (currentStageIndex !== -1) {
-          const currentStage = stages[currentStageIndex];
-          const activePackage = getActivePackage(currentStage);
-
-          if (activePackage) {
-            // ✅ v2.2.0 - Immutable: Get new package object
-            const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
-
-            // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
-            const afterDeduction = updatedPackage.hoursRemaining;
-            if (afterDeduction < 0) {
-              updatedPackage.status = 'overdraft';
-            }
-
-            // ✅ Immutable: Update packages array in stage
-            const updatedStagePackages = currentStage.packages.map(pkg =>
-              pkg.id === updatedPackage.id ? updatedPackage : pkg
-            );
-
-            // ✅ Immutable: Create new stage with updated packages
-            const updatedStage = {
-              ...currentStage,
-              packages: updatedStagePackages,
-              hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
-              hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked,
-              minutesUsed: (currentStage.minutesUsed || 0) + minutesToAdd,
-              minutesRemaining: (currentStage.minutesRemaining || 0) - minutesToAdd
-            };
-
-            // ✅ Immutable: Update stages array
-            const updatedStages = stages.map((stage, index) =>
-              index === currentStageIndex ? updatedStage : stage
-            );
-
-            // ✅ Immutable: Create new service with updated stages
-            const updatedService = {
-              ...targetService,
-              stages: updatedStages,
-              hoursUsed: (targetService.hoursUsed || 0) + hoursWorked,
-              hoursRemaining: (targetService.hoursRemaining || 0) - hoursWorked,
-              lastActivity: new Date().toISOString()
-            };
-
-            // ✅ v2.2.0 - Immutable: Update services array (NO MORE DEEP CLONE!)
-            const updatedServices = clientData.services.map(s =>
-              s.id === updatedService.id ? updatedService : s
-            );
-
-            const currentHoursRemaining = clientData.hoursRemaining || 0;
-            const newHoursRemaining = currentHoursRemaining - hoursWorked;
-            const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-            const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-            updates.clientUpdate = {
-              services: updatedServices,
-              hoursUsed: admin.firestore.FieldValue.increment(hoursWorked),
-              hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-              minutesUsed: admin.firestore.FieldValue.increment(minutesToAdd),
-              minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
-              isBlocked: newIsBlocked,
-              isCritical: newIsCritical,
-              lastActivity: admin.firestore.FieldValue.serverTimestamp()
-            };
-
-            updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${currentStage.name} בשירות ${updatedService.name}`);
-          } else {
-            updates.logs.push(`⚠️ ${currentStage.name} - אין חבילה פעילה`);
-          }
+    const service = (clientData.services || []).find(s => s.id === taskData.parentServiceId);
+    if (service && service.type === 'legal_procedure') {
+      const isHourly = !service.pricingType || service.pricingType === 'hourly';
+      const currentStageId = taskData.serviceId || service.currentStage || 'stage_a';
+      const stage = (service.stages || []).find(s => s.id === currentStageId);
+      if (stage) {
+        result.stageId = stage.id;
+        if (isHourly) {
+          const activePackage = getActivePackage(stage);
+          if (activePackage) result.packageId = activePackage.id;
         }
       }
     }
+    return result;
   }
-  // ✅ שירות עם חבילות (לקוח שעתי או שירות בתוך הליך משפטי)
-  else if (clientData.services && clientData.services.length > 0 && taskData.serviceId) {
-    // מצא את השירות המבוקש
+
+  // PATH 2: hours service עם serviceId
+  if (clientData.services && clientData.services.length > 0 && taskData.serviceId) {
     const service = clientData.services.find(s => s.id === taskData.serviceId);
-
-    console.log(`🔍 [OVERDRAFT DEBUG] Service found:`, {
-      serviceId: service?.id,
-      serviceType: service?.type,
-      hasPackages: !!service?.packages?.length
-    });
-
     if (service && service.type !== 'legal_procedure') {
-      // שירות רגיל עם חבילות (לא הליך משפטי)
       const activePackage = getActivePackage(service);
-
-      console.log(`🔍 [OVERDRAFT DEBUG] Active package:`, {
-        hasActivePackage: !!activePackage,
-        hoursRemaining: activePackage?.hoursRemaining,
-        packageStatus: activePackage?.status
-      });
-
-      if (activePackage) {
-        // ✅ v2.2.0 - Immutable: Get new package object
-        const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
-
-        // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
-        const afterDeduction = updatedPackage.hoursRemaining;
-        if (afterDeduction < 0) {
-          updatedPackage.status = 'overdraft';
-        }
-
-        // ✅ Immutable: Update packages array in service
-        const updatedServicePackages = service.packages.map(pkg =>
-          pkg.id === updatedPackage.id ? updatedPackage : pkg
-        );
-
-        // ✅ Immutable: Create new service with updated packages
-        const updatedService = {
-          ...service,
-          packages: updatedServicePackages,
-          hoursUsed: (service.hoursUsed || 0) + hoursWorked,
-          hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
-          lastActivity: new Date().toISOString()
-        };
-
-        // ✅ v2.2.0 - Immutable: Update services array (NO MORE DEEP CLONE!)
-        const updatedServices = clientData.services.map(s =>
-          s.id === updatedService.id ? updatedService : s
-        );
-
-        const currentHoursRemaining = clientData.hoursRemaining || 0;
-        const newHoursRemaining = currentHoursRemaining - hoursWorked;
-        const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-        const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-        updates.clientUpdate = {
-          services: updatedServices,
-          minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
-          hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-          isBlocked: newIsBlocked,
-          isCritical: newIsCritical,
-          lastActivity: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${updatedPackage.id} של שירות ${updatedService.name || updatedService.id}`);
-      } else {
-        updates.logs.push(`⚠️ שירות ${service.name || service.id} - אין חבילה פעילה`);
-      }
+      if (activePackage) result.packageId = activePackage.id;
     }
+    return result;
   }
-  // ✅ לקוח שעתי ללא serviceId ספציפי (fallback)
-  else if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+
+  // PATH 3: hours fallback
+  if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
     const service = clientData.services[0];
-
-    if (service) {
-      const activePackage = getActivePackage(service);
-
-      if (activePackage) {
-        // ✅ v2.2.0 - Immutable: Get new package object
-        const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
-
-        // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
-        const afterDeduction = updatedPackage.hoursRemaining;
-        if (afterDeduction < 0) {
-          updatedPackage.status = 'overdraft';
-        }
-
-        // ✅ Immutable: Update packages array in service
-        const updatedServicePackages = service.packages.map(pkg =>
-          pkg.id === updatedPackage.id ? updatedPackage : pkg
-        );
-
-        // ✅ Immutable: Create new service with updated packages
-        const updatedService = {
-          ...service,
-          packages: updatedServicePackages,
-          hoursUsed: (service.hoursUsed || 0) + hoursWorked,
-          hoursRemaining: (service.hoursRemaining || 0) - hoursWorked,
-          lastActivity: new Date().toISOString()
-        };
-
-        // ✅ v2.2.0 - Immutable: Update services array (NO MORE DEEP CLONE!)
-        const updatedServices = clientData.services.map(s =>
-          s.id === updatedService.id ? updatedService : s
-        );
-
-        const currentHoursRemaining = clientData.hoursRemaining || 0;
-        const newHoursRemaining = currentHoursRemaining - hoursWorked;
-        const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-        const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-        updates.clientUpdate = {
-          services: updatedServices,
-          minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
-          hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-          isBlocked: newIsBlocked,
-          isCritical: newIsCritical,
-          lastActivity: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מחבילה ${updatedPackage.id} של שירות ${updatedService.name || updatedService.id}`);
-      } else {
-        updates.logs.push(`⚠️ שירות ${service.name || service.id} - אין חבילה פעילה`);
-      }
-    }
+    const activePackage = getActivePackage(service);
+    if (activePackage) result.packageId = activePackage.id;
+    return result;
   }
-  // ✅ הליך משפטי (מבנה ישן)
-  else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
+
+  // PATH 4: legacy hourly
+  if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
     const currentStageId = taskData.serviceId || clientData.currentStage || 'stage_a';
-    const stages = clientData.stages || [];
-    const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
-
-    if (currentStageIndex !== -1) {
-      const currentStage = stages[currentStageIndex];
-      const activePackage = getActivePackage(currentStage);
-
-      if (activePackage) {
-        // ✅ v2.2.0 - Immutable: Get new package object
-        const updatedPackage = deductHoursFromPackage(activePackage, hoursWorked);
-
-        // ✅ עדכון סטטוס ל-overdraft אם במינוס (אין חסימה, רק עדכון סטטוס)
-        const afterDeduction = updatedPackage.hoursRemaining;
-        if (afterDeduction < 0) {
-          updatedPackage.status = 'overdraft';
-        }
-
-        // ✅ Immutable: Update packages array in stage
-        const updatedStagePackages = currentStage.packages.map(pkg =>
-          pkg.id === updatedPackage.id ? updatedPackage : pkg
-        );
-
-        // ✅ Immutable: Create new stage with updated packages
-        const updatedStage = {
-          ...currentStage,
-          packages: updatedStagePackages,
-          hoursUsed: (currentStage.hoursUsed || 0) + hoursWorked,
-          hoursRemaining: (currentStage.hoursRemaining || 0) - hoursWorked
-        };
-
-        // ✅ Immutable: Update stages array
-        const updatedStages = stages.map((stage, index) =>
-          index === currentStageIndex ? updatedStage : stage
-        );
-
-        const currentHoursRemaining = clientData.hoursRemaining || 0;
-        const newHoursRemaining = currentHoursRemaining - hoursWorked;
-        const newIsBlocked = (newHoursRemaining <= 0) && (clientData.type === 'hours');
-        const newIsCritical = (!newIsBlocked) && (newHoursRemaining <= 5) && (clientData.type === 'hours');
-
-        updates.clientUpdate = {
-          stages: updatedStages,
-          hoursRemaining: admin.firestore.FieldValue.increment(-hoursWorked),
-          minutesRemaining: admin.firestore.FieldValue.increment(-minutesToAdd),
-          isBlocked: newIsBlocked,
-          isCritical: newIsCritical,
-          lastActivity: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        updates.logs.push(`✅ קוזזו ${hoursWorked.toFixed(2)} שעות מ${updatedStage.name}`);
-      }
+    const stage = (clientData.stages || []).find(s => s.id === currentStageId);
+    if (stage) {
+      result.stageId = stage.id;
+      const activePackage = getActivePackage(stage);
+      if (activePackage) result.packageId = activePackage.id;
     }
+    return result;
   }
-  // ✅ הליך משפטי - תמחור פיקס
-  else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
+
+  // PATH 5: legacy fixed
+  if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
     const targetStageId = taskData.serviceId || clientData.currentStage || 'stage_a';
-    const stages = clientData.stages || [];
-    const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
-
-    if (currentStageIndex !== -1) {
-      const currentStage = stages[currentStageIndex];
-
-      stages[currentStageIndex].hoursWorked = (currentStage.hoursWorked || 0) + hoursWorked;
-      stages[currentStageIndex].totalHoursWorked = (currentStage.totalHoursWorked || 0) + hoursWorked;
-
-      updates.clientUpdate = {
-        stages: stages,
-        totalHoursWorked: admin.firestore.FieldValue.increment(hoursWorked),
-        lastActivity: admin.firestore.FieldValue.serverTimestamp()
-      };
-
-      updates.logs.push(`✅ נרשמו ${hoursWorked.toFixed(2)} שעות ל${currentStage.name} (מחיר קבוע)`);
-    }
+    const stage = (clientData.stages || []).find(s => s.id === targetStageId);
+    if (stage) result.stageId = stage.id;
+    return result;
   }
 
-  return updates;
+  return result;
 }
 
 /**
@@ -529,7 +288,6 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         let clientRef = null;
         let clientDoc = null;
         let clientData = null;
-        let currentVersion = 0;
 
         if (taskData.clientId) {
           clientRef = db.collection('clients').doc(taskData.clientId);
@@ -537,8 +295,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
 
           if (clientDoc.exists) {
             clientData = clientDoc.data();
-            currentVersion = clientData._version || 0;
-            console.log(`✅ Client read: ${taskData.clientId} (version: ${currentVersion})`);
+            console.log(`✅ Client read: ${taskData.clientId}`);
           } else {
             console.log(`⚠️ Client ${taskData.clientId} not found (will skip client update)`);
           }
@@ -578,14 +335,11 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           }
         };
 
-        // חישוב עדכוני הלקוח (אם יש לקוח)
-        let clientUpdates = null;
-        let clientLogs = [];
-
+        // Lookup service IDs for the timesheet entry
+        let serviceIds = { stageId: null, packageId: null };
         if (clientData) {
-          clientUpdates = calculateClientUpdates(clientData, taskData, data.minutes);
-          clientLogs = clientUpdates.logs;
-          console.log(`🧮 Client updates calculated: ${clientUpdates.clientUpdate ? 'YES' : 'NO'}`);
+          serviceIds = lookupServiceIds(clientData, taskData);
+          console.log(`🔍 Lookup result: stageId=${serviceIds.stageId}, packageId=${serviceIds.packageId}`);
         }
 
         // הכנת רשומת שעתון
@@ -600,6 +354,8 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           serviceName: taskData.serviceName || null,
           serviceType: taskData.serviceType || null,
           parentServiceId: taskData.parentServiceId || null,
+          stageId: serviceIds.stageId,
+          packageId: serviceIds.packageId,
           taskId: data.taskId,
           taskDescription: taskData.description,
           date: data.date,
@@ -626,8 +382,6 @@ async function addTimeToTaskWithTransaction(db, data, user) {
 
         // 3️⃣ עדכון המשימה
         transaction.update(taskRef, {
-          actualHours: admin.firestore.FieldValue.increment(data.minutes / 60),
-          actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
           timeEntries: admin.firestore.FieldValue.arrayUnion(timeEntry),
           lastModifiedBy: user.username,
           lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -638,22 +392,6 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         const timesheetRef = db.collection('timesheet_entries').doc();
         transaction.set(timesheetRef, timesheetEntry);
         console.log(`✅ Timesheet entry created: ${timesheetRef.id}`);
-
-        // 5️⃣ עדכון לקוח (אם נחוץ)
-        let clientUpdated = false;
-
-        if (clientRef && clientUpdates && clientUpdates.clientUpdate) {
-          // הוספת optimistic locking metadata
-          clientUpdates.clientUpdate._version = currentVersion + 1;
-          clientUpdates.clientUpdate._lastModified = admin.firestore.FieldValue.serverTimestamp();
-          clientUpdates.clientUpdate._modifiedBy = user.username;
-
-          transaction.update(clientRef, clientUpdates.clientUpdate);
-          clientUpdated = true;
-          console.log(`✅ Client updated: ${taskData.clientId} (new version: ${currentVersion + 1})`);
-        } else {
-          console.log(`⏭️ Client update skipped (no updates needed)`);
-        }
 
         // 6️⃣ לוג פעולה
         const logRef = db.collection('action_logs').doc();
@@ -666,7 +404,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
             minutes: data.minutes,
             date: data.date,
             autoTimesheetCreated: true,
-            clientUpdated
+            clientUpdated: false
           },
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -679,16 +417,12 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           success: true,
           taskId: data.taskId,
           newActualMinutes,
-          timesheetAutoCreated: true,
-          clientUpdated,
-          clientLogs,
-          attempt
+          timesheetAutoCreated: true
         };
       });
 
       // הצלחה!
       console.log(`🎉 Transaction completed successfully on attempt ${attempt}`);
-      result.clientLogs.forEach(log => console.log(log));
       return result;
 
     } catch (error) {
