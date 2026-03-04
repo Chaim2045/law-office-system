@@ -1391,6 +1391,10 @@ navigator.vibrate(10);
 
         showSuccess(`✅ נרשמו ${hoursText} עבור ${clientName}`);
         resetForm();
+
+        if (window.app && window.app.dataCache) {
+          window.app.dataCache.invalidate('clients');
+        }
       } else {
         showError(result.data.message || 'שגיאה בשליחת הדיווח');
       }
