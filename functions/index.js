@@ -101,4 +101,8 @@ exports.createTimesheetEntry_v2 = timesheet.createTimesheetEntry_v2;
 exports.getTimesheetEntries = timesheet.getTimesheetEntries;
 exports.updateTimesheetEntry = timesheet.updateTimesheetEntry;
 
+// Timesheet Triggers (imported from ./triggers/timesheet-trigger)
+const { onTimesheetEntryChanged } = require('./triggers/timesheet-trigger');
+exports.onTimesheetEntryChanged = onTimesheetEntryChanged;
+
 console.log('✅ Law Office Functions loaded successfully');
