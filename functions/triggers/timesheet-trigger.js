@@ -348,7 +348,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
           console.error(`❌ [timesheet-trigger] No packageId on entry ${entryId} — required for hours service. Skipping.`);
           return;
         }
-        result = applyHoursDelta(services, serviceId, packageId, minutesDelta);
+        result = applyHoursDelta(services, lookupServiceId, packageId, minutesDelta);
       } else if (serviceType === 'legal_procedure') {
         // ── legal_procedure: requires stageId ──
         if (!stageId) {
@@ -365,7 +365,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
           console.error(`❌ [timesheet-trigger] No packageId on entry ${entryId} — required for hourly legal_procedure. Skipping.`);
           return;
         }
-        result = applyLegalProcedureDelta(services, serviceId, stageId, packageId, minutesDelta);
+        result = applyLegalProcedureDelta(services, lookupServiceId, stageId, packageId, minutesDelta);
       } else {
         console.warn(`⚠️ [timesheet-trigger] Unknown service type "${serviceType}" for service ${serviceId} — skipping`);
         return;
