@@ -1641,6 +1641,7 @@ completedBadge.style.display = 'none';
 
         // Invalidate cache to force fresh data on next load
         this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
+        this.dataCache.invalidate('clients');
 
         // Reload entries with cache (will fetch fresh because invalidated)
         this.timesheetEntries = await this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
@@ -1960,6 +1961,7 @@ existingError.remove();
 
         // Invalidate cache to force fresh data on next load
         this.dataCache.invalidate(`timesheetEntries:${this.currentUser}`);
+        this.dataCache.invalidate('clients');
 
         // Reload entries with cache (will fetch fresh because invalidated)
         this.timesheetEntries = await this.dataCache.get(`timesheetEntries:${this.currentUser}`, () =>
@@ -2810,6 +2812,9 @@ return;
         if (!result.success) {
           throw new Error(result.error || 'שגיאה בהוספת זמן');
         }
+
+        // Invalidate clients cache so loadData() fetches fresh from Firestore
+        this.dataCache.invalidate('clients');
 
         // Reload all data (loadData() refreshes selectors automatically)
         await this.loadData();  // Loads clients + budgetTasks + timesheet + refreshes selectors

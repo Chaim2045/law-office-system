@@ -501,6 +501,10 @@ timeInput.value = '';
       });
 
       this._showSuccessToast(minutes);
+
+      if (window.app && window.app.dataCache) {
+        window.app.dataCache.invalidate('clients');
+      }
     } catch (error) {
       console.error('BreakManager: Failed to record timesheet', error);
       this._showErrorToast();
