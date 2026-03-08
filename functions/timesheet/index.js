@@ -165,6 +165,17 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       const clientData = clientDoc.data();
       const finalClientName = data.clientName || clientData.clientName || clientData.fullName;
 
+      const lookupId = data.serviceId;
+      if (lookupId) {
+        const targetService = (clientData.services || []).find(s => s.id === lookupId);
+        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0) {
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
+          );
+        }
+      }
+
       console.log(`✅ [Quick Log Transaction Phase 1] Client read: ${data.clientId}`);
 
       // ========================================
@@ -490,6 +501,17 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
 
       if (!finalClientName) {
         finalClientName = clientData.clientName || clientData.fullName;
+      }
+
+      const lookupId = data.parentServiceId || data.serviceId;
+      if (lookupId) {
+        const targetService = (clientData.services || []).find(s => s.id === lookupId);
+        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0) {
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
+          );
+        }
       }
     }
 
