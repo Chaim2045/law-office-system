@@ -99,7 +99,9 @@ function applyHoursDelta(services, serviceId, packageId, minutesDelta) {
       ...svc,
       packages: updatedPackages,
       hoursUsed: svcHoursUsed,
-      hoursRemaining: svcHoursRemaining
+      hoursRemaining: svcHoursRemaining,
+      isBlocked: svcHoursRemaining <= 0,
+      isCritical: svcHoursRemaining > 0 && svcHoursRemaining <= 5
     };
   });
 

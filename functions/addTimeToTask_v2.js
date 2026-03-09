@@ -342,6 +342,18 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           console.log(`🔍 Lookup result: stageId=${serviceIds.stageId}, packageId=${serviceIds.packageId}`);
         }
 
+        // ✅ BLOCK: בדיקת חסימת שירות לפני יצירת entry
+        if (clientData && taskData.serviceId) {
+          const lookupId = taskData.parentServiceId || taskData.serviceId;
+          const targetService = (clientData.services || []).find(s => s.id === lookupId);
+          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0) {
+            throw new functions.https.HttpsError(
+              'failed-precondition',
+              `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
+            );
+          }
+        }
+
         // הכנת רשומת שעתון
         // ✅ זיהוי אוטומטי של רשומת פנימית לפי clientId
         const isInternalWork = taskData.clientId === 'internal_office';
