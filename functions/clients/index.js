@@ -970,6 +970,21 @@ exports.updateClient = functions.https.onCall(async (data, context) => {
       updates.email = data.email ? sanitizeString(data.email.trim()) : '';
     }
 
+    if (data.caseOpenDate !== undefined) {
+      if (data.caseOpenDate === null) {
+        updates.caseOpenDate = admin.firestore.FieldValue.delete();
+      } else {
+        const d = new Date(data.caseOpenDate);
+        if (isNaN(d.getTime())) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'תאריך פתיחת תיק לא תקין'
+          );
+        }
+        updates.caseOpenDate = admin.firestore.Timestamp.fromDate(d);
+      }
+    }
+
     updates.lastModifiedBy = user.username;
     updates.lastModifiedAt = admin.firestore.FieldValue.serverTimestamp();
 
