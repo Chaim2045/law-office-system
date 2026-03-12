@@ -144,15 +144,78 @@
          * Render client info header
          * רינדור כותרת מידע לקוח
          */
+        async editCaseOpenDate() {
+            const client = this.currentClient;
+            const current = client.caseOpenDate
+                ? new Date(client.caseOpenDate.seconds * 1000).toISOString().split('T')[0]
+                : (client.createdAt
+                    ? new Date(client.createdAt.seconds * 1000).toISOString().split('T')[0]
+                    : '');
+
+            const input = document.createElement('div');
+            input.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);z-index:10000;min-width:280px;';
+            input.innerHTML = `
+                <div style="font-weight:600;margin-bottom:12px;font-size:15px;">עדכון תאריך פתיחת תיק</div>
+                <input type="date" id="caseOpenDateInput" value="${current}" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-bottom:16px;">
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button id="caseOpenDateCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
+                    <button id="caseOpenDateSave" style="padding:8px 16px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">שמור</button>
+                </div>
+            `;
+
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;';
+            document.body.appendChild(overlay);
+            document.body.appendChild(input);
+
+            const cleanup = () => {
+ overlay.remove(); input.remove();
+};
+
+            document.getElementById('caseOpenDateCancel').addEventListener('click', cleanup);
+            overlay.addEventListener('click', cleanup);
+
+            document.getElementById('caseOpenDateSave').addEventListener('click', async () => {
+                const val = document.getElementById('caseOpenDateInput').value;
+                if (!val) {
+return;
+}
+
+                const newDate = new Date(val);
+                if (isNaN(newDate.getTime())) {
+                    alert('תאריך לא תקין');
+                    return;
+                }
+
+                try {
+                    await FirebaseService.call('updateClient', {
+                        clientId: client.id,
+                        caseOpenDate: newDate.toISOString()
+                    });
+
+                    this.currentClient.caseOpenDate = { seconds: Math.floor(newDate.getTime() / 1000), nanoseconds: 0 };
+                    cleanup();
+                    this.renderClientInfo();
+                    this.showNotification('תאריך פתיחת תיק עודכן', 'success');
+                } catch (e) {
+                    console.error('Error updating caseOpenDate:', e);
+                    this.showNotification('שגיאה בעדכון התאריך', 'error');
+                }
+            });
+        }
+
         renderClientInfo() {
             if (!this.currentClient) {
 return;
 }
 
             const client = this.currentClient;
-            const createdDate = client.createdAt
+            const caseOpenDate = client.caseOpenDate
+                ? new Date(client.caseOpenDate.seconds * 1000).toLocaleDateString('he-IL')
+                : null;
+            const createdDate = caseOpenDate || (client.createdAt
                 ? new Date(client.createdAt.seconds * 1000).toLocaleDateString('he-IL')
-                : '-';
+                : '-');
 
             const totalServices = client.services?.length || 0;
             const activeServices = client.services?.filter(s => s.status === 'active').length || 0;
@@ -179,7 +242,7 @@ return;
                     </div>
                     <div class="management-client-meta-item">
                         <i class="fas fa-calendar"></i>
-                        <span>נפתח: ${createdDate}</span>
+                        <span>נפתח: ${createdDate} <button class="edit-case-open-date-btn" title="ערוך תאריך פתיחה" style="background:none;border:none;cursor:pointer;padding:0 4px;color:#6b7280;">✏️</button></span>
                     </div>
                     <div class="management-client-meta-item">
                         <i class="fas fa-briefcase"></i>
@@ -187,6 +250,11 @@ return;
                     </div>
                 </div>
             `;
+
+            const editBtn = this.clientInfoContainer.querySelector('.edit-case-open-date-btn');
+            if (editBtn) {
+                editBtn.addEventListener('click', () => this.editCaseOpenDate());
+            }
         }
 
         /**

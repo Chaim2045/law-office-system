@@ -1056,7 +1056,10 @@ return '';
 
                 case 'all':
                     // Set to client creation date or 1 year ago
-                    const clientCreated = this.currentClient?.createdAt?.toDate?.() || new Date(now.getFullYear() - 1, 0, 1);
+                    const clientCreated =
+                        this.currentClient?.caseOpenDate?.toDate?.() ||
+                        this.currentClient?.createdAt?.toDate?.() ||
+                        new Date(now.getFullYear() - 1, 0, 1);
                     startDate = clientCreated;
                     endDate = now;
                     break;
