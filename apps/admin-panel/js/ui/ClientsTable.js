@@ -279,7 +279,7 @@ return;
             if (client.isBlocked && hasActiveOverride) {
                 statusClass = 'warning';
                 statusText = 'חריגה מאושרת';
-                icon = 'fa-bolt';
+                icon = '';
             } else if (client.isBlocked) {
                 statusClass = 'blocked';
                 statusText = 'חסום';
@@ -295,8 +295,8 @@ return;
             }
 
             return `
-                <span class="status-badge ${statusClass}">
-                    <i class="fas ${icon}"></i>
+                <span class="status-badge ${statusClass}" style="white-space:nowrap;">
+                    ${icon ? `<i class="fas ${icon}"></i>` : ''}
                     ${statusText}
                 </span>
             `;
