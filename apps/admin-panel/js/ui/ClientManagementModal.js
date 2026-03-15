@@ -207,10 +207,10 @@ return;
         showOverrideModal(active, serviceName) {
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
-                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;';
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10300;';
 
                 const modal = document.createElement('div');
-                modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);z-index:10000;min-width:300px;direction:rtl;';
+                modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);z-index:10400;min-width:300px;direction:rtl;';
 
                 if (active) {
                     modal.innerHTML = `
@@ -260,7 +260,7 @@ return;
             try {
                 const setOverrideFn = window.firebaseFunctions.httpsCallable('setServiceOverride');
                 const result = await setOverrideFn({
-                    clientId: this.currentClient.id,
+                    clientId: this.currentClient?.id || this.currentClient?.clientId,
                     serviceId,
                     active,
                     note
