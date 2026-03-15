@@ -1129,7 +1129,7 @@ exports.setServiceOverride = functions.https.onCall(async (data, context) => {
         ...service,
         overrideActive: data.active,
         overrideApprovedBy: data.active ? user.username : service.overrideApprovedBy,
-        overrideApprovedAt: data.active ? admin.firestore.FieldValue.serverTimestamp() : service.overrideApprovedAt,
+        overrideApprovedAt: data.active ? admin.firestore.Timestamp.now() : service.overrideApprovedAt,
         overrideNote: data.active ? (data.note || '') : service.overrideNote
       };
 
