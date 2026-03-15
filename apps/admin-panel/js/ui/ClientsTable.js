@@ -272,7 +272,15 @@ return;
             let statusText = 'פעיל';
             let icon = 'fa-check-circle';
 
-            if (client.isBlocked) {
+            const hasActiveOverride = client.services?.some(s =>
+                s.type === 'hours' && s.overrideActive === true
+            );
+
+            if (client.isBlocked && hasActiveOverride) {
+                statusClass = 'warning';
+                statusText = 'חריגה מאושרת';
+                icon = 'fa-bolt';
+            } else if (client.isBlocked) {
                 statusClass = 'blocked';
                 statusText = 'חסום';
                 icon = 'fa-ban';

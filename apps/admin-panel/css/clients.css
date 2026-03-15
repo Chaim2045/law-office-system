@@ -316,6 +316,11 @@
     color: var(--gray-700);
 }
 
+.status-badge.warning {
+    background: rgb(245 158 11 / 10%);
+    color: #d97706;
+}
+
 .status-badge.inactive {
     background: var(--gray-100);
     color: var(--gray-500);
