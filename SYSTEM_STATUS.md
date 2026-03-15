@@ -2,7 +2,7 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-12
+**עדכון אחרון:** 2026-03-15
 **סטטוס:** הכל ב-PROD, branches מסונכרנים, מערכת יציבה
 **PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate)
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               fbef860 — synced with production-stable
-production-stable:  fbef860 — PR #147 merged, live
+main:               06b87a5 — synced with production-stable
+production-stable:  06b87a5 — PR #147 merged, live
 אין branches פתוחים.
 ```
 
@@ -175,6 +175,23 @@ Client root: minutesUsed = hoursUsed * 60
 
 ---
 
+## 7א. ניקוי נתוני בדיקה — בוצע (2026-03-15)
+
+### מה נמצא
+רשומות על 5 לקוחות שלא קיימים ב-clients (נמחקו בעבר):
+2026021, 2026005, 2025003, 2025010, 2026020
+
+### מה נמחק
+- 12 timesheet_entries על לקוחות לא קיימים
+- 14 budget_tasks על לקוחות לא קיימים
+- 1 כפילות של marva על clientId 2026003 (26 דקות, 2026-01-27)
+- סה"כ: 27 רשומות, 0 שגיאות
+
+### מה נשאר פתוח
+- uzi — 330 דקות על משימה בוטלת (2025549, רעות ואוריאל חליבה) — ממתין לבירור עם עוזי
+
+---
+
 ## 8. ארכיטקטורת המערכת
 
 ### שני Netlify Sites מאותו Repo
@@ -236,6 +253,7 @@ Client root: minutesUsed = hoursUsed * 60
 | ניקוי branches ישנים | הושלם | feature/timesheet-triggers נמחק. סה"כ 2 branches בלבד. |
 | SMS Twilio | נמוך | TODO בקוד, +972549539238 |
 | AI integration ל-User App | נדחה | Cloud Function כ-proxy ל-Claude API |
+| חריגה מבוקרת — שלב ב׳ | קריטי | admin מאשר X שעות חריגה per service. כרגע שירות חסום = נעול לחלוטין |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---
