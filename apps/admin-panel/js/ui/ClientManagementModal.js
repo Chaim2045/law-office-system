@@ -489,10 +489,9 @@ return;
                     });
                 }
 
-                // Override UI for blocked services (admin only)
+                // Override UI for blocked services
                 let overrideHTML = '';
-                const isAdmin = window.AuthSystem && window.AuthSystem.isCurrentUserAdmin();
-                if (isAdmin && hoursRemaining <= 0) {
+                if (hoursRemaining <= 0) {
                     if (service.overrideActive) {
                         const overrideDate = service.overrideApprovedAt
                             ? new Date(service.overrideApprovedAt.seconds * 1000).toLocaleDateString('he-IL')
