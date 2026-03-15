@@ -168,11 +168,27 @@ export class TaskFormValidator {
     this.validateDeadline(formData.deadline);
     this.validateEstimatedTime(formData.estimatedTime);
     this.validateDescription(formData.description);
+    this.validateService(formData.selectorValues);
 
     return {
       isValid: this.errors.length === 0,
       errors: [...this.errors]
     };
+  }
+
+  /**
+   * Validate service selection
+   * ולידציה לבחירת שירות
+   *
+   * @param {Object} selectorValues - Values from ClientCaseSelector
+   * @returns {boolean} Is valid
+   */
+  validateService(selectorValues) {
+    if (!selectorValues || !selectorValues.serviceId) {
+      this.errors.push('חובה לבחור שירות');
+      return false;
+    }
+    return true;
   }
 
   /**
