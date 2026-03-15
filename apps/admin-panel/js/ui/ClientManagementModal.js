@@ -204,27 +204,70 @@ return;
             });
         }
 
+        showOverrideModal(active, serviceName) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;';
+
+                const modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);z-index:10000;min-width:300px;direction:rtl;';
+
+                if (active) {
+                    modal.innerHTML = `
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">אישור חריגה — ${serviceName}</div>
+                        <input type="text" id="overrideNoteInput" placeholder="הערה (אופציונלי)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-bottom:16px;box-sizing:border-box;">
+                        <div style="display:flex;gap:8px;justify-content:flex-end;">
+                            <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
+                            <button id="overrideConfirm" style="padding:8px 16px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">אשר חריגה</button>
+                        </div>`;
+                } else {
+                    modal.innerHTML = `
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">ביטול חריגה — ${serviceName}</div>
+                        <div style="color:#6b7280;margin-bottom:16px;font-size:14px;">האם לבטל את אישור החריגה לשירות זה?</div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;">
+                            <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
+                            <button id="overrideConfirm" style="padding:8px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">בטל חריגה</button>
+                        </div>`;
+                }
+
+                const cleanup = () => {
+ overlay.remove(); modal.remove();
+};
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(modal);
+
+                document.getElementById('overrideCancel').addEventListener('click', () => {
+ cleanup(); resolve(null);
+});
+                overlay.addEventListener('click', () => {
+ cleanup(); resolve(null);
+});
+                document.getElementById('overrideConfirm').addEventListener('click', () => {
+                    const note = active ? (document.getElementById('overrideNoteInput')?.value || '') : '';
+                    cleanup();
+                    resolve(note);
+                });
+            });
+        }
+
         async setServiceOverride(serviceId, active, serviceName) {
-            let note = '';
-            if (active) {
-                const result = prompt(`אישור חריגה לשירות "${serviceName}"\nהערה (אופציונלי):`);
-                if (result === null) {
+            const note = await this.showOverrideModal(active, serviceName);
+            if (note === null) {
 return;
 }
-                note = result || '';
-            } else {
-                if (!confirm(`לבטל אישור חריגה לשירות "${serviceName}"?`)) {
-return;
-}
-            }
 
             try {
-                await FirebaseService.call('setServiceOverride', {
+                const setOverrideFn = window.firebaseFunctions.httpsCallable('setServiceOverride');
+                const result = await setOverrideFn({
                     clientId: this.currentClient.id,
                     serviceId,
                     active,
                     note
                 });
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה באישור חריגה');
+                }
 
                 // עדכון מקומי
                 const services = this.currentClient.services || [];
