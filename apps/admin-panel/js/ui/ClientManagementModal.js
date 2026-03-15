@@ -204,6 +204,94 @@ return;
             });
         }
 
+        showOverrideModal(active, serviceName) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10300;';
+
+                const modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);z-index:10400;min-width:300px;direction:rtl;';
+
+                if (active) {
+                    modal.innerHTML = `
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">אישור חריגה — ${serviceName}</div>
+                        <input type="text" id="overrideNoteInput" placeholder="הערה (אופציונלי)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-bottom:16px;box-sizing:border-box;">
+                        <div style="display:flex;gap:8px;justify-content:flex-end;">
+                            <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
+                            <button id="overrideConfirm" style="padding:8px 16px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">אשר חריגה</button>
+                        </div>`;
+                } else {
+                    modal.innerHTML = `
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">ביטול חריגה — ${serviceName}</div>
+                        <div style="color:#6b7280;margin-bottom:16px;font-size:14px;">האם לבטל את אישור החריגה לשירות זה?</div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;">
+                            <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
+                            <button id="overrideConfirm" style="padding:8px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">בטל חריגה</button>
+                        </div>`;
+                }
+
+                const cleanup = () => {
+ overlay.remove(); modal.remove();
+};
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(modal);
+
+                document.getElementById('overrideCancel').addEventListener('click', () => {
+ cleanup(); resolve(null);
+});
+                overlay.addEventListener('click', () => {
+ cleanup(); resolve(null);
+});
+                document.getElementById('overrideConfirm').addEventListener('click', () => {
+                    const note = active ? (document.getElementById('overrideNoteInput')?.value || '') : '';
+                    cleanup();
+                    resolve(note);
+                });
+            });
+        }
+
+        async setServiceOverride(serviceId, active, serviceName) {
+            const note = await this.showOverrideModal(active, serviceName);
+            if (note === null) {
+return;
+}
+
+            try {
+                const setOverrideFn = window.firebaseFunctions.httpsCallable('setServiceOverride');
+                const result = await setOverrideFn({
+                    clientId: this.currentClient?.id || this.currentClient?.clientId,
+                    serviceId,
+                    active,
+                    note
+                });
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה באישור חריגה');
+                }
+
+                // עדכון מקומי
+                const services = this.currentClient.services || [];
+                const idx = services.findIndex(s => s.id === serviceId);
+                if (idx !== -1) {
+                    services[idx].overrideActive = active;
+                    if (active) {
+                        services[idx].overrideNote = note;
+                        services[idx].overrideApprovedAt = { seconds: Math.floor(Date.now() / 1000) };
+                    }
+                }
+
+                this.renderClientInfo();
+                this.renderServices();
+                this.showNotification(
+                    active ? `חריגה אושרה לשירות "${serviceName}"` : 'אישור חריגה בוטל',
+                    'success'
+                );
+            } catch (e) {
+                console.error('Error in setServiceOverride:', e);
+                this.showNotification('שגיאה בעדכון החריגה', 'error');
+            }
+        }
+
         renderClientInfo() {
             if (!this.currentClient) {
 return;
@@ -444,6 +532,28 @@ return;
                     });
                 }
 
+                // Override UI for blocked services
+                let overrideHTML = '';
+                if (hoursRemaining <= 0) {
+                    if (service.overrideActive) {
+                        const overrideDate = service.overrideApprovedAt
+                            ? new Date(service.overrideApprovedAt.seconds * 1000).toLocaleDateString('he-IL')
+                            : '';
+                        overrideHTML = `
+                            <div style="margin-top:8px;padding:8px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;">
+                                <span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:12px;font-size:12px;">⚡ חריגה מאושרת</span>
+                                <small style="color:#6b7280;display:block;margin-top:4px;">אושר ע"י: ${service.overrideApprovedBy || ''} | ${overrideDate}</small>
+                                ${service.overrideNote ? `<small style="color:#6b7280;display:block;">הערה: ${service.overrideNote}</small>` : ''}
+                                <button class="override-btn" data-service-id="${service.id}" data-active="false" data-name="${(service.name || '').replace(/"/g, '&quot;')}" style="padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;margin-top:4px;">בטל חריגה</button>
+                            </div>`;
+                    } else {
+                        overrideHTML = `
+                            <div style="margin-top:8px;">
+                                <button class="override-btn" data-service-id="${service.id}" data-active="true" data-name="${(service.name || '').replace(/"/g, '&quot;')}" style="padding:4px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">אפשר חריגה</button>
+                            </div>`;
+                    }
+                }
+
                 return `
                     <div class="management-service-info">
                         <div class="management-service-info-item">
@@ -477,6 +587,7 @@ return;
                             </div>
                         </div>
                     </div>
+                    ${overrideHTML}
                 `;
             } else if (service.type === 'legal_procedure') {
                 const stages = service.stages || [];
@@ -645,6 +756,15 @@ return '';
                     const action = e.currentTarget.dataset.serviceAction;
                     const serviceId = e.currentTarget.dataset.serviceId;
                     this.handleServiceAction(action, serviceId);
+                });
+            });
+
+            // Override buttons
+            this.servicesListContainer.querySelectorAll('.override-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const active = btn.dataset.active === 'true';
+                    this.setServiceOverride(btn.dataset.serviceId, active, btn.dataset.name);
                 });
             });
         }

@@ -346,7 +346,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         if (clientData && taskData.serviceId) {
           const lookupId = taskData.parentServiceId || taskData.serviceId;
           const targetService = (clientData.services || []).find(s => s.id === lookupId);
-          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0) {
+          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
             throw new functions.https.HttpsError(
               'failed-precondition',
               `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
