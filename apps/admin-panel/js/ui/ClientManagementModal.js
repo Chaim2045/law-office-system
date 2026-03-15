@@ -204,6 +204,51 @@ return;
             });
         }
 
+        async setServiceOverride(serviceId, active, serviceName) {
+            let note = '';
+            if (active) {
+                const result = prompt(`אישור חריגה לשירות "${serviceName}"\nהערה (אופציונלי):`);
+                if (result === null) {
+return;
+}
+                note = result || '';
+            } else {
+                if (!confirm(`לבטל אישור חריגה לשירות "${serviceName}"?`)) {
+return;
+}
+            }
+
+            try {
+                await FirebaseService.call('setServiceOverride', {
+                    clientId: this.currentClient.id,
+                    serviceId,
+                    active,
+                    note
+                });
+
+                // עדכון מקומי
+                const services = this.currentClient.services || [];
+                const idx = services.findIndex(s => s.id === serviceId);
+                if (idx !== -1) {
+                    services[idx].overrideActive = active;
+                    if (active) {
+                        services[idx].overrideNote = note;
+                        services[idx].overrideApprovedAt = { seconds: Math.floor(Date.now() / 1000) };
+                    }
+                }
+
+                this.renderClientInfo();
+                this.renderServices();
+                this.showNotification(
+                    active ? `חריגה אושרה לשירות "${serviceName}"` : 'אישור חריגה בוטל',
+                    'success'
+                );
+            } catch (e) {
+                console.error('Error in setServiceOverride:', e);
+                this.showNotification('שגיאה בעדכון החריגה', 'error');
+            }
+        }
+
         renderClientInfo() {
             if (!this.currentClient) {
 return;
@@ -444,6 +489,29 @@ return;
                     });
                 }
 
+                // Override UI for blocked services (admin only)
+                let overrideHTML = '';
+                const isAdmin = window.AuthSystem && window.AuthSystem.isCurrentUserAdmin();
+                if (isAdmin && hoursRemaining <= 0) {
+                    if (service.overrideActive) {
+                        const overrideDate = service.overrideApprovedAt
+                            ? new Date(service.overrideApprovedAt.seconds * 1000).toLocaleDateString('he-IL')
+                            : '';
+                        overrideHTML = `
+                            <div style="margin-top:8px;padding:8px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;">
+                                <span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:12px;font-size:12px;">⚡ חריגה מאושרת</span>
+                                <small style="color:#6b7280;display:block;margin-top:4px;">אושר ע"י: ${service.overrideApprovedBy || ''} | ${overrideDate}</small>
+                                ${service.overrideNote ? `<small style="color:#6b7280;display:block;">הערה: ${service.overrideNote}</small>` : ''}
+                                <button class="override-btn" data-service-id="${service.id}" data-active="false" data-name="${(service.name || '').replace(/"/g, '&quot;')}" style="padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;margin-top:4px;">בטל חריגה</button>
+                            </div>`;
+                    } else {
+                        overrideHTML = `
+                            <div style="margin-top:8px;">
+                                <button class="override-btn" data-service-id="${service.id}" data-active="true" data-name="${(service.name || '').replace(/"/g, '&quot;')}" style="padding:4px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">אפשר חריגה</button>
+                            </div>`;
+                    }
+                }
+
                 return `
                     <div class="management-service-info">
                         <div class="management-service-info-item">
@@ -477,6 +545,7 @@ return;
                             </div>
                         </div>
                     </div>
+                    ${overrideHTML}
                 `;
             } else if (service.type === 'legal_procedure') {
                 const stages = service.stages || [];
@@ -645,6 +714,15 @@ return '';
                     const action = e.currentTarget.dataset.serviceAction;
                     const serviceId = e.currentTarget.dataset.serviceId;
                     this.handleServiceAction(action, serviceId);
+                });
+            });
+
+            // Override buttons
+            this.servicesListContainer.querySelectorAll('.override-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const active = btn.dataset.active === 'true';
+                    this.setServiceOverride(btn.dataset.serviceId, active, btn.dataset.name);
                 });
             });
         }

@@ -83,6 +83,7 @@ exports.updateClient = clients.updateClient;
 exports.deleteClient = clients.deleteClient;
 exports.changeClientStatus = clients.changeClientStatus;
 exports.closeCase = clients.closeCase;
+exports.setServiceOverride = clients.setServiceOverride;
 
 // Services Functions (imported from ./services)
 const services = require('./services');

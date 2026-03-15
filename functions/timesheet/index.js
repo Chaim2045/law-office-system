@@ -168,7 +168,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       const lookupId = data.serviceId;
       if (lookupId) {
         const targetService = (clientData.services || []).find(s => s.id === lookupId);
-        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0) {
+        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
           throw new functions.https.HttpsError(
             'failed-precondition',
             `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
@@ -506,7 +506,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
       const lookupId = data.parentServiceId || data.serviceId;
       if (lookupId) {
         const targetService = (clientData.services || []).find(s => s.id === lookupId);
-        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0) {
+        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
           throw new functions.https.HttpsError(
             'failed-precondition',
             `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
@@ -962,7 +962,7 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
         const lookupId = data.parentServiceId || data.serviceId || entryData.serviceId;
         if (lookupId) {
           const targetService = (clientData2.services || []).find(s => s.id === lookupId);
-          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0) {
+          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
             throw new functions.https.HttpsError(
               'failed-precondition',
               `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`

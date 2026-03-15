@@ -1077,3 +1077,93 @@ exports.deleteClient = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+/**
+ * אישור/ביטול חריגה מבוקרת על שירות חסום
+ */
+exports.setServiceOverride = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לאשר חריגה'
+      );
+    }
+
+    if (!data.clientId || !data.serviceId || typeof data.active !== 'boolean') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסרים פרמטרים: clientId, serviceId, active'
+      );
+    }
+
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    await db.runTransaction(async (transaction) => {
+      const clientDoc = await transaction.get(clientRef);
+
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'לקוח לא נמצא');
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError('not-found', 'שירות לא נמצא');
+      }
+
+      const service = services[serviceIndex];
+
+      if (service.type !== 'hours') {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'חריגה מבוקרת זמינה רק לשירותי שעות'
+        );
+      }
+
+      const updatedService = {
+        ...service,
+        overrideActive: data.active,
+        overrideApprovedBy: data.active ? user.username : service.overrideApprovedBy,
+        overrideApprovedAt: data.active ? admin.firestore.FieldValue.serverTimestamp() : service.overrideApprovedAt,
+        overrideNote: data.active ? (data.note || '') : service.overrideNote
+      };
+
+      const updatedServices = [...services];
+      updatedServices[serviceIndex] = updatedService;
+
+      transaction.update(clientRef, {
+        services: updatedServices,
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    await logAction(
+      data.active ? 'SET_SERVICE_OVERRIDE' : 'REMOVE_SERVICE_OVERRIDE',
+      user.uid,
+      user.username,
+      {
+        clientId: data.clientId,
+        serviceId: data.serviceId,
+        overrideActive: data.active,
+        note: data.note || ''
+      }
+    );
+
+    return {
+      success: true,
+      serviceId: data.serviceId,
+      overrideActive: data.active
+    };
+
+  } catch (error) {
+    console.error('Error in setServiceOverride:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', 'שגיאה פנימית');
+  }
+});
