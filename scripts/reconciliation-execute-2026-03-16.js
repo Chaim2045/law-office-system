@@ -22,6 +22,15 @@ const TARGET_CLIENTS = [
   '2025658', '2025153', '2025994', '2025549', '2025006'
 ];
 
+// Manual service mapping for entries on tasks created without serviceId
+// Approved by Tommy 2026-03-16
+const MANUAL_SERVICE_MAPPING = {
+  'VKMyFxmVeiwAmvcfpJid': 'srv_legal_1765742557141',  // קובי הראל — תביעה
+  'YeylDbUa9Dvx9S3eJuM6': 'srv_1772921939885',        // רעות חליבה — ביה"ד לעבודה
+  '7Sj6bfaejsbD8gTzG1HP': 'srv_1769776553488',         // תמיר אקווע — תיק מקרקעין
+  'GkcmbKLn8QwKDOBNEp4b': 'srv_1769776553488'          // תמיר אקווע — תיק מקרקעין
+};
+
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
@@ -63,24 +72,44 @@ async function main() {
       // Step 3: Group entries by effectiveServiceId
       const serviceMinutes = {};
       const stageMinutes = {};  // serviceId -> stageId -> minutes
+      let unassignedMinutes = 0;
+      let unassignedCount = 0;
       entriesSnap.forEach(doc => {
         const entry = doc.data();
-        const effectiveServiceId = entry.parentServiceId || entry.serviceId;
+        let effectiveServiceId = entry.parentServiceId || entry.serviceId;
         if (!effectiveServiceId) {
-return;
-}
+          // Check manual mapping by taskId
+          const mappedServiceId = entry.taskId ? MANUAL_SERVICE_MAPPING[entry.taskId] : null;
+          if (mappedServiceId) {
+            effectiveServiceId = mappedServiceId;
+            console.log(`  📌 Mapped entry ${doc.id} (task ${entry.taskId}) → ${mappedServiceId}`);
+          } else {
+            // Truly unassigned — no serviceId and no manual mapping
+            unassignedMinutes += (entry.minutes || 0);
+            unassignedCount++;
+            return;
+          }
+        }
 
         serviceMinutes[effectiveServiceId] = (serviceMinutes[effectiveServiceId] || 0) + (entry.minutes || 0);
 
         // Track per-stage for legal_procedure
-        if (entry.stageId && entry.parentServiceId) {
-          if (!stageMinutes[effectiveServiceId]) {
-stageMinutes[effectiveServiceId] = {};
-}
-          stageMinutes[effectiveServiceId][entry.stageId] =
-            (stageMinutes[effectiveServiceId][entry.stageId] || 0) + (entry.minutes || 0);
+        // Bug 1: stageId = entry.stageId || entry.serviceId (when parentServiceId exists)
+        if (entry.parentServiceId) {
+          const resolvedStageId = entry.stageId || entry.serviceId;
+          if (resolvedStageId) {
+            if (!stageMinutes[effectiveServiceId]) {
+              stageMinutes[effectiveServiceId] = {};
+            }
+            stageMinutes[effectiveServiceId][resolvedStageId] =
+              (stageMinutes[effectiveServiceId][resolvedStageId] || 0) + (entry.minutes || 0);
+          }
         }
       });
+
+      if (unassignedCount > 0) {
+        console.log(`  ⚠️ Unassigned entries (no serviceId): ${unassignedCount} entries, ${unassignedMinutes} minutes`);
+      }
 
       // Step 4: Build updated services array
       let clientChanged = false;
@@ -147,15 +176,10 @@ return svc;
             }
           });
 
-          // Service-level aggregates from stages
-          const svcHoursUsed = round2(
-            updatedStages.reduce((sum, st) => {
-              if (st.pricingType === 'fixed' || (!st.pricingType && svc.pricingType === 'fixed')) {
-                return sum + (st.totalHoursWorked || 0);
-              }
-              return sum + (st.hoursUsed || 0);
-            }, 0)
-          );
+          // Service-level aggregates: use serviceMinutes as source of truth
+          // This includes both stage-assigned entries AND direct-to-service entries (bug 2)
+          const svcTotalMinutes = serviceMinutes[svcId] || 0;
+          const svcHoursUsed = round2(svcTotalMinutes / 60);
           const oldSvcHoursUsed = svc.hoursUsed || 0;
           const svcTotalHours = svc.totalHours || 0;
           const svcHoursRemaining = round2(svcTotalHours - svcHoursUsed);
