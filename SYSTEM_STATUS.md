@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-15
+**עדכון אחרון:** 2026-03-16
 **סטטוס:** הכל ב-PROD, branches מסונכרנים, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת)
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               ec17c25 — synced with production-stable
-production-stable:  ec17c25 — PR #148 merged, live
+main:               5deeea2 — synced with production-stable
+production-stable:  5deeea2 — PR #149 merged, live
 אין branches פתוחים.
 ```
 
@@ -32,6 +32,7 @@ production-stable:  ec17c25 — PR #148 merged, live
 | #146 | 9/3 | Service blocked enforcement — כל 4 נקודות כניסה ל-timesheet_entries |
 | #147 | 12/3 | caseOpenDate — תיקון דוח "מההתחלה" + עריכת תאריך פתיחת תיק + מיגרציה (31 לקוחות) |
 | #148 | 15/3 | Service Override — חריגה מבוקרת על שירות חסום |
+| #149 | 16/3 | Trigger hours reconciliation — 3 bug fixes + validation + invariant check + reconciliation 10 clients |
 
 ---
 
@@ -219,6 +220,26 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 ---
 
+## 7ג. Trigger Hours Reconciliation (PR #149, 2026-03-16)
+
+### בעיות שתוקנו
+1. getActivePackage — מחזיר package גם כש-hoursRemaining ≤ -10 כשיש overrideActive=true
+2. addServiceToClient — מעתיק pricingType לכל stage בעת יצירה
+3. createBudgetTask — serviceId חובה (validation חדש)
+4. TaskFormValidator — שירות חובה בטופס יצירת משימה
+5. dailyInvariantCheck — הרחבה: parentServiceId ל-legal_procedure, fixed services עם totalHoursWorked, 3 בדיקות חדשות, REQUIRED_STAGE_FIELDS validation
+6. 39 stages — מולאו pricingType מה-service parent
+
+### Reconciliation — 2026-03-16
+- 10 לקוחות תוקנו | 14 services | 12 tasks | 19 entries שוייכו | 0 שגיאות
+
+### לקוחות שתוקנו
+שרי פדרגרין +17.5h, קובי הראל +18.83h, מרום הנדסה +14.16h,
+רעות חליבה +12.75h, תמיר אקווע +3.84h, חזי מאנע +2h,
+אבי אליהו +1.75h, מורדי דבח +0.5h, שייקסטופ +0.41h, ד"ר וסרמן +0.25h
+
+---
+
 ## 8. ארכיטקטורת המערכת
 
 ### שני Netlify Sites מאותו Repo
@@ -280,7 +301,7 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | ניקוי branches ישנים | הושלם | feature/timesheet-triggers נמחק. סה"כ 2 branches בלבד. |
 | SMS Twilio | נמוך | TODO בקוד, +972549539238 |
 | AI integration ל-User App | נדחה | Cloud Function כ-proxy ל-Claude API |
-| legal_procedure fixed — חסימה שגויה | גבוה | אודי חסדאי (2025990) — hoursRemaining שלילי על fixed service. לא אמור להיחסם. |
+| Trigger refactor — קריאות קוד | נמוך | PR #149 תיקן באגים, refactor נדחה לעתיד |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---
