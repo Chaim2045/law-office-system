@@ -156,6 +156,7 @@ functions/
 | **overrideActive על service, לא client** | חריגה מבוקרת ברמת שירות בלבד — לא משפיעה על שאר השירותים |
 | **readBy ב-Firestore — field שטוח** | email כ-key, לא nested. set+merge בלבד |
 | **Netlify build = echo** | Workaround ל-tsc Permission denied. חוב טכני |
+| **REQUIRED_STAGE_FIELDS protocol** | כל PR שמוסיף שדה חדש ל-stage/service חייב לעדכן: (1) REQUIRED_STAGE_FIELDS ב-dailyInvariantCheck (2) סקריפט reconciliation |
 
 ---
 

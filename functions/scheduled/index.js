@@ -301,18 +301,24 @@ const dailyInvariantCheck = onSchedule({
       }
     });
 
-    // Check 2: stages without pricingType
+    // Check 2: stages missing required fields
+    const REQUIRED_STAGE_FIELDS = ['id', 'pricingType', 'status', 'order'];
     clientsSnapshot.docs.forEach(clientDoc => {
       const data = clientDoc.data();
+      const clientName = data.clientName || data.name || clientDoc.id;
       (data.services || []).forEach(svc => {
         if (svc.type === 'legal_procedure') {
           (svc.stages || []).forEach(stage => {
-            if (!stage.pricingType) {
+            const missingFields = REQUIRED_STAGE_FIELDS.filter(f => stage[f] === undefined || stage[f] === null);
+            if (missingFields.length > 0) {
               discrepancies.push({
-                type: 'stage_missing_pricingType',
+                type: 'stage_missing_required_field',
                 clientId: clientDoc.id,
+                clientName,
                 serviceId: svc.id,
-                stageId: stage.id
+                serviceName: svc.name || svc.id,
+                stageId: stage.id,
+                missingFields
               });
             }
           });
