@@ -64,6 +64,14 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // ✅ בדיקת שירות
+    if (!data.serviceId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חובה לבחור שירות למשימה'
+      );
+    }
+
     // Prepare refs (generate IDs upfront)
     const taskRef = db.collection('budget_tasks').doc();
     const approvalRef = db.collection('pending_task_approvals').doc();

@@ -244,13 +244,13 @@ const dailyInvariantCheck = onSchedule({
           .where('clientId', '==', clientId)
           .get();
 
-        // Group minutes by serviceId
+        // Group minutes by effective serviceId (parentServiceId for legal_procedure stages)
         const serviceMinutes = {};
         timesheetSnapshot.forEach(doc => {
           const entry = doc.data();
-          const serviceId = entry.serviceId;
-          if (serviceId) {
-            serviceMinutes[serviceId] = (serviceMinutes[serviceId] || 0) + (entry.minutes || 0);
+          const effectiveServiceId = entry.parentServiceId || entry.serviceId;
+          if (effectiveServiceId) {
+            serviceMinutes[effectiveServiceId] = (serviceMinutes[effectiveServiceId] || 0) + (entry.minutes || 0);
           }
         });
 
@@ -259,7 +259,9 @@ const dailyInvariantCheck = onSchedule({
           const serviceId = service.id;
           if (!serviceId) continue;
 
-          const cardHoursUsed = service.hoursUsed || 0;
+          const cardHoursUsed = service.pricingType === 'fixed'
+            ? (service.stages || []).reduce((sum, st) => sum + (st.totalHoursWorked || 0), 0)
+            : (service.hoursUsed || 0);
           const timesheetMinutes = serviceMinutes[serviceId] || 0;
           const timesheetHoursUsed = timesheetMinutes / 60;
           const gap = Math.abs(cardHoursUsed - timesheetHoursUsed);
@@ -281,6 +283,75 @@ const dailyInvariantCheck = onSchedule({
         // Continue to next client
       }
     }
+
+    // Check 1: tasks without serviceId
+    const tasksSnapshot = await db.collection('budget_tasks')
+      .where('status', 'in', ['פעיל', 'הושלם'])
+      .get();
+    tasksSnapshot.forEach(doc => {
+      const task = doc.data();
+      if (!task.serviceId) {
+        discrepancies.push({
+          type: 'task_missing_serviceId',
+          taskId: doc.id,
+          clientId: task.clientId,
+          employee: task.employee,
+          description: task.description
+        });
+      }
+    });
+
+    // Check 2: stages missing required fields
+    const REQUIRED_STAGE_FIELDS = ['id', 'pricingType', 'status', 'order'];
+    clientsSnapshot.docs.forEach(clientDoc => {
+      const data = clientDoc.data();
+      const clientName = data.clientName || data.name || clientDoc.id;
+      (data.services || []).forEach(svc => {
+        if (svc.type === 'legal_procedure') {
+          (svc.stages || []).forEach(stage => {
+            const missingFields = REQUIRED_STAGE_FIELDS.filter(f => stage[f] === undefined || stage[f] === null);
+            if (missingFields.length > 0) {
+              discrepancies.push({
+                type: 'stage_missing_required_field',
+                clientId: clientDoc.id,
+                clientName,
+                serviceId: svc.id,
+                serviceName: svc.name || svc.id,
+                stageId: stage.id,
+                missingFields
+              });
+            }
+          });
+        }
+      });
+    });
+
+    // Check 3: task.actualMinutes vs SUM entries
+    const taskMinutes = {};
+    const allEntriesSnapshot = await db.collection('timesheet_entries')
+      .where('taskId', '!=', null)
+      .get();
+    allEntriesSnapshot.forEach(doc => {
+      const entry = doc.data();
+      if (entry.taskId) {
+        taskMinutes[entry.taskId] = (taskMinutes[entry.taskId] || 0) + (entry.minutes || 0);
+      }
+    });
+    tasksSnapshot.forEach(doc => {
+      const task = doc.data();
+      const sumEntries = taskMinutes[doc.id] || 0;
+      const actualMinutes = task.actualMinutes || 0;
+      if (Math.abs(actualMinutes - sumEntries) > 1) {
+        discrepancies.push({
+          type: 'task_actualMinutes_gap',
+          taskId: doc.id,
+          clientId: task.clientId,
+          actualMinutes,
+          sumEntries,
+          gap: sumEntries - actualMinutes
+        });
+      }
+    });
 
     // Save result to system_health_checks
     if (discrepancies.length > 0) {

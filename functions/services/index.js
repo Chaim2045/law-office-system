@@ -126,6 +126,7 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           id: stageId,
           name: stageName,
           description: sanitizeString(stage.description || ''),
+          pricingType: data.pricingType,
           status: index === 0 ? 'active' : 'pending',
           order: index + 1
         };

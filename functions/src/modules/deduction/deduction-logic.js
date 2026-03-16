@@ -59,7 +59,7 @@
  * ✅ UPGRADE (2025-12-21): תמיכה ב-overdraft עד -10 שעות
  * כדי למנוע הפרעה למהלך העבודה התקין
  */
-function getActivePackage(stage, allowOverdraft = true) {
+function getActivePackage(stage, allowOverdraft = true, overrideActive = false) {
   if (!stage || !stage.packages || stage.packages.length === 0) {
     return null;
   }
@@ -73,7 +73,7 @@ function getActivePackage(stage, allowOverdraft = true) {
 
       if (allowOverdraft) {
         // ✅ אפשר חריגה עד -10 שעות (כולל חבילות depleted)
-        return isActiveOrPending && hoursRemaining > -10;
+        return isActiveOrPending && (overrideActive || hoursRemaining > -10);
       } else {
         // התנהגות מקורית - רק חבילות עם שעות חיוביות
         return isActiveOrPending && hoursRemaining > 0;
@@ -88,7 +88,7 @@ function getActivePackage(stage, allowOverdraft = true) {
     const hoursRemaining = pkg.hoursRemaining || 0;
 
     if (allowOverdraft) {
-      return isActive && hoursRemaining > -10;
+      return isActive && (overrideActive || hoursRemaining > -10);
     } else {
       return isActive && hoursRemaining > 0;
     }

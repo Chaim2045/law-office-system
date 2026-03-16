@@ -4,7 +4,7 @@
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
 **עדכון אחרון:** 2026-03-15
 **סטטוס:** הכל ב-PROD, branches מסונכרנים, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate)
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               06b87a5 — synced with production-stable
-production-stable:  06b87a5 — PR #147 merged, live
+main:               ec17c25 — synced with production-stable
+production-stable:  ec17c25 — PR #148 merged, live
 אין branches פתוחים.
 ```
 
@@ -31,6 +31,7 @@ production-stable:  06b87a5 — PR #147 merged, live
 | #145 | 5/3 | Cache invalidation ב-5 callers אחרי timesheet operations |
 | #146 | 9/3 | Service blocked enforcement — כל 4 נקודות כניסה ל-timesheet_entries |
 | #147 | 12/3 | caseOpenDate — תיקון דוח "מההתחלה" + עריכת תאריך פתיחת תיק + מיגרציה (31 לקוחות) |
+| #148 | 15/3 | Service Override — חריגה מבוקרת על שירות חסום |
 
 ---
 
@@ -152,8 +153,10 @@ functions/
 | **auth-guard ממתין ל-firebase:ready event** | מונע הבהוב login screen לפני ש-Firebase מסיים init |
 | **Pre-flight auth check בכל דף Admin** | Optimistic loading — sessionStorage check לפני Firebase |
 | **auth-optimistic class pattern ל-index.html** | index.html הוא גם login page — לא ניתן להחליף AuthSystem |
+| **overrideActive על service, לא client** | חריגה מבוקרת ברמת שירות בלבד — לא משפיעה על שאר השירותים |
 | **readBy ב-Firestore — field שטוח** | email כ-key, לא nested. set+merge בלבד |
 | **Netlify build = echo** | Workaround ל-tsc Permission denied. חוב טכני |
+| **REQUIRED_STAGE_FIELDS protocol** | כל PR שמוסיף שדה חדש ל-stage/service חייב לעדכן: (1) REQUIRED_STAGE_FIELDS ב-dailyInvariantCheck (2) סקריפט reconciliation |
 
 ---
 
@@ -189,6 +192,30 @@ Client root: minutesUsed = hoursUsed * 60
 
 ### מה נשאר פתוח
 - uzi — 330 דקות על משימה בוטלת (2025549, רעות ואוריאל חליבה) — ממתין לבירור עם עוזי
+
+---
+
+## 7ב. Service Override — חריגה מבוקרת (PR #148)
+
+### הבעיה שהייתה
+שירות שנגמרו שעותיו חסום לחלוטין — אין דרך להמשיך לדווח גם אם admin רוצה לאשר המשך עבודה.
+
+### הפתרון
+Admin מאשר חריגה על שירות ספציפי → העובד ממשיך לדווח → isOverage: true נשמר על כל רשומה → חיוב לפי מה שנרשם בפועל.
+
+### קבצים שהשתנו
+- functions/clients/index.js — CF חדש: setServiceOverride (transaction + audit log)
+- functions/index.js — export
+- functions/addTimeToTask_v2.js — bypass חסימה אם overrideActive
+- functions/timesheet/index.js — bypass חסימה (3 מקומות)
+- apps/admin-panel/js/ui/ClientManagementModal.js — כפתור אפשר/בטל חריגה + modal
+- apps/admin-panel/js/ui/ClientsTable.js — badge "חריגה מאושרת" בטבלה
+
+### החלטות ארכיטקטוניות
+- overrideActive על service object (לא client) — ברמת שירות בלבד
+- overrideApprovedBy + overrideApprovedAt + overrideNote — לתיעוד וביקורת
+- Trigger לא השתנה — isOverage ממשיך להיכתב אוטומטית
+- ביטול override = חסימה מיידית
 
 ---
 
@@ -253,7 +280,7 @@ Client root: minutesUsed = hoursUsed * 60
 | ניקוי branches ישנים | הושלם | feature/timesheet-triggers נמחק. סה"כ 2 branches בלבד. |
 | SMS Twilio | נמוך | TODO בקוד, +972549539238 |
 | AI integration ל-User App | נדחה | Cloud Function כ-proxy ל-Claude API |
-| חריגה מבוקרת — שלב ב׳ | קריטי | admin מאשר X שעות חריגה per service. כרגע שירות חסום = נעול לחלוטין |
+| legal_procedure fixed — חסימה שגויה | גבוה | אודי חסדאי (2025990) — hoursRemaining שלילי על fixed service. לא אמור להיחסם. |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---

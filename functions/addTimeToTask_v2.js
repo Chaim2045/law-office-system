@@ -187,7 +187,7 @@ function lookupServiceIds(clientData, taskData) {
       if (stage) {
         result.stageId = stage.id;
         if (isHourly) {
-          const activePackage = getActivePackage(stage);
+          const activePackage = getActivePackage(stage, true, service.overrideActive);
           if (activePackage) result.packageId = activePackage.id;
         }
       }
@@ -199,7 +199,7 @@ function lookupServiceIds(clientData, taskData) {
   if (clientData.services && clientData.services.length > 0 && taskData.serviceId) {
     const service = clientData.services.find(s => s.id === taskData.serviceId);
     if (service && service.type !== 'legal_procedure') {
-      const activePackage = getActivePackage(service);
+      const activePackage = getActivePackage(service, true, service.overrideActive);
       if (activePackage) result.packageId = activePackage.id;
     }
     return result;
@@ -208,7 +208,7 @@ function lookupServiceIds(clientData, taskData) {
   // PATH 3: hours fallback
   if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
     const service = clientData.services[0];
-    const activePackage = getActivePackage(service);
+    const activePackage = getActivePackage(service, true, service.overrideActive);
     if (activePackage) result.packageId = activePackage.id;
     return result;
   }
@@ -219,7 +219,7 @@ function lookupServiceIds(clientData, taskData) {
     const stage = (clientData.stages || []).find(s => s.id === currentStageId);
     if (stage) {
       result.stageId = stage.id;
-      const activePackage = getActivePackage(stage);
+      const activePackage = getActivePackage(stage, true, false);
       if (activePackage) result.packageId = activePackage.id;
     }
     return result;
