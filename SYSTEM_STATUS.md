@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-16
+**עדכון אחרון:** 2026-03-18
 **סטטוס:** הכל ב-PROD, branches מסונכרנים, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation)
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               5deeea2 — synced with production-stable
-production-stable:  5deeea2 — PR #149 merged, live
+main:               dac7177 — synced with production-stable
+production-stable:  dac7177 — PR #151 merged, live
 אין branches פתוחים.
 ```
 
@@ -33,6 +33,7 @@ production-stable:  5deeea2 — PR #149 merged, live
 | #147 | 12/3 | caseOpenDate — תיקון דוח "מההתחלה" + עריכת תאריך פתיחת תיק + מיגרציה (31 לקוחות) |
 | #148 | 15/3 | Service Override — חריגה מבוקרת על שירות חסום |
 | #149 | 16/3 | Trigger hours reconciliation — 3 bug fixes + validation + invariant check + reconciliation 10 clients |
+| #151 | 18/3 | מיגרציה: 39 stages pricingType + 4 tasks actualMinutes |
 
 ---
 
@@ -240,6 +241,26 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 ---
 
+## 7ד. מיגרציה stage.pricingType (2026-03-18)
+
+### הבעיה
+39 stages על 13 services legal_procedure נוצרו ללא pricingType.
+הטריגר לא ידע לזהות fixed vs hourly → דילג → actualMinutes = 0.
+התגלה כשמרווה דיווחה שאינה יכולה לסמן משימה כהושלמה (שרית רוזנס).
+
+### מה בוצע
+- 39 stages קיבלו pricingType מה-service parent
+- 4 tasks תוקן actualMinutes (מקור אמת: timesheet_entries)
+- task 7KaLpvo (ארנון פטר) — דולג בכוונה (flow שונה)
+- 0 שגיאות
+
+### לקוחות שטופלו
+תמיר אקווע, שייקסטופ, מרום הנדסה, אלעד מידר,
+רעות חליבה, שרית רוזנס, קובי הראל, ארנון פטר,
+אורן קניג, רון פישמן
+
+---
+
 ## 8. ארכיטקטורת המערכת
 
 ### שני Netlify Sites מאותו Repo
@@ -302,6 +323,7 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | SMS Twilio | נמוך | TODO בקוד, +972549539238 |
 | AI integration ל-User App | נדחה | Cloud Function כ-proxy ל-Claude API |
 | Trigger refactor — קריאות קוד | נמוך | PR #149 תיקן באגים, refactor נדחה לעתיד |
+| dailyInvariantCheck — WhatsApp התראות | בינוני | נמצא פגם: בוט רץ אבל לא שולח התראה |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---
