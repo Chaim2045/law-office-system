@@ -4,7 +4,7 @@
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
 **עדכון אחרון:** 2026-03-18
 **סטטוס:** הכל ב-PROD, branches מסונכרנים, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration)
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               dac7177 — synced with production-stable
-production-stable:  dac7177 — PR #151 merged, live
+main:               63c889f — synced with production-stable
+production-stable:  9b4f4b2 — PR #153 merged, live
 אין branches פתוחים.
 ```
 
@@ -34,6 +34,7 @@ production-stable:  dac7177 — PR #151 merged, live
 | #148 | 15/3 | Service Override — חריגה מבוקרת על שירות חסום |
 | #149 | 16/3 | Trigger hours reconciliation — 3 bug fixes + validation + invariant check + reconciliation 10 clients |
 | #151 | 18/3 | מיגרציה: 39 stages pricingType + 4 tasks actualMinutes |
+| #153 | 18/3 | fix: fixed-service לא נחסם — calcClientAggregates + applyLegalProcedureDelta + ServiceOverdraftResolution |
 
 ---
 
@@ -261,6 +262,25 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 ---
 
+## 7ה. תיקון חסימה שגויה על fixed services (PR #153, 2026-03-18)
+
+### הבעיה
+לקוחות עם שירות legal_procedure + fixed הוצגו כחסומים.
+הסיבה: הטריגר חישב hoursRemaining = (0 - hoursUsed) על fixed service (שאין לו totalHours) → תמיד שלילי → isBlocked = true.
+
+### מה תוקן
+1. calcClientAggregates — מסנן fixed services לפני חישוב isBlocked
+2. applyLegalProcedureDelta — fixed service מקבל hoursRemaining = null
+3. ServiceOverdraftResolution — לא מציג overdraft על fixed service
+4. Reconciliation — 22 לקוחות תוקנו, 25 services קיבלו hoursRemaining = null, 15 לקוחות הוסרה חסימה שגויה
+
+### לא תקרה שוב
+- שירות fixed חדש לא יקבל hoursRemaining
+- הטריגר מסנן fixed לפני חישוב isBlocked
+- dailyInvariantCheck יתפוס חריגות עתידיות
+
+---
+
 ## 8. ארכיטקטורת המערכת
 
 ### שני Netlify Sites מאותו Repo
@@ -323,6 +343,7 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | SMS Twilio | נמוך | TODO בקוד, +972549539238 |
 | AI integration ל-User App | נדחה | Cloud Function כ-proxy ל-Claude API |
 | Trigger refactor — קריאות קוד | נמוך | PR #149 תיקן באגים, refactor נדחה לעתיד |
+| services/index.js — סינון fixed בחישוב client aggregates | נמוך | לא דחוף, כיסוי נוסף |
 | dailyInvariantCheck — WhatsApp התראות | בינוני | נמצא פגם: בוט רץ אבל לא שולח התראה |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
