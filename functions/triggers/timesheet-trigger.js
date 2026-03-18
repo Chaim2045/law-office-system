@@ -186,7 +186,9 @@ function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minut
     const svcHoursUsed = round2(
       updatedStages.reduce((sum, st) => sum + (st.pricingType === 'fixed' ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
     );
-    const svcHoursRemaining = round2((svc.totalHours || 0) - svcHoursUsed);
+    const svcHoursRemaining = svc.pricingType === 'fixed'
+      ? null
+      : round2((svc.totalHours || 0) - svcHoursUsed);
 
     return {
       ...svc,
@@ -205,15 +207,17 @@ function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minut
  * Calculate client-level aggregates from services array
  */
 function calcClientAggregates(services, clientTotalHours) {
+  const billableServices = services.filter(
+    svc => !(svc.type === 'legal_procedure' && svc.pricingType === 'fixed')
+  );
   const hoursUsed = round2(
-    services.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
+    billableServices.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
   );
   const hoursRemaining = round2((clientTotalHours || 0) - hoursUsed);
   const minutesUsed = round2(hoursUsed * 60);
   const minutesRemaining = round2(hoursRemaining * 60);
   const isBlocked = hoursRemaining <= 0;
   const isCritical = !isBlocked && hoursRemaining <= 5;
-
   return { hoursUsed, hoursRemaining, minutesUsed, minutesRemaining, isBlocked, isCritical };
 }
 
