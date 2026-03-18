@@ -602,7 +602,8 @@
                     }
 
                     // בדיקה אם השירות בחריגה
-                    const hasOverdraft = (service.hoursRemaining || 0) < 0;
+                    const isFixed = service.type === 'legal_procedure' && service.pricingType === 'fixed';
+                    const hasOverdraft = !isFixed && (service.hoursRemaining || 0) < 0;
                     if (!hasOverdraft) {
                         // ✅ שחרור נעילה - אין חריגה
                         delete card.dataset.overdraftInjecting;
