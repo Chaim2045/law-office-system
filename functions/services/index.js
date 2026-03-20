@@ -9,6 +9,56 @@ const { sanitizeString } = require('../shared/validators');
 const db = admin.firestore();
 
 // ===============================
+// Client Aggregate Helpers
+// ===============================
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+function isFixedService(svc) {
+  return svc.type === 'legal_procedure' && svc.pricingType === 'fixed';
+}
+
+function calcClientAggregates(services, clientTotalHours) {
+  const safeTotalHours = typeof clientTotalHours === 'number' && !Number.isNaN(clientTotalHours)
+    ? clientTotalHours
+    : 0;
+
+  const billableServices = (services || []).filter(svc => !isFixedService(svc));
+
+  const hoursUsed = round2(
+    billableServices.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
+  );
+
+  const hoursRemaining = round2(safeTotalHours - hoursUsed);
+
+  const minutesUsed = round2(hoursUsed * 60);
+  const minutesRemaining = round2(hoursRemaining * 60);
+
+  let isBlocked;
+  let isCritical;
+
+  if (billableServices.length === 0) {
+    // fixed-only client — never blocked by hours
+    isBlocked = false;
+    isCritical = false;
+  } else {
+    isBlocked = hoursRemaining <= 0;
+    isCritical = !isBlocked && hoursRemaining <= 5;
+  }
+
+  return {
+    hoursUsed,
+    hoursRemaining,
+    minutesUsed,
+    minutesRemaining,
+    isBlocked,
+    isCritical
+  };
+}
+
+// ===============================
 // Service Management Functions
 // ===============================
 
@@ -175,22 +225,19 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
 
     // עדכון הלקוח
     const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-    const clientHoursUsed = services.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
-    const clientHoursRemaining = services.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
-    const clientMinutesRemaining = clientHoursRemaining * 60;
-    const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
-    const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+    const agg = calcClientAggregates(services, clientTotalHours);
 
     const updates = {
       services: services,
       totalServices: services.length,
       activeServices: services.filter(s => s.status === 'active').length,
       totalHours: clientTotalHours,
-      hoursUsed: clientHoursUsed,
-      hoursRemaining: clientHoursRemaining,
-      minutesRemaining: clientMinutesRemaining,
-      isBlocked: clientIsBlocked,
-      isCritical: clientIsCritical,
+      hoursUsed: agg.hoursUsed,
+      hoursRemaining: agg.hoursRemaining,
+      minutesUsed: agg.minutesUsed,
+      minutesRemaining: agg.minutesRemaining,
+      isBlocked: agg.isBlocked,
+      isCritical: agg.isCritical,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username
     };
@@ -324,20 +371,17 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
 
     // שמירה
     const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-    const clientHoursUsed = services.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
-    const clientHoursRemaining = services.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
-    const clientMinutesRemaining = clientHoursRemaining * 60;
-    const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
-    const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+    const agg = calcClientAggregates(services, clientTotalHours);
 
     await clientRef.update({
       services: services,
       totalHours: clientTotalHours,
-      hoursUsed: clientHoursUsed,
-      hoursRemaining: clientHoursRemaining,
-      minutesRemaining: clientMinutesRemaining,
-      isBlocked: clientIsBlocked,
-      isCritical: clientIsCritical,
+      hoursUsed: agg.hoursUsed,
+      hoursRemaining: agg.hoursRemaining,
+      minutesUsed: agg.minutesUsed,
+      minutesRemaining: agg.minutesRemaining,
+      isBlocked: agg.isBlocked,
+      isCritical: agg.isCritical,
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username
     });
@@ -617,26 +661,18 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
       // ✅ CRITICAL: חישוב aggregates של client מחדש מכל ה-services (Single Source of Truth!)
       const clientTotalHours = services.reduce((sum, service) =>
         sum + (service.totalHours || 0), 0);
-
-      const clientHoursUsed = services.reduce((sum, service) =>
-        sum + (service.hoursUsed || 0), 0);
-
-      const clientHoursRemaining = services.reduce((sum, service) =>
-        sum + (service.hoursRemaining || 0), 0);
+      const agg = calcClientAggregates(services, clientTotalHours);
 
       // 💾 Step 9: שמירה אטומית
-      const clientMinutesRemaining = clientHoursRemaining * 60;
-      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
-      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
-
       transaction.update(clientRef, {
         services: services,
         totalHours: clientTotalHours,
-        hoursUsed: clientHoursUsed,
-        hoursRemaining: clientHoursRemaining,
-        minutesRemaining: clientMinutesRemaining,
-        isBlocked: clientIsBlocked,
-        isCritical: clientIsCritical,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });
@@ -648,8 +684,8 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         targetStage,
         legalProcedure,
         clientTotalHours,
-        clientHoursUsed,
-        clientHoursRemaining,
+        clientHoursUsed: agg.hoursUsed,
+        clientHoursRemaining: agg.hoursRemaining,
         stageWasCompleted
       };
     });
@@ -968,13 +1004,9 @@ exports.completeService = functions.https.onCall(async (data, context) => {
       const updatedService = { ...service, status: 'completed', completedAt: now };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3e. Recalculate client-level aggregates (same logic as addPackageToService)
+      // 3e. Recalculate client-level aggregates
       const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
-      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
-      const clientMinutesRemaining = clientHoursRemaining * 60;
-      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
-      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+      const agg = calcClientAggregates(updatedServices, clientTotalHours);
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
@@ -984,11 +1016,12 @@ exports.completeService = functions.https.onCall(async (data, context) => {
         totalServices: totalServices,
         activeServices: activeServices,
         totalHours: clientTotalHours,
-        hoursUsed: clientHoursUsed,
-        hoursRemaining: clientHoursRemaining,
-        minutesRemaining: clientMinutesRemaining,
-        isBlocked: clientIsBlocked,
-        isCritical: clientIsCritical,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });
@@ -1000,10 +1033,10 @@ exports.completeService = functions.https.onCall(async (data, context) => {
         completedAt: now,
         aggregates: {
           totalHours: clientTotalHours,
-          hoursRemaining: clientHoursRemaining,
-          minutesRemaining: clientMinutesRemaining,
-          isBlocked: clientIsBlocked,
-          isCritical: clientIsCritical,
+          hoursRemaining: agg.hoursRemaining,
+          minutesRemaining: agg.minutesRemaining,
+          isBlocked: agg.isBlocked,
+          isCritical: agg.isCritical,
           totalServices: totalServices,
           activeServices: activeServices
         }
@@ -1153,13 +1186,9 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
       // 3e. Immutable array replacement
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3f. Recalculate client-level aggregates (same logic as completeService / addPackageToService)
+      // 3f. Recalculate client-level aggregates
       const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
-      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
-      const clientMinutesRemaining = clientHoursRemaining * 60;
-      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
-      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+      const agg = calcClientAggregates(updatedServices, clientTotalHours);
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
@@ -1169,11 +1198,12 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
         totalServices: totalServices,
         activeServices: activeServices,
         totalHours: clientTotalHours,
-        hoursUsed: clientHoursUsed,
-        hoursRemaining: clientHoursRemaining,
-        minutesRemaining: clientMinutesRemaining,
-        isBlocked: clientIsBlocked,
-        isCritical: clientIsCritical,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });
@@ -1190,11 +1220,11 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
         statusChangedAt: now,
         aggregates: {
           totalHours: clientTotalHours,
-          hoursUsed: clientHoursUsed,
-          hoursRemaining: clientHoursRemaining,
-          minutesRemaining: clientMinutesRemaining,
-          isBlocked: clientIsBlocked,
-          isCritical: clientIsCritical,
+          hoursUsed: agg.hoursUsed,
+          hoursRemaining: agg.hoursRemaining,
+          minutesRemaining: agg.minutesRemaining,
+          isBlocked: agg.isBlocked,
+          isCritical: agg.isCritical,
           totalServices: totalServices,
           activeServices: activeServices
         }
@@ -1322,13 +1352,9 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
       // 3e. Immutable removal
       const updatedServices = services.filter((s, idx) => idx !== serviceIndex);
 
-      // 3f. Recalculate client-level aggregates (same logic as completeService / changeServiceStatus)
+      // 3f. Recalculate client-level aggregates
       const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
-      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
-      const clientMinutesRemaining = clientHoursRemaining * 60;
-      const clientIsBlocked = (clientHoursRemaining <= 0) && (clientData.type === 'hours');
-      const clientIsCritical = (!clientIsBlocked) && (clientHoursRemaining <= 5) && (clientData.type === 'hours');
+      const agg = calcClientAggregates(updatedServices, clientTotalHours);
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
@@ -1338,11 +1364,12 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
         totalServices: totalServices,
         activeServices: activeServices,
         totalHours: clientTotalHours,
-        hoursUsed: clientHoursUsed,
-        hoursRemaining: clientHoursRemaining,
-        minutesRemaining: clientMinutesRemaining,
-        isBlocked: clientIsBlocked,
-        isCritical: clientIsCritical,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });
@@ -1357,11 +1384,11 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
         serviceType,
         aggregates: {
           totalHours: clientTotalHours,
-          hoursUsed: clientHoursUsed,
-          hoursRemaining: clientHoursRemaining,
-          minutesRemaining: clientMinutesRemaining,
-          isBlocked: clientIsBlocked,
-          isCritical: clientIsCritical,
+          hoursUsed: agg.hoursUsed,
+          hoursRemaining: agg.hoursRemaining,
+          minutesRemaining: agg.minutesRemaining,
+          isBlocked: agg.isBlocked,
+          isCritical: agg.isCritical,
           totalServices: totalServices,
           activeServices: activeServices
         }
