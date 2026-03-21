@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-21
-**סטטוס:** הכל ב-PROD, Performance optimization deployed, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates), #156 (performance), #157-#160 (hotfixes)
+**עדכון אחרון:** 2026-03-22
+**סטטוס:** הכל ב-PROD, Performance optimization deployed, Loading consolidation done, מערכת יציבה
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates), #156 (performance), #157-#160 (hotfixes), #161 (loading consolidation)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               a4751ab — synced with production-stable
-production-stable:  a4751ab — PR #160 merged, live
+main:               c3f305d — synced with production-stable
+production-stable:  58069e7 — PR #161 merged, live
 אין branches פתוחים.
 ```
 
@@ -41,6 +41,7 @@ production-stable:  a4751ab — PR #160 merged, live
 | #158 | 21/3 | Hotfix: lottie CDN back to head |
 | #159 | 21/3 | Hotfix: lottie-animations + lottie-manager back to blocking |
 | #160 | 21/3 | Hotfix: feature-flags.js back to blocking (lottie root cause) |
+| #161 | 21/3 | Refactor: consolidate loading systems — NS calls UnifiedLoadingOverlay directly |
 
 ---
 
@@ -331,12 +332,24 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | lottie-manager.js | חייב להיטען לפני NotificationSystem |
 | feature-flags.js | loading-wrapper.js קורא SHARED_UI_CONFIG ב-init |
 
-### ממצא: שתי מערכות loading מקבילות
+### ממצא: שתי מערכות loading מקבילות — **טופל ב-PR #161**
 - **NotificationSystem** (ישנה, אוקט 2025) — `#lottie-loader`, דרך LottieManager, אין auto-timeout
 - **UnifiedLoadingOverlay** (חדשה, נוב 2025) — `#unified-lottie-container`, ישירות דרך lottie, auto-timeout 30s
 - **loading-wrapper.js** — שכבת תאימות, מפנה ל-Unified אם `USE_SHARED_LOADING=true`
 - **feature-flags.js** — `USE_SHARED_LOADING: true` (מופעל)
-- **נדרש:** איחוד שתי המערכות (issue נפרד)
+
+### PR #161: Loading Consolidation (2026-03-21)
+- **notification-system.js** — showLoading/hideLoading קוראים ישירות ל-UnifiedLoadingOverlay (lazy singleton)
+- **loading-wrapper.js** הוסר מ-index.html (קובץ נשאר בדיסק ל-rollback)
+- **אין שינוי API** — כל הקוראים (ui-components, case-creation-dialog, notification-bridge) לא השתנו
+- מבטל: race condition עם feature-flags, indirection דרך wrapper, שתי מערכות מקבילות
+
+### Audit 28 deferred scripts (2026-03-21)
+- **23 SAFE** — אין blocking script שתלוי בהם ב-init time
+- **3 NEEDS REVIEW** (mitigated):
+  - service-card-renderer.js + client-search.js — `window.safeText` race (fallback מקומי קיים, לא crash)
+  - selectors-init.js — auto-init ב-DOMContentLoaded, EventBus guard קיים
+- **0 UNSAFE**
 
 ---
 
@@ -390,8 +403,8 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | נושא | עדיפות | הערות |
 |------|--------|-------|
 | CI Pipeline (GitHub Actions) | קריטי | טרם נעשה |
-| Loading consolidation — איחוד שתי מערכות loading | גבוה | שתי מערכות מקבילות עם wrapper ו-flag |
-| Audit 28 deferred scripts — תלויות הפוכות | גבוה | 5 scripts חזרו ל-blocking — יתכנו עוד |
+| Loading consolidation — איחוד שתי מערכות loading | הושלם | PR #161, NS קורא ישירות ל-Unified |
+| Audit 28 deferred scripts — תלויות הפוכות | הושלם | 23 SAFE, 3 NEEDS REVIEW (mitigated), 0 UNSAFE |
 | Node.js 20 upgrade ל-22 | גבוה | deprecated 30/04/2026 |
 | firebase-functions package upgrade | בינוני | אזהרה ב-deploy |
 | ביצועי index.html (~10s) | הושלם | PR #156 — defer 28 scripts + CDN optimization |
@@ -408,6 +421,8 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | Trigger refactor — קריאות קוד | נמוך | PR #149 תיקן באגים, refactor נדחה לעתיד |
 | services/index.js — סינון fixed בחישוב client aggregates | הושלם | PR #155, 2026-03-20 |
 | dailyInvariantCheck — WhatsApp התראות | בינוני | נמצא פגם: בוט רץ אבל לא שולח התראה |
+| safeText SoT — service-card-renderer + client-search fallback לא זהה ל-global | נמוך | לא crash, edge case |
+| מחיקת loading-wrapper.js + loadLottieAnimation dead code | נמוך | cleanup |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---
