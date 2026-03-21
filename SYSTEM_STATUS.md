@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-20
-**סטטוס:** הכל ב-PROD, branches מסונכרנים, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates)
+**עדכון אחרון:** 2026-03-21
+**סטטוס:** הכל ב-PROD, Performance optimization deployed, מערכת יציבה
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates), #156 (performance), #157-#160 (hotfixes)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               0cdef06 — synced with production-stable
-production-stable:  3471218 — PR #155 merged, live
+main:               a4751ab — synced with production-stable
+production-stable:  a4751ab — PR #160 merged, live
 אין branches פתוחים.
 ```
 
@@ -36,6 +36,11 @@ production-stable:  3471218 — PR #155 merged, live
 | #151 | 18/3 | מיגרציה: 39 stages pricingType + 4 tasks actualMinutes |
 | #153 | 18/3 | fix: fixed-service לא נחסם — calcClientAggregates + applyLegalProcedureDelta + ServiceOverdraftResolution |
 | #155 | 20/3 | fix: services/index.js — exclude fixed services from client aggregates + cleanup 16 clients |
+| #156 | 21/3 | Perf: defer 28 scripts + CDN optimization + minInstances on 4 functions |
+| #157 | 21/3 | Hotfix: logger.js back to blocking |
+| #158 | 21/3 | Hotfix: lottie CDN back to head |
+| #159 | 21/3 | Hotfix: lottie-animations + lottie-manager back to blocking |
+| #160 | 21/3 | Hotfix: feature-flags.js back to blocking (lottie root cause) |
 
 ---
 
@@ -308,6 +313,33 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 ---
 
+## 7ז. Performance Optimization — PR #156-#160 (2026-03-21)
+
+### מה בוצע
+- **28 scripts deferred** (מתוך 40 blocking מקוריים)
+- **3 CDN libs:** lottie ב-head, xlsx+DOMPurify deferred ב-body
+- **4 Cloud Functions:** minInstances:1, memory:512MB, timeout:120s
+- **5 hotfixes** לתיקון תלויות שלא זוהו: logger, lottie chain, feature-flags
+- **firebase-tools** עודכן ל-15.11.0
+
+### Scripts שחזרו ל-blocking (5)
+| Script | סיבה |
+|--------|-------|
+| logger.js | תלויות blocking של סקריפטים אחרים |
+| lottie CDN (head) | חייב להיטען לפני animations |
+| lottie-animations.js | animation triggers fire לפני defer load |
+| lottie-manager.js | חייב להיטען לפני NotificationSystem |
+| feature-flags.js | loading-wrapper.js קורא SHARED_UI_CONFIG ב-init |
+
+### ממצא: שתי מערכות loading מקבילות
+- **NotificationSystem** (ישנה, אוקט 2025) — `#lottie-loader`, דרך LottieManager, אין auto-timeout
+- **UnifiedLoadingOverlay** (חדשה, נוב 2025) — `#unified-lottie-container`, ישירות דרך lottie, auto-timeout 30s
+- **loading-wrapper.js** — שכבת תאימות, מפנה ל-Unified אם `USE_SHARED_LOADING=true`
+- **feature-flags.js** — `USE_SHARED_LOADING: true` (מופעל)
+- **נדרש:** איחוד שתי המערכות (issue נפרד)
+
+---
+
 ## 8. ארכיטקטורת המערכת
 
 ### שני Netlify Sites מאותו Repo
@@ -358,7 +390,11 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | נושא | עדיפות | הערות |
 |------|--------|-------|
 | CI Pipeline (GitHub Actions) | קריטי | טרם נעשה |
-| ביצועי index.html (~10s) | גבוה | profiling + אופטימיזציה |
+| Loading consolidation — איחוד שתי מערכות loading | גבוה | שתי מערכות מקבילות עם wrapper ו-flag |
+| Audit 28 deferred scripts — תלויות הפוכות | גבוה | 5 scripts חזרו ל-blocking — יתכנו עוד |
+| Node.js 20 upgrade ל-22 | גבוה | deprecated 30/04/2026 |
+| firebase-functions package upgrade | בינוני | אזהרה ב-deploy |
+| ביצועי index.html (~10s) | הושלם | PR #156 — defer 28 scripts + CDN optimization |
 | בדיקת UI progress ב-PROD | הושלם | cache invalidation אומת — כל נתיבי דיווח מכוסים (2026-03-06) |
 | שדרוג invariant check לכל רמה | גבוה | כרגע בודק רק root |
 | dailyInvariantCheck — בדיקת חריגות על שירותים חסומים | גבוה | sentinel לתפיסת נתיבים עתידיים |
