@@ -235,50 +235,41 @@ return;
    */
 
   /**
-   * Show loading overlay with Lottie animation
+   * Show loading overlay via UnifiedLoadingOverlay
    * @param {string} message - Loading message
    * @param {Object} options - Loading options
-   * @param {string} options.animationType - Type of Lottie animation (loading, saving, uploading, etc.)
+   * @param {string} options.animationType - Type of animation (loading, saving, uploading, etc.)
+   * @param {number} options.timeout - Auto-hide timeout (ms), 0 = disabled
+   * @param {Function} options.onTimeout - Callback when timeout is reached
    */
-  showLoading(message = 'מעבד...', options = {}) {
-    // Don't show during welcome screen
+  showLoading(message = 'טוען...', options = {}) {
     if (window.isInWelcomeScreen) {
-return;
-}
+      return;
+    }
 
-    // Default to 'loading' animation if not specified (backward compatibility)
-    const animationType = options.animationType || 'loading';
-    this.currentAnimationType = animationType; // Store for cleanup
+    const loader = this._getUnifiedLoader();
+    if (loader) {
+      loader.show(message, options);
+      return;
+    }
+    // Fallback — should not happen, LoadingOverlay.js is blocking
+    console.warn('[NotificationSystem] UnifiedLoadingOverlay not available, loading skipped');
+  }
 
-    // Remove existing loading if any
-    this.hideLoading();
-
-    // Create loading overlay
-    this.loadingOverlay = document.createElement('div');
-    this.loadingOverlay.className = 'loading-overlay';
-    this.loadingOverlay.setAttribute('role', 'alert');
-    this.loadingOverlay.setAttribute('aria-live', 'assertive');
-    this.loadingOverlay.setAttribute('aria-busy', 'true');
-
-    this.loadingOverlay.innerHTML = `
-      <div class="loading-content">
-        <div class="loading-spinner" id="loading-spinner-container">
-          <div id="lottie-loader"></div>
-        </div>
-        <div class="loading-message">${this.escapeHtml(message)}</div>
-      </div>
-    `;
-
-    document.body.appendChild(this.loadingOverlay);
-    document.body.style.overflow = 'hidden';
-
-    // Trigger animation
-    setTimeout(() => {
-      this.loadingOverlay.classList.add('show');
-    }, 10);
-
-    // Load Lottie animation with specified type
-    this.loadLottieAnimation(animationType);
+  /**
+   * Get or create UnifiedLoadingOverlay singleton instance
+   * @private
+   * @returns {UnifiedLoadingOverlay|null}
+   */
+  _getUnifiedLoader() {
+    if (this._unifiedLoader) {
+      return this._unifiedLoader;
+    }
+    if (typeof window.UnifiedLoadingOverlay === 'function') {
+      this._unifiedLoader = new window.UnifiedLoadingOverlay();
+      return this._unifiedLoader;
+    }
+    return null;
   }
 
   /**
@@ -329,27 +320,12 @@ return;
   }
 
   /**
-   * Hide loading overlay
+   * Hide loading overlay via UnifiedLoadingOverlay
    */
   hideLoading() {
-    if (this.loadingOverlay && this.loadingOverlay.parentElement) {
-      // ✅ Destroy specific Lottie animation to free memory (granular cleanup)
-      const lottieContainer = this.loadingOverlay.querySelector('#lottie-loader');
-      if (lottieContainer && window.LottieManager && this.currentAnimationType) {
-        // Destroy only this specific animation (industry standard approach)
-        window.LottieManager.destroy(this.currentAnimationType, lottieContainer);
-        this.currentAnimationType = null; // Reset after cleanup
-      }
-
-      this.loadingOverlay.classList.remove('show');
-
-      setTimeout(() => {
-        if (this.loadingOverlay && this.loadingOverlay.parentElement) {
-          this.loadingOverlay.remove();
-          this.loadingOverlay = null;
-        }
-        document.body.style.overflow = '';
-      }, 300);
+    const loader = this._getUnifiedLoader();
+    if (loader) {
+      loader.hide();
     }
   }
 
