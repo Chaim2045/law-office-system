@@ -20,11 +20,7 @@
 
     <!-- ===== ספריות חיצוניות ו-Firebase ===== -->
     <!-- FIREBASE & EXTERNAL LIBRARIES -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ✨ Lottie Animation Library - for modern loading animations -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-    <!-- 🛡️ DOMPurify - XSS Protection: Sanitizes HTML to prevent script injection -->
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+    <!-- ⚡ xlsx, lottie, DOMPurify moved to end of body with defer (performance optimization) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -1184,16 +1180,16 @@
     <!-- SCRIPTS AND STYLES -->
     <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
-    <script src="js/modules/logger.js?v=2ba1e81"></script>
+    <script defer src="js/modules/logger.js?v=2ba1e81"></script>
 
     <!-- ===== ⚡ Lazy Loader - Dynamic Script Loading ===== -->
     <!-- טעינה דינמית של סקריפטים - שיפור ביצועים -->
-    <script src="js/modules/lazy-loader.js?v=2ba1e81"></script>
+    <script defer src="js/modules/lazy-loader.js?v=2ba1e81"></script>
 
-    <script src="js/modules/dates.js?v=2ba1e81"></script>
+    <script defer src="js/modules/dates.js?v=2ba1e81"></script>
     <script defer src="js/modules/statistics.js?v=2ba1e81"></script>
-    <script src="js/modules/pagination.js?v=2ba1e81"></script>
-    <script src="js/modules/activity-logger.js?v=2ba1e81"></script>
+    <script defer src="js/modules/pagination.js?v=2ba1e81"></script>
+    <script defer src="js/modules/activity-logger.js?v=2ba1e81"></script>
 
     <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Event-Driven System ===== -->
     <!-- Type-safe Event Bus + Firebase Facade -->
@@ -1204,22 +1200,22 @@
     <!-- Shared library for hours calculation and deduction logic -->
     <script type="module" src="src/modules/deduction/index.js?v=2ba1e81"></script>
 
-    <script src="js/modules/task-actions.js?v=2ba1e81"></script>
+    <script defer src="js/modules/task-actions.js?v=2ba1e81"></script>
     <!-- ✨ NEW: Task Completion Validation System -->
     <!-- Industry-standard task completion with time gap validation -->
-    <script src="js/modules/task-completion-validation.js?v=2ba1e81"></script>
+    <script defer src="js/modules/task-completion-validation.js?v=2ba1e81"></script>
     <!-- ✨ NEW: TaskTimeline Component -->
     <!-- Unified timeline display for task history -->
-    <script src="components/task-timeline/TaskTimeline.js?v=2ba1e81"></script>
+    <script defer src="components/task-timeline/TaskTimeline.js?v=2ba1e81"></script>
     <script type="module" src="js/modules/firebase-pagination.js?v=2ba1e81"></script>
-    <script src="js/modules/integration-manager.js?v=2ba1e81"></script>
+    <script defer src="js/modules/integration-manager.js?v=2ba1e81"></script>
     <!-- Firebase Functions Migration - Server-side Integration -->
-    <script src="js/modules/api-client-v2.js?v=2ba1e81"></script>
+    <script defer src="js/modules/api-client-v2.js?v=2ba1e81"></script>
     <script src="js/modules/firebase-server-adapter.js?v=2ba1e81"></script>
     <!-- Employees Management System - ניהול עובדים -->
     <script type="module" src="js/modules/employees-manager.js?v=2ba1e81"></script>
     <!-- ✅ Presence System - מעקב משתמשים בזמן אמת (Realtime Database) -->
-    <script src="js/modules/presence-system.js?v=2ba1e81"></script>
+    <script defer src="js/modules/presence-system.js?v=2ba1e81"></script>
     <!-- ✅ NEW: Idle Timeout Manager - התנתקות אוטומטית אחרי חוסר פעילות -->
     <script src="js/modules/idle-timeout-manager.js?v=2ba1e81"></script>
 
@@ -1231,17 +1227,17 @@
 
     <!-- ===== Lottie Animations Configuration ===== -->
     <!-- MUST BE LOADED BEFORE NotificationSystem -->
-    <script src="js/modules/lottie-animations.js?v=2ba1e81"></script>
-    <script src="js/modules/lottie-manager.js?v=2ba1e81"></script>
+    <script defer src="js/modules/lottie-animations.js?v=2ba1e81"></script>
+    <script defer src="js/modules/lottie-manager.js?v=2ba1e81"></script>
 
     <!-- ===== Notification System ===== -->
     <!-- Toast notifications with Lottie animations -->
-    <script src="js/modules/notification-messages.js?v=2ba1e81"></script>
+    <script defer src="js/modules/notification-messages.js?v=2ba1e81"></script>
     <script src="js/modules/notification-system.js?v=2ba1e81"></script>
 
     <!-- ===== 🎯 NEW: Unified UI System - Step 1: Load Components ===== -->
     <!-- Feature Flags - Controls whether to use new or legacy system -->
-    <script src="shared/config/feature-flags.js"></script>
+    <script defer src="shared/config/feature-flags.js"></script>
     <!-- Unified Loading Overlay -->
     <link rel="stylesheet" href="shared/ui/styles/loading.css">
     <script src="shared/ui/loading/LoadingOverlay.js"></script>
@@ -1257,38 +1253,38 @@
     <!-- Centralized modal management -->
     <script src="js/modules/modals-manager.js?v=2ba1e81"></script>
     <!-- Compatibility layer for smooth migration -->
-    <script src="js/modules/modals-compat.js?v=2ba1e81"></script>
+    <script defer src="js/modules/modals-compat.js?v=2ba1e81"></script>
 
     <!-- ===== Shared Service Card Renderer ===== -->
     <!-- Prevents code duplication between modules -->
-    <script src="js/modules/service-card-renderer.js?v=2ba1e81"></script>
+    <script defer src="js/modules/service-card-renderer.js?v=2ba1e81"></script>
 
     <!-- ===== Shared Client Search Component ===== -->
     <!-- Unified client search and filtering logic -->
-    <script src="js/modules/ui/client-search.js?v=2ba1e81"></script>
+    <script defer src="js/modules/ui/client-search.js?v=2ba1e81"></script>
 
     <!-- ===== NEW: Client-Case Selector Component ===== -->
     <!-- Unified two-step client→case selection -->
-    <script src="js/modules/client-case-selector.js?v=2ba1e81"></script>
+    <script defer src="js/modules/client-case-selector.js?v=2ba1e81"></script>
     <!-- Client-Case Selectors Initialization -->
-    <script src="js/modules/selectors-init.js?v=2ba1e81"></script>
+    <script defer src="js/modules/selectors-init.js?v=2ba1e81"></script>
 
     <!-- ===== 🔍 Performance Monitoring System ===== -->
     <!-- Real-time performance tracking for critical operations -->
-    <script src="js/modules/monitoring/performance-monitor.js?v=2ba1e81"></script>
+    <script defer src="js/modules/monitoring/performance-monitor.js?v=2ba1e81"></script>
 
     <!-- ===== 🧪 TESTING: New Case Creation Module ===== -->
     <!-- Modern modular case creation system - currently in testing -->
-    <script src="js/modules/case-creation/case-number-generator.js?v=2ba1e81"></script>
-    <script src="js/modules/case-creation/case-form-validator.js?v=2ba1e81"></script>
-    <script src="js/modules/case-creation/case-creation-dialog.js?v=2ba1e81"></script>
+    <script defer src="js/modules/case-creation/case-number-generator.js?v=2ba1e81"></script>
+    <script defer src="js/modules/case-creation/case-form-validator.js?v=2ba1e81"></script>
+    <script defer src="js/modules/case-creation/case-creation-dialog.js?v=2ba1e81"></script>
 
     <!-- ===== Smart Descriptions System ===== -->
     <!-- Structured descriptions manager for tasks and work entries -->
-    <script src="js/modules/descriptions/category-mapping.js?v=2ba1e81"></script>
-    <script src="js/modules/descriptions/descriptions-manager.js?v=2ba1e81"></script>
-    <script src="js/modules/descriptions/smart-combo-selector.js?v=2ba1e81"></script>
-    <script src="js/modules/descriptions/GuidedTextInput.js?v=2ba1e81"></script>
+    <script defer src="js/modules/descriptions/category-mapping.js?v=2ba1e81"></script>
+    <script defer src="js/modules/descriptions/descriptions-manager.js?v=2ba1e81"></script>
+    <script defer src="js/modules/descriptions/smart-combo-selector.js?v=2ba1e81"></script>
+    <script defer src="js/modules/descriptions/GuidedTextInput.js?v=2ba1e81"></script>
 
     <!-- ===== Core Utilities Module ===== -->
     <!-- Must load before dialogs.js (provides safeText) -->
@@ -1296,7 +1292,7 @@
 
     <!-- ===== Dialogs Module ===== -->
     <!-- Task completion, advanced dialogs, and other modals + Smart Descriptions -->
-    <script src="js/modules/dialogs.js?v=2ba1e81"></script>
+    <script defer src="js/modules/dialogs.js?v=2ba1e81"></script>
 
     <!-- ===== System Diagnostics & Snapshot Tool ===== -->
     <!-- Full system state comparison for debugging -->
@@ -1305,7 +1301,7 @@
     <!-- <script defer src="js/modules/event-analyzer.js?v=2ba1e81"></script> -->
 
     <!-- ===== SVG RINGS MODULE ===== -->
-    <script src="js/modules/svg-rings.js?v=2ba1e81"></script>
+    <script defer src="js/modules/svg-rings.js?v=2ba1e81"></script>
 
     <!-- ===== INLINE EXPANSION POPOVER (CSS-only) ===== -->
     <!-- popover-positioning.js removed - file does not exist -->
@@ -1320,7 +1316,7 @@
     <!-- Loaded as module by main.js -->
 
     <!-- Work Hours Calculator - Smart Calendar System -->
-    <script src="js/modules/work-hours-calculator.js?v=2ba1e81"></script>
+    <script defer src="js/modules/work-hours-calculator.js?v=2ba1e81"></script>
 
     <!-- ===== 🔍 FUNCTION MONITOR - POC ===== -->
     <!-- Advanced monitoring and debugging system -->
@@ -1370,10 +1366,15 @@
     <!-- <script src="script.js?v=2ba1e81"></script> -->
 
     <!-- 🔍 Validation Script (Post-Migration Testing) -->
-    <script src="js/validation-script.js?v=2ba1e81"></script>
+    <script defer src="js/validation-script.js?v=2ba1e81"></script>
 
     <!-- 🔧 Fix Old Clients Tool -->
-    <script src="js/fix-old-clients.js?v=2ba1e81"></script>
+    <script defer src="js/fix-old-clients.js?v=2ba1e81"></script>
+
+    <!-- ⚡ CDN Libraries (deferred from head for performance) -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
 
     <!-- Additional CSS for animations -->
     <style>

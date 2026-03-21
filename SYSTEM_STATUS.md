@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-18
+**עדכון אחרון:** 2026-03-20
 **סטטוס:** הכל ב-PROD, branches מסונכרנים, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix)
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               63c889f — synced with production-stable
-production-stable:  9b4f4b2 — PR #153 merged, live
+main:               0cdef06 — synced with production-stable
+production-stable:  3471218 — PR #155 merged, live
 אין branches פתוחים.
 ```
 
@@ -35,6 +35,7 @@ production-stable:  9b4f4b2 — PR #153 merged, live
 | #149 | 16/3 | Trigger hours reconciliation — 3 bug fixes + validation + invariant check + reconciliation 10 clients |
 | #151 | 18/3 | מיגרציה: 39 stages pricingType + 4 tasks actualMinutes |
 | #153 | 18/3 | fix: fixed-service לא נחסם — calcClientAggregates + applyLegalProcedureDelta + ServiceOverdraftResolution |
+| #155 | 20/3 | fix: services/index.js — exclude fixed services from client aggregates + cleanup 16 clients |
 
 ---
 
@@ -281,6 +282,32 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 ---
 
+## 7ו. services/index.js — סינון fixed מחישוב client aggregates (PR #155, 2026-03-20)
+
+### הבעיה
+6 פונקציות ב-services/index.js חישבו client-level aggregates (hoursUsed, hoursRemaining, isBlocked, isCritical) ללא סינון fixed services, ועם נוסחה שונה מהטריגר: `sum(service.hoursRemaining)` במקום `totalHours - hoursUsed`.
+
+### מה תוקן
+1. Helper חדש: `calcClientAggregates(services, clientTotalHours)` — זהה רעיונית ל-trigger
+2. `isFixedService(svc)` + `round2(n)` — helpers משותפים
+3. 6 פונקציות הוחלפו מ-inline logic ל-helper: addServiceToClient, addPackageToService, addHoursPackageToStage, completeService, changeServiceStatus, deleteService
+4. Fixed-only clients: `isBlocked=false`, `isCritical=false` (לא ייחסמו)
+5. `minutesUsed` נכתב ל-Firestore (יישור עם trigger)
+6. הוסר `clientData.type === 'hours'` check
+
+### Cleanup
+- 16 clients תוקנו (11 fixed-only, 5 mixed)
+- Validation script: `devtools/validate-client-aggregates-2026-03-19.js`
+- Cleanup script: `scripts/cleanup-client-aggregates-2026-03-19.js`
+- Backup: `backups/cleanup-client-aggregates-2026-03-19.json`
+
+### לא תקרה שוב
+- כל 6 הפונקציות משתמשות ב-helper אחד (אין שכפול)
+- נוסחה זהה ל-trigger: `totalHours - hoursUsed`
+- Fixed services מסוננים לפני כל חישוב
+
+---
+
 ## 8. ארכיטקטורת המערכת
 
 ### שני Netlify Sites מאותו Repo
@@ -343,7 +370,7 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | SMS Twilio | נמוך | TODO בקוד, +972549539238 |
 | AI integration ל-User App | נדחה | Cloud Function כ-proxy ל-Claude API |
 | Trigger refactor — קריאות קוד | נמוך | PR #149 תיקן באגים, refactor נדחה לעתיד |
-| services/index.js — סינון fixed בחישוב client aggregates | נמוך | לא דחוף, כיסוי נוסף |
+| services/index.js — סינון fixed בחישוב client aggregates | הושלם | PR #155, 2026-03-20 |
 | dailyInvariantCheck — WhatsApp התראות | בינוני | נמצא פגם: בוט רץ אבל לא שולח התראה |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
