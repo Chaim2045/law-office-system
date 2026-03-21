@@ -363,6 +363,21 @@ bubblesContainer.classList.add('hidden');
   if (window.manager && typeof window.manager.initPopup === 'function') {
     window.manager.initPopup();
   }
+
+  // Knowledge Base — lazy load on first help click
+  const helpTrigger = document.querySelector('[data-help-trigger]');
+  if (helpTrigger && window.lazyLoader) {
+    helpTrigger.addEventListener('click', function onHelpClick() {
+      helpTrigger.removeEventListener('click', onHelpClick);
+      window.lazyLoader.loadScriptsSequentially([
+        'js/modules/knowledge-base/kb-icons.js',
+        'js/modules/knowledge-base/kb-data.js',
+        'js/modules/knowledge-base/kb-search.js',
+        'js/modules/knowledge-base/kb-analytics.js',
+        'js/modules/knowledge-base/knowledge-base.js'
+      ]).catch(err => console.error('KB load failed:', err));
+    }, { once: true });
+  }
 }
 
 function logout() {
