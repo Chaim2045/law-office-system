@@ -886,7 +886,7 @@ class LawOfficeManager {
       this.syncToggleState();
 
       // ✅ עדכון המונים בטעינה ראשונית
-      await this.updateTaskCountBadges();
+      this.updateTaskCountBadges();
 
       // 🔄 Update client validation and selectors (for old system)
       if (this.clientValidation) {
@@ -962,7 +962,6 @@ return false;
 
           // Re-filter and render
           this.filterBudgetTasks();
-          this.renderBudgetView();
 
           // Update task count badges
           this.updateTaskCountBadges();
@@ -1481,57 +1480,24 @@ return;
    * ✅ Update task count badges for both active and completed
    * 🚀 OPTIMIZED: Uses Firestore count() for accurate counts without loading all documents
    */
-  async updateTaskCountBadges() {
-    try {
-      const db = window.firebaseDB;
-      if (!db) {
-        console.warn('⚠️ Firebase DB not available for count badges');
-        return;
-      }
+  updateTaskCountBadges() {
+    const allTasks = this.budgetTasks || [];
+    const activeCount = allTasks.filter(t => t.status === 'פעיל').length;
+    const completedCount = allTasks.filter(t => t.status === 'הושלם').length;
 
-      // 🚀 Count queries - Firebase SDK 9.22.0 compatible (using .get() + .size)
-      const [activeSnapshot, completedSnapshot] = await Promise.all([
-        db.collection('budget_tasks')
-          .where('employee', '==', this.currentUser)
-          .where('status', '==', 'פעיל')
-          .get(),
-
-        db.collection('budget_tasks')
-          .where('employee', '==', this.currentUser)
-          .where('status', '==', 'הושלם')
-          .get()
-      ]);
-
-      const activeCount = activeSnapshot.size;
-      const completedCount = completedSnapshot.size;
-
-      // עדכון המונה של פעילות
-      const activeBadge = document.getElementById('activeCountBadge');
-      if (activeBadge) {
-        activeBadge.textContent = activeCount;
-        activeBadge.style.display = activeCount > 0 ? 'inline-flex' : 'none';
-      }
-
-      // עדכון המונה של מושלמות
-      const completedBadge = document.getElementById('completedCountBadge');
-      if (completedBadge) {
-        completedBadge.textContent = completedCount;
-        completedBadge.style.display = completedCount > 0 ? 'inline-flex' : 'none';
-      }
-
-      Logger.log(`✅ Count badges updated: ${activeCount} active, ${completedCount} completed`);
-    } catch (error) {
-      console.error('Error updating count badges:', error);
-      // Fallback: hide badges on error
-      const activeBadge = document.getElementById('activeCountBadge');
-      const completedBadge = document.getElementById('completedCountBadge');
-      if (activeBadge) {
-activeBadge.style.display = 'none';
-}
-      if (completedBadge) {
-completedBadge.style.display = 'none';
-}
+    const activeBadge = document.getElementById('activeCountBadge');
+    if (activeBadge) {
+      activeBadge.textContent = activeCount;
+      activeBadge.style.display = activeCount > 0 ? 'inline-flex' : 'none';
     }
+
+    const completedBadge = document.getElementById('completedCountBadge');
+    if (completedBadge) {
+      completedBadge.textContent = completedCount;
+      completedBadge.style.display = completedCount > 0 ? 'inline-flex' : 'none';
+    }
+
+    Logger.log(`✅ Count badges updated: ${activeCount} active, ${completedCount} completed`);
   }
 
   async renderBudgetView() {

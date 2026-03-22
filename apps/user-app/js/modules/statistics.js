@@ -167,50 +167,8 @@ function _calculateBudgetStatisticsClient(tasks) {
  * @returns {Promise<Object>} אובייקט עם כל הסטטיסטיקה
  */
 async function calculateBudgetStatistics(tasks) {
-  // ✅ נסה לקרוא מהשרת קודם (אם Firebase זמין)
-  if (window.firebase && window.firebase.functions) {
-    try {
-      const functions = window.firebase.functions();
-      const getUserMetrics = functions.httpsCallable('getUserMetrics');
-
-      // Timeout של 3 שניות - אם השרת לא עונה, נעבור ל-fallback
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Server timeout')), 3000)
-      );
-
-      const result = await Promise.race([
-        getUserMetrics(),
-        timeoutPromise
-      ]);
-
-      if (result?.data?.success && result.data.data) {
-        const serverMetrics = result.data.data;
-
-        // ✅ חישוב שדות נוספים שהשרת לא מספק (overBudget, progress, status)
-        // נעשה חישוב חלקי על המשימות
-        const clientStats = _calculateBudgetStatisticsClient(tasks);
-
-        // ✅ שילוב נתונים: שרת (total, active, completed, urgent) + לקוח (שאר השדות)
-        return {
-          ...clientStats, // כל השדות מהלקוח
-          // Override עם נתונים מהשרת
-          total: serverMetrics.total,
-          active: serverMetrics.active,
-          completed: serverMetrics.completed,
-          urgent: serverMetrics.urgent,
-          // סימן שהנתונים הגיעו מהשרת
-          source: serverMetrics.source || 'server'
-        };
-      }
-    } catch (error) {
-      // Silent fallback - אם השרת נכשל, נעבור ללקוח
-      Logger.log(`⚠️ Server metrics unavailable, using client calculation: ${error.message}`);
-    }
-  }
-
-  // ✅ Fallback: חישוב לקוח מלא
   const stats = _calculateBudgetStatisticsClient(tasks);
-  stats.source = 'client'; // סימן שהנתונים חושבו בלקוח
+  stats.source = 'client';
   return stats;
 }
 
@@ -221,9 +179,6 @@ async function calculateBudgetStatistics(tasks) {
  * @returns {string} HTML string
  */
 function createBudgetStatsBar(stats, currentFilter = 'all') {
-  const plannedHours = Math.round((stats.totalPlanned / 60) * 10) / 10;
-  const actualHours = Math.round((stats.totalActual / 60) * 10) / 10;
-
   return `
     <div class="stats-badge">
       <div class="stat-compact ${currentFilter === 'all' ? 'stat-highlight' : ''}">
