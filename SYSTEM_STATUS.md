@@ -4,7 +4,7 @@
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
 **עדכון אחרון:** 2026-03-22
 **סטטוס:** Performance optimization complete, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #166 (budget tasks performance)
+**PRs:** #144, #145, #146, #166 (budget tasks performance), #168 (login flow performance)
 
 ---
 
@@ -45,6 +45,7 @@ production-stable:  pending merge PRs #163, #164
 | #163 | 22/3 | Perf: remove 6 dead/dev scripts + lazy-load KB bundle |
 | #164 | 22/3 | Cleanup: remove 2 orphaned function-monitor scripts |
 | #166 | 22/3 | Performance: budget tasks — הסרת getUserMetrics callable, ספירה מקומית, הסרת double render |
+| #168 | 22/3 | Performance: login flow — fire-and-forget post-login tasks, fix loginCount double increment, remove redundant queries |
 
 ---
 
@@ -171,6 +172,8 @@ functions/
 | **Netlify build = echo** | Workaround ל-tsc Permission denied. חוב טכני |
 | **REQUIRED_STAGE_FIELDS protocol** | כל PR שמוסיף שדה חדש ל-stage/service חייב לעדכן: (1) REQUIRED_STAGE_FIELDS ב-dailyInvariantCheck (2) סקריפט reconciliation |
 | **חישוב סטטיסטיקות budget tasks = client-side בלבד** | הנתונים כבר בזיכרון (onSnapshot). getUserMetrics Cloud Function נשארת אבל לא נקראת מהקליינט |
+| **post-login tasks = fire-and-forget** | CaseNumberGenerator, logLogin, PresenceSystem רצים אחרי showApp בלי await |
+| **loadMonthlyTimesheetStats = client-side** | מחושב מ-timesheetEntries שבזיכרון, לא Firebase query |
 
 ---
 
@@ -456,6 +459,9 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | getUserMetrics — נקרא 8 פעמים per action | הושלם | PR #166 — הוסר מהקליינט, חישוב מקומי בלבד |
 | Stats active סופר 'בוטל' כ-active | נמוך | חוסר עקביות ישן — _calculateBudgetStatisticsClient vs updateTaskCountBadges |
 | AI_CONFIG load order | נמוך | pre-existing, ai-config לא נטען לפני ai-engine |
+| PresenceSystem Realtime DB URL שגוי | בינוני | isConnected=false, db=false. לא עובד. URL לא נכון |
+| Console logging ב-PROD | בינוני | לוגים מפורטים נראים ב-Console — לא מקצועי, מקל על reverse engineering |
+| loginWithGoogle + loginWithApple — אותו pattern חוסם | נמוך | אותן בעיות של handleLogin — logLogin, PresenceSystem sequential |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---

@@ -278,3 +278,31 @@ window.PRODUCTION_MODE = loggerInstance.isProduction;
 window.devLog = (message, data) => loggerInstance.log(message, data);
 window.devInfo = (message, data) => loggerInstance.info(message, data);
 window.devDebug = (message, data) => loggerInstance.debug(message, data);
+
+// === PROD Console Override ===
+// Silences console.log/info/debug in production.
+// console.warn and console.error remain active.
+// Debug door: window.enableDebug() / window.disableDebug()
+if (loggerInstance.isProduction) {
+    const _originalLog = console.log;
+    const _originalInfo = console.info;
+    const _originalDebug = console.debug;
+
+    console.log = function() {};
+    console.info = function() {};
+    console.debug = function() {};
+
+    window.enableDebug = function() {
+        console.log = _originalLog;
+        console.info = _originalInfo;
+        console.debug = _originalDebug;
+        console.log('🔓 Debug mode enabled');
+    };
+
+    window.disableDebug = function() {
+        console.log('🔒 Debug mode disabled');
+        console.log = function() {};
+        console.info = function() {};
+        console.debug = function() {};
+    };
+}
