@@ -1641,6 +1641,22 @@ plusButton.classList.remove('active');
 
   loadMonthlyTimesheetStats() {
     try {
+      const getDateString = (date) => {
+        if (!date) {
+return '';
+}
+        if (typeof date === 'string') {
+return date;
+}
+        if (date.toDate) {
+return date.toDate().toISOString().substring(0, 10);
+}
+        if (date instanceof Date) {
+return date.toISOString().substring(0, 10);
+}
+        return String(date);
+      };
+
       const now = new Date();
       const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
@@ -1650,13 +1666,13 @@ plusButton.classList.remove('active');
       const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth()+1).padStart(2,'0')}-${String(startOfWeek.getDate()).padStart(2,'0')}`;
 
       const entries = this.timesheetEntries || [];
-      const monthEntries = entries.filter(e => (e.date || '') >= startOfMonth);
+      const monthEntries = entries.filter(e => getDateString(e.date) >= startOfMonth);
 
       let monthMinutes = 0;
       let weekMinutes = 0;
       monthEntries.forEach(entry => {
         monthMinutes += entry.minutes || 0;
-        if ((entry.date || '').substring(0, 10) >= startOfWeekStr) {
+        if (getDateString(entry.date) >= startOfWeekStr) {
           weekMinutes += entry.minutes || 0;
         }
       });
