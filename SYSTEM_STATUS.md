@@ -3,8 +3,8 @@
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
 **עדכון אחרון:** 2026-03-22
-**סטטוס:** הכל ב-PROD, Performance optimization deployed, Loading consolidation done, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates), #156 (performance), #157-#160 (hotfixes), #161 (loading consolidation)
+**סטטוס:** Performance optimization complete, מערכת יציבה
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates), #156 (performance), #157-#160 (hotfixes), #161 (loading consolidation), #163 (script cleanup + KB lazy), #164 (function-monitor cleanup)
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               c3f305d — synced with production-stable
-production-stable:  58069e7 — PR #161 merged, live
+main:               aca4847 — synced with production-stable
+production-stable:  pending merge PRs #163, #164
 אין branches פתוחים.
 ```
 
@@ -42,6 +42,8 @@ production-stable:  58069e7 — PR #161 merged, live
 | #159 | 21/3 | Hotfix: lottie-animations + lottie-manager back to blocking |
 | #160 | 21/3 | Hotfix: feature-flags.js back to blocking (lottie root cause) |
 | #161 | 21/3 | Refactor: consolidate loading systems — NS calls UnifiedLoadingOverlay directly |
+| #163 | 22/3 | Perf: remove 6 dead/dev scripts + lazy-load KB bundle |
+| #164 | 22/3 | Cleanup: remove 2 orphaned function-monitor scripts |
 
 ---
 
@@ -351,6 +353,32 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
   - selectors-init.js — auto-init ב-DOMContentLoaded, EventBus guard קיים
 - **0 UNSAFE**
 
+### PR #163: Script Cleanup + KB Lazy Loading (2026-03-22)
+- **6 dead/dev scripts הוסרו מ-HTML** (קבצים בדיסק):
+  - xlsx.full.min.js (500KB CDN, אפס references)
+  - function-monitor-init.js (infinite polling bug — FirebaseOps לא מוגדר)
+  - fix-old-clients.js, validation-script.js (dev console tools)
+- **5 KB scripts → lazy load** על לחיצת "עזרה" דרך LazyLoader.loadScriptsSequentially
+  - סדר: icons → data → search → analytics → knowledge-base
+  - Trigger: `[data-help-trigger]` click ב-authentication.js showApp()
+
+### PR #164: Function Monitor Cleanup (2026-03-22)
+- **2 orphaned scripts הוסרו** — function-monitor.js + function-monitor-dashboard.js
+- היו dependencies של function-monitor-init.js שהוסר ב-PR #163
+
+### Performance Results — 2026-03-22
+
+| מדד | Before | After |
+|-----|--------|-------|
+| Full Load | 13.7s | 2.7s |
+| Scripts | 113 | 102 |
+| Size | 893KB | 688KB |
+| Cold starts | all functions | minInstances on 4 |
+
+- 28 scripts deferred, 11 removed, KB lazy on help click
+- Loading systems consolidated (2 → 1)
+- Functions: minInstances:1, 512MB, 120s timeout
+
 ---
 
 ## 8. ארכיטקטורת המערכת
@@ -423,6 +451,8 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | dailyInvariantCheck — WhatsApp התראות | בינוני | נמצא פגם: בוט רץ אבל לא שולח התראה |
 | safeText SoT — service-card-renderer + client-search fallback לא זהה ל-global | נמוך | לא crash, edge case |
 | מחיקת loading-wrapper.js + loadLottieAnimation dead code | נמוך | cleanup |
+| getUserMetrics — נקרא 8 פעמים per action | גבוה | ~8s Firebase calls מיותרות |
+| AI_CONFIG load order | נמוך | pre-existing, ai-config לא נטען לפני ai-engine |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---
