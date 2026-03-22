@@ -92,7 +92,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() &&
                        employeeId == request.auth.token.email &&
                        request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['lastLogin', 'loginCount', 'phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt', 'approvalsPanelLastViewed']);
+                         .hasOnly(['lastLogin', 'loginCount', 'phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt', 'approvalsPanelLastViewed', 'lastSeen', 'isOnline']);
     }
 
     // ✅ Clients: READ for all authenticated, WRITE for admins only

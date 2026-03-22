@@ -161,14 +161,14 @@ os = 'iOS';
           disconnectedAt: firebase.database.ServerValue.TIMESTAMP
         });
 
-        // ✅ עדכון lastLogin ב-Firestore (employees collection - לפי EMAIL)
+        // ✅ עדכון isOnline ב-Firestore (employees collection - לפי EMAIL)
         try {
           await this.firestore.collection('employees').doc(email).update({
-            lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-            loginCount: firebase.firestore.FieldValue.increment(1)
+            isOnline: true,
+            lastSeen: firebase.firestore.FieldValue.serverTimestamp()
           });
         } catch (firestoreError) {
-          console.warn('[PresenceSystem] Failed to update lastLogin:', firestoreError);
+          console.warn('[PresenceSystem] Failed to update Firestore:', firestoreError);
           // לא נכשל בגלל זה - זה רק metadata
         }
 
