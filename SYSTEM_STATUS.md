@@ -4,7 +4,7 @@
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
 **עדכון אחרון:** 2026-03-22
 **סטטוס:** Performance optimization complete, מערכת יציבה
-**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #147 (caseOpenDate), #148 (service override — חריגה מבוקרת), #149 (trigger hours reconciliation), #151 (stage pricingType migration), #153 (fixed-service isBlocked fix), #155 (services/index.js — exclude fixed from client aggregates), #156 (performance), #157-#160 (hotfixes), #161 (loading consolidation), #163 (script cleanup + KB lazy), #164 (function-monitor cleanup)
+**PRs:** #144 (Trigger + deduction removal + bug fixes), #145 (cache invalidation), #146 (service blocked enforcement), #166 (budget tasks performance)
 
 ---
 
@@ -44,6 +44,7 @@ production-stable:  pending merge PRs #163, #164
 | #161 | 21/3 | Refactor: consolidate loading systems — NS calls UnifiedLoadingOverlay directly |
 | #163 | 22/3 | Perf: remove 6 dead/dev scripts + lazy-load KB bundle |
 | #164 | 22/3 | Cleanup: remove 2 orphaned function-monitor scripts |
+| #166 | 22/3 | Performance: budget tasks — הסרת getUserMetrics callable, ספירה מקומית, הסרת double render |
 
 ---
 
@@ -169,6 +170,7 @@ functions/
 | **readBy ב-Firestore — field שטוח** | email כ-key, לא nested. set+merge בלבד |
 | **Netlify build = echo** | Workaround ל-tsc Permission denied. חוב טכני |
 | **REQUIRED_STAGE_FIELDS protocol** | כל PR שמוסיף שדה חדש ל-stage/service חייב לעדכן: (1) REQUIRED_STAGE_FIELDS ב-dailyInvariantCheck (2) סקריפט reconciliation |
+| **חישוב סטטיסטיקות budget tasks = client-side בלבד** | הנתונים כבר בזיכרון (onSnapshot). getUserMetrics Cloud Function נשארת אבל לא נקראת מהקליינט |
 
 ---
 
@@ -451,7 +453,8 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | dailyInvariantCheck — WhatsApp התראות | בינוני | נמצא פגם: בוט רץ אבל לא שולח התראה |
 | safeText SoT — service-card-renderer + client-search fallback לא זהה ל-global | נמוך | לא crash, edge case |
 | מחיקת loading-wrapper.js + loadLottieAnimation dead code | נמוך | cleanup |
-| getUserMetrics — נקרא 8 פעמים per action | גבוה | ~8s Firebase calls מיותרות |
+| getUserMetrics — נקרא 8 פעמים per action | הושלם | PR #166 — הוסר מהקליינט, חישוב מקומי בלבד |
+| Stats active סופר 'בוטל' כ-active | נמוך | חוסר עקביות ישן — _calculateBudgetStatisticsClient vs updateTaskCountBadges |
 | AI_CONFIG load order | נמוך | pre-existing, ai-config לא נטען לפני ai-engine |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
