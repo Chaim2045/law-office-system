@@ -155,8 +155,6 @@ async function handleLogin() {
       console.warn('lastLogin update:', err);
     }
 
-    // TODO: PresenceSystem.connect also writes lastLogin+loginCount —
-    // if PresenceSystem is fixed, remove the direct update above to avoid double increment
     if (window.PresenceSystem) {
       window.PresenceSystem.connect(
         this.currentUid, this.currentUsername, this.currentUser

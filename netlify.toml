@@ -142,6 +142,7 @@
       img-src 'self' data: https: blob:;
       connect-src 'self'
         https://*.firebaseio.com
+        wss://*.firebaseio.com
         https://*.googleapis.com
         https://identitytoolkit.googleapis.com
         https://securetoken.googleapis.com
