@@ -111,66 +111,58 @@ async function handleLogin() {
 
     updateUserDisplay(this.currentUsername);
 
-    // Show welcome screen (blocking) - MUST wait for screen to be visible
-    await this.showWelcomeScreen();
+    // Show welcome screen
+    this.showWelcomeScreen();
 
     // Load data while welcome screen is showing
     try {
       await this.loadData();
 
-      // Log login activity (after data loaded and activity logger initialized)
-      if (this.activityLogger) {
-        await this.activityLogger.logLogin();
-      }
-
-      // ✅ Update lastLogin directly (independent of PresenceSystem)
-      try {
-        await window.firebaseDB.collection('employees').doc(this.currentUser).update({
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-          loginCount: firebase.firestore.FieldValue.increment(1)
-        });
-        Logger.log('✅ lastLogin updated successfully');
-      } catch (loginUpdateError) {
-        console.warn('⚠️ Failed to update lastLogin:', loginUpdateError.message);
-      }
-
-      // ✅ Track user presence with Firebase Realtime Database (replaces old UserTracker)
-      if (window.PresenceSystem) {
-        try {
-          // Add 5 second timeout to prevent infinite spinner
-          await Promise.race([
-            window.PresenceSystem.connect(this.currentUid, this.currentUsername, this.currentUser),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('PresenceSystem timeout')), 5000)
-            )
-          ]);
-          Logger.log('✅ PresenceSystem connected successfully');
-        } catch (presenceError) {
-          console.warn('⚠️ PresenceSystem failed (non-critical):', presenceError.message);
-          // Continue anyway - presence tracking is not critical for login
-        }
-      }
     } catch (error) {
       this.showNotification('שגיאה בטעינת נתונים', 'error');
       console.error('Error loading data:', error);
     }
 
-    // Wait for minimum welcome screen time (6 seconds total)
-    await this.waitForWelcomeMinimumTime();
-
-    // Clear flag - welcome screen is done
+    // Clear flag and show app IMMEDIATELY
     window.isInWelcomeScreen = false;
 
-    // Initialize security modules after successful login
     if (this.initSecurityModules) {
       this.initSecurityModules();
     }
 
-    // Show app after everything loaded
     this.showApp();
 
-    // ⚡ Lazy load AI Chat System AFTER successful login (prevents showing on login screen)
-    // This improves initial page load time by ~70KB
+    // === Fire-and-forget post-login tasks ===
+    if (window.CaseNumberGenerator) {
+      window.CaseNumberGenerator.initialize().catch(err =>
+        console.warn('CaseNumberGenerator init:', err)
+      );
+    }
+
+    if (this.activityLogger) {
+      this.activityLogger.logLogin().catch(err =>
+        console.warn('logLogin:', err)
+      );
+    }
+
+    // Update lastLogin (fire-and-forget)
+    try {
+      window.firebaseDB.collection('employees').doc(this.currentUser).update({
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+        loginCount: firebase.firestore.FieldValue.increment(1)
+      }).catch(err => console.warn('lastLogin update:', err));
+    } catch (err) {
+      console.warn('lastLogin update:', err);
+    }
+
+    // TODO: PresenceSystem.connect also writes lastLogin+loginCount —
+    // if PresenceSystem is fixed, remove the direct update above to avoid double increment
+    if (window.PresenceSystem) {
+      window.PresenceSystem.connect(
+        this.currentUid, this.currentUsername, this.currentUser
+      ).catch(err => console.warn('PresenceSystem:', err));
+    }
+
     this.initAIChatSystem();
 
   } catch (error) {
@@ -202,7 +194,7 @@ async function handleLogin() {
 /**
  * מציג מסך ברוך הבא עם שם המשתמש ולוגו
  */
-async function showWelcomeScreen() {
+function showWelcomeScreen() {
   const loginSection = document.getElementById('loginSection');
   const welcomeScreen = document.getElementById('welcomeScreen');
   const welcomeTitle = document.getElementById('welcomeTitle');
@@ -238,37 +230,21 @@ bubblesContainer.classList.remove('hidden');
     progressBar.style.width = '0%';
   }
 
-  // ✅ תיקון יסודי: קריאת lastLogin מ-Firebase (לא localStorage!)
   if (lastLoginTime) {
     try {
-      // קריאה מ-employees collection ב-Firebase (לפי EMAIL - document ID)
-      const employeeDoc = await window.firebaseDB
-        .collection('employees')
-        .doc(this.currentUser)
-        .get();
-
-      if (employeeDoc.exists) {
-        const data = employeeDoc.data();
-
-        // lastLogin הוא Firestore Timestamp
-        if (data.lastLogin && data.lastLogin.toDate) {
-          const loginDate = data.lastLogin.toDate();
-          const formatted = loginDate.toLocaleString('he-IL', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-          lastLoginTime.textContent = formatted;
-        } else {
-          lastLoginTime.textContent = 'זו הכניסה הראשונה שלך';
-        }
+      const data = this.currentEmployee;
+      if (data && data.lastLogin && data.lastLogin.toDate) {
+        const loginDate = data.lastLogin.toDate();
+        const formatted = loginDate.toLocaleString('he-IL', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+        lastLoginTime.textContent = formatted;
       } else {
         lastLoginTime.textContent = 'זו הכניסה הראשונה שלך';
       }
     } catch (error) {
-      console.error('⚠️ Failed to load lastLogin from Firebase:', error);
+      console.error('Failed to load lastLogin:', error);
       lastLoginTime.textContent = 'זו הכניסה הראשונה שלך';
     }
   }
@@ -663,9 +639,9 @@ btn.disabled = false;
     // Update user display
     updateUserDisplay(this.currentUsername);
 
-    // Show welcome screen (blocking)
+    // Show welcome screen
     window.isInWelcomeScreen = true;
-    await this.showWelcomeScreen();
+    this.showWelcomeScreen();
 
     // Load data while welcome screen is showing
     await this.loadData();
@@ -801,9 +777,9 @@ btn.disabled = false;
     // Update user display
     updateUserDisplay(this.currentUsername);
 
-    // Show welcome screen (blocking)
+    // Show welcome screen
     window.isInWelcomeScreen = true;
-    await this.showWelcomeScreen();
+    this.showWelcomeScreen();
 
     // Load data while welcome screen is showing
     await this.loadData();
@@ -1075,7 +1051,7 @@ async function verifyOTP() {
     updateUserDisplay(this.currentUsername);
 
     // Continue with normal login flow
-    await this.showWelcomeScreen();
+    this.showWelcomeScreen();
     await this.loadData();
 
     // Initialize security modules

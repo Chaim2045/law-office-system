@@ -801,18 +801,7 @@ class LawOfficeManager {
       FirebaseOps.initializeFirebase();
       this.updateLoaderText('מתחבר ל-Firebase...', 20);
 
-      // 🎯 אתחול CaseNumberGenerator (רק אחרי auth!)
-      if (window.CaseNumberGenerator) {
-        try {
-          await window.CaseNumberGenerator.initialize();
-          this.updateLoaderText('מאתחל מערכת...', 30);
-        } catch (error) {
-          Logger.log('⚠️ CaseNumberGenerator initialization failed:', error);
-          // לא עוצרים את הטעינה בגלל זה
-        }
-      }
-
-      this.updateLoaderText('טוען לקוחות...', 40);
+      this.updateLoaderText('טוען לקוחות...', 30);
 
       // ✅ Load all data in parallel with smart caching
       // First load: Fetch from Firebase and cache
@@ -853,7 +842,7 @@ class LawOfficeManager {
       this.clients = clients;
       this.budgetTasks = budgetTasks;
       this.timesheetEntries = timesheetEntries;
-      await this.loadMonthlyTimesheetStats();
+      this.loadMonthlyTimesheetStats();
 
       // ✅ Expose to window for backward compatibility with old code
       window.clients = clients;
@@ -893,14 +882,6 @@ class LawOfficeManager {
         this.clientValidation.updateBlockedClients();
       }
 
-      // 🔄 Refresh all active client-case selectors with fresh data
-      await this.refreshAllClientCaseSelectors();
-
-      // 🔄 Refresh CasesModule if it has a current case open
-      if (window.CasesModule && typeof window.CasesModule.refreshCurrentCase === 'function') {
-        await window.CasesModule.refreshCurrentCase();
-      }
-
       // Update notifications bell with urgent tasks and critical clients
       if (this.notificationBell) {
         const urgentTasks = budgetTasks.filter(task => {
@@ -922,16 +903,9 @@ return false;
 
       // ✅ הפעלת Real-time listeners למשימות ושעות
       this.startRealTimeListeners();
-      this.updateLoaderText('כמעט מוכן...', 95);
-
-      // ✅ Small delay before final step for smoother UX
-      await new Promise(resolve => setTimeout(resolve, 200));
 
       Logger.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
       this.updateLoaderText('הכל מוכן!', 100);
-
-      // ✅ Small delay to show 100% before entering app
-      await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
       console.error('❌ Error loading data:', error);
       this.showNotification('שגיאה בטעינת נתונים', 'error');
@@ -1665,49 +1639,33 @@ plusButton.classList.remove('active');
     this.renderTimesheetView();
   }
 
-  async loadMonthlyTimesheetStats() {
+  loadMonthlyTimesheetStats() {
     try {
       const now = new Date();
       const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-      const snapshot = await window.firebaseDB
-        .collection('timesheet_entries')
-        .where('employee', '==', this.currentUser)
-        .where('date', '>=', startOfMonth)
-        .get();
-
-      // Store full month entries for accurate statistics
-      this.monthlyEntries = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      // Week calculation
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay());
       startOfWeek.setHours(0, 0, 0, 0);
-      const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+      const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth()+1).padStart(2,'0')}-${String(startOfWeek.getDate()).padStart(2,'0')}`;
+
+      const entries = this.timesheetEntries || [];
+      const monthEntries = entries.filter(e => (e.date || '') >= startOfMonth);
 
       let monthMinutes = 0;
       let weekMinutes = 0;
-
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const minutes = data.minutes || 0;
-        monthMinutes += minutes;
-
-        const entryDate = (data.date || '').substring(0, 10);
-        if (entryDate >= startOfWeekStr) {
-          weekMinutes += minutes;
+      monthEntries.forEach(entry => {
+        monthMinutes += entry.minutes || 0;
+        if ((entry.date || '').substring(0, 10) >= startOfWeekStr) {
+          weekMinutes += entry.minutes || 0;
         }
       });
 
+      this.monthlyEntries = monthEntries;
       this.monthlyStats = {
-        monthMinutes: monthMinutes,
-        monthHours: Math.round((monthMinutes / 60) * 10) / 10,
-        weekMinutes: weekMinutes,
-        weekHours: Math.round((weekMinutes / 60) * 10) / 10,
-        monthEntries: snapshot.docs.length
+        monthMinutes, monthHours: Math.round((monthMinutes / 60) * 10) / 10,
+        weekMinutes, weekHours: Math.round((weekMinutes / 60) * 10) / 10,
+        monthEntries: monthEntries.length
       };
     } catch (error) {
       console.error('Failed to load monthly stats:', error);
