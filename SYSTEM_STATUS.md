@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-22
+**עדכון אחרון:** 2026-03-23
 **סטטוס:** Performance optimization complete, מערכת יציבה
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173
 
 ---
 
@@ -49,6 +49,8 @@ production-stable:  pending merge PRs #163, #164
 | #169 | 22/3 | Performance: silence console.log/info/debug in PROD with debug backdoor |
 | #170 | 22/3 | fix: activate PresenceSystem — Firestore rules, CSP wss://, connect() fields, RTDB deploy |
 | #171 | 22/3 | hotfix: handle Timestamp in loadMonthlyTimesheetStats date comparison |
+| #172 | 23/3 | cleanup: remove dead EventBus listeners from statistics.js |
+| #173 | 23/3 | fix: conditional AI Chat loading — skip if no API key |
 
 ---
 
@@ -179,6 +181,7 @@ functions/
 | **loadMonthlyTimesheetStats = client-side** | מחושב מ-timesheetEntries שבזיכרון, לא Firebase query |
 | **PresenceSystem = Firestore heartbeat + RTDB onDisconnect** | lastSeen+isOnline כל 5 דקות ל-Firestore, RTDB ל-real-time presence |
 | **Firestore rules exception ל-presence fields** | employees doc — user יכול לעדכן lastSeen+isOnline על עצמו |
+| **AI Chat = conditional loading** | ai-config נטען ראשון, אם אין API key — שאר הסקריפטים לא נטענים |
 
 ---
 
@@ -466,8 +469,8 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | AI_CONFIG load order | נמוך | pre-existing, ai-config לא נטען לפני ai-engine |
 | Console logging ב-PROD | הושלם | PR #169 — console.log/info/debug silenced, warn+error active, enableDebug() backdoor |
 | loginWithGoogle + loginWithApple pattern חוסם | נמוך | אותן בעיות כמו handleLogin — fire-and-forget |
-| AI_CONFIG not found — ai-engine.js | בינוני | חסר API key או סדר טעינה שגוי |
-| EventBus not available בזמן statistics init | נמוך | סדר טעינה |
+| AI_CONFIG not found — ai-engine.js | הושלם | PR #173 — ai-config נטען ראשון, skip אם אין API key |
+| EventBus not available בזמן statistics init | הושלם | PR #172 — dead listeners הוסרו (logging בלבד) |
 | Console logging ב-Admin Panel | בינוני | 1,076 console.log עדיין מודפסים — צריך override כמו User App |
 | main.js פיצול למודולים | בינוני | 3,156 שורות, class אחת |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
