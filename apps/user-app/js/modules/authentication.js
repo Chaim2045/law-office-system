@@ -1184,9 +1184,20 @@ async function initAIChatSystem() {
     Logger.log('[AI Chat] 🚀 Starting lazy load...');
     const startTime = performance.now();
 
-    // טעינת כל הסקריפטים הדרושים
+    // Phase 0: Load config first — alone
+    await window.lazyLoader.loadScript(
+      'js/modules/ai-system/ai-config.js',
+      { version: '2.0.0' }
+    );
+
+    // Phase 0.5: Check if AI is configured
+    if (!window.AI_CONFIG || !window.AI_CONFIG.apiKey || window.AI_CONFIG.apiKey === 'YOUR_API_KEY_HERE') {
+      Logger.log('[AI Chat] Not configured — skipping initialization');
+      return;
+    }
+
+    // Phase 1: Load remaining AI scripts (config already loaded)
     const aiScripts = [
-      { src: 'js/modules/ai-system/ai-config.js', options: { version: '2.0.0' } },
       { src: 'js/modules/ai-system/ai-engine.js', options: { version: '2.0.0' } },
       { src: 'js/modules/ai-system/ai-context-builder.js', options: { version: '2.0.0' } },
       { src: 'js/modules/UserReplyModal.js', options: { version: '1.0.3-threads' } },
@@ -1194,8 +1205,6 @@ async function initAIChatSystem() {
       { src: 'js/modules/notification-bell.js', options: { version: '20251210-fix' } },
       { src: 'js/modules/ai-system/ThreadView.js', options: { version: '1.0.4-mark-as-read' } }
     ];
-
-    // טען את כל הסקריפטים במקביל (מהיר יותר)
     await window.lazyLoader.loadScripts(aiScripts);
 
     // טען את ה-UI אחרון (תלוי בשאר)
