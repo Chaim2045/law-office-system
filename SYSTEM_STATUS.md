@@ -443,6 +443,10 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 | נושא | עדיפות | הערות |
 |------|--------|-------|
+| entries בלי packageId — 65 לקוחות מושפעים, 745 entries, 1,233 שעות | קריטי | trigger מדלג, addPackageToService לא עושה backfill, reconciliation 16/3 חילק עיוורת |
+| hours vs totalHours שם שדה לא עקבי ב-packages | גבוה | addPackageToService כותב hours, trigger/reconciliation מחפשים totalHours |
+| עריכת תאריך חבילה מראה שגיאה | גבוה | חיים דיווח — צריך investigation |
+| שינוי ארכיטקטוני — entry שייך ל-service, לא ל-package | גבוה | הסטנדרט המקצועי — חישוב packages דינמי FIFO |
 | CI Pipeline (GitHub Actions) | קריטי | טרם נעשה |
 | Loading consolidation — איחוד שתי מערכות loading | הושלם | PR #161, NS קורא ישירות ל-Unified |
 | Audit 28 deferred scripts — תלויות הפוכות | הושלם | 23 SAFE, 3 NEEDS REVIEW (mitigated), 0 UNSAFE |
