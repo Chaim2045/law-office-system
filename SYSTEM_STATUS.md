@@ -4,7 +4,7 @@
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
 **עדכון אחרון:** 2026-03-22
 **סטטוס:** Performance optimization complete, מערכת יציבה
-**PRs:** #144, #145, #146, #166 (budget tasks performance), #168 (login flow performance)
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171
 
 ---
 
@@ -46,6 +46,9 @@ production-stable:  pending merge PRs #163, #164
 | #164 | 22/3 | Cleanup: remove 2 orphaned function-monitor scripts |
 | #166 | 22/3 | Performance: budget tasks — הסרת getUserMetrics callable, ספירה מקומית, הסרת double render |
 | #168 | 22/3 | Performance: login flow — fire-and-forget post-login tasks, fix loginCount double increment, remove redundant queries |
+| #169 | 22/3 | Performance: silence console.log/info/debug in PROD with debug backdoor |
+| #170 | 22/3 | fix: activate PresenceSystem — Firestore rules, CSP wss://, connect() fields, RTDB deploy |
+| #171 | 22/3 | hotfix: handle Timestamp in loadMonthlyTimesheetStats date comparison |
 
 ---
 
@@ -174,6 +177,8 @@ functions/
 | **חישוב סטטיסטיקות budget tasks = client-side בלבד** | הנתונים כבר בזיכרון (onSnapshot). getUserMetrics Cloud Function נשארת אבל לא נקראת מהקליינט |
 | **post-login tasks = fire-and-forget** | CaseNumberGenerator, logLogin, PresenceSystem רצים אחרי showApp בלי await |
 | **loadMonthlyTimesheetStats = client-side** | מחושב מ-timesheetEntries שבזיכרון, לא Firebase query |
+| **PresenceSystem = Firestore heartbeat + RTDB onDisconnect** | lastSeen+isOnline כל 5 דקות ל-Firestore, RTDB ל-real-time presence |
+| **Firestore rules exception ל-presence fields** | employees doc — user יכול לעדכן lastSeen+isOnline על עצמו |
 
 ---
 
@@ -459,9 +464,12 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 | getUserMetrics — נקרא 8 פעמים per action | הושלם | PR #166 — הוסר מהקליינט, חישוב מקומי בלבד |
 | Stats active סופר 'בוטל' כ-active | נמוך | חוסר עקביות ישן — _calculateBudgetStatisticsClient vs updateTaskCountBadges |
 | AI_CONFIG load order | נמוך | pre-existing, ai-config לא נטען לפני ai-engine |
-| PresenceSystem Realtime DB URL שגוי | בינוני | isConnected=false, db=false. לא עובד. URL לא נכון |
-| Console logging ב-PROD | בינוני | לוגים מפורטים נראים ב-Console — לא מקצועי, מקל על reverse engineering |
-| loginWithGoogle + loginWithApple — אותו pattern חוסם | נמוך | אותן בעיות של handleLogin — logLogin, PresenceSystem sequential |
+| Console logging ב-PROD | הושלם | PR #169 — console.log/info/debug silenced, warn+error active, enableDebug() backdoor |
+| loginWithGoogle + loginWithApple pattern חוסם | נמוך | אותן בעיות כמו handleLogin — fire-and-forget |
+| AI_CONFIG not found — ai-engine.js | בינוני | חסר API key או סדר טעינה שגוי |
+| EventBus not available בזמן statistics init | נמוך | סדר טעינה |
+| Console logging ב-Admin Panel | בינוני | 1,076 console.log עדיין מודפסים — צריך override כמו User App |
+| main.js פיצול למודולים | בינוני | 3,156 שורות, class אחת |
 | מיגרציה מ-functions.config() ל-Secret Manager | נמוך | deadline מרץ 2027 |
 
 ---
