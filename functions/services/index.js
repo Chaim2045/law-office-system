@@ -347,14 +347,36 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     const now = new Date().toISOString();
     const packageId = `pkg_${Date.now()}`;
 
+    // ── Backfill: שיוך entries יתומים (ללא packageId) לחבילה החדשה ──
+    const orphanSnap = await db.collection('timesheet_entries')
+      .where('clientId', '==', clientId)
+      .where('serviceId', '==', data.serviceId)
+      .get();
+
+    const orphanEntries = [];
+    let orphanMinutes = 0;
+    orphanSnap.forEach(doc => {
+      const entry = doc.data();
+      if (!entry.packageId) {
+        orphanEntries.push(doc.ref);
+        orphanMinutes += (entry.minutes || 0);
+      }
+    });
+
+    const orphanHours = round2(orphanMinutes / 60);
+    const newHoursUsed = orphanHours;
+    const newHoursRemaining = round2(data.hours - newHoursUsed);
+
+    console.log(`📦 [addPackageToService] Backfill: ${orphanEntries.length} entries (${orphanHours}h) → ${packageId}`);
+
     const newPackage = {
       id: packageId,
       type: 'additional',
       hours: data.hours,
-      hoursUsed: 0,
-      hoursRemaining: data.hours,
+      hoursUsed: newHoursUsed,
+      hoursRemaining: newHoursRemaining,
       purchaseDate: now,
-      status: 'active',
+      status: newHoursRemaining <= 0 ? 'depleted' : 'active',
       description: data.description ? sanitizeString(data.description.trim()) : `חבילה נוספת - ${new Date().toLocaleDateString('he-IL')}`
     };
 
@@ -362,9 +384,13 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     service.packages = service.packages || [];
     service.packages.push(newPackage);
 
-    // עדכון סיכומי השירות
+    // עדכון סיכומי השירות — חישוב מחדש מכל ה-packages
     service.totalHours = (service.totalHours || 0) + data.hours;
-    service.hoursRemaining = (service.hoursRemaining || 0) + data.hours;
+    const svcHoursUsed = round2(
+      service.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0)
+    );
+    service.hoursUsed = svcHoursUsed;
+    service.hoursRemaining = round2(service.totalHours - svcHoursUsed);
 
     // עדכון המערך
     services[serviceIndex] = service;
@@ -385,6 +411,19 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: user.username
     });
+
+    // ── Backfill: כתיבת packageId על entries יתומים (batches of 500) ──
+    if (orphanEntries.length > 0) {
+      for (let i = 0; i < orphanEntries.length; i += 500) {
+        const chunk = orphanEntries.slice(i, i + 500);
+        const batch = db.batch();
+        for (const ref of chunk) {
+          batch.update(ref, { packageId: packageId });
+        }
+        await batch.commit();
+      }
+      console.log(`✅ [addPackageToService] Backfill committed: ${orphanEntries.length} entries → ${packageId}`);
+    }
 
     // Audit log
     await logAction('ADD_PACKAGE_TO_SERVICE', user.uid, user.username, {
