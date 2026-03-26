@@ -81,7 +81,6 @@
         employees[doc.id] = {
           email: doc.id,  // doc.id is EMAIL (industry standard)
           username: data.username,  // username is for display only
-          password: data.password,
           name: data.name || data.displayName,
           displayName: data.displayName || data.name,
           isActive: data.isActive !== false,
@@ -124,7 +123,6 @@
       const data = doc.data();
       return {
         username: doc.id,
-        password: data.password,
         name: data.name || data.displayName,
         displayName: data.displayName || data.name,
         email: data.email,
@@ -377,17 +375,20 @@ updateData.role = updates.role;
    */
   async function authenticate(username, password) {
     try {
-      const employee = await getEmployee(username);
+      // Direct Firestore read for password verification — password is never stored on returned objects
+      const doc = await window.firebaseDB.collection('employees').doc(username).get();
 
-      if (!employee) {
+      if (!doc.exists) {
         return { success: false, error: 'המשתמש לא קיים' };
       }
 
-      if (!employee.isActive) {
+      const data = doc.data();
+
+      if (data.isActive === false) {
         return { success: false, error: 'החשבון מושבת' };
       }
 
-      if (employee.password !== password) {
+      if (data.password !== password) {
         return { success: false, error: 'סיסמה שגויה' };
       }
 
@@ -399,6 +400,8 @@ updateData.role = updates.role;
 
       logger.log(`✅ User ${username} authenticated successfully`);
 
+      // Return clean employee object (without password)
+      const employee = await getEmployee(username);
       return {
         success: true,
         employee: employee

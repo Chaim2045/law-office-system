@@ -126,6 +126,7 @@ export class TaskApprovalPanel {
 
   renderApprovals() {
     const listContainer = this.container.querySelector('#approvalsList');
+    const purify = (v) => window.DOMPurify ? DOMPurify.sanitize(String(v ?? '')) : String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     if (this.filteredApprovals.length === 0) {
       listContainer.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>אין בקשות אישור</p></div>';
@@ -151,10 +152,10 @@ export class TaskApprovalPanel {
       <div class="user-group">
         <div class="user-group-header">
           <div class="user-info">
-            <div class="user-avatar">${userGroup.name.charAt(0)}</div>
+            <div class="user-avatar">${purify(userGroup.name).charAt(0)}</div>
             <div class="user-details">
-              <h3>${userGroup.name}</h3>
-              <p>${userGroup.email}</p>
+              <h3>${purify(userGroup.name)}</h3>
+              <p>${purify(userGroup.email)}</p>
             </div>
           </div>
           <span class="requests-count">${userGroup.requests.length}</span>
@@ -173,8 +174,8 @@ export class TaskApprovalPanel {
           <tbody>
             ${userGroup.requests.map(approval => `
               <tr data-id="${approval.id}" class="approval-row">
-                <td class="task-desc">${approval.taskData.description}</td>
-                <td class="task-client">${approval.taskData.clientName}</td>
+                <td class="task-desc">${purify(approval.taskData.description)}</td>
+                <td class="task-client">${purify(approval.taskData.clientName)}</td>
                 <td class="task-budget">${helpers.formatMinutesToHoursText(approval.taskData.estimatedMinutes)}</td>
                 <td class="task-time">${helpers.formatRelativeTime(approval.requestedAt)}</td>
                 <td><span class="task-status ${approval.status}">${helpers.getStatusText(approval.status)}</span></td>

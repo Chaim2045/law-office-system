@@ -104,7 +104,8 @@ return '';
       .map(
         (client) => `
       <div class="client-result"
-           onclick="${onClickHandler}('${client.fullName}', '${client.fileNumber}')"
+           data-client-name="${safeText(client.fullName)}"
+           data-file-number="${safeText(client.fileNumber)}"
            style="
              padding: 10px 12px;
              cursor: pointer;
@@ -125,7 +126,7 @@ return '';
           }
         </div>
         <div style="font-size: 12px; color: ${fileNumberColor}; font-weight: 500;">
-          ${client.fileNumber}
+          ${safeText(client.fileNumber)}
         </div>
       </div>
     `
@@ -177,6 +178,19 @@ return;
 
     resultsContainer.innerHTML = html;
     resultsContainer.style.display = 'block';
+
+    // Event delegation for client selection (replaces inline onclick)
+    resultsContainer.onclick = (e) => {
+      const row = e.target.closest('.client-result');
+      if (!row) {
+return;
+}
+      const name = row.dataset.clientName;
+      const fileNum = row.dataset.fileNumber;
+      if (typeof window.manager?.selectClientForEdit === 'function') {
+        window.manager.selectClientForEdit(name, fileNum);
+      }
+    };
   }
 
   // Export to global window object

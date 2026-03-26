@@ -9,6 +9,8 @@
  * Design: Ultra-minimal style matching existing system
  */
 
+const purify = (v) => window.DOMPurify ? DOMPurify.sanitize(String(v ?? '')) : String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
 class TaskTimeline {
   constructor() {
     this.overlayId = 'taskTimelineOverlay';
@@ -270,11 +272,11 @@ return 'תאריך לא תקין';
         const budgetText = `תקציב ראשוני: ${event.data.estimatedMinutes || 0} דקות`;
         return deadlineText ? `${budgetText} • ${deadlineText}` : budgetText;
       case 'time-entry':
-        return event.data.description || 'עבודה על המשימה';
+        return purify(event.data.description || 'עבודה על המשימה');
       case 'budget-adjustment':
-        return event.data.reason || 'עדכון תקציב הזמן';
+        return purify(event.data.reason || 'עדכון תקציב הזמן');
       case 'deadline-extension':
-        return event.data.reason || 'הארכת תאריך יעד';
+        return purify(event.data.reason || 'הארכת תאריך יעד');
       default:
         return '';
     }
@@ -288,13 +290,13 @@ return 'תאריך לא תקין';
   getEventFooter(event) {
     switch (event.type) {
       case 'created':
-        return `נוצר על ידי: ${event.data.createdBy}`;
+        return `נוצר על ידי: ${purify(event.data.createdBy)}`;
       case 'time-entry':
-        return `נוסף על ידי: ${event.data.addedBy}`;
+        return `נוסף על ידי: ${purify(event.data.addedBy)}`;
       case 'budget-adjustment':
-        return `עודכן על ידי: ${event.data.adjustedBy}`;
+        return `עודכן על ידי: ${purify(event.data.adjustedBy)}`;
       case 'deadline-extension':
-        return `עודכן על ידי: ${event.data.extendedBy}`;
+        return `עודכן על ידי: ${purify(event.data.extendedBy)}`;
       default:
         return '';
     }
@@ -333,10 +335,10 @@ return 'תאריך לא תקין';
             <!-- Task Info inside Header - Floating Card -->
             <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; max-width: 85%; margin: 0 auto; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);">
               <div style="font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 3px;">
-                ${task.description || 'ללא תיאור'}
+                ${purify(task.description || 'ללא תיאור')}
               </div>
               <div style="font-size: 12px; color: #6b7280;">
-                לקוח: ${task.clientName || 'לא ידוע'} • תיק: ${task.caseNumber || 'לא ידוע'}
+                לקוח: ${purify(task.clientName || 'לא ידוע')} • תיק: ${purify(task.caseNumber || 'לא ידוע')}
               </div>
             </div>
           </div>

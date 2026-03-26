@@ -355,10 +355,11 @@ return;
 
       console.log(`📊 Showing announcement ${this.currentIndex + 1}/${this.announcements.length}: "${message.substring(0, 30)}..." → ${repeatCount}x repeats`);
 
-      // Build content for current announcement only
+      // Build content for current announcement only (sanitized)
+      const purify = (v) => window.DOMPurify ? DOMPurify.sanitize(String(v ?? '')) : String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       let contentHTML = '';
       for (let i = 0; i < repeatCount; i++) {
-        contentHTML += `<span class="ticker-item">${message}</span>`;
+        contentHTML += `<span class="ticker-item">${purify(message)}</span>`;
       }
 
       // Step 2: Duplicate EXACTLY 2 times for translateX(-50%) animation

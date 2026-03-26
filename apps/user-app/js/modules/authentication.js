@@ -626,7 +626,7 @@ btn.disabled = false;
       return;
     }
 
-    console.log('✅ Employee validated:', employee);
+    console.log('✅ Employee validated:', employee.name || employee.email);
 
     // Set current user data (this = LawOfficeManager)
     this.currentUid = user.uid;
@@ -764,7 +764,7 @@ btn.disabled = false;
       return;
     }
 
-    console.log('✅ Employee validated:', employee);
+    console.log('✅ Employee validated:', employee.name || employee.email);
 
     // Set current user data (this = LawOfficeManager)
     this.currentUid = user.uid;
