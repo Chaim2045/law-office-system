@@ -263,10 +263,10 @@ class LawOfficeManager {
         .get();
 
       if (doc.exists) {
-        const employee = doc.data();
+        const { password: _pw, ...employee } = doc.data();
         this.currentUser = employee.email; // ✅ EMAIL for queries
         this.currentUsername = employee.username || employee.name; // Username for display
-        this.currentEmployee = employee; // ✅ Full employee data (including dailyHoursTarget)
+        this.currentEmployee = employee; // ✅ Full employee data (without password)
 
         UIComponents.updateUserDisplay(this.currentUsername);
 
@@ -1602,7 +1602,7 @@ return;
 
         // Emit EventBus event
         window.EventBus.emit('timesheet:entry-created', {
-          entryId: result.data?.entryId || 'unknown',
+          entryId: result.entryId || 'unknown',
           date,
           minutes,
           action,

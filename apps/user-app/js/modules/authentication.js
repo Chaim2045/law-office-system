@@ -615,9 +615,9 @@ btn.disabled = false;
       return;
     }
 
-    const employee = employeeDoc.data();
+    const employeeRaw = employeeDoc.data();
 
-    if (!employee) {
+    if (!employeeRaw) {
       await window.firebaseAuth.signOut();
       showError('שגיאה בטעינת נתוני עובד');
       if (btn) {
@@ -625,6 +625,9 @@ btn.disabled = false;
 }
       return;
     }
+
+    // Strip sensitive fields before storing in memory
+    const { password: _pw, ...employee } = employeeRaw;
 
     console.log('✅ Employee validated:', employee.name || employee.email);
 
@@ -753,9 +756,9 @@ btn.disabled = false;
       return;
     }
 
-    const employee = employeeDoc.data();
+    const employeeRaw = employeeDoc.data();
 
-    if (!employee) {
+    if (!employeeRaw) {
       await window.firebaseAuth.signOut();
       showError('שגיאה בטעינת נתוני עובד');
       if (btn) {
@@ -763,6 +766,9 @@ btn.disabled = false;
 }
       return;
     }
+
+    // Strip sensitive fields before storing in memory
+    const { password: _pw, ...employee } = employeeRaw;
 
     console.log('✅ Employee validated:', employee.name || employee.email);
 
