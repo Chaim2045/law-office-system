@@ -1167,3 +1167,95 @@ exports.setServiceOverride = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'שגיאה פנימית');
   }
 });
+
+/**
+ * סימון/ביטול חריגה כ"הוסדרה" — טרנזקציונלי
+ */
+exports.setServiceOverdraftResolved = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לסמן חריגה כהוסדרה'
+      );
+    }
+
+    if (!data.clientId || !data.serviceId || typeof data.resolved !== 'boolean') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'חסרים פרמטרים: clientId, serviceId, resolved'
+      );
+    }
+
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    await db.runTransaction(async (transaction) => {
+      const clientDoc = await transaction.get(clientRef);
+
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'לקוח לא נמצא');
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError('not-found', 'שירות לא נמצא');
+      }
+
+      const service = services[serviceIndex];
+      let updatedService;
+
+      if (data.resolved) {
+        updatedService = {
+          ...service,
+          overdraftResolved: {
+            isResolved: true,
+            resolvedAt: new Date().toISOString(),
+            resolvedBy: user.email || user.username,
+            resolvedByName: user.displayName || user.username,
+            note: data.note || ''
+          }
+        };
+      } else {
+        const { overdraftResolved, ...serviceWithoutResolution } = service;
+        updatedService = serviceWithoutResolution;
+      }
+
+      const updatedServices = [...services];
+      updatedServices[serviceIndex] = updatedService;
+
+      transaction.update(clientRef, {
+        services: updatedServices,
+        lastModifiedBy: user.username,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    await logAction(
+      data.resolved ? 'RESOLVE_SERVICE_OVERDRAFT' : 'UNRESOLVE_SERVICE_OVERDRAFT',
+      user.uid,
+      user.username,
+      {
+        clientId: data.clientId,
+        serviceId: data.serviceId,
+        resolved: data.resolved,
+        note: data.note || ''
+      }
+    );
+
+    return {
+      success: true,
+      serviceId: data.serviceId,
+      resolved: data.resolved
+    };
+
+  } catch (error) {
+    console.error('Error in setServiceOverdraftResolved:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', 'שגיאה פנימית');
+  }
+});
