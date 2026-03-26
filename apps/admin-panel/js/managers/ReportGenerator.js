@@ -85,7 +85,7 @@
             );
 
             // Filter by service if selected
-            if (formData.service !== 'all') {
+            if (formData.service && formData.service !== 'all') {
                 const matchService = (entry) => {
                     if (formData.serviceId && entry.serviceId === formData.serviceId) {
 return true;
