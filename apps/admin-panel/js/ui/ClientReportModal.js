@@ -676,10 +676,6 @@ return;
                 }
             }
 
-            // 🚫 REMOVED "All Services" option as per user request
-            // Previously: Added "כל השירותים" option for hour package clients
-            // Reason for removal: User requested to remove this feature entirely
-
             console.log(`📦 DEBUG: servicesMap size = ${servicesMap.size}`);
             console.log('📦 DEBUG: servicesMap contents:', Array.from(servicesMap.entries()));
 
@@ -692,6 +688,31 @@ return;
                     services: client.services,
                     hasServices: client.services?.length > 0
                 });
+            }
+
+            // ✅ Add "All Services" card as default — ensures entries without serviceId are included
+            if (servicesMap.size > 0) {
+                const allCard = document.createElement('div');
+                allCard.className = 'report-service-card selected';
+                allCard.dataset.serviceId = '';
+                allCard.textContent = 'כל השירותים';
+                allCard.style.cssText = 'cursor: pointer; text-align: center; padding: 10px; font-weight: 600;';
+
+                const allClickHandler = (e) => {
+                    e.preventDefault();
+                    // Remove selection from all cards
+                    const allCards = this.serviceCardsContainer.querySelectorAll('.report-service-card');
+                    allCards.forEach(c => c.classList.remove('selected'));
+                    allCard.classList.add('selected');
+                    // Reset service filter
+                    this.selectedServiceInput.value = '';
+                    this.selectedServiceInput.dataset.serviceId = '';
+                    console.log('✅ Selected: כל השירותים (no filter)');
+                };
+                allCard.addEventListener('click', allClickHandler);
+                this.eventListeners.push({ element: allCard, event: 'click', handler: allClickHandler });
+
+                this.serviceCardsContainer.appendChild(allCard);
             }
 
             Array.from(servicesMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([serviceKey, serviceInfo], index) => {
