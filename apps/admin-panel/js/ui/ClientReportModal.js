@@ -676,10 +676,6 @@ return;
                 }
             }
 
-            // 🚫 REMOVED "All Services" option as per user request
-            // Previously: Added "כל השירותים" option for hour package clients
-            // Reason for removal: User requested to remove this feature entirely
-
             console.log(`📦 DEBUG: servicesMap size = ${servicesMap.size}`);
             console.log('📦 DEBUG: servicesMap contents:', Array.from(servicesMap.entries()));
 

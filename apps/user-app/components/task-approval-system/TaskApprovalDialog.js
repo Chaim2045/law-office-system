@@ -28,6 +28,7 @@ export class TaskApprovalDialog {
 
     const approval = this.currentApproval;
     const requestedMinutes = approval.taskData.estimatedMinutes;
+    const purify = (v) => window.DOMPurify ? DOMPurify.sanitize(String(v ?? '')) : String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     this.overlay = document.createElement('div');
     this.overlay.className = 'task-approval-dialog-overlay active';
@@ -44,15 +45,15 @@ export class TaskApprovalDialog {
           <div class="task-details">
             <div class="detail-row">
               <span class="detail-label">עובד:</span>
-              <span class="detail-value">${approval.requestedByName}</span>
+              <span class="detail-value">${purify(approval.requestedByName)}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">לקוח:</span>
-              <span class="detail-value">${approval.taskData.clientName}</span>
+              <span class="detail-value">${purify(approval.taskData.clientName)}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">תיאור:</span>
-              <span class="detail-value">${approval.taskData.description}</span>
+              <span class="detail-value">${purify(approval.taskData.description)}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">תקציב מבוקש:</span>
