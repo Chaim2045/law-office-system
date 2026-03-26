@@ -1525,6 +1525,12 @@ return;
     // ✅ This form is now ONLY for internal activities
     // Time tracking on clients is done automatically through tasks
 
+    // Guard against concurrent double-submissions
+    if (this._timesheetSubmitting) {
+return;
+}
+    this._timesheetSubmitting = true;
+
     // Validate form fields
     const date = document.getElementById('actionDate')?.value;
 
@@ -1534,16 +1540,19 @@ return;
 
     if (!date) {
       this.showNotification('חובה לבחור תאריך', 'error');
+      this._timesheetSubmitting = false;
       return;
     }
 
     if (!minutes || minutes < 1) {
       this.showNotification('חובה להזין זמן בדקות', 'error');
+      this._timesheetSubmitting = false;
       return;
     }
 
     if (!action || action.length < 3) {
       this.showNotification('חובה להזין תיאור פעולה (לפחות 3 תווים)', 'error');
+      this._timesheetSubmitting = false;
       return;
     }
 
@@ -1615,6 +1624,9 @@ return;
         if (plusButton) {
 plusButton.classList.remove('active');
 }
+      },
+      onFinally: () => {
+        this._timesheetSubmitting = false;
       }
     });
   }

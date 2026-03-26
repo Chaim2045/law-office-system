@@ -16,32 +16,45 @@
 /**
  * Generate idempotency key for timesheet entry
  *
- * Format: timesheet_{employee}_{date}_{action_hash}_{minutes}_{timestamp}
+ * Format: timesheet_{employee}_{date}_{action_hash}_{minutes}_{context_hash}
  *
  * @param {Object} entryData - Timesheet entry data
  * @param {string} entryData.employee - Employee email
  * @param {string} entryData.date - Entry date (ISO format)
  * @param {string} entryData.action - Action description
  * @param {number} entryData.minutes - Minutes worked
- * @returns {string} Unique idempotency key
+ * @param {string} [entryData.clientId] - Client ID (null for internal)
+ * @param {string} [entryData.serviceId] - Service ID
+ * @param {string} [entryData.stageId] - Stage ID
+ * @param {string} [entryData.taskId] - Task ID
+ * @param {boolean} [entryData.isInternal] - Internal activity flag
+ * @returns {string} Deterministic idempotency key (same input → same key)
  *
  * @example
  * generateIdempotencyKey({
  *   employee: 'user@example.com',
  *   date: '2026-02-05',
  *   action: 'ישיבת צוות',
- *   minutes: 60
+ *   minutes: 60,
+ *   isInternal: true
  * })
- * // Returns: 'timesheet_user@example.com_2026-02-05_a3f8b9c1_60_1738761234567'
+ * // Returns: 'timesheet_user@example.com_2026-02-05_a3f8b9c1_60_k7m2p4q1'
  */
 function generateIdempotencyKey(entryData) {
   const employee = entryData.employee || 'unknown';
   const date = entryData.date;
   const actionHash = simpleHash(entryData.action || '');
   const minutes = entryData.minutes;
-  const timestamp = Date.now();
+  const contextString = [
+    entryData.clientId   || '',
+    entryData.serviceId  || '',
+    entryData.stageId    || '',
+    entryData.taskId     || '',
+    entryData.isInternal ? '1' : '0'
+  ].join('|');
+  const contextHash = simpleHash(contextString);
 
-  return `timesheet_${employee}_${date}_${actionHash}_${minutes}_${timestamp}`;
+  return `timesheet_${employee}_${date}_${actionHash}_${minutes}_${contextHash}`;
 }
 
 /**
