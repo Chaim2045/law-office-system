@@ -6,6 +6,7 @@ const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString, isValidIsraeliPhone, isValidEmail } = require('../shared/validators');
 const { generateCaseNumberWithTransaction } = require('../case-number-transaction');
+const { calcClientAggregates } = require('../shared/aggregates');
 
 const db = admin.firestore();
 
@@ -1136,8 +1137,16 @@ exports.setServiceOverride = functions.https.onCall(async (data, context) => {
       const updatedServices = [...services];
       updatedServices[serviceIndex] = updatedService;
 
+      const agg = calcClientAggregates(updatedServices, clientData.totalHours);
+
       transaction.update(clientRef, {
         services: updatedServices,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
         lastModifiedBy: user.username,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
       });
@@ -1228,8 +1237,16 @@ exports.setServiceOverdraftResolved = functions.https.onCall(async (data, contex
       const updatedServices = [...services];
       updatedServices[serviceIndex] = updatedService;
 
+      const agg = calcClientAggregates(updatedServices, clientData.totalHours);
+
       transaction.update(clientRef, {
         services: updatedServices,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
         lastModifiedBy: user.username,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
       });
