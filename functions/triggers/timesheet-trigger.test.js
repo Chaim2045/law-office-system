@@ -206,6 +206,25 @@ describe('Bug A: applyServiceTransfer', () => {
     consoleSpy.mockRestore();
   });
 
+  test('old service exists but package not found: aborts transfer (returns null)', () => {
+    const svcA = makeHoursService('svc_A', { totalHours: 20, hoursUsed: 5 });
+    const svcB = makeHoursService('svc_B', { totalHours: 20, hoursUsed: 0 });
+    const services = [svcA, svcB];
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // packageId 'wrong_pkg' does not exist in svc_A
+    const result = applyServiceTransfer(
+      services,
+      { serviceId: 'svc_A', parentServiceId: null, stageId: null, packageId: 'wrong_pkg', minutes: 60 },
+      { serviceId: 'svc_B', parentServiceId: null, stageId: null, packageId: 'svc_B_pkg1', minutes: 60 }
+    );
+
+    expect(result).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('aborting transfer'));
+    consoleSpy.mockRestore();
+  });
+
   test('cross-type transfer: hours → legal_procedure', () => {
     const svcHours = makeHoursService('svc_hours', { totalHours: 20, hoursUsed: 5 });
     const svcLegal = makeLegalProcedureService('svc_legal');

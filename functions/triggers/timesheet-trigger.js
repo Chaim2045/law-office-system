@@ -364,7 +364,9 @@ function applyServiceTransfer(services, before, after) {
     if (leg1Result) {
       currentServices = leg1Result.updatedServices;
     } else {
-      console.warn(`⚠️ [timesheet-trigger] Service transfer Leg 1: target not found in old service ${oldLookupId} — proceeding with Leg 2 only`);
+      // Old service exists but target package/stage not found — abort to prevent phantom hours
+      console.error(`❌ [timesheet-trigger] Service transfer Leg 1: target not found in old service ${oldLookupId} — aborting transfer`);
+      return null;
     }
   } else {
     console.warn(`⚠️ [timesheet-trigger] Service transfer Leg 1: old service ${oldLookupId} not found on client — skipping decrement`);
