@@ -3,19 +3,28 @@
  *
  * Listens to all writes on timesheet_entries/{entryId} and recalculates
  * client summaries + budget_task actuals using immutable patterns.
+ *
+ * CONTRACT with callable functions:
+ * - CREATE + deductedInTransaction: true  → trigger skips entirely (callable already handled everything)
+ * - CREATE + deductedInTransaction: false/undefined → trigger runs normally (backward compatible)
+ * - UPDATE → trigger always runs (no callable handles edits)
+ * - DELETE → trigger always runs (no callable handles deletes)
  */
 
 const admin = require('firebase-admin');
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 
-const db = admin.firestore();
+// Shared aggregation functions — single source of deduction logic
+const {
+  round2,
+  applyHoursDelta,
+  applyHoursDeltaServiceOnly,
+  applyLegalProcedureDelta,
+  applyLegalProcedureDeltaStageOnly,
+  calcClientAggregates
+} = require('../src/modules/aggregation');
 
-/**
- * Round a number to 2 decimal places
- */
-function round2(n) {
-  return Math.round((n || 0) * 100) / 100;
-}
+const db = admin.firestore();
 
 /**
  * Detect the type of write event
@@ -42,286 +51,6 @@ function getMinutesDelta(eventType, before, after) {
     default:
       return 0;
   }
-}
-
-/**
- * Build an updated services array (immutable) after applying a minutes delta
- * to the target package within the target service.
- *
- * Returns { updatedServices, isOverage, overageMinutes } or null if target not found.
- */
-function applyHoursDelta(services, serviceId, packageId, minutesDelta) {
-  const hoursDelta = minutesDelta / 60;
-  let targetFound = false;
-  let isOverage = false;
-  let overageMinutes = 0;
-
-  const updatedServices = services.map((svc) => {
-    if (svc.id !== serviceId) return svc;
-
-    // Found the target service — update packages
-    const updatedPackages = (svc.packages || []).map((pkg) => {
-      if (pkg.id !== packageId) return pkg;
-
-      targetFound = true;
-
-      const newHoursUsed = round2((pkg.hoursUsed || 0) + hoursDelta);
-      const newHoursRemaining = round2((pkg.hours || 0) - newHoursUsed);
-
-      let newStatus = pkg.status || 'active';
-      if (newHoursRemaining <= 0) {
-        newStatus = 'depleted';
-      } else if (newStatus === 'depleted') {
-        // Restore if hours freed up (edit/delete)
-        newStatus = 'active';
-      }
-
-      if (newHoursRemaining < 0) {
-        isOverage = true;
-        overageMinutes = round2(Math.abs(newHoursRemaining) * 60);
-      }
-
-      return {
-        ...pkg,
-        hoursUsed: newHoursUsed,
-        hoursRemaining: newHoursRemaining,
-        status: newStatus
-      };
-    });
-
-    // Recalculate service-level aggregates from packages
-    const svcHoursUsed = round2(
-      updatedPackages.reduce((sum, p) => sum + (p.hoursUsed || 0), 0)
-    );
-    const svcHoursRemaining = round2((svc.totalHours || 0) - svcHoursUsed);
-
-    return {
-      ...svc,
-      packages: updatedPackages,
-      hoursUsed: svcHoursUsed,
-      hoursRemaining: svcHoursRemaining,
-      isBlocked: svcHoursRemaining <= 0 && !svc.overrideActive && !(svc.overdraftResolved?.isResolved),
-      isCritical: svcHoursRemaining > 0 && svcHoursRemaining <= 5
-    };
-  });
-
-  if (!targetFound) return null;
-
-  return { updatedServices, isOverage, overageMinutes };
-}
-
-/**
- * Build an updated services array (immutable) for legal_procedure service type.
- * Handles both hourly stages (with packages) and fixed stages (totalHoursWorked).
- *
- * Returns { updatedServices, isOverage, overageMinutes } or null if target not found.
- */
-function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minutesDelta) {
-  const hoursDelta = minutesDelta / 60;
-  let targetFound = false;
-  let isOverage = false;
-  let overageMinutes = 0;
-
-  const updatedServices = services.map((svc) => {
-    if (svc.id !== serviceId) return svc;
-
-    const updatedStages = (svc.stages || []).map((stage) => {
-      if (stage.id !== stageId) return stage;
-
-      targetFound = true;
-
-      // ── Fixed pricing: track hours worked, no deduction ──
-      if (stage.pricingType === 'fixed') {
-        const newTotalHoursWorked = round2((stage.totalHoursWorked || 0) + hoursDelta);
-        return {
-          ...stage,
-          totalHoursWorked: newTotalHoursWorked
-        };
-      }
-
-      // ── Hourly pricing: deduct from package ──
-      if (!packageId) return stage;
-
-      const updatedPackages = (stage.packages || []).map((pkg) => {
-        if (pkg.id !== packageId) return pkg;
-
-        const newHoursUsed = round2((pkg.hoursUsed || 0) + hoursDelta);
-        const newHoursRemaining = round2((pkg.hours || 0) - newHoursUsed);
-
-        let newStatus = pkg.status || 'active';
-        if (newHoursRemaining <= 0) {
-          newStatus = 'depleted';
-        } else if (newStatus === 'depleted') {
-          newStatus = 'active';
-        }
-
-        if (newHoursRemaining < 0) {
-          isOverage = true;
-          overageMinutes = round2(Math.abs(newHoursRemaining) * 60);
-        }
-
-        return {
-          ...pkg,
-          hoursUsed: newHoursUsed,
-          hoursRemaining: newHoursRemaining,
-          status: newStatus
-        };
-      });
-
-      // Recalculate stage-level aggregates from packages
-      const stageHoursUsed = round2(
-        updatedPackages.reduce((sum, p) => sum + (p.hoursUsed || 0), 0)
-      );
-      const stageHoursRemaining = round2((stage.totalHours || 0) - stageHoursUsed);
-
-      return {
-        ...stage,
-        packages: updatedPackages,
-        hoursUsed: stageHoursUsed,
-        hoursRemaining: stageHoursRemaining
-      };
-    });
-
-    // Recalculate service-level aggregates from stages
-    const svcHoursUsed = round2(
-      updatedStages.reduce((sum, st) => sum + (st.pricingType === 'fixed' ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
-    );
-    const svcHoursRemaining = svc.pricingType === 'fixed'
-      ? null
-      : round2((svc.totalHours || 0) - svcHoursUsed);
-
-    return {
-      ...svc,
-      stages: updatedStages,
-      hoursUsed: svcHoursUsed,
-      hoursRemaining: svcHoursRemaining
-    };
-  });
-
-  if (!targetFound) return null;
-
-  return { updatedServices, isOverage, overageMinutes };
-}
-
-/**
- * Build an updated services array (immutable) for hours service type
- * when ALL packages are depleted and no packageId is available.
- *
- * Increments service-level hoursUsed/hoursRemaining directly without
- * touching any individual package.
- *
- * Returns { updatedServices, isOverage, overageMinutes } or null if target not found.
- */
-function applyHoursDeltaServiceOnly(services, serviceId, minutesDelta) {
-  const hoursDelta = minutesDelta / 60;
-  let targetFound = false;
-  let isOverage = false;
-  let overageMinutes = 0;
-
-  const updatedServices = services.map((svc) => {
-    if (svc.id !== serviceId) return svc;
-    targetFound = true;
-
-    const newHoursUsed = round2((svc.hoursUsed || 0) + hoursDelta);
-    const newHoursRemaining = round2((svc.totalHours || 0) - newHoursUsed);
-
-    if (newHoursRemaining < 0) {
-      isOverage = true;
-      overageMinutes = round2(Math.abs(newHoursRemaining) * 60);
-    }
-
-    return {
-      ...svc,
-      hoursUsed: newHoursUsed,
-      hoursRemaining: newHoursRemaining,
-      isBlocked: newHoursRemaining <= 0 && !svc.overrideActive && !(svc.overdraftResolved?.isResolved),
-      isCritical: newHoursRemaining > 0 && newHoursRemaining <= 5
-    };
-  });
-
-  if (!targetFound) return null;
-
-  return { updatedServices, isOverage, overageMinutes };
-}
-
-/**
- * Build an updated services array (immutable) for legal_procedure service type
- * when ALL stage packages are depleted and no packageId is available.
- *
- * Increments stage-level hoursUsed/hoursRemaining directly without
- * touching any individual package, then recalculates service aggregates.
- *
- * Returns { updatedServices, isOverage, overageMinutes } or null if target not found.
- */
-function applyLegalProcedureDeltaStageOnly(services, serviceId, stageId, minutesDelta) {
-  const hoursDelta = minutesDelta / 60;
-  let targetFound = false;
-  let isOverage = false;
-  let overageMinutes = 0;
-
-  const updatedServices = services.map((svc) => {
-    if (svc.id !== serviceId) return svc;
-
-    const updatedStages = (svc.stages || []).map((stage) => {
-      if (stage.id !== stageId) return stage;
-
-      targetFound = true;
-
-      const newHoursUsed = round2((stage.hoursUsed || 0) + hoursDelta);
-      const newHoursRemaining = round2((stage.totalHours || 0) - newHoursUsed);
-
-      if (newHoursRemaining < 0) {
-        isOverage = true;
-        overageMinutes = round2(Math.abs(newHoursRemaining) * 60);
-      }
-
-      return {
-        ...stage,
-        hoursUsed: newHoursUsed,
-        hoursRemaining: newHoursRemaining
-      };
-    });
-
-    // Recalculate service-level aggregates from stages
-    const svcHoursUsed = round2(
-      updatedStages.reduce((sum, st) => sum + (st.pricingType === 'fixed' ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
-    );
-    const svcHoursRemaining = svc.pricingType === 'fixed'
-      ? null
-      : round2((svc.totalHours || 0) - svcHoursUsed);
-
-    return {
-      ...svc,
-      stages: updatedStages,
-      hoursUsed: svcHoursUsed,
-      hoursRemaining: svcHoursRemaining
-    };
-  });
-
-  if (!targetFound) return null;
-
-  return { updatedServices, isOverage, overageMinutes };
-}
-
-/**
- * Calculate client-level aggregates from services array
- */
-function calcClientAggregates(services, clientTotalHours) {
-  const billableServices = services.filter(
-    svc => !(svc.type === 'legal_procedure' && svc.pricingType === 'fixed')
-  );
-  const hoursUsed = round2(
-    billableServices.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
-  );
-  const hoursRemaining = round2((clientTotalHours || 0) - hoursUsed);
-  const minutesUsed = round2(hoursUsed * 60);
-  const minutesRemaining = round2(hoursRemaining * 60);
-  const hasActiveOverride = services.some(svc =>
-    svc.overrideActive === true || svc.overdraftResolved?.isResolved === true
-  );
-  const isBlocked = hoursRemaining <= 0 && !hasActiveOverride;
-  const isCritical = !isBlocked && hoursRemaining <= 5;
-  return { hoursUsed, hoursRemaining, minutesUsed, minutesRemaining, isBlocked, isCritical };
 }
 
 /**
@@ -476,6 +205,19 @@ const onTimesheetEntryChanged = onDocumentWritten({
 
   // Use after data for CREATE/UPDATE, before data for DELETE
   const entry = afterData || beforeData;
+
+  // ── Guard: skip CREATE if fully processed in creating transaction ──
+  // When deductedInTransaction === true, the callable already performed:
+  //   - service deduction (applyHoursDelta / applyLegalProcedureDelta)
+  //   - client aggregates (calcClientAggregates → hoursUsed, hoursRemaining, minutesUsed, minutesRemaining, isBlocked, isCritical)
+  //   - budget_tasks actualMinutes/actualHours increment
+  //   - isOverage/overageMinutes on entry (dual-layer: package + client)
+  // Nothing remains for the trigger to do on CREATE.
+  // UPDATE and DELETE are ALWAYS handled by the trigger regardless of this flag.
+  if (eventType === 'CREATE' && entry.deductedInTransaction === true) {
+    console.log(`⏭️ [timesheet-trigger] Entry ${entryId} fully processed in transaction — skipping CREATE`);
+    return null;
+  }
 
   // ── Guard: clientId required ──
   const clientId = entry.clientId;
@@ -718,12 +460,7 @@ module.exports = {
   onTimesheetEntryChanged,
   // Exported for unit testing only
   _test: {
-    applyHoursDelta,
-    applyHoursDeltaServiceOnly,
-    applyLegalProcedureDelta,
-    applyLegalProcedureDeltaStageOnly,
     applyServiceTransfer,
-    calcClientAggregates,
     getEventType,
     getMinutesDelta
   }

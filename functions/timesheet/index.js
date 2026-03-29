@@ -11,9 +11,18 @@ const { sanitizeString } = require('../shared/validators');
 // ✨ Modular deduction system
 const DeductionSystem = require('../src/modules/deduction');
 
+// Shared aggregation functions — same functions used by trigger
+const {
+  round2,
+  applyHoursDelta,
+  applyHoursDeltaServiceOnly,
+  applyLegalProcedureDelta,
+  applyLegalProcedureDeltaStageOnly,
+  calcClientAggregates
+} = require('../src/modules/aggregation');
+
 // Internal helpers
 const {
-  checkVersionAndLock,
   createTimeEvent,
   checkIdempotency,
   registerIdempotency,
@@ -165,18 +174,32 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       const clientData = clientDoc.data();
       const finalClientName = data.clientName || clientData.clientName || clientData.fullName;
 
-      const lookupId = data.serviceId;
-      if (lookupId) {
-        const targetService = (clientData.services || []).find(s => s.id === lookupId);
+      // ── Resolve serviceId ──
+      const services = clientData.services || [];
+      let resolvedServiceId = data.serviceId || null;
+
+      if (!resolvedServiceId && services.length === 1) {
+        resolvedServiceId = services[0].id;
+        console.log(`🔍 [Quick Log] Auto-selected single service: ${resolvedServiceId}`);
+      } else if (!resolvedServiceId && services.length > 1) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'חובה לבחור שירות — ללקוח יש מספר שירותים'
+        );
+      }
+
+      // ── Blocked service check ──
+      if (resolvedServiceId) {
+        const targetService = services.find(s => s.id === resolvedServiceId);
         if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
           throw new functions.https.HttpsError(
             'failed-precondition',
-            `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
+            `השירות "${targetService.name || resolvedServiceId}" חסום — נגמרה יתרת השעות`
           );
         }
       }
 
-      console.log(`✅ [Quick Log Transaction Phase 1] Client read: ${data.clientId}`);
+      console.log(`✅ [Quick Log Transaction Phase 1] Client read: ${data.clientId}, resolvedServiceId: ${resolvedServiceId}`);
 
       // ========================================
       // PHASE 2: CALCULATIONS (No DB access)
@@ -185,95 +208,151 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       console.log(`🧮 [Quick Log Transaction Phase 2] Calculating updates...`);
 
       const hoursWorked = data.minutes / 60;
+      const minutesDelta = data.minutes;
       let updatedStageId = null;
       let updatedPackageId = null;
+      let deductionResult = null;
+      let deductedInTransaction = false;
 
-      // ✅ Client hours-based - find active package (deduction handled by Trigger)
-      if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
-        // 🔍 Find service by serviceId if provided, otherwise use first service
-        let serviceIndex = -1;
-        if (data.serviceId) {
-          serviceIndex = clientData.services.findIndex(s => s.id === data.serviceId);
-          if (serviceIndex === -1) {
-            console.warn(`⚠️ [Quick Log] Service ${data.serviceId} not found for client ${data.clientId}, using first service`);
-            serviceIndex = 0;
-          }
-        } else {
-          serviceIndex = 0;
-          console.warn(`⚠️ [Quick Log] No serviceId provided, using first service`);
-        }
+      // ── Resolve service details and find active package ──
+      let resolvedServiceName = null;
+      let resolvedServiceType = null;
+      let resolvedParentServiceId = null;
 
-        const service = clientData.services[serviceIndex];
-        const activePackage = DeductionSystem.getActivePackage(service);
+      if (resolvedServiceId && services.length > 0) {
+        const resolvedService = services.find(s => s.id === resolvedServiceId);
+        if (resolvedService) {
+          resolvedServiceName = resolvedService.name || null;
+          resolvedServiceType = resolvedService.type || null;
+          resolvedParentServiceId = resolvedService.parentId || null;
 
-        if (activePackage) {
-          // Check overdraft limit
-          const currentRemaining = activePackage.hoursRemaining || 0;
-          const afterDeduction = currentRemaining - hoursWorked;
+          const lookupServiceId = resolvedParentServiceId || resolvedServiceId;
+          const targetService = services.find(s => s.id === lookupServiceId);
 
-          if (afterDeduction < -10) {
-            throw new functions.https.HttpsError(
-              'resource-exhausted',
-              'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-              {
-                clientId: clientData.caseNumber,
-                currentRemaining,
-                requestedHours: hoursWorked,
-                wouldBe: afterDeduction
-              }
-            );
-          }
+          if (targetService) {
+            const serviceType = targetService.type || clientData.procedureType;
 
-          updatedPackageId = activePackage.id;
-        } else {
-          console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - אין חבילה פעילה!`);
-        }
-      }
-      // ✅ Legal procedure - hourly pricing (deduction handled by Trigger)
-      else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
-        const targetStageId = clientData.currentStage || 'stage_a';
-        const stages = clientData.stages || [];
-        const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
-
-        if (currentStageIndex !== -1) {
-          const currentStage = stages[currentStageIndex];
-          updatedStageId = currentStage.id;
-
-          const activePackage = DeductionSystem.getActivePackage(currentStage);
-
-          if (activePackage) {
-            const currentRemaining = activePackage.hoursRemaining || 0;
-            const afterDeduction = currentRemaining - hoursWorked;
-
-            if (afterDeduction < -10) {
-              throw new functions.https.HttpsError(
-                'resource-exhausted',
-                'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-                {
-                  clientId: clientData.caseNumber,
-                  currentRemaining,
-                  requestedHours: hoursWorked,
-                  wouldBe: afterDeduction
+            if (serviceType === 'hours') {
+              // Find active package + overdraft check
+              const activePackage = DeductionSystem.getActivePackage(targetService);
+              if (activePackage) {
+                const currentRemaining = activePackage.hoursRemaining || 0;
+                const afterDeduction = currentRemaining - hoursWorked;
+                if (afterDeduction < -10) {
+                  throw new functions.https.HttpsError(
+                    'resource-exhausted',
+                    'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                    { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction }
+                  );
                 }
-              );
-            }
+                updatedPackageId = activePackage.id;
+              } else {
+                // Fallback: find first eligible package
+                const fallbackPkg = (targetService.packages || []).find(pkg => {
+                  const status = pkg.status || 'active';
+                  return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
+                    && (pkg.hoursRemaining || 0) > -10;
+                });
+                if (fallbackPkg) {
+                  updatedPackageId = fallbackPkg.id;
+                  console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - אין חבילה פעילה, fallback → ${updatedPackageId}`);
+                } else if (targetService.packages && targetService.packages.length > 0) {
+                  const lastPkg = targetService.packages[targetService.packages.length - 1];
+                  if (lastPkg && lastPkg.id) {
+                    updatedPackageId = lastPkg.id;
+                    console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - כל החבילות מוצו, absolute fallback → ${updatedPackageId}`);
+                  }
+                }
+              }
 
-            updatedPackageId = activePackage.id;
+              // ── Deduction: apply hours delta ──
+              if (updatedPackageId) {
+                deductionResult = applyHoursDelta(services, lookupServiceId, updatedPackageId, minutesDelta);
+              } else {
+                deductionResult = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
+                console.warn(`⚠️ [Quick Log] No package found — counting at service level`);
+              }
+
+            } else if (serviceType === 'legal_procedure') {
+              // Resolve stageId
+              const targetStageId = resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || 'stage_a');
+              const stage = (targetService.stages || []).find(s => s.id === targetStageId);
+              if (stage) {
+                updatedStageId = stage.id;
+
+                if (stage.pricingType === 'fixed') {
+                  // Fixed pricing: track hours, deduct via stage-only
+                  deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, null, minutesDelta);
+                } else {
+                  // Hourly pricing: find package
+                  const activePackage = DeductionSystem.getActivePackage(stage);
+                  if (activePackage) {
+                    const currentRemaining = activePackage.hoursRemaining || 0;
+                    const afterDeduction = currentRemaining - hoursWorked;
+                    if (afterDeduction < -10) {
+                      throw new functions.https.HttpsError(
+                        'resource-exhausted',
+                        'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                        { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction }
+                      );
+                    }
+                    updatedPackageId = activePackage.id;
+                    deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, updatedPackageId, minutesDelta);
+                  } else {
+                    // Fallback: stage-level only
+                    const fallbackStagePkg = (stage.packages || []).find(pkg => {
+                      const status = pkg.status || 'active';
+                      return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
+                        && (pkg.hoursRemaining || 0) > -10;
+                    });
+                    if (fallbackStagePkg) {
+                      updatedPackageId = fallbackStagePkg.id;
+                      deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, updatedPackageId, minutesDelta);
+                    } else {
+                      deductionResult = applyLegalProcedureDeltaStageOnly(services, lookupServiceId, updatedStageId, minutesDelta);
+                      console.warn(`⚠️ [Quick Log] No active package for stage ${updatedStageId} — counting at stage level`);
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
-      // ✅ Legal procedure - fixed price (deduction handled by Trigger)
-      else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
-        const targetStageId = clientData.currentStage || 'stage_a';
-        const stages = clientData.stages || [];
-        const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
 
-        if (currentStageIndex !== -1) {
-          const currentStage = stages[currentStageIndex];
-          updatedStageId = currentStage.id;
-        }
-      } else {
-        console.log(`ℹ️ [Quick Log] לקוח ${clientData.caseNumber} מסוג ${clientData.procedureType} - אין מעקב שעות`);
+      // ── Calculate overage (dual-layer: package + client) ──
+      let isOverage = false;
+      let overageMinutes = 0;
+      let updatedServices = services;
+      let clientUpdate = null;
+
+      if (deductionResult) {
+        deductedInTransaction = true;
+        updatedServices = deductionResult.updatedServices;
+        const pkgOverage = deductionResult.isOverage;
+        const pkgOverageMinutes = deductionResult.overageMinutes;
+
+        const agg = calcClientAggregates(updatedServices, clientData.totalHours);
+
+        const clientOverage = agg.hoursRemaining < 0;
+        const clientOverageMinutes = clientOverage ? round2(Math.abs(agg.hoursRemaining) * 60) : 0;
+        isOverage = pkgOverage || clientOverage;
+        overageMinutes = Math.max(pkgOverageMinutes, clientOverageMinutes);
+
+        clientUpdate = {
+          services: updatedServices,
+          hoursUsed: agg.hoursUsed,
+          hoursRemaining: agg.hoursRemaining,
+          minutesUsed: agg.minutesUsed,
+          minutesRemaining: agg.minutesRemaining,
+          isBlocked: agg.isBlocked,
+          isCritical: agg.isCritical,
+          lastActivity: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        console.log(`✅ [Quick Log] Deduction calculated: hoursRemaining=${agg.hoursRemaining}, isBlocked=${agg.isBlocked}, isOverage=${isOverage}`);
+      } else if (resolvedServiceId) {
+        console.warn(`⚠️ [Quick Log] resolvedServiceId=${resolvedServiceId} but deduction returned null — service/stage/package not found`);
       }
 
       // Build entry data
@@ -284,10 +363,10 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         caseNumber: data.clientId,
 
         // Service/Stage tracking
-        serviceId: null,
-        serviceName: null,
-        serviceType: null,
-        parentServiceId: null,
+        serviceId: resolvedServiceId,
+        serviceName: resolvedServiceName,
+        serviceType: resolvedServiceType,
+        parentServiceId: resolvedParentServiceId,
         stageId: updatedStageId,
         packageId: updatedPackageId,
 
@@ -314,19 +393,13 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
 
         // Flags
         isInternal: false,
-        isQuickLog: true
-      };
+        isQuickLog: true,
+        deductedInTransaction: deductedInTransaction,
 
-      // Update service information if serviceId was provided
-      if (data.serviceId && clientData.services) {
-        const selectedService = clientData.services.find(s => s.id === data.serviceId);
-        if (selectedService) {
-          entryData.serviceId = selectedService.id;
-          entryData.serviceName = selectedService.name || null;
-          entryData.serviceType = selectedService.type || null;
-          entryData.parentServiceId = selectedService.parentId || null;
-        }
-      }
+        // Overage (informational — source of truth is clients.services[].packages[].hoursRemaining)
+        isOverage: isOverage,
+        overageMinutes: isOverage ? overageMinutes : 0
+      };
 
       console.log(`✅ [Quick Log Transaction Phase 2] All calculations completed`);
 
@@ -336,10 +409,15 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
 
       console.log(`✍️ [Quick Log Transaction Phase 3] Writing updates...`);
 
-      // Write #1: Metadata only — deduction handled by Trigger
-      transaction.update(clientRef, {
-        lastActivity: admin.firestore.FieldValue.serverTimestamp()
-      });
+      // Write #1: Client update — deduction + aggregates (or metadata only if no deduction)
+      if (clientUpdate) {
+        transaction.update(clientRef, clientUpdate);
+        console.log(`✅ Client deduction written: deductedInTransaction=true`);
+      } else {
+        transaction.update(clientRef, {
+          lastActivity: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
 
       // Write #2: Create timesheet entry
       const timesheetRef = db.collection('timesheet_entries').doc();
@@ -488,199 +566,221 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
     console.log(`🎯 [v2.0] מתחיל רישום שעות: ${data.minutes} דקות ללקוח ${finalClientId}`);
 
     // ================================================
-    // STEP 4: אחזור מסמך הלקוח + VERSION CHECK
+    // STEP 4+5: TRANSACTION — client read + deduction + writes (all atomic)
     // ================================================
     const clientRef = db.collection('clients').doc(finalClientId);
-    let clientVersionInfo;
-    let clientData;
-
-    if (data.isInternal !== true) {
-      // ✅ OPTIMISTIC LOCKING: בדיקת גרסה
-      clientVersionInfo = await checkVersionAndLock(clientRef, data.expectedVersion);
-      clientData = clientVersionInfo.data;
-
-      if (!finalClientName) {
-        finalClientName = clientData.clientName || clientData.fullName;
-      }
-
-      const lookupId = data.parentServiceId || data.serviceId;
-      if (lookupId) {
-        const targetService = (clientData.services || []).find(s => s.id === lookupId);
-        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
-          throw new functions.https.HttpsError(
-            'failed-precondition',
-            `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
-          );
-        }
-      }
-    }
-
-    // ================================================
-    // STEP 5: TRANSACTION - כל הפעולות ביחד או כלום
-    // ================================================
     const hoursWorked = data.minutes / 60;
-    let updatedStageId = null;
-    let updatedPackageId = null;
+    const minutesDelta = data.minutes;
     let timesheetEntryId = null;
 
     const result = await db.runTransaction(async (transaction) => {
-      // ------------------------------------------------
-      // 5.1: (Removed — Trigger handles task updates)
-      // ------------------------------------------------
+      // ── Phase 1: READS ──
+      let clientData = null;
+      let currentVersion = 0;
+      let nextVersion = null;
+      let updatedStageId = null;
+      let updatedPackageId = null;
 
-      // ------------------------------------------------
-      // 5.2: Lookup + validation (deduction handled by Trigger)
-      // ------------------------------------------------
       if (data.isInternal !== true) {
-        // לקוח שעתי עם שירותים
-        if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
-          let service = null;
-          let serviceIndex = -1;
-
-          if (data.serviceId) {
-            serviceIndex = clientData.services.findIndex(s => s.id === data.serviceId);
-            service = serviceIndex >= 0 ? clientData.services[serviceIndex] : null;
-            if (!service) {
-              console.warn(`⚠️ שירות ${data.serviceId} לא נמצא - משתמש בראשון`);
-              serviceIndex = 0;
-              service = clientData.services[0];
-            }
-          } else {
-            serviceIndex = 0;
-            service = clientData.services[0];
-          }
-
-          if (service) {
-            const activePackage = DeductionSystem.getActivePackage(service);
-
-            if (activePackage) {
-              // ✅ בדיקת חריגה לפני הקיזוז
-              const currentRemaining = activePackage.hoursRemaining || 0;
-              const afterDeduction = currentRemaining - hoursWorked;
-
-              // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
-              if (afterDeduction < -10) {
-                throw new functions.https.HttpsError(
-                  'resource-exhausted',
-                  'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-                  {
-                    clientId: clientData.caseNumber,
-                    currentRemaining,
-                    requestedHours: hoursWorked,
-                    wouldBe: afterDeduction
-                  }
-                );
-              }
-
-              updatedPackageId = activePackage.id;
-            } else {
-              console.warn(`⚠️ אין חבילה פעילה!`);
-            }
-          }
+        const clientDoc = await transaction.get(clientRef);
+        if (!clientDoc.exists) {
+          throw new functions.https.HttpsError('not-found', 'לקוח לא נמצא במערכת');
         }
-        // הליך משפטי כשירות
-        else if (data.serviceType === 'legal_procedure' && data.parentServiceId) {
-          const service = clientData.services?.find(s => s.id === data.parentServiceId);
+        clientData = clientDoc.data();
 
-          if (service && service.type === 'legal_procedure') {
-            const targetStageId = data.serviceId || service.currentStage || 'stage_a';
-            const stages = service.stages || [];
-            const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
-
-            if (currentStageIndex !== -1) {
-              const currentStage = stages[currentStageIndex];
-              updatedStageId = currentStage.id;
-
-              const activePackage = DeductionSystem.getActivePackage(currentStage);
-
-              if (activePackage) {
-                // ✅ בדיקת חריגה לפני הקיזוז
-                const currentRemaining = activePackage.hoursRemaining || 0;
-                const afterDeduction = currentRemaining - hoursWorked;
-
-                // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
-                if (afterDeduction < -10) {
-                  throw new functions.https.HttpsError(
-                    'resource-exhausted',
-                    'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-                    {
-                      clientId: clientData.caseNumber,
-                      currentRemaining,
-                      requestedHours: hoursWorked,
-                      wouldBe: afterDeduction
-                    }
-                  );
-                }
-
-                updatedPackageId = activePackage.id;
-              }
-            }
-          }
+        // Optimistic locking — manual, inside transaction
+        currentVersion = clientData._version || 0;
+        if (data.expectedVersion !== undefined && currentVersion !== data.expectedVersion) {
+          throw new functions.https.HttpsError(
+            'aborted',
+            `CONFLICT: expected version ${data.expectedVersion}, got ${currentVersion}`
+          );
         }
-        // הליך משפטי - תמחור שעתי (LEGACY - case level)
-        else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
-          const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
-          const stages = clientData.stages || [];
-          const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
+        nextVersion = currentVersion + 1;
 
-          if (currentStageIndex !== -1) {
-            const currentStage = stages[currentStageIndex];
-            updatedStageId = currentStage.id;
-
-            const activePackage = DeductionSystem.getActivePackage(currentStage);
-
-            if (activePackage) {
-              // ✅ בדיקת חריגה לפני הקיזוז
-              const currentRemaining = activePackage.hoursRemaining || 0;
-              const afterDeduction = currentRemaining - hoursWorked;
-
-              // ❌ אם החריגה תעבור את -10 שעות - זורק שגיאה
-              if (afterDeduction < -10) {
-                throw new functions.https.HttpsError(
-                  'resource-exhausted',
-                  'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-                  {
-                    clientId: clientData.caseNumber,
-                    currentRemaining,
-                    requestedHours: hoursWorked,
-                    wouldBe: afterDeduction
-                  }
-                );
-              }
-
-              updatedPackageId = activePackage.id;
-            }
-          }
+        if (!finalClientName) {
+          finalClientName = clientData.clientName || clientData.fullName;
         }
-        // הליך משפטי - תמחור פיקס
-        else if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
-          const targetStageId = data.serviceId || clientData.currentStage || 'stage_a';
-          const stages = clientData.stages || [];
-          const currentStageIndex = stages.findIndex(s => s.id === targetStageId);
-
-          if (currentStageIndex !== -1) {
-            const currentStage = stages[currentStageIndex];
-            updatedStageId = currentStage.id;
-          }
-        }
-
-        // ── Metadata write (deduction handled by Trigger) ──
-        transaction.update(clientRef, {
-          _version: clientVersionInfo.nextVersion,
-          _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-          _modifiedBy: user.username,
-          lastActivity: admin.firestore.FieldValue.serverTimestamp()
-        });
       }
 
-      // ------------------------------------------------
-      // 5.3: יצירת רישום שעות
-      // ------------------------------------------------
+      // Read task doc for actualMinutes update
+      let taskDoc = null;
+      const taskRef = (data.isInternal !== true && data.taskId)
+        ? db.collection('budget_tasks').doc(data.taskId)
+        : null;
+      if (taskRef) {
+        taskDoc = await transaction.get(taskRef);
+      }
+
+      // ── Phase 2: RESOLVE serviceId + DEDUCTION ──
+      let resolvedServiceId = data.serviceId || null;
+      let deductionResult = null;
+      let deductedInTransaction = false;
+      let isOverage = false;
+      let overageMinutes = 0;
+
+      if (data.isInternal !== true && clientData) {
+        const services = clientData.services || [];
+
+        // Resolve serviceId
+        if (!resolvedServiceId && services.length === 1) {
+          resolvedServiceId = services[0].id;
+          console.log(`🔍 [v2.0] Auto-selected single service: ${resolvedServiceId}`);
+        } else if (!resolvedServiceId && services.length > 1) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'חובה לבחור שירות — ללקוח יש מספר שירותים'
+          );
+        }
+
+        // Blocked service check
+        if (resolvedServiceId) {
+          const lookupId = data.parentServiceId || resolvedServiceId;
+          const targetService = services.find(s => s.id === lookupId);
+          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
+            throw new functions.https.HttpsError(
+              'failed-precondition',
+              `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
+            );
+          }
+        }
+
+        // Perform deduction if we have a serviceId
+        if (resolvedServiceId && services.length > 0) {
+          const lookupServiceId = data.parentServiceId || resolvedServiceId;
+          const targetService = services.find(s => s.id === lookupServiceId);
+
+          if (targetService) {
+            const serviceType = targetService.type || clientData.procedureType;
+
+            if (serviceType === 'hours') {
+              const activePackage = DeductionSystem.getActivePackage(targetService);
+              if (activePackage) {
+                const currentRemaining = activePackage.hoursRemaining || 0;
+                const afterDeduction = currentRemaining - hoursWorked;
+                if (afterDeduction < -10) {
+                  throw new functions.https.HttpsError('resource-exhausted', 'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                    { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
+                }
+                updatedPackageId = activePackage.id;
+              } else {
+                const fallbackPkg = (targetService.packages || []).find(pkg => {
+                  const status = pkg.status || 'active';
+                  return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (pkg.hoursRemaining || 0) > -10;
+                });
+                if (fallbackPkg) {
+                  updatedPackageId = fallbackPkg.id;
+                  console.warn(`⚠️ [v2.0] אין חבילה פעילה, fallback → ${updatedPackageId}`);
+                } else if (targetService.packages && targetService.packages.length > 0) {
+                  const lastPkg = targetService.packages[targetService.packages.length - 1];
+                  if (lastPkg && lastPkg.id) {
+                    updatedPackageId = lastPkg.id;
+                    console.warn(`⚠️ [v2.0] כל החבילות מוצו, absolute fallback → ${updatedPackageId}`);
+                  }
+                }
+              }
+
+              if (updatedPackageId) {
+                deductionResult = applyHoursDelta(services, lookupServiceId, updatedPackageId, minutesDelta);
+              } else {
+                deductionResult = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
+                console.warn(`⚠️ [v2.0] No package found — counting at service level`);
+              }
+
+            } else if (serviceType === 'legal_procedure') {
+              // Resolve stageId — from data.serviceId (stage_xxx) or service.currentStage
+              const targetStageId = (data.serviceId && data.serviceId.startsWith('stage_'))
+                ? data.serviceId
+                : (targetService.currentStage || 'stage_a');
+              const stage = (targetService.stages || []).find(s => s.id === targetStageId);
+
+              if (stage) {
+                updatedStageId = stage.id;
+                if (stage.pricingType === 'fixed') {
+                  deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, null, minutesDelta);
+                } else {
+                  const activePackage = DeductionSystem.getActivePackage(stage);
+                  if (activePackage) {
+                    const currentRemaining = activePackage.hoursRemaining || 0;
+                    const afterDeduction = currentRemaining - hoursWorked;
+                    if (afterDeduction < -10) {
+                      throw new functions.https.HttpsError('resource-exhausted', 'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                        { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
+                    }
+                    updatedPackageId = activePackage.id;
+                    deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, updatedPackageId, minutesDelta);
+                  } else {
+                    const fallbackStagePkg = (stage.packages || []).find(pkg => {
+                      const status = pkg.status || 'active';
+                      return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (pkg.hoursRemaining || 0) > -10;
+                    });
+                    if (fallbackStagePkg) {
+                      updatedPackageId = fallbackStagePkg.id;
+                      deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, updatedPackageId, minutesDelta);
+                    } else {
+                      deductionResult = applyLegalProcedureDeltaStageOnly(services, lookupServiceId, updatedStageId, minutesDelta);
+                      console.warn(`⚠️ [v2.0] No active package for stage ${updatedStageId} — counting at stage level`);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Calculate overage (dual-layer: package + client)
+        if (deductionResult) {
+          deductedInTransaction = true;
+          const agg = calcClientAggregates(deductionResult.updatedServices, clientData.totalHours);
+          const clientOverage = agg.hoursRemaining < 0;
+          const clientOverageMinutes = clientOverage ? round2(Math.abs(agg.hoursRemaining) * 60) : 0;
+          isOverage = deductionResult.isOverage || clientOverage;
+          overageMinutes = Math.max(deductionResult.overageMinutes, clientOverageMinutes);
+
+          // Write client: version + deduction + aggregates (single update)
+          transaction.update(clientRef, {
+            _version: nextVersion,
+            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+            _modifiedBy: user.username,
+            services: deductionResult.updatedServices,
+            hoursUsed: agg.hoursUsed,
+            hoursRemaining: agg.hoursRemaining,
+            minutesUsed: agg.minutesUsed,
+            minutesRemaining: agg.minutesRemaining,
+            isBlocked: agg.isBlocked,
+            isCritical: agg.isCritical,
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log(`✅ [v2.0] Deduction written: hoursRemaining=${agg.hoursRemaining}, isBlocked=${agg.isBlocked}`);
+        } else {
+          // No deduction — metadata only
+          transaction.update(clientRef, {
+            _version: nextVersion,
+            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+            _modifiedBy: user.username,
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      }
+
+      // ── Phase 3: WRITES ──
+
+      // Write: budget_tasks actualMinutes/actualHours (if taskId exists)
+      if (taskRef && taskDoc && taskDoc.exists) {
+        transaction.update(taskRef, {
+          actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
+          actualHours: admin.firestore.FieldValue.increment(hoursWorked),
+          lastActivity: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`✅ [v2.0] Task ${data.taskId} actualMinutes incremented`);
+      }
+
+      // Write: timesheet entry
       const entryData = {
         clientId: finalClientId,
         clientName: finalClientName,
         caseNumber: data.caseNumber || finalClientId,
-        serviceId: data.serviceId || null,
+        serviceId: resolvedServiceId,
         serviceName: data.serviceName || null,
         serviceType: data.serviceType || null,
         parentServiceId: data.parentServiceId || null,
@@ -697,8 +797,9 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-
-        // ✅ META-DATA for tracking
+        deductedInTransaction: deductedInTransaction,
+        isOverage: isOverage,
+        overageMinutes: isOverage ? overageMinutes : 0,
         _processedByVersion: 'v2.0',
         _idempotencyKey: data.idempotencyKey || null
       };
@@ -716,7 +817,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
           id: timesheetEntryId,
           ...entryData
         },
-        version: data.isInternal !== true ? clientVersionInfo.nextVersion : null
+        version: data.isInternal !== true ? nextVersion : null
       };
     });
 
@@ -726,11 +827,11 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
     await createTimeEvent({
       eventType: 'TIME_ADDED',
       caseId: finalClientId,
-      serviceId: data.serviceId || null,
-      stageId: updatedStageId,
-      packageId: updatedPackageId,
+      serviceId: result.entry.serviceId || null,
+      stageId: result.entry.stageId || null,
+      packageId: result.entry.packageId || null,
       taskId: data.taskId || null,
-      timesheetEntryId: timesheetEntryId,
+      timesheetEntryId: result.entryId,
 
       data: {
         minutes: data.minutes,
@@ -743,11 +844,11 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
       performedByEmail: user.email,
 
       before: data.isInternal !== true ? {
-        version: clientVersionInfo.currentVersion
+        version: result.version ? result.version - 1 : 0
       } : {},
 
       after: data.isInternal !== true ? {
-        version: clientVersionInfo.nextVersion
+        version: result.version
       } : {},
 
       idempotencyKey: data.idempotencyKey || null

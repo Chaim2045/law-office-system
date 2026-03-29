@@ -169,6 +169,16 @@ const {
   deductHoursFromPackage
 } = require('./src/modules/deduction');
 
+// Shared aggregation functions — same functions used by trigger
+const {
+  round2,
+  applyHoursDelta,
+  applyHoursDeltaServiceOnly,
+  applyLegalProcedureDelta,
+  applyLegalProcedureDeltaStageOnly,
+  calcClientAggregates
+} = require('./src/modules/aggregation');
+
 function sanitizeString(str) {
   if (typeof str !== 'string') return '';
   return str.trim().replace(/[<>]/g, '');
@@ -354,6 +364,101 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           }
         }
 
+        // ── Resolve serviceId ──
+        const services = clientData ? (clientData.services || []) : [];
+        let resolvedServiceId = taskData.serviceId || null;
+
+        if (!resolvedServiceId && services.length === 1) {
+          resolvedServiceId = services[0].id;
+          console.log(`🔍 [addTimeToTask] Auto-selected single service: ${resolvedServiceId}`);
+        } else if (!resolvedServiceId && services.length > 1) {
+          // Task was created without serviceId and client has multiple services
+          // Cannot ERROR here — task already exists. Log warning, skip deduction.
+          console.warn(`⚠️ [addTimeToTask] No serviceId on task, client has ${services.length} services — skipping in-transaction deduction`);
+        }
+
+        // ── Perform deduction in transaction ──
+        const minutesDelta = data.minutes;
+        let deductionResult = null;
+        let deductedInTransaction = false;
+        let entryIsOverage = false;
+        let entryOverageMinutes = 0;
+
+        if (clientData && resolvedServiceId && services.length > 0) {
+          const lookupServiceId = taskData.parentServiceId || resolvedServiceId;
+          const targetService = services.find(s => s.id === lookupServiceId);
+
+          if (targetService) {
+            const serviceType = targetService.type || clientData.procedureType;
+
+            if (serviceType === 'hours') {
+              let resolvedPackageId = serviceIds.packageId;
+              if (!resolvedPackageId) {
+                const fallbackPkg = (targetService.packages || []).find(pkg => {
+                  const status = pkg.status || 'active';
+                  return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (pkg.hoursRemaining || 0) > -10;
+                });
+                if (fallbackPkg) resolvedPackageId = fallbackPkg.id;
+              }
+
+              if (resolvedPackageId) {
+                deductionResult = applyHoursDelta(services, lookupServiceId, resolvedPackageId, minutesDelta);
+              } else {
+                deductionResult = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
+                console.warn(`⚠️ [addTimeToTask] No package found — counting at service level`);
+              }
+
+            } else if (serviceType === 'legal_procedure') {
+              const resolvedStageId = serviceIds.stageId || (resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || 'stage_a'));
+              const stage = (targetService.stages || []).find(s => s.id === resolvedStageId);
+
+              if (stage) {
+                if (stage.pricingType === 'fixed') {
+                  deductionResult = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, null, minutesDelta);
+                } else {
+                  let resolvedPackageId = serviceIds.packageId;
+                  if (!resolvedPackageId) {
+                    const fallbackStagePkg = (stage.packages || []).find(pkg => {
+                      const status = pkg.status || 'active';
+                      return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (pkg.hoursRemaining || 0) > -10;
+                    });
+                    if (fallbackStagePkg) resolvedPackageId = fallbackStagePkg.id;
+                  }
+                  if (resolvedPackageId) {
+                    deductionResult = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, resolvedPackageId, minutesDelta);
+                  } else {
+                    deductionResult = applyLegalProcedureDeltaStageOnly(services, lookupServiceId, resolvedStageId, minutesDelta);
+                    console.warn(`⚠️ [addTimeToTask] No active package for stage ${resolvedStageId} — counting at stage level`);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Calculate overage (dual-layer: package + client)
+        let clientUpdate = null;
+        if (deductionResult && clientData) {
+          deductedInTransaction = true;
+          const agg = calcClientAggregates(deductionResult.updatedServices, clientData.totalHours);
+          const clientOverage = agg.hoursRemaining < 0;
+          const clientOverageMinutes = clientOverage ? round2(Math.abs(agg.hoursRemaining) * 60) : 0;
+          entryIsOverage = deductionResult.isOverage || clientOverage;
+          entryOverageMinutes = Math.max(deductionResult.overageMinutes, clientOverageMinutes);
+
+          clientUpdate = {
+            services: deductionResult.updatedServices,
+            hoursUsed: agg.hoursUsed,
+            hoursRemaining: agg.hoursRemaining,
+            minutesUsed: agg.minutesUsed,
+            minutesRemaining: agg.minutesRemaining,
+            isBlocked: agg.isBlocked,
+            isCritical: agg.isCritical,
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          };
+          console.log(`✅ [addTimeToTask] Deduction calculated: hoursRemaining=${agg.hoursRemaining}, isBlocked=${agg.isBlocked}`);
+        }
+
         // הכנת רשומת שעתון
         // ✅ זיהוי אוטומטי של רשומת פנימית לפי clientId
         const isInternalWork = taskData.clientId === 'internal_office';
@@ -362,7 +467,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           clientId: taskData.clientId,
           clientName: taskData.clientName,
           caseNumber: taskData.caseNumber || taskData.clientId,
-          serviceId: taskData.serviceId || null,
+          serviceId: resolvedServiceId,
           serviceName: taskData.serviceName || null,
           serviceType: taskData.serviceType || null,
           parentServiceId: taskData.parentServiceId || null,
@@ -379,7 +484,10 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           isInternal: isInternalWork,
           autoGenerated: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          createdBy: user.username
+          createdBy: user.username,
+          deductedInTransaction: deductedInTransaction,
+          isOverage: entryIsOverage,
+          overageMinutes: entryIsOverage ? entryOverageMinutes : 0
         };
 
         console.log(`✅ [Transaction Phase 2] All calculations completed`);
@@ -392,18 +500,26 @@ async function addTimeToTaskWithTransaction(db, data, user) {
 
         console.log(`✍️ [Transaction Phase 3] Writing updates...`);
 
-        // 3️⃣ עדכון המשימה
+        // 3️⃣ עדכון המשימה (merged: timeEntries + actualMinutes + actualHours)
         transaction.update(taskRef, {
           timeEntries: admin.firestore.FieldValue.arrayUnion(timeEntry),
+          actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
+          actualHours: admin.firestore.FieldValue.increment(data.minutes / 60),
           lastModifiedBy: user.username,
           lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        console.log(`✅ Task updated: ${data.taskId}`);
+        console.log(`✅ Task updated: ${data.taskId} (actualMinutes incremented)`);
 
         // 4️⃣ יצירת רשומת שעתון
         const timesheetRef = db.collection('timesheet_entries').doc();
         transaction.set(timesheetRef, timesheetEntry);
         console.log(`✅ Timesheet entry created: ${timesheetRef.id}`);
+
+        // 5️⃣ עדכון לקוח (deduction + aggregates)
+        if (clientUpdate && clientRef) {
+          transaction.update(clientRef, clientUpdate);
+          console.log(`✅ Client deduction written: deductedInTransaction=true`);
+        }
 
         // 6️⃣ לוג פעולה
         const logRef = db.collection('action_logs').doc();
@@ -416,7 +532,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
             minutes: data.minutes,
             date: data.date,
             autoTimesheetCreated: true,
-            clientUpdated: false
+            clientUpdated: !!clientUpdate
           },
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
