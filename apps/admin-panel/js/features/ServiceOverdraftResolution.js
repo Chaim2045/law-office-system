@@ -817,44 +817,12 @@ closeModal();
             try {
                 console.log(`🔄 Marking service ${serviceId} as resolved...`);
 
-                // בניית אובייקט הפתרון
-                // שליפת שם המשתמש מה-authSystem או Firebase User
-                const user = window.authSystem?.currentUser || window.firebaseApp?.auth()?.currentUser;
-                const userName = user?.displayName || user?.email?.split('@')[0] || 'Unknown User';
-
-                const resolution = {
-                    isResolved: true,
-                    resolvedAt: new Date().toISOString(),
-                    resolvedBy: user?.email || 'unknown',
-                    resolvedByName: userName,
-                    note: note
-                };
-
-                // קריאת הנתונים הנוכחיים
-                const db = window.firebaseApp.firestore();
-                const clientDoc = await db.collection('clients').doc(clientId).get();
-
-                if (!clientDoc.exists) {
-                    throw new Error('Client not found');
-                }
-
-                const clientData = clientDoc.data();
-
-                // עדכון השירות
-                const updatedServices = clientData.services.map(s => {
-                    if (s.id === serviceId) {
-                        return {
-                            ...s,
-                            overdraftResolved: resolution
-                        };
-                    }
-                    return s;
-                });
-
-                // שמירה ב-Firestore
-                await db.collection('clients').doc(clientId).update({
-                    services: updatedServices,
-                    updatedAt: new Date().toISOString()
+                const setOverdraftResolvedFn = window.firebaseFunctions.httpsCallable('setServiceOverdraftResolved');
+                await setOverdraftResolvedFn({
+                    clientId,
+                    serviceId,
+                    resolved: true,
+                    note: note || ''
                 });
 
                 console.log('✅ Service marked as resolved successfully');
@@ -899,29 +867,11 @@ closeModal();
             try {
                 console.log(`🔄 Unresolving service ${serviceId}...`);
 
-                // קריאת הנתונים
-                const db = window.firebaseApp.firestore();
-                const clientDoc = await db.collection('clients').doc(clientId).get();
-
-                if (!clientDoc.exists) {
-                    throw new Error('Client not found');
-                }
-
-                const clientData = clientDoc.data();
-
-                // הסרת overdraftResolved מהשירות
-                const updatedServices = clientData.services.map(s => {
-                    if (s.id === serviceId) {
-                        const { overdraftResolved, ...serviceWithoutResolution } = s;
-                        return serviceWithoutResolution;
-                    }
-                    return s;
-                });
-
-                // שמירה ב-Firestore
-                await db.collection('clients').doc(clientId).update({
-                    services: updatedServices,
-                    updatedAt: new Date().toISOString()
+                const setOverdraftResolvedFn = window.firebaseFunctions.httpsCallable('setServiceOverdraftResolved');
+                await setOverdraftResolvedFn({
+                    clientId,
+                    serviceId,
+                    resolved: false
                 });
 
                 console.log('✅ Service unresolved successfully');

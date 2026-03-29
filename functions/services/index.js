@@ -6,57 +6,9 @@ const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
+const { calcClientAggregates, round2, isFixedService } = require('../shared/aggregates');
+
 const db = admin.firestore();
-
-// ===============================
-// Client Aggregate Helpers
-// ===============================
-
-function round2(n) {
-  return Math.round(n * 100) / 100;
-}
-
-function isFixedService(svc) {
-  return svc.type === 'legal_procedure' && svc.pricingType === 'fixed';
-}
-
-function calcClientAggregates(services, clientTotalHours) {
-  const safeTotalHours = typeof clientTotalHours === 'number' && !Number.isNaN(clientTotalHours)
-    ? clientTotalHours
-    : 0;
-
-  const billableServices = (services || []).filter(svc => !isFixedService(svc));
-
-  const hoursUsed = round2(
-    billableServices.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
-  );
-
-  const hoursRemaining = round2(safeTotalHours - hoursUsed);
-
-  const minutesUsed = round2(hoursUsed * 60);
-  const minutesRemaining = round2(hoursRemaining * 60);
-
-  let isBlocked;
-  let isCritical;
-
-  if (billableServices.length === 0) {
-    // fixed-only client — never blocked by hours
-    isBlocked = false;
-    isCritical = false;
-  } else {
-    isBlocked = hoursRemaining <= 0;
-    isCritical = !isBlocked && hoursRemaining <= 5;
-  }
-
-  return {
-    hoursUsed,
-    hoursRemaining,
-    minutesUsed,
-    minutesRemaining,
-    isBlocked,
-    isCritical
-  };
-}
 
 // ===============================
 // Service Management Functions
@@ -917,10 +869,21 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       // 3h. כתיבה ל-Firestore (Transaction)
       const isLastStage = (activeIndex + 1) === service.stages.length - 1;
 
+      const clientTotalHours = (updatedServices || [])
+        .filter(svc => !isFixedService(svc))
+        .reduce((sum, svc) => sum + (svc.totalHours || 0), 0);
+      const agg = calcClientAggregates(updatedServices, clientTotalHours);
+
       transaction.update(clientRef, {
         services: updatedServices,
         currentStage: nextStage.id,
         currentStageName: nextStage.name || nextStage.id,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });

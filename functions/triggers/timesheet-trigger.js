@@ -3,19 +3,28 @@
  *
  * Listens to all writes on timesheet_entries/{entryId} and recalculates
  * client summaries + budget_task actuals using immutable patterns.
+ *
+ * CONTRACT with callable functions:
+ * - CREATE + deductedInTransaction: true  → trigger skips entirely (callable already handled everything)
+ * - CREATE + deductedInTransaction: false/undefined → trigger runs normally (backward compatible)
+ * - UPDATE → trigger always runs (no callable handles edits)
+ * - DELETE → trigger always runs (no callable handles deletes)
  */
 
 const admin = require('firebase-admin');
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 
-const db = admin.firestore();
+// Shared aggregation functions — single source of deduction logic
+const {
+  round2,
+  applyHoursDelta,
+  applyHoursDeltaServiceOnly,
+  applyLegalProcedureDelta,
+  applyLegalProcedureDeltaStageOnly,
+  calcClientAggregates
+} = require('../src/modules/aggregation');
 
-/**
- * Round a number to 2 decimal places
- */
-function round2(n) {
-  return Math.round((n || 0) * 100) / 100;
-}
+const db = admin.firestore();
 
 /**
  * Detect the type of write event
@@ -45,180 +54,90 @@ function getMinutesDelta(eventType, before, after) {
 }
 
 /**
- * Build an updated services array (immutable) after applying a minutes delta
- * to the target package within the target service.
+ * Apply a service transfer: decrement old service, increment new service.
+ * Each leg dispatches by its own service type (hours vs legal_procedure).
  *
- * Returns { updatedServices, isOverage, overageMinutes } or null if target not found.
+ * @param {Array} services - The client's services array
+ * @param {Object} before - { serviceId, parentServiceId, stageId, packageId, minutes }
+ * @param {Object} after  - { serviceId, parentServiceId, stageId, packageId, minutes }
+ * @returns {{ updatedServices, isOverage, overageMinutes }} or null if new service not found
  */
-function applyHoursDelta(services, serviceId, packageId, minutesDelta) {
-  const hoursDelta = minutesDelta / 60;
-  let targetFound = false;
+function applyServiceTransfer(services, before, after) {
+  let currentServices = services;
   let isOverage = false;
   let overageMinutes = 0;
 
-  const updatedServices = services.map((svc) => {
-    if (svc.id !== serviceId) return svc;
+  // ── Leg 1: Reverse from old service (decrement by before.minutes) ──
+  const oldLookupId = before.parentServiceId || before.serviceId;
+  const oldService = currentServices.find(svc => svc.id === oldLookupId);
 
-    // Found the target service — update packages
-    const updatedPackages = (svc.packages || []).map((pkg) => {
-      if (pkg.id !== packageId) return pkg;
+  if (oldService) {
+    const oldServiceType = oldService.type;
+    let leg1Result = null;
 
-      targetFound = true;
-
-      const newHoursUsed = round2((pkg.hoursUsed || 0) + hoursDelta);
-      const newHoursRemaining = round2((pkg.hours || 0) - newHoursUsed);
-
-      let newStatus = pkg.status || 'active';
-      if (newHoursRemaining <= 0) {
-        newStatus = 'depleted';
-      } else if (newStatus === 'depleted') {
-        // Restore if hours freed up (edit/delete)
-        newStatus = 'active';
+    if (oldServiceType === 'hours') {
+      if (before.packageId) {
+        leg1Result = applyHoursDelta(currentServices, oldLookupId, before.packageId, -(before.minutes));
+      } else {
+        leg1Result = applyHoursDeltaServiceOnly(currentServices, oldLookupId, -(before.minutes));
       }
-
-      if (newHoursRemaining < 0) {
-        isOverage = true;
-        overageMinutes = round2(Math.abs(newHoursRemaining) * 60);
+    } else if (oldServiceType === 'legal_procedure') {
+      const oldStageId = before.stageId || before.serviceId;
+      if (before.packageId) {
+        leg1Result = applyLegalProcedureDelta(currentServices, oldLookupId, oldStageId, before.packageId, -(before.minutes));
+      } else {
+        leg1Result = applyLegalProcedureDeltaStageOnly(currentServices, oldLookupId, oldStageId, -(before.minutes));
       }
+    }
 
-      return {
-        ...pkg,
-        hoursUsed: newHoursUsed,
-        hoursRemaining: newHoursRemaining,
-        status: newStatus
-      };
-    });
+    if (leg1Result) {
+      currentServices = leg1Result.updatedServices;
+    } else {
+      // Old service exists but target package/stage not found — abort to prevent phantom hours
+      console.error(`❌ [timesheet-trigger] Service transfer Leg 1: target not found in old service ${oldLookupId} — aborting transfer`);
+      return null;
+    }
+  } else {
+    console.warn(`⚠️ [timesheet-trigger] Service transfer Leg 1: old service ${oldLookupId} not found on client — skipping decrement`);
+  }
 
-    // Recalculate service-level aggregates from packages
-    const svcHoursUsed = round2(
-      updatedPackages.reduce((sum, p) => sum + (p.hoursUsed || 0), 0)
-    );
-    const svcHoursRemaining = round2((svc.totalHours || 0) - svcHoursUsed);
+  // ── Leg 2: Apply to new service (increment by after.minutes) ──
+  const newLookupId = after.parentServiceId || after.serviceId;
+  const newService = currentServices.find(svc => svc.id === newLookupId);
 
-    return {
-      ...svc,
-      packages: updatedPackages,
-      hoursUsed: svcHoursUsed,
-      hoursRemaining: svcHoursRemaining,
-      isBlocked: svcHoursRemaining <= 0,
-      isCritical: svcHoursRemaining > 0 && svcHoursRemaining <= 5
-    };
-  });
+  if (!newService) {
+    console.error(`❌ [timesheet-trigger] Service transfer Leg 2: new service ${newLookupId} not found on client`);
+    return null;
+  }
 
-  if (!targetFound) return null;
+  const newServiceType = newService.type;
+  let leg2Result = null;
 
-  return { updatedServices, isOverage, overageMinutes };
-}
+  if (newServiceType === 'hours') {
+    if (after.packageId) {
+      leg2Result = applyHoursDelta(currentServices, newLookupId, after.packageId, after.minutes);
+    } else {
+      leg2Result = applyHoursDeltaServiceOnly(currentServices, newLookupId, after.minutes);
+    }
+  } else if (newServiceType === 'legal_procedure') {
+    const newStageId = after.stageId || after.serviceId;
+    if (after.packageId) {
+      leg2Result = applyLegalProcedureDelta(currentServices, newLookupId, newStageId, after.packageId, after.minutes);
+    } else {
+      leg2Result = applyLegalProcedureDeltaStageOnly(currentServices, newLookupId, newStageId, after.minutes);
+    }
+  }
 
-/**
- * Build an updated services array (immutable) for legal_procedure service type.
- * Handles both hourly stages (with packages) and fixed stages (totalHoursWorked).
- *
- * Returns { updatedServices, isOverage, overageMinutes } or null if target not found.
- */
-function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minutesDelta) {
-  const hoursDelta = minutesDelta / 60;
-  let targetFound = false;
-  let isOverage = false;
-  let overageMinutes = 0;
+  if (!leg2Result) {
+    console.error(`❌ [timesheet-trigger] Service transfer Leg 2: target not found in new service ${newLookupId}`);
+    return null;
+  }
 
-  const updatedServices = services.map((svc) => {
-    if (svc.id !== serviceId) return svc;
-
-    const updatedStages = (svc.stages || []).map((stage) => {
-      if (stage.id !== stageId) return stage;
-
-      targetFound = true;
-
-      // ── Fixed pricing: track hours worked, no deduction ──
-      if (stage.pricingType === 'fixed') {
-        const newTotalHoursWorked = round2((stage.totalHoursWorked || 0) + hoursDelta);
-        return {
-          ...stage,
-          totalHoursWorked: newTotalHoursWorked
-        };
-      }
-
-      // ── Hourly pricing: deduct from package ──
-      if (!packageId) return stage;
-
-      const updatedPackages = (stage.packages || []).map((pkg) => {
-        if (pkg.id !== packageId) return pkg;
-
-        const newHoursUsed = round2((pkg.hoursUsed || 0) + hoursDelta);
-        const newHoursRemaining = round2((pkg.hours || 0) - newHoursUsed);
-
-        let newStatus = pkg.status || 'active';
-        if (newHoursRemaining <= 0) {
-          newStatus = 'depleted';
-        } else if (newStatus === 'depleted') {
-          newStatus = 'active';
-        }
-
-        if (newHoursRemaining < 0) {
-          isOverage = true;
-          overageMinutes = round2(Math.abs(newHoursRemaining) * 60);
-        }
-
-        return {
-          ...pkg,
-          hoursUsed: newHoursUsed,
-          hoursRemaining: newHoursRemaining,
-          status: newStatus
-        };
-      });
-
-      // Recalculate stage-level aggregates from packages
-      const stageHoursUsed = round2(
-        updatedPackages.reduce((sum, p) => sum + (p.hoursUsed || 0), 0)
-      );
-      const stageHoursRemaining = round2((stage.totalHours || 0) - stageHoursUsed);
-
-      return {
-        ...stage,
-        packages: updatedPackages,
-        hoursUsed: stageHoursUsed,
-        hoursRemaining: stageHoursRemaining
-      };
-    });
-
-    // Recalculate service-level aggregates from stages
-    const svcHoursUsed = round2(
-      updatedStages.reduce((sum, st) => sum + (st.pricingType === 'fixed' ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
-    );
-    const svcHoursRemaining = svc.pricingType === 'fixed'
-      ? null
-      : round2((svc.totalHours || 0) - svcHoursUsed);
-
-    return {
-      ...svc,
-      stages: updatedStages,
-      hoursUsed: svcHoursUsed,
-      hoursRemaining: svcHoursRemaining
-    };
-  });
-
-  if (!targetFound) return null;
-
-  return { updatedServices, isOverage, overageMinutes };
-}
-
-/**
- * Calculate client-level aggregates from services array
- */
-function calcClientAggregates(services, clientTotalHours) {
-  const billableServices = services.filter(
-    svc => !(svc.type === 'legal_procedure' && svc.pricingType === 'fixed')
-  );
-  const hoursUsed = round2(
-    billableServices.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
-  );
-  const hoursRemaining = round2((clientTotalHours || 0) - hoursUsed);
-  const minutesUsed = round2(hoursUsed * 60);
-  const minutesRemaining = round2(hoursRemaining * 60);
-  const isBlocked = hoursRemaining <= 0;
-  const isCritical = !isBlocked && hoursRemaining <= 5;
-  return { hoursUsed, hoursRemaining, minutesUsed, minutesRemaining, isBlocked, isCritical };
+  return {
+    updatedServices: leg2Result.updatedServices,
+    isOverage: leg2Result.isOverage || isOverage,
+    overageMinutes: Math.max(leg2Result.overageMinutes || 0, overageMinutes)
+  };
 }
 
 /**
@@ -287,6 +206,19 @@ const onTimesheetEntryChanged = onDocumentWritten({
   // Use after data for CREATE/UPDATE, before data for DELETE
   const entry = afterData || beforeData;
 
+  // ── Guard: skip CREATE if fully processed in creating transaction ──
+  // When deductedInTransaction === true, the callable already performed:
+  //   - service deduction (applyHoursDelta / applyLegalProcedureDelta)
+  //   - client aggregates (calcClientAggregates → hoursUsed, hoursRemaining, minutesUsed, minutesRemaining, isBlocked, isCritical)
+  //   - budget_tasks actualMinutes/actualHours increment
+  //   - isOverage/overageMinutes on entry (dual-layer: package + client)
+  // Nothing remains for the trigger to do on CREATE.
+  // UPDATE and DELETE are ALWAYS handled by the trigger regardless of this flag.
+  if (eventType === 'CREATE' && entry.deductedInTransaction === true) {
+    console.log(`⏭️ [timesheet-trigger] Entry ${entryId} fully processed in transaction — skipping CREATE`);
+    return null;
+  }
+
   // ── Guard: clientId required ──
   const clientId = entry.clientId;
   if (!clientId) {
@@ -307,8 +239,15 @@ const onTimesheetEntryChanged = onDocumentWritten({
   const taskId = entry.taskId || null;
   const minutesDelta = getMinutesDelta(eventType, beforeData, afterData);
 
+  // ── Detect service transfer (serviceId changed on UPDATE) ──
+  const isServiceTransfer = eventType === 'UPDATE'
+    && beforeData?.serviceId
+    && afterData?.serviceId
+    && beforeData.serviceId !== afterData.serviceId;
+
   // Skip no-op updates (0 delta with no other relevant change)
-  if (eventType === 'UPDATE' && minutesDelta === 0) {
+  // Exception: service transfers always proceed even with zero minute delta
+  if (eventType === 'UPDATE' && minutesDelta === 0 && !isServiceTransfer) {
     console.log(`⏭️ [timesheet-trigger] Zero delta for entry ${entryId} — skipping`);
     return null;
   }
@@ -320,6 +259,14 @@ const onTimesheetEntryChanged = onDocumentWritten({
 
   try {
     await db.runTransaction(async (transaction) => {
+      // ── Idempotency guard: prevent double-processing on event re-delivery ──
+      const idempotencyRef = db.collection('processed_trigger_events').doc(event.id);
+      const idempotencyDoc = await transaction.get(idempotencyRef);
+      if (idempotencyDoc.exists) {
+        console.log(`⏭️ [timesheet-trigger] Event ${event.id} already processed — skipping (idempotency)`);
+        return;
+      }
+
       // ── READS (all reads must precede all writes in Firestore transactions) ──
       const clientDoc = await transaction.get(clientRef);
 
@@ -337,44 +284,105 @@ const onTimesheetEntryChanged = onDocumentWritten({
       const clientData = clientDoc.data();
       const services = clientData.services || [];
 
-      // ── Determine service type from the target service ──
-      const lookupServiceId = parentServiceId || serviceId;
-      const targetService = services.find((svc) => svc.id === lookupServiceId);
-      if (!targetService) {
-        console.error(`❌ [timesheet-trigger] Service ${serviceId} not found on client ${clientId}`);
-        return;
-      }
-
-      const serviceType = targetService.type || clientData.procedureType;
       let result = null;
 
-      if (serviceType === 'hours') {
-        // ── hours: requires packageId ──
-        if (!packageId) {
-          console.error(`❌ [timesheet-trigger] No packageId on entry ${entryId} — required for hours service. Skipping.`);
-          return;
-        }
-        result = applyHoursDelta(services, lookupServiceId, packageId, minutesDelta);
-      } else if (serviceType === 'legal_procedure') {
-        // ── legal_procedure: requires stageId ──
-        if (!stageId) {
-          console.error(`❌ [timesheet-trigger] No stageId on entry ${entryId} — required for legal_procedure. Skipping.`);
-          return;
-        }
-        // Find stage to check pricingType for packageId requirement
-        const targetStage = (targetService.stages || []).find((st) => st.id === stageId);
-        if (!targetStage) {
-          console.error(`❌ [timesheet-trigger] Stage ${stageId} not found in service ${serviceId}`);
-          return;
-        }
-        if (targetStage.pricingType !== 'fixed' && !packageId) {
-          console.error(`❌ [timesheet-trigger] No packageId on entry ${entryId} — required for hourly legal_procedure. Skipping.`);
-          return;
-        }
-        result = applyLegalProcedureDelta(services, lookupServiceId, stageId, packageId, minutesDelta);
+      // ── Service transfer: two-legged operation (decrement old, increment new) ──
+      if (isServiceTransfer) {
+        console.log(`🔄 [timesheet-trigger] Service transfer detected for entry ${entryId}: ${beforeData.serviceId} → ${afterData.serviceId}`);
+        result = applyServiceTransfer(
+          services,
+          {
+            serviceId: beforeData.serviceId,
+            parentServiceId: beforeData.parentServiceId || null,
+            stageId: beforeData.stageId || null,
+            packageId: beforeData.packageId || null,
+            minutes: beforeData.minutes || 0
+          },
+          {
+            serviceId: afterData.serviceId,
+            parentServiceId: afterData.parentServiceId || null,
+            stageId: afterData.stageId || null,
+            packageId: afterData.packageId || null,
+            minutes: afterData.minutes || 0
+          }
+        );
       } else {
-        console.warn(`⚠️ [timesheet-trigger] Unknown service type "${serviceType}" for service ${serviceId} — skipping`);
-        return;
+        // ── Normal path: single-service delta ──
+        const lookupServiceId = parentServiceId || serviceId;
+        const targetService = services.find((svc) => svc.id === lookupServiceId);
+        if (!targetService) {
+          console.error(`❌ [timesheet-trigger] Service ${serviceId} not found on client ${clientId}`);
+          return;
+        }
+
+        const serviceType = targetService.type || clientData.procedureType;
+
+        if (serviceType === 'hours') {
+          // ── hours: resolve packageId if missing ──
+          let resolvedPackageId = packageId;
+
+          if (!resolvedPackageId) {
+            // Fallback: find first eligible package (same priority as getActivePackage)
+            const fallbackPkg = (targetService.packages || []).find((pkg) => {
+              const status = pkg.status || 'active';
+              return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
+                && (pkg.hoursRemaining || 0) > -10;
+            });
+            if (fallbackPkg) {
+              resolvedPackageId = fallbackPkg.id;
+              console.log(`🔧 [timesheet-trigger] Resolved missing packageId → ${resolvedPackageId} for entry ${entryId}`);
+            }
+          }
+
+          if (resolvedPackageId) {
+            result = applyHoursDelta(services, lookupServiceId, resolvedPackageId, minutesDelta);
+          } else {
+            // All packages depleted — count at service level only
+            result = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
+            console.warn(`⚠️ [timesheet-trigger] No active package for entry ${entryId} — counting at service level`);
+          }
+        } else if (serviceType === 'legal_procedure') {
+          // ── legal_procedure: resolve stageId if missing ──
+          let resolvedStageId = stageId;
+          if (!resolvedStageId && serviceId && serviceId.startsWith('stage_')) {
+            resolvedStageId = serviceId;
+            console.log(`🔧 [timesheet-trigger] Resolved stageId from serviceId: ${resolvedStageId} for entry ${entryId}`);
+          }
+
+          if (!resolvedStageId) {
+            console.error(`❌ [timesheet-trigger] No stageId on entry ${entryId} — required for legal_procedure. Skipping.`);
+            return;
+          }
+
+          const targetStage = (targetService.stages || []).find((st) => st.id === resolvedStageId);
+          if (!targetStage) {
+            console.error(`❌ [timesheet-trigger] Stage ${resolvedStageId} not found in service ${serviceId}`);
+            return;
+          }
+
+          if (targetStage.pricingType !== 'fixed' && !packageId) {
+            // Fallback: find first eligible package from stage
+            const fallbackStagePkg = (targetStage.packages || []).find((pkg) => {
+              const status = pkg.status || 'active';
+              return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
+                && (pkg.hoursRemaining || 0) > -10;
+            });
+
+            if (fallbackStagePkg) {
+              console.log(`🔧 [timesheet-trigger] Resolved missing packageId → ${fallbackStagePkg.id} for hourly stage ${resolvedStageId}`);
+              result = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, fallbackStagePkg.id, minutesDelta);
+            } else {
+              // All stage packages depleted — count at stage level only
+              result = applyLegalProcedureDeltaStageOnly(services, lookupServiceId, resolvedStageId, minutesDelta);
+              console.warn(`⚠️ [timesheet-trigger] No active package for stage ${resolvedStageId} — counting at stage level`);
+            }
+          } else {
+            result = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, packageId, minutesDelta);
+          }
+        } else {
+          console.warn(`⚠️ [timesheet-trigger] Unknown service type "${serviceType}" for service ${serviceId} — skipping`);
+          return;
+        }
       }
 
       if (!result) {
@@ -427,6 +435,16 @@ const onTimesheetEntryChanged = onDocumentWritten({
         }
       }
 
+      // ── Write 4: Idempotency record (atomic with all other writes) ──
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours TTL
+      transaction.set(idempotencyRef, {
+        entryId,
+        clientId,
+        eventType,
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt)
+      });
+
       console.log(`✅ [timesheet-trigger] ${eventType} processed | client=${clientId} | hoursRemaining=${agg.hoursRemaining} | isBlocked=${agg.isBlocked}`);
     });
   } catch (error) {
@@ -439,5 +457,11 @@ const onTimesheetEntryChanged = onDocumentWritten({
 
 
 module.exports = {
-  onTimesheetEntryChanged
+  onTimesheetEntryChanged,
+  // Exported for unit testing only
+  _test: {
+    applyServiceTransfer,
+    getEventType,
+    getMinutesDelta
+  }
 };

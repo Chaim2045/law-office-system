@@ -215,22 +215,29 @@ return;
             const agreementWarning = this.getAgreementWarning(client);
 
             // ✅ בדיקה אם הלקוח במינוס (חריגה)
-            // בודק אם יש שירות אחד לפחות במינוס, או שהסכום הכולל במינוס
-            // IMPORTANT: דלג על שירותים שהחריגה שלהם הוסדרה
-            const hasOverdraftService = client.services?.some(s => {
-                // אם השירות הוסדר, לא לספור אותו כחריגה
-                if (s.overdraftResolved?.isResolved) {
+            // דלג על שירותים שהחריגה שלהם הוסדרה או שיש להם אישור חריגה
+            const hasUnresolvedOverdraft = client.services?.some(s => {
+                if (s.overdraftResolved?.isResolved || s.overrideActive) {
                     return false;
                 }
                 return (s.hoursRemaining || 0) < 0;
             });
-            const isOverdraft = hasOverdraftService || (client.hoursRemaining || 0) < 0;
+            const hasAnyOverride = client.services?.some(s =>
+                s.overrideActive === true || s.overdraftResolved?.isResolved === true
+            );
+            const isOverdraft = hasUnresolvedOverdraft || ((client.hoursRemaining || 0) < 0 && !hasAnyOverride);
+            const isApprovedOverdraft = !isOverdraft && (client.hoursRemaining || 0) < 0 && hasAnyOverride;
             const rowClass = isOverdraft ? 'client-row-overdraft' : '';
 
             // תג חריגה
-            const overdraftBadge = isOverdraft
-                ? '<span class="status-badge blocked"><i class="fas fa-exclamation-triangle"></i> חריגה</span>'
-                : '<span class="status-badge active"><i class="fas fa-check-circle"></i> תקין</span>';
+            let overdraftBadge;
+            if (isOverdraft) {
+                overdraftBadge = '<span class="status-badge blocked"><i class="fas fa-exclamation-triangle"></i> חריגה</span>';
+            } else if (isApprovedOverdraft) {
+                overdraftBadge = '<span class="status-badge warning"><i class="fas fa-shield-alt"></i> חריגה מאושרת</span>';
+            } else {
+                overdraftBadge = '<span class="status-badge active"><i class="fas fa-check-circle"></i> תקין</span>';
+            }
 
             return `
                 <tr data-client-id="${client.id}" class="${rowClass}">
