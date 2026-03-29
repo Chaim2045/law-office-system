@@ -1259,8 +1259,10 @@ navigator.vibrate(10);
       document.getElementById('selectedServiceId').value = client.services[0].id;
       hideServiceSelector();
     } else {
-      // No services
+      // No services — block submission
+      document.getElementById('selectedServiceId').value = '';
       hideServiceSelector();
+      showError('ללקוח אין שירות פעיל — לא ניתן לרשום שעות');
     }
   }
 
@@ -1327,10 +1329,14 @@ navigator.vibrate(10);
       return;
     }
 
-    // Check if service selector is visible and required
-    const serviceSelectorGroup = document.getElementById('serviceSelectorGroup');
-    if (!serviceSelectorGroup.classList.contains('hidden') && !serviceId) {
-      showError('יש לבחור שירות/חבילה');
+    // serviceId is always required — whether auto-selected or manually chosen
+    if (!serviceId) {
+      const serviceSelectorGroup = document.getElementById('serviceSelectorGroup');
+      if (!serviceSelectorGroup.classList.contains('hidden')) {
+        showError('יש לבחור שירות/חבילה');
+      } else {
+        showError('ללקוח אין שירות פעיל — לא ניתן לרשום שעות');
+      }
       return;
     }
 
@@ -1373,10 +1379,8 @@ navigator.vibrate(10);
         branch: branch
       };
 
-      // Add serviceId if selected
-      if (serviceId) {
-        payload.serviceId = serviceId;
-      }
+      // serviceId is always required
+      payload.serviceId = serviceId;
 
       // Call Cloud Function
       const createQuickLogEntry = functions.httpsCallable('createQuickLogEntry');

@@ -45,164 +45,162 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // ✅ שליפת הלקוח (בארכיטקטורה החדשה: clientId = caseNumber = Document ID)
-    const clientRef = db.collection('clients').doc(data.clientId);
-    const clientDoc = await clientRef.get();
-
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        `לקוח ${data.clientId} לא נמצא`
-      );
-    }
-
-    const clientData = clientDoc.data();
-    const now = new Date().toISOString();
-    const serviceId = `srv_${Date.now()}`;
-
-    // יצירת השירות החדש
-    let newService = {
-      id: serviceId,
-      type: data.serviceType,
-      name: sanitizeString(data.serviceName.trim()),
-      description: data.description ? sanitizeString(data.description.trim()) : '',
-      status: 'active',
-      createdAt: now,
-      createdBy: user.username
-    };
-
-    // הוספת שדות ספציפיים לסוג השירות
+    // ── Validate type-specific fields before transaction ──
     if (data.serviceType === 'hours') {
-      // תוכנית שעות
       if (!data.hours || typeof data.hours !== 'number' || data.hours < 1) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'כמות שעות חייבת להיות מספר חיובי'
         );
       }
-
-      const packageId = `pkg_${Date.now()}`;
-
-      newService.packages = [
-        {
-          id: packageId,
-          type: 'initial',
-          hours: data.hours,
-          hoursUsed: 0,
-          hoursRemaining: data.hours,
-          purchaseDate: now,
-          status: 'active',
-          description: 'חבילה ראשונית'
-        }
-      ];
-
-      newService.totalHours = data.hours;
-      newService.hoursUsed = 0;
-      newService.hoursRemaining = data.hours;
-
     } else if (data.serviceType === 'legal_procedure') {
-      // הליך משפטי - נדרש אימות נוסף
       if (!data.stages || !Array.isArray(data.stages) || data.stages.length !== 3) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'הליך משפטי דורש בדיוק 3 שלבים'
         );
       }
-
       if (!data.pricingType || !['hourly', 'fixed'].includes(data.pricingType)) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'סוג תמחור חייב להיות "hourly" או "fixed"'
         );
       }
-
-      newService.pricingType = data.pricingType;
-      newService.currentStage = 'stage_a';
-
-      // ✅ שמירת השלבים עם מזהים וסטטוסים
-      newService.stages = data.stages.map((stage, index) => {
-        const stageId = `stage_${['a', 'b', 'c'][index]}`;
-        const stageName = ['שלב א\'', 'שלב ב\'', 'שלב ג\''][index];
-
-        const processedStage = {
-          id: stageId,
-          name: stageName,
-          description: sanitizeString(stage.description || ''),
-          pricingType: data.pricingType,
-          status: index === 0 ? 'active' : 'pending',
-          order: index + 1
-        };
-
-        if (data.pricingType === 'hourly') {
-          // תמחור שעתי - יצירת חבילת שעות ראשונית
-          const packageId = `pkg_${stageId}_${Date.now()}`;
-          processedStage.packages = [
-            {
-              id: packageId,
-              type: 'initial',
-              hours: stage.hours,
-              hoursUsed: 0,
-              hoursRemaining: stage.hours,
-              purchaseDate: now,
-              status: 'active',
-              description: 'חבילה ראשונית'
-            }
-          ];
-          processedStage.totalHours = stage.hours;
-          processedStage.hoursUsed = 0;
-          processedStage.hoursRemaining = stage.hours;
-        } else {
-          // תמחור פיקס
-          processedStage.fixedPrice = stage.fixedPrice;
-          processedStage.paid = false;
-        }
-
-        return processedStage;
-      });
-
-      // חישוב סיכומי שעות (אם שעתי)
-      if (data.pricingType === 'hourly') {
-        newService.totalHours = newService.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-        newService.hoursUsed = 0;
-        newService.hoursRemaining = newService.totalHours;
-      } else {
-        newService.totalPrice = newService.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
-        newService.totalPaid = 0;
-      }
     }
 
-    // הוספת השירות למערך services[]
-    const services = clientData.services || [];
-    services.push(newService);
+    // ── Transaction: read client → build service → write atomically ──
+    const clientRef = db.collection('clients').doc(data.clientId);
+    const now = new Date().toISOString();
+    const serviceId = `srv_${Date.now()}`;
 
-    // עדכון הלקוח
-    const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-    const agg = calcClientAggregates(services, clientTotalHours);
+    const result = await db.runTransaction(async (transaction) => {
+      const clientDoc = await transaction.get(clientRef);
 
-    const updates = {
-      services: services,
-      totalServices: services.length,
-      activeServices: services.filter(s => s.status === 'active').length,
-      totalHours: clientTotalHours,
-      hoursUsed: agg.hoursUsed,
-      hoursRemaining: agg.hoursRemaining,
-      minutesUsed: agg.minutesUsed,
-      minutesRemaining: agg.minutesRemaining,
-      isBlocked: agg.isBlocked,
-      isCritical: agg.isCritical,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: user.username
-    };
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
 
-    await clientRef.update(updates);
+      const clientData = clientDoc.data();
 
-    // Audit log
+      // יצירת השירות החדש
+      let newService = {
+        id: serviceId,
+        type: data.serviceType,
+        name: sanitizeString(data.serviceName.trim()),
+        description: data.description ? sanitizeString(data.description.trim()) : '',
+        status: 'active',
+        createdAt: now,
+        createdBy: user.username
+      };
+
+      // הוספת שדות ספציפיים לסוג השירות
+      if (data.serviceType === 'hours') {
+        const packageId = `pkg_${Date.now()}`;
+
+        newService.packages = [
+          {
+            id: packageId,
+            type: 'initial',
+            hours: data.hours,
+            hoursUsed: 0,
+            hoursRemaining: data.hours,
+            purchaseDate: now,
+            status: 'active',
+            description: 'חבילה ראשונית'
+          }
+        ];
+
+        newService.totalHours = data.hours;
+        newService.hoursUsed = 0;
+        newService.hoursRemaining = data.hours;
+
+      } else if (data.serviceType === 'legal_procedure') {
+        newService.pricingType = data.pricingType;
+        newService.currentStage = 'stage_a';
+
+        newService.stages = data.stages.map((stage, index) => {
+          const stageId = `stage_${['a', 'b', 'c'][index]}`;
+          const stageName = ['שלב א\'', 'שלב ב\'', 'שלב ג\''][index];
+
+          const processedStage = {
+            id: stageId,
+            name: stageName,
+            description: sanitizeString(stage.description || ''),
+            pricingType: data.pricingType,
+            status: index === 0 ? 'active' : 'pending',
+            order: index + 1
+          };
+
+          if (data.pricingType === 'hourly') {
+            const packageId = `pkg_${stageId}_${Date.now()}`;
+            processedStage.packages = [
+              {
+                id: packageId,
+                type: 'initial',
+                hours: stage.hours,
+                hoursUsed: 0,
+                hoursRemaining: stage.hours,
+                purchaseDate: now,
+                status: 'active',
+                description: 'חבילה ראשונית'
+              }
+            ];
+            processedStage.totalHours = stage.hours;
+            processedStage.hoursUsed = 0;
+            processedStage.hoursRemaining = stage.hours;
+          } else {
+            processedStage.fixedPrice = stage.fixedPrice;
+            processedStage.paid = false;
+          }
+
+          return processedStage;
+        });
+
+        if (data.pricingType === 'hourly') {
+          newService.totalHours = newService.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+          newService.hoursUsed = 0;
+          newService.hoursRemaining = newService.totalHours;
+        } else {
+          newService.totalPrice = newService.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
+          newService.totalPaid = 0;
+        }
+      }
+
+      // הוספת השירות למערך services[]
+      const services = [...(clientData.services || []), newService];
+
+      // עדכון הלקוח
+      const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const agg = calcClientAggregates(services, clientTotalHours);
+
+      transaction.update(clientRef, {
+        services: services,
+        totalServices: services.length,
+        activeServices: services.filter(s => s.status === 'active').length,
+        totalHours: clientTotalHours,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      return { newService };
+    });
+
+    // Audit log — outside transaction (same pattern as other functions in this file)
     await logAction('ADD_SERVICE_TO_CLIENT', user.uid, user.username, {
       clientId: data.clientId,
-      caseNumber: data.clientId,  // ✅ clientId = caseNumber
+      caseNumber: data.clientId,
       serviceId: serviceId,
       serviceType: data.serviceType,
-      serviceName: newService.name
+      serviceName: result.newService.name
     });
 
     console.log(`✅ Added service ${serviceId} to client ${data.clientId}`);
@@ -210,8 +208,8 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
     return {
       success: true,
       serviceId: serviceId,
-      service: newService,
-      message: `שירות "${newService.name}" נוסף בהצלחה`
+      service: result.newService,
+      message: `שירות "${result.newService.name}" נוסף בהצלחה`
     };
 
   } catch (error) {

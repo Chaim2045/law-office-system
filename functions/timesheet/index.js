@@ -188,6 +188,22 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         );
       }
 
+      // ── GATE: serviceId is required ──
+      if (!resolvedServiceId) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'לא ניתן לרשום שעות ללקוח ללא שירות פעיל'
+        );
+      }
+
+      // ── GATE: serviceId must exist on client ──
+      if (!services.some(s => s.id === resolvedServiceId)) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `שירות ${resolvedServiceId} לא נמצא אצל הלקוח`
+        );
+      }
+
       // ── Blocked service check ──
       if (resolvedServiceId) {
         const targetService = services.find(s => s.id === resolvedServiceId);
@@ -630,6 +646,22 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
           throw new functions.https.HttpsError(
             'invalid-argument',
             'חובה לבחור שירות — ללקוח יש מספר שירותים'
+          );
+        }
+
+        // ── GATE: serviceId is required for non-internal entries ──
+        if (!resolvedServiceId) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'לא ניתן לרשום שעות ללקוח ללא שירות פעיל'
+          );
+        }
+
+        // ── GATE: serviceId must exist on client ──
+        if (!services.some(s => s.id === resolvedServiceId)) {
+          throw new functions.https.HttpsError(
+            'not-found',
+            `שירות ${resolvedServiceId} לא נמצא אצל הלקוח`
           );
         }
 
