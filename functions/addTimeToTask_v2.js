@@ -388,10 +388,17 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         }
 
         // ── GATE: serviceId must exist on client ──
-        if (!isInternalTask && resolvedServiceId && !services.some(s => s.id === resolvedServiceId)) {
+        // For legal_procedure tasks: serviceId = stage ID (e.g. "stage_a"),
+        // actual service ID is in parentServiceId (e.g. "srv_legal_xxx")
+        // This matches the same pattern used in line 357 (block check) and line 406 (deduction)
+        const serviceIdToValidate = (resolvedServiceId && resolvedServiceId.startsWith('stage_'))
+          ? (taskData.parentServiceId || resolvedServiceId)
+          : resolvedServiceId;
+
+        if (!isInternalTask && serviceIdToValidate && !services.some(s => s.id === serviceIdToValidate)) {
           throw new functions.https.HttpsError(
             'not-found',
-            `שירות ${resolvedServiceId} לא נמצא אצל הלקוח`
+            `שירות ${serviceIdToValidate} לא נמצא אצל הלקוח`
           );
         }
 
