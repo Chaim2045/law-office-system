@@ -197,20 +197,26 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       }
 
       // ── GATE: serviceId must exist on client ──
-      if (!services.some(s => s.id === resolvedServiceId)) {
+      // For legal_procedure: serviceId = stage ID, actual service is in parentServiceId
+      const serviceIdToValidate = (resolvedServiceId && resolvedServiceId.startsWith('stage_'))
+        ? (data.parentServiceId || resolvedServiceId)
+        : resolvedServiceId;
+
+      if (!services.some(s => s.id === serviceIdToValidate)) {
         throw new functions.https.HttpsError(
           'not-found',
-          `שירות ${resolvedServiceId} לא נמצא אצל הלקוח`
+          `שירות ${serviceIdToValidate} לא נמצא אצל הלקוח`
         );
       }
 
       // ── Blocked service check ──
       if (resolvedServiceId) {
-        const targetService = services.find(s => s.id === resolvedServiceId);
+        const lookupId = data.parentServiceId || resolvedServiceId;
+        const targetService = services.find(s => s.id === lookupId);
         if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
           throw new functions.https.HttpsError(
             'failed-precondition',
-            `השירות "${targetService.name || resolvedServiceId}" חסום — נגמרה יתרת השעות`
+            `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
           );
         }
       }
@@ -658,10 +664,15 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         }
 
         // ── GATE: serviceId must exist on client ──
-        if (!services.some(s => s.id === resolvedServiceId)) {
+        // For legal_procedure: serviceId = stage ID, actual service is in parentServiceId
+        const serviceIdToValidate = (resolvedServiceId && resolvedServiceId.startsWith('stage_'))
+          ? (data.parentServiceId || resolvedServiceId)
+          : resolvedServiceId;
+
+        if (!services.some(s => s.id === serviceIdToValidate)) {
           throw new functions.https.HttpsError(
             'not-found',
-            `שירות ${resolvedServiceId} לא נמצא אצל הלקוח`
+            `שירות ${serviceIdToValidate} לא נמצא אצל הלקוח`
           );
         }
 
