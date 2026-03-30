@@ -372,9 +372,27 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           resolvedServiceId = services[0].id;
           console.log(`🔍 [addTimeToTask] Auto-selected single service: ${resolvedServiceId}`);
         } else if (!resolvedServiceId && services.length > 1) {
-          // Task was created without serviceId and client has multiple services
-          // Cannot ERROR here — task already exists. Log warning, skip deduction.
-          console.warn(`⚠️ [addTimeToTask] No serviceId on task, client has ${services.length} services — skipping in-transaction deduction`);
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'המשימה חסרה שיוך לשירות — יש לעדכן את המשימה לפני רישום זמן'
+          );
+        }
+
+        // ── GATE: serviceId is required (skip for internal tasks) ──
+        const isInternalTask = taskData.clientId === 'internal_office';
+        if (!isInternalTask && clientData && !resolvedServiceId) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'לא ניתן לרשום שעות ללקוח ללא שירות פעיל'
+          );
+        }
+
+        // ── GATE: serviceId must exist on client ──
+        if (!isInternalTask && resolvedServiceId && !services.some(s => s.id === resolvedServiceId)) {
+          throw new functions.https.HttpsError(
+            'not-found',
+            `שירות ${resolvedServiceId} לא נמצא אצל הלקוח`
+          );
         }
 
         // ── Perform deduction in transaction ──
