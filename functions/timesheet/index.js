@@ -281,8 +281,15 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                 } else if (targetService.packages && targetService.packages.length > 0) {
                   const lastPkg = targetService.packages[targetService.packages.length - 1];
                   if (lastPkg && lastPkg.id) {
+                    const currentRemaining = lastPkg.hoursRemaining || 0;
+                    const afterDeduction = currentRemaining - hoursWorked;
+                    if (afterDeduction < -10) {
+                      throw new functions.https.HttpsError('resource-exhausted',
+                        'הלקוח בחריגה חמורה — כל החבילות מוצו מעבר למגבלה',
+                        { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
+                    }
                     updatedPackageId = lastPkg.id;
-                    console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - כל החבילות מוצו, absolute fallback → ${updatedPackageId}`);
+                    console.warn(`⚠️ [Quick Log] לקוח ${clientData.caseNumber} - כל החבילות מוצו, absolute fallback (with -10 guard) → ${updatedPackageId}`);
                   }
                 }
               }
@@ -717,8 +724,15 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 } else if (targetService.packages && targetService.packages.length > 0) {
                   const lastPkg = targetService.packages[targetService.packages.length - 1];
                   if (lastPkg && lastPkg.id) {
+                    const currentRemaining = lastPkg.hoursRemaining || 0;
+                    const afterDeduction = currentRemaining - hoursWorked;
+                    if (afterDeduction < -10) {
+                      throw new functions.https.HttpsError('resource-exhausted',
+                        'הלקוח בחריגה חמורה — כל החבילות מוצו מעבר למגבלה',
+                        { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
+                    }
                     updatedPackageId = lastPkg.id;
-                    console.warn(`⚠️ [v2.0] כל החבילות מוצו, absolute fallback → ${updatedPackageId}`);
+                    console.warn(`⚠️ [v2.0] כל החבילות מוצו, absolute fallback (with -10 guard) → ${updatedPackageId}`);
                   }
                 }
               }

@@ -259,45 +259,13 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // ✅ שליפת הלקוח (בארכיטקטורה החדשה)
-    const clientRef = db.collection('clients').doc(clientId);
-    const clientDoc = await clientRef.get();
-
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        `לקוח ${clientId} לא נמצא`
-      );
-    }
-
-    const clientData = clientDoc.data();
-    const services = clientData.services || [];
-
-    // מציאת השירות
-    const serviceIndex = services.findIndex(s => s.id === data.serviceId);
-
-    if (serviceIndex === -1) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'שירות לא נמצא עבור לקוח זה'
-      );
-    }
-
-    const service = services[serviceIndex];
-
-    // בדיקה שזה שירות שעות
-    if (service.type !== 'hours' && service.serviceType !== 'hours') {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'ניתן להוסיף חבילה רק לתוכנית שעות'
-      );
-    }
-
-    // יצירת חבילה חדשה
+    // ── Generate IDs OUTSIDE Transaction (retry-safe) ──
     const now = new Date().toISOString();
     const packageId = `pkg_${Date.now()}`;
+    const clientRef = db.collection('clients').doc(clientId);
 
-    // ── Backfill: שיוך entries יתומים (ללא packageId) לחבילה החדשה ──
+    // ── Backfill: query orphan entries OUTSIDE Transaction ──
+    // (Firestore TX supports only doc gets, not collection queries)
     const orphanSnap = await db.collection('timesheet_entries')
       .where('clientId', '==', clientId)
       .where('serviceId', '==', data.serviceId)
@@ -314,55 +282,104 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     });
 
     const orphanHours = round2(orphanMinutes / 60);
-    const newHoursUsed = orphanHours;
-    const newHoursRemaining = round2(data.hours - newHoursUsed);
 
     console.log(`📦 [addPackageToService] Backfill: ${orphanEntries.length} entries (${orphanHours}h) → ${packageId}`);
 
-    const newPackage = {
-      id: packageId,
-      type: 'additional',
-      hours: data.hours,
-      hoursUsed: newHoursUsed,
-      hoursRemaining: newHoursRemaining,
-      purchaseDate: now,
-      status: newHoursRemaining <= 0 ? 'depleted' : 'active',
-      description: data.description ? sanitizeString(data.description.trim()) : `חבילה נוספת - ${new Date().toLocaleDateString('he-IL')}`
-    };
+    // ── Transaction: read client → build package → write atomically ──
+    const result = await db.runTransaction(async (transaction) => {
+      const clientDoc = await transaction.get(clientRef);
 
-    // הוספת החבילה לשירות
-    service.packages = service.packages || [];
-    service.packages.push(newPackage);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${clientId} לא נמצא`
+        );
+      }
 
-    // עדכון סיכומי השירות — חישוב מחדש מכל ה-packages
-    service.totalHours = (service.totalHours || 0) + data.hours;
-    const svcHoursUsed = round2(
-      service.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0)
-    );
-    service.hoursUsed = svcHoursUsed;
-    service.hoursRemaining = round2(service.totalHours - svcHoursUsed);
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
 
-    // עדכון המערך
-    services[serviceIndex] = service;
+      // מציאת השירות
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
 
-    // שמירה
-    const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-    const agg = calcClientAggregates(services, clientTotalHours);
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'שירות לא נמצא עבור לקוח זה'
+        );
+      }
 
-    await clientRef.update({
-      services: services,
-      totalHours: clientTotalHours,
-      hoursUsed: agg.hoursUsed,
-      hoursRemaining: agg.hoursRemaining,
-      minutesUsed: agg.minutesUsed,
-      minutesRemaining: agg.minutesRemaining,
-      isBlocked: agg.isBlocked,
-      isCritical: agg.isCritical,
-      lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastModifiedBy: user.username
+      const service = services[serviceIndex];
+
+      // בדיקה שזה שירות שעות
+      if (service.type !== 'hours' && service.serviceType !== 'hours') {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'ניתן להוסיף חבילה רק לתוכנית שעות'
+        );
+      }
+
+      // יצירת חבילה חדשה
+      const newHoursUsed = orphanHours;
+      const newHoursRemaining = round2(data.hours - newHoursUsed);
+
+      const newPackage = {
+        id: packageId,
+        type: 'additional',
+        hours: data.hours,
+        hoursUsed: newHoursUsed,
+        hoursRemaining: newHoursRemaining,
+        purchaseDate: now,
+        status: newHoursRemaining <= 0 ? 'depleted' : 'active',
+        description: data.description ? sanitizeString(data.description.trim()) : `חבילה נוספת - ${new Date().toLocaleDateString('he-IL')}`
+      };
+
+      // הוספת החבילה לשירות
+      service.packages = service.packages || [];
+      service.packages.push(newPackage);
+
+      // עדכון סיכומי השירות — חישוב מחדש מכל ה-packages
+      service.totalHours = (service.totalHours || 0) + data.hours;
+      const svcHoursUsed = round2(
+        service.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0)
+      );
+      service.hoursUsed = svcHoursUsed;
+      service.hoursRemaining = round2(service.totalHours - svcHoursUsed);
+
+      // עדכון המערך
+      services[serviceIndex] = service;
+
+      // שמירה אטומית
+      const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+      const agg = calcClientAggregates(services, clientTotalHours);
+
+      transaction.update(clientRef, {
+        services: services,
+        totalHours: clientTotalHours,
+        hoursUsed: agg.hoursUsed,
+        hoursRemaining: agg.hoursRemaining,
+        minutesUsed: agg.minutesUsed,
+        minutesRemaining: agg.minutesRemaining,
+        isBlocked: agg.isBlocked,
+        isCritical: agg.isCritical,
+        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastModifiedBy: user.username
+      });
+
+      return {
+        newPackage,
+        service: {
+          id: service.id,
+          name: service.name || service.serviceName,
+          totalHours: service.totalHours,
+          hoursRemaining: service.hoursRemaining,
+          packagesCount: service.packages.length
+        }
+      };
     });
 
     // ── Backfill: כתיבת packageId על entries יתומים (batches of 500) ──
+    // (מחוץ ל-Transaction — eventual consistency, best-effort)
     if (orphanEntries.length > 0) {
       for (let i = 0; i < orphanEntries.length; i += 500) {
         const chunk = orphanEntries.slice(i, i + 500);
@@ -375,14 +392,14 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       console.log(`✅ [addPackageToService] Backfill committed: ${orphanEntries.length} entries → ${packageId}`);
     }
 
-    // Audit log
+    // Audit log (מחוץ ל-Transaction — מסמך נפרד)
     await logAction('ADD_PACKAGE_TO_SERVICE', user.uid, user.username, {
       clientId: clientId,
-      caseNumber: clientId,  // ✅ clientId = caseNumber
+      caseNumber: clientId,
       serviceId: data.serviceId,
       packageId: packageId,
       hours: data.hours,
-      serviceName: service.name || service.serviceName
+      serviceName: result.service.name
     });
 
     console.log(`✅ Added package ${packageId} (${data.hours}h) to service ${data.serviceId} for client ${clientId}`);
@@ -390,15 +407,9 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     return {
       success: true,
       packageId: packageId,
-      package: newPackage,
-      service: {
-        id: service.id,
-        name: service.name || service.serviceName,
-        totalHours: service.totalHours,
-        hoursRemaining: service.hoursRemaining,
-        packagesCount: service.packages.length
-      },
-      message: `חבילה של ${data.hours} שעות נוספה בהצלחה לשירות "${service.name}"`
+      package: result.newPackage,
+      service: result.service,
+      message: `חבילה של ${data.hours} שעות נוספה בהצלחה לשירות "${result.service.name}"`
     };
 
   } catch (error) {
