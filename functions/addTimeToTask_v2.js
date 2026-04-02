@@ -427,6 +427,17 @@ async function addTimeToTaskWithTransaction(db, data, user) {
               }
 
               if (resolvedPackageId) {
+                // Guard: enforce -10h floor before deduction
+                const targetPkg = (targetService.packages || []).find(p => p.id === resolvedPackageId);
+                if (targetPkg) {
+                  const currentRemaining = targetPkg.hoursRemaining || 0;
+                  const afterDeduction = currentRemaining - (minutesDelta / 60);
+                  if (afterDeduction < -10) {
+                    throw new functions.https.HttpsError('resource-exhausted',
+                      'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                      { clientId: taskData.clientId, currentRemaining, requestedHours: minutesDelta / 60, wouldBe: afterDeduction });
+                  }
+                }
                 deductionResult = applyHoursDelta(services, lookupServiceId, resolvedPackageId, minutesDelta);
               } else {
                 deductionResult = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
@@ -450,6 +461,17 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                     if (fallbackStagePkg) resolvedPackageId = fallbackStagePkg.id;
                   }
                   if (resolvedPackageId) {
+                    // Guard: enforce -10h floor before deduction (stage.packages for legal_procedure)
+                    const targetPkg = (stage.packages || []).find(p => p.id === resolvedPackageId);
+                    if (targetPkg) {
+                      const currentRemaining = targetPkg.hoursRemaining || 0;
+                      const afterDeduction = currentRemaining - (minutesDelta / 60);
+                      if (afterDeduction < -10) {
+                        throw new functions.https.HttpsError('resource-exhausted',
+                          'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                          { clientId: taskData.clientId, currentRemaining, requestedHours: minutesDelta / 60, wouldBe: afterDeduction });
+                      }
+                    }
                     deductionResult = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, resolvedPackageId, minutesDelta);
                   } else {
                     deductionResult = applyLegalProcedureDeltaStageOnly(services, lookupServiceId, resolvedStageId, minutesDelta);
