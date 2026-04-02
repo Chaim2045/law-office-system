@@ -58,7 +58,7 @@ async function audit() {
   snapshot.forEach(doc => {
     const client = doc.data();
     const name = client.fullName || client.clientName || doc.id;
-    const type = client.type || 'unknown';
+    const type = client.procedureType || client.type || 'unknown';
 
     const rootHoursRemaining = client.hoursRemaining ?? null;
     const rootMinutesRemaining = client.minutesRemaining ?? null;
