@@ -149,7 +149,7 @@ class AIContextBuilder {
       const snapshot = await this.db
         .collection('timesheet_entries')
         .where('userId', '==', userId)
-        .where('date', '>=', oneMonthAgo.toISOString())
+        .where('date', '>=', oneMonthAgo.toISOString().substring(0, 10))
         .orderBy('date', 'desc')
         .limit(10) // רק 10 אחרונים (מציגים 5, שומרים 10 לחישובים)
         .get();

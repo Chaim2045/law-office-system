@@ -112,12 +112,14 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
     // 3️⃣ DATE PARSING (Before transaction)
     // ═══════════════════════════════════════════════════════════════════
 
-    // Parse date - supports multiple formats for backward compatibility
-    let dateTimestamp;
+    // Parse date - normalize ALL formats to "YYYY-MM-DD" string
+    // (matches createTimesheetEntry_v2 and all existing queries)
+    let dateString;
     const dateType = typeof data.date;
 
     if (dateType === 'string') {
       // ISO string format (current format from frontend)
+      // e.g. "2026-04-02T00:00:00.000Z" or "2026-04-02"
       const d = new Date(data.date);
       if (isNaN(d.getTime())) {
         throw new functions.https.HttpsError(
@@ -125,22 +127,22 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
           'Invalid date string format'
         );
       }
-      dateTimestamp = admin.firestore.Timestamp.fromDate(d);
-      console.log('[Quick Log] Date parsed from ISO string:', data.date);
+      // Extract YYYY-MM-DD directly from input to avoid timezone shift
+      dateString = data.date.substring(0, 10);
+      console.log('[Quick Log] Date parsed from string:', data.date, '→', dateString);
 
     } else if (data.date && dateType === 'object' && typeof data.date.seconds === 'number') {
       // Firestore Timestamp-like map: {seconds, nanoseconds}
       // (legacy format from Callable Function serialization)
-      dateTimestamp = new admin.firestore.Timestamp(
-        data.date.seconds,
-        data.date.nanoseconds || 0
-      );
-      console.log('[Quick Log] Date parsed from {seconds, nanoseconds} map');
+      const d = new Date(data.date.seconds * 1000);
+      dateString = d.toISOString().substring(0, 10);
+      console.log('[Quick Log] Date parsed from {seconds, nanoseconds} map →', dateString);
 
     } else if (data.date && typeof data.date.toDate === 'function') {
       // Real Firestore Timestamp object (unlikely but supported)
-      dateTimestamp = admin.firestore.Timestamp.fromDate(data.date.toDate());
-      console.log('[Quick Log] Date parsed from Timestamp object');
+      const d = data.date.toDate();
+      dateString = d.toISOString().substring(0, 10);
+      console.log('[Quick Log] Date parsed from Timestamp object →', dateString);
 
     } else {
       throw new functions.https.HttpsError(
@@ -400,7 +402,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         packageId: updatedPackageId,
 
         // Time tracking
-        date: dateTimestamp,
+        date: dateString,
         minutes: data.minutes,
         hours: data.minutes / 60,
 

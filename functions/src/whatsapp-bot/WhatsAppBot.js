@@ -992,15 +992,12 @@ class WhatsAppBot {
      */
     async showAllEmployeesTimesheets() {
         try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            // date field is stored as "YYYY-MM-DD" string — query with string match
+            const todayStr = new Date().toISOString().substring(0, 10);
 
             // קבל את כל רישומי השעות של היום
             const timesheetsSnapshot = await this.db.collection('timesheet_entries')
-                .where('date', '>=', today)
-                .where('date', '<', tomorrow)
+                .where('date', '==', todayStr)
                 .get();
 
             if (timesheetsSnapshot.empty) {
@@ -1035,7 +1032,7 @@ class WhatsAppBot {
             });
 
             // בנה תשובה
-            let response = `📊 שעתונים - ${today.toLocaleDateString('he-IL')}\n\n`;
+            let response = `📊 שעתונים - ${new Date().toLocaleDateString('he-IL')}\n\n`;
             response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
             Object.values(employeeStats).forEach(stat => {
@@ -1068,17 +1065,13 @@ class WhatsAppBot {
      */
     async showEmployeeTimesheets(employee) {
         try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            // date field is stored as "YYYY-MM-DD" string — query with string match
+            const todayStr = new Date().toISOString().substring(0, 10);
 
             // קבל רישומי שעות של העובד להיום
             const timesheetsSnapshot = await this.db.collection('timesheet_entries')
                 .where('employeeEmail', '==', employee.email)
-                .where('date', '>=', today)
-                .where('date', '<', tomorrow)
-                .orderBy('date', 'desc')
+                .where('date', '==', todayStr)
                 .get();
 
             if (timesheetsSnapshot.empty) {
@@ -1102,8 +1095,12 @@ class WhatsAppBot {
                     internalMinutes += minutes;
                 }
 
+                // date may be string "YYYY-MM-DD" or legacy Timestamp — use createdAt for time display
+                const timeDate = entry.createdAt?.toDate ? entry.createdAt.toDate()
+                    : entry.date?.toDate ? entry.date.toDate()
+                    : new Date(entry.date);
                 entries.push({
-                    time: entry.date?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+                    time: timeDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
                     client: entry.clientName || 'פנימי',
                     action: entry.action || 'לא צוין',
                     minutes
@@ -1111,7 +1108,7 @@ class WhatsAppBot {
             });
 
             // בנה תשובה
-            let response = `📊 ${employee.name} - ${today.toLocaleDateString('he-IL')}\n\n`;
+            let response = `📊 ${employee.name} - ${new Date().toLocaleDateString('he-IL')}\n\n`;
             response += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
             entries.forEach((entry, index) => {
