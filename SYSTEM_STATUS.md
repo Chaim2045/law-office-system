@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-03-23
-**סטטוס:** Performance optimization complete, מערכת יציבה
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173
+**עדכון אחרון:** 2026-04-03
+**סטטוס:** Quick Log date type fix + migration 177 entries — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               aca4847 — synced with production-stable
-production-stable:  pending merge PRs #163, #164
+main:               0626a47 — deduction in transaction
+production-stable:  4f77a84 — merged PR #177
 אין branches פתוחים.
 ```
 
@@ -51,45 +51,67 @@ production-stable:  pending merge PRs #163, #164
 | #171 | 22/3 | hotfix: handle Timestamp in loadMonthlyTimesheetStats date comparison |
 | #172 | 23/3 | cleanup: remove dead EventBus listeners from statistics.js |
 | #173 | 23/3 | fix: conditional AI Chat loading — skip if no API key |
+| #174 | 25/3 | fix: backfill orphan entries in addPackageToService — מניעת entries ללא packageId |
+| #176 | 26/3 | Security hardening: XSS sanitization (DOMPurify), deterministic idempotency key, password exposure fix |
+| #177 | 29/3 | Architectural: deduction moved from trigger into callable transactions — atomic entry+deduction+aggregates |
+| #178 | 30/3 | fix: serviceId validation gates on all 3 entry paths + addServiceToClient wrapped in transaction |
+| #183 | 3/4 | fix: Quick Log date type mismatch — Timestamp→string "YYYY-MM-DD" + WhatsApp Bot queries + migration 177 entries |
 
 ---
 
-## 2. Timesheet Trigger Refactor — מה נבנה (PR #144)
+## 2. Timesheet Deduction Architecture (PR #144 → #177)
 
-### הבעיה שהייתה
-4 פונקציות עם לוגיקת deduction משלהן. כשאחת נכשלה — נתונים נשברו בשקט. יצר פערים ב-77% מהלקוחות.
+### היסטוריה
+- **PR #144 (4/3):** Trigger מרכזי — הסרת deduction מ-4 callables, ריכוז בטריגר בלבד
+- **PR #177 (29/3):** החזרת deduction לתוך הטרנזקציה של ה-callable — אטומיות מלאה
 
-### הפתרון
-**Trigger מרכזי** (`onTimesheetEntryChanged`) — מתעורר על כל CREATE/UPDATE/DELETE של timesheet entry ומחשב סיכומים מאפס.
+### הבעיה שהייתה (לפני #177)
+Callable יוצר entry → Trigger רץ בנפרד ומקזז. אם הטריגר מדלג (serviceId חסר, timeout) — entry קיים אבל שעות לא קוזזו בשקט.
 
-### Commits
+### המצב הנוכחי (אחרי #177)
+Callable יוצר entry + מקזז + מעדכן aggregates + מעדכן task — **הכל באותה טרנזקציה**.
+הטריגר נשאר כרשת ביטחון ל-UPDATE/DELETE ול-entries ישנים.
 
-| Commit | תיאור |
-|--------|-------|
-| `b47a2ee` | feat: add onTimesheetEntryChanged trigger — hours + legal_procedure |
-| `a78ab31` | fix: infinite loop guard for trigger self-writes |
-| `3a6ceb4` | refactor: remove deduction from createTimesheetEntry_v2 |
-| `4ec859e` | refactor: remove deduction from createQuickLogEntry |
-| `2158776` | refactor: remove deduction from updateTimesheetEntry |
-| `76d807d` | refactor: remove deduction from addTimeToTask + lookupServiceIds |
-| `4bec3b0` | fix: always write isOverage on entry + remove debug logs |
-| `e42ccfe` | fix: use parentServiceId for legal_procedure service lookup |
-| `1af5fed` | fix: pass lookupServiceId to apply functions |
-| `1162960` | fix: invalidate clients cache after timesheet operations |
-
-### Flow
+### Contract: callable ↔ trigger
 
 ```
-Entry נוצר/מתעדכן/נמחק ב-timesheet_entries
-  → onTimesheetEntryChanged (Firestore Trigger, Gen 2)
-    → מזהה eventType (CREATE/UPDATE/DELETE)
+CREATE + deductedInTransaction: true   → trigger מדלג (callable כבר טיפל)
+CREATE + deductedInTransaction: false  → trigger רץ כרגיל (backward compatible)
+UPDATE (כל entry)                      → trigger תמיד רץ
+DELETE (כל entry)                      → trigger תמיד רץ
+```
+
+### Shared Module
+
+`functions/src/modules/aggregation/index.js` — מקור אחד ללוגיקת קיזוז.
+משמש גם callables וגם trigger — אותן פונקציות, אותן תוצאות.
+
+### Flow — CREATE (חדש, #177)
+
+```
+Callable (createQuickLogEntry / createTimesheetEntry_v2 / addTimeToTask)
+  → Firestore Transaction:
+    → transaction.get(clientRef)
+    → resolve serviceId (1 service=auto, >1=ERROR, 0=skip)
+    → applyHoursDelta / applyLegalProcedureDelta (from aggregation module)
+    → calcClientAggregates → 6 שדות: hoursUsed, hoursRemaining, minutesUsed, minutesRemaining, isBlocked, isCritical
+    → overage דו-שכבתי: package-level + client-level
+    → transaction.update(clientRef, { services, aggregates })
+    → transaction.update(taskRef, { actualMinutes, actualHours })  [if taskId]
+    → transaction.set(entryRef, { ...entry, deductedInTransaction: true, isOverage, overageMinutes })
+  → Trigger fires → deductedInTransaction: true → return null
+```
+
+### Flow — UPDATE / DELETE (לא השתנה)
+
+```
+Entry מתעדכן/נמחק ב-timesheet_entries
+  → onTimesheetEntryChanged (Trigger, Gen 2)
+    → eventType UPDATE/DELETE → רץ תמיד
     → מחשב delta
-    → self-write guard (אם רק isOverage השתנה → skip)
-    → קורא client doc
-    → hours → applyHoursDelta(services, serviceId, packageId, delta)
-    → legal_procedure → applyLegalProcedureDelta(services, serviceId, stageId, packageId, delta)
-    → calcClientAggregates → סיכומי root
-    → Transaction: כותב client + entry (isOverage) + task (actualMinutes)
+    → applyHoursDelta / applyLegalProcedureDelta (from aggregation module)
+    → calcClientAggregates
+    → Transaction: client + entry (isOverage) + task (actualMinutes)
 ```
 
 ### Service lookup
@@ -182,6 +204,9 @@ functions/
 | **PresenceSystem = Firestore heartbeat + RTDB onDisconnect** | lastSeen+isOnline כל 5 דקות ל-Firestore, RTDB ל-real-time presence |
 | **Firestore rules exception ל-presence fields** | employees doc — user יכול לעדכן lastSeen+isOnline על עצמו |
 | **AI Chat = conditional loading** | ai-config נטען ראשון, אם אין API key — שאר הסקריפטים לא נטענים |
+| **DOMPurify = XSS sanitization** | נטען מ-CDN עם defer. `purify()` helper עם fallback לידני. חובה על כל innerHTML עם נתוני Firestore |
+| **password לעולם לא ב-client memory** | `getEmployee()` ו-`loadAllEmployees()` לא מחזירים password. `authenticate()` קורא ישירות, משווה, וזורק |
+| **Idempotency key = deterministic** | `timesheet_{employee}_{date}_{actionHash}_{minutes}_{contextHash}`. ללא timestamp — אותו payload = אותו key |
 
 ---
 
@@ -423,6 +448,26 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 ---
 
+## 8א. מבנה Repo — Monorepo (עודכן 2026-03-23)
+
+המעבר ל-monorepo בוצע בין 09/03 ל-23/03. התיעוד הישן מתייחס לנתיבים הקודמים.
+
+### נתיבים חדשים vs ישנים
+
+| ישן | חדש |
+|-----|-----|
+| `js/main.js` | `apps/user-app/js/main.js` |
+| `js/modules/` | `apps/user-app/js/modules/` |
+| `master-admin-panel/` | `apps/admin-panel/` |
+| `master-admin-panel/js/` | `apps/admin-panel/js/` |
+| `functions/` | `functions/` — ללא שינוי |
+
+### Netlify publish paths
+- User App: `publish = "apps/user-app"`
+- Admin Panel: `base = "apps/admin-panel"`
+
+---
+
 ## 9. תהליך Deploy (חובה)
 
 ```
@@ -439,12 +484,52 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 ---
 
+## 7ח. Reconciliation + Backfill Fix (PR #174, 2026-03-25)
+
+### הבעיה
+entries שנוצרו ללא packageId (לפני שחבילה נוספה) — הטריגר דילג עליהם → hoursUsed לא עודכן → דוחות PDF הציגו 0 התקדמות.
+
+### חקירה
+סקריפט `devtools/investigate-4-clients-2026-03-25.js` — חקירת 4 לקוחות:
+- **חזי מאנע**: 55 entries ללא packageId, **218.76h חסרות** (29.39 → 248.15)
+- **רבקה דרמר**: Service level תקין, Package level מעוות
+- **קובי הראל**: 21 entries ללא packageId, stage_b.totalHoursWorked חסר
+
+### Reconciliation — 2026-03-25
+- סקריפט: `scripts/reconcile-hours-2026-03-25.js`
+- **20 לקוחות תוקנו**, 0 שגיאות
+- DRY-RUN → EXECUTE → הרצה חוזרת: Affected=0 (idempotency אומתה)
+- Backup: `backups/reconcile-hours-2026-03-25.json`
+
+### לקוחות שתוקנו (עיקריים)
+חזי מאנע +218.76h, ד"ר וסרמן +63.01h, רעות חליבה +33.5h,
+אודי חסדאי +32.65h, מורדי דבח +30.76h, אלחסן אבו מודעים +21.75h,
+אבי אליהו +15.63h, חיים פרץ +12.25h, שייקסטופ +4.91h
+
+### Bug Fix — addPackageToService (PR #174)
+**שורש הבעיה:** `addPackageToService()` יצר חבילה עם `hoursUsed=0` בלי לשייך entries ישנים.
+
+**התיקון:**
+1. Query entries ללא packageId עבור אותו service
+2. חישוב hoursUsed/hoursRemaining מהם על החבילה החדשה
+3. כתיבת packageId על entries יתומים (batch, chunked per 500)
+4. חישוב מחדש של service aggregates מכל ה-packages
+
+**באג נוסף שנתפס:** service.hoursUsed לא עודכן כלל בקוד הישן.
+
+### לא תקרה שוב
+- addPackageToService עושה backfill אוטומטי
+- entries ישנים משויכים לחבילה החדשה
+- הטריגר ממשיך לטפל ב-entries חדשים (fallback לחבילה ראשונה)
+
+---
+
 ## 10. נושאים פתוחים
 
 | נושא | עדיפות | הערות |
 |------|--------|-------|
-| entries בלי packageId — 65 לקוחות מושפעים, 745 entries, 1,233 שעות | קריטי | trigger מדלג, addPackageToService לא עושה backfill, reconciliation 16/3 חילק עיוורת |
-| hours vs totalHours שם שדה לא עקבי ב-packages | גבוה | addPackageToService כותב hours, trigger/reconciliation מחפשים totalHours |
+| entries בלי packageId | **הושלם** | reconciliation 25/3 תיקן 20 לקוחות, PR #174 מונע חזרה (backfill ב-addPackageToService) |
+| hours vs totalHours שם שדה לא עקבי ב-packages | נמוך | addPackageToService כותב hours, trigger משתמש ב-pkg.hours — עקבי. totalHours קיים רק ב-service level |
 | עריכת תאריך חבילה מראה שגיאה | גבוה | חיים דיווח — צריך investigation |
 | שינוי ארכיטקטוני — entry שייך ל-service, לא ל-package | גבוה | הסטנדרט המקצועי — חישוב packages דינמי FIFO |
 | CI Pipeline (GitHub Actions) | קריטי | טרם נעשה |
@@ -488,7 +573,17 @@ main.js → createTimesheetEntryV2()
   → timesheet-adapter.js → FirebaseService.call('createTimesheetEntry_v2')
     → Cloud Function: createTimesheetEntry_v2 (יוצר entry בלבד)
       → Trigger: onTimesheetEntryChanged (מחשב סיכומים)
+
+quick-log.js → FirebaseService.call('createQuickLogEntry')
+  → Cloud Function: createQuickLogEntry (entry + deduction בתוך transaction)
+    → Trigger: onTimesheetEntryChanged (מחשב סיכומים)
 ```
+
+### החלטה ארכיטקטונית: date field format (PR #183, 2026-04-03)
+- **סטנדרט:** שדה `date` ב-`timesheet_entries` הוא תמיד **string `"YYYY-MM-DD"`**
+- **לא Firestore Timestamp** — כל ה-queries (Admin Panel, Workload, WhatsApp Bot) בנויים על string comparison
+- `createQuickLogEntry` תוקן לשמור string (היה Timestamp)
+- `createTimesheetEntry_v2` כבר שמר string — ללא שינוי
 
 **אין שום נתיב שקורא ל-v1.**
 
