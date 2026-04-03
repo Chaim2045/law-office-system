@@ -1155,6 +1155,65 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
       const hoursDiff = minutesDiff / 60;
       console.log(`  הפרש דקות (SERVER CALCULATED): ${minutesDiff}`);
 
+      // ═══════════════════════════════════════════════════════════════════
+      // 🛡️ GUARD: -10h overdraft protection on UPDATE (mirrors CREATE guard)
+      // Only check when minutes INCREASED (positive delta)
+      // ═══════════════════════════════════════════════════════════════════
+      if (minutesDiff > 0 && clientDoc2 && clientDoc2.exists) {
+        const clientData2 = clientDoc2.data();
+        const services = clientData2.services || [];
+        const lookupId = data.parentServiceId || data.serviceId || entryData.parentServiceId || entryData.serviceId;
+
+        if (lookupId) {
+          const targetService = services.find(s => s.id === lookupId);
+
+          if (targetService) {
+            const serviceType = targetService.type || clientData2.procedureType;
+
+            if (serviceType === 'hours') {
+              // Find the package — prefer entry's packageId, fallback to active package
+              const entryPackageId = entryData.packageId;
+              const targetPackage = entryPackageId
+                ? (targetService.packages || []).find(p => p.id === entryPackageId)
+                : DeductionSystem.getActivePackage(targetService);
+
+              if (targetPackage) {
+                const currentRemaining = targetPackage.hoursRemaining || 0;
+                const afterDeduction = currentRemaining - hoursDiff;
+                if (afterDeduction < -10) {
+                  console.error(`🛡️ [UPDATE GUARD] Blocked: package ${targetPackage.id} would drop to ${afterDeduction}h (limit: -10h)`);
+                  throw new functions.https.HttpsError('resource-exhausted',
+                    'הלקוח בחריגה — העריכה תגרום לחריגה מעבר למגבלת -10 שעות',
+                    { clientId: entryClientId, currentRemaining, requestedHoursDelta: hoursDiff, wouldBe: afterDeduction });
+                }
+              }
+            } else if (serviceType === 'legal_procedure') {
+              // Find the stage
+              const targetStageId = entryData.stageId || entryData.serviceId;
+              const stage = (targetService.stages || []).find(s => s.id === targetStageId);
+
+              if (stage && stage.pricingType !== 'fixed') {
+                const entryPackageId = entryData.packageId;
+                const targetPackage = entryPackageId
+                  ? (stage.packages || []).find(p => p.id === entryPackageId)
+                  : DeductionSystem.getActivePackage(stage);
+
+                if (targetPackage) {
+                  const currentRemaining = targetPackage.hoursRemaining || 0;
+                  const afterDeduction = currentRemaining - hoursDiff;
+                  if (afterDeduction < -10) {
+                    console.error(`🛡️ [UPDATE GUARD] Blocked: stage package ${targetPackage.id} would drop to ${afterDeduction}h (limit: -10h)`);
+                    throw new functions.https.HttpsError('resource-exhausted',
+                      'הלקוח בחריגה — העריכה תגרום לחריגה מעבר למגבלת -10 שעות',
+                      { clientId: entryClientId, currentRemaining, requestedHoursDelta: hoursDiff, wouldBe: afterDeduction });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
       // Fix editHistory timestamps - convert ISO strings to Firestore Timestamps
       const fixedEditHistory = data.editHistory.map(edit => {
         const editedAt = edit.editedAt;
