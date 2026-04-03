@@ -168,12 +168,12 @@ describe('Bug A: applyServiceTransfer', () => {
     expect(updatedB.hoursUsed).toBe(2);
   });
 
-  test('old service no longer exists: Leg 1 skipped, Leg 2 proceeds', () => {
+  test('old service no longer exists: aborts transfer (returns null)', () => {
     // Only svc_B exists — svc_A was deleted
     const svcB = makeHoursService('svc_B', { totalHours: 20, hoursUsed: 0 });
     const services = [svcB];
 
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = applyServiceTransfer(
       services,
@@ -181,11 +181,8 @@ describe('Bug A: applyServiceTransfer', () => {
       { serviceId: 'svc_B', parentServiceId: null, stageId: null, packageId: 'svc_B_pkg1', minutes: 60 }
     );
 
-    expect(result).not.toBeNull();
+    expect(result).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('old service svc_A not found'));
-
-    const updatedB = result.updatedServices.find(s => s.id === 'svc_B');
-    expect(updatedB.hoursUsed).toBe(1); // 60min = 1h applied
 
     consoleSpy.mockRestore();
   });

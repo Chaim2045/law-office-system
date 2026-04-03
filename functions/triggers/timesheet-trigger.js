@@ -98,7 +98,8 @@ function applyServiceTransfer(services, before, after) {
       return null;
     }
   } else {
-    console.warn(`⚠️ [timesheet-trigger] Service transfer Leg 1: old service ${oldLookupId} not found on client — skipping decrement`);
+    console.error(`❌ [timesheet-trigger] Service transfer Leg 1: old service ${oldLookupId} not found on client — aborting transfer`);
+    return null;
   }
 
   // ── Leg 2: Apply to new service (increment by after.minutes) ──
@@ -460,7 +461,12 @@ module.exports = {
   onTimesheetEntryChanged,
   // Exported for unit testing only
   _test: {
+    applyHoursDelta,
+    applyHoursDeltaServiceOnly,
+    applyLegalProcedureDelta,
+    applyLegalProcedureDeltaStageOnly,
     applyServiceTransfer,
+    calcClientAggregates,
     getEventType,
     getMinutesDelta
   }
