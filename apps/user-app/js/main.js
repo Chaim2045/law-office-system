@@ -3148,15 +3148,15 @@ function initSidebar() {
 // Initialize Beit Midrash Component (lazy — first visit only)
 let beitMidrashInstance = null;
 
-function initBeitMidrash() {
+async function initBeitMidrash() {
   if (beitMidrashInstance) {
 return;
 }
   const root = document.getElementById('beitMidrashRoot');
   if (root) {
     beitMidrashInstance = new BeitMidrash(root);
-    beitMidrashInstance.init();
     window.beitMidrashInstance = beitMidrashInstance;
+    await beitMidrashInstance.init();
   }
 }
 
