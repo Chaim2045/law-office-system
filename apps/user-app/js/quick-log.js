@@ -1309,6 +1309,33 @@ navigator.vibrate(10);
   });
 
   // ═══════════════════════════════════════════════════════════════════
+  // IDEMPOTENCY — prevent duplicate submissions on network retry
+  // (Same pattern as timesheet-adapter.js)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Simple hash function (FNV-1a) — identical to timesheet-adapter.js
+   */
+  function quickLogSimpleHash(str) {
+    let hash = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i);
+      hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    }
+    return (hash >>> 0).toString(36).slice(0, 8);
+  }
+
+  /**
+   * Generate deterministic idempotency key for Quick Log entry.
+   * Same input always produces the same key.
+   */
+  function generateQuickLogIdempotencyKey({ email, date, description, minutes, clientId, serviceId }) {
+    const descHash = quickLogSimpleHash(description || '');
+    const contextHash = quickLogSimpleHash([clientId || '', serviceId || ''].join('|'));
+    return `quicklog_${email}_${date}_${descHash}_${minutes}_${contextHash}`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // FORM SUBMISSION
   // ═══════════════════════════════════════════════════════════════════
 
@@ -1369,6 +1396,16 @@ navigator.vibrate(10);
       const dateObj = new Date(dateValue);
       const dateISO = dateObj.toISOString();
 
+      // Generate deterministic idempotency key (prevents duplicate submissions on retry)
+      const idempotencyKey = generateQuickLogIdempotencyKey({
+        email: auth.currentUser.email,
+        date: dateValue,  // YYYY-MM-DD from HTML input (timezone-safe)
+        description: description,
+        minutes: totalMinutes,
+        clientId: clientId,
+        serviceId: serviceId
+      });
+
       // Build payload
       const payload = {
         clientId: clientId,
@@ -1376,7 +1413,8 @@ navigator.vibrate(10);
         date: dateISO,  // Send as ISO string, backend will convert to Timestamp
         minutes: totalMinutes,
         description: description,
-        branch: branch
+        branch: branch,
+        idempotencyKey: idempotencyKey
       };
 
       // serviceId is always required

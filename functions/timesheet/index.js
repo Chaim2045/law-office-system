@@ -76,6 +76,15 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // ✅ IDEMPOTENCY: Check if this operation was already processed
+    if (data.idempotencyKey) {
+      const existingResult = await checkIdempotency(data.idempotencyKey);
+      if (existingResult) {
+        console.log(`🔄 [Quick Log] פעולה כבר בוצעה — מחזיר תוצאה קיימת: ${data.idempotencyKey}`);
+        return existingResult;
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // 2️⃣ VALIDATION
     // ═══════════════════════════════════════════════════════════════════
@@ -483,6 +492,11 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         message: 'רישום נוצר בהצלחה'
       };
     });
+
+    // ✅ IDEMPOTENCY: Register successful operation
+    if (data.idempotencyKey) {
+      await registerIdempotency(data.idempotencyKey, result);
+    }
 
     console.log(`🎉 [Quick Log] רישום נוצר בהצלחה: ${result.entryId} עבור ${data.clientName || data.clientId} (${data.minutes} דקות)`);
 
