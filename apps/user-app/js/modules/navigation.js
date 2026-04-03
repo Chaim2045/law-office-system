@@ -9,7 +9,7 @@
 import { currentActiveTab } from './core-utils.js';
 // NotificationSystem is available globally on window object
 
-function switchTab(tabName) {
+async function switchTab(tabName) {
   const budgetFormContainer = document.getElementById('budgetFormContainer');
   const timesheetFormContainer = document.getElementById(
     'timesheetFormContainer'
@@ -57,14 +57,9 @@ window.beitMidrashInstance.hide();
       plusContainer.style.display = 'none';
     }
     if (!window.beitMidrashInstance && window.initBeitMidrash) {
-      window.initBeitMidrash();
-      // Give browser time to paint initial state before showing
-      setTimeout(() => {
-        if (window.beitMidrashInstance) {
-          window.beitMidrashInstance.show();
-        }
-      }, 50);
-    } else if (window.beitMidrashInstance) {
+      await window.initBeitMidrash();
+    }
+    if (window.beitMidrashInstance) {
       window.beitMidrashInstance.show();
     }
     window.currentActiveTab = tabName;
