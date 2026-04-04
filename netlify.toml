@@ -140,6 +140,7 @@
         https://fonts.gstatic.com
         https://cdnjs.cloudflare.com;
       img-src 'self' data: https: blob:;
+      media-src 'self' https://storage.googleapis.com;
       connect-src 'self'
         https://*.firebaseio.com
         wss://*.firebaseio.com
