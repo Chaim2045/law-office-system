@@ -178,9 +178,7 @@ counter.textContent = `${this.totalSlides} / ${index + 1}`;
           </div>
           <div class="gh-bm-viewer-video-container" style="display: none;">
             ${hasVideo ? `
-              <video class="gh-bm-viewer-video" controls>
-                <source src="" type="video/mp4">
-              </video>
+              <video class="gh-bm-viewer-video" controls preload="none"></video>
             ` : ''}
           </div>
           <div class="gh-bm-viewer-infographic-container" style="display: none;">
@@ -254,12 +252,15 @@ infographicContainer.style.display = 'none';
         videoContainer.style.display = 'flex';
         const video = videoContainer.querySelector('video');
         if (video) {
-          const source = video.querySelector('source');
-          if (source && (!source.getAttribute('src') || source.getAttribute('src') === '')) {
-            source.setAttribute('src', this.presentation.videoUrl);
+          if (!video.src || video.src === window.location.href) {
+            video.src = this.presentation.videoUrl;
+            video.addEventListener('canplay', () => {
+              video.play().catch(() => {});
+            }, { once: true });
             video.load();
+          } else {
+            video.play().catch(() => {});
           }
-          video.play().catch(() => {});
         }
       }
       arrows.forEach(a => a.style.display = 'none');
