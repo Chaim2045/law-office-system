@@ -252,11 +252,15 @@ infographicContainer.style.display = 'none';
         videoContainer.style.display = 'flex';
         const video = videoContainer.querySelector('video');
         if (video) {
-          if (!video.src || video.src === '' || video.src === window.location.href) {
+          if (!video.src || video.src === window.location.href) {
             video.src = this.presentation.videoUrl;
+            video.addEventListener('canplay', () => {
+              video.play().catch(() => {});
+            }, { once: true });
             video.load();
+          } else {
+            video.play().catch(() => {});
           }
-          video.play().catch(() => {});
         }
       }
       arrows.forEach(a => a.style.display = 'none');
