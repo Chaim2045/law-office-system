@@ -521,6 +521,10 @@
                             <i class="fas fa-balance-scale"></i>
                             הליך משפטי
                           </button>
+                          <button type="button" id="serviceTypeTab_fixed_new" class="service-type-tab-new" data-type="fixed">
+                            <i class="fas fa-shekel-sign"></i>
+                            שירות קבוע
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -593,6 +597,10 @@
                       <button type="button" id="serviceTypeTab_legal" class="service-type-tab" data-type="legal_procedure">
                         <i class="fas fa-balance-scale"></i>
                         הליך משפטי
+                      </button>
+                      <button type="button" id="serviceTypeTab_fixed" class="service-type-tab" data-type="fixed">
+                        <i class="fas fa-shekel-sign"></i>
+                        שירות קבוע
                       </button>
                     </div>
                   </div>
@@ -975,6 +983,11 @@ serviceTitleField.style.display = 'block';
                 errors.push('חובה למלא מחיר עבור כל 3 השלבים');
               }
             }
+          } else if (this.procedureType === 'fixed') {
+            const fixedPrice = parseFloat(document.getElementById('fixedPriceInput')?.value);
+            if (!fixedPrice && fixedPrice !== 0) {
+              errors.push('אנא הזן מחיר קבוע');
+            }
           }
         }
       } else {
@@ -1027,6 +1040,11 @@ serviceTitleField.style.display = 'block';
               if (!stageA_price || !stageB_price || !stageC_price) {
                 errors.push('חובה למלא מחיר עבור כל 3 השלבים');
               }
+            }
+          } else if (this.procedureType === 'fixed') {
+            const fixedPrice = parseFloat(document.getElementById('fixedPriceInput')?.value);
+            if (!fixedPrice && fixedPrice !== 0) {
+              errors.push('אנא הזן מחיר קבוע');
             }
           }
         }
@@ -1134,6 +1152,9 @@ serviceTitleField.style.display = 'block';
       } else if (this.procedureType === 'legal_procedure') {
         console.log('✅ Rendering LEGAL PROCEDURE section');
         container.innerHTML = this.renderLegalProcedureSection();
+      } else if (this.procedureType === 'fixed') {
+        console.log('✅ Rendering FIXED section');
+        container.innerHTML = this.renderFixedPriceSection();
       }
 
       // Event listeners לסוג תמחור (אם הליך משפטי)
@@ -1178,6 +1199,66 @@ serviceTitleField.style.display = 'block';
               <i class="fas fa-info-circle" style="margin-left: 4px;"></i>
               מספר השעות שהלקוח רכש
             </p>
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * רינדור סקשן שירות קבוע (פיקס)
+     */
+    renderFixedPriceSection() {
+      return `
+        <div class="form-section">
+          <h3 style="margin: 0 0 16px 0; font-size: 18px; color: #1f2937;">
+            <i class="fas fa-shekel-sign" style="color: #22c55e; margin-left: 8px;"></i>
+            שירות קבוע
+          </h3>
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
+              <i class="fas fa-shekel-sign" style="color: #22c55e; margin-left: 6px;"></i>
+              מחיר קבוע (₪) <span style="color: #ef4444;">*</span>
+            </label>
+            <input
+              type="number"
+              id="fixedPriceInput"
+              min="0"
+              step="100"
+              placeholder="5000"
+              required
+              style="
+                width: 100%;
+                padding: 12px 16px;
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                font-size: 15px;
+                transition: all 0.2s;
+              "
+            >
+            <p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280;">
+              <i class="fas fa-info-circle" style="margin-left: 4px;"></i>
+              הסכום שנקבע עבור השירות
+            </p>
+          </div>
+
+          <div>
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+              תיאור השירות
+            </label>
+            <textarea
+              id="fixedServiceDescription"
+              rows="2"
+              placeholder="תיאור קצר של השירות (אופציונלי)"
+              style="
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                font-size: 14px;
+                resize: vertical;
+              "
+            ></textarea>
           </div>
         </div>
       `;
@@ -1340,7 +1421,8 @@ serviceTitleField.style.display = 'block';
       // שינוי סוג הליך - New Client Mode (טאבים)
       const serviceTypeTabsNew = [
         document.getElementById('serviceTypeTab_hours_new'),
-        document.getElementById('serviceTypeTab_legal_new')
+        document.getElementById('serviceTypeTab_legal_new'),
+        document.getElementById('serviceTypeTab_fixed_new')
       ];
 
       serviceTypeTabsNew.forEach(tab => {
@@ -1368,7 +1450,8 @@ return;
       // שינוי סוג הליך - Existing Client Mode (טאבים)
       const serviceTypeTabs = [
         document.getElementById('serviceTypeTab_hours'),
-        document.getElementById('serviceTypeTab_legal')
+        document.getElementById('serviceTypeTab_legal'),
+        document.getElementById('serviceTypeTab_fixed')
       ];
 
       serviceTypeTabs.forEach(tab => {
@@ -1903,6 +1986,11 @@ return;
           stageB: this.collectStageData('B'),
           stageC: this.collectStageData('C')
         };
+      } else if (this.procedureType === 'fixed') {
+        formData.service = {
+          fixedPrice: parseFloat(document.getElementById('fixedPriceInput')?.value) || 0,
+          description: document.getElementById('fixedServiceDescription')?.value?.trim() || ''
+        };
       }
 
       return formData;
@@ -2243,13 +2331,17 @@ return;
       } else if (formData.case.procedureType === 'legal_procedure') {
         data.pricingType = formData.service.pricingType;
         // ✅ שדות חדשים עבור המבנה החדש
-        data.legalProcedureName = formData.case.title;  // שם ההליך המשפטי
+        data.legalProcedureName = formData.case.title;  // שם ��הליך המשפטי
         data.ratePerHour = 800;  // תעריף שעתי ברירת מחדל
         data.stages = [
           { id: 'stage_a', ...formData.service.stageA },
           { id: 'stage_b', ...formData.service.stageB },
           { id: 'stage_c', ...formData.service.stageC }
         ];
+      } else if (formData.case.procedureType === 'fixed') {
+        data.fixedPrice = formData.service.fixedPrice;
+        data.serviceName = formData.case.title;
+        data.description = formData.service.description;
       }
 
       return data;

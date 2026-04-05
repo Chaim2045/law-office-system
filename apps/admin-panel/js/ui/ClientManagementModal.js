@@ -613,7 +613,7 @@ return;
                 return `
                     <div class="management-service-info-item">
                         <span class="management-service-info-label">מחיר</span>
-                        <span class="management-service-info-value">₪${service.price || 0}</span>
+                        <span class="management-service-info-value">₪${(service.fixedPrice || 0).toLocaleString()}</span>
                     </div>
                     <div class="management-service-info-item">
                         <span class="management-service-info-label">סטטוס</span>
@@ -946,132 +946,96 @@ return '';
                 return;
             }
 
-            if (!serviceName) {
-                this.showNotification('יש להזין שם שירות', 'warning');
+            if (!serviceName || serviceName.length < 2) {
+                this.showNotification('יש להזין שם שירות (לפחות 2 תווים)', 'warning');
                 return;
             }
 
-            // Build service object based on type
-            const newService = {
-                id: 'service_' + Date.now(),
-                serviceName: serviceName,
+            // Build payload for Cloud Function
+            const payload = {
+                clientId: this.currentClient.id,
                 serviceType: serviceType,
-                type: serviceType,
-                status: 'active',
-                createdAt: new Date().toISOString(),
-                startedAt: new Date().toISOString()
+                serviceName: serviceName
             };
 
-            switch (serviceType) {
-                case 'hours':
-                    const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
-                    if (totalHours <= 0) {
-                        this.showNotification('יש להזין מספר שעות תקין', 'warning');
-                        return;
-                    }
-                    newService.totalHours = totalHours;
-                    newService.hoursRemaining = totalHours;
-                    newService.hoursUsed = 0;
-                    break;
+            // Type-specific fields + validation
+            if (serviceType === 'hours') {
+                const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
+                if (totalHours <= 0) {
+                    this.showNotification('יש להזין מספר שעות תקין', 'warning');
+                    return;
+                }
+                payload.hours = totalHours;
 
-                case 'legal_procedure':
-                    const procedureName = document.getElementById('procedureName').value.trim();
-                    const stagesInput = document.getElementById('stagesInput').value.trim();
+            } else if (serviceType === 'legal_procedure') {
+                const procedureName = document.getElementById('procedureName').value.trim();
+                const stagesInput = document.getElementById('stagesInput').value.trim();
 
-                    if (!procedureName) {
-                        this.showNotification('יש להזין סוג הליך', 'warning');
-                        return;
-                    }
+                if (!procedureName) {
+                    this.showNotification('יש להזין סוג הליך', 'warning');
+                    return;
+                }
+                if (!stagesInput) {
+                    this.showNotification('יש להזין שלבים', 'warning');
+                    return;
+                }
 
-                    if (!stagesInput) {
-                        this.showNotification('יש להזין שלבים', 'warning');
-                        return;
-                    }
+                const stageNames = stagesInput.split(',').map(s => s.trim()).filter(s => s);
+                if (stageNames.length !== 3) {
+                    this.showNotification('הליך משפטי דורש בדיוק 3 שלבים', 'warning');
+                    return;
+                }
 
-                    // Parse stages from comma-separated input
-                    const stageNames = stagesInput.split(',').map(s => s.trim()).filter(s => s);
-                    if (stageNames.length === 0) {
-                        this.showNotification('יש להזין לפחות שלב אחד', 'warning');
-                        return;
-                    }
+                payload.pricingType = 'hourly';
+                payload.stages = stageNames.map(name => ({ description: name, hours: 0 }));
 
-                    newService.procedureType = procedureName;
-                    newService.stages = stageNames.map((name, index) => ({
-                        id: `stage_${Date.now()}_${index}`,
-                        name: name,
-                        status: index === 0 ? 'active' : 'pending',
-                        startedAt: index === 0 ? new Date().toISOString() : null,
-                        completedAt: null
-                    }));
-                    break;
-
-                case 'fixed':
-                    const description = document.getElementById('serviceDescription').value.trim();
-                    const price = parseFloat(document.getElementById('fixedPrice').value) || 0;
-
-                    newService.description = description;
-                    newService.price = price;
-                    break;
+            } else if (serviceType === 'fixed') {
+                const fixedPrice = parseFloat(document.getElementById('fixedPrice').value) || 0;
+                if (fixedPrice < 0) {
+                    this.showNotification('מחיר קבוע חייב להיות חיובי', 'warning');
+                    return;
+                }
+                payload.fixedPrice = fixedPrice;
+                payload.description = document.getElementById('serviceDescription').value.trim();
             }
 
-            // Save to Firebase
+            // Call Cloud Function (transaction + validation + audit)
             try {
                 this.showLoading('מוסיף שירות...');
-                const db = window.firebaseApp.firestore();
-                const clientRef = db.collection('clients').doc(this.currentClient.id);
 
-                const updatedServices = [...(this.currentClient.services || []), newService];
+                const addServiceFn = window.firebaseFunctions.httpsCallable('addServiceToClient');
+                const result = await addServiceFn(payload);
 
-                // ✅ Calculate totals from all services for backward compatibility
-                const totalHoursFromAllServices = this.calculateTotalHoursFromServices(updatedServices);
-                const totalRemainingFromAllServices = this.calculateRemainingHoursFromServices(updatedServices);
-
-                // Prepare update object
-                const updateData = {
-                    services: updatedServices,
-                    updatedAt: new Date().toISOString()
-                };
-
-                // ✅ If this is an hours-based service, sync direct fields for User Interface compatibility
-                if (newService.serviceType === 'hours') {
-                    const clientIsBlocked = (totalRemainingFromAllServices <= 0) && (this.currentClient.type === 'hours');
-                    const clientIsCritical = (!clientIsBlocked) && (totalRemainingFromAllServices <= 5) && (totalRemainingFromAllServices > 0) && (this.currentClient.type === 'hours');
-
-                    updateData.totalHours = totalHoursFromAllServices;
-                    updateData.hoursRemaining = totalRemainingFromAllServices;
-                    updateData.minutesRemaining = Math.round(totalRemainingFromAllServices * 60);
-                    updateData.isBlocked = clientIsBlocked;
-                    updateData.isCritical = clientIsCritical;
-                    updateData.type = 'hours'; // Ensure client type is set
+                if (!result.data.success) {
+                    throw new Error(result.data.message || 'שגיאה בהוספת שירות');
                 }
-
-                await clientRef.update(updateData);
-
-                // Update local state
-                this.currentClient.services = updatedServices;
-                if (newService.serviceType === 'hours') {
-                    this.currentClient.totalHours = totalHoursFromAllServices;
-                    this.currentClient.hoursRemaining = totalRemainingFromAllServices;
-                    this.currentClient.minutesRemaining = Math.round(totalRemainingFromAllServices * 60);
-                }
-                this.renderServices();
 
                 // Close modal
                 document.getElementById('addServiceModal').style.display = 'none';
                 this.resetAddServiceForm();
 
                 this.hideLoading();
-                this.showNotification('השירות נוסף בהצלחה', 'success');
+                this.showNotification(result.data.message || 'השירות נוסף בהצלחה', 'success');
 
-                // Refresh parent data
+                // Refresh data from server (single source of truth)
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
                     await window.ClientsDataManager.loadClients();
+                }
+
+                // Reload current client to reflect changes
+                if (this.currentClient && this.currentClient.id) {
+                    const db = window.firebaseApp.firestore();
+                    const freshDoc = await db.collection('clients').doc(this.currentClient.id).get();
+                    if (freshDoc.exists) {
+                        this.currentClient = { id: freshDoc.id, ...freshDoc.data() };
+                        this.renderServices();
+                    }
                 }
 
             } catch (error) {
                 console.error('❌ Error adding service:', error);
                 this.hideLoading();
-                this.showNotification('שגיאה בהוספת שירות: ' + error.message, 'error');
+                this.showNotification('שגיאה בהוספת שירות: ' + (error.message || error), 'error');
             }
         }
 
