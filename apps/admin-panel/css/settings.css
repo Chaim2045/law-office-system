@@ -1,0 +1,301 @@
+/* ═══════════════════════════════════════════
+   System Settings Page Styles
+   ═══════════════════════════════════════════ */
+
+.settings-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.settings-header {
+  margin-bottom: var(--space-8);
+}
+
+.settings-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.settings-header p {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.settings-version {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--gray-600);
+  margin-right: var(--space-2);
+}
+
+/* ═══════════════════════════════════════════
+   Settings Sections
+   ═══════════════════════════════════════════ */
+
+.settings-section {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-5);
+  transition: box-shadow var(--transition-fast);
+}
+
+.settings-section:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.settings-section-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-size: 16px;
+}
+
+.settings-section-icon.blue { background: #dbeafe; color: #2563eb; }
+
+.settings-section-icon.green { background: #dcfce7; color: #16a34a; }
+
+.settings-section-icon.orange { background: #ffedd5; color: #ea580c; }
+
+.settings-section-icon.purple { background: #f3e8ff; color: #9333ea; }
+
+.settings-section-icon.red { background: #fee2e2; color: #dc2626; }
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+/* ═══════════════════════════════════════════
+   Form Controls
+   ═══════════════════════════════════════════ */
+
+.settings-form-group {
+  margin-bottom: var(--space-4);
+}
+
+.settings-form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: var(--space-1);
+}
+
+.settings-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--gray-900);
+  background: white;
+  transition: border-color var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
+}
+
+.settings-input:disabled {
+  background: var(--gray-50);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.settings-input-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.settings-input-row .settings-input {
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════
+   Email List
+   ═══════════════════════════════════════════ */
+
+.email-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.email-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+  font-size: 14px;
+}
+
+.email-list-item .email-text {
+  color: var(--gray-800);
+  direction: ltr;
+  text-align: left;
+}
+
+.email-remove-btn {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+}
+
+.email-remove-btn:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+/* ═══════════════════════════════════════════
+   Table Display (for service types, roles, stages)
+   ═══════════════════════════════════════════ */
+
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.settings-table th,
+.settings-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: right;
+  font-size: 13px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.settings-table th {
+  font-weight: 600;
+  color: var(--gray-600);
+  background: var(--gray-50);
+}
+
+.settings-table td {
+  color: var(--gray-800);
+}
+
+.settings-table .key-cell {
+  direction: ltr;
+  text-align: left;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+/* ═══════════════════════════════════════════
+   Buttons
+   ═══════════════════════════════════════════ */
+
+.settings-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 20px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-save-btn:hover {
+  background: #1d4ed8;
+}
+
+.settings-save-btn:disabled {
+  background: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.settings-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px 14px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-add-btn:hover {
+  background: var(--gray-200);
+}
+
+/* ═══════════════════════════════════════════
+   Read-only notice
+   ═══════════════════════════════════════════ */
+
+.settings-readonly-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: #fef3c7;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #92400e;
+  margin-bottom: var(--space-3);
+}
+
+/* ═══════════════════════════════════════════
+   Status Messages
+   ═══════════════════════════════════════════ */
+
+.settings-status {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  margin-top: var(--space-3);
+  display: none;
+}
+
+.settings-status.success {
+  display: block;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.settings-status.error {
+  display: block;
+  background: #fee2e2;
+  color: #991b1b;
+}
