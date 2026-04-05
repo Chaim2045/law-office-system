@@ -161,17 +161,18 @@
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .audit-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+  min-width: 700px;
 }
 
 .audit-table th {
-  padding: 10px var(--space-3);
+  padding: 8px var(--space-3);
   text-align: right;
   font-size: 11px;
   font-weight: 600;
@@ -181,14 +182,17 @@
   background: var(--gray-50);
   border-bottom: 1px solid var(--gray-200);
   white-space: nowrap;
+  overflow: hidden;
 }
 
 .audit-table td {
-  padding: 10px var(--space-3);
+  padding: 8px var(--space-3);
   font-size: 13px;
   color: var(--gray-700);
   border-bottom: 1px solid var(--gray-100);
-  vertical-align: middle;
+  vertical-align: top;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .audit-table tr:last-child td {
@@ -248,33 +252,24 @@
    ═══════════════════════════════════════════ */
 
 .audit-details {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 12px;
   color: var(--gray-500);
-  direction: rtl;
-  text-align: right;
-}
-
-.audit-details-expand {
-  cursor: pointer;
-  color: #3b82f6;
-  font-size: 11px;
-  margin-right: 4px;
-}
-
-.audit-details-expand:hover {
-  text-decoration: underline;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .audit-user-cell {
+  font-size: 13px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+/* Email addresses need LTR inside RTL context */
+.audit-user-cell.email-cell {
   direction: ltr;
   text-align: left;
-  font-family: monospace;
   font-size: 12px;
 }
 

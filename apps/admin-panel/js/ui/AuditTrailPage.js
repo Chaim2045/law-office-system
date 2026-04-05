@@ -473,13 +473,16 @@
           ? '<i class="fas fa-shield-alt" style="color:#9333ea;font-size:11px" title="פעולת מנהל"></i>'
           : '<i class="fas fa-user" style="color:#6b7280;font-size:11px" title="פעילות משתמש"></i>';
 
+        const userCls = entry.user && entry.user.includes('@') ? 'audit-user-cell email-cell' : 'audit-user-cell';
+        const targetCls = entry.target && entry.target.includes('@') ? 'audit-user-cell email-cell' : 'audit-user-cell';
+
         rows += '<tr>' +
-          '<td>' + sourceIcon + '</td>' +
+          '<td style="text-align:center">' + sourceIcon + '</td>' +
           '<td class="audit-time-cell">' + timeStr + '</td>' +
           '<td><span class="audit-action-badge ' + cat + '">' + _escapeHtml(actionLabel) + '</span></td>' +
-          '<td class="audit-user-cell">' + _escapeHtml(entry.user) + '</td>' +
-          '<td class="audit-user-cell">' + _escapeHtml(entry.target || '') + '</td>' +
-          '<td class="audit-details">' + detailsStr + '</td>' +
+          '<td class="' + userCls + '" title="' + _escapeHtml(entry.user) + '">' + _escapeHtml(entry.user) + '</td>' +
+          '<td class="' + targetCls + '" title="' + _escapeHtml(entry.target || '') + '">' + _escapeHtml(entry.target || '') + '</td>' +
+          '<td class="audit-details" title="' + _escapeHtml(detailsStr) + '">' + detailsStr + '</td>' +
           '</tr>';
       });
 
@@ -487,11 +490,11 @@
         <table class="audit-table">
           <thead>
             <tr>
-              <th style="width:30px"></th>
-              <th style="width:80px">זמן</th>
-              <th style="width:130px">פעולה</th>
-              <th style="width:80px">בוצע ע"י</th>
-              <th style="width:140px">נוגע ל</th>
+              <th style="width:28px">סוג</th>
+              <th style="width:75px">זמן</th>
+              <th style="width:120px">פעולה</th>
+              <th style="width:70px">בוצע ע"י</th>
+              <th style="width:130px">נוגע ל</th>
               <th>פרטים</th>
             </tr>
           </thead>
