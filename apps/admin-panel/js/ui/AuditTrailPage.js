@@ -13,7 +13,7 @@
   // Action categories for badge colors
   const ACTION_CATEGORIES = {
     create: ['USER_CREATED', 'create_task', 'create_timesheet', 'create_client', 'CREATE_USER'],
-    update: ['USER_UPDATED', 'edit_task', 'edit_timesheet', 'edit_client', 'UPDATE_USER', 'extend_deadline', 'update_progress', 'system_config_updated'],
+    update: ['USER_UPDATED', 'edit_task', 'edit_timesheet', 'edit_client', 'UPDATE_USER', 'extend_deadline', 'update_progress'],
     delete: ['USER_DELETED', 'delete_task', 'delete_timesheet', 'delete_client', 'DELETE_USER', 'delete_user_data_selective'],
     block: ['USER_BLOCKED', 'USER_UNBLOCKED', 'block_client', 'unblock_client'],
     login: ['login', 'logout'],
