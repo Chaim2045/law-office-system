@@ -52,6 +52,8 @@
             ${this._renderSection('idle-timeout', 'fa-clock', 'blue', 'זמן אי-פעילות', 'כמה זמן עד שמשתמש שלא פעיל מקבל אזהרה ומנותק. משפיע על User App ו-Admin Panel.', this._renderIdleTimeoutContent(), true)}
           </div>
 
+          ${this._renderSection('description-limits', 'fa-text-width', 'teal', 'מגבלות תווים לתיאורים', 'מספר התווים המרבי שמשתמש יכול להקליד בשדות תיאור. משפיע על טופס משימה חדשה ועל רישום שעות. טווח מותר: 10–200.', this._renderDescriptionLimitsContent(), true)}
+
           ${this._renderSection('service-types', 'fa-layer-group', 'green', 'סוגי שירות', 'שמות התצוגה של סוגי השירות במערכת. ניתן לשנות תוויות בלבד — המפתחות (hours, legal_procedure, fixed) קבועים.', this._renderServiceTypesContent(), true)}
 
           <div class="settings-grid-2col">
@@ -161,6 +163,28 @@
         <div class="settings-footer">
           <button class="settings-save-btn" id="save-timeout-btn"><i class="fas fa-save"></i> שמור</button>
           <div class="settings-status" id="timeout-status"></div>
+        </div>
+      `;
+    },
+
+    _renderDescriptionLimitsContent: function() {
+      const limits = this.config.descriptionLimits || this.config.DESCRIPTION_LIMITS || {};
+      const taskDesc = limits.taskDescription || limits.TASK_DESCRIPTION || 50;
+      const tsDesc = limits.timesheetDescription || limits.TIMESHEET_DESCRIPTION || 50;
+      return `
+        <div class="settings-form-group">
+          <label>תיאור משימה — מקסימום תווים</label>
+          <input type="number" class="settings-input" id="limit-task-description" value="${taskDesc}" min="10" max="200">
+          <span class="settings-hint">מגבלת תווים לשדה תיאור בטופס יצירת משימה חדשה</span>
+        </div>
+        <div class="settings-form-group">
+          <label>תיאור רישום שעות — מקסימום תווים</label>
+          <input type="number" class="settings-input" id="limit-timesheet-description" value="${tsDesc}" min="10" max="200">
+          <span class="settings-hint">מגבלת תווים לשדה תיאור ברישום שעות</span>
+        </div>
+        <div class="settings-footer">
+          <button class="settings-save-btn" id="save-description-limits-btn"><i class="fas fa-save"></i> שמור</button>
+          <div class="settings-status" id="description-limits-status"></div>
         </div>
       `;
     },
@@ -309,6 +333,7 @@
       // Save buttons
       this._bindSave('save-emails-btn', '_saveEmails');
       this._bindSave('save-limits-btn', '_saveLimits');
+      this._bindSave('save-description-limits-btn', '_saveDescriptionLimits');
       this._bindSave('save-timeout-btn', '_saveTimeout');
       this._bindSave('save-service-types-btn', '_saveServiceTypes');
       this._bindSave('save-roles-btn', '_saveRoles');
@@ -397,6 +422,23 @@
           maxFixedPrice: parseInt(document.getElementById('limit-max-fixed-price').value)
         }
       }, 'limits-status');
+    },
+
+    _saveDescriptionLimits: function() {
+      const taskVal = parseInt(document.getElementById('limit-task-description').value);
+      const tsVal = parseInt(document.getElementById('limit-timesheet-description').value);
+
+      if (isNaN(taskVal) || taskVal < 10 || taskVal > 200 || isNaN(tsVal) || tsVal < 10 || tsVal > 200) {
+        this._showStatus('description-limits-status', 'error', 'ערך חייב להיות מספר שלם בין 10 ל-200');
+        return;
+      }
+
+      this._callUpdate({
+        descriptionLimits: {
+          taskDescription: taskVal,
+          timesheetDescription: tsVal
+        }
+      }, 'description-limits-status');
     },
 
     _saveTimeout: function() {

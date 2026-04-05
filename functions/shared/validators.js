@@ -35,4 +35,31 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-module.exports = { sanitizeString, isValidIsraeliPhone, isValidEmail };
+/**
+ * שליפת מגבלת תווים לתיאור מתוך system_config (Firestore).
+ * Fallback ל-SYSTEM_CONSTANTS אם אין config.
+ *
+ * @param {'taskDescription'|'timesheetDescription'} field
+ * @returns {Promise<number>}
+ */
+async function getDescriptionLimit(field) {
+  const { SYSTEM_CONSTANTS } = require('./constants');
+  const keyMap = {
+    taskDescription: 'TASK_DESCRIPTION',
+    timesheetDescription: 'TIMESHEET_DESCRIPTION'
+  };
+  const fallback = SYSTEM_CONSTANTS.DESCRIPTION_LIMITS[keyMap[field]] || 50;
+
+  try {
+    const admin = require('firebase-admin');
+    const doc = await admin.firestore().collection('_system').doc('system_config').get();
+    if (doc.exists && doc.data().descriptionLimits && doc.data().descriptionLimits[field]) {
+      return doc.data().descriptionLimits[field];
+    }
+  } catch (_) {
+    // Firestore unavailable — use fallback
+  }
+  return fallback;
+}
+
+module.exports = { sanitizeString, isValidIsraeliPhone, isValidEmail, getDescriptionLimit };

@@ -236,8 +236,11 @@
 
       // ✅ NEW: Create GuidedTextInput instead of SmartComboSelector
       if (window.GuidedTextInput) {
+        const budgetDescLimit = (window.SYSTEM_CONFIG?.descriptionLimits?.taskDescription)
+          || (window.SYSTEM_CONSTANTS?.DESCRIPTION_LIMITS?.TASK_DESCRIPTION)
+          || 50;
         window.descriptionSelectors.budget = new window.GuidedTextInput('budgetDescriptionGuided', {
-          maxChars: 50,
+          maxChars: budgetDescLimit,
           placeholder: 'תאר את המשימה בקצרה...',
           required: true,
           showQuickSuggestions: true,

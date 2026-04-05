@@ -4,7 +4,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
-const { sanitizeString } = require('../shared/validators');
+const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { addTimeToTaskWithTransaction } = require('../addTimeToTask_v2');
 
 const db = admin.firestore();
@@ -32,6 +32,14 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'תיאור המשימה חייב להכיל לפחות 2 תווים'
+      );
+    }
+
+    const taskDescLimit = await getDescriptionLimit('taskDescription');
+    if (data.description.trim().length > taskDescLimit) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `תיאור המשימה ארוך מדי (מקסימום ${taskDescLimit} תווים)`
       );
     }
 

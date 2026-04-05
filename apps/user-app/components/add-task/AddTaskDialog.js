@@ -357,8 +357,11 @@ return;
     }
 
     try {
+      const taskDescLimit = (window.SYSTEM_CONFIG?.descriptionLimits?.taskDescription)
+        || (window.SYSTEM_CONSTANTS?.DESCRIPTION_LIMITS?.TASK_DESCRIPTION)
+        || 50;
       this.descriptionSelector = new window.GuidedTextInput('taskDescriptionGuided', {
-        maxChars: 50,
+        maxChars: taskDescLimit,
         placeholder: 'תאר את המשימה בקצרה...',
         required: true,
         showQuickSuggestions: true,

@@ -301,8 +301,11 @@ return;
   setTimeout(() => {
     try {
       if (window.GuidedTextInput) {
+        const tsDescLimit = (window.SYSTEM_CONFIG?.descriptionLimits?.timesheetDescription)
+          || (window.SYSTEM_CONSTANTS?.DESCRIPTION_LIMITS?.TIMESHEET_DESCRIPTION)
+          || 50;
         const guidedInput = new window.GuidedTextInput('workDescriptionGuided', {
-          maxChars: 50,
+          maxChars: tsDescLimit,
           placeholder: 'תאר את העבודה שביצעת היום...',
           required: true,
           showQuickSuggestions: true,
