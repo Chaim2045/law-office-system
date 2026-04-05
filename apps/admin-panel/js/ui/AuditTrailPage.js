@@ -84,6 +84,11 @@
     'COMPLETE_SERVICE': 'השלמת שירות',
     'DELETE_SERVICE': 'מחיקת שירות',
     'SET_SERVICE_OVERRIDE': 'ביטול חסימת שירות',
+    'REMOVE_SERVICE_OVERRIDE': 'הסרת ביטול חסימה',
+    'RESOLVE_SERVICE_OVERDRAFT': 'פתרון חריגת שירות',
+    'UNRESOLVE_SERVICE_OVERDRAFT': 'ביטול פתרון חריגה',
+    'CREATE_TIMESHEET_ENTRY_V2': 'רישום שעות',
+    'CREATE_USER': 'יצירת משתמש',
     'system_config_updated': 'עדכון הגדרות',
     'system_config_rollback': 'שחזור הגדרות'
   };
@@ -91,6 +96,8 @@
   // Hebrew labels for detail keys
   const DETAIL_KEY_LABELS = {
     'targetEmail': 'משתמש',
+    'targetName': 'שם',
+    'targetRole': 'תפקיד',
     'clientId': 'לקוח',
     'clientName': 'לקוח',
     'caseNumber': 'תיק',
@@ -102,6 +109,7 @@
     'newEstimate': 'הערכה חדשה',
     'addedMinutes': 'דקות שנוספו',
     'reason': 'סיבה',
+    'note': 'הערה',
     'role': 'תפקיד',
     'status': 'סטטוס',
     'message': 'הודעה',
@@ -111,9 +119,15 @@
     'fileSize': 'גודל',
     'serviceName': 'שירות',
     'serviceType': 'סוג שירות',
+    'procedureType': 'סוג הליך',
     'newDeadline': 'דדליין חדש',
     'oldDeadline': 'דדליין קודם',
-    'date': 'תאריך'
+    'date': 'תאריך',
+    'isInternal': 'פנימי',
+    'fromStageName': 'משלב',
+    'toStageName': 'לשלב',
+    'overrideActive': 'חסימה מבוטלת',
+    'resolved': 'נפתר'
   };
 
   // Keys to skip in details (shown elsewhere or internal/technical)
@@ -121,7 +135,9 @@
     'entityId', 'loginTime', 'isCritical', '_seconds', '_nanoseconds',
     'targetEmail', 'targetUser', 'clientName', 'agreementId',
     'fileType', 'userAgent', 'ipAddress',
-    'taskId', 'entryId', 'autoTimesheetCreated', 'clientUpdated'
+    'taskId', 'entryId', 'autoTimesheetCreated', 'clientUpdated',
+    'idempotencyKey', 'reservationId', 'version',
+    'serviceId', 'fromStageId', 'toStageId'
   ];
 
   const AuditTrailPage = {
@@ -214,11 +230,11 @@
 
             <div class="audit-filter-group">
               <label>מ:</label>
-              <input type="date" class="audit-filter-input" id="filter-date-from">
+              <input type="date" class="audit-filter-input" id="filter-date-from" lang="en">
             </div>
             <div class="audit-filter-group">
               <label>עד:</label>
-              <input type="date" class="audit-filter-input" id="filter-date-to">
+              <input type="date" class="audit-filter-input" id="filter-date-to" lang="en">
             </div>
 
             <button class="audit-filter-btn" id="btn-apply-filters"><i class="fas fa-search"></i> סנן</button>
@@ -687,11 +703,16 @@
         }
       } catch (e) { /* fall through */ }
     }
-    if (key === 'serviceType' && window.SystemConstantsHelpers) {
-      const label = window.SystemConstantsHelpers.getServiceTypeLabel(val);
-      if (label !== val) {
+    if (key === 'serviceType' || key === 'procedureType') {
+      if (window.SystemConstantsHelpers) {
+        const label = window.SystemConstantsHelpers.getServiceTypeLabel(val);
+        if (label !== val) {
  return label;
 }
+      }
+    }
+    if (typeof val === 'boolean') {
+      return val ? 'כן' : 'לא';
     }
     return val;
   }
