@@ -134,7 +134,7 @@
             // Admin emails list — sourced from SYSTEM_CONSTANTS
             this.adminEmails = window.SYSTEM_CONSTANTS?.ADMIN_EMAILS || [
                 'haim@ghlawoffice.co.il',
-                'uri@ghlawoffice.co.il',
+                'roi@ghlawoffice.co.il',
                 'guy@ghlawoffice.co.il'
             ];
         }

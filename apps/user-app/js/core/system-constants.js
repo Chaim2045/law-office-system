@@ -89,7 +89,7 @@
     // Admin Emails (מיילים מורשים)
     ADMIN_EMAILS: [
       'haim@ghlawoffice.co.il',
-      'uri@ghlawoffice.co.il',
+      'roi@ghlawoffice.co.il',
       'guy@ghlawoffice.co.il'
     ],
 
