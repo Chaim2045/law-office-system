@@ -294,11 +294,6 @@ class LawOfficeManager {
           });
         }
 
-        // Load system config from Firestore (description limits, etc.)
-        if (window.SystemConfigLoader) {
-          await window.SystemConfigLoader.load();
-        }
-
         // Load data and show app
         await this.loadData();
         this.showApp();
@@ -801,6 +796,13 @@ class LawOfficeManager {
   async loadData() {
     try {
       this.updateLoaderText('מתחבר...', 10);
+
+      // Load system config from Firestore (description limits, etc.)
+      if (window.SystemConfigLoader && !window.SystemConfigLoader.loaded) {
+        try {
+          await window.SystemConfigLoader.load();
+        } catch (_) { /* fallback to SYSTEM_CONSTANTS */ }
+      }
 
       // Initialize Firebase
       FirebaseOps.initializeFirebase();
