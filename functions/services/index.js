@@ -3,6 +3,9 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { checkUserPermissions } = require('../shared/auth');
+const { SYSTEM_CONSTANTS, isValidServiceType, isValidPricingType } = require('../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
@@ -31,7 +34,7 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
       );
     }
 
-    if (!data.serviceType || !['hours', 'legal_procedure', 'fixed'].includes(data.serviceType)) {
+    if (!data.serviceType || !isValidServiceType(data.serviceType)) {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'סוג שירות חייב להיות "hours", "legal_procedure" או "fixed"'
@@ -46,27 +49,27 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
     }
 
     // ── Validate type-specific fields before transaction ──
-    if (data.serviceType === 'hours') {
+    if (data.serviceType === ST.HOURS) {
       if (!data.hours || typeof data.hours !== 'number' || data.hours < 1) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'כמות שעות חייבת להיות מספר חיובי'
         );
       }
-    } else if (data.serviceType === 'legal_procedure') {
+    } else if (data.serviceType === ST.LEGAL_PROCEDURE) {
       if (!data.stages || !Array.isArray(data.stages) || data.stages.length !== 3) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'הליך משפטי דורש בדיוק 3 שלבים'
         );
       }
-      if (!data.pricingType || !['hourly', 'fixed'].includes(data.pricingType)) {
+      if (!data.pricingType || !isValidPricingType(data.pricingType)) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'סוג תמחור חייב להיות "hourly" או "fixed"'
         );
       }
-    } else if (data.serviceType === 'fixed') {
+    } else if (data.serviceType === ST.FIXED) {
       if (data.fixedPrice == null || typeof data.fixedPrice !== 'number' || data.fixedPrice < 0) {
         throw new functions.https.HttpsError(
           'invalid-argument',
@@ -104,7 +107,7 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
       };
 
       // הוספת שדות ספציפיים לסוג השירות
-      if (data.serviceType === 'hours') {
+      if (data.serviceType === ST.HOURS) {
         const packageId = `pkg_${Date.now()}`;
 
         newService.packages = [
@@ -124,13 +127,13 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
         newService.hoursUsed = 0;
         newService.hoursRemaining = data.hours;
 
-      } else if (data.serviceType === 'legal_procedure') {
+      } else if (data.serviceType === ST.LEGAL_PROCEDURE) {
         newService.pricingType = data.pricingType;
-        newService.currentStage = 'stage_a';
+        newService.currentStage = SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
 
         newService.stages = data.stages.map((stage, index) => {
-          const stageId = `stage_${['a', 'b', 'c'][index]}`;
-          const stageName = ['שלב א\'', 'שלב ב\'', 'שלב ג\''][index];
+          const stageId = SYSTEM_CONSTANTS.VALID_STAGE_IDS[index];
+          const stageName = SYSTEM_CONSTANTS.STAGE_NAMES[stageId];
 
           const processedStage = {
             id: stageId,
@@ -141,7 +144,7 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
             order: index + 1
           };
 
-          if (data.pricingType === 'hourly') {
+          if (data.pricingType === PT.HOURLY) {
             const packageId = `pkg_${stageId}_${Date.now()}`;
             processedStage.packages = [
               {
@@ -166,7 +169,7 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           return processedStage;
         });
 
-        if (data.pricingType === 'hourly') {
+        if (data.pricingType === PT.HOURLY) {
           newService.totalHours = newService.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
           newService.hoursUsed = 0;
           newService.hoursRemaining = newService.totalHours;
@@ -174,7 +177,7 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           newService.totalPrice = newService.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
           newService.totalPaid = 0;
         }
-      } else if (data.serviceType === 'fixed') {
+      } else if (data.serviceType === ST.FIXED) {
         // שירות קבוע — מחיר פיקס, ללא חבילות/שלבים, מעקב שעות בלבד ללא חסימה
         newService.fixedPrice = data.fixedPrice;
         newService.work = {
@@ -327,7 +330,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       const service = services[serviceIndex];
 
       // בדיקה שזה שירות שעות
-      if (service.type !== 'hours' && service.serviceType !== 'hours') {
+      if (service.type !== ST.HOURS && service.serviceType !== ST.HOURS) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'ניתן להוסיף חבילה רק לתוכנית שעות'
@@ -483,7 +486,7 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
     }
 
     // 2. Validate stageId
-    const validStageIds = ['stage_a', 'stage_b', 'stage_c'];
+    const validStageIds = SYSTEM_CONSTANTS.VALID_STAGE_IDS;
     if (!data.stageId || !validStageIds.includes(data.stageId)) {
       throw new functions.https.HttpsError(
         'invalid-argument',
@@ -591,7 +594,7 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
       const services = clientData.services || [];
 
       // 🔍 Step 2: מציאת ההליך המשפטי
-      const legalProcedureIndex = services.findIndex(s => s.type === 'legal_procedure');
+      const legalProcedureIndex = services.findIndex(s => s.type === ST.LEGAL_PROCEDURE);
 
       if (legalProcedureIndex === -1) {
         throw new functions.https.HttpsError(
@@ -845,7 +848,7 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const service = services[serviceIndex];
 
       // 3c. בדיקת סוג שירות
-      if (service.type !== 'legal_procedure' && service.serviceType !== 'legal_procedure') {
+      if (service.type !== ST.LEGAL_PROCEDURE && service.serviceType !== ST.LEGAL_PROCEDURE) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'ניתן להעביר שלבים רק בהליך משפטי'

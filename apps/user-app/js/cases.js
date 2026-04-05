@@ -779,12 +779,7 @@ return 0;
      * קבלת טקסט תצוגה לסוג הליך
      */
     getProcedureTypeText(procedureType) {
-      const texts = {
-        'hours': 'שעות',
-        'legal_procedure': 'הליך משפטי',
-        'fixed': 'קבוע'
-      };
-      return texts[procedureType] || procedureType;
+      return window.SystemConstantsHelpers?.getServiceTypeLabel?.(procedureType) || procedureType;
     }
 
     /**

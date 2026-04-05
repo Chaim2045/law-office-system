@@ -28,7 +28,7 @@ function validateTimeEntry(taskData, clientData) {
     return { valid: false, error: 'המשימה חסרה מידע על שירות' };
   }
 
-  if (taskData.serviceType === 'legal_procedure' && !taskData.serviceId) {
+  if (taskData.serviceType === (window.SYSTEM_CONSTANTS?.SERVICE_TYPES?.LEGAL_PROCEDURE || 'legal_procedure') && !taskData.serviceId) {
     return { valid: false, error: 'המשימה חסרה מידע על שלב' };
   }
 
@@ -56,7 +56,7 @@ function validatePackage(packageData) {
     errors.push('כמות שעות גבוהה מדי (מקסימום 500)');
   }
 
-  if (!packageData.type || !['initial', 'additional', 'renewal'].includes(packageData.type)) {
+  if (!packageData.type || !(window.SYSTEM_CONSTANTS?.VALID_PACKAGE_TYPES || ['initial', 'additional', 'renewal']).includes(packageData.type)) {
     errors.push('סוג חבילה לא תקין');
   }
 
@@ -104,7 +104,7 @@ function validateHoursPackage(hours, reason) {
 function validateStages(stages, pricingType = 'hourly') {
   const errors = [];
 
-  if (!Array.isArray(stages) || stages.length !== 3) {
+  if (!Array.isArray(stages) || stages.length !== (window.SYSTEM_CONSTANTS?.STAGE_COUNT || 3)) {
     errors.push('חובה למלא בדיוק 3 שלבים');
     return { valid: false, errors };
   }

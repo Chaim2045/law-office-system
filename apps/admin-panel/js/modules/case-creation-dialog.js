@@ -949,12 +949,12 @@ serviceTitleField.style.display = 'block';
           // השדה procedureType (dropdown) הוסר והוחלף בטאבים
         } else if (this.currentStep === 3) {
           // Step 3: Service - validate based on procedure type
-          if (this.procedureType === 'hours') {
+          if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
             const hours = parseFloat(document.getElementById('totalHours')?.value);
             if (!hours || hours < 0.5) {
               errors.push('אנא הזן כמות שעות תקינה (לפחות 0.5)');
             }
-          } else if (this.procedureType === 'legal_procedure') {
+          } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
             // Validate stages - basic check
             const stageA_desc = document.getElementById('stageA_description')?.value?.trim();
             const stageB_desc = document.getElementById('stageB_description')?.value?.trim();
@@ -966,7 +966,7 @@ serviceTitleField.style.display = 'block';
 
             // Check hours/price based on pricing type
             const pricingType = this.pricingType; // 🔧 משתמש ב-instance variable במקום radio buttons
-            if (pricingType === 'hourly') {
+            if (pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY) {
               const stageA_hours = parseFloat(document.getElementById('stageA_hours')?.value);
               const stageB_hours = parseFloat(document.getElementById('stageB_hours')?.value);
               const stageC_hours = parseFloat(document.getElementById('stageC_hours')?.value);
@@ -983,7 +983,7 @@ serviceTitleField.style.display = 'block';
                 errors.push('חובה למלא מחיר עבור כל 3 השלבים');
               }
             }
-          } else if (this.procedureType === 'fixed') {
+          } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
             const fixedPrice = parseFloat(document.getElementById('fixedPriceInput')?.value);
             if (!fixedPrice && fixedPrice !== 0) {
               errors.push('אנא הזן מחיר קבוע');
@@ -1008,12 +1008,12 @@ serviceTitleField.style.display = 'block';
           }
 
           // Validate based on procedure type
-          if (this.procedureType === 'hours') {
+          if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
             const hours = parseFloat(document.getElementById('totalHours')?.value);
             if (!hours || hours < 0.5) {
               errors.push('אנא הזן כמות שעות תקינה (לפחות 0.5)');
             }
-          } else if (this.procedureType === 'legal_procedure') {
+          } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
             // Same validation as new client step 3
             const stageA_desc = document.getElementById('stageA_description')?.value?.trim();
             const stageB_desc = document.getElementById('stageB_description')?.value?.trim();
@@ -1024,7 +1024,7 @@ serviceTitleField.style.display = 'block';
             }
 
             const pricingType = this.pricingType; // 🔧 משתמש ב-instance variable במקום radio buttons
-            if (pricingType === 'hourly') {
+            if (pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY) {
               const stageA_hours = parseFloat(document.getElementById('stageA_hours')?.value);
               const stageB_hours = parseFloat(document.getElementById('stageB_hours')?.value);
               const stageC_hours = parseFloat(document.getElementById('stageC_hours')?.value);
@@ -1041,7 +1041,7 @@ serviceTitleField.style.display = 'block';
                 errors.push('חובה למלא מחיר עבור כל 3 השלבים');
               }
             }
-          } else if (this.procedureType === 'fixed') {
+          } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
             const fixedPrice = parseFloat(document.getElementById('fixedPriceInput')?.value);
             if (!fixedPrice && fixedPrice !== 0) {
               errors.push('אנא הזן מחיר קבוע');
@@ -1146,19 +1146,19 @@ serviceTitleField.style.display = 'block';
 
       console.log('🔍 renderServiceSection called with procedureType:', this.procedureType);
 
-      if (this.procedureType === 'hours') {
+      if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
         console.log('✅ Rendering HOURS section');
         container.innerHTML = this.renderHoursSection();
-      } else if (this.procedureType === 'legal_procedure') {
+      } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
         console.log('✅ Rendering LEGAL PROCEDURE section');
         container.innerHTML = this.renderLegalProcedureSection();
-      } else if (this.procedureType === 'fixed') {
+      } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
         console.log('✅ Rendering FIXED section');
         container.innerHTML = this.renderFixedPriceSection();
       }
 
       // Event listeners לסוג תמחור (אם הליך משפטי)
-      if (this.procedureType === 'legal_procedure') {
+      if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
         this.attachPricingTypeListeners();
       }
     }
@@ -1269,7 +1269,7 @@ serviceTitleField.style.display = 'block';
      */
     renderLegalProcedureSection() {
       // 🔧 FIX: שימוש ב-this.pricingType לבדיקת הבחירה הנוכחית
-      const isHourly = this.pricingType === 'hourly';
+      const isHourly = this.pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY;
 
       return `
         <div class="form-section">
@@ -1327,7 +1327,7 @@ serviceTitleField.style.display = 'block';
      * רינדור שלב בודד
      */
     renderStage(stageKey, stageName, color) {
-      const isHourly = this.pricingType === 'hourly';
+      const isHourly = this.pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY;
 
       return `
         <div style="
@@ -1515,7 +1515,7 @@ return;
      * עדכון השלבים לפי סוג התמחור - ללא render מחדש של הכל
      */
     updateStagesForPricingType() {
-      const isHourly = this.pricingType === 'hourly';
+      const isHourly = this.pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY;
       const stages = ['A', 'B', 'C'];
 
       stages.forEach(stageKey => {
@@ -1762,7 +1762,7 @@ return;
             ${services.map((service) => {
               // הכנת נתוני השלב הפעיל להליכים משפטיים
               let serviceToRender = service;
-              if (service.type === 'legal_procedure') {
+              if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
                 const currentStage = service.stages?.find(s => s.status === 'active');
                 if (currentStage) {
                   // יצירת אובייקט שלב עם כל הנתונים הנדרשים
@@ -1975,18 +1975,18 @@ return;
       };
 
       // שירות
-      if (this.procedureType === 'hours') {
+      if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
         formData.service = {
           totalHours: parseFloat(document.getElementById('totalHours')?.value)
         };
-      } else if (this.procedureType === 'legal_procedure') {
+      } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
         formData.service = {
           pricingType: this.pricingType, // 🔧 משתמש ב-instance variable במקום radio buttons
           stageA: this.collectStageData('A'),
           stageB: this.collectStageData('B'),
           stageC: this.collectStageData('C')
         };
-      } else if (this.procedureType === 'fixed') {
+      } else if (this.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
         formData.service = {
           fixedPrice: parseFloat(document.getElementById('fixedPriceInput')?.value) || 0,
           description: document.getElementById('fixedServiceDescription')?.value?.trim() || ''
@@ -2001,7 +2001,7 @@ return;
      */
     collectStageData(stageKey) {
       const description = document.getElementById(`stage${stageKey}_description`)?.value?.trim();
-      const isHourly = this.pricingType === 'hourly';
+      const isHourly = this.pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY;
 
       return {
         description,
@@ -2027,7 +2027,7 @@ return;
       }
 
       // Validate hours service
-      if (procedureType === 'hours') {
+      if (procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
         const totalHours = serviceData.hours;
         if (!totalHours || totalHours < 0.5) {
           errors.push('אנא הזן כמות שעות תקינה (לפחות 0.5)');
@@ -2036,7 +2036,7 @@ return;
       }
 
       // Validate legal procedure
-      if (procedureType === 'legal_procedure' && serviceData.stages) {
+      if (procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE && serviceData.stages) {
         const stageNames = ['א', 'ב', 'ג'];
         const stageKeys = ['A', 'B', 'C'];
 
@@ -2048,7 +2048,7 @@ return;
           }
 
           // Validate hours for hourly pricing
-          if (serviceData.pricingType === 'hourly') {
+          if (serviceData.pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY) {
             if (!stage.hours || stage.hours <= 0) {
               errors.push(`שלב ${stageNames[i]}: חובה להזין כמות שעות תקינה`);
               fieldIds.push(`stage${stageKeys[i]}_hours`);
@@ -2056,7 +2056,7 @@ return;
           }
 
           // Validate price for fixed pricing
-          if (serviceData.pricingType === 'fixed') {
+          if (serviceData.pricingType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
             if (!stage.fixedPrice || stage.fixedPrice <= 0) {
               errors.push(`שלב ${stageNames[i]}: חובה להזין מחיר תקין`);
               fieldIds.push(`stage${stageKeys[i]}_fixedPrice`);
@@ -2135,11 +2135,11 @@ return;
         };
 
         // שדות ספציפיים לסוג הליך
-        if (procedureType === 'hours') {
+        if (procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
           const totalHours = parseFloat(document.getElementById('totalHours').value);
           serviceData.hours = totalHours;
 
-        } else if (procedureType === 'legal_procedure') {
+        } else if (procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
           // 🔧 משתמש ב-instance variable במקום radio buttons שהוסרו
           const pricingType = this.pricingType;
           serviceData.pricingType = pricingType;
@@ -2326,9 +2326,9 @@ return;
         idempotencyKey: `create_${formData.case.caseNumber}_${Date.now()}`
       };
 
-      if (formData.case.procedureType === 'hours') {
+      if (formData.case.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
         data.totalHours = formData.service.totalHours;
-      } else if (formData.case.procedureType === 'legal_procedure') {
+      } else if (formData.case.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
         data.pricingType = formData.service.pricingType;
         // ✅ שדות חדשים עבור המבנה החדש
         data.legalProcedureName = formData.case.title;  // שם ��הליך המשפטי
@@ -2338,7 +2338,7 @@ return;
           { id: 'stage_b', ...formData.service.stageB },
           { id: 'stage_c', ...formData.service.stageC }
         ];
-      } else if (formData.case.procedureType === 'fixed') {
+      } else if (formData.case.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
         data.fixedPrice = formData.service.fixedPrice;
         data.serviceName = formData.case.title;
         data.description = formData.service.description;

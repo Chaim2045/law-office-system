@@ -5,6 +5,9 @@
  * across createClient and addServiceToClient functions.
  */
 
+const { SYSTEM_CONSTANTS } = require('../../../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+
 /**
  * Creates a package object with consistent structure
  *
@@ -72,12 +75,12 @@ function createStage({ id, name, description, order, status, hours }) {
  * @returns {Array<Object>} Array of 3 stage objects
  */
 function createLegalProcedureStages(stagesData) {
-  if (!stagesData || stagesData.length !== 3) {
-    throw new Error('Legal procedure requires exactly 3 stages');
+  if (!stagesData || stagesData.length !== SYSTEM_CONSTANTS.STAGE_COUNT) {
+    throw new Error('Legal procedure requires exactly ' + SYSTEM_CONSTANTS.STAGE_COUNT + ' stages');
   }
 
-  const stageIds = ['stage_a', 'stage_b', 'stage_c'];
-  const stageNames = ['שלב א\'', 'שלב ב\'', 'שלב ג\''];
+  const stageIds = SYSTEM_CONSTANTS.VALID_STAGE_IDS;
+  const stageNames = Object.values(SYSTEM_CONSTANTS.STAGE_NAMES);
 
   return stagesData.map((stageData, index) => {
     return createStage({
@@ -108,9 +111,9 @@ function createLegalProcedureService({ id, name, stagesData, currentStage }) {
 
   return {
     id,
-    type: 'legal_procedure',
+    type: ST.LEGAL_PROCEDURE,
     name,
-    currentStage: currentStage || 'stage_a',
+    currentStage: currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0],
     stages,
     totalHours,
     hoursUsed: 0,

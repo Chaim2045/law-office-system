@@ -4508,14 +4508,11 @@ return '';
             let serviceTypeText = '';
             let serviceIcon = 'fa-briefcase';
 
-            if (task.serviceType === 'legal_procedure') {
+            if (task.serviceType === window.SYSTEM_CONSTANTS?.SERVICE_TYPES?.LEGAL_PROCEDURE) {
                 serviceIcon = 'fa-balance-scale';
-                if (task.serviceId === 'stage_a') {
-                    serviceTypeText = 'הליך משפטי - שלב א\'';
-                } else if (task.serviceId === 'stage_b') {
-                    serviceTypeText = 'הליך משפטי - שלב ב\'';
-                } else if (task.serviceId === 'stage_c') {
-                    serviceTypeText = 'הליך משפטי - שלב ג\'';
+                const stName = window.SystemConstantsHelpers?.getStageName?.(task.serviceId);
+                if (stName && stName !== task.serviceId) {
+                    serviceTypeText = 'הליך משפטי - ' + stName;
                 } else {
                     serviceTypeText = 'הליך משפטי';
                 }

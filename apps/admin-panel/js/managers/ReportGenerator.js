@@ -727,7 +727,7 @@ return true;
 
                             // Match by stage display name (for legal procedures: "שלב א", "שלב ב", etc.)
                             if (entry.serviceId && formData.service) {
-                                const stageMapping = {
+                                const stageMapping = window.SYSTEM_CONSTANTS?.STAGE_NAMES || {
                                     'stage_a': 'שלב א',
                                     'stage_b': 'שלב ב',
                                     'stage_c': 'שלב ג'

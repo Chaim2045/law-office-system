@@ -188,9 +188,7 @@ window.calculateHoursUsed = calculateHoursUsed;
     } else if (type === 'legal_procedure') {
       // הליך משפטי
       iconClass = 'fa-balance-scale';
-      const stageName = service.id === 'stage_a' ? "שלב א'" :
-                       service.id === 'stage_b' ? "שלב ב'" :
-                       service.id === 'stage_c' ? "שלב ג'" : service.name;
+      const stageName = window.SystemConstantsHelpers?.getStageName?.(service.id) || service.name;
 
       // 🔥 FIX: הצג שם ההליך המשפטי (ללא השלב בכותרת - השלב יהיה ב-badge)
       const procedureName = options.procedureName || 'הליך משפטי';
@@ -315,9 +313,7 @@ window.calculateHoursUsed = calculateHoursUsed;
         box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
         pointer-events: none;
       ">
-        ${escapeHtml(service.id === 'stage_a' ? "שלב א'" :
-                     service.id === 'stage_b' ? "שלב ב'" :
-                     service.id === 'stage_c' ? "שלב ג'" : service.name)}
+        ${escapeHtml(window.SystemConstantsHelpers?.getStageName?.(service.id) || service.name)}
       </div>
     ` : '';
 

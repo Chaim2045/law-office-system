@@ -3,6 +3,10 @@
 const admin = require('firebase-admin');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 
+const { SYSTEM_CONSTANTS } = require('../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
+
 const db = admin.firestore();
 
 /**
@@ -259,7 +263,7 @@ const dailyInvariantCheck = onSchedule({
           const serviceId = service.id;
           if (!serviceId) continue;
 
-          const cardHoursUsed = service.pricingType === 'fixed'
+          const cardHoursUsed = service.pricingType === PT.FIXED
             ? (service.stages || []).reduce((sum, st) => sum + (st.totalHoursWorked || 0), 0)
             : (service.hoursUsed || 0);
           const timesheetMinutes = serviceMinutes[serviceId] || 0;
@@ -307,7 +311,7 @@ const dailyInvariantCheck = onSchedule({
       const data = clientDoc.data();
       const clientName = data.clientName || data.name || clientDoc.id;
       (data.services || []).forEach(svc => {
-        if (svc.type === 'legal_procedure') {
+        if (svc.type === ST.LEGAL_PROCEDURE) {
           (svc.stages || []).forEach(stage => {
             const missingFields = REQUIRED_STAGE_FIELDS.filter(f => stage[f] === undefined || stage[f] === null);
             if (missingFields.length > 0) {

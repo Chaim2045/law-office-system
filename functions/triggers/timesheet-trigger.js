@@ -24,6 +24,10 @@ const {
   calcClientAggregates
 } = require('../src/modules/aggregation');
 
+const { SYSTEM_CONSTANTS } = require('../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
+
 const db = admin.firestore();
 
 /**
@@ -75,13 +79,13 @@ function applyServiceTransfer(services, before, after) {
     const oldServiceType = oldService.type;
     let leg1Result = null;
 
-    if (oldServiceType === 'hours') {
+    if (oldServiceType === ST.HOURS) {
       if (before.packageId) {
         leg1Result = applyHoursDelta(currentServices, oldLookupId, before.packageId, -(before.minutes));
       } else {
         leg1Result = applyHoursDeltaServiceOnly(currentServices, oldLookupId, -(before.minutes));
       }
-    } else if (oldServiceType === 'legal_procedure') {
+    } else if (oldServiceType === ST.LEGAL_PROCEDURE) {
       const oldStageId = before.stageId || before.serviceId;
       if (before.packageId) {
         leg1Result = applyLegalProcedureDelta(currentServices, oldLookupId, oldStageId, before.packageId, -(before.minutes));
@@ -114,13 +118,13 @@ function applyServiceTransfer(services, before, after) {
   const newServiceType = newService.type;
   let leg2Result = null;
 
-  if (newServiceType === 'hours') {
+  if (newServiceType === ST.HOURS) {
     if (after.packageId) {
       leg2Result = applyHoursDelta(currentServices, newLookupId, after.packageId, after.minutes);
     } else {
       leg2Result = applyHoursDeltaServiceOnly(currentServices, newLookupId, after.minutes);
     }
-  } else if (newServiceType === 'legal_procedure') {
+  } else if (newServiceType === ST.LEGAL_PROCEDURE) {
     const newStageId = after.stageId || after.serviceId;
     if (after.packageId) {
       leg2Result = applyLegalProcedureDelta(currentServices, newLookupId, newStageId, after.packageId, after.minutes);
@@ -318,7 +322,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
 
         const serviceType = targetService.type || clientData.procedureType;
 
-        if (serviceType === 'hours') {
+        if (serviceType === ST.HOURS) {
           // ── hours: resolve packageId if missing ──
           let resolvedPackageId = packageId;
 
@@ -342,7 +346,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
             result = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
             console.warn(`⚠️ [timesheet-trigger] No active package for entry ${entryId} — counting at service level`);
           }
-        } else if (serviceType === 'legal_procedure') {
+        } else if (serviceType === ST.LEGAL_PROCEDURE) {
           // ── legal_procedure: resolve stageId if missing ──
           let resolvedStageId = stageId;
           if (!resolvedStageId && serviceId && serviceId.startsWith('stage_')) {
@@ -361,7 +365,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
             return;
           }
 
-          if (targetStage.pricingType !== 'fixed' && !packageId) {
+          if (targetStage.pricingType !== PT.FIXED && !packageId) {
             // Fallback: find first eligible package from stage
             const fallbackStagePkg = (targetStage.packages || []).find((pkg) => {
               const status = pkg.status || 'active';
@@ -380,7 +384,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
           } else {
             result = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, packageId, minutesDelta);
           }
-        } else if (serviceType === 'fixed') {
+        } else if (serviceType === ST.FIXED) {
           // שירות קבוע — מעקב שעות בלבד, ללא חסימה, ללא packages/stages
           const svcIndex = services.findIndex(s => s.id === lookupServiceId);
           if (svcIndex !== -1) {

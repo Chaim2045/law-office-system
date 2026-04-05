@@ -8,6 +8,8 @@
  * @version 1.0.0
  */
 
+const { SYSTEM_CONSTANTS, isValidPackageType } = require('../../../shared/constants');
+
 /**
  * Validate time entry before deduction
  *
@@ -28,7 +30,7 @@ function validateTimeEntry(taskData, clientData) {
     return { valid: false, error: 'המשימה חסרה מידע על שירות' };
   }
 
-  if (taskData.serviceType === 'legal_procedure' && !taskData.serviceId) {
+  if (taskData.serviceType === SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE && !taskData.serviceId) {
     return { valid: false, error: 'המשימה חסרה מידע על שלב' };
   }
 
@@ -56,7 +58,7 @@ function validatePackage(packageData) {
     errors.push('כמות שעות גבוהה מדי (מקסימום 500)');
   }
 
-  if (!packageData.type || !['initial', 'additional', 'renewal'].includes(packageData.type)) {
+  if (!packageData.type || !isValidPackageType(packageData.type)) {
     errors.push('סוג חבילה לא תקין');
   }
 
@@ -101,10 +103,10 @@ function validateHoursPackage(hours, reason) {
  * @param {string} pricingType - Pricing type (hourly/fixed)
  * @returns {Object} Validation result
  */
-function validateStages(stages, pricingType = 'hourly') {
+function validateStages(stages, pricingType = SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY) {
   const errors = [];
 
-  if (!Array.isArray(stages) || stages.length !== 3) {
+  if (!Array.isArray(stages) || stages.length !== SYSTEM_CONSTANTS.STAGE_COUNT) {
     errors.push('חובה למלא בדיוק 3 שלבים');
     return { valid: false, errors };
   }
@@ -116,7 +118,7 @@ function validateStages(stages, pricingType = 'hourly') {
       errors.push(`שלב ${stageNum}: חובה למלא תיאור השלב`);
     }
 
-    if (pricingType === 'hourly') {
+    if (pricingType === SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY) {
       if (!stage.hours || stage.hours <= 0) {
         errors.push(`שלב ${stageNum}: חובה למלא תקרת שעות תקינה`);
       }
