@@ -52,9 +52,10 @@
             ${this._renderSection('idle-timeout', 'fa-clock', 'blue', 'זמן אי-פעילות', 'כמה זמן עד שמשתמש שלא פעיל מקבל אזהרה ומנותק. משפיע על User App ו-Admin Panel.', this._renderIdleTimeoutContent(), true)}
           </div>
 
-          ${this._renderSection('description-limits', 'fa-text-width', 'teal', 'מגבלות תווים לתיאורים', 'מספר התווים המרבי שמשתמש יכול להקליד בשדות תיאור. משפיע על טופס משימה חדשה ועל רישום שעות. טווח מותר: 10–200.', this._renderDescriptionLimitsContent(), true)}
-
-          ${this._renderSection('service-types', 'fa-layer-group', 'green', 'סוגי שירות', 'שמות התצוגה של סוגי השירות במערכת. ניתן לשנות תוויות בלבד — המפתחות (hours, legal_procedure, fixed) קבועים.', this._renderServiceTypesContent(), true)}
+          <div class="settings-grid-2col">
+            ${this._renderSection('service-types', 'fa-layer-group', 'green', 'סוגי שירות', 'שמות התצוגה של סוגי השירות במערכת. ניתן לשנות תוויות בלבד — המפתחות (hours, legal_procedure, fixed) קבועים.', this._renderServiceTypesContent(), true)}
+            ${this._renderSection('description-limits', 'fa-text-width', 'teal', 'מגבלות תווים לתיאורים', 'מספר התווים המרבי שמשתמש יכול להקליד בשדות תיאור. משפיע על טופס משימה חדשה ועל רישום שעות. טווח מותר: 10–200.', this._renderDescriptionLimitsContent(), true)}
+          </div>
 
           <div class="settings-grid-2col">
             ${this._renderSection('roles', 'fa-user-tag', 'purple', 'תפקידים', 'שמות התצוגה של תפקידי המשתמשים. ניתן לשנות תוויות בלבד — המפתחות קבועים.', this._renderRolesContent(), true)}
