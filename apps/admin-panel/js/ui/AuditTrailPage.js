@@ -72,6 +72,10 @@
     'ADD_SERVICE': 'הוספת שירות',
     'ADD_PACKAGE': 'הוספת חבילה',
     'delete_user_data_selective': 'מחיקת נתוני משתמש',
+    'UPLOAD_FEE_AGREEMENT': 'העלאת הסכם שכ"ט',
+    'DELETE_FEE_AGREEMENT': 'מחיקת הסכם שכ"ט',
+    'ADD_TIME_TO_TASK': 'הוספת שעות למשימה',
+    'CANCEL_TASK': 'ביטול משימה',
     'system_config_updated': 'עדכון הגדרות',
     'system_config_rollback': 'שחזור הגדרות'
   };
@@ -79,12 +83,13 @@
   // Hebrew labels for detail keys
   const DETAIL_KEY_LABELS = {
     'targetEmail': 'משתמש יעד',
-    'taskId': 'מזהה משימה',
-    'clientId': 'מזהה לקוח',
-    'caseNumber': 'מספר תיק',
+    'taskId': 'משימה',
+    'clientId': 'לקוח',
+    'clientName': 'לקוח',
+    'caseNumber': 'תיק',
     'estimatedHours': 'שעות מוערכות',
     'actualMinutes': 'דקות בפועל',
-    'gapPercent': 'אחוז חריגה',
+    'gapPercent': 'חריגה %',
     'oldEstimate': 'הערכה קודמת',
     'newEstimate': 'הערכה חדשה',
     'addedMinutes': 'דקות שנוספו',
@@ -92,10 +97,19 @@
     'role': 'תפקיד',
     'status': 'סטטוס',
     'message': 'הודעה',
-    'username': 'שם משתמש',
+    'username': 'שם',
     'changes': 'שינויים',
-    'isCritical': 'קריטי'
+    'fileName': 'קובץ',
+    'fileSize': 'גודל',
+    'fileType': 'סוג קובץ'
   };
+
+  // Keys to skip in details (shown elsewhere or internal)
+  const DETAIL_SKIP_KEYS = [
+    'entityId', 'loginTime', 'isCritical', '_seconds', '_nanoseconds',
+    'targetEmail', 'targetUser', 'clientName', 'agreementId',
+    'fileType', 'userAgent', 'ipAddress'
+  ];
 
   const AuditTrailPage = {
     container: null,
@@ -301,13 +315,13 @@
           const auditDocs = await this._queryCollection('audit_log');
           auditDocs.forEach(function(doc) {
             const data = doc.data();
-            // Prefer name over email over UID
-            const displayUser = data.performedByName || data.performedBy || data.adminEmail || _emailFromUid(data.userId) || '';
+            // Prefer name (Hebrew) over email, never show raw UID
+            const displayUser = data.performedByName || data.username || data.performedBy || data.adminEmail || _emailFromUid(data.userId) || '';
             // Extract target from details if not in top-level field
+            const det = _parseDetails(data.details);
             let target = data.targetUser || data.targetUserEmail || '';
-            if (!target && data.details) {
-              const det = _parseDetails(data.details);
-              target = det.targetEmail || det.targetUser || '';
+            if (!target) {
+              target = det.targetEmail || det.targetUser || det.clientName || '';
             }
             results.push({
               id: doc.id,
@@ -610,19 +624,21 @@
  return '';
 }
     const parts = [];
-    // Skip internal/non-useful keys
-    const skipKeys = ['entityId', 'loginTime', 'isCritical', '_seconds', '_nanoseconds'];
     keys.forEach(function(key) {
-      if (skipKeys.includes(key)) {
- return;
-}
-      const val = obj[key];
-      if (val === null || val === undefined || typeof val === 'object') {
+      if (DETAIL_SKIP_KEYS.includes(key)) {
  return;
 }
       if (parts.length >= 3) {
  return;
 }
+      let val = obj[key];
+      if (val === null || val === undefined || typeof val === 'object') {
+ return;
+}
+      // Format file size
+      if (key === 'fileSize' && typeof val === 'number') {
+        val = val > 1048576 ? (val / 1048576).toFixed(1) + ' MB' : Math.round(val / 1024) + ' KB';
+      }
       const label = DETAIL_KEY_LABELS[key] || key;
       parts.push(label + ': ' + val);
     });
