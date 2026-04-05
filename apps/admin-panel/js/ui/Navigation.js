@@ -82,6 +82,9 @@ return;
                             <i class="fas fa-clipboard-check"></i>
                             <span>אישורי משימות</span>
                         </button>
+                        <a href="audit-trail.html" class="btn-settings ${this.currentPage === 'audit-trail' ? 'active' : ''}" title="לוג פעילות">
+                            <i class="fas fa-history"></i>
+                        </a>
                         <a href="settings.html" class="btn-settings ${this.currentPage === 'settings' ? 'active' : ''}" title="הגדרות מערכת">
                             <i class="fas fa-cog"></i>
                         </a>
