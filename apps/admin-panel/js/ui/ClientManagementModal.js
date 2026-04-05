@@ -613,7 +613,7 @@ return;
                 return `
                     <div class="management-service-info-item">
                         <span class="management-service-info-label">מחיר</span>
-                        <span class="management-service-info-value">₪${service.price || 0}</span>
+                        <span class="management-service-info-value">₪${(service.fixedPrice || 0).toLocaleString()}</span>
                     </div>
                     <div class="management-service-info-item">
                         <span class="management-service-info-label">סטטוס</span>
