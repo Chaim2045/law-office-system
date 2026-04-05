@@ -490,12 +490,12 @@
         <table class="audit-table">
           <thead>
             <tr>
-              <th style="width:28px">סוג</th>
-              <th style="width:75px">זמן</th>
-              <th style="width:115px">פעולה</th>
-              <th style="width:85px">בוצע ע"י</th>
-              <th style="width:120px">נוגע ל</th>
-              <th>פרטים</th>
+              <th style="width:3%">סוג</th>
+              <th style="width:8%">זמן</th>
+              <th style="width:14%">פעולה</th>
+              <th style="width:10%">בוצע ע"י</th>
+              <th style="width:15%">נוגע ל</th>
+              <th style="width:50%">פרטים</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
