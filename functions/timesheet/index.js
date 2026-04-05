@@ -313,6 +313,20 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                 console.warn(`⚠️ [Quick Log] No package found — counting at service level`);
               }
 
+            } else if (serviceType === 'fixed') {
+              // שירות קבוע — מעקב שעות בלבד, ללא חסימה, ללא packages/stages
+              const svcIndex = services.findIndex(s => s.id === lookupServiceId);
+              if (svcIndex !== -1) {
+                const updatedSvc = { ...services[svcIndex] };
+                const work = { ...(updatedSvc.work || { totalMinutesWorked: 0, entriesCount: 0 }) };
+                work.totalMinutesWorked = round2((work.totalMinutesWorked || 0) + minutesDelta);
+                work.entriesCount = (work.entriesCount || 0) + 1;
+                updatedSvc.work = work;
+                const updatedArr = [...services];
+                updatedArr[svcIndex] = updatedSvc;
+                deductionResult = { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
+              }
+
             } else if (serviceType === 'legal_procedure') {
               // Resolve stageId
               const targetStageId = resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || 'stage_a');
@@ -760,6 +774,20 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 console.warn(`⚠️ [v2.0] No package found — counting at service level`);
               }
 
+            } else if (serviceType === 'fixed') {
+              // שירות קבוע — מעקב שעות בלבד, ללא חסימה, ללא packages/stages
+              const svcIndex = services.findIndex(s => s.id === lookupServiceId);
+              if (svcIndex !== -1) {
+                const updatedSvc = { ...services[svcIndex] };
+                const work = { ...(updatedSvc.work || { totalMinutesWorked: 0, entriesCount: 0 }) };
+                work.totalMinutesWorked = round2((work.totalMinutesWorked || 0) + minutesDelta);
+                work.entriesCount = (work.entriesCount || 0) + 1;
+                updatedSvc.work = work;
+                const updatedArr = [...services];
+                updatedArr[svcIndex] = updatedSvc;
+                deductionResult = { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
+              }
+
             } else if (serviceType === 'legal_procedure') {
               // Resolve stageId — from data.serviceId (stage_xxx) or service.currentStage
               const targetStageId = (data.serviceId && data.serviceId.startsWith('stage_'))
@@ -1187,6 +1215,8 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
                     { clientId: entryClientId, currentRemaining, requestedHoursDelta: hoursDiff, wouldBe: afterDeduction });
                 }
               }
+            } else if (serviceType === 'fixed') {
+              // שירות קבוע — ללא חסימה, ללא guard
             } else if (serviceType === 'legal_procedure') {
               // Find the stage
               const targetStageId = entryData.stageId || entryData.serviceId;

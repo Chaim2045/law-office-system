@@ -1090,6 +1090,11 @@ return;
                 );
               }
             });
+          } else if (service.type === 'fixed') {
+            // שירות קבוע — מחיר פיקס, ללא חסימה
+            cardsHtml += window.renderServiceCard(service, 'fixed', 'fixed', caseItem, {
+              onClick: `window.clientCaseSelectorInstances['${this.containerId}'].selectService('${this.escapeHtml(service.id)}', 'fixed')`
+            });
           }
         });
 
@@ -1198,6 +1203,8 @@ return;
         if (!serviceData) {
           serviceData = this.selectedCase.stages?.find(s => s.id === serviceId);
         }
+      } else if (type === 'fixed') {
+        serviceData = this.selectedCase.services?.find(s => s.id === serviceId);
       }
 
       this.selectedService = serviceData;
@@ -1389,6 +1396,27 @@ return;
             </div>
           `;
         }
+      } else if (type === 'fixed') {
+        iconClass = 'fa-shekel-sign';
+        title = serviceData.name || 'שירות קבוע';
+        subtitle = serviceData.description || 'שירות במחיר קבוע';
+        const price = serviceData.fixedPrice !== null && serviceData.fixedPrice !== undefined ? `₪${Number(serviceData.fixedPrice).toLocaleString()}` : '';
+        statsHtml = `
+          <div style="margin-top: 12px;">
+            <div style="
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              padding: 10px;
+              background: #f0fdf4;
+              border-radius: 6px;
+              border: 1px solid #86efac;
+            ">
+              <i class="fas fa-shekel-sign" style="color: #22c55e; font-size: 12px;"></i>
+              <span style="color: #166534; font-weight: 500; font-size: 12px;">פיקס ${price}</span>
+            </div>
+          </div>
+        `;
       }
 
       // 🎯 Stage Badge להליכים משפטיים - קומפקטי וקל

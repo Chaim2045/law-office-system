@@ -105,6 +105,16 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       }
     }
 
+    // Validation - שירות קבוע
+    if (data.procedureType === 'fixed') {
+      if (data.fixedPrice == null || typeof data.fixedPrice !== 'number' || data.fixedPrice < 0) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'מחיר קבוע חייב להיות מספר חיובי או 0'
+        );
+      }
+    }
+
     // Validation - הליך משפטי עם שלבים
     if (data.procedureType === 'legal_procedure') {
       if (!data.stages || !Array.isArray(data.stages) || data.stages.length !== 3) {
@@ -249,11 +259,30 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       clientData.activeServices = 1;
 
     } else if (data.procedureType === 'fixed') {
-      clientData.stages = [
-        { id: 1, name: 'שלב 1', completed: false },
-        { id: 2, name: 'שלב 2', completed: false },
-        { id: 3, name: 'שלב 3', completed: false }
+      // שירות קבוע — מחיר פיקס, מעקב שעות בלבד, ללא חסימה
+      const serviceId = `srv_fixed_${Date.now()}`;
+      const serviceName = data.serviceName || 'שירות קבוע';
+
+      clientData.services = [
+        {
+          id: serviceId,
+          type: 'fixed',
+          name: sanitizeString(serviceName),
+          description: data.description ? sanitizeString(data.description.trim()) : '',
+          status: 'active',
+          createdAt: now,
+          createdBy: user.username,
+          fixedPrice: data.fixedPrice,
+          work: {
+            totalMinutesWorked: 0,
+            entriesCount: 0
+          },
+          completedAt: null
+        }
       ];
+
+      clientData.totalServices = 1;
+      clientData.activeServices = 1;
 
     } else if (data.procedureType === 'legal_procedure') {
       // הליך משפטי עם 3 שלבים מפורטים

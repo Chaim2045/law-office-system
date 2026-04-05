@@ -268,11 +268,16 @@ window.calculateHoursUsed = calculateHoursUsed;
     } else if (type === 'fixed') {
       // שירות במחיר קבוע
       iconClass = 'fa-shekel-sign';
-      title = 'מחיר קבוע';
-      subtitle = service.name || 'שירות במחיר קבוע';
+      title = service.name || 'שירות קבוע';
+      subtitle = service.description || 'שירות במחיר קבוע';
+
+      const price = service.fixedPrice !== null && service.fixedPrice !== undefined ? `₪${Number(service.fixedPrice).toLocaleString()}` : '';
+      const minutesWorked = service.work?.totalMinutesWorked || 0;
+      const hoursWorked = (minutesWorked / 60).toFixed(1);
+      const entriesCount = service.work?.entriesCount || 0;
 
       statsHtml = `
-        <div style="margin-top: 12px;">
+        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
           <div style="
             display: inline-flex;
             align-items: center;
@@ -282,9 +287,14 @@ window.calculateHoursUsed = calculateHoursUsed;
             border-radius: 6px;
             border: 1px solid #86efac;
           ">
-            <i class="fas fa-check-circle" style="color: #22c55e; font-size: 12px;"></i>
-            <span style="color: #166534; font-weight: 500; font-size: 12px;">מחיר פיקס</span>
+            <i class="fas fa-shekel-sign" style="color: #22c55e; font-size: 12px;"></i>
+            <span style="color: #166534; font-weight: 500; font-size: 12px;">פיקס ${price}</span>
           </div>
+          ${minutesWorked > 0 ? `
+          <div style="font-size: 11px; color: #6b7280;">
+            <i class="fas fa-clock" style="margin-left: 4px;"></i>
+            ${hoursWorked} שעות עבודה (${entriesCount} רשומות)
+          </div>` : ''}
         </div>
       `;
     }

@@ -1275,8 +1275,13 @@ navigator.vibrate(10);
 
     // Build options
     const options = services.map(service => {
-      const hoursRemaining = service.hoursRemaining || 0;
-      const status = hoursRemaining <= 0 ? ' (אזלו השעות)' : ` (${hoursRemaining.toFixed(1)} שעות נותרות)`;
+      let status;
+      if (service.type === 'fixed') {
+        status = ' (שירות קבוע)';
+      } else {
+        const hoursRemaining = service.hoursRemaining || 0;
+        status = hoursRemaining <= 0 ? ' (אזלו השעות)' : ` (${hoursRemaining.toFixed(1)} שעות נותרות)`;
+      }
       return `<option value="${safeAttr(service.id)}">${safeText(service.name || 'שירות ללא שם')}${status}</option>`;
     }).join('');
 

@@ -7,8 +7,10 @@ function round2(n) {
   return Math.round((n || 0) * 100) / 100;
 }
 
+// ⚠️ Keep in sync: also used by functions/src/modules/aggregation/index.js (imported from here)
 function isFixedService(svc) {
-  return svc.type === 'legal_procedure' && svc.pricingType === 'fixed';
+  return svc.type === 'fixed' ||
+    (svc.type === 'legal_procedure' && svc.pricingType === 'fixed');
 }
 
 /**

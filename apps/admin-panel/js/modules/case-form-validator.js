@@ -124,7 +124,7 @@
       }
 
       // סוג הליך
-      if (!caseData.procedureType || !['hours', 'legal_procedure'].includes(caseData.procedureType)) {
+      if (!caseData.procedureType || !['hours', 'legal_procedure', 'fixed'].includes(caseData.procedureType)) {
         errors.push('סוג הליך לא תקין');
       }
 

@@ -11,6 +11,9 @@
  * Source of truth for hours: clients.services[].packages[].hoursRemaining
  */
 
+// ⚠️ isFixedService — single source of truth in shared/aggregates.js
+const { isFixedService } = require('../../../shared/aggregates');
+
 /**
  * Round a number to 2 decimal places
  */
@@ -281,9 +284,8 @@ function applyLegalProcedureDeltaStageOnly(services, serviceId, stageId, minutes
  * Calculate client-level aggregates from services array
  */
 function calcClientAggregates(services, clientTotalHours) {
-  const billableServices = services.filter(
-    svc => !(svc.type === 'legal_procedure' && svc.pricingType === 'fixed')
-  );
+  // ⚠️ isFixedService imported from shared/aggregates.js — covers type=fixed AND legal_procedure+fixed
+  const billableServices = services.filter(svc => !isFixedService(svc));
   const hoursUsed = round2(
     billableServices.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
   );

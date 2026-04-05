@@ -66,6 +66,13 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           'סוג תמחור חייב להיות "hourly" או "fixed"'
         );
       }
+    } else if (data.serviceType === 'fixed') {
+      if (data.fixedPrice == null || typeof data.fixedPrice !== 'number' || data.fixedPrice < 0) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'מחיר קבוע חייב להיות מספר חיובי או 0'
+        );
+      }
     }
 
     // ── Transaction: read client → build service → write atomically ──
@@ -167,6 +174,14 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           newService.totalPrice = newService.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
           newService.totalPaid = 0;
         }
+      } else if (data.serviceType === 'fixed') {
+        // שירות קבוע — מחיר פיקס, ללא חבילות/שלבים, מעקב שעות בלבד ללא חסימה
+        newService.fixedPrice = data.fixedPrice;
+        newService.work = {
+          totalMinutesWorked: 0,
+          entriesCount: 0
+        };
+        newService.completedAt = null;
       }
 
       // הוספת השירות למערך services[]

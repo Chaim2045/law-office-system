@@ -1007,10 +1007,17 @@ return '';
 
                 case 'fixed':
                     const description = document.getElementById('serviceDescription').value.trim();
-                    const price = parseFloat(document.getElementById('fixedPrice').value) || 0;
+                    const fixedPrice = parseFloat(document.getElementById('fixedPrice').value) || 0;
+
+                    if (fixedPrice < 0) {
+                        this.showNotification('מחיר קבוע חייב להיות חיובי', 'warning');
+                        return;
+                    }
 
                     newService.description = description;
-                    newService.price = price;
+                    newService.fixedPrice = fixedPrice;
+                    newService.work = { totalMinutesWorked: 0, entriesCount: 0 };
+                    newService.completedAt = null;
                     break;
             }
 

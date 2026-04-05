@@ -380,6 +380,23 @@ const onTimesheetEntryChanged = onDocumentWritten({
           } else {
             result = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, packageId, minutesDelta);
           }
+        } else if (serviceType === 'fixed') {
+          // שירות קבוע — מעקב שעות בלבד, ללא חסימה, ללא packages/stages
+          const svcIndex = services.findIndex(s => s.id === lookupServiceId);
+          if (svcIndex !== -1) {
+            const updatedSvc = { ...services[svcIndex] };
+            const work = { ...(updatedSvc.work || { totalMinutesWorked: 0, entriesCount: 0 }) };
+            work.totalMinutesWorked = round2((work.totalMinutesWorked || 0) + minutesDelta);
+            if (minutesDelta > 0) {
+              work.entriesCount = (work.entriesCount || 0) + 1;
+            } else if (minutesDelta < 0) {
+              work.entriesCount = Math.max(0, (work.entriesCount || 0) - 1);
+            }
+            updatedSvc.work = work;
+            const updatedArr = [...services];
+            updatedArr[svcIndex] = updatedSvc;
+            result = { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
+          }
         } else {
           console.warn(`⚠️ [timesheet-trigger] Unknown service type "${serviceType}" for service ${serviceId} — skipping`);
           return;
