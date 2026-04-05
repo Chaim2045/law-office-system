@@ -225,7 +225,7 @@
 
             <div class="audit-filter-group">
               <label>משתמש:</label>
-              <input type="text" class="audit-filter-input" id="filter-user" placeholder="מייל או שם..." dir="ltr">
+              <input type="text" class="audit-filter-input" id="filter-user" placeholder="מייל או שם..." dir="rtl">
             </div>
 
             <div class="audit-filter-group">
