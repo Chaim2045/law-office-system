@@ -75,21 +75,29 @@
     'UPLOAD_FEE_AGREEMENT': 'העלאת הסכם שכ"ט',
     'DELETE_FEE_AGREEMENT': 'מחיקת הסכם שכ"ט',
     'ADD_TIME_TO_TASK': 'הוספת שעות למשימה',
+    'ADD_SERVICE_TO_CLIENT': 'הוספת שירות ללקוח',
+    'CREATE_QUICK_LOG_ENTRY': 'רישום שעות מהיר',
     'CANCEL_TASK': 'ביטול משימה',
+    'MOVE_TO_NEXT_STAGE': 'מעבר לשלב הבא',
+    'ADD_PACKAGE_TO_SERVICE': 'הוספת חבילה לשירות',
+    'CHANGE_SERVICE_STATUS': 'שינוי סטטוס שירות',
+    'COMPLETE_SERVICE': 'השלמת שירות',
+    'DELETE_SERVICE': 'מחיקת שירות',
+    'SET_SERVICE_OVERRIDE': 'ביטול חסימת שירות',
     'system_config_updated': 'עדכון הגדרות',
     'system_config_rollback': 'שחזור הגדרות'
   };
 
   // Hebrew labels for detail keys
   const DETAIL_KEY_LABELS = {
-    'targetEmail': 'משתמש יעד',
-    'taskId': 'משימה',
+    'targetEmail': 'משתמש',
     'clientId': 'לקוח',
     'clientName': 'לקוח',
     'caseNumber': 'תיק',
     'estimatedHours': 'שעות מוערכות',
     'actualMinutes': 'דקות בפועל',
-    'gapPercent': 'חריגה %',
+    'minutes': 'זמן',
+    'gapPercent': 'חריגה',
     'oldEstimate': 'הערכה קודמת',
     'newEstimate': 'הערכה חדשה',
     'addedMinutes': 'דקות שנוספו',
@@ -101,14 +109,19 @@
     'changes': 'שינויים',
     'fileName': 'קובץ',
     'fileSize': 'גודל',
-    'fileType': 'סוג קובץ'
+    'serviceName': 'שירות',
+    'serviceType': 'סוג שירות',
+    'newDeadline': 'דדליין חדש',
+    'oldDeadline': 'דדליין קודם',
+    'date': 'תאריך'
   };
 
-  // Keys to skip in details (shown elsewhere or internal)
+  // Keys to skip in details (shown elsewhere or internal/technical)
   const DETAIL_SKIP_KEYS = [
     'entityId', 'loginTime', 'isCritical', '_seconds', '_nanoseconds',
     'targetEmail', 'targetUser', 'clientName', 'agreementId',
-    'fileType', 'userAgent', 'ipAddress'
+    'fileType', 'userAgent', 'ipAddress',
+    'taskId', 'entryId', 'autoTimesheetCreated', 'clientUpdated'
   ];
 
   const AuditTrailPage = {
@@ -632,17 +645,52 @@
  return;
 }
       let val = obj[key];
-      if (val === null || val === undefined || typeof val === 'object') {
+      if (val === null || val === undefined) {
  return;
 }
-      // Format file size
-      if (key === 'fileSize' && typeof val === 'number') {
-        val = val > 1048576 ? (val / 1048576).toFixed(1) + ' MB' : Math.round(val / 1024) + ' KB';
-      }
+      if (typeof val === 'object') {
+ return;
+}
+      val = _formatValue(key, val);
       const label = DETAIL_KEY_LABELS[key] || key;
       parts.push(label + ': ' + val);
     });
     return parts.join(' | ');
+  }
+
+  function _formatValue(key, val) {
+    if (key === 'fileSize' && typeof val === 'number') {
+      return val > 1048576 ? (val / 1048576).toFixed(1) + ' MB' : Math.round(val / 1024) + ' KB';
+    }
+    if ((key === 'minutes' || key === 'actualMinutes' || key === 'addedMinutes' || key === 'oldEstimate' || key === 'newEstimate') && typeof val === 'number') {
+      if (val >= 60) {
+        const h = Math.floor(val / 60);
+        const m = val % 60;
+        return m > 0 ? h + ' שעות ' + m + ' דקות' : h + ' שעות';
+      }
+      return val + ' דקות';
+    }
+    if (key === 'estimatedHours' && typeof val === 'number') {
+      return Math.round(val * 10) / 10 + ' שעות';
+    }
+    if (key === 'gapPercent' && typeof val === 'number') {
+      return val + '%';
+    }
+    if ((key === 'date' || key === 'newDeadline' || key === 'oldDeadline') && typeof val === 'string') {
+      try {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+          return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+        }
+      } catch (e) { /* fall through */ }
+    }
+    if (key === 'serviceType' && window.SystemConstantsHelpers) {
+      const label = window.SystemConstantsHelpers.getServiceTypeLabel(val);
+      if (label !== val) {
+ return label;
+}
+    }
+    return val;
   }
 
   function _escapeHtml(str) {
