@@ -1421,7 +1421,8 @@ serviceTitleField.style.display = 'block';
       // שינוי סוג הליך - New Client Mode (טאבים)
       const serviceTypeTabsNew = [
         document.getElementById('serviceTypeTab_hours_new'),
-        document.getElementById('serviceTypeTab_legal_new')
+        document.getElementById('serviceTypeTab_legal_new'),
+        document.getElementById('serviceTypeTab_fixed_new')
       ];
 
       serviceTypeTabsNew.forEach(tab => {
@@ -1449,7 +1450,8 @@ return;
       // שינוי סוג הליך - Existing Client Mode (טאבים)
       const serviceTypeTabs = [
         document.getElementById('serviceTypeTab_hours'),
-        document.getElementById('serviceTypeTab_legal')
+        document.getElementById('serviceTypeTab_legal'),
+        document.getElementById('serviceTypeTab_fixed')
       ];
 
       serviceTypeTabs.forEach(tab => {
