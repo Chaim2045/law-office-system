@@ -1397,10 +1397,9 @@ return;
           `;
         }
       } else if (type === 'fixed') {
-        iconClass = 'fa-shekel-sign';
+        iconClass = 'fa-file-contract';
         title = serviceData.name || 'שירות קבוע';
-        subtitle = serviceData.description || 'שירות במחיר קבוע';
-        const price = serviceData.fixedPrice !== null && serviceData.fixedPrice !== undefined ? `₪${Number(serviceData.fixedPrice).toLocaleString()}` : '';
+        subtitle = serviceData.description || '';
         statsHtml = `
           <div style="margin-top: 12px;">
             <div style="
@@ -1412,8 +1411,8 @@ return;
               border-radius: 6px;
               border: 1px solid #86efac;
             ">
-              <i class="fas fa-shekel-sign" style="color: #22c55e; font-size: 12px;"></i>
-              <span style="color: #166534; font-weight: 500; font-size: 12px;">פיקס ${price}</span>
+              <i class="fas fa-check-circle" style="color: #22c55e; font-size: 12px;"></i>
+              <span style="color: #166534; font-weight: 500; font-size: 12px;">שירות קבוע</span>
             </div>
           </div>
         `;
