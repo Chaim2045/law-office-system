@@ -488,10 +488,10 @@
           <thead>
             <tr>
               <th style="width:30px"></th>
-              <th>זמן</th>
-              <th>פעולה</th>
-              <th>בוצע ע"י</th>
-              <th>יעד</th>
+              <th style="width:80px">זמן</th>
+              <th style="width:130px">פעולה</th>
+              <th style="width:80px">בוצע ע"י</th>
+              <th style="width:140px">נוגע ל</th>
               <th>פרטים</th>
             </tr>
           </thead>
