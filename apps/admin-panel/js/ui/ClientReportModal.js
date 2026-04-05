@@ -704,18 +704,17 @@ return;
          * קבלת שם תצוגה לשלב
          */
         getStageName(stage) {
-            const stageNames = {
-                'stage_a': "הליך משפטי - שלב א'",
-                'stage_b': "הליך משפטי - שלב ב'",
-                'stage_c': "הליך משפטי - שלב ג'",
-                'stageA': "הליך משפטי - שלב א'",
-                'stageB': "הליך משפטי - שלב ב'",
-                'stageC': "הליך משפטי - שלב ג'",
-                'a': "הליך משפטי - שלב א'",
-                'b': "הליך משפטי - שלב ב'",
-                'c': "הליך משפטי - שלב ג'"
+            // Legacy format mapping to canonical stage IDs
+            const legacyMap = {
+                'stageA': 'stage_a', 'stageB': 'stage_b', 'stageC': 'stage_c',
+                'a': 'stage_a', 'b': 'stage_b', 'c': 'stage_c'
             };
-            return stageNames[stage] || stage || 'הליך משפטי';
+            const canonicalId = legacyMap[stage] || stage;
+            const baseName = window.SystemConstantsHelpers?.getStageName?.(canonicalId);
+            if (baseName && baseName !== canonicalId) {
+                return 'הליך משפטי - ' + baseName;
+            }
+            return stage || 'הליך משפטי';
         }
 
         /**

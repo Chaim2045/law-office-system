@@ -1,0 +1,426 @@
+/* ═══════════════════════════════════════════
+   System Settings Page Styles
+   ═══════════════════════════════════════════ */
+
+.settings-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}
+
+/* ═══════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════ */
+
+.settings-header {
+  margin-bottom: var(--space-6);
+}
+
+.settings-header-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.settings-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.settings-subtitle {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.settings-version {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--gray-100);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+/* ═══════════════════════════════════════════
+   2-Column Grid
+   ═══════════════════════════════════════════ */
+
+.settings-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (width <= 768px) {
+  .settings-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Sections — Collapsible
+   ═══════════════════════════════════════════ */
+
+.settings-section {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  transition: box-shadow var(--transition-fast);
+  overflow: hidden;
+}
+
+.settings-section:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-section.readonly {
+  background: var(--gray-50);
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.settings-section-header:hover {
+  background: var(--gray-50);
+}
+
+.settings-section-header-text {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-section-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.settings-section-icon.blue { background: #dbeafe; color: #2563eb; }
+
+.settings-section-icon.green { background: #dcfce7; color: #16a34a; }
+
+.settings-section-icon.orange { background: #ffedd5; color: #ea580c; }
+
+.settings-section-icon.purple { background: #f3e8ff; color: #9333ea; }
+
+.settings-section-icon.red { background: #fee2e2; color: #dc2626; }
+
+.settings-section-icon.gray { background: var(--gray-100); color: var(--gray-500); }
+
+.settings-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.settings-chevron {
+  font-size: 12px;
+  color: var(--gray-400);
+  transition: transform 0.2s ease;
+}
+
+.settings-section.collapsed .settings-chevron {
+  transform: rotate(-90deg);
+}
+
+.settings-section-body {
+  padding: 0 var(--space-5) var(--space-5);
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
+.settings-section.collapsed .settings-section-body {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════
+   Badges (editable / readonly)
+   ═══════════════════════════════════════════ */
+
+.settings-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.settings-badge.editable {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.settings-badge.readonly {
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
+/* ═══════════════════════════════════════════
+   Description Text
+   ═══════════════════════════════════════════ */
+
+.settings-description {
+  font-size: 12px;
+  color: var(--gray-500);
+  line-height: 1.6;
+  margin: 0 0 var(--space-4) 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+/* ═══════════════════════════════════════════
+   Form Controls
+   ═══════════════════════════════════════════ */
+
+.settings-form-group {
+  margin-bottom: var(--space-3);
+}
+
+.settings-form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 4px;
+}
+
+.settings-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-900);
+  background: white;
+  transition: border-color var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
+}
+
+.settings-input:disabled {
+  background: var(--gray-50);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.settings-input-compact {
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.settings-input-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.settings-input-row .settings-input {
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════
+   Email List
+   ═══════════════════════════════════════════ */
+
+.email-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.email-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px var(--space-3);
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.email-list-item .email-text {
+  color: var(--gray-800);
+  direction: ltr;
+  text-align: left;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.email-remove-btn {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+  font-size: 12px;
+}
+
+.email-remove-btn:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+/* ═══════════════════════════════════════════
+   Table
+   ═══════════════════════════════════════════ */
+
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-3);
+}
+
+.settings-table th,
+.settings-table td {
+  padding: 6px var(--space-2);
+  text-align: right;
+  font-size: 13px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.settings-table th {
+  font-weight: 600;
+  color: var(--gray-500);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding-bottom: var(--space-2);
+}
+
+.settings-table .key-cell {
+  direction: ltr;
+  text-align: left;
+  width: 140px;
+}
+
+.settings-table .key-cell code {
+  font-size: 11px;
+  color: var(--gray-500);
+  background: var(--gray-100);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.settings-table .status-cell {
+  width: 50px;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════
+   Footer (Save button + status)
+   ═══════════════════════════════════════════ */
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--gray-100);
+}
+
+.settings-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.settings-save-btn:hover {
+  background: #1d4ed8;
+}
+
+.settings-save-btn:disabled {
+  background: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.settings-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.settings-add-btn:hover {
+  background: var(--gray-200);
+}
+
+/* ═══════════════════════════════════════════
+   Status Messages
+   ═══════════════════════════════════════════ */
+
+.settings-status {
+  font-size: 12px;
+  display: none;
+}
+
+.settings-status.success {
+  display: inline;
+  color: #166534;
+}
+
+.settings-status.error {
+  display: inline;
+  color: #991b1b;
+}
+
+.settings-status.saving {
+  display: inline;
+  color: var(--gray-500);
+}

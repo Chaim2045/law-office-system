@@ -7,6 +7,9 @@ const db = admin.firestore();
 const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
+const { SYSTEM_CONSTANTS } = require('../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
 // ✨ Modular deduction system
 const DeductionSystem = require('../src/modules/deduction');
@@ -224,7 +227,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       if (resolvedServiceId) {
         const lookupId = data.parentServiceId || resolvedServiceId;
         const targetService = services.find(s => s.id === lookupId);
-        if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
+        if (targetService && targetService.type === ST.HOURS && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
           throw new functions.https.HttpsError(
             'failed-precondition',
             `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
@@ -265,7 +268,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
           if (targetService) {
             const serviceType = targetService.type || clientData.procedureType;
 
-            if (serviceType === 'hours') {
+            if (serviceType === ST.HOURS) {
               // Find active package + overdraft check
               const activePackage = DeductionSystem.getActivePackage(targetService);
               if (activePackage) {
@@ -313,7 +316,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                 console.warn(`⚠️ [Quick Log] No package found — counting at service level`);
               }
 
-            } else if (serviceType === 'fixed') {
+            } else if (serviceType === ST.FIXED) {
               // שירות קבוע — מעקב שעות בלבד, ללא חסימה, ללא packages/stages
               const svcIndex = services.findIndex(s => s.id === lookupServiceId);
               if (svcIndex !== -1) {
@@ -327,14 +330,14 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                 deductionResult = { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
               }
 
-            } else if (serviceType === 'legal_procedure') {
+            } else if (serviceType === ST.LEGAL_PROCEDURE) {
               // Resolve stageId
               const targetStageId = resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || 'stage_a');
               const stage = (targetService.stages || []).find(s => s.id === targetStageId);
               if (stage) {
                 updatedStageId = stage.id;
 
-                if (stage.pricingType === 'fixed') {
+                if (stage.pricingType === PT.FIXED) {
                   // Fixed pricing: track hours, deduct via stage-only
                   deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, null, minutesDelta);
                 } else {
@@ -717,7 +720,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         if (resolvedServiceId) {
           const lookupId = data.parentServiceId || resolvedServiceId;
           const targetService = services.find(s => s.id === lookupId);
-          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
+          if (targetService && targetService.type === ST.HOURS && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
             throw new functions.https.HttpsError(
               'failed-precondition',
               `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
@@ -733,7 +736,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
           if (targetService) {
             const serviceType = targetService.type || clientData.procedureType;
 
-            if (serviceType === 'hours') {
+            if (serviceType === ST.HOURS) {
               const activePackage = DeductionSystem.getActivePackage(targetService);
               if (activePackage) {
                 const currentRemaining = activePackage.hoursRemaining || 0;
@@ -774,7 +777,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 console.warn(`⚠️ [v2.0] No package found — counting at service level`);
               }
 
-            } else if (serviceType === 'fixed') {
+            } else if (serviceType === ST.FIXED) {
               // שירות קבוע — מעקב שעות בלבד, ללא חסימה, ללא packages/stages
               const svcIndex = services.findIndex(s => s.id === lookupServiceId);
               if (svcIndex !== -1) {
@@ -788,7 +791,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 deductionResult = { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
               }
 
-            } else if (serviceType === 'legal_procedure') {
+            } else if (serviceType === ST.LEGAL_PROCEDURE) {
               // Resolve stageId — from data.serviceId (stage_xxx) or service.currentStage
               const targetStageId = (data.serviceId && data.serviceId.startsWith('stage_'))
                 ? data.serviceId
@@ -797,7 +800,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
 
               if (stage) {
                 updatedStageId = stage.id;
-                if (stage.pricingType === 'fixed') {
+                if (stage.pricingType === PT.FIXED) {
                   deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, null, minutesDelta);
                 } else {
                   const activePackage = DeductionSystem.getActivePackage(stage);
@@ -1164,7 +1167,7 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
         const lookupId = data.parentServiceId || data.serviceId || entryData.serviceId;
         if (lookupId) {
           const targetService = (clientData2.services || []).find(s => s.id === lookupId);
-          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
+          if (targetService && targetService.type === ST.HOURS && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
             throw new functions.https.HttpsError(
               'failed-precondition',
               `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
@@ -1198,7 +1201,7 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
           if (targetService) {
             const serviceType = targetService.type || clientData2.procedureType;
 
-            if (serviceType === 'hours') {
+            if (serviceType === ST.HOURS) {
               // Find the package — prefer entry's packageId, fallback to active package
               const entryPackageId = entryData.packageId;
               const targetPackage = entryPackageId
@@ -1215,14 +1218,14 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
                     { clientId: entryClientId, currentRemaining, requestedHoursDelta: hoursDiff, wouldBe: afterDeduction });
                 }
               }
-            } else if (serviceType === 'fixed') {
+            } else if (serviceType === ST.FIXED) {
               // שירות קבוע — ללא חסימה, ללא guard
-            } else if (serviceType === 'legal_procedure') {
+            } else if (serviceType === ST.LEGAL_PROCEDURE) {
               // Find the stage
               const targetStageId = entryData.stageId || entryData.serviceId;
               const stage = (targetService.stages || []).find(s => s.id === targetStageId);
 
-              if (stage && stage.pricingType !== 'fixed') {
+              if (stage && stage.pricingType !== PT.FIXED) {
                 const entryPackageId = entryData.packageId;
                 const targetPackage = entryPackageId
                   ? (stage.packages || []).find(p => p.id === entryPackageId)

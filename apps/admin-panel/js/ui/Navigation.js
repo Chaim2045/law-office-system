@@ -82,6 +82,9 @@ return;
                             <i class="fas fa-clipboard-check"></i>
                             <span>אישורי משימות</span>
                         </button>
+                        <a href="settings.html" class="btn-settings ${this.currentPage === 'settings' ? 'active' : ''}" title="הגדרות מערכת">
+                            <i class="fas fa-cog"></i>
+                        </a>
                         <button class="btn-logout" id="navLogoutBtn">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>יציאה</span>
@@ -262,6 +265,45 @@ return;
                     color: white;
                     transform: translateY(-1px);
                     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+                }
+
+                .btn-settings {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 36px;
+                    height: 36px;
+                    padding: 0;
+                    background: #f8fafc;
+                    color: #64748b;
+                    border: 1.5px solid #e2e8f0;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    text-decoration: none;
+                }
+
+                .btn-settings i {
+                    font-size: 15px;
+                    transition: transform 0.3s ease;
+                }
+
+                .btn-settings:hover {
+                    background: #f1f5f9;
+                    color: #334155;
+                    border-color: #cbd5e1;
+                    transform: translateY(-1px);
+                }
+
+                .btn-settings:hover i {
+                    transform: rotate(90deg);
+                }
+
+                .btn-settings.active {
+                    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+                    border-color: #4f46e5;
+                    color: white;
+                    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
                 }
 
                 .btn-approvals i,

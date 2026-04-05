@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>הגדרות מערכת | Admin Panel</title>
+
+    <!-- ===== UNIFIED AUTH GUARD (NO PRE-FLIGHT REDIRECT) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            try {
+                var authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    var state = JSON.parse(authState);
+                    var age = Date.now() - (state.timestamp || 0);
+                    window._settingsOptimistic = state.isAuthenticated && age < 5 * 60 * 1000;
+                } else {
+                    window._settingsOptimistic = false;
+                }
+            } catch (e) {
+                window._settingsOptimistic = false;
+            }
+        })();
+    </script>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System ===== -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/settings.css">
+</head>
+
+<body class="admin-page">
+    <!-- ===== Navigation Bar ===== -->
+    <div id="navigationContainer"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="dashboard-main">
+        <div id="settings-section" class="dashboard-content">
+            <!-- Settings page will be rendered here by SystemSettingsPage.js -->
+        </div>
+    </main>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js"></script>
+    <script src="js/core/system-constants.js"></script>
+    <script src="js/core/config-loader.js"></script>
+    <script src="js/core/auth.js"></script>
+    <script src="js/core/constants.js"></script>
+
+    <!-- ===== Auth Guard ===== -->
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+
+    <!-- ===== Navigation Component ===== -->
+    <script src="js/ui/Navigation.js"></script>
+
+    <!-- ===== Settings Page Component ===== -->
+    <script src="js/ui/SystemSettingsPage.js"></script>
+
+    <!-- ===== Notifications ===== -->
+    <script src="js/ui/Notifications.js"></script>
+
+    <!-- ===== Page Initialization ===== -->
+    <script>
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'logoutEvent') {
+                sessionStorage.removeItem('authState');
+                window.location.replace('index.html');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('⚙️ System Settings Page - Loading...');
+
+            window.initAuthGuard({
+                pageName: 'settings',
+                timeoutMs: 5000,
+
+                onAuthenticated: async (user) => {
+                    console.log('✅ [Settings] User authenticated, initializing...');
+
+                    if (window.Navigation) {
+                        window.Navigation.init('settings');
+                    }
+
+                    // Load config from Firestore first
+                    if (window.SystemConfigLoader) {
+                        await window.SystemConfigLoader.load();
+                    }
+
+                    if (window.SystemSettingsPage) {
+                        window.SystemSettingsPage.init('settings-section');
+                    }
+
+                    console.log('✅ System Settings Page - Ready');
+                },
+
+                onUnauthenticated: () => {
+                    window.location.replace('index.html');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

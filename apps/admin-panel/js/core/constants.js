@@ -103,40 +103,12 @@
         // User Roles
         // תפקידי משתמש
         // ==========================================
-        USER_ROLES: {
-            /**
-             * Admin role
-             * תפקיד מנהל
-             * @type {string}
-             */
+        // USER_ROLES — sourced from SYSTEM_CONSTANTS with fallback
+        USER_ROLES: window.SYSTEM_CONSTANTS ? window.SYSTEM_CONSTANTS.USER_ROLES : {
             ADMIN: 'admin',
-
-            /**
-             * User role
-             * תפקיד משתמש רגיל
-             * @type {string}
-             */
             USER: 'user',
-
-            /**
-             * Lawyer role
-             * תפקיד עורך דין
-             * @type {string}
-             */
             LAWYER: 'lawyer',
-
-            /**
-             * Employee role
-             * תפקיד עובד
-             * @type {string}
-             */
             EMPLOYEE: 'employee',
-
-            /**
-             * Intern role
-             * תפקיד מתמחה
-             * @type {string}
-             */
             INTERN: 'intern'
         },
 

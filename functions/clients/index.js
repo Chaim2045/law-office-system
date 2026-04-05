@@ -6,6 +6,9 @@ const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString, isValidIsraeliPhone, isValidEmail } = require('../shared/validators');
 const { generateCaseNumberWithTransaction } = require('../case-number-transaction');
+const { SYSTEM_CONSTANTS, isValidServiceType, isValidPricingType } = require('../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { calcClientAggregates } = require('../shared/aggregates');
 
 const db = admin.firestore();
@@ -88,7 +91,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
     }
 
     // Validation - סוג הליך
-    if (!data.procedureType || !['hours', 'fixed', 'legal_procedure'].includes(data.procedureType)) {
+    if (!data.procedureType || !isValidServiceType(data.procedureType)) {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'סוג הליך חייב להיות "hours", "fixed" או "legal_procedure"'
@@ -96,7 +99,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
     }
 
     // Validation - שדות ספציפיים לסוג
-    if (data.procedureType === 'hours') {
+    if (data.procedureType === ST.HOURS) {
       if (!data.totalHours || typeof data.totalHours !== 'number' || data.totalHours < 1) {
         throw new functions.https.HttpsError(
           'invalid-argument',
@@ -106,7 +109,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
     }
 
     // Validation - שירות קבוע
-    if (data.procedureType === 'fixed') {
+    if (data.procedureType === ST.FIXED) {
       if (data.fixedPrice == null || typeof data.fixedPrice !== 'number' || data.fixedPrice < 0) {
         throw new functions.https.HttpsError(
           'invalid-argument',
@@ -116,7 +119,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
     }
 
     // Validation - הליך משפטי עם שלבים
-    if (data.procedureType === 'legal_procedure') {
+    if (data.procedureType === ST.LEGAL_PROCEDURE) {
       if (!data.stages || !Array.isArray(data.stages) || data.stages.length !== 3) {
         throw new functions.https.HttpsError(
           'invalid-argument',
@@ -125,7 +128,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       }
 
       // ✅ Validation - סוג תמחור (hourly או fixed)
-      if (!data.pricingType || !['hourly', 'fixed'].includes(data.pricingType)) {
+      if (!data.pricingType || !isValidPricingType(data.pricingType)) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'סוג תמחור חייב להיות "hourly" (שעתי) או "fixed" (מחיר פיקס)'
@@ -142,7 +145,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         }
 
         // ✅ Validation מותאם לסוג התמחור
-        if (data.pricingType === 'hourly') {
+        if (data.pricingType === PT.HOURLY) {
           // תמחור שעתי - חובה שעות
           if (!stage.hours || typeof stage.hours !== 'number' || stage.hours <= 0) {
             throw new functions.https.HttpsError(
@@ -150,7 +153,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
               `שלב ${index + 1}: תקרת שעות חייבת להיות מספר חיובי`
             );
           }
-        } else if (data.pricingType === 'fixed') {
+        } else if (data.pricingType === PT.FIXED) {
           // תמחור פיקס - חובה מחיר
           if (!stage.fixedPrice || typeof stage.fixedPrice !== 'number' || stage.fixedPrice <= 0) {
             throw new functions.https.HttpsError(
@@ -213,7 +216,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
     };
 
     // הוספת שדות ספציפיים לסוג הליך
-    if (data.procedureType === 'hours') {
+    if (data.procedureType === ST.HOURS) {
       // ✅ תוכנית שעות עם services[] + packages[]
       const serviceId = `srv_${Date.now()}`;
       const packageId = `pkg_${Date.now()}`;
@@ -258,7 +261,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       clientData.totalServices = 1;
       clientData.activeServices = 1;
 
-    } else if (data.procedureType === 'fixed') {
+    } else if (data.procedureType === ST.FIXED) {
       // שירות קבוע — מחיר פיקס, מעקב שעות בלבד, ללא חסימה
       const serviceId = `srv_fixed_${Date.now()}`;
       const serviceName = data.serviceName || 'שירות קבוע';
@@ -284,7 +287,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       clientData.totalServices = 1;
       clientData.activeServices = 1;
 
-    } else if (data.procedureType === 'legal_procedure') {
+    } else if (data.procedureType === ST.LEGAL_PROCEDURE) {
       // הליך משפטי עם 3 שלבים מפורטים
       clientData.currentStage = 'stage_a';
       clientData.pricingType = data.pricingType;
@@ -292,16 +295,16 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       // ✅ NEW STRUCTURE: שלבים בתוך services[] array
       const legalServiceId = `srv_legal_${Date.now()}`;
 
-      if (data.pricingType === 'hourly') {
+      if (data.pricingType === PT.HOURLY) {
         // ✅ תמחור שעתי - שלבים עם שעות וחבילות
         const stages = [
           {
-            id: 'stage_a',
-            name: 'שלב א',
+            id: SYSTEM_CONSTANTS.VALID_STAGE_IDS[0],
+            name: SYSTEM_CONSTANTS.STAGE_NAMES[SYSTEM_CONSTANTS.VALID_STAGE_IDS[0]],
             description: sanitizeString(data.stages[0].description.trim()),
             order: 1,
             status: 'active',
-            pricingType: 'hourly',
+            pricingType: PT.HOURLY,
             initialHours: data.stages[0].hours,
             totalHours: data.stages[0].hours,
             hoursUsed: 0,
@@ -322,12 +325,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             lastActivity: now
           },
           {
-            id: 'stage_b',
-            name: 'שלב ב',
+            id: SYSTEM_CONSTANTS.VALID_STAGE_IDS[1],
+            name: SYSTEM_CONSTANTS.STAGE_NAMES[SYSTEM_CONSTANTS.VALID_STAGE_IDS[1]],
             description: sanitizeString(data.stages[1].description.trim()),
             order: 2,
             status: 'pending',
-            pricingType: 'hourly',
+            pricingType: PT.HOURLY,
             initialHours: data.stages[1].hours,
             totalHours: data.stages[1].hours,
             hoursUsed: 0,
@@ -348,12 +351,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             lastActivity: null
           },
           {
-            id: 'stage_c',
-            name: 'שלב ג',
+            id: SYSTEM_CONSTANTS.VALID_STAGE_IDS[2],
+            name: SYSTEM_CONSTANTS.STAGE_NAMES[SYSTEM_CONSTANTS.VALID_STAGE_IDS[2]],
             description: sanitizeString(data.stages[2].description.trim()),
             order: 3,
             status: 'pending',
-            pricingType: 'hourly',
+            pricingType: PT.HOURLY,
             initialHours: data.stages[2].hours,
             totalHours: data.stages[2].hours,
             hoursUsed: 0,
@@ -384,7 +387,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             id: legalServiceId,
             type: 'legal_procedure',
             name: sanitizeString(data.legalProcedureName || 'הליך משפטי'),
-            pricingType: 'hourly',
+            pricingType: PT.HOURLY,
             ratePerHour: data.ratePerHour || 800,
             status: 'active',
             stages: stages,
@@ -392,7 +395,7 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             // Service-level aggregates
             totalStages: 3,
             completedStages: 0,
-            currentStage: 'stage_a',
+            currentStage: SYSTEM_CONSTANTS.VALID_STAGE_IDS[0],
             totalHours: totalProcedureHours,
             hoursUsed: 0,
             hoursRemaining: totalProcedureHours,
@@ -415,16 +418,16 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         // ✅ Legacy support: ריק לתאימות אחורה
         clientData.stages = [];
 
-      } else if (data.pricingType === 'fixed') {
+      } else if (data.pricingType === PT.FIXED) {
         // ✅ תמחור פיקס - שלבים עם מחירים קבועים
         const stages = [
           {
-            id: 'stage_a',
-            name: 'שלב א',
+            id: SYSTEM_CONSTANTS.VALID_STAGE_IDS[0],
+            name: SYSTEM_CONSTANTS.STAGE_NAMES[SYSTEM_CONSTANTS.VALID_STAGE_IDS[0]],
             description: sanitizeString(data.stages[0].description.trim()),
             order: 1,
             status: 'active',
-            pricingType: 'fixed',
+            pricingType: PT.FIXED,
             fixedPrice: data.stages[0].fixedPrice,
             paid: false,
             paymentDate: null,
@@ -434,12 +437,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             lastActivity: now
           },
           {
-            id: 'stage_b',
-            name: 'שלב ב',
+            id: SYSTEM_CONSTANTS.VALID_STAGE_IDS[1],
+            name: SYSTEM_CONSTANTS.STAGE_NAMES[SYSTEM_CONSTANTS.VALID_STAGE_IDS[1]],
             description: sanitizeString(data.stages[1].description.trim()),
             order: 2,
             status: 'pending',
-            pricingType: 'fixed',
+            pricingType: PT.FIXED,
             fixedPrice: data.stages[1].fixedPrice,
             paid: false,
             paymentDate: null,
@@ -449,12 +452,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             lastActivity: null
           },
           {
-            id: 'stage_c',
-            name: 'שלב ג',
+            id: SYSTEM_CONSTANTS.VALID_STAGE_IDS[2],
+            name: SYSTEM_CONSTANTS.STAGE_NAMES[SYSTEM_CONSTANTS.VALID_STAGE_IDS[2]],
             description: sanitizeString(data.stages[2].description.trim()),
             order: 3,
             status: 'pending',
-            pricingType: 'fixed',
+            pricingType: PT.FIXED,
             fixedPrice: data.stages[2].fixedPrice,
             paid: false,
             paymentDate: null,
@@ -474,14 +477,14 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             id: legalServiceId,
             type: 'legal_procedure',
             name: sanitizeString(data.legalProcedureName || 'הליך משפטי'),
-            pricingType: 'fixed',
+            pricingType: PT.FIXED,
             status: 'active',
             stages: stages,
 
             // Service-level aggregates
             totalStages: 3,
             completedStages: 0,
-            currentStage: 'stage_a',
+            currentStage: SYSTEM_CONSTANTS.VALID_STAGE_IDS[0],
             totalFixedPrice: totalFixedPrice,
             totalPaid: 0,
             remainingBalance: totalFixedPrice,
@@ -1148,7 +1151,7 @@ exports.setServiceOverride = functions.https.onCall(async (data, context) => {
 
       const service = services[serviceIndex];
 
-      if (service.type !== 'hours') {
+      if (service.type !== ST.HOURS) {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'חריגה מבוקרת זמינה רק לשירותי שעות'

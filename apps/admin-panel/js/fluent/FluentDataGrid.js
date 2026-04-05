@@ -195,7 +195,7 @@ window.FluentDataGrid = {
                     if (service.type === 'הליך משפטי') {
                         serviceType = 'הליך משפטי';
                         // Calculate hours for legal procedure stages
-                        ['stage_a', 'stage_b', 'stage_c'].forEach(stage => {
+                        (window.SYSTEM_CONSTANTS?.VALID_STAGE_IDS || ['stage_a', 'stage_b', 'stage_c']).forEach(stage => {
                             if (service[stage]) {
                                 totalHours += service[stage].totalHours || 0;
                                 hoursRemaining += service[stage].hoursRemaining || 0;
@@ -281,7 +281,9 @@ window.FluentDataGrid = {
      * Render the data table
      */
     renderTable() {
-        if (!this.elements.tbody) return;
+        if (!this.elements.tbody) {
+return;
+}
 
         // Calculate pagination
         const totalItems = this.filteredData.length;
@@ -582,8 +584,12 @@ window.FluentDataGrid = {
             }
 
             // Compare values
-            if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
-            if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+            if (aVal < bVal) {
+return this.sortDirection === 'asc' ? -1 : 1;
+}
+            if (aVal > bVal) {
+return this.sortDirection === 'asc' ? 1 : -1;
+}
             return 0;
         });
     },
@@ -594,7 +600,9 @@ window.FluentDataGrid = {
     goToPage(page) {
         const totalPages = Math.ceil(this.filteredData.length / this.pageSize);
 
-        if (page < 1 || page > totalPages) return;
+        if (page < 1 || page > totalPages) {
+return;
+}
 
         this.currentPage = page;
         this.renderTable();
@@ -646,7 +654,9 @@ window.FluentDataGrid = {
      * Enable inline editing
      */
     enableInlineEdit(cell) {
-        if (cell.querySelector('input')) return; // Already editing
+        if (cell.querySelector('input')) {
+return;
+} // Already editing
 
         const originalContent = cell.textContent;
         const input = document.createElement('input');
@@ -692,10 +702,14 @@ window.FluentDataGrid = {
      */
     showContextMenu(e) {
         const contextMenu = document.getElementById('contextMenu');
-        if (!contextMenu) return;
+        if (!contextMenu) {
+return;
+}
 
         const row = e.target.closest('tr');
-        if (!row || !row.dataset.id) return;
+        if (!row || !row.dataset.id) {
+return;
+}
 
         // Position context menu
         contextMenu.style.display = 'block';
@@ -783,7 +797,9 @@ window.FluentDataGrid = {
      * Handle bulk edit
      */
     handleBulkEdit() {
-        if (this.selectedRows.size === 0) return;
+        if (this.selectedRows.size === 0) {
+return;
+}
 
         console.log('Bulk edit:', Array.from(this.selectedRows));
         // TODO: Implement bulk edit modal
@@ -793,7 +809,9 @@ window.FluentDataGrid = {
      * Handle bulk delete
      */
     handleBulkDelete() {
-        if (this.selectedRows.size === 0) return;
+        if (this.selectedRows.size === 0) {
+return;
+}
 
         const confirmed = confirm(`האם אתה בטוח שברצונך למחוק ${this.selectedRows.size} לקוחות?`);
         if (confirmed) {
@@ -933,9 +951,15 @@ window.FluentDataGrid = {
         const hours = Math.floor(minutes / 60);
         const days = Math.floor(hours / 24);
 
-        if (days > 0) return `לפני ${days} ימים`;
-        if (hours > 0) return `לפני ${hours} שעות`;
-        if (minutes > 0) return `לפני ${minutes} דקות`;
+        if (days > 0) {
+return `לפני ${days} ימים`;
+}
+        if (hours > 0) {
+return `לפני ${hours} שעות`;
+}
+        if (minutes > 0) {
+return `לפני ${minutes} דקות`;
+}
         return 'עכשיו';
     }
 };

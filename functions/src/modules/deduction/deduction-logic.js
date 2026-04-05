@@ -59,6 +59,10 @@
  * ✅ UPGRADE (2025-12-21): תמיכה ב-overdraft עד -10 שעות
  * כדי למנוע הפרעה למהלך העבודה התקין
  */
+
+const { SYSTEM_CONSTANTS } = require('../../../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+
 function getActivePackage(stage, allowOverdraft = true, overrideActive = false) {
   if (!stage || !stage.packages || stage.packages.length === 0) {
     return null;
@@ -229,7 +233,7 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
   };
 
   // Handle legal procedure with services
-  if (taskData.serviceType === 'legal_procedure' && taskData.parentServiceId) {
+  if (taskData.serviceType === ST.LEGAL_PROCEDURE && taskData.parentServiceId) {
     const services = clientData.services || [];
     const serviceIndex = services.findIndex(s => s.id === taskData.parentServiceId);
 
@@ -269,7 +273,7 @@ function calculateClientUpdates(clientData, taskData, minutesToAdd) {
       hoursUsed: (clientData.hoursUsed || 0) + hoursToAdd,
       _version: (clientData._version || 0) + 1
     };
-  } else if (taskData.serviceType === 'hours' && taskData.parentServiceId) {
+  } else if (taskData.serviceType === ST.HOURS && taskData.parentServiceId) {
     // Handle hourly service (no stages)
     const services = clientData.services || [];
     const serviceIndex = services.findIndex(s => s.id === taskData.parentServiceId);
@@ -325,7 +329,7 @@ function validateTimeEntry(taskData, clientData) {
   }
 
   // For legal procedures, need serviceId (stage)
-  if (taskData.serviceType === 'legal_procedure' && !taskData.serviceId) {
+  if (taskData.serviceType === ST.LEGAL_PROCEDURE && !taskData.serviceId) {
     return { valid: false, error: 'המשימה חסרה מידע על שלב' };
   }
 

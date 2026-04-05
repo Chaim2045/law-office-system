@@ -13,6 +13,9 @@
 
 // ⚠️ isFixedService — single source of truth in shared/aggregates.js
 const { isFixedService } = require('../../../shared/aggregates');
+const { SYSTEM_CONSTANTS } = require('../../../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
 /**
  * Round a number to 2 decimal places
@@ -108,7 +111,7 @@ function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minut
       targetFound = true;
 
       // ── Fixed pricing: track hours worked, no deduction ──
-      if (stage.pricingType === 'fixed') {
+      if (stage.pricingType === PT.FIXED) {
         const newTotalHoursWorked = round2((stage.totalHoursWorked || 0) + hoursDelta);
         return {
           ...stage,
@@ -161,9 +164,9 @@ function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minut
 
     // Recalculate service-level aggregates from stages
     const svcHoursUsed = round2(
-      updatedStages.reduce((sum, st) => sum + (st.pricingType === 'fixed' ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
+      updatedStages.reduce((sum, st) => sum + (st.pricingType === PT.FIXED ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
     );
-    const svcHoursRemaining = svc.pricingType === 'fixed'
+    const svcHoursRemaining = svc.pricingType === PT.FIXED
       ? null
       : round2((svc.totalHours || 0) - svcHoursUsed);
 
@@ -261,9 +264,9 @@ function applyLegalProcedureDeltaStageOnly(services, serviceId, stageId, minutes
 
     // Recalculate service-level aggregates from stages
     const svcHoursUsed = round2(
-      updatedStages.reduce((sum, st) => sum + (st.pricingType === 'fixed' ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
+      updatedStages.reduce((sum, st) => sum + (st.pricingType === PT.FIXED ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
     );
-    const svcHoursRemaining = svc.pricingType === 'fixed'
+    const svcHoursRemaining = svc.pricingType === PT.FIXED
       ? null
       : round2((svc.totalHours || 0) - svcHoursUsed);
 

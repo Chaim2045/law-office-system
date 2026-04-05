@@ -72,12 +72,13 @@ function createStage({ id, name, description, order, status, hours }) {
  * @returns {Array<Object>} Array of 3 stage objects
  */
 function createLegalProcedureStages(stagesData) {
-  if (!stagesData || stagesData.length !== 3) {
-    throw new Error('Legal procedure requires exactly 3 stages');
+  const SC = window.SYSTEM_CONSTANTS;
+  if (!stagesData || stagesData.length !== (SC?.STAGE_COUNT || 3)) {
+    throw new Error('Legal procedure requires exactly ' + (SC?.STAGE_COUNT || 3) + ' stages');
   }
 
-  const stageIds = ['stage_a', 'stage_b', 'stage_c'];
-  const stageNames = ['שלב א\'', 'שלב ב\'', 'שלב ג\''];
+  const stageIds = SC?.VALID_STAGE_IDS || ['stage_a', 'stage_b', 'stage_c'];
+  const stageNames = SC?.STAGE_NAMES ? Object.values(SC.STAGE_NAMES) : ['שלב א\'', 'שלב ב\'', 'שלב ג\''];
 
   return stagesData.map((stageData, index) => {
     return createStage({
@@ -108,9 +109,9 @@ function createLegalProcedureService({ id, name, stagesData, currentStage }) {
 
   return {
     id,
-    type: 'legal_procedure',
+    type: window.SYSTEM_CONSTANTS?.SERVICE_TYPES?.LEGAL_PROCEDURE || 'legal_procedure',
     name,
-    currentStage: currentStage || 'stage_a',
+    currentStage: currentStage || (window.SYSTEM_CONSTANTS?.VALID_STAGE_IDS?.[0] || 'stage_a'),
     stages,
     totalHours,
     hoursUsed: 0,

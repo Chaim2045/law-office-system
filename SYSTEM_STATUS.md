@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-04-03
-**סטטוס:** Quick Log date type fix + migration 177 entries — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183
+**עדכון אחרון:** 2026-04-05
+**סטטוס:** Fixed service type + saveNewService refactor — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               0626a47 — deduction in transaction
-production-stable:  4f77a84 — merged PR #177
+main:               dd7fc19 — fixed service type + saveNewService refactor
+production-stable:  merged PR #188
 אין branches פתוחים.
 ```
 
@@ -56,6 +56,7 @@ production-stable:  4f77a84 — merged PR #177
 | #177 | 29/3 | Architectural: deduction moved from trigger into callable transactions — atomic entry+deduction+aggregates |
 | #178 | 30/3 | fix: serviceId validation gates on all 3 entry paths + addServiceToClient wrapped in transaction |
 | #183 | 3/4 | fix: Quick Log date type mismatch — Timestamp→string "YYYY-MM-DD" + WhatsApp Bot queries + migration 177 entries |
+| #188 | 5/4 | feat: Fixed service type — שירות קבוע (מחיר פיקס, מעקב שעות ללא חסימה) + refactor saveNewService → Cloud Function |
 
 ---
 
@@ -117,6 +118,16 @@ Entry מתעדכן/נמחק ב-timesheet_entries
 ### Service lookup
 - `hours`: serviceId מה-entry → service ישירות
 - `legal_procedure`: `lookupServiceId = parentServiceId || serviceId`
+- `fixed`: serviceId מה-entry → service ישירות. מעקב שעות בלבד (`work.totalMinutesWorked`), ללא חסימה
+
+### Service Types
+
+| סוג | תמחור | חסימה | מבנה | דיווח שעות |
+|-----|--------|-------|------|-----------|
+| `hours` | חבילות שעות | כן (hoursRemaining ≤ 0) | packages[] | ניכוי מחבילה |
+| `legal_procedure` (hourly) | שעות לכל שלב | כן | stages[] → packages[] | ניכוי משלב |
+| `legal_procedure` (fixed) | פיקס לכל שלב | לא | stages[] | מעקב בלבד |
+| `fixed` | מחיר קבוע | לא | work{} | מעקב בלבד (totalMinutesWorked) |
 
 ---
 

@@ -422,7 +422,7 @@ return;
             const typeBadge = this.getServiceTypeBadge(service.type);
             const statusBadge = this.getServiceStatusBadge(service.status);
             const serviceInfo = this.getServiceInfo(service);
-            const stagesHTML = service.type === 'legal_procedure' && service.stages
+            const stagesHTML = service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE && service.stages
                 ? this.renderStages(service.stages)
                 : '';
             const actions = this.getServiceActions(service);
@@ -504,7 +504,7 @@ return;
          * קבלת מידע שירות
          */
         getServiceInfo(service) {
-            if (service.type === 'hours') {
+            if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
                 const totalHours = service.totalHours || 0;
                 const hoursRemaining = service.hoursRemaining || 0;
                 const hoursUsed = totalHours - hoursRemaining;
@@ -589,7 +589,7 @@ return;
                     </div>
                     ${overrideHTML}
                 `;
-            } else if (service.type === 'legal_procedure') {
+            } else if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
                 const stages = service.stages || [];
                 const totalStages = stages.length;
                 const completedStages = stages.filter(s => s.status === 'completed').length;
@@ -606,10 +606,10 @@ return;
                     </div>
                     <div class="management-service-info-item">
                         <span class="management-service-info-label">תמחור</span>
-                        <span class="management-service-info-value">${service.pricingType === 'hourly' ? 'שעתי' : 'קבוע'}</span>
+                        <span class="management-service-info-value">${service.pricingType === window.SYSTEM_CONSTANTS.PRICING_TYPES.HOURLY ? 'שעתי' : 'קבוע'}</span>
                     </div>
                 `;
-            } else if (service.type === 'fixed') {
+            } else if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
                 return `
                     <div class="management-service-info-item">
                         <span class="management-service-info-label">מחיר</span>
@@ -710,13 +710,13 @@ return '';
         getServiceActions(service) {
             const actions = [];
 
-            if (service.type === 'hours') {
+            if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
                 actions.push(`<button class="management-service-action-btn primary" data-service-action="renew" data-service-id="${service.id}">
                     <i class="fas fa-plus"></i> חדש שעות
                 </button>`);
             }
 
-            if (service.type === 'legal_procedure') {
+            if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
                 const activeStage = service.stages?.find(s => s.status === 'active');
                 if (activeStage) {
                     actions.push(`<button class="management-service-action-btn primary" data-service-action="next-stage" data-service-id="${service.id}">
@@ -959,7 +959,7 @@ return '';
             };
 
             // Type-specific fields + validation
-            if (serviceType === 'hours') {
+            if (serviceType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
                 const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
                 if (totalHours <= 0) {
                     this.showNotification('יש להזין מספר שעות תקין', 'warning');
@@ -967,7 +967,7 @@ return '';
                 }
                 payload.hours = totalHours;
 
-            } else if (serviceType === 'legal_procedure') {
+            } else if (serviceType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
                 const procedureName = document.getElementById('procedureName').value.trim();
                 const stagesInput = document.getElementById('stagesInput').value.trim();
 
@@ -989,7 +989,7 @@ return '';
                 payload.pricingType = 'hourly';
                 payload.stages = stageNames.map(name => ({ description: name, hours: 0 }));
 
-            } else if (serviceType === 'fixed') {
+            } else if (serviceType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.FIXED) {
                 const fixedPrice = parseFloat(document.getElementById('fixedPrice').value) || 0;
                 if (fixedPrice < 0) {
                     this.showNotification('מחיר קבוע חייב להיות חיובי', 'warning');
@@ -1041,7 +1041,7 @@ return '';
 
         renewHours() {
             // Find all hours-based services and prompt for renewal
-            const hoursServices = this.currentClient.services.filter(s => s.type === 'hours' || s.serviceType === 'hours');
+            const hoursServices = this.currentClient.services.filter(s => s.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS || s.serviceType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS);
 
             if (hoursServices.length === 0) {
                 this.showNotification('אין שירותי שעות פעילים', 'info');
@@ -1248,7 +1248,7 @@ return;
          */
         calculateTotalHoursFromServices(services) {
             return services.reduce((sum, service) => {
-                if (service.type === 'hours' || service.serviceType === 'hours') {
+                if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS || service.serviceType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
                     return sum + (service.totalHours || 0);
                 }
                 return sum;
@@ -1261,7 +1261,7 @@ return;
          */
         calculateRemainingHoursFromServices(services) {
             return services.reduce((sum, service) => {
-                if (service.type === 'hours' || service.serviceType === 'hours') {
+                if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS || service.serviceType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
                     return sum + (service.hoursRemaining || 0);
                 }
                 return sum;

@@ -3,14 +3,18 @@
  * Used by clients/, services/, and any function that modifies services[].
  */
 
+const { SYSTEM_CONSTANTS } = require('./constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
+
 function round2(n) {
   return Math.round((n || 0) * 100) / 100;
 }
 
 // ⚠️ Keep in sync: also used by functions/src/modules/aggregation/index.js (imported from here)
 function isFixedService(svc) {
-  return svc.type === 'fixed' ||
-    (svc.type === 'legal_procedure' && svc.pricingType === 'fixed');
+  return svc.type === ST.FIXED ||
+    (svc.type === ST.LEGAL_PROCEDURE && svc.pricingType === PT.FIXED);
 }
 
 /**

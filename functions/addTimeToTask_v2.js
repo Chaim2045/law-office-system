@@ -144,12 +144,12 @@
  * 4. מקזז ממנו ישירות (ללא תלות ב-procedureType של הלקוח)
  *
  * קוד קודם:
- *   if (clientData.procedureType === 'hours' && ...) { קזז }
+ *   if (clientData.procedureType === ST.HOURS && ...) { קזז }
  *
  * קוד חדש:
  *   if (clientData.services && taskData.serviceId) {
  *     const service = clientData.services.find(s => s.id === taskData.serviceId);
- *     if (service && service.type !== 'legal_procedure') { קזז }
+ *     if (service && service.type !== ST.LEGAL_PROCEDURE) { קזז }
  *   }
  *
  * 💡 הבנה ארכיטקטורית:
@@ -179,6 +179,10 @@ const {
   calcClientAggregates
 } = require('./src/modules/aggregation');
 
+const { SYSTEM_CONSTANTS } = require('./shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
+
 function sanitizeString(str) {
   if (typeof str !== 'string') return '';
   return str.trim().replace(/[<>]/g, '');
@@ -188,11 +192,11 @@ function lookupServiceIds(clientData, taskData) {
   const result = { stageId: null, packageId: null };
 
   // PATH 1: legal_procedure חדש (services)
-  if (taskData.serviceType === 'legal_procedure' && taskData.parentServiceId) {
+  if (taskData.serviceType === ST.LEGAL_PROCEDURE && taskData.parentServiceId) {
     const service = (clientData.services || []).find(s => s.id === taskData.parentServiceId);
-    if (service && service.type === 'legal_procedure') {
-      const isHourly = !service.pricingType || service.pricingType === 'hourly';
-      const currentStageId = taskData.serviceId || service.currentStage || 'stage_a';
+    if (service && service.type === ST.LEGAL_PROCEDURE) {
+      const isHourly = !service.pricingType || service.pricingType === PT.HOURLY;
+      const currentStageId = taskData.serviceId || service.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
       const stage = (service.stages || []).find(s => s.id === currentStageId);
       if (stage) {
         result.stageId = stage.id;
@@ -208,7 +212,7 @@ function lookupServiceIds(clientData, taskData) {
   // PATH 2: hours service עם serviceId
   if (clientData.services && clientData.services.length > 0 && taskData.serviceId) {
     const service = clientData.services.find(s => s.id === taskData.serviceId);
-    if (service && service.type !== 'legal_procedure') {
+    if (service && service.type !== ST.LEGAL_PROCEDURE) {
       const activePackage = getActivePackage(service, true, service.overrideActive);
       if (activePackage) result.packageId = activePackage.id;
     }
@@ -216,7 +220,7 @@ function lookupServiceIds(clientData, taskData) {
   }
 
   // PATH 3: hours fallback
-  if (clientData.procedureType === 'hours' && clientData.services && clientData.services.length > 0) {
+  if (clientData.procedureType === ST.HOURS && clientData.services && clientData.services.length > 0) {
     const service = clientData.services[0];
     const activePackage = getActivePackage(service, true, service.overrideActive);
     if (activePackage) result.packageId = activePackage.id;
@@ -224,8 +228,8 @@ function lookupServiceIds(clientData, taskData) {
   }
 
   // PATH 4: legacy hourly
-  if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'hourly') {
-    const currentStageId = taskData.serviceId || clientData.currentStage || 'stage_a';
+  if (clientData.procedureType === ST.LEGAL_PROCEDURE && clientData.pricingType === PT.HOURLY) {
+    const currentStageId = taskData.serviceId || clientData.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
     const stage = (clientData.stages || []).find(s => s.id === currentStageId);
     if (stage) {
       result.stageId = stage.id;
@@ -236,8 +240,8 @@ function lookupServiceIds(clientData, taskData) {
   }
 
   // PATH 5: legacy fixed
-  if (clientData.procedureType === 'legal_procedure' && clientData.pricingType === 'fixed') {
-    const targetStageId = taskData.serviceId || clientData.currentStage || 'stage_a';
+  if (clientData.procedureType === ST.LEGAL_PROCEDURE && clientData.pricingType === PT.FIXED) {
+    const targetStageId = taskData.serviceId || clientData.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
     const stage = (clientData.stages || []).find(s => s.id === targetStageId);
     if (stage) result.stageId = stage.id;
     return result;
@@ -356,7 +360,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         if (clientData && taskData.serviceId) {
           const lookupId = taskData.parentServiceId || taskData.serviceId;
           const targetService = (clientData.services || []).find(s => s.id === lookupId);
-          if (targetService && targetService.type === 'hours' && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
+          if (targetService && targetService.type === ST.HOURS && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
             throw new functions.https.HttpsError(
               'failed-precondition',
               `השירות "${targetService.name || lookupId}" חסום — נגמרה יתרת השעות`
@@ -416,7 +420,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           if (targetService) {
             const serviceType = targetService.type || clientData.procedureType;
 
-            if (serviceType === 'hours') {
+            if (serviceType === ST.HOURS) {
               let resolvedPackageId = serviceIds.packageId;
               if (!resolvedPackageId) {
                 const fallbackPkg = (targetService.packages || []).find(pkg => {
@@ -444,12 +448,12 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                 console.warn(`⚠️ [addTimeToTask] No package found — counting at service level`);
               }
 
-            } else if (serviceType === 'legal_procedure') {
-              const resolvedStageId = serviceIds.stageId || (resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || 'stage_a'));
+            } else if (serviceType === ST.LEGAL_PROCEDURE) {
+              const resolvedStageId = serviceIds.stageId || (resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0]));
               const stage = (targetService.stages || []).find(s => s.id === resolvedStageId);
 
               if (stage) {
-                if (stage.pricingType === 'fixed') {
+                if (stage.pricingType === PT.FIXED) {
                   deductionResult = applyLegalProcedureDelta(services, lookupServiceId, resolvedStageId, null, minutesDelta);
                 } else {
                   let resolvedPackageId = serviceIds.packageId;

@@ -56,6 +56,12 @@ exports.logActivity = adminOps.logActivity;
 exports.deleteUserData = adminOps.deleteUserData;
 exports.deleteUserDataSelective = adminOps.deleteUserDataSelective;
 
+// System Config Functions (imported from ./admin/system-config)
+const systemConfig = require('./admin/system-config');
+exports.updateSystemConfig = systemConfig.updateSystemConfig;
+exports.getSystemConfig = systemConfig.getSystemConfig;
+exports.rollbackSystemConfig = systemConfig.rollbackSystemConfig;
+
 // Auth Functions (imported from ./auth)
 const authModule = require('./auth');
 exports.createAuthUser = authModule.createAuthUser;

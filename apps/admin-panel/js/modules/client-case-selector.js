@@ -1302,9 +1302,7 @@ return;
         `;
       } else if (type === 'legal_procedure') {
         iconClass = 'fa-balance-scale';
-        const stageName = serviceData.id === 'stage_a' ? "שלב א'" :
-                         serviceData.id === 'stage_b' ? "שלב ב'" :
-                         serviceData.id === 'stage_c' ? "שלב ג'" : serviceData.name;
+        const stageName = window.SystemConstantsHelpers?.getStageName?.(serviceData.id) || serviceData.name;
 
         // 🔧 FIX: Display actual procedure name (ללא שלב בכותרת - השלב יהיה ב-badge)
         // Uses selectedServiceParent which is set in selectService()
@@ -1378,9 +1376,7 @@ return;
 
       // 🎯 Stage Badge להליכים משפטיים - קומפקטי וקל
       const stageBadge = type === 'legal_procedure' ? (() => {
-        const stageName = serviceData.id === 'stage_a' ? "שלב א'" :
-                         serviceData.id === 'stage_b' ? "שלב ב'" :
-                         serviceData.id === 'stage_c' ? "שלב ג'" : serviceData.name;
+        const stageName = window.SystemConstantsHelpers?.getStageName?.(serviceData.id) || serviceData.name;
         return `
           <div style="
             position: absolute;

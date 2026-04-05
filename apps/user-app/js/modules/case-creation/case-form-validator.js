@@ -124,7 +124,7 @@
       }
 
       // סוג הליך
-      if (!caseData.procedureType || !['hours', 'legal_procedure'].includes(caseData.procedureType)) {
+      if (!caseData.procedureType || !window.SYSTEM_CONSTANTS?.VALID_SERVICE_TYPES?.includes(caseData.procedureType)) {
         errors.push('סוג הליך לא תקין');
       }
 
@@ -170,7 +170,7 @@
       const warnings = [];
 
       // בדיקת סוג תמחור
-      if (!serviceData.pricingType || !['hourly', 'fixed'].includes(serviceData.pricingType)) {
+      if (!serviceData.pricingType || !window.SYSTEM_CONSTANTS?.VALID_PRICING_TYPES?.includes(serviceData.pricingType)) {
         errors.push('חובה לבחור סוג תמחור (שעתי/פיקס)');
       }
 
