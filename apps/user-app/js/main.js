@@ -294,6 +294,11 @@ class LawOfficeManager {
           });
         }
 
+        // Load system config from Firestore (description limits, etc.)
+        if (window.SystemConfigLoader) {
+          await window.SystemConfigLoader.load();
+        }
+
         // Load data and show app
         await this.loadData();
         this.showApp();
