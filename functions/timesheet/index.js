@@ -6,7 +6,7 @@ const db = admin.firestore();
 
 const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
-const { sanitizeString } = require('../shared/validators');
+const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
@@ -117,6 +117,14 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'חסר תיאור פעולה'
+      );
+    }
+
+    const tsDescLimit = await getDescriptionLimit('timesheetDescription');
+    if (data.description.trim().length > tsDescLimit) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `תיאור הפעולה ארוך מדי (מקסימום ${tsDescLimit} תווים)`
       );
     }
 

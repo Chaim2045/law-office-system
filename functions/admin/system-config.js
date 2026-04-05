@@ -122,6 +122,21 @@ function validateConfigUpdate(data) {
     validated.adminEmails = data.adminEmails.map(e => e.trim().toLowerCase());
   }
 
+  // Validate description limits
+  if (data.descriptionLimits !== undefined) {
+    validated.descriptionLimits = {};
+    const allowedKeys = ['taskDescription', 'timesheetDescription'];
+    for (const [key, val] of Object.entries(data.descriptionLimits)) {
+      if (!allowedKeys.includes(key)) {
+        throw new functions.https.HttpsError('invalid-argument', `מפתח לא מוכר: ${key}`);
+      }
+      if (typeof val !== 'number' || !Number.isInteger(val) || val < 10 || val > 200) {
+        throw new functions.https.HttpsError('invalid-argument', `${key} חייב להיות מספר שלם בין 10 ל-200`);
+      }
+      validated.descriptionLimits[key] = val;
+    }
+  }
+
   // Validate idle timeout
   if (data.idleTimeout !== undefined) {
     const { idleMs, warningMs } = data.idleTimeout;

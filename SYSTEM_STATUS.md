@@ -3,8 +3,8 @@
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
 **עדכון אחרון:** 2026-04-05
-**סטטוס:** Fixed service type + saveNewService refactor — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188
+**סטטוס:** System Settings centralization + Audit Trail — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               dd7fc19 — fixed service type + saveNewService refactor
-production-stable:  merged PR #188
+main:               deb8dc2 — System Settings + Audit Trail + UI fixes
+production-stable:  merged PR #191
 אין branches פתוחים.
 ```
 
@@ -57,6 +57,9 @@ production-stable:  merged PR #188
 | #178 | 30/3 | fix: serviceId validation gates on all 3 entry paths + addServiceToClient wrapped in transaction |
 | #183 | 3/4 | fix: Quick Log date type mismatch — Timestamp→string "YYYY-MM-DD" + WhatsApp Bot queries + migration 177 entries |
 | #188 | 5/4 | feat: Fixed service type — שירות קבוע (מחיר פיקס, מעקב שעות ללא חסימה) + refactor saveNewService → Cloud Function |
+| #189 | 5/4 | refactor+feat: System Settings Phase 1+2 — ריכוז 170+ constants ב-42 קבצים + Firestore system_config + Settings page |
+| #190 | 5/4 | fix: admin email uri@ → roi@ |
+| #191 | 5/4 | feat: Audit Trail page — לוג פעילות עם סינון, תרגום עברית, badges צבעוניים |
 
 ---
 
@@ -149,7 +152,7 @@ functions/
 ├── whatsapp/             ← 4 פונקציות
 ├── metrics/              ← 2 פונקציות
 ├── fee-agreements/       ← 2 פונקציות
-├── admin/                ← 9 פונקציות
+├── admin/                ← 12 פונקציות (כולל system-config: 3)
 ├── triggers/             ← onTimesheetEntryChanged
 ├── addTimeToTask_v2.js   ← פונקציה עצמאית
 └── src/                  ← מודולים פנימיים
@@ -214,6 +217,9 @@ functions/
 | **loadMonthlyTimesheetStats = client-side** | מחושב מ-timesheetEntries שבזיכרון, לא Firebase query |
 | **PresenceSystem = Firestore heartbeat + RTDB onDisconnect** | lastSeen+isOnline כל 5 דקות ל-Firestore, RTDB ל-real-time presence |
 | **Firestore rules exception ל-presence fields** | employees doc — user יכול לעדכן lastSeen+isOnline על עצמו |
+| **SYSTEM_CONSTANTS = canonical + 3 adapters** | 3 codebases עם module systems שונים (CommonJS, IIFE, IIFE). Sync test מוודא סנכרון. שינוי ב-canonical → עדכון 3 adapters + run test |
+| **system_config בתוך _system collection** | מתחבר ל-pattern הקיים של caseNumberCounter. Readable by all authenticated, writable only by Admin SDK |
+| **Settings page = utility icon, לא nav tab** | חוסך מקום בסרגל. גלגל שיניים + שעון (audit trail) באזור utility שמאלי |
 | **AI Chat = conditional loading** | ai-config נטען ראשון, אם אין API key — שאר הסקריפטים לא נטענים |
 | **DOMPurify = XSS sanitization** | נטען מ-CDN עם defer. `purify()` helper עם fallback לידני. חובה על כל innerHTML עם נתוני Firestore |
 | **password לעולם לא ב-client memory** | `getEmployee()` ו-`loadAllEmployees()` לא מחזירים password. `authenticate()` קורא ישירות, משווה, וזורק |
@@ -443,9 +449,9 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 
 | רכיב | כמות |
 |------|------|
-| Firestore Collections | 19 |
-| Cloud Functions | 73 |
-| onCall | ~65 |
+| Firestore Collections | 21 |
+| Cloud Functions | 76 |
+| onCall | ~68 |
 | onSchedule | 3 |
 | onDocumentWritten (Trigger) | 2 |
 | onRequest | 3 |
@@ -476,6 +482,80 @@ Admin מאשר חריגה על שירות ספציפי → העובד ממשיך
 ### Netlify publish paths
 - User App: `publish = "apps/user-app"`
 - Admin Panel: `base = "apps/admin-panel"`
+
+---
+
+## 8ב. System Constants Centralization (PR #189, 2026-04-05)
+
+### הבעיה
+100+ ערכי קונפיגורציה (service types, pricing types, stage IDs, roles, admin emails) היו hardcoded ב-25+ קבצים. שינוי ערך דרש עדכון ידני בכל המקומות.
+
+### Phase 1 — ריכוז קוד (PR #189)
+- **Canonical source:** `shared/system-constants.js`
+- **3 Adapters:** Functions (CommonJS), Admin Panel (IIFE), User App (IIFE)
+- **Sync test:** `tests/sync-constants.test.js` — 9 tests, מוודא שכל ה-adapters זהים
+- **42 קבצים עודכנו**, ~170 מיקומים הוחלפו בהפניות ל-`SYSTEM_CONSTANTS`
+- **אפס שינוי התנהגות** — אותם ערכים בדיוק, רק מרוכזים
+
+### Phase 2 — Firestore Config + Settings Page (PR #189)
+- **Firestore:** `_system/system_config` — מקור אמת דינמי
+- **History:** `_system_config_history/v{N}` — כל גרסה נשמרת
+- **3 Cloud Functions:** `updateSystemConfig` (admin, validation, optimistic locking, atomic backup), `getSystemConfig`, `rollbackSystemConfig`
+- **Config Loader:** טוען מ-Firestore עם fallback ל-static constants
+- **Settings page:** `apps/admin-panel/settings.html` — ניהול admin emails, business limits, idle timeout, service type labels, role labels
+- **שלבי הליך = read-only** — 3 מעגלי הגנה (UI disabled, Cloud Function reject, Firestore rules)
+
+### קבצים חדשים
+```
+shared/system-constants.js              ← canonical source
+functions/shared/constants.js           ← CommonJS adapter
+apps/admin-panel/js/core/system-constants.js  ← IIFE adapter
+apps/user-app/js/core/system-constants.js     ← IIFE adapter
+tests/sync-constants.test.js            ← sync verification
+functions/admin/system-config.js        ← 3 Cloud Functions
+functions/scripts/init-system-config.js ← idempotent seed script
+apps/admin-panel/js/core/config-loader.js     ← Firestore loader
+apps/user-app/js/core/config-loader.js        ← Firestore loader
+apps/admin-panel/settings.html          ← Settings page
+apps/admin-panel/js/ui/SystemSettingsPage.js  ← Settings UI
+apps/admin-panel/css/settings.css       ← Settings styles
+```
+
+### החלטות ארכיטקטוניות
+| החלטה | סיבה |
+|-------|------|
+| 3 adapters + sync test (לא build step) | פשטות. Sync test תופס drift ב-pre-commit |
+| Backup בתוך transaction | אטומי — אין חלון שבו backup לא עקבי |
+| History collection (לא single backup) | rollback לכל גרסה, לא רק אחת אחורה |
+| `_system/system_config` readable by all authenticated | Config לא רגיש, חוסך Cloud Function call |
+| Stage count locked בקוד | שינוי דורש data migration על כל ה-clients |
+
+---
+
+## 8ג. Audit Trail Page (PR #191, 2026-04-05)
+
+### מה נבנה
+דף admin חדש — `apps/admin-panel/audit-trail.html` — מציג את כל הפעילות המתועדת במערכת.
+
+### מקורות נתונים
+- **`activity_log`** — פעילות משתמשים (login, create_task, edit_timesheet, etc.)
+- **`audit_log`** — פעולות מנהל (USER_CREATED, UPLOAD_FEE_AGREEMENT, ADJUST_BUDGET, etc.)
+
+### יכולות
+- **Source tabs:** הכל / פעילות משתמשים / פעולות מנהל
+- **סינון:** סוג פעולה, משתמש (שם/מייל), טווח תאריכים
+- **תרגום מלא:** כל הפעולות + שדות פרטים בעברית
+- **פורמט ערכים:** דקות→שעות, תאריכים→DD/MM/YYYY, bytes→KB/MB, אחוזים עם %, booleans→כן/לא
+- **מזהים טכניים מוסתרים:** taskId, entryId, idempotencyKey, etc.
+- **Pagination:** 50 לעמוד, שליפת 500 אחרונות מ-Firestore
+- **Read-only** — אין mutations, אין Cloud Functions חדשות
+
+### קבצים חדשים
+```
+apps/admin-panel/audit-trail.html
+apps/admin-panel/js/ui/AuditTrailPage.js
+apps/admin-panel/css/audit-trail.css
+```
 
 ---
 

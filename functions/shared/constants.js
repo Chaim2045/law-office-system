@@ -91,6 +91,12 @@ const SYSTEM_CONSTANTS = {
     'guy@ghlawoffice.co.il'
   ],
 
+  // Description Limits (מגבלות תווים לתיאורים)
+  DESCRIPTION_LIMITS: {
+    TASK_DESCRIPTION: 50,
+    TIMESHEET_DESCRIPTION: 50
+  },
+
   // Package Types (סוגי חבילות)
   PACKAGE_TYPES: {
     INITIAL: 'initial',

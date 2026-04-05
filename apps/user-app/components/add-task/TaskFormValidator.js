@@ -138,8 +138,11 @@ export class TaskFormValidator {
       return false;
     }
 
-    if (description.trim().length > 500) {
-      this.errors.push('תיאור המשימה ארוך מדי (מקסימום 500 תווים)');
+    const taskDescLimit = (window.SYSTEM_CONFIG?.descriptionLimits?.taskDescription)
+      || (window.SYSTEM_CONSTANTS?.DESCRIPTION_LIMITS?.TASK_DESCRIPTION)
+      || 50;
+    if (description.trim().length > taskDescLimit) {
+      this.errors.push(`תיאור המשימה ארוך מדי (מקסימום ${taskDescLimit} תווים)`);
       return false;
     }
 

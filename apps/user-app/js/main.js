@@ -797,6 +797,13 @@ class LawOfficeManager {
     try {
       this.updateLoaderText('מתחבר...', 10);
 
+      // Load system config from Firestore (description limits, etc.)
+      if (window.SystemConfigLoader && !window.SystemConfigLoader.loaded) {
+        try {
+          await window.SystemConfigLoader.load();
+        } catch (_) { /* fallback to SYSTEM_CONSTANTS */ }
+      }
+
       // Initialize Firebase
       FirebaseOps.initializeFirebase();
       this.updateLoaderText('מתחבר ל-Firebase...', 20);
