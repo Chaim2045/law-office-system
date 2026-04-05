@@ -31,6 +31,7 @@
 
   // Hebrew action labels
   const ACTION_LABELS = {
+    // User activity (lowercase)
     'login': 'כניסה',
     'logout': 'יציאה',
     'create_task': 'יצירת משימה',
@@ -40,15 +41,16 @@
     'extend_deadline': 'הארכת דדליין',
     'update_progress': 'עדכון התקדמות',
     'create_timesheet': 'רישום שעות',
-    'edit_timesheet': 'עריכת ש��ות',
+    'edit_timesheet': 'עריכת שעות',
     'delete_timesheet': 'מחיקת שעות',
-    'create_client': '��צירת לקוח',
+    'create_client': 'יצירת לקוח',
     'edit_client': 'עריכת לקוח',
     'delete_client': 'מחיקת לקוח',
     'block_client': 'חסימת לקוח',
     'unblock_client': 'ביטול חסימת לקוח',
     'generate_report': 'הפקת דוח',
     'export_data': 'ייצוא נתונים',
+    // Admin actions (UPPERCASE — from audit_log)
     'USER_CREATED': 'יצירת משתמש',
     'USER_UPDATED': 'עדכון משתמש',
     'USER_DELETED': 'מחיקת משתמש',
@@ -57,9 +59,42 @@
     'CREATE_USER': 'יצירת משתמש',
     'UPDATE_USER': 'עדכון משתמש',
     'DELETE_USER': 'מחיקת משתמש',
+    'VIEW_USER_DETAILS': 'צפייה בפרטי משתמש',
+    'CREATE_TASK': 'יצירת משימה',
+    'COMPLETE_TASK': 'השלמת משימה',
+    'ADJUST_BUDGET': 'התאמת תקציב',
+    'EXTEND_TASK_DEADLINE': 'הארכת דדליין',
+    'CREATE_CLIENT': 'יצירת לקוח',
+    'UPDATE_CLIENT': 'עדכון לקוח',
+    'DELETE_CLIENT': 'מחיקת לקוח',
+    'CHANGE_CLIENT_STATUS': 'שינוי סטטוס לקוח',
+    'CLOSE_CASE': 'סגירת תיק',
+    'ADD_SERVICE': 'הוספת שירות',
+    'ADD_PACKAGE': 'הוספת חבילה',
     'delete_user_data_selective': 'מחיקת נתוני משתמש',
     'system_config_updated': 'עדכון הגדרות',
     'system_config_rollback': 'שחזור הגדרות'
+  };
+
+  // Hebrew labels for detail keys
+  const DETAIL_KEY_LABELS = {
+    'targetEmail': 'משתמש יעד',
+    'taskId': 'מזהה משימה',
+    'clientId': 'מזהה לקוח',
+    'caseNumber': 'מספר תיק',
+    'estimatedHours': 'שעות מוערכות',
+    'actualMinutes': 'דקות בפועל',
+    'gapPercent': 'אחוז חריגה',
+    'oldEstimate': 'הערכה קודמת',
+    'newEstimate': 'הערכה חדשה',
+    'addedMinutes': 'דקות שנוספו',
+    'reason': 'סיבה',
+    'role': 'תפקיד',
+    'status': 'סטטוס',
+    'message': 'הודעה',
+    'username': 'שם משתמש',
+    'changes': 'שינויים',
+    'isCritical': 'קריטי'
   };
 
   const AuditTrailPage = {
@@ -244,11 +279,13 @@
           const activityDocs = await this._queryCollection('activity_log');
           activityDocs.forEach(function(doc) {
             const data = doc.data();
+            // Prefer username (Hebrew) over email, never show raw UID
+            const displayUser = data.username || data.userEmail || _emailFromUid(data.userId) || '';
             results.push({
               id: doc.id,
               source: 'activity',
               action: data.action || data.type || '',
-              user: data.userEmail || data.userId || '',
+              user: displayUser,
               username: data.username || '',
               target: data.targetUser || '',
               details: data.details || '',
@@ -264,13 +301,21 @@
           const auditDocs = await this._queryCollection('audit_log');
           auditDocs.forEach(function(doc) {
             const data = doc.data();
+            // Prefer name over email over UID
+            const displayUser = data.performedByName || data.performedBy || data.adminEmail || _emailFromUid(data.userId) || '';
+            // Extract target from details if not in top-level field
+            let target = data.targetUser || data.targetUserEmail || '';
+            if (!target && data.details) {
+              const det = _parseDetails(data.details);
+              target = det.targetEmail || det.targetUser || '';
+            }
             results.push({
               id: doc.id,
               source: 'audit',
               action: data.action || '',
-              user: data.performedBy || data.adminEmail || data.userId || '',
+              user: displayUser,
               username: data.performedByName || data.username || '',
-              target: data.targetUser || data.targetUserEmail || '',
+              target: target,
               details: data.details || '',
               severity: data.severity || 'info',
               timestamp: data.timestamp,
@@ -486,6 +531,42 @@
   // Utility Functions
   // ═══════════════════════════════════════════
 
+  /**
+   * If a field contains a raw Firebase UID (no @ sign, long alphanumeric),
+   * return empty string so we don't show it to the user.
+   */
+  function _emailFromUid(val) {
+    if (!val) {
+ return '';
+}
+    // If it looks like an email, return it
+    if (val.includes('@')) {
+ return val;
+}
+    // Raw UID — don't display it
+    return '';
+  }
+
+  /**
+   * Parse details field — can be string (JSON) or object
+   */
+  function _parseDetails(details) {
+    if (!details) {
+ return {};
+}
+    if (typeof details === 'object') {
+ return details;
+}
+    if (typeof details === 'string') {
+      try {
+ return JSON.parse(details);
+} catch (e) {
+ return {};
+}
+    }
+    return {};
+  }
+
   function _formatTimestamp(ts, localStr) {
     if (!ts && !localStr) {
  return '-';
@@ -507,16 +588,12 @@
     if (!details) {
  return '';
 }
-    if (typeof details === 'string') {
-      try {
-        const parsed = JSON.parse(details);
-        return _escapeHtml(_summarizeObject(parsed));
-      } catch (e) {
-        return _escapeHtml(details.substring(0, 80));
-      }
+    const obj = _parseDetails(details);
+    if (typeof obj === 'object' && Object.keys(obj).length > 0) {
+      return _escapeHtml(_summarizeObject(obj));
     }
-    if (typeof details === 'object') {
-      return _escapeHtml(_summarizeObject(details));
+    if (typeof details === 'string') {
+      return _escapeHtml(details.substring(0, 80));
     }
     return '';
   }
@@ -533,13 +610,23 @@
  return '';
 }
     const parts = [];
-    keys.slice(0, 3).forEach(function(key) {
+    // Skip internal/non-useful keys
+    const skipKeys = ['entityId', 'loginTime', 'isCritical', '_seconds', '_nanoseconds'];
+    keys.forEach(function(key) {
+      if (skipKeys.includes(key)) {
+ return;
+}
       const val = obj[key];
-      if (val !== null && val !== undefined && typeof val !== 'object') {
-        parts.push(key + ': ' + val);
-      }
+      if (val === null || val === undefined || typeof val === 'object') {
+ return;
+}
+      if (parts.length >= 3) {
+ return;
+}
+      const label = DETAIL_KEY_LABELS[key] || key;
+      parts.push(label + ': ' + val);
     });
-    return parts.join(', ');
+    return parts.join(' | ');
   }
 
   function _escapeHtml(str) {
