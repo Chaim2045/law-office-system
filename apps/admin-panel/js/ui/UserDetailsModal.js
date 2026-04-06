@@ -76,6 +76,14 @@
 
             // Messages tab state
             this.messageFilter = 'all'; // all / unread / read / archived
+
+            // Performance tab state — separate from userData.hours to avoid side effects
+            this.performanceHours = null;        // Timesheet entries for performance tab (separate month)
+            this.performanceLoadedMonth = null;   // Which month is loaded in performanceHours (1-12)
+            this.performanceLoadedYear = null;    // Which year is loaded in performanceHours
+            this.performanceRequestId = 0;        // Race condition guard for async loads
+            this.initialLoadMonth = null;         // Month loaded in loadFullUserData (set once)
+            this.initialLoadYear = null;          // Year loaded in loadFullUserData (set once)
         }
 
         /**
@@ -242,6 +250,10 @@
                 hoursThisMonth: responseData.stats?.hoursThisMonth || 0,
                 hoursPreFiltered: true  // ✅ סימון שהנתונים כבר מסוננים מהשרת
             };
+
+            // Track which month was loaded for performance tab cross-reference
+            this.initialLoadMonth = this.selectedMonth;
+            this.initialLoadYear = this.selectedYear;
         }
 
         /**
@@ -444,6 +456,10 @@
                 hoursThisMonth: hoursThisMonthCalc,
                 hoursPreFiltered: true  // ✅ סימון שהנתונים כבר מסוננים מ-Firestore
             };
+
+            // Track which month was loaded for performance tab cross-reference
+            this.initialLoadMonth = this.selectedMonth;
+            this.initialLoadYear = this.selectedYear;
 
             console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs, ${messages.length} messages`);
             console.log(`✅ Stats from DataManager: clientsCount=${clientsCount}, tasksCount=${tasksCount}, hoursThisMonth=${hoursThisMonthCalc}`);
@@ -1958,6 +1974,74 @@ return;
            ============================================ */
 
         /**
+         * Load timesheet entries for a specific month (performance tab only)
+         * טעינת רשומות שעתון לחודש ספציפי — רק לטאב ביצועים, לא דורס userData.hours
+         *
+         * @param {number} year - Year (e.g. 2026)
+         * @param {number} month - Month 1-12
+         * @returns {Promise<boolean>} true if loaded successfully
+         */
+        async loadTimesheetForPerformance(year, month) {
+            const requestId = ++this.performanceRequestId;
+            const db = window.firebaseDB;
+            const userEmail = this.userData?.email || this.currentUser?.email;
+
+            if (!userEmail) {
+                console.warn('⚠️ Performance: No user email for timesheet load');
+                this.performanceHours = [];
+                return false;
+            }
+
+            const startOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endOfMonth = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+
+            console.log(`📊 Performance: Loading timesheet for ${year}-${String(month).padStart(2, '0')} (request #${requestId})`);
+
+            try {
+                const snapshot = await db.collection('timesheet_entries')
+                    .where('employee', '==', userEmail)
+                    .where('date', '>=', startOfMonth)
+                    .where('date', '<=', endOfMonth)
+                    .orderBy('date', 'desc')
+                    .get();
+
+                // Race condition guard: discard if a newer request was made
+                if (requestId !== this.performanceRequestId) {
+                    console.log(`📊 Performance: Discarding stale response (request #${requestId}, current #${this.performanceRequestId})`);
+                    return false;
+                }
+
+                this.performanceHours = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        hours: data.hours ?? (data.minutes ? data.minutes / 60 : 0)
+                    };
+                });
+
+                this.performanceLoadedMonth = month;
+                this.performanceLoadedYear = year;
+
+                console.log(`✅ Performance: Loaded ${this.performanceHours.length} entries for ${year}-${String(month).padStart(2, '0')}`);
+                return true;
+
+            } catch (error) {
+                // Race condition guard
+                if (requestId !== this.performanceRequestId) {
+                    return false;
+                }
+
+                console.error('❌ Performance: Failed to load timesheet:', error);
+                this.performanceHours = [];
+                this.performanceLoadedMonth = month;
+                this.performanceLoadedYear = year;
+                return false;
+            }
+        }
+
+        /**
          * Render Performance Tab
          * Main entry point for daily performance view
          *
@@ -1990,7 +2074,14 @@ return;
 
             // Get data from userData
             const user = this.userData || this.currentUser;
-            const allHours = user?.hours || [];
+
+            // Determine which hours array to use:
+            // If the selected date's month matches initialLoadMonth → use userData.hours (already loaded)
+            // Otherwise → use performanceHours (loaded on-demand for that month)
+            const selectedMonth = date.getUTCMonth() + 1; // 1-12
+            const selectedYear = date.getUTCFullYear();
+            const isInitialMonth = selectedMonth === this.initialLoadMonth && selectedYear === this.initialLoadYear;
+            const allHours = isInitialMonth ? (user?.hours || []) : (this.performanceHours || []);
             const allTasks = user?.tasks || [];
 
             console.log('📊 Performance Debug:', {
@@ -2430,6 +2521,59 @@ return false;
             const panelContent = document.getElementById('performancePanelContent');
             const panel = document.getElementById('performanceSlideInPanel');
 
+            // Determine if we need to load data for a different month
+            const selectedDate = new Date(this.selectedPerformanceDate);
+            const targetMonth = selectedDate.getUTCMonth() + 1; // 1-12
+            const targetYear = selectedDate.getUTCFullYear();
+            const isInitialMonth = targetMonth === this.initialLoadMonth && targetYear === this.initialLoadYear;
+            const isAlreadyLoaded = targetMonth === this.performanceLoadedMonth && targetYear === this.performanceLoadedYear;
+
+            // Need to load if: not the initial month AND not already loaded for this month
+            if (!isInitialMonth && !isAlreadyLoaded) {
+                // Show loading indicator in panel
+                const performanceContainer = panelContent?.querySelector('.performance-container');
+                if (performanceContainer) {
+                    performanceContainer.innerHTML = `
+                        ${this.renderDateSelector()}
+                        <div class="performance-loading" style="text-align:center; padding:40px; color:#64748b;">
+                            <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:12px;"></i>
+                            <p>טוען נתוני שעתון...</p>
+                        </div>
+                    `;
+                    this.attachPerformanceEventListeners();
+                }
+
+                const loadSuccess = await this.loadTimesheetForPerformance(targetYear, targetMonth);
+
+                // After load — check if panel is still open (user may have closed it)
+                const stillOpen = document.getElementById('performancePanelContent');
+                if (!stillOpen) {
+                    return;
+                }
+
+                // If load failed and returned false due to race condition, don't render (newer request will)
+                if (!loadSuccess && this.performanceRequestId > 0 &&
+                    (targetMonth !== this.performanceLoadedMonth || targetYear !== this.performanceLoadedYear)) {
+                    return;
+                }
+
+                // If load failed (error, not race condition) — show error message
+                if (!loadSuccess) {
+                    const container = stillOpen.querySelector('.performance-container');
+                    if (container) {
+                        container.innerHTML = `
+                            ${this.renderDateSelector()}
+                            <div class="performance-error" style="text-align:center; padding:40px; color:#ef4444;">
+                                <i class="fas fa-exclamation-triangle" style="font-size:24px; margin-bottom:12px;"></i>
+                                <p>לא ניתן לטעון נתוני שעתון לחודש זה</p>
+                            </div>
+                        `;
+                        this.attachPerformanceEventListeners();
+                    }
+                    return;
+                }
+            }
+
             if (panelContent && panel) {
                 // Update panel content
                 const performanceContainer = panelContent.querySelector('.performance-container');
@@ -2455,13 +2599,13 @@ return false;
                 // Update modal content
                 const modal = window.ModalManager.getElement(this.modalId);
                 if (!modal) {
-return;
-}
+                    return;
+                }
 
                 const contentContainer = modal.querySelector('.user-details-content');
                 if (!contentContainer) {
-return;
-}
+                    return;
+                }
 
                 // Re-render content
                 contentContainer.innerHTML = this.renderPerformanceTab();
