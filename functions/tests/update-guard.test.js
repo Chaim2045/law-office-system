@@ -243,12 +243,12 @@ describe('updateTimesheetEntry — -10h overdraft guard (hours)', () => {
     expect(result.success).toBe(true);
   });
 
-  test('increase blocked when afterDeduction < -10', async () => {
-    // Package at -8h, delta = +3h → afterDeduction = -11 → blocked
+  test('increase blocked when afterDeduction < -10 (no override)', async () => {
+    // Package at -8h, delta = +3h → afterDeduction = -11 → blocked (no override)
     mockTransaction.get
       .mockResolvedValueOnce(makeEntryDoc())
       .mockResolvedValueOnce(makeTaskDoc())
-      .mockResolvedValueOnce(makeHoursClientDoc(-8, { overrideActive: true }));
+      .mockResolvedValueOnce(makeHoursClientDoc(-8));
 
     await expect(
       updateTimesheetEntry(
@@ -259,6 +259,20 @@ describe('updateTimesheetEntry — -10h overdraft guard (hours)', () => {
       code: 'resource-exhausted',
       message: expect.stringContaining('חריגה')
     });
+  });
+
+  test('increase allowed when afterDeduction < -10 WITH overrideActive', async () => {
+    // Package at -8h, delta = +3h → afterDeduction = -11 → allowed with override
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc())
+      .mockResolvedValueOnce(makeTaskDoc())
+      .mockResolvedValueOnce(makeHoursClientDoc(-8, { overrideActive: true }));
+
+    const result = await updateTimesheetEntry(
+      { ...defaultData, minutes: 240 },  // 60→240 = +3h
+      defaultContext
+    );
+    expect(result.success).toBe(true);
   });
 
   test('boundary: afterDeduction exactly -10 → passes', async () => {
@@ -304,12 +318,26 @@ describe('updateTimesheetEntry — -10h overdraft guard (hours)', () => {
     expect(result.success).toBe(true);
   });
 
-  test('error details include currentRemaining, requestedHoursDelta, wouldBe', async () => {
-    // Package at -8h, delta = +3h → blocked
+  test('overrideActive bypasses -10 guard — update allowed even past -10', async () => {
+    // Package at -8h, delta = +3h → -11 → normally blocked, but overrideActive bypasses
     mockTransaction.get
       .mockResolvedValueOnce(makeEntryDoc())
       .mockResolvedValueOnce(makeTaskDoc())
       .mockResolvedValueOnce(makeHoursClientDoc(-8, { overrideActive: true }));
+
+    const result = await updateTimesheetEntry(
+      { ...defaultData, minutes: 240 },  // +3h
+      defaultContext
+    );
+    expect(result.success).toBe(true);
+  });
+
+  test('without overrideActive — error details include currentRemaining, requestedHoursDelta, wouldBe', async () => {
+    // Package at -8h, delta = +3h → blocked (no override)
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc())
+      .mockResolvedValueOnce(makeTaskDoc())
+      .mockResolvedValueOnce(makeHoursClientDoc(-8));
 
     try {
       await updateTimesheetEntry(
@@ -328,23 +356,18 @@ describe('updateTimesheetEntry — -10h overdraft guard (hours)', () => {
     }
   });
 
-  test('no packageId on entry → falls back to DeductionSystem.getActivePackage', async () => {
-    // Entry has no packageId. DeductionSystem.getActivePackage will find the
-    // package with status=active/overdraft and hoursRemaining > -10.
-    // Package at -8h, delta = +3h → -11 → blocked
+  test('no packageId on entry + overrideActive → falls back and succeeds past -10', async () => {
+    // Entry has no packageId. overrideActive bypasses -10 guard.
     mockTransaction.get
       .mockResolvedValueOnce(makeEntryDoc({ packageId: null }))
       .mockResolvedValueOnce(makeTaskDoc())
       .mockResolvedValueOnce(makeHoursClientDoc(-8, { overrideActive: true }));
 
-    await expect(
-      updateTimesheetEntry(
-        { ...defaultData, minutes: 240 },  // +3h, after = -8-3 = -11
-        defaultContext
-      )
-    ).rejects.toMatchObject({
-      code: 'resource-exhausted'
-    });
+    const result = await updateTimesheetEntry(
+      { ...defaultData, minutes: 240 },  // +3h, after = -8-3 = -11
+      defaultContext
+    );
+    expect(result.success).toBe(true);
   });
 
   test('no client doc → guard skipped, update succeeds', async () => {

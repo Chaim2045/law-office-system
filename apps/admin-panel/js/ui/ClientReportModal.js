@@ -532,6 +532,7 @@ return;
                         usedHours: usedHours,
                         type: serviceType,
                         stage: stage,
+                        serviceId: service.id,
                         status: service.status || 'active',
                         pricingType: service.pricingType || (serviceType === 'legal_procedure' && totalHours > 0 ? 'hourly' : service.pricingType || null)
                     });
@@ -764,7 +765,7 @@ card.classList.add('resolved');
 
             // Data attributes for selection
             card.dataset.serviceName = serviceInfo.displayName;
-            card.dataset.serviceId = serviceInfo.stage || serviceInfo.serviceKey;
+            card.dataset.serviceId = serviceInfo.serviceId || serviceInfo.stage || '';
             card.dataset.serviceIndex = index;
             card.dataset.serviceType = serviceInfo.type;
 

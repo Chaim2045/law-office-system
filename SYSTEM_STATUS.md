@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-04-05
-**סטטוס:** System Settings centralization + Audit Trail — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191
+**עדכון אחרון:** 2026-04-06
+**סטטוס:** Configurable description char limits — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               deb8dc2 — System Settings + Audit Trail + UI fixes
-production-stable:  merged PR #191
+main:               a693cf0 — Configurable description char limits
+production-stable:  merged PR #192
 אין branches פתוחים.
 ```
 
@@ -60,6 +60,7 @@ production-stable:  merged PR #191
 | #189 | 5/4 | refactor+feat: System Settings Phase 1+2 — ריכוז 170+ constants ב-42 קבצים + Firestore system_config + Settings page |
 | #190 | 5/4 | fix: admin email uri@ → roi@ |
 | #191 | 5/4 | feat: Audit Trail page — לוג פעילות עם סינון, תרגום עברית, badges צבעוניים |
+| #192 | 6/4 | feat: Configurable description char limits — מגבלות תווים ניהוליות לתיאור משימה ורישום שעות, אכיפה ב-3 שכבות (Admin UI + Frontend + Backend) |
 
 ---
 

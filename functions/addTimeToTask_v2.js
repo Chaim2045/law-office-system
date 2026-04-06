@@ -421,11 +421,12 @@ async function addTimeToTaskWithTransaction(db, data, user) {
             const serviceType = targetService.type || clientData.procedureType;
 
             if (serviceType === ST.HOURS) {
+              const hasOverride = !!targetService.overrideActive;
               let resolvedPackageId = serviceIds.packageId;
               if (!resolvedPackageId) {
                 const fallbackPkg = (targetService.packages || []).find(pkg => {
                   const status = pkg.status || 'active';
-                  return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (pkg.hoursRemaining || 0) > -10;
+                  return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (hasOverride || (pkg.hoursRemaining || 0) > -10);
                 });
                 if (fallbackPkg) resolvedPackageId = fallbackPkg.id;
               }
@@ -436,7 +437,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                 if (targetPkg) {
                   const currentRemaining = targetPkg.hoursRemaining || 0;
                   const afterDeduction = currentRemaining - (minutesDelta / 60);
-                  if (afterDeduction < -10) {
+                  if (afterDeduction < -10 && !hasOverride) {
                     throw new functions.https.HttpsError('resource-exhausted',
                       'הלקוח בחריגה נא לעדכן בהקדם את גיא',
                       { clientId: taskData.clientId, currentRemaining, requestedHours: minutesDelta / 60, wouldBe: afterDeduction });

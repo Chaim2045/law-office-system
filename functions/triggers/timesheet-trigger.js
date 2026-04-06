@@ -324,6 +324,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
 
         if (serviceType === ST.HOURS) {
           // ── hours: resolve packageId if missing ──
+          const hasOverride = !!targetService.overrideActive;
           let resolvedPackageId = packageId;
 
           if (!resolvedPackageId) {
@@ -331,7 +332,7 @@ const onTimesheetEntryChanged = onDocumentWritten({
             const fallbackPkg = (targetService.packages || []).find((pkg) => {
               const status = pkg.status || 'active';
               return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
-                && (pkg.hoursRemaining || 0) > -10;
+                && (hasOverride || (pkg.hoursRemaining || 0) > -10);
             });
             if (fallbackPkg) {
               resolvedPackageId = fallbackPkg.id;
