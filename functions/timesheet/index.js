@@ -278,11 +278,12 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
 
             if (serviceType === ST.HOURS) {
               // Find active package + overdraft check
-              const activePackage = DeductionSystem.getActivePackage(targetService);
+              const hasOverride = !!targetService.overrideActive;
+              const activePackage = DeductionSystem.getActivePackage(targetService, true, hasOverride);
               if (activePackage) {
                 const currentRemaining = activePackage.hoursRemaining || 0;
                 const afterDeduction = currentRemaining - hoursWorked;
-                if (afterDeduction < -10) {
+                if (afterDeduction < -10 && !hasOverride) {
                   throw new functions.https.HttpsError(
                     'resource-exhausted',
                     'הלקוח בחריגה נא לעדכן בהקדם את גיא',
@@ -295,7 +296,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                 const fallbackPkg = (targetService.packages || []).find(pkg => {
                   const status = pkg.status || 'active';
                   return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
-                    && (pkg.hoursRemaining || 0) > -10;
+                    && (hasOverride || (pkg.hoursRemaining || 0) > -10);
                 });
                 if (fallbackPkg) {
                   updatedPackageId = fallbackPkg.id;
@@ -305,7 +306,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                   if (lastPkg && lastPkg.id) {
                     const currentRemaining = lastPkg.hoursRemaining || 0;
                     const afterDeduction = currentRemaining - hoursWorked;
-                    if (afterDeduction < -10) {
+                    if (afterDeduction < -10 && !hasOverride) {
                       throw new functions.https.HttpsError('resource-exhausted',
                         'הלקוח בחריגה חמורה — כל החבילות מוצו מעבר למגבלה',
                         { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
@@ -745,11 +746,12 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
             const serviceType = targetService.type || clientData.procedureType;
 
             if (serviceType === ST.HOURS) {
-              const activePackage = DeductionSystem.getActivePackage(targetService);
+              const hasOverride = !!targetService.overrideActive;
+              const activePackage = DeductionSystem.getActivePackage(targetService, true, hasOverride);
               if (activePackage) {
                 const currentRemaining = activePackage.hoursRemaining || 0;
                 const afterDeduction = currentRemaining - hoursWorked;
-                if (afterDeduction < -10) {
+                if (afterDeduction < -10 && !hasOverride) {
                   throw new functions.https.HttpsError('resource-exhausted', 'הלקוח בחריגה נא לעדכן בהקדם את גיא',
                     { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
                 }
@@ -757,7 +759,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
               } else {
                 const fallbackPkg = (targetService.packages || []).find(pkg => {
                   const status = pkg.status || 'active';
-                  return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (pkg.hoursRemaining || 0) > -10;
+                  return ['active', 'pending', 'overdraft', 'depleted'].includes(status) && (hasOverride || (pkg.hoursRemaining || 0) > -10);
                 });
                 if (fallbackPkg) {
                   updatedPackageId = fallbackPkg.id;
@@ -767,7 +769,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                   if (lastPkg && lastPkg.id) {
                     const currentRemaining = lastPkg.hoursRemaining || 0;
                     const afterDeduction = currentRemaining - hoursWorked;
-                    if (afterDeduction < -10) {
+                    if (afterDeduction < -10 && !hasOverride) {
                       throw new functions.https.HttpsError('resource-exhausted',
                         'הלקוח בחריגה חמורה — כל החבילות מוצו מעבר למגבלה',
                         { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
@@ -1211,15 +1213,16 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
 
             if (serviceType === ST.HOURS) {
               // Find the package — prefer entry's packageId, fallback to active package
+              const hasOverride = !!targetService.overrideActive;
               const entryPackageId = entryData.packageId;
               const targetPackage = entryPackageId
                 ? (targetService.packages || []).find(p => p.id === entryPackageId)
-                : DeductionSystem.getActivePackage(targetService);
+                : DeductionSystem.getActivePackage(targetService, true, hasOverride);
 
               if (targetPackage) {
                 const currentRemaining = targetPackage.hoursRemaining || 0;
                 const afterDeduction = currentRemaining - hoursDiff;
-                if (afterDeduction < -10) {
+                if (afterDeduction < -10 && !hasOverride) {
                   console.error(`🛡️ [UPDATE GUARD] Blocked: package ${targetPackage.id} would drop to ${afterDeduction}h (limit: -10h)`);
                   throw new functions.https.HttpsError('resource-exhausted',
                     'הלקוח בחריגה — העריכה תגרום לחריגה מעבר למגבלת -10 שעות',
