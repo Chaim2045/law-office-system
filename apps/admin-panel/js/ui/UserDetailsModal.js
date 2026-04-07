@@ -3439,6 +3439,10 @@ return -1;
                     <i class="fas fa-envelope"></i>
                     <span>שלח הודעה</span>
                 </button>
+                <button class="btn btn-outline" id="userDetailsGenerateReportBtn">
+                    <i class="fas fa-file-alt"></i>
+                    <span>הפק דוח</span>
+                </button>
                 <button class="btn btn-secondary" id="userDetailsCloseBtn">
                     <i class="fas fa-times"></i>
                     <span>סגור</span>
@@ -3469,6 +3473,14 @@ return;
             if (sendMessageBtn) {
                 sendMessageBtn.addEventListener('click', () => {
                     this.sendNewMessage();
+                });
+            }
+
+            // Generate Report button (footer)
+            const generateReportBtn = modal.querySelector('#userDetailsGenerateReportBtn');
+            if (generateReportBtn) {
+                generateReportBtn.addEventListener('click', () => {
+                    this.openReportPanel();
                 });
             }
 
@@ -6089,6 +6101,357 @@ return true;
                     overlay.remove();
                 }, 300);
             }
+        }
+
+        /* ============================================
+           EMPLOYEE REPORT SECTION
+           הפקת דוח עובד חודשי
+           ============================================ */
+
+        /**
+         * Open report parameters panel
+         * פתיחת פאנל בחירת פרמטרים לדוח
+         */
+        openReportPanel() {
+            const user = this.userData || this.currentUser;
+            if (!user) {
+                return;
+            }
+
+            const now = new Date();
+            // Default to previous month (more common use case for reports)
+            let defaultMonth = now.getMonth(); // 0-based, so this is previous month
+            let defaultYear = now.getFullYear();
+            if (defaultMonth === 0) {
+                defaultMonth = 12;
+                defaultYear--;
+            }
+
+            // Build month options
+            const months = [
+                'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+                'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+            ];
+            const monthOptions = months.map((name, i) => {
+                const m = i + 1;
+                const selected = m === defaultMonth ? 'selected' : '';
+                return `<option value="${m}" ${selected}>${name}</option>`;
+            }).join('');
+
+            // Build year options (last 2 years)
+            const yearOptions = [defaultYear, defaultYear - 1].map(y => {
+                const selected = y === defaultYear ? 'selected' : '';
+                return `<option value="${y}" ${selected}>${y}</option>`;
+            }).join('');
+
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'tasks-panel-overlay';
+            overlay.id = 'reportPanelOverlay';
+
+            // Create slide-in panel
+            const panel = document.createElement('div');
+            panel.className = 'tasks-slide-in-panel';
+            panel.id = 'reportSlideInPanel';
+            panel.innerHTML = `
+                <div class="tasks-panel-header">
+                    <div class="tasks-panel-title-row">
+                        <h3>הפקת דוח שעתון — ${user.displayName || user.email}</h3>
+                    </div>
+                    <button class="tasks-panel-close" id="reportPanelClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="tasks-panel-body" id="reportPanelContent">
+                    <div class="report-params-container" style="padding: 20px;">
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">
+                                <i class="fas fa-calendar-alt" style="margin-left: 6px; color: #3b82f6;"></i>
+                                חודש הדוח
+                            </label>
+                            <div style="display: flex; gap: 10px;">
+                                <select id="reportMonth" style="flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                                    ${monthOptions}
+                                </select>
+                                <select id="reportYear" style="width: 100px; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                                    ${yearOptions}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 24px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">
+                                <i class="fas fa-file-export" style="margin-left: 6px; color: #3b82f6;"></i>
+                                פורמט הדוח
+                            </label>
+                            <div style="display: flex; gap: 10px;">
+                                <label style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; cursor: pointer; background: #eff6ff;">
+                                    <input type="radio" name="reportFormat" value="html" checked style="accent-color: #3b82f6;">
+                                    <i class="fas fa-print" style="color: #3b82f6;"></i>
+                                    <span>HTML / הדפסה</span>
+                                </label>
+                                <label style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer;">
+                                    <input type="radio" name="reportFormat" value="csv">
+                                    <i class="fas fa-file-csv" style="color: #10b981;"></i>
+                                    <span>CSV / Excel</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button id="reportGenerateBtn" type="button" style="
+                            width: 100%; padding: 14px; background: #3b82f6; color: white;
+                            border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
+                            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+                        ">
+                            <i class="fas fa-file-alt"></i>
+                            הפק דוח
+                        </button>
+
+                        <div id="reportStatusMessage" style="margin-top: 16px; text-align: center; display: none;"></div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+            document.body.appendChild(panel);
+
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                panel.classList.add('active');
+            });
+
+            // Radio button styling
+            panel.querySelectorAll('input[name="reportFormat"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    panel.querySelectorAll('input[name="reportFormat"]').forEach(r => {
+                        const label = r.closest('label');
+                        if (r.checked) {
+                            label.style.borderColor = '#3b82f6';
+                            label.style.background = '#eff6ff';
+                        } else {
+                            label.style.borderColor = '#d1d5db';
+                            label.style.background = '';
+                        }
+                    });
+                });
+            });
+
+            // Generate button
+            const generateBtn = document.getElementById('reportGenerateBtn');
+            if (generateBtn) {
+                generateBtn.addEventListener('click', () => {
+                    this.executeReportGeneration();
+                });
+            }
+
+            // Close handlers
+            const closeBtn = document.getElementById('reportPanelClose');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => this.closeReportPanel());
+            }
+            overlay.addEventListener('click', () => this.closeReportPanel());
+
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    this.closeReportPanel();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+        }
+
+        /**
+         * Close report panel
+         * סגירת פאנל דוח
+         */
+        closeReportPanel() {
+            const overlay = document.getElementById('reportPanelOverlay');
+            const panel = document.getElementById('reportSlideInPanel');
+
+            if (panel && overlay) {
+                panel.style.transform = 'translateX(100%)';
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    panel.remove();
+                    overlay.remove();
+                }, 300);
+            }
+        }
+
+        /**
+         * Execute report generation
+         * ביצוע הפקת הדוח — query, חישוב, הפקה
+         */
+        async executeReportGeneration() {
+            const user = this.userData || this.currentUser;
+            if (!user) {
+                return;
+            }
+
+            const monthSelect = document.getElementById('reportMonth');
+            const yearSelect = document.getElementById('reportYear');
+            const formatRadio = document.querySelector('input[name="reportFormat"]:checked');
+            const generateBtn = document.getElementById('reportGenerateBtn');
+            const statusMsg = document.getElementById('reportStatusMessage');
+
+            if (!monthSelect || !yearSelect || !formatRadio) {
+                return;
+            }
+
+            const month = parseInt(monthSelect.value);
+            const year = parseInt(yearSelect.value);
+            const format = formatRadio.value;
+
+            // Loading state
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מפיק דוח...';
+            statusMsg.style.display = 'none';
+
+            try {
+                // Fresh query — independent from modal data
+                const db = window.firebaseDB;
+                const userEmail = user.email;
+
+                const startOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+                const lastDay = new Date(year, month, 0).getDate();
+                const endOfMonth = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+
+                console.log(`📄 Report: Querying timesheet for ${userEmail}, ${year}-${String(month).padStart(2, '0')}`);
+
+                const snapshot = await db.collection('timesheet_entries')
+                    .where('employee', '==', userEmail)
+                    .where('date', '>=', startOfMonth)
+                    .where('date', '<=', endOfMonth)
+                    .orderBy('date', 'desc')
+                    .get();
+
+                const entries = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        hours: data.hours ?? (data.minutes ? data.minutes / 60 : 0)
+                    };
+                });
+
+                console.log(`📄 Report: Found ${entries.length} entries`);
+
+                if (entries.length === 0) {
+                    statusMsg.style.display = 'block';
+                    statusMsg.innerHTML = '<span style="color: #f59e0b;"><i class="fas fa-exclamation-triangle"></i> אין רשומות שעתון בחודש זה</span>';
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<i class="fas fa-file-alt"></i> הפק דוח';
+                    return;
+                }
+
+                // Calculate stats
+                const reportData = this.calculateReportData(user, entries, month, year);
+
+                // Generate report
+                if (format === 'html') {
+                    window.ReportGenerator.generateEmployeeHTML(reportData);
+                } else {
+                    window.ReportGenerator.generateEmployeeCSV(reportData);
+                }
+
+                statusMsg.style.display = 'block';
+                statusMsg.innerHTML = '<span style="color: #10b981;"><i class="fas fa-check-circle"></i> הדוח הופק בהצלחה</span>';
+
+            } catch (error) {
+                console.error('❌ Report generation failed:', error);
+                statusMsg.style.display = 'block';
+                statusMsg.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-exclamation-circle"></i> לא ניתן להפיק את הדוח</span>';
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-file-alt"></i> הפק דוח';
+            }
+        }
+
+        /**
+         * Calculate report data from entries
+         * חישוב נתוני הדוח מהרשומות
+         */
+        calculateReportData(user, entries, month, year) {
+            const months = [
+                'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+                'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+            ];
+
+            // Split entries
+            const clientEntries = entries.filter(e => !e.isInternal);
+            const internalEntries = entries.filter(e => e.isInternal);
+
+            // Totals (calculate from minutes for precision)
+            const totalMinutes = entries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+            const clientMinutes = clientEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+            const internalMinutes = internalEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+
+            // Working days (unique dates with entries)
+            const workingDays = new Set(entries.map(e => (e.date || '').substring(0, 10))).size;
+
+            // Daily target
+            const dailyTarget = user.dailyHoursTarget || 8.45;
+            const totalHours = totalMinutes / 60;
+            const monthlyTarget = workingDays * dailyTarget;
+            const quotaPercent = monthlyTarget > 0 ? Math.round((totalHours / monthlyTarget) * 100) : 0;
+            const dailyAverage = workingDays > 0 ? totalHours / workingDays : 0;
+
+            // Client breakdown
+            const clientBreakdown = {};
+            clientEntries.forEach(e => {
+                const name = e.clientName || 'לא ידוע';
+                if (!clientBreakdown[name]) {
+                    clientBreakdown[name] = { minutes: 0, count: 0 };
+                }
+                clientBreakdown[name].minutes += (e.minutes || 0);
+                clientBreakdown[name].count++;
+            });
+
+            // Sort by hours descending
+            const clientBreakdownSorted = Object.entries(clientBreakdown)
+                .map(([name, data]) => ({
+                    name,
+                    minutes: data.minutes,
+                    hours: data.minutes / 60,
+                    count: data.count,
+                    percent: clientMinutes > 0 ? Math.round((data.minutes / clientMinutes) * 100) : 0
+                }))
+                .sort((a, b) => b.minutes - a.minutes);
+
+            return {
+                employee: {
+                    name: user.displayName || user.email,
+                    email: user.email,
+                    role: user.role || '',
+                    dailyTarget
+                },
+                period: {
+                    month,
+                    year,
+                    monthName: months[month - 1],
+                    label: `${months[month - 1]} ${year}`
+                },
+                summary: {
+                    totalMinutes,
+                    totalHours: Math.round(totalHours * 100) / 100,
+                    clientMinutes,
+                    clientHours: Math.round((clientMinutes / 60) * 100) / 100,
+                    internalMinutes,
+                    internalHours: Math.round((internalMinutes / 60) * 100) / 100,
+                    workingDays,
+                    dailyAverage: Math.round(dailyAverage * 100) / 100,
+                    quotaPercent,
+                    totalEntries: entries.length,
+                    clientEntries: clientEntries.length,
+                    internalEntries: internalEntries.length
+                },
+                clientBreakdown: clientBreakdownSorted,
+                entries: {
+                    client: clientEntries,
+                    internal: internalEntries
+                },
+                generatedAt: new Date()
+            };
         }
 
         /**
