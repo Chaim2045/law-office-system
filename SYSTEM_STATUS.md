@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-04-07
-**סטטוס:** Performance tab on-demand timesheet loading — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194
+**עדכון אחרון:** 2026-04-09
+**סטטוס:** Employee monthly timesheet report (HTML + CSV) — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194, #195, #197, #198, #199
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               fb03aec — Performance tab on-demand timesheet loading
-production-stable:  merged PR #194
+main:               ae4283b — Employee monthly timesheet report
+production-stable:  merged PR #199
 אין branches פתוחים.
 ```
 
@@ -62,6 +62,10 @@ production-stable:  merged PR #194
 | #191 | 5/4 | feat: Audit Trail page — לוג פעילות עם סינון, תרגום עברית, badges צבעוניים |
 | #192 | 6/4 | feat: Configurable description char limits — מגבלות תווים ניהוליות לתיאור משימה ורישום שעות, אכיפה ב-3 שכבות (Admin UI + Frontend + Backend) |
 | #194 | 7/4 | fix: Performance tab on-demand timesheet loading — טאב ביצועים טוען שעתון לחודש שונה מ-Firestore (שדה נפרד performanceHours, race guard, error state) |
+| #195 | 8/4 | fix: auto-select ignores fixed services in task creation |
+| #197 | 9/4 | revert: remove broken employee report from PROD (cleanup) |
+| #198 | 9/4 | feat: Employee monthly timesheet report — merge feature branch with fixes |
+| #199 | 9/4 | feat: Employee monthly timesheet report (HTML + CSV) — PROD deploy. דוח שעתון עובד חודשי: כפתור "הפק דוח" בפרטי עובד, מודאל קומפקטי לבחירת חודש/פורמט, הפקת HTML עם לוגו + פירוט פנימי/לקוחות בנפרד, CSV עם BOM לעברית. כולל: popup blocker guard, CSV escaping (RFC 4180), double-click guard |
 
 ---
 
