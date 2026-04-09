@@ -3439,10 +3439,6 @@ return -1;
                     <i class="fas fa-envelope"></i>
                     <span>שלח הודעה</span>
                 </button>
-                <button class="btn btn-outline" id="userDetailsGenerateReportBtn">
-                    <i class="fas fa-file-alt"></i>
-                    <span>הפק דוח</span>
-                </button>
                 <button class="btn btn-secondary" id="userDetailsCloseBtn">
                     <i class="fas fa-times"></i>
                     <span>סגור</span>
@@ -3473,14 +3469,6 @@ return;
             if (sendMessageBtn) {
                 sendMessageBtn.addEventListener('click', () => {
                     this.sendNewMessage();
-                });
-            }
-
-            // Generate Report button (footer)
-            const generateReportBtn = modal.querySelector('#userDetailsGenerateReportBtn');
-            if (generateReportBtn) {
-                generateReportBtn.addEventListener('click', () => {
-                    this.openReportPanel();
                 });
             }
 
