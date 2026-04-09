@@ -6148,112 +6148,111 @@ return true;
                 return `<option value="${y}" ${selected}>${y}</option>`;
             }).join('');
 
-            // Create overlay
+            // Create compact modal overlay
             const overlay = document.createElement('div');
-            overlay.className = 'tasks-panel-overlay';
             overlay.id = 'reportPanelOverlay';
+            Object.assign(overlay.style, {
+                position: 'fixed', top: '0', left: '0', right: '0', bottom: '0',
+                background: 'rgba(0,0,0,0.4)', zIndex: '10500',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: '0', transition: 'opacity 0.2s ease'
+            });
 
-            // Create slide-in panel
-            const panel = document.createElement('div');
-            panel.className = 'tasks-slide-in-panel';
-            panel.id = 'reportSlideInPanel';
-            panel.innerHTML = `
-                <div class="tasks-panel-header">
-                    <div class="tasks-panel-title-row">
-                        <h3>הפקת דוח שעתון — ${user.displayName || user.email}</h3>
-                    </div>
-                    <button class="tasks-panel-close" id="reportPanelClose">
+            // Compact dialog
+            const dialog = document.createElement('div');
+            dialog.id = 'reportSlideInPanel';
+            Object.assign(dialog.style, {
+                background: 'white', borderRadius: '14px', padding: '24px',
+                width: '360px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+                transform: 'scale(0.95)', transition: 'transform 0.2s ease',
+                direction: 'rtl'
+            });
+
+            dialog.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+                    <h3 style="font-size: 16px; font-weight: 700; color: #1f2937; margin: 0;">
+                        <i class="fas fa-file-alt" style="color: #3b82f6; margin-left: 6px;"></i>
+                        הפקת דוח — ${this.escapeHtml(user.displayName || user.email)}
+                    </h3>
+                    <button id="reportPanelClose" style="background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 18px; padding: 4px;">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div class="tasks-panel-body" id="reportPanelContent">
-                    <div class="report-params-container" style="padding: 20px;">
-                        <div style="margin-bottom: 20px;">
-                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">
-                                <i class="fas fa-calendar-alt" style="margin-left: 6px; color: #3b82f6;"></i>
-                                חודש הדוח
-                            </label>
-                            <div style="display: flex; gap: 10px;">
-                                <select id="reportMonth" style="flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
-                                    ${monthOptions}
-                                </select>
-                                <select id="reportYear" style="width: 100px; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
-                                    ${yearOptions}
-                                </select>
-                            </div>
-                        </div>
 
-                        <div style="margin-bottom: 24px;">
-                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">
-                                <i class="fas fa-file-export" style="margin-left: 6px; color: #3b82f6;"></i>
-                                פורמט הדוח
-                            </label>
-                            <div style="display: flex; gap: 10px;">
-                                <label style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; cursor: pointer; background: #eff6ff;">
-                                    <input type="radio" name="reportFormat" value="html" checked style="accent-color: #3b82f6;">
-                                    <i class="fas fa-print" style="color: #3b82f6;"></i>
-                                    <span>HTML / הדפסה</span>
-                                </label>
-                                <label style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer;">
-                                    <input type="radio" name="reportFormat" value="csv">
-                                    <i class="fas fa-file-csv" style="color: #10b981;"></i>
-                                    <span>CSV / Excel</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <button id="reportGenerateBtn" type="button" style="
-                            width: 100%; padding: 14px; background: #3b82f6; color: white;
-                            border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
-                            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
-                        ">
-                            <i class="fas fa-file-alt"></i>
-                            הפק דוח
-                        </button>
-
-                        <div id="reportStatusMessage" style="margin-top: 16px; text-align: center; display: none;"></div>
-                    </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                    <select id="reportMonth" style="flex: 1; padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white;">
+                        ${monthOptions}
+                    </select>
+                    <select id="reportYear" style="width: 90px; padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white;">
+                        ${yearOptions}
+                    </select>
                 </div>
+
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <label id="reportFormatHtml" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 2px solid #3b82f6; border-radius: 8px; cursor: pointer; background: #eff6ff; font-size: 13px; font-weight: 500;">
+                        <input type="radio" name="reportFormat" value="html" checked style="display: none;">
+                        <i class="fas fa-print" style="color: #3b82f6;"></i> הדפסה
+                    </label>
+                    <label id="reportFormatCsv" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: #6b7280;">
+                        <input type="radio" name="reportFormat" value="csv" style="display: none;">
+                        <i class="fas fa-file-csv" style="color: #10b981;"></i> CSV
+                    </label>
+                </div>
+
+                <button id="reportGenerateBtn" type="button" style="
+                    width: 100%; padding: 11px; background: #3b82f6; color: white;
+                    border: none; border-radius: 9px; font-size: 15px; font-weight: 600;
+                    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+                ">
+                    <i class="fas fa-file-alt"></i> הפק דוח
+                </button>
+
+                <div id="reportStatusMessage" style="margin-top: 12px; text-align: center; font-size: 13px; display: none;"></div>
             `;
 
+            overlay.appendChild(dialog);
             document.body.appendChild(overlay);
-            document.body.appendChild(panel);
 
             requestAnimationFrame(() => {
-                overlay.classList.add('active');
-                panel.classList.add('active');
+                overlay.style.opacity = '1';
+                dialog.style.transform = 'scale(1)';
             });
 
-            // Radio button styling
-            panel.querySelectorAll('input[name="reportFormat"]').forEach(radio => {
+            // Radio toggle styling
+            const htmlLabel = dialog.querySelector('#reportFormatHtml');
+            const csvLabel = dialog.querySelector('#reportFormatCsv');
+            dialog.querySelectorAll('input[name="reportFormat"]').forEach(radio => {
                 radio.addEventListener('change', () => {
-                    panel.querySelectorAll('input[name="reportFormat"]').forEach(r => {
-                        const label = r.closest('label');
-                        if (r.checked) {
-                            label.style.borderColor = '#3b82f6';
-                            label.style.background = '#eff6ff';
-                        } else {
-                            label.style.borderColor = '#d1d5db';
-                            label.style.background = '';
-                        }
-                    });
+                    if (radio.value === 'html') {
+                        htmlLabel.style.borderColor = '#3b82f6';
+                        htmlLabel.style.background = '#eff6ff';
+                        htmlLabel.style.color = '';
+                        csvLabel.style.borderColor = '#d1d5db';
+                        csvLabel.style.background = '';
+                        csvLabel.style.color = '#6b7280';
+                    } else {
+                        csvLabel.style.borderColor = '#10b981';
+                        csvLabel.style.background = '#ecfdf5';
+                        csvLabel.style.color = '';
+                        htmlLabel.style.borderColor = '#d1d5db';
+                        htmlLabel.style.background = '';
+                        htmlLabel.style.color = '#6b7280';
+                    }
                 });
             });
 
             // Generate button
-            const generateBtn = document.getElementById('reportGenerateBtn');
-            if (generateBtn) {
-                generateBtn.addEventListener('click', () => {
-                    this.executeReportGeneration();
-                });
-            }
+            dialog.querySelector('#reportGenerateBtn').addEventListener('click', () => {
+                this.executeReportGeneration();
+            });
 
             // Close handlers
-            const closeBtn = document.getElementById('reportPanelClose');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => this.closeReportPanel());
-            }
-            overlay.addEventListener('click', () => this.closeReportPanel());
+            dialog.querySelector('#reportPanelClose').addEventListener('click', () => this.closeReportPanel());
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    this.closeReportPanel();
+                }
+            });
 
             const handleEscape = (e) => {
                 if (e.key === 'Escape') {
@@ -6270,15 +6269,13 @@ return true;
          */
         closeReportPanel() {
             const overlay = document.getElementById('reportPanelOverlay');
-            const panel = document.getElementById('reportSlideInPanel');
-
-            if (panel && overlay) {
-                panel.style.transform = 'translateX(100%)';
+            if (overlay) {
                 overlay.style.opacity = '0';
-                setTimeout(() => {
-                    panel.remove();
-                    overlay.remove();
-                }, 300);
+                const dialog = overlay.querySelector('#reportSlideInPanel');
+                if (dialog) {
+                    dialog.style.transform = 'scale(0.95)';
+                }
+                setTimeout(() => overlay.remove(), 200);
             }
         }
 
