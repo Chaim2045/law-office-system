@@ -1359,6 +1359,12 @@ return '0:00';
             const html = this.buildEmployeeHTML(reportData);
 
             const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                if (window.notify) {
+                    window.notify.error('הדפדפן חסם את החלון. אנא אפשר חלונות קופצים ונסה שוב.', 'שגיאה');
+                }
+                return;
+            }
             newWindow.document.write(html);
             newWindow.document.close();
             newWindow.focus();
@@ -1670,11 +1676,14 @@ return '0.00';
 
             const { employee, period, summary, clientBreakdown, entries } = reportData;
 
+            // RFC 4180: escape double quotes by doubling them
+            const csvEscape = (val) => String(val || '').replace(/"/g, '""');
+
             let csv = '\uFEFF'; // BOM for Hebrew/Excel support
 
             // Header
             csv += 'דוח שעתון עובד\n';
-            csv += `שם,${employee.name}\n`;
+            csv += `שם,"${csvEscape(employee.name)}"\n`;
             csv += `תקופה,${period.label}\n`;
             csv += `תקן יומי,${employee.dailyTarget}\n`;
             csv += '\n';
@@ -1694,7 +1703,7 @@ return '0.00';
                 csv += 'פילוח לפי לקוחות\n';
                 csv += 'לקוח,שעות,רשומות,%\n';
                 clientBreakdown.forEach(c => {
-                    csv += `"${c.name}",${c.hours.toFixed(2)},${c.count},${c.percent}%\n`;
+                    csv += `"${csvEscape(c.name)}",${c.hours.toFixed(2)},${c.count},${c.percent}%\n`;
                 });
                 csv += '\n';
             }
@@ -1706,7 +1715,7 @@ return '0.00';
                 const sortedInternal = [...entries.internal].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
                 sortedInternal.forEach(e => {
                     const desc = e.action || e.taskDescription || e.description || '';
-                    csv += `"${(e.date || '').substring(0, 10)}","${desc}",${e.minutes || 0},${((e.minutes || 0) / 60).toFixed(2)}\n`;
+                    csv += `"${(e.date || '').substring(0, 10)}","${csvEscape(desc)}",${e.minutes || 0},${((e.minutes || 0) / 60).toFixed(2)}\n`;
                 });
                 csv += '\n';
             }
@@ -1718,7 +1727,7 @@ return '0.00';
                 const sortedClient = [...entries.client].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
                 sortedClient.forEach(e => {
                     const desc = e.action || e.taskDescription || e.description || '';
-                    csv += `"${(e.date || '').substring(0, 10)}","${e.clientName || ''}","${desc}",${e.minutes || 0},${((e.minutes || 0) / 60).toFixed(2)}\n`;
+                    csv += `"${(e.date || '').substring(0, 10)}","${csvEscape(e.clientName || '')}","${csvEscape(desc)}",${e.minutes || 0},${((e.minutes || 0) / 60).toFixed(2)}\n`;
                 });
             }
 

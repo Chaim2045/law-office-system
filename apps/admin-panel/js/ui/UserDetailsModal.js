@@ -6113,6 +6113,10 @@ return true;
          * פתיחת פאנל בחירת פרמטרים לדוח
          */
         openReportPanel() {
+            if (document.getElementById('reportSlideInPanel')) {
+                return; // Already open
+            }
+
             const user = this.userData || this.currentUser;
             if (!user) {
                 return;
