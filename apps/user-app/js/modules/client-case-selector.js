@@ -1122,8 +1122,8 @@ return;
       servicesGroup.style.display = cardsHtml ? 'block' : 'none';
 
       // בחירה אוטומטית אם יש שירות/שלב אחד בלבד
-      const activeServices = services.filter(s => s.status === 'active' && s.type === 'hours');
-      const activeFixedServices = services.filter(s => s.status === 'active' && s.type === 'fixed');
+      const activeServices = services.filter(s => (s.status || 'active') === 'active' && s.type === 'hours');
+      const activeFixedServices = services.filter(s => (s.status || 'active') === 'active' && s.type === 'fixed');
 
       // ספירת שלבים פעילים (הן במבנה חדש והן בישן)
       const allActiveStages = [];
@@ -1552,6 +1552,8 @@ return;
       this.selectedService = null;
       document.getElementById(`${this.containerId}_serviceId`).value = '';
       document.getElementById(`${this.containerId}_serviceName`).value = '';
+      document.getElementById(`${this.containerId}_serviceType`).value = '';
+      document.getElementById(`${this.containerId}_parentServiceId`).value = '';
 
       // חזרה לתצוגת כל הכרטיסים (ללא caseInfo - רק כרטיסיות!)
       this.renderServiceCards(this.selectedCase);

@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-04-06
-**סטטוס:** Configurable description char limits — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192
+**עדכון אחרון:** 2026-04-07
+**סטטוס:** Performance tab on-demand timesheet loading — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               a693cf0 — Configurable description char limits
-production-stable:  merged PR #192
+main:               fb03aec — Performance tab on-demand timesheet loading
+production-stable:  merged PR #194
 אין branches פתוחים.
 ```
 
@@ -61,6 +61,7 @@ production-stable:  merged PR #192
 | #190 | 5/4 | fix: admin email uri@ → roi@ |
 | #191 | 5/4 | feat: Audit Trail page — לוג פעילות עם סינון, תרגום עברית, badges צבעוניים |
 | #192 | 6/4 | feat: Configurable description char limits — מגבלות תווים ניהוליות לתיאור משימה ורישום שעות, אכיפה ב-3 שכבות (Admin UI + Frontend + Backend) |
+| #194 | 7/4 | fix: Performance tab on-demand timesheet loading — טאב ביצועים טוען שעתון לחודש שונה מ-Firestore (שדה נפרד performanceHours, race guard, error state) |
 
 ---
 
