@@ -1345,6 +1345,415 @@ return '0:00';
             }
         }
 
+        /* ============================================
+           EMPLOYEE REPORT SECTION
+           דוח שעתון עובד חודשי
+           ============================================ */
+
+        /**
+         * Generate employee HTML report
+         * הפקת דוח HTML לעובד — נפתח בחלון חדש עם הדפסה
+         */
+        generateEmployeeHTML(reportData) {
+            console.log('📄 Generating employee HTML report...');
+            const html = this.buildEmployeeHTML(reportData);
+
+            const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                if (window.notify) {
+                    window.notify.error('הדפדפן חסם את החלון. אנא אפשר חלונות קופצים ונסה שוב.', 'שגיאה');
+                }
+                return;
+            }
+            newWindow.document.write(html);
+            newWindow.document.close();
+            newWindow.focus();
+            setTimeout(() => {
+                newWindow.print();
+            }, 500);
+        }
+
+        /**
+         * Build employee HTML report content
+         * בניית תוכן HTML לדוח עובד
+         */
+        buildEmployeeHTML(reportData) {
+            const { employee, period, summary, clientBreakdown, entries, generatedAt } = reportData;
+
+            // Logo: use absolute URL based on current location
+            const logoUrl = `${window.location.origin}/assets/logo.png`;
+
+            const formatEntryDate = (dateStr) => {
+                if (!dateStr) {
+return '-';
+}
+                const d = new Date(dateStr.substring(0, 10));
+                return d.toLocaleDateString('he-IL');
+            };
+
+            const formatHours = (minutes) => {
+                if (!minutes) {
+return '0.00';
+}
+                return (minutes / 60).toFixed(2);
+            };
+
+            // Client entries table rows
+            const clientRows = [...entries.client]
+                .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                .map(e => `
+                    <tr>
+                        <td>${formatEntryDate(e.date)}</td>
+                        <td>${this.escapeHtml(e.clientName || '-')}</td>
+                        <td>${this.escapeHtml(e.action || e.taskDescription || e.description || '-')}</td>
+                        <td style="text-align: center;">${e.minutes || 0}</td>
+                        <td style="text-align: center;">${formatHours(e.minutes)}</td>
+                    </tr>
+                `).join('');
+
+            // Internal entries table rows
+            const internalRows = [...entries.internal]
+                .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                .map(e => `
+                    <tr>
+                        <td>${formatEntryDate(e.date)}</td>
+                        <td>${this.escapeHtml(e.action || e.taskDescription || e.description || '-')}</td>
+                        <td style="text-align: center;">${e.minutes || 0}</td>
+                        <td style="text-align: center;">${formatHours(e.minutes)}</td>
+                    </tr>
+                `).join('');
+
+            // Client breakdown rows
+            const breakdownRows = clientBreakdown.map(c => `
+                <tr>
+                    <td>${this.escapeHtml(c.name)}</td>
+                    <td style="text-align: center;">${c.hours.toFixed(2)}</td>
+                    <td style="text-align: center;">${c.count}</td>
+                    <td style="text-align: center;">${c.percent}%</td>
+                </tr>
+            `).join('');
+
+            return `
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דוח שעתון — ${this.escapeHtml(employee.name)} — ${period.label}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl; padding: 40px; background: #f9fafb;
+        }
+        .report-container {
+            max-width: 900px; margin: 0 auto; background: white;
+            padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center; padding-bottom: 15px; margin-bottom: 25px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .header-logo { text-align: right; margin-bottom: 10px; }
+        .law-office-logo { max-width: 100px; max-height: 60px; object-fit: contain; }
+        .header h1 { font-size: 22px; color: #1877F2; margin-bottom: 3px; }
+        .header h2 { font-size: 16px; color: #6b7280; font-weight: normal; }
+        .header h3 { font-size: 14px; color: #9ca3af; font-weight: normal; margin-top: 4px; }
+
+        .section { margin-bottom: 28px; }
+        .section-title {
+            font-size: 17px; font-weight: 600; color: #1f2937;
+            border-right: 4px solid #1877F2; padding-right: 10px;
+            margin-bottom: 14px;
+        }
+
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px; background: #f9fafb; padding: 18px; border-radius: 8px;
+        }
+        .info-item { display: flex; flex-direction: column; }
+        .info-label { font-size: 12px; color: #6b7280; margin-bottom: 3px; }
+        .info-value { font-size: 15px; font-weight: 600; color: #1f2937; }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 12px; margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f0f9ff; border-radius: 10px; padding: 16px;
+            text-align: center; border: 1px solid #dbeafe;
+        }
+        .stat-card.highlight { background: #eff6ff; border-color: #93c5fd; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #1877F2; }
+        .stat-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+        table {
+            width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px;
+        }
+        th {
+            background: #f1f5f9; color: #374151; padding: 10px 12px;
+            text-align: right; font-weight: 600; border-bottom: 2px solid #e2e8f0;
+        }
+        td {
+            padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #4b5563;
+        }
+        tr:nth-child(even) { background: #fafafa; }
+        .table-total {
+            font-weight: 700; background: #f0f9ff !important;
+            border-top: 2px solid #3b82f6;
+        }
+
+        .footer {
+            margin-top: 30px; padding-top: 15px; border-top: 1px solid #e5e7eb;
+            text-align: center; font-size: 11px; color: #9ca3af;
+        }
+
+        @media print {
+            body { padding: 0; background: white; }
+            .report-container { box-shadow: none; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="header">
+            <div class="header-logo">
+                <img src="${logoUrl}" alt="משרד עו&quot;ד גיא הרשקוביץ" class="law-office-logo" onerror="this.parentElement.style.display='none'">
+            </div>
+            <h1>משרד עו"ד גיא הרשקוביץ</h1>
+            <h2>דוח שעתון עובד — ${period.label}</h2>
+            <h3>${this.escapeHtml(employee.name)}</h3>
+        </div>
+
+        <!-- Employee Info -->
+        <div class="section">
+            <h3 class="section-title">פרטי עובד</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">שם</span>
+                    <span class="info-value">${this.escapeHtml(employee.name)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">תקופת הדוח</span>
+                    <span class="info-value">${period.label}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">תקן יומי</span>
+                    <span class="info-value">${employee.dailyTarget} שעות</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">תאריך הפקה</span>
+                    <span class="info-value">${generatedAt.toLocaleDateString('he-IL')}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="section">
+            <h3 class="section-title">סיכום חודשי</h3>
+            <div class="stats-grid">
+                <div class="stat-card highlight">
+                    <div class="stat-value">${summary.totalHours}</div>
+                    <div class="stat-label">סה"כ שעות</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${summary.clientHours}</div>
+                    <div class="stat-label">שעות לקוחות</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${summary.internalHours}</div>
+                    <div class="stat-label">שעות פנימי</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${summary.workingDays}</div>
+                    <div class="stat-label">ימי עבודה</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${summary.dailyAverage}</div>
+                    <div class="stat-label">ממוצע יומי</div>
+                </div>
+                <div class="stat-card ${summary.quotaPercent >= 80 ? 'highlight' : ''}">
+                    <div class="stat-value">${summary.quotaPercent}%</div>
+                    <div class="stat-label">מהתקן</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Client Breakdown -->
+        ${clientBreakdown.length > 0 ? `
+        <div class="section">
+            <h3 class="section-title">פילוח שעות לפי לקוחות</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>לקוח</th>
+                        <th style="text-align: center;">שעות</th>
+                        <th style="text-align: center;">רשומות</th>
+                        <th style="text-align: center;">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${breakdownRows}
+                    <tr class="table-total">
+                        <td>סה"כ לקוחות</td>
+                        <td style="text-align: center;">${summary.clientHours}</td>
+                        <td style="text-align: center;">${summary.clientEntries}</td>
+                        <td style="text-align: center;">100%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        ` : ''}
+
+        <!-- Internal Entries -->
+        ${entries.internal.length > 0 ? `
+        <div class="section">
+            <h3 class="section-title">פירוט פעילות פנימית (${entries.internal.length} רשומות — ${summary.internalHours} שעות)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>תאריך</th>
+                        <th>תיאור</th>
+                        <th style="text-align: center;">דקות</th>
+                        <th style="text-align: center;">שעות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${internalRows}
+                    <tr class="table-total">
+                        <td colspan="2">סה"כ פנימי</td>
+                        <td style="text-align: center;">${summary.internalMinutes}</td>
+                        <td style="text-align: center;">${summary.internalHours}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        ` : ''}
+
+        <!-- Client Entries -->
+        ${entries.client.length > 0 ? `
+        <div class="section">
+            <h3 class="section-title">פירוט שעות לקוחות (${entries.client.length} רשומות — ${summary.clientHours} שעות)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>תאריך</th>
+                        <th>לקוח</th>
+                        <th>תיאור</th>
+                        <th style="text-align: center;">דקות</th>
+                        <th style="text-align: center;">שעות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${clientRows}
+                    <tr class="table-total">
+                        <td colspan="3">סה"כ לקוחות</td>
+                        <td style="text-align: center;">${summary.clientMinutes}</td>
+                        <td style="text-align: center;">${summary.clientHours}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        ` : ''}
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>דוח זה הופק אוטומטית במערכת ניהול משרד עו"ד גיא הרשקוביץ</p>
+            <p>תאריך הפקה: ${generatedAt.toLocaleString('he-IL')}</p>
+        </div>
+    </div>
+</body>
+</html>
+            `;
+        }
+
+        /**
+         * Generate employee CSV report
+         * הפקת דוח CSV לעובד
+         */
+        generateEmployeeCSV(reportData) {
+            console.log('📄 Generating employee CSV report...');
+
+            const { employee, period, summary, clientBreakdown, entries } = reportData;
+
+            // RFC 4180: escape double quotes by doubling them
+            const csvEscape = (val) => String(val || '').replace(/"/g, '""');
+
+            let csv = '\uFEFF'; // BOM for Hebrew/Excel support
+
+            // Header
+            csv += 'דוח שעתון עובד\n';
+            csv += `שם,"${csvEscape(employee.name)}"\n`;
+            csv += `תקופה,${period.label}\n`;
+            csv += `תקן יומי,${employee.dailyTarget}\n`;
+            csv += '\n';
+
+            // Summary
+            csv += 'סיכום חודשי\n';
+            csv += `סה"כ שעות,${summary.totalHours}\n`;
+            csv += `שעות לקוחות,${summary.clientHours}\n`;
+            csv += `שעות פנימי,${summary.internalHours}\n`;
+            csv += `ימי עבודה,${summary.workingDays}\n`;
+            csv += `ממוצע יומי,${summary.dailyAverage}\n`;
+            csv += `אחוז מתקן,${summary.quotaPercent}%\n`;
+            csv += '\n';
+
+            // Client breakdown
+            if (clientBreakdown.length > 0) {
+                csv += 'פילוח לפי לקוחות\n';
+                csv += 'לקוח,שעות,רשומות,%\n';
+                clientBreakdown.forEach(c => {
+                    csv += `"${csvEscape(c.name)}",${c.hours.toFixed(2)},${c.count},${c.percent}%\n`;
+                });
+                csv += '\n';
+            }
+
+            // Internal entries
+            if (entries.internal.length > 0) {
+                csv += 'פעילות פנימית\n';
+                csv += 'תאריך,תיאור,דקות,שעות\n';
+                const sortedInternal = [...entries.internal].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+                sortedInternal.forEach(e => {
+                    const desc = e.action || e.taskDescription || e.description || '';
+                    csv += `"${(e.date || '').substring(0, 10)}","${csvEscape(desc)}",${e.minutes || 0},${((e.minutes || 0) / 60).toFixed(2)}\n`;
+                });
+                csv += '\n';
+            }
+
+            // Client entries
+            if (entries.client.length > 0) {
+                csv += 'שעות לקוחות\n';
+                csv += 'תאריך,לקוח,תיאור,דקות,שעות\n';
+                const sortedClient = [...entries.client].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+                sortedClient.forEach(e => {
+                    const desc = e.action || e.taskDescription || e.description || '';
+                    csv += `"${(e.date || '').substring(0, 10)}","${csvEscape(e.clientName || '')}","${csvEscape(desc)}",${e.minutes || 0},${((e.minutes || 0) / 60).toFixed(2)}\n`;
+                });
+            }
+
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `timesheet_${employee.name}_${period.year}-${String(period.month).padStart(2, '0')}.csv`;
+            link.click();
+
+            if (window.notify) {
+                window.notify.success('הקובץ הורד בהצלחה', 'ייצוא הצליח');
+            }
+        }
+
+        /**
+         * Helper: Escape HTML characters for employee reports
+         */
+        escapeHtml(text) {
+            if (!text) {
+return '';
+}
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return String(text).replace(/[&<>"']/g, c => map[c]);
+        }
+
         /**
          * Fetch report data without generating report
          * שליפת נתוני דוח ללא יצירת הדוח
