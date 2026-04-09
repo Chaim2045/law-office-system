@@ -1123,6 +1123,7 @@ return;
 
       // בחירה אוטומטית אם יש שירות/שלב אחד בלבד
       const activeServices = services.filter(s => s.status === 'active' && s.type === 'hours');
+      const activeFixedServices = services.filter(s => s.status === 'active' && s.type === 'fixed');
 
       // ספירת שלבים פעילים (הן במבנה חדש והן בישן)
       const allActiveStages = [];
@@ -1135,15 +1136,21 @@ return;
         allActiveStages.push(...stages.filter(s => s.status === 'active'));
       }
 
+      // סה"כ שירותים/שלבים פעילים (כולל fixed)
+      const totalActive = activeServices.length + allActiveStages.length + activeFixedServices.length;
+
       if (isLegacyCase) {
         // תיק ישן - בחירה אוטומטית
         this.selectService(caseItem.id, 'hours');
-      } else if (activeServices.length === 1 && allActiveStages.length === 0) {
-        // שירות שעות אחד בלבד - בחירה אוטומטית
-        this.selectService(activeServices[0].id, 'hours');
-      } else if (allActiveStages.length === 1 && activeServices.length === 0) {
-        // שלב אחד בלבד - בחירה אוטומטית
-        this.selectService(allActiveStages[0].id, 'legal_procedure');
+      } else if (totalActive === 1) {
+        // בדיוק שירות/שלב פעיל אחד - בחירה אוטומטית
+        if (activeServices.length === 1) {
+          this.selectService(activeServices[0].id, 'hours');
+        } else if (allActiveStages.length === 1) {
+          this.selectService(allActiveStages[0].id, 'legal_procedure');
+        } else if (activeFixedServices.length === 1) {
+          this.selectService(activeFixedServices[0].id, 'fixed');
+        }
       }
     }
 
