@@ -86,6 +86,12 @@ return;
     this._todayStr = this._getTodayStr();
     this._todayEntries = this._filterToday(allEntries);
 
+    // DEBUG — remove after fixing
+    console.log('[DailyMeter] todayStr:', this._todayStr,
+      '| total entries:', allEntries?.length,
+      '| today entries:', this._todayEntries.length,
+      '| sample dates:', allEntries?.slice(0, 3).map(e => e.date));
+
     const totalMinutes = this._todayEntries.reduce(
       (sum, e) => sum + (e.minutes || 0), 0
     );
