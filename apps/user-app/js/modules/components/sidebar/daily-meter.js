@@ -52,6 +52,12 @@ export class DailyMeter {
 return;
 }
 
+    // Prevent duplicate initialization
+    if (this._el) {
+      this.update(window.manager?.timesheetEntries || []);
+      return;
+    }
+
     this._injectCSS();
     this._render(container);
     this._bindEvents();
