@@ -86,12 +86,6 @@ return;
     this._todayStr = this._getTodayStr();
     this._todayEntries = this._filterToday(allEntries);
 
-    // DEBUG — remove after fixing
-    console.log('[DailyMeter] todayStr:', this._todayStr,
-      '| total entries:', allEntries?.length,
-      '| today entries:', this._todayEntries.length,
-      '| sample dates:', allEntries?.slice(0, 3).map(e => e.date));
-
     const totalMinutes = this._todayEntries.reduce(
       (sum, e) => sum + (e.minutes || 0), 0
     );
@@ -172,9 +166,9 @@ return;
     const offset = CIRCUMFERENCE - (cappedPct / 100) * CIRCUMFERENCE;
     const state = this._getState(pct);
 
-    // Ring fill
+    // Ring fill (SVG elements require setAttribute for class)
     this._circleEl.style.strokeDashoffset = offset;
-    this._circleEl.className = `gh-daily-meter-fill state-${state}`;
+    this._circleEl.setAttribute('class', `gh-daily-meter-fill state-${state}`);
 
     // Center text — always white
     this._pctEl.textContent = Math.round(pct) + '%';
