@@ -52,6 +52,17 @@ export class DailyMeter {
 return;
 }
 
+    // Prevent duplicate — if already in DOM, just update data
+    if (this._el && this._el.isConnected) {
+      this.update(window.manager?.timesheetEntries || []);
+      return;
+    }
+
+    // Clean up stale reference if element was removed from DOM
+    if (this._el && !this._el.isConnected) {
+      this._el = null;
+    }
+
     this._injectCSS();
     this._render(container);
     this._bindEvents();
