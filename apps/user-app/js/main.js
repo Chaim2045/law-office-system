@@ -83,6 +83,9 @@ import * as DebugTools from './modules/debug-tools.js';
 // Sidebar Component
 import { Sidebar } from './modules/components/sidebar/sidebar.js';
 
+// Daily Meter Component (sidebar ring — daily reporting progress)
+import { DailyMeter } from './modules/components/sidebar/daily-meter.js';
+
 // Beit Midrash Component
 import { BeitMidrash } from './modules/components/beit-midrash/beit-midrash.js';
 
@@ -161,6 +164,7 @@ class LawOfficeManager {
     this.announcementTicker = new SystemAnnouncementTicker(); // System Announcement Ticker
     this.announcementPopup = new SystemAnnouncementPopup(); // System Announcement Popup
     this.breakManager = new BreakManager(); // Break Button
+    this.dailyMeter = new DailyMeter(); // Daily reporting meter (sidebar ring)
 
     // Activity Logger & Task Actions (initialized after Firebase)
     this.activityLogger = null;
@@ -908,6 +912,9 @@ return false;
         this.notificationBell.updateFromSystem(blockedClients, criticalClients, urgentTasks);
       }
 
+      // ✅ Initialize Daily Meter (sidebar ring)
+      this.initDailyMeter();
+
       // ✅ הפעלת Real-time listeners למשימות ושעות
       this.startRealTimeListeners();
 
@@ -917,6 +924,23 @@ return false;
       console.error('❌ Error loading data:', error);
       this.showNotification('שגיאה בטעינת נתונים', 'error');
       throw error;
+    }
+  }
+
+  /**
+   * Initialize Daily Meter in sidebar footer
+   */
+  initDailyMeter() {
+    try {
+      const footer = document.querySelector('.gh-sidebar-footer');
+      if (!footer) {
+        Logger.log('⚠️ Daily meter: sidebar footer not found');
+        return;
+      }
+      this.dailyMeter.init(footer);
+      Logger.log('✅ Daily Meter initialized');
+    } catch (error) {
+      console.error('❌ Daily meter init error:', error);
     }
   }
 
@@ -972,6 +996,11 @@ return false;
             // Re-filter and render
             this.filterTimesheetEntries();
             this.renderTimesheetView(); // ✅ Fixed: was renderTimesheet()
+
+            // ✅ Update Daily Meter with new entries
+            if (this.dailyMeter) {
+              this.dailyMeter.update(entries);
+            }
           },
           (error) => {
             console.error('❌ Timesheet listener error:', error);
