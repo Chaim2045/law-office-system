@@ -111,7 +111,8 @@ return;
     this._el = document.createElement('div');
     this._el.className = 'gh-daily-meter';
     this._el.innerHTML = `
-      <div class="gh-daily-meter-ring" title="מד דיווח יומי">
+      <div class="gh-daily-meter-ring" title="מד דיווח יומי — לחץ לפירוט">
+        ${this._isNewFeature() ? '<span class="gh-daily-meter-badge-new"></span>' : ''}
         <svg width="52" height="52" viewBox="0 0 46 46">
           <circle class="gh-daily-meter-track" cx="23" cy="23" r="${RADIUS}" />
           <circle class="gh-daily-meter-fill state-blue" cx="23" cy="23" r="${RADIUS}"
@@ -145,6 +146,10 @@ return;
 
     this._ringEl.addEventListener('click', (e) => {
       e.stopPropagation();
+
+      // Dismiss "new" badge on first click
+      this._dismissNewBadge();
+
       if (this._isPopupOpen) {
         this._closePopup();
       } else {
@@ -406,6 +411,26 @@ return a.isInternal ? 1 : -1;
     const div = document.createElement('div');
     div.textContent = str || '';
     return div.innerHTML;
+  }
+
+  // "New" badge — shows for 14 days after launch, dismissed on first click
+  _isNewFeature() {
+    const LAUNCH_DATE = '2026-04-12';
+    const SHOW_DAYS = 14;
+    const dismissed = localStorage.getItem('gh-daily-meter-seen');
+    if (dismissed) {
+return false;
+}
+    const daysSinceLaunch = (Date.now() - new Date(LAUNCH_DATE).getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceLaunch <= SHOW_DAYS;
+  }
+
+  _dismissNewBadge() {
+    const badge = this._el?.querySelector('.gh-daily-meter-badge-new');
+    if (badge) {
+      badge.remove();
+      localStorage.setItem('gh-daily-meter-seen', '1');
+    }
   }
 
   // ════════════════════════════════════

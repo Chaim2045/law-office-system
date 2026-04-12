@@ -112,6 +112,26 @@
   margin-top: 2px;
 }
 
+/* ─── "New" badge ─── */
+.gh-daily-meter-badge-new {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgb(34 197 94 / 50%);
+  z-index: 1;
+  animation: gh-meter-badge-pulse 2s ease infinite;
+}
+
+@keyframes gh-meter-badge-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+
+  50% { opacity: 0.6; transform: scale(1.4); }
+}
+
 /* ─── Label below ring ─── */
 .gh-daily-meter-label {
   font-size: 7.5px;
@@ -128,8 +148,8 @@
 .gh-daily-meter-popup {
   position: absolute;
   left: calc(-230px - 14px);
-  top: 50%;
-  transform: translateY(-50%) translateX(10px);
+  bottom: 0;
+  transform: translateX(10px);
   width: 230px;
   background: #1e293b;
   border-radius: 12px;
@@ -160,7 +180,7 @@
 .gh-daily-meter-popup.open {
   opacity: 1;
   visibility: visible;
-  transform: translateY(-50%) translateX(0);
+  transform: translateX(0);
   pointer-events: auto;
 }
 
@@ -208,7 +228,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 180px;
+  max-height: 260px;
   overflow-y: auto;
 }
 
