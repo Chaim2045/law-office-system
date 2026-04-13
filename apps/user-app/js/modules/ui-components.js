@@ -301,8 +301,8 @@ class ActionFlowManager {
       onFinally = null,
       closePopupOnSuccess = false,
       popupSelector = '.popup-overlay',
-      closeDelay = 500,
-      minLoadingDuration = 200, // Reduced from 1000ms - fast UX without minimum wait
+      closeDelay = 150,
+      minLoadingDuration = 0, // No artificial delay — progressive loading pattern
       operationKey = null // Per-operation double-click guard key
     } = options;
 
@@ -360,14 +360,10 @@ class ActionFlowManager {
         window.hideSimpleLoading?.();
       }
 
-      // Small delay to ensure loading is hidden before showing success
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // 4. Show success message
+      // 5. Show success message
       if (successMessage) {
         if (window.NotificationSystem) {
-          // ✅ 5 seconds for important messages like task approval
-          window.NotificationSystem.success(successMessage, 5000);
+          window.NotificationSystem.success(successMessage, 2500);
         } else {
           window.showNotification?.(successMessage, 'success');
         }
@@ -409,9 +405,6 @@ class ActionFlowManager {
       } else {
         window.hideSimpleLoading?.();
       }
-
-      // Small delay before showing error
-      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Show error message
       const fullErrorMessage = `${errorMessage}: ${error.message || 'שגיאה לא ידועה'}`;

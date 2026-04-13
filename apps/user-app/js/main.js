@@ -916,8 +916,11 @@ return false;
       // ✅ Initialize Daily Meter (sidebar ring)
       this.initDailyMeter();
 
-      // ✅ הפעלת Real-time listeners למשימות ושעות
-      this.startRealTimeListeners();
+      // ✅ הפעלת Real-time listeners למשימות ושעות (once only)
+      if (!this._realTimeListenersStarted) {
+        this.startRealTimeListeners();
+        this._realTimeListenersStarted = true;
+      }
 
       Logger.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
       this.updateLoaderText('הכל מוכן!', 100);
