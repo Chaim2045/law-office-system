@@ -13,6 +13,7 @@ export class TaskApprovalDialog {
     this.currentUser = options.currentUser;
     this.currentApproval = null;
     this.overlay = null;
+    this._isProcessingApproval = false;
   }
 
   show(approval) {
@@ -159,6 +160,10 @@ this.hide();
   }
 
   async handleApprove(approvedMinutes) {
+    if (this._isProcessingApproval) {
+      return;
+    }
+
     const adminNotes = this.overlay.querySelector('#adminNotes').value;
 
     const error = helpers.validateApproval(approvedMinutes);
@@ -167,6 +172,7 @@ this.hide();
       return;
     }
 
+    this._isProcessingApproval = true;
     this.showLoading();
 
     try {
@@ -189,10 +195,15 @@ this.hide();
       console.error('Error approving:', error);
       this.showError('שגיאה באישור המשימה');
       this.hideLoading();
+      this._isProcessingApproval = false;
     }
   }
 
   async handleReject() {
+    if (this._isProcessingApproval) {
+      return;
+    }
+
     const adminNotes = this.overlay.querySelector('#adminNotes').value;
 
     const error = helpers.validateRejection(adminNotes);
@@ -205,6 +216,7 @@ this.hide();
       return;
     }
 
+    this._isProcessingApproval = true;
     this.showLoading();
 
     try {
@@ -226,6 +238,7 @@ this.hide();
       console.error('Error rejecting:', error);
       this.showError('שגיאה בדחיית המשימה');
       this.hideLoading();
+      this._isProcessingApproval = false;
     }
   }
 
@@ -244,6 +257,7 @@ this.hide();
   }
 
   hide() {
+    this._isProcessingApproval = false;
     if (this.overlay) {
       this.overlay.classList.remove('active');
       setTimeout(() => {

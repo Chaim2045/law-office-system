@@ -285,6 +285,8 @@
       this.procedureType = 'hours';
       this.pricingType = 'hourly';
       this.currentCase = null; // ✅ תיק קיים (למצב הוספת שירות)
+      this._isSaving = false;
+      this._sessionId = Date.now(); // session-scoped idempotency key
 
       // ✅ Stepper properties - with instrumentation
       this._currentStep = 1; // Internal storage
@@ -314,6 +316,10 @@
      */
     async open(options = {}) {
       try {
+        // Reset session for idempotency and guard state
+        this._sessionId = Date.now();
+        this._isSaving = false;
+
         // Set initial mode from options (default: 'new')
         this.currentMode = options.mode || 'new';
 
@@ -2142,47 +2148,58 @@ return text;
      * טיפול בשליחת טופס
      */
     async handleSubmit() {
-      // הסתרת שגיאות קודמות
-      document.getElementById('formErrors').style.display = 'none';
-      document.getElementById('formWarnings').style.display = 'none';
-
-      // 🛡️ Defensive Check: אם במצב existing אבל לא נבחר לקוח - שגיאה!
-      if (this.currentMode === 'existing' && !this.currentCase) {
-        this.displayErrors(['חובה לבחור לקוח מהרשימה לפני הוספת שירות']);
-        Logger.log('❌ Validation failed: No client selected in existing mode');
+      // Double-click guard
+      if (this._isSaving) {
+        Logger.log('⚠️ CaseCreation: blocked duplicate submission');
         return;
       }
+      this._isSaving = true;
 
-      // 🎯 נקודת החלטה: הוספת שירות או יצירת תיק חדש?
-      if (this.currentCase) {
-        // ✅ מצב הוספת שירות לתיק קיים
-        Logger.log('🔄 Mode: Adding service to existing case');
-        await this.handleAddServiceToCase();
-        return;
+      try {
+        // הסתרת שגיאות קודמות
+        document.getElementById('formErrors').style.display = 'none';
+        document.getElementById('formWarnings').style.display = 'none';
+
+        // 🛡️ Defensive Check: אם במצב existing אבל לא נבחר לקוח - שגיאה!
+        if (this.currentMode === 'existing' && !this.currentCase) {
+          this.displayErrors(['חובה לבחור לקוח מהרשימה לפני הוספת שירות']);
+          Logger.log('❌ Validation failed: No client selected in existing mode');
+          return;
+        }
+
+        // 🎯 נקודת החלטה: הוספת שירות או יצירת תיק חדש?
+        if (this.currentCase) {
+          // ✅ מצב הוספת שירות לתיק קיים
+          Logger.log('🔄 Mode: Adding service to existing case');
+          await this.handleAddServiceToCase();
+          return;
+        }
+
+        // ✅ מצב רגיל - יצירת תיק חדש
+        Logger.log('🆕 Mode: Creating new case');
+
+        // איסוף נתונים
+        const formData = this.collectFormData();
+
+        // ולידציה פשוטה
+        const errors = [];
+        if (!formData.client || !formData.client.name || formData.client.name.length < 2) {
+          errors.push('אנא הזן שם לקוח (לפחות 2 תווים)');
+        }
+        if (!formData.case || !formData.case.title || formData.case.title.length < 2) {
+          errors.push('אנא הזן כותרת תיק (לפחות 2 תווים)');
+        }
+
+        if (errors.length > 0) {
+          this.displayErrors(errors);
+          return;
+        }
+
+        // המשך לשמירה...
+        await this.saveCase(formData);
+      } finally {
+        this._isSaving = false;
       }
-
-      // ✅ מצב רגיל - יצירת תיק חדש
-      Logger.log('🆕 Mode: Creating new case');
-
-      // איסוף נתונים
-      const formData = this.collectFormData();
-
-      // ולידציה פשוטה
-      const errors = [];
-      if (!formData.client || !formData.client.name || formData.client.name.length < 2) {
-        errors.push('אנא הזן שם לקוח (לפחות 2 תווים)');
-      }
-      if (!formData.case || !formData.case.title || formData.case.title.length < 2) {
-        errors.push('אנא הזן כותרת תיק (לפחות 2 תווים)');
-      }
-
-      if (errors.length > 0) {
-        this.displayErrors(errors);
-        return;
-      }
-
-      // המשך לשמירה...
-      await this.saveCase(formData);
     }
 
     /**
@@ -2422,6 +2439,9 @@ return text;
           window.NotificationSystem.showLoading('מוסיף שירות...');
         }
 
+        // Idempotency key for duplicate protection
+        serviceData.idempotencyKey = `addService_${serviceData.clientId}_${serviceData.serviceType}_${this._sessionId}`;
+
         // 🚀 קריאה ל-Firebase Cloud Function
         const addService = firebase.functions().httpsCallable('addServiceToClient');
         const result = await addService(serviceData);
@@ -2569,7 +2589,7 @@ return text;
         description: formData.case.description || '',
         procedureType: formData.case.procedureType,
         // ✅ Idempotency key - unique per request
-        idempotencyKey: `create_${formData.case.caseNumber}_${Date.now()}`
+        idempotencyKey: `create_${formData.case.caseNumber}_${this._sessionId}`
       };
 
       if (formData.case.procedureType === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {

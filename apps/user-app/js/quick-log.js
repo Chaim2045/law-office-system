@@ -1344,8 +1344,17 @@ navigator.vibrate(10);
   // FORM SUBMISSION
   // ═══════════════════════════════════════════════════════════════════
 
+  let _isQuickLogSubmitting = false;
+
   quickLogForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (_isQuickLogSubmitting) {
+      return;
+    }
+    _isQuickLogSubmitting = true;
+
+    try {
 
     const clientId = document.getElementById('selectedClientId').value;
     const clientName = document.getElementById('selectedClientName').value;
@@ -1468,6 +1477,10 @@ navigator.vibrate(10);
       }
 
       showError(errorText);
+    }
+
+    } finally {
+      _isQuickLogSubmitting = false;
     }
   });
 

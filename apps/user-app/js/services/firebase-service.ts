@@ -269,44 +269,46 @@ class FirebaseServiceClass {
       // Track in-flight request
       this.inFlightRequests.set(requestKey, promise);
 
-      // Execute call
-      const response = await promise;
+      try {
+        // Execute call
+        const response = await promise;
 
-      // Remove from in-flight
-      this.inFlightRequests.delete(requestKey);
+        // Cache successful response
+        if (response.success && cacheTTL > 0) {
+          this.addToCache(functionName, data, response.data, cacheTTL);
+        }
 
-      // Cache successful response
-      if (response.success && cacheTTL > 0) {
-        this.addToCache(functionName, data, response.data, cacheTTL);
+        // Update statistics
+        if (response.success) {
+          this.stats.successfulCalls++;
+        } else {
+          this.stats.failedCalls++;
+        }
+
+        const duration = performance.now() - startTime;
+        this.updateAverageResponseTime(duration);
+
+        if (this.debugMode) {
+          console.log(
+            `✅ [Firebase] ${functionName} completed in ${duration.toFixed(2)}ms`
+          );
+        }
+
+        // Emit event
+        EventBus.emit('system:data-loaded', {
+          dataType: functionName,
+          recordCount: 1,
+          duration
+        });
+
+        return {
+          ...response,
+          duration
+        };
+      } finally {
+        // Always clean up in-flight tracking — covers success, error, and exceptions
+        this.inFlightRequests.delete(requestKey);
       }
-
-      // Update statistics
-      if (response.success) {
-        this.stats.successfulCalls++;
-      } else {
-        this.stats.failedCalls++;
-      }
-
-      const duration = performance.now() - startTime;
-      this.updateAverageResponseTime(duration);
-
-      if (this.debugMode) {
-        console.log(
-          `✅ [Firebase] ${functionName} completed in ${duration.toFixed(2)}ms`
-        );
-      }
-
-      // Emit event
-      EventBus.emit('system:data-loaded', {
-        dataType: functionName,
-        recordCount: 1,
-        duration
-      });
-
-      return {
-        ...response,
-        duration
-      };
     } catch (error) {
       this.stats.failedCalls++;
 

@@ -144,6 +144,7 @@ class LawOfficeManager {
     // ✅ Operation Locks - prevent race conditions
     this.isTaskOperationInProgress = false;
     this.isTimesheetOperationInProgress = false;
+    this._isCancelling = false;
 
     // ✅ Data Cache - Smart caching with Stale-While-Revalidate
     this.dataCache = new DataCache({
@@ -1182,6 +1183,7 @@ return false;
       const msgs = window.NotificationMessages.tasks;
 
       await ActionFlowManager.execute({
+        operationKey: 'addBudgetTask',
         ...msgs.loading.create(selectorValues.clientName),
         action: async () => {
           const taskData = {
@@ -1596,6 +1598,7 @@ return;
     const msgs = window.NotificationMessages.timesheet;
 
     await ActionFlowManager.execute({
+      operationKey: 'addTimesheetEntry',
       ...msgs.loading.createInternal(),
       action: async () => {
         const entryData = {
@@ -1906,6 +1909,7 @@ existingError.remove();
     const msgs = window.NotificationMessages.timesheet;
 
     await ActionFlowManager.execute({
+      operationKey: `submitAdvancedTimesheetEdit_${entryId}`,
       ...msgs.loading.updating(),
       action: async () => {
         // Prepare edit history entry
@@ -2461,6 +2465,7 @@ return;
     const msgs = window.NotificationMessages.tasks;
 
     await ActionFlowManager.execute({
+      operationKey: `submitDeadlineExtension_${taskId}`,
       ...msgs.loading.extendDeadline(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry
@@ -2610,74 +2615,80 @@ return;
    * שליחת בקשת ביטול לשרת
    */
   async submitCancelTask(taskId) {
-    const reasonInput = document.getElementById('cancelReason');
-    const reason = reasonInput?.value?.trim();
-
-    // Clear previous errors
-    reasonInput?.classList.remove('error');
-    const existingError = reasonInput?.parentElement.querySelector('.error-message');
-    if (existingError) {
-      existingError.remove();
-    }
-
-    // Validate reason
-    if (!reason) {
-      reasonInput?.classList.add('error');
-      const errorMsg = document.createElement('span');
-      errorMsg.className = 'error-message';
-      errorMsg.textContent = 'נא למלא סיבת ביטול';
-      reasonInput?.parentElement.appendChild(errorMsg);
+    if (this._isCancelling) {
       return;
     }
-
-    const overlay = document.querySelector('.popup-overlay.show');
-    const confirmBtn = overlay?.querySelector('.popup-btn-confirm');
+    this._isCancelling = true;
 
     try {
-      // Show loading state (no layout shift)
-      if (confirmBtn) {
-        confirmBtn.disabled = true;
-        confirmBtn.classList.add('loading');
+      const reasonInput = document.getElementById('cancelReason');
+      const reason = reasonInput?.value?.trim();
+
+      // Clear previous errors
+      reasonInput?.classList.remove('error');
+      const existingError = reasonInput?.parentElement.querySelector('.error-message');
+      if (existingError) {
+        existingError.remove();
       }
 
-      // Call Cloud Function
-      const cancelTask = firebase.functions().httpsCallable('cancelBudgetTask');
-      const result = await cancelTask({
-        taskId: taskId,
-        reason: reason
-      });
-
-      // Success - show toast
-      this.showNotification('המשימה בוטלה בהצלחה', 'success');
-
-      // Close dialog with smooth transition
-      if (overlay) {
-        overlay.classList.remove('show');
-        setTimeout(() => overlay.remove(), 300);
+      // Validate reason
+      if (!reason) {
+        reasonInput?.classList.add('error');
+        const errorMsg = document.createElement('span');
+        errorMsg.className = 'error-message';
+        errorMsg.textContent = 'נא למלא סיבת ביטול';
+        reasonInput?.parentElement.appendChild(errorMsg);
+        return;
       }
 
-      // Close expanded card if open (smooth transition)
-      const expandedOverlay = document.querySelector('.linear-expanded-overlay.active');
-      if (expandedOverlay) {
-        expandedOverlay.style.opacity = '0';
-        setTimeout(() => this.closeExpandedCard(), 200);
+      const overlay = document.querySelector('.popup-overlay.show');
+      const confirmBtn = overlay?.querySelector('.popup-btn-confirm');
+
+      try {
+        // Show loading state (no layout shift)
+        if (confirmBtn) {
+          confirmBtn.disabled = true;
+          confirmBtn.classList.add('loading');
+        }
+
+        // Call Cloud Function
+        const cancelTask = firebase.functions().httpsCallable('cancelBudgetTask');
+        const result = await cancelTask({
+          taskId: taskId,
+          reason: reason
+        });
+
+        // Success - show toast
+        this.showNotification('המשימה בוטלה בהצלחה', 'success');
+
+        // Close dialog with smooth transition
+        if (overlay) {
+          overlay.classList.remove('show');
+          setTimeout(() => overlay.remove(), 300);
+        }
+
+        // Close expanded card if open (smooth transition)
+        const expandedOverlay = document.querySelector('.linear-expanded-overlay.active');
+        if (expandedOverlay) {
+          expandedOverlay.style.opacity = '0';
+          setTimeout(() => this.closeExpandedCard(), 200);
+        }
+
+      } catch (error) {
+        console.error('❌ Cancel task failed:', error);
+
+        // Remove loading state
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.classList.remove('loading');
+        }
+
+        // Show error toast from server (already in Hebrew)
+        const errorMessage = error.message || 'שגיאה בביטול המשימה';
+        this.showNotification(errorMessage, 'error');
       }
-
-      // Tasks will auto-refresh via realtime listener
-      // No manual refresh needed - the listener will handle it
-
-    } catch (error) {
-      console.error('❌ Cancel task failed:', error);
-
-      // Remove loading state
-      if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.classList.remove('loading');
-      }
-
-      // Show error toast from server (already in Hebrew)
-      const errorMessage = error.message || 'שגיאה בביטול המשימה';
-      this.showNotification(errorMessage, 'error');
+    } finally {
+      this._isCancelling = false;
     }
   }
 
@@ -2782,6 +2793,7 @@ return;
     const msgs = window.NotificationMessages.tasks;
 
     await ActionFlowManager.execute({
+      operationKey: `submitTimeEntry_${taskId}`,
       ...msgs.loading.addTime(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry
@@ -2845,6 +2857,7 @@ return;
     const msgs = window.NotificationMessages.tasks;
 
     await ActionFlowManager.execute({
+      operationKey: `submitTaskCompletion_${taskId}`,
       ...msgs.loading.complete(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry
@@ -2917,6 +2930,7 @@ return;
     const msgs = window.NotificationMessages.tasks;
 
     await ActionFlowManager.execute({
+      operationKey: `submitBudgetAdjustment_${taskId}`,
       ...msgs.loading.updateBudget(),
       action: async () => {
         // Architecture v2.0 - FirebaseService with retry

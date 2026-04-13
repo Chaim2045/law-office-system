@@ -51,6 +51,7 @@
       this.cases = [];
       this.clients = [];
       this.currentUser = null;
+      this._isUpdating = false;
     }
 
     /**
@@ -670,6 +671,11 @@
      * טיפול בשליחת טופס עדכון תיק
      */
     async handleUpdateCaseSubmit(caseId) {
+      if (this._isUpdating) {
+        return;
+      }
+      this._isUpdating = true;
+
       try {
         const status = document.getElementById('updateStatus').value;
 
@@ -695,6 +701,8 @@
         } else {
           alert('שגיאה: ' + error.message);
         }
+      } finally {
+        this._isUpdating = false;
       }
     }
 
