@@ -268,6 +268,9 @@ return;
  * });
  */
 class ActionFlowManager {
+  // Per-operation lock: tracks which operations are currently executing
+  static _activeOperations = new Set();
+
   /**
    * Execute an action with consistent UX flow
    * @param {Object} options Configuration options
@@ -299,14 +302,27 @@ class ActionFlowManager {
       closePopupOnSuccess = false,
       popupSelector = '.popup-overlay',
       closeDelay = 500,
-      minLoadingDuration = 200 // Reduced from 1000ms - fast UX without minimum wait
+      minLoadingDuration = 200, // Reduced from 1000ms - fast UX without minimum wait
+      operationKey = null // Per-operation double-click guard key
     } = options;
+
+    // Double-click guard: per-operation granularity
+    const lockKey = operationKey || '__global__';
+    if (ActionFlowManager._activeOperations.has(lockKey)) {
+      console.warn(`⚠️ ActionFlowManager: blocked duplicate [${lockKey}]`);
+      if (window.NotificationSystem) {
+        window.NotificationSystem.warning('הפעולה כבר מתבצעת, אנא המתן', 2000);
+      }
+      return { success: false, error: new Error('Action already in progress') };
+    }
+    ActionFlowManager._activeOperations.add(lockKey);
 
     // ✅ Support both 'message' and 'loadingMessage' for backward compatibility
     const finalLoadingMessage = loadingMessage || message || 'מעבד...';
 
     // Validation
     if (typeof action !== 'function') {
+      ActionFlowManager._activeOperations.delete(lockKey);
       console.error('❌ ActionFlowManager: action must be a function');
       return { success: false, error: new Error('Invalid action parameter') };
     }
@@ -413,10 +429,16 @@ class ActionFlowManager {
       return { success: false, error };
 
     } finally {
-      // Execute finally callback
-      if (onFinally && typeof onFinally === 'function') {
-        await onFinally();
+      // Order matters: onFinally first (resets internal guards like _timesheetSubmitting),
+      // then delete lockKey (releases AFM lock). Prevents race window.
+      try {
+        if (onFinally && typeof onFinally === 'function') {
+          await onFinally();
+        }
+      } catch (e) {
+        console.error('❌ ActionFlowManager onFinally error:', e);
       }
+      ActionFlowManager._activeOperations.delete(lockKey);
     }
   }
 
