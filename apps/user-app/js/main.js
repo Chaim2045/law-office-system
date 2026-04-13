@@ -2392,7 +2392,7 @@ return;
     updateDaysDifference(dateInput.value);
 
     // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-    setTimeout(() => overlay.classList.add('show'), 10);
+    requestAnimationFrame(() => overlay.classList.add('show'));
   }
 
   /**
@@ -2602,7 +2602,7 @@ return;
     `;
 
     document.body.appendChild(overlay);
-    setTimeout(() => overlay.classList.add('show'), 10);
+    requestAnimationFrame(() => overlay.classList.add('show'));
 
     // Focus on reason textarea
     setTimeout(() => {

@@ -125,7 +125,7 @@ function showBlockedClientDialog(clientName, action) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 
   setTimeout(() => {
     if (document.body.contains(overlay)) {
@@ -210,7 +210,7 @@ function showAdvancedTimeDialog(taskId, manager) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 
   // ✅ Dynamic Date Badge - Updates based on selected date
   window.updateDateBadge = function() {
@@ -468,7 +468,7 @@ function showAdjustBudgetDialog(taskId, manager) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 }
 
 /**
@@ -693,7 +693,7 @@ function showTaskCompletionModal(task, manager) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 }
 
 /**

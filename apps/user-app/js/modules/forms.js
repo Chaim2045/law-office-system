@@ -234,7 +234,7 @@ export function showEditTimesheetDialog(manager, entryId) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 
   // ✅ Dynamic Date Badge - Updates based on selected date
   window.updateEditDateBadge = function() {

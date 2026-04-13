@@ -255,7 +255,7 @@
     document.body.appendChild(overlay);
 
     // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-    setTimeout(() => overlay.classList.add('show'), 10);
+    requestAnimationFrame(() => overlay.classList.add('show'));
   }
 
   /**
@@ -406,7 +406,7 @@
     document.body.appendChild(overlay);
 
     // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-    setTimeout(() => overlay.classList.add('show'), 10);
+    requestAnimationFrame(() => overlay.classList.add('show'));
 
     // Add validation logic
     const textarea = overlay.querySelector('#criticalCompletionNotes');

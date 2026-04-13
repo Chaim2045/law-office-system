@@ -18,8 +18,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(15 23 42 / 40%);
-  backdrop-filter: blur(4px);
+  background: rgb(15 23 42 / 50%);
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -27,7 +26,7 @@
   padding: 24px;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .popup-overlay:not(.hidden),
@@ -47,7 +46,7 @@
   max-height: 85vh;
   overflow: hidden;
   transform: translateY(8px) scale(0.98);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.15s ease, transform 0.15s ease;
   display: flex;
   flex-direction: column;
   direction: rtl;
@@ -120,7 +119,7 @@
   cursor: pointer;
   padding: 8px;
   border-radius: 6px;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -241,7 +240,7 @@
   border-radius: 8px;
   font-size: 14px;
   font-weight: 400;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
   background: #fff;
   text-align: right;
   direction: rtl;
@@ -360,7 +359,7 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -600,7 +599,7 @@
   border-radius: 10px;
   font-size: 15px;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
   background: white;
   text-align: right;
   direction: rtl;
@@ -626,7 +625,7 @@
   padding: 20px;
   border-radius: 12px;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
   box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
 }
 
@@ -665,7 +664,7 @@
   padding: 20px;
   border-radius: 12px;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
   box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
 }
 
@@ -774,7 +773,7 @@
   padding: 16px;
   border-radius: 10px;
   margin-bottom: 12px;
-  transition: all 0.3s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
   box-shadow: 0 2px 6px rgb(0 0 0 / 5%);
 }
 
@@ -846,7 +845,7 @@
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
 }
 
 .completion-notes textarea:focus {
@@ -888,7 +887,6 @@
   position: fixed;
   inset: 0;
   background: rgb(0 0 0 / 60%);
-  backdrop-filter: blur(4px);
   z-index: 2000;
   display: none;
   align-items: center;
