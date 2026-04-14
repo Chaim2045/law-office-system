@@ -125,7 +125,7 @@ function showBlockedClientDialog(clientName, action) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 
   setTimeout(() => {
     if (document.body.contains(overlay)) {
@@ -210,7 +210,7 @@ function showAdvancedTimeDialog(taskId, manager) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 
   // ✅ Dynamic Date Badge - Updates based on selected date
   window.updateDateBadge = function() {
@@ -283,15 +283,16 @@ return;
     clearErrorOnInput(dateInput);
     clearErrorOnInput(minutesInput);
 
-    // ✅ NEW: Clear error on GuidedTextInput textarea
+    // Clear error on GuidedTextInput textarea (once, not every keystroke)
     const guidedTextarea = document.querySelector('.guided-textarea');
     if (guidedTextarea) {
       guidedTextarea.addEventListener('input', () => {
-        guidedTextarea.classList.remove('error');
-        // Also remove error message if exists
-        const errorMsg = guidedTextarea.closest('.guided-input-wrapper')?.querySelector('.error-message');
-        if (errorMsg) {
-          errorMsg.remove();
+        if (guidedTextarea.classList.contains('error')) {
+          guidedTextarea.classList.remove('error');
+          const errorMsg = guidedTextarea.closest('.guided-input-wrapper')?.querySelector('.error-message');
+          if (errorMsg) {
+            errorMsg.remove();
+          }
         }
       });
     }
@@ -467,7 +468,7 @@ function showAdjustBudgetDialog(taskId, manager) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 }
 
 /**
@@ -692,7 +693,7 @@ function showTaskCompletionModal(task, manager) {
   document.body.appendChild(overlay);
 
   // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-  setTimeout(() => overlay.classList.add('show'), 10);
+  requestAnimationFrame(() => overlay.classList.add('show'));
 }
 
 /**

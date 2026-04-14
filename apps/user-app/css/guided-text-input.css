@@ -100,7 +100,16 @@
 
 .char-count {
   font-weight: 600;
+  color: #6b7280;
   transition: color 0.2s ease;
+}
+
+.char-count.char-warning {
+  color: #f59e0b;
+}
+
+.char-count.char-danger {
+  color: #dc2626;
 }
 
 .char-max {

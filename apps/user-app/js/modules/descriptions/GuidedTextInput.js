@@ -284,6 +284,10 @@
         return;
       }
 
+      // Cache DOM references to avoid querySelector on every keystroke
+      this._counterEl = this.container.querySelector('.char-count');
+      this._textarea = textarea;
+
       // Input event - update character count
       textarea.addEventListener('input', (e) => this.handleInput(e));
 
@@ -465,20 +469,17 @@ return;
      * Update character counter UI
      */
     updateCharCounter(count) {
-      const counterEl = this.container.querySelector('.char-count');
-      if (counterEl) {
-        counterEl.textContent = count;
+      const counterEl = this._counterEl;
+      if (!counterEl) {
+return;
+}
 
-        // Color coding
-        const percentage = count / this.options.maxChars;
-        if (percentage >= 0.9) {
-          counterEl.style.color = '#dc2626'; // Red
-        } else if (percentage >= 0.7) {
-          counterEl.style.color = '#f59e0b'; // Orange
-        } else {
-          counterEl.style.color = '#6b7280'; // Gray
-        }
-      }
+      counterEl.textContent = count;
+
+      // Color coding via CSS classes (avoids inline style reflow)
+      const percentage = count / this.options.maxChars;
+      counterEl.classList.toggle('char-danger', percentage >= 0.9);
+      counterEl.classList.toggle('char-warning', percentage >= 0.7 && percentage < 0.9);
     }
 
     /**

@@ -916,8 +916,11 @@ return false;
       // ✅ Initialize Daily Meter (sidebar ring)
       this.initDailyMeter();
 
-      // ✅ הפעלת Real-time listeners למשימות ושעות
-      this.startRealTimeListeners();
+      // ✅ הפעלת Real-time listeners למשימות ושעות (once only)
+      if (!this._realTimeListenersStarted) {
+        this.startRealTimeListeners();
+        this._realTimeListenersStarted = true;
+      }
 
       Logger.log(`✅ Data loaded: ${clients.length} clients, ${budgetTasks.length} tasks, ${timesheetEntries.length} entries`);
       this.updateLoaderText('הכל מוכן!', 100);
@@ -2389,7 +2392,7 @@ return;
     updateDaysDifference(dateInput.value);
 
     // ✅ תיקון: הסרת class .hidden כדי שהפופאפ יופיע
-    setTimeout(() => overlay.classList.add('show'), 10);
+    requestAnimationFrame(() => overlay.classList.add('show'));
   }
 
   /**
@@ -2599,7 +2602,7 @@ return;
     `;
 
     document.body.appendChild(overlay);
-    setTimeout(() => overlay.classList.add('show'), 10);
+    requestAnimationFrame(() => overlay.classList.add('show'));
 
     // Focus on reason textarea
     setTimeout(() => {
