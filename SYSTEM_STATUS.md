@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-04-12
-**סטטוס:** Daily reporting meter (sidebar ring) — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194, #195, #197, #198, #199, #200, #201
+**עדכון אחרון:** 2026-04-14
+**סטטוס:** UI performance fixes — popup interaction lag eliminated — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194, #195, #197, #198, #199, #200, #201, #204
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               9941561 — Daily reporting meter + fixes
-production-stable:  merged PR #201
+main:               9d1c989 — UI performance fixes
+production-stable:  merged PR #204
 אין branches פתוחים.
 ```
 
@@ -68,6 +68,7 @@ production-stable:  merged PR #201
 | #199 | 9/4 | feat: Employee monthly timesheet report (HTML + CSV) — PROD deploy. דוח שעתון עובד חודשי: כפתור "הפק דוח" בפרטי עובד, מודאל קומפקטי לבחירת חודש/פורמט, הפקת HTML עם לוגו + פירוט פנימי/לקוחות בנפרד, CSV עם BOM לעברית. כולל: popup blocker guard, CSV escaping (RFC 4180), double-click guard |
 | #200 | 12/4 | feat: Daily reporting meter (sidebar ring) — מד דיווח יומי עגול ב-sidebar footer. מציג אחוז התקדמות יומי מול תקן העובד (dailyHoursTarget). לחיצה פותחת popup עם פירוט לפי לקוחות + זמן פנימי. real-time updates, zero DB queries נוספות, התראת חריגה חד-פעמית. קבצים: `apps/user-app/js/modules/components/sidebar/daily-meter.js`, `daily-meter.css` |
 | #201 | 12/4 | deploy: Daily reporting meter to PROD |
+| #204 | 14/4 | perf: eliminate popup interaction lag — root cause היה backdrop-filter: blur(12px) על כל popups שגרם ל-GPU recomposite בכל keystroke/DOM change. הסרה מלאה של backdrop-filter, transition: all → ממוקד, animation 0.35s→0.15s, setTimeout(10)→requestAnimationFrame (11 מופעים). כולל: ActionFlowManager דילייים מלאכותיים (minLoadingDuration 200→0, closeDelay 500→150), GuidedTextInput DOM caching, _realTimeListenersStarted guard, 50 unit tests |
 
 ---
 
