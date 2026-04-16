@@ -20,6 +20,46 @@
     config: ['system_config_updated', 'system_config_rollback']
   };
 
+  // Role-based action classification
+  const USER_ACTIONS = [
+    // activity_log (lowercase)
+    'login', 'logout', 'create_task', 'edit_task', 'delete_task',
+    'complete_task', 'extend_deadline', 'update_progress',
+    'create_timesheet', 'edit_timesheet', 'delete_timesheet',
+    'create_client', 'edit_client', 'delete_client', 'block_client', 'unblock_client',
+    'generate_report', 'export_data',
+    // audit_log (UPPERCASE — user-initiated via Functions)
+    'CREATE_TASK', 'COMPLETE_TASK', 'CANCEL_TASK', 'EXTEND_TASK_DEADLINE',
+    'ADJUST_BUDGET', 'ADD_TIME_TO_TASK', 'CREATE_TIMESHEET_ENTRY_V2',
+    'CREATE_TIMESHEET_ENTRY', 'CREATE_CLIENT', 'ADD_SERVICE_TO_CLIENT',
+    'CREATE_CASE', 'ADD_SERVICE_TO_CASE'
+  ];
+
+  const ADMIN_ACTIONS = [
+    // User management
+    'VIEW_USER_DETAILS', 'CREATE_USER', 'UPDATE_USER', 'DELETE_USER',
+    'USER_CREATED', 'USER_UPDATED', 'USER_DELETED', 'USER_BLOCKED', 'USER_UNBLOCKED',
+    'delete_user_data_selective',
+    // Tasks — admin
+    'UPDATE_TASK_BY_ADMIN', 'TASK_UPDATED_BY_ADMIN', 'MOVE_TO_NEXT_STAGE',
+    // Timesheet — admin
+    'CREATE_QUICK_LOG_ENTRY',
+    // Clients & cases — admin
+    'UPDATE_CLIENT', 'DELETE_CLIENT', 'CHANGE_CLIENT_STATUS', 'CLOSE_CASE',
+    // Services & packages — admin
+    'ADD_SERVICE', 'ADD_PACKAGE', 'DELETE_SERVICE',
+    'CHANGE_SERVICE_STATUS', 'COMPLETE_SERVICE',
+    'SET_SERVICE_OVERRIDE', 'REMOVE_SERVICE_OVERRIDE',
+    'RESOLVE_SERVICE_OVERDRAFT', 'UNRESOLVE_SERVICE_OVERDRAFT',
+    'ADD_PACKAGE_TO_SERVICE', 'ADD_PACKAGE_TO_STAGE',
+    // Fee agreements
+    'UPLOAD_FEE_AGREEMENT', 'DELETE_FEE_AGREEMENT',
+    // System config
+    'system_config_updated', 'system_config_rollback',
+    // Migration (admin-initiated)
+    'MIGRATE_CLIENTS_TO_CASES', 'MIGRATE_CASES_TO_CLIENTS'
+  ];
+
   function getActionCategory(action) {
     for (const [cat, actions] of Object.entries(ACTION_CATEGORIES)) {
       if (actions.includes(action)) {
@@ -157,7 +197,7 @@
     currentPage: 1,
     totalLoaded: 0,
     loading: false,
-    source: 'all', // 'all', 'activity', 'audit'
+    source: 'all', // 'all', 'user', 'admin'
     filters: {
       action: '',
       user: '',
@@ -192,8 +232,8 @@
           <div class="audit-filters">
             <div class="audit-source-tabs" id="source-tabs">
               <button class="audit-source-tab active" data-source="all">הכל</button>
-              <button class="audit-source-tab" data-source="activity">פעילות משתמשים</button>
-              <button class="audit-source-tab" data-source="audit">פעולות מנהל</button>
+              <button class="audit-source-tab" data-source="user">פעילות משתמשים</button>
+              <button class="audit-source-tab" data-source="admin">פעולות מנהל</button>
             </div>
 
             <div class="audit-filter-group">
@@ -201,44 +241,92 @@
               <select class="audit-filter-select" id="filter-action">
                 <option value="">הכל</option>
 
-                <optgroup label="כניסה/יציאה">
+                <!-- ═══ User Actions ═══ -->
+                <optgroup label="כניסה/יציאה" data-source="user">
                   <option value="login">כניסה (~2,400)</option>
                   <option value="logout">יציאה (8)</option>
                 </optgroup>
 
-                <optgroup label="משימות — פעילות משתמשים">
-                  <option value="create_task">יצירת משימה (משתמש) (~20)</option>
-                  <option value="complete_task">השלמת משימה (משתמש) (10)</option>
-                </optgroup>
-
-                <optgroup label="משימות — פעולות מנהל">
-                  <option value="CREATE_TASK">יצירת משימה (מנהל) (~700)</option>
-                  <option value="COMPLETE_TASK">השלמת משימה (מנהל) (~300)</option>
+                <optgroup label="משימות (משתמש)" data-source="user">
+                  <option value="create_task">יצירת משימה — activity (20)</option>
+                  <option value="edit_task">עריכת משימה</option>
+                  <option value="delete_task">מחיקת משימה</option>
+                  <option value="complete_task">השלמת משימה — activity (10)</option>
+                  <option value="extend_deadline">הארכת דדליין — activity</option>
+                  <option value="update_progress">עדכון התקדמות</option>
+                  <option value="CREATE_TASK">יצירת משימה (~700)</option>
+                  <option value="COMPLETE_TASK">השלמת משימה (~300)</option>
                   <option value="CANCEL_TASK">ביטול משימה (~45)</option>
                   <option value="EXTEND_TASK_DEADLINE">הארכת דדליין (~330)</option>
                   <option value="ADJUST_BUDGET">התאמת תקציב (~80)</option>
                   <option value="ADD_TIME_TO_TASK">הוספת שעות למשימה (~110)</option>
+                </optgroup>
+
+                <optgroup label="שעתון (משתמש)" data-source="user">
+                  <option value="CREATE_TIMESHEET_ENTRY_V2">רישום שעות (~570)</option>
+                  <option value="CREATE_TIMESHEET_ENTRY">רישום שעות — גרסה קודמת (~490)</option>
+                  <option value="create_timesheet">רישום שעות — activity</option>
+                  <option value="edit_timesheet">עריכת שעות</option>
+                  <option value="delete_timesheet">מחיקת שעות</option>
+                </optgroup>
+
+                <optgroup label="לקוחות ותיקים (משתמש)" data-source="user">
+                  <option value="CREATE_CLIENT">יצירת לקוח (~140)</option>
+                  <option value="CREATE_CASE">יצירת תיק (6)</option>
+                  <option value="create_client">יצירת לקוח — activity</option>
+                  <option value="edit_client">עריכת לקוח</option>
+                  <option value="delete_client">מחיקת לקוח</option>
+                  <option value="block_client">חסימת לקוח</option>
+                  <option value="unblock_client">ביטול חסימת לקוח</option>
+                </optgroup>
+
+                <optgroup label="שירותים (משתמש)" data-source="user">
+                  <option value="ADD_SERVICE_TO_CLIENT">הוספת שירות ללקוח (~65)</option>
+                  <option value="ADD_SERVICE_TO_CASE">הוספת שירות לתיק (~15)</option>
+                </optgroup>
+
+                <optgroup label="דוחות (משתמש)" data-source="user">
+                  <option value="generate_report">הפקת דוח</option>
+                  <option value="export_data">ייצוא נתונים</option>
+                </optgroup>
+
+                <!-- ═══ Admin Actions ═══ -->
+                <optgroup label="ניהול משתמשים" data-source="admin">
+                  <option value="VIEW_USER_DETAILS">צפייה בפרטי משתמש (~970)</option>
+                  <option value="CREATE_USER">יצירת משתמש (7)</option>
+                  <option value="UPDATE_USER">עדכון משתמש (~30)</option>
+                  <option value="DELETE_USER">מחיקת משתמש (7)</option>
+                  <option value="USER_CREATED">יצירת משתמש — legacy</option>
+                  <option value="USER_UPDATED">עדכון משתמש — legacy</option>
+                  <option value="USER_DELETED">מחיקת משתמש — legacy</option>
+                  <option value="USER_BLOCKED">חסימת משתמש</option>
+                  <option value="USER_UNBLOCKED">ביטול חסימת משתמש</option>
+                  <option value="delete_user_data_selective">מחיקת נתוני משתמש — חלקית (~25)</option>
+                </optgroup>
+
+                <optgroup label="משימות (ניהול)" data-source="admin">
                   <option value="UPDATE_TASK_BY_ADMIN">עדכון משימה ע"י מנהל (10)</option>
-                  <option value="TASK_UPDATED_BY_ADMIN">עדכון משימה ע"י מנהל — legacy (3)</option>
+                  <option value="TASK_UPDATED_BY_ADMIN">עדכון משימה — legacy (3)</option>
                   <option value="MOVE_TO_NEXT_STAGE">מעבר לשלב הבא (4)</option>
                 </optgroup>
 
-                <optgroup label="שעתון">
-                  <option value="CREATE_TIMESHEET_ENTRY_V2">רישום שעות (~570)</option>
-                  <option value="CREATE_TIMESHEET_ENTRY">רישום שעות (גרסה קודמת) (~490)</option>
+                <optgroup label="שעתון (ניהול)" data-source="admin">
                   <option value="CREATE_QUICK_LOG_ENTRY">רישום מהיר (~200)</option>
                 </optgroup>
 
-                <optgroup label="לקוחות ותיקים">
-                  <option value="CREATE_CLIENT">יצירת לקוח (~140)</option>
-                  <option value="CREATE_CASE">יצירת תיק (6)</option>
+                <optgroup label="לקוחות ותיקים (ניהול)" data-source="admin">
+                  <option value="UPDATE_CLIENT">עדכון לקוח</option>
+                  <option value="DELETE_CLIENT">מחיקת לקוח</option>
+                  <option value="CHANGE_CLIENT_STATUS">שינוי סטטוס לקוח</option>
+                  <option value="CLOSE_CASE">סגירת תיק</option>
                   <option value="MIGRATE_CLIENTS_TO_CASES">העברת לקוחות לתיקים (6)</option>
                   <option value="MIGRATE_CASES_TO_CLIENTS">העברת תיקים ללקוחות (2)</option>
                 </optgroup>
 
-                <optgroup label="שירותים וחבילות">
-                  <option value="ADD_SERVICE_TO_CLIENT">הוספת שירות ללקוח (~65)</option>
-                  <option value="ADD_SERVICE_TO_CASE">הוספת שירות לתיק (~15)</option>
+                <optgroup label="שירותים (ניהול)" data-source="admin">
+                  <option value="ADD_SERVICE">הוספת שירות</option>
+                  <option value="ADD_PACKAGE">הוספת חבילה</option>
+                  <option value="DELETE_SERVICE">מחיקת שירות</option>
                   <option value="CHANGE_SERVICE_STATUS">שינוי סטטוס שירות (3)</option>
                   <option value="COMPLETE_SERVICE">השלמת שירות (1)</option>
                   <option value="SET_SERVICE_OVERRIDE">ביטול חסימת שירות (~15)</option>
@@ -249,21 +337,14 @@
                   <option value="ADD_PACKAGE_TO_STAGE">הוספת חבילה לשלב (1)</option>
                 </optgroup>
 
-                <optgroup label="הסכמי שכ״ט">
+                <optgroup label="הסכמי שכ״ט" data-source="admin">
                   <option value="UPLOAD_FEE_AGREEMENT">העלאת הסכם שכ"ט (10)</option>
                   <option value="DELETE_FEE_AGREEMENT">מחיקת הסכם שכ"ט (1)</option>
                 </optgroup>
 
-                <optgroup label="ניהול משתמשים">
-                  <option value="VIEW_USER_DETAILS">צפייה בפרטי משתמש (~970)</option>
-                  <option value="CREATE_USER">יצירת משתמש (7)</option>
-                  <option value="UPDATE_USER">עדכון משתמש (~30)</option>
-                  <option value="DELETE_USER">מחיקת משתמש (7)</option>
-                  <option value="delete_user_data_selective">מחיקת נתוני משתמש (חלקית) (~25)</option>
-                </optgroup>
-
-                <optgroup label="מערכת">
+                <optgroup label="מערכת" data-source="admin">
                   <option value="system_config_updated">עדכון הגדרות (6)</option>
+                  <option value="system_config_rollback">שחזור הגדרות</option>
                 </optgroup>
               </select>
             </div>
@@ -308,6 +389,7 @@
 });
           tab.classList.add('active');
           self.source = tab.dataset.source;
+          self._updateDropdownBySource();
           self.currentPage = 1;
           self.loadData();
         });
@@ -327,6 +409,7 @@
         self.filters = { action: '', user: '', dateFrom: '', dateTo: '' };
         self.currentPage = 1;
         self.loadData();
+        self._updateDropdownBySource();
       });
 
       // Enter key on user filter
@@ -346,6 +429,29 @@
       this.loadData();
     },
 
+    _updateDropdownBySource: function() {
+      const select = document.getElementById('filter-action');
+      if (!select) {
+return;
+}
+      const source = this.source;
+
+      select.querySelectorAll('optgroup[data-source]').forEach(function(og) {
+        const ds = og.getAttribute('data-source');
+        if (source === 'all') {
+          og.style.display = '';
+        } else {
+          og.style.display = (ds === source) ? '' : 'none';
+        }
+      });
+
+      // If selected option is in a hidden optgroup — reset to "all"
+      const sel = select.options[select.selectedIndex];
+      if (sel && sel.parentElement.tagName === 'OPTGROUP' && sel.parentElement.style.display === 'none') {
+        select.value = '';
+      }
+    },
+
     // ═══════════════════════════════════════════
     // Data Loading
     // ═══════════��═══════════════════════════════
@@ -360,56 +466,64 @@
       content.innerHTML = '<div class="audit-loading"><i class="fas fa-spinner fa-spin"></i> טוען נתונים...</div>';
 
       try {
-        const results = [];
+        let results = [];
 
-        // Load from activity_log
-        if (this.source === 'all' || this.source === 'activity') {
-          const activityDocs = await this._queryCollection('activity_log');
-          activityDocs.forEach(function(doc) {
-            const data = doc.data();
-            // Prefer username (Hebrew) over email, never show raw UID
-            const displayUser = data.username || data.userEmail || _emailFromUid(data.userId) || '';
-            results.push({
-              id: doc.id,
-              source: 'activity',
-              action: data.action || data.type || '',
-              user: displayUser,
-              username: data.username || '',
-              target: data.targetUser || '',
-              details: data.details || '',
-              severity: data.severity || 'info',
-              timestamp: data.timestamp,
-              timestampLocal: data.timestampLocal || null
-            });
-          });
-        }
+        // Always query both collections in parallel
+        const [activityDocs, auditDocs] = await Promise.all([
+          this._queryCollection('activity_log'),
+          this._queryCollection('audit_log')
+        ]);
 
-        // Load from audit_log
-        if (this.source === 'all' || this.source === 'audit') {
-          const auditDocs = await this._queryCollection('audit_log');
-          auditDocs.forEach(function(doc) {
-            const data = doc.data();
-            // Prefer name (Hebrew) over email, never show raw UID
-            const displayUser = data.performedByName || data.username || data.performedBy || data.adminEmail || _emailFromUid(data.userId) || '';
-            // Extract target from details if not in top-level field
-            const det = _parseDetails(data.details);
-            let target = data.targetUser || data.targetUserEmail || '';
-            if (!target) {
-              target = det.targetEmail || det.targetUser || det.clientName || '';
-            }
-            results.push({
-              id: doc.id,
-              source: 'audit',
-              action: data.action || '',
-              user: displayUser,
-              username: data.performedByName || data.username || '',
-              target: target,
-              details: data.details || '',
-              severity: data.severity || 'info',
-              timestamp: data.timestamp,
-              timestampLocal: data.timestampLocal || null
-            });
+        // Map activity_log docs
+        activityDocs.forEach(function(doc) {
+          const data = doc.data();
+          const displayUser = data.username || data.userEmail || _emailFromUid(data.userId) || '';
+          results.push({
+            id: doc.id,
+            source: 'activity',
+            action: data.action || data.type || '',
+            user: displayUser,
+            username: data.username || '',
+            target: data.targetUser || '',
+            details: data.details || '',
+            severity: data.severity || 'info',
+            timestamp: data.timestamp,
+            timestampLocal: data.timestampLocal || null
           });
+        });
+
+        // Map audit_log docs
+        auditDocs.forEach(function(doc) {
+          const data = doc.data();
+          const displayUser = data.performedByName || data.username || data.performedBy || data.adminEmail || _emailFromUid(data.userId) || '';
+          const det = _parseDetails(data.details);
+          let target = data.targetUser || data.targetUserEmail || '';
+          if (!target) {
+            target = det.targetEmail || det.targetUser || det.clientName || '';
+          }
+          results.push({
+            id: doc.id,
+            source: 'audit',
+            action: data.action || '',
+            user: displayUser,
+            username: data.performedByName || data.username || '',
+            target: target,
+            details: data.details || '',
+            severity: data.severity || 'info',
+            timestamp: data.timestamp,
+            timestampLocal: data.timestampLocal || null
+          });
+        });
+
+        // Filter by role
+        if (this.source === 'user') {
+          results = results.filter(function(e) {
+ return USER_ACTIONS.includes(e.action);
+});
+        } else if (this.source === 'admin') {
+          results = results.filter(function(e) {
+ return ADMIN_ACTIONS.includes(e.action);
+});
         }
 
         // Sort by timestamp desc
@@ -495,17 +609,17 @@
  return;
 }
 
-      const actCount = this.entries.filter(function(e) {
- return e.source === 'activity';
+      const userCount = this.entries.filter(function(e) {
+ return USER_ACTIONS.includes(e.action);
 }).length;
-      const audCount = this.entries.filter(function(e) {
- return e.source === 'audit';
+      const adminCount = this.entries.filter(function(e) {
+ return ADMIN_ACTIONS.includes(e.action);
 }).length;
 
       statsEl.innerHTML =
         '<span class="audit-stat"><strong>' + this.entries.length + '</strong> רשומות</span>' +
-        '<span class="audit-stat"><strong>' + actCount + '</strong> פעילות</span>' +
-        '<span class="audit-stat"><strong>' + audCount + '</strong> ניהול</span>';
+        '<span class="audit-stat"><strong>' + userCount + '</strong> משתמשים</span>' +
+        '<span class="audit-stat"><strong>' + adminCount + '</strong> ניהול</span>';
     },
 
     _renderTable: function() {
