@@ -390,6 +390,7 @@
           tab.classList.add('active');
           self.source = tab.dataset.source;
           self._updateDropdownBySource();
+          self.filters.action = document.getElementById('filter-action').value;
           self.currentPage = 1;
           self.loadData();
         });
@@ -547,9 +548,12 @@ return;
     },
 
     _queryCollection: async function(collectionName) {
-      let query = this.db.collection(collectionName)
-        .orderBy('timestamp', 'desc')
-        .limit(500);
+      let query = this.db.collection(collectionName);
+
+      // Server-side action filter (requires composite index: action + timestamp)
+      if (this.filters.action) {
+        query = query.where('action', '==', this.filters.action);
+      }
 
       // Date filters
       if (this.filters.dateFrom) {
@@ -564,6 +568,8 @@ return;
         query = query.where('timestamp', '<=', to);
       }
 
+      query = query.orderBy('timestamp', 'desc').limit(500);
+
       const snapshot = await query.get();
       const docs = [];
 
@@ -571,16 +577,9 @@ return;
  docs.push(doc);
 });
 
-      // Client-side filtering (action and user)
+      // Client-side filtering (user only — action is now server-side)
       return docs.filter(function(doc) {
         const data = doc.data();
-
-        if (this.filters.action) {
-          const docAction = data.action || data.type || '';
-          if (docAction !== this.filters.action) {
- return false;
-}
-        }
 
         if (this.filters.user) {
           const searchTerm = this.filters.user;
