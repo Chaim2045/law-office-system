@@ -480,15 +480,20 @@
 
       const profile = this.selectedProfile;
       const uid = profile.authUID;
+      const email = profile.email;
       const actionFilter = this.detailFilters.action;
 
       try {
-        // Query both collections by userId (indexed)
+        // Query both collections — by userId (indexed) or email fallback
         const queries = [];
 
         if (uid) {
           queries.push(this._queryUserCollection('audit_log', 'userId', uid));
           queries.push(this._queryUserCollection('activity_log', 'userId', uid));
+        } else {
+          // No authUID — fallback to email-based queries
+          queries.push(this._queryUserCollection('audit_log', 'adminEmail', email));
+          queries.push(this._queryUserCollection('activity_log', 'userEmail', email));
         }
 
         const allResults = await Promise.all(queries);
