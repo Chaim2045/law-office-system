@@ -201,17 +201,17 @@
               <select class="audit-filter-select" id="filter-action">
                 <option value="">הכל</option>
 
-                <optgroup label="כניסה/יציאה">
+                <optgroup label="כניסה/יציאה" data-source="activity">
                   <option value="login">כניסה (~2,400)</option>
                   <option value="logout">יציאה (8)</option>
                 </optgroup>
 
-                <optgroup label="משימות — פעילות משתמשים">
+                <optgroup label="משימות — פעילות משתמשים" data-source="activity">
                   <option value="create_task">יצירת משימה (משתמש) (~20)</option>
                   <option value="complete_task">השלמת משימה (משתמש) (10)</option>
                 </optgroup>
 
-                <optgroup label="משימות — פעולות מנהל">
+                <optgroup label="משימות — פעולות מנהל" data-source="audit">
                   <option value="CREATE_TASK">יצירת משימה (מנהל) (~700)</option>
                   <option value="COMPLETE_TASK">השלמת משימה (מנהל) (~300)</option>
                   <option value="CANCEL_TASK">ביטול משימה (~45)</option>
@@ -223,20 +223,20 @@
                   <option value="MOVE_TO_NEXT_STAGE">מעבר לשלב הבא (4)</option>
                 </optgroup>
 
-                <optgroup label="שעתון">
+                <optgroup label="שעתון" data-source="audit">
                   <option value="CREATE_TIMESHEET_ENTRY_V2">רישום שעות (~570)</option>
                   <option value="CREATE_TIMESHEET_ENTRY">רישום שעות (גרסה קודמת) (~490)</option>
                   <option value="CREATE_QUICK_LOG_ENTRY">רישום מהיר (~200)</option>
                 </optgroup>
 
-                <optgroup label="לקוחות ותיקים">
+                <optgroup label="לקוחות ותיקים" data-source="audit">
                   <option value="CREATE_CLIENT">יצירת לקוח (~140)</option>
                   <option value="CREATE_CASE">יצירת תיק (6)</option>
                   <option value="MIGRATE_CLIENTS_TO_CASES">העברת לקוחות לתיקים (6)</option>
                   <option value="MIGRATE_CASES_TO_CLIENTS">העברת תיקים ללקוחות (2)</option>
                 </optgroup>
 
-                <optgroup label="שירותים וחבילות">
+                <optgroup label="שירותים וחבילות" data-source="audit">
                   <option value="ADD_SERVICE_TO_CLIENT">הוספת שירות ללקוח (~65)</option>
                   <option value="ADD_SERVICE_TO_CASE">הוספת שירות לתיק (~15)</option>
                   <option value="CHANGE_SERVICE_STATUS">שינוי סטטוס שירות (3)</option>
@@ -249,12 +249,12 @@
                   <option value="ADD_PACKAGE_TO_STAGE">הוספת חבילה לשלב (1)</option>
                 </optgroup>
 
-                <optgroup label="הסכמי שכ״ט">
+                <optgroup label="הסכמי שכ״ט" data-source="audit">
                   <option value="UPLOAD_FEE_AGREEMENT">העלאת הסכם שכ"ט (10)</option>
                   <option value="DELETE_FEE_AGREEMENT">מחיקת הסכם שכ"ט (1)</option>
                 </optgroup>
 
-                <optgroup label="ניהול משתמשים">
+                <optgroup label="ניהול משתמשים" data-source="audit">
                   <option value="VIEW_USER_DETAILS">צפייה בפרטי משתמש (~970)</option>
                   <option value="CREATE_USER">יצירת משתמש (7)</option>
                   <option value="UPDATE_USER">עדכון משתמש (~30)</option>
@@ -262,7 +262,7 @@
                   <option value="delete_user_data_selective">מחיקת נתוני משתמש (חלקית) (~25)</option>
                 </optgroup>
 
-                <optgroup label="מערכת">
+                <optgroup label="מערכת" data-source="audit">
                   <option value="system_config_updated">עדכון הגדרות (6)</option>
                 </optgroup>
               </select>
@@ -308,6 +308,7 @@
 });
           tab.classList.add('active');
           self.source = tab.dataset.source;
+          self._updateDropdownBySource();
           self.currentPage = 1;
           self.loadData();
         });
@@ -325,6 +326,7 @@
         document.getElementById('filter-date-from').value = '';
         document.getElementById('filter-date-to').value = '';
         self.filters = { action: '', user: '', dateFrom: '', dateTo: '' };
+        self._updateDropdownBySource();
         self.currentPage = 1;
         self.loadData();
       });
@@ -344,6 +346,32 @@
       this.filters.dateTo = document.getElementById('filter-date-to').value;
       this.currentPage = 1;
       this.loadData();
+    },
+
+    _updateDropdownBySource: function() {
+      const select = document.getElementById('filter-action');
+      if (!select) {
+return;
+}
+      const source = this.source;
+
+      const optgroups = select.querySelectorAll('optgroup[data-source]');
+      optgroups.forEach(function(og) {
+        const ogSource = og.getAttribute('data-source');
+        if (source === 'all') {
+          og.style.display = '';
+        } else {
+          og.style.display = (ogSource === source) ? '' : 'none';
+        }
+      });
+
+      // If selected option is inside a hidden optgroup — reset to "הכל"
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption && selectedOption.parentElement.tagName === 'OPTGROUP') {
+        if (selectedOption.parentElement.style.display === 'none') {
+          select.value = '';
+        }
+      }
     },
 
     // ═══════════════════════════════════════════
