@@ -480,21 +480,16 @@
 
       const profile = this.selectedProfile;
       const uid = profile.authUID;
-      const email = profile.email;
+      const actionFilter = this.detailFilters.action;
 
       try {
-        // Query both collections in parallel by userId
+        // Query both collections by userId (indexed)
         const queries = [];
 
         if (uid) {
           queries.push(this._queryUserCollection('audit_log', 'userId', uid));
           queries.push(this._queryUserCollection('activity_log', 'userId', uid));
         }
-
-        // Also query by email fields as fallback
-        queries.push(this._queryUserCollection('audit_log', 'performedBy', email));
-        queries.push(this._queryUserCollection('audit_log', 'adminEmail', email));
-        queries.push(this._queryUserCollection('activity_log', 'userEmail', email));
 
         const allResults = await Promise.all(queries);
 
@@ -522,9 +517,9 @@
         this._buildActionDropdown(results);
 
         // Apply action filter if set
-        if (this.detailFilters.action) {
+        if (actionFilter) {
           results = results.filter(function(e) {
-            return e.action === self.detailFilters.action;
+            return e.action === actionFilter;
           });
           this.entries = results;
         }
