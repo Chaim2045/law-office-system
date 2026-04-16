@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   Audit Trail Page Styles
+   Audit Trail — User Profiles View
    ═══════════════════════════════════════════ */
 
 .audit-page {
@@ -27,38 +27,309 @@
   color: var(--gray-400);
 }
 
-.audit-stats {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.audit-stat {
-  padding: 4px 12px;
-  background: var(--gray-100);
-  border-radius: 20px;
-  font-size: 12px;
-  color: var(--gray-600);
-  font-weight: 500;
-}
-
-.audit-stat strong {
-  color: var(--gray-900);
-}
-
 /* ═══════════════════════════════════════════
-   Filters Bar
-   ═══════════════════���═══════════════════════ */
+   Profile List — Search & Filters
+   ═══════════════════════════════════════════ */
 
-.audit-filters {
+.audit-profiles-toolbar {
   display: flex;
   gap: var(--space-3);
   align-items: center;
-  flex-wrap: nowrap;
   padding: var(--space-3) var(--space-4);
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
+}
+
+.audit-search-box {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+}
+
+.audit-search-box input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-800);
+  background: white;
+}
+
+.audit-search-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 10%);
+}
+
+.audit-search-box i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-400);
+  font-size: 13px;
+}
+
+.audit-role-filter {
+  display: flex;
+  gap: 4px;
+  background: var(--gray-100);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.audit-role-btn {
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.audit-role-btn.active {
+  background: #2563eb;
+  color: white;
+  box-shadow: 0 1px 3px rgb(37 99 235 / 30%);
+}
+
+.audit-profiles-count {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-right: auto;
+}
+
+/* ═══════════════════════════════════════════
+   Profile Cards Grid
+   ═══════════════════════════════════════════ */
+
+.audit-profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.audit-profile-card {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  position: relative;
+}
+
+.audit-profile-card:hover {
+  border-color: #3b82f6;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.audit-profile-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.audit-profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+.audit-profile-avatar.admin { background: linear-gradient(135deg, #7c3aed, #9333ea); }
+
+.audit-profile-avatar.lawyer { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+
+.audit-profile-avatar.employee { background: linear-gradient(135deg, #059669, #10b981); }
+
+.audit-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.audit-profile-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audit-profile-email {
+  font-size: 12px;
+  color: var(--gray-500);
+  direction: ltr;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audit-profile-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.audit-profile-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.audit-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.audit-role-badge.admin { background: #f3e8ff; color: #7c3aed; }
+
+.audit-role-badge.lawyer { background: #dbeafe; color: #2563eb; }
+
+.audit-role-badge.employee { background: #dcfce7; color: #059669; }
+
+.audit-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.audit-status-dot.active { background: #10b981; }
+
+.audit-status-dot.blocked { background: #ef4444; }
+
+.audit-profile-last-login {
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+.audit-profile-arrow {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-300);
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.audit-profile-card:hover .audit-profile-arrow {
+  color: #3b82f6;
+  left: var(--space-3);
+}
+
+/* ═══════════════════════════════════════════
+   Profile Detail — Back Button & Header
+   ═══════════════════════════════════════════ */
+
+.audit-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: var(--space-4);
+}
+
+.audit-back-btn:hover {
+  background: var(--gray-200);
+}
+
+.audit-profile-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+}
+
+.audit-detail-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+.audit-detail-avatar.admin { background: linear-gradient(135deg, #7c3aed, #9333ea); }
+
+.audit-detail-avatar.lawyer { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+
+.audit-detail-avatar.employee { background: linear-gradient(135deg, #059669, #10b981); }
+
+.audit-detail-info h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 4px;
+}
+
+.audit-detail-info .audit-detail-email {
+  font-size: 13px;
+  color: var(--gray-500);
+  direction: ltr;
+  text-align: right;
+}
+
+.audit-detail-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+/* ═══════════════════════════════════════════
+   Profile Detail — Filters
+   ═══════════════════════════════════════════ */
+
+.audit-detail-filters {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  flex-wrap: nowrap;
   overflow-x: auto;
 }
 
@@ -132,37 +403,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   Source Tabs
-   ═══════════════════════════════════════════ */
-
-.audit-source-tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--gray-100);
-  padding: 3px;
-  border-radius: var(--radius-sm);
-}
-
-.audit-source-tab {
-  padding: 5px 12px;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gray-600);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.audit-source-tab.active {
-  background: #2563eb;
-  color: white;
-  box-shadow: 0 1px 3px rgb(37 99 235 / 30%);
-}
-
-/* ═══════════════════════════════════════════
-   Log Table
+   Activity Log Table
    ═══════════════════════════════════════════ */
 
 .audit-table-wrapper {
@@ -239,23 +480,8 @@
 
 .audit-action-badge.other { background: var(--gray-100); color: var(--gray-600); }
 
-/* Severity indicators */
-.audit-severity {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-left: 6px;
-}
-
-.audit-severity.info { background: #3b82f6; }
-
-.audit-severity.warning { background: #f59e0b; }
-
-.audit-severity.critical { background: #ef4444; }
-
 /* ═══════════════════════════════════════════
-   Details Cell
+   Detail Cells
    ═══════════════════════════════════════════ */
 
 .audit-details {
@@ -266,29 +492,28 @@
   text-overflow: ellipsis;
 }
 
-.audit-user-cell {
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Email addresses need LTR inside RTL context */
-.audit-user-cell.email-cell {
-  direction: ltr;
-  text-align: left;
-  font-size: 12px;
-}
-
 .audit-time-cell {
   font-size: 12px;
   color: var(--gray-500);
   white-space: nowrap;
 }
 
+.audit-target-cell {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audit-target-cell.email-cell {
+  direction: ltr;
+  text-align: left;
+  font-size: 12px;
+}
+
 /* ═══════════════════════════════════════════
    Pagination
-   ════════════���══════════════════════════════ */
+   ═══════════════════════════════════════════ */
 
 .audit-pagination {
   display: flex;
@@ -335,7 +560,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   Empty State
+   Empty & Loading States
    ═══════════════════════════════════════════ */
 
 .audit-empty {
@@ -355,10 +580,6 @@
   margin: 0;
 }
 
-/* ═══════════════════════════════════════════
-   Loading
-   ═══════════════════���═══════════════════════ */
-
 .audit-loading {
   text-align: center;
   padding: var(--space-8);
@@ -371,8 +592,23 @@
    ═══════════════════════════════════════════ */
 
 @media (width <= 1200px) {
-  .audit-filters {
+  .audit-profiles-toolbar {
     flex-wrap: wrap;
+  }
+
+  .audit-detail-filters {
+    flex-wrap: wrap;
+  }
+}
+
+@media (width <= 768px) {
+  .audit-profiles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-profile-detail-header {
+    flex-direction: column;
+    text-align: center;
   }
 }
 
