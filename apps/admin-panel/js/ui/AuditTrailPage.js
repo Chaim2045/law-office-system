@@ -382,6 +382,7 @@
       this.view = 'detail';
       this.selectedProfile = profile;
       this.entries = [];
+      this._allEntries = [];
       this.currentPage = 1;
       this.detailFilters = { action: '', dateFrom: '', dateTo: '' };
 
@@ -448,14 +449,15 @@
         self._applyDetailFilters();
       });
 
-      // Reset
+      // Reset — restore full list without re-fetching
       document.getElementById('btn-detail-reset').addEventListener('click', function() {
         document.getElementById('detail-filter-action').value = '';
         document.getElementById('detail-filter-from').value = '';
         document.getElementById('detail-filter-to').value = '';
         self.detailFilters = { action: '', dateFrom: '', dateTo: '' };
         self.currentPage = 1;
-        self._loadUserActivity();
+        self.entries = self._allEntries.slice();
+        self._renderActivityTable();
       });
     },
 
@@ -464,7 +466,39 @@
       this.detailFilters.dateFrom = document.getElementById('detail-filter-from').value;
       this.detailFilters.dateTo = document.getElementById('detail-filter-to').value;
       this.currentPage = 1;
-      this._loadUserActivity();
+      // Client-side filter only — no re-fetch
+      this._applyClientFilters();
+      this._renderActivityTable();
+    },
+
+    _applyClientFilters: function() {
+      const actionFilter = this.detailFilters.action;
+      const dateFrom = this.detailFilters.dateFrom;
+      const dateTo = this.detailFilters.dateTo;
+
+      let filtered = this._allEntries.slice();
+
+      if (actionFilter) {
+        filtered = filtered.filter(function(e) {
+          return e.action === actionFilter;
+        });
+      }
+
+      if (dateFrom) {
+        const fromMs = new Date(dateFrom).setHours(0, 0, 0, 0);
+        filtered = filtered.filter(function(e) {
+          return e.tsMillis >= fromMs;
+        });
+      }
+
+      if (dateTo) {
+        const toMs = new Date(dateTo).setHours(23, 59, 59, 999);
+        filtered = filtered.filter(function(e) {
+          return e.tsMillis <= toMs;
+        });
+      }
+
+      this.entries = filtered;
     },
 
     _loadUserActivity: async function() {
@@ -481,7 +515,6 @@
       const profile = this.selectedProfile;
       const uid = profile.authUID;
       const email = profile.email;
-      const actionFilter = this.detailFilters.action;
 
       try {
         // Query both collections — by userId (indexed) or email fallback
@@ -500,7 +533,7 @@
 
         // Merge and deduplicate by document id
         const seen = {};
-        let results = [];
+        const results = [];
 
         allResults.forEach(function(docs) {
           docs.forEach(function(item) {
@@ -516,18 +549,12 @@
           return b.tsMillis - a.tsMillis;
         });
 
+        // Store full dataset — filters work client-side only
+        this._allEntries = results;
         this.entries = results;
 
-        // Build action dropdown from actual data
+        // Build action dropdown from full data
         this._buildActionDropdown(results);
-
-        // Apply action filter if set
-        if (actionFilter) {
-          results = results.filter(function(e) {
-            return e.action === actionFilter;
-          });
-          this.entries = results;
-        }
 
         this._renderActivityTable();
 
@@ -542,23 +569,10 @@
     },
 
     _queryUserCollection: async function(collectionName, field, value) {
-      let query = this.db.collection(collectionName)
+      const query = this.db.collection(collectionName)
         .where(field, '==', value)
         .orderBy('timestamp', 'desc')
-        .limit(200);
-
-      // Date filters
-      if (this.detailFilters.dateFrom) {
-        const from = new Date(this.detailFilters.dateFrom);
-        from.setHours(0, 0, 0, 0);
-        query = query.where('timestamp', '>=', from);
-      }
-
-      if (this.detailFilters.dateTo) {
-        const to = new Date(this.detailFilters.dateTo);
-        to.setHours(23, 59, 59, 999);
-        query = query.where('timestamp', '<=', to);
-      }
+        .limit(500);
 
       try {
         const snapshot = await query.get();
