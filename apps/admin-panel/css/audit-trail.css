@@ -365,25 +365,3 @@
   color: var(--gray-400);
   font-size: 14px;
 }
-
-/* ═══════════════════════════════════════════
-   Responsive — Large Screens
-   ═══════════════════════════════════════════ */
-
-@media (width <= 1200px) {
-  .audit-filters {
-    flex-wrap: wrap;
-  }
-}
-
-@media (width >= 1600px) {
-  .audit-page {
-    max-width: 1400px;
-  }
-}
-
-@media (width >= 2400px) {
-  .audit-page {
-    max-width: 1900px;
-  }
-}

@@ -201,61 +201,60 @@
               <select class="audit-filter-select" id="filter-action">
                 <option value="">הכל</option>
 
-                <optgroup label="כניסה/יציאה" data-source="activity">
+                <optgroup label="כניסה/יציאה">
                   <option value="login">כניסה (~2,400)</option>
                   <option value="logout">יציאה (8)</option>
                 </optgroup>
 
-                <optgroup label="משימות — משתמש" data-source="activity">
-                  <option value="create_task">יצירת משימה — activity (~20)</option>
-                  <option value="complete_task">השלמת משימה — activity (10)</option>
-                  <option value="CREATE_TASK">יצירת משימה (~700)</option>
-                  <option value="COMPLETE_TASK">השלמת משימה (~300)</option>
+                <optgroup label="משימות — פעילות משתמשים">
+                  <option value="create_task">יצירת משימה (משתמש) (~20)</option>
+                  <option value="complete_task">השלמת משימה (משתמש) (10)</option>
+                </optgroup>
+
+                <optgroup label="משימות — פעולות מנהל">
+                  <option value="CREATE_TASK">יצירת משימה (מנהל) (~700)</option>
+                  <option value="COMPLETE_TASK">השלמת משימה (מנהל) (~300)</option>
                   <option value="CANCEL_TASK">ביטול משימה (~45)</option>
                   <option value="EXTEND_TASK_DEADLINE">הארכת דדליין (~330)</option>
                   <option value="ADJUST_BUDGET">התאמת תקציב (~80)</option>
                   <option value="ADD_TIME_TO_TASK">הוספת שעות למשימה (~110)</option>
-                </optgroup>
-
-                <optgroup label="שעתון — משתמש" data-source="activity">
-                  <option value="CREATE_TIMESHEET_ENTRY_V2">רישום שעות (~570)</option>
-                  <option value="CREATE_TIMESHEET_ENTRY">רישום שעות (גרסה קודמת) (~490)</option>
-                </optgroup>
-
-                <optgroup label="לקוחות ותיקים — משתמש" data-source="activity">
-                  <option value="CREATE_CLIENT">יצירת לקוח (~140)</option>
-                  <option value="ADD_SERVICE_TO_CLIENT">הוספת שירות ללקוח (~65)</option>
-                  <option value="CREATE_CASE">יצירת תיק (6)</option>
-                  <option value="ADD_SERVICE_TO_CASE">הוספת שירות לתיק (~15)</option>
-                </optgroup>
-
-                <optgroup label="משימות — מנהל" data-source="audit">
                   <option value="UPDATE_TASK_BY_ADMIN">עדכון משימה ע"י מנהל (10)</option>
                   <option value="TASK_UPDATED_BY_ADMIN">עדכון משימה ע"י מנהל — legacy (3)</option>
+                  <option value="MOVE_TO_NEXT_STAGE">מעבר לשלב הבא (4)</option>
                 </optgroup>
 
-                <optgroup label="שעתון — מנהל" data-source="audit">
+                <optgroup label="שעתון">
+                  <option value="CREATE_TIMESHEET_ENTRY_V2">רישום שעות (~570)</option>
+                  <option value="CREATE_TIMESHEET_ENTRY">רישום שעות (גרסה קודמת) (~490)</option>
                   <option value="CREATE_QUICK_LOG_ENTRY">רישום מהיר (~200)</option>
                 </optgroup>
 
-                <optgroup label="לקוחות ושירותים — מנהל" data-source="audit">
-                  <option value="ADD_PACKAGE_TO_SERVICE">הוספת חבילה לשירות (4)</option>
-                  <option value="ADD_PACKAGE_TO_STAGE">הוספת חבילה לשלב (1)</option>
-                  <option value="MOVE_TO_NEXT_STAGE">מעבר לשלב הבא (4)</option>
+                <optgroup label="לקוחות ותיקים">
+                  <option value="CREATE_CLIENT">יצירת לקוח (~140)</option>
+                  <option value="CREATE_CASE">יצירת תיק (6)</option>
+                  <option value="MIGRATE_CLIENTS_TO_CASES">העברת לקוחות לתיקים (6)</option>
+                  <option value="MIGRATE_CASES_TO_CLIENTS">העברת תיקים ללקוחות (2)</option>
+                </optgroup>
+
+                <optgroup label="שירותים וחבילות">
+                  <option value="ADD_SERVICE_TO_CLIENT">הוספת שירות ללקוח (~65)</option>
+                  <option value="ADD_SERVICE_TO_CASE">הוספת שירות לתיק (~15)</option>
                   <option value="CHANGE_SERVICE_STATUS">שינוי סטטוס שירות (3)</option>
                   <option value="COMPLETE_SERVICE">השלמת שירות (1)</option>
                   <option value="SET_SERVICE_OVERRIDE">ביטול חסימת שירות (~15)</option>
                   <option value="REMOVE_SERVICE_OVERRIDE">הסרת ביטול חסימה (3)</option>
                   <option value="RESOLVE_SERVICE_OVERDRAFT">פתרון חריגת שירות (1)</option>
                   <option value="UNRESOLVE_SERVICE_OVERDRAFT">ביטול פתרון חריגה (1)</option>
+                  <option value="ADD_PACKAGE_TO_SERVICE">הוספת חבילה לשירות (4)</option>
+                  <option value="ADD_PACKAGE_TO_STAGE">הוספת חבילה לשלב (1)</option>
                 </optgroup>
 
-                <optgroup label="הסכמי שכ״ט — מנהל" data-source="audit">
+                <optgroup label="הסכמי שכ״ט">
                   <option value="UPLOAD_FEE_AGREEMENT">העלאת הסכם שכ"ט (10)</option>
                   <option value="DELETE_FEE_AGREEMENT">מחיקת הסכם שכ"ט (1)</option>
                 </optgroup>
 
-                <optgroup label="ניהול משתמשים — מנהל" data-source="audit">
+                <optgroup label="ניהול משתמשים">
                   <option value="VIEW_USER_DETAILS">צפייה בפרטי משתמש (~970)</option>
                   <option value="CREATE_USER">יצירת משתמש (7)</option>
                   <option value="UPDATE_USER">עדכון משתמש (~30)</option>
@@ -263,13 +262,8 @@
                   <option value="delete_user_data_selective">מחיקת נתוני משתמש (חלקית) (~25)</option>
                 </optgroup>
 
-                <optgroup label="מערכת — מנהל" data-source="audit">
+                <optgroup label="מערכת">
                   <option value="system_config_updated">עדכון הגדרות (6)</option>
-                </optgroup>
-
-                <optgroup label="פעולות מערכת (legacy)">
-                  <option value="MIGRATE_CLIENTS_TO_CASES">העברת לקוחות לתיקים (6)</option>
-                  <option value="MIGRATE_CASES_TO_CLIENTS">העברת תיקים ללקוחות (2)</option>
                 </optgroup>
               </select>
             </div>
@@ -314,7 +308,6 @@
 });
           tab.classList.add('active');
           self.source = tab.dataset.source;
-          self._updateDropdownBySource();
           self.currentPage = 1;
           self.loadData();
         });
@@ -332,7 +325,6 @@
         document.getElementById('filter-date-from').value = '';
         document.getElementById('filter-date-to').value = '';
         self.filters = { action: '', user: '', dateFrom: '', dateTo: '' };
-        self._updateDropdownBySource();
         self.currentPage = 1;
         self.loadData();
       });
@@ -352,32 +344,6 @@
       this.filters.dateTo = document.getElementById('filter-date-to').value;
       this.currentPage = 1;
       this.loadData();
-    },
-
-    _updateDropdownBySource: function() {
-      const select = document.getElementById('filter-action');
-      if (!select) {
-return;
-}
-      const source = this.source;
-
-      const optgroups = select.querySelectorAll('optgroup[data-source]');
-      optgroups.forEach(function(og) {
-        const ogSource = og.getAttribute('data-source');
-        if (source === 'all') {
-          og.style.display = '';
-        } else {
-          og.style.display = (ogSource === source) ? '' : 'none';
-        }
-      });
-
-      // If selected option is inside a hidden optgroup — reset to "הכל"
-      const selectedOption = select.options[select.selectedIndex];
-      if (selectedOption && selectedOption.parentElement.tagName === 'OPTGROUP') {
-        if (selectedOption.parentElement.style.display === 'none') {
-          select.value = '';
-        }
-      }
     },
 
     // ═══════════════════════════════════════════
