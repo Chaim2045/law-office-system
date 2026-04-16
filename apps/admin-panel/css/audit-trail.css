@@ -97,6 +97,13 @@
   box-shadow: 0 0 0 2px rgb(59 130 246 / 10%);
 }
 
+.audit-filter-select optgroup {
+  font-weight: 600;
+  font-style: normal;
+  color: var(--gray-700);
+  background: #f3f4f6;
+}
+
 .audit-filter-btn {
   padding: 6px 14px;
   background: #2563eb;

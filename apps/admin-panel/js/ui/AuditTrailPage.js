@@ -88,7 +88,16 @@
     'RESOLVE_SERVICE_OVERDRAFT': 'פתרון חריגת שירות',
     'UNRESOLVE_SERVICE_OVERDRAFT': 'ביטול פתרון חריגה',
     'CREATE_TIMESHEET_ENTRY_V2': 'רישום שעות',
+    'CREATE_TIMESHEET_ENTRY': 'רישום שעות (גרסה קודמת)',
     'CREATE_USER': 'יצירת משתמש',
+    'delete_user_data_selective': 'מחיקת נתוני משתמש (חלקית)',
+    'ADD_SERVICE_TO_CASE': 'הוספת שירות לתיק',
+    'UPDATE_TASK_BY_ADMIN': 'עדכון משימה ע"י מנהל',
+    'TASK_UPDATED_BY_ADMIN': 'עדכון משימה ע"י מנהל',
+    'CREATE_CASE': 'יצירת תיק',
+    'MIGRATE_CLIENTS_TO_CASES': 'העברת לקוחות לתיקים',
+    'MIGRATE_CASES_TO_CLIENTS': 'העברת תיקים ללקוחות',
+    'ADD_PACKAGE_TO_STAGE': 'הוספת חבילה לשלב',
     'system_config_updated': 'עדכון הגדרות',
     'system_config_rollback': 'שחזור הגדרות'
   };
@@ -191,34 +200,70 @@
               <label>פעולה:</label>
               <select class="audit-filter-select" id="filter-action">
                 <option value="">הכל</option>
+
                 <optgroup label="כניסה/יציאה">
-                  <option value="login">כניסה</option>
-                  <option value="logout">יציאה</option>
+                  <option value="login">כניסה (~2,400)</option>
+                  <option value="logout">יציאה (8)</option>
                 </optgroup>
-                <optgroup label="משימות">
-                  <option value="create_task">יצירת משימה</option>
-                  <option value="edit_task">עריכת משימה</option>
-                  <option value="delete_task">מחיקת משימה</option>
-                  <option value="complete_task">השלמת משימה</option>
+
+                <optgroup label="משימות — פעילות משתמשים">
+                  <option value="create_task">יצירת משימה (משתמש) (~20)</option>
+                  <option value="complete_task">השלמת משימה (משתמש) (10)</option>
                 </optgroup>
+
+                <optgroup label="משימות — פעולות מנהל">
+                  <option value="CREATE_TASK">יצירת משימה (מנהל) (~700)</option>
+                  <option value="COMPLETE_TASK">השלמת משימה (מנהל) (~300)</option>
+                  <option value="CANCEL_TASK">ביטול משימה (~45)</option>
+                  <option value="EXTEND_TASK_DEADLINE">הארכת דדליין (~330)</option>
+                  <option value="ADJUST_BUDGET">התאמת תקציב (~80)</option>
+                  <option value="ADD_TIME_TO_TASK">הוספת שעות למשימה (~110)</option>
+                  <option value="UPDATE_TASK_BY_ADMIN">עדכון משימה ע"י מנהל (10)</option>
+                  <option value="TASK_UPDATED_BY_ADMIN">עדכון משימה ע"י מנהל — legacy (3)</option>
+                  <option value="MOVE_TO_NEXT_STAGE">מעבר לשלב הבא (4)</option>
+                </optgroup>
+
                 <optgroup label="שעתון">
-                  <option value="create_timesheet">רישום שעות</option>
-                  <option value="edit_timesheet">עריכת שעות</option>
-                  <option value="delete_timesheet">מחיקת שעות</option>
+                  <option value="CREATE_TIMESHEET_ENTRY_V2">רישום שעות (~570)</option>
+                  <option value="CREATE_TIMESHEET_ENTRY">רישום שעות (גרסה קודמת) (~490)</option>
+                  <option value="CREATE_QUICK_LOG_ENTRY">רישום מהיר (~200)</option>
                 </optgroup>
-                <optgroup label="לקוחות">
-                  <option value="create_client">יצירת לקוח</option>
-                  <option value="edit_client">עריכת לקוח</option>
-                  <option value="delete_client">מחיקת לקוח</option>
+
+                <optgroup label="לקוחות ותיקים">
+                  <option value="CREATE_CLIENT">יצירת לקוח (~140)</option>
+                  <option value="CREATE_CASE">יצירת תיק (6)</option>
+                  <option value="MIGRATE_CLIENTS_TO_CASES">העברת לקוחות לתיקים (6)</option>
+                  <option value="MIGRATE_CASES_TO_CLIENTS">העברת תיקים ללקוחות (2)</option>
                 </optgroup>
+
+                <optgroup label="שירותים וחבילות">
+                  <option value="ADD_SERVICE_TO_CLIENT">הוספת שירות ללקוח (~65)</option>
+                  <option value="ADD_SERVICE_TO_CASE">הוספת שירות לתיק (~15)</option>
+                  <option value="CHANGE_SERVICE_STATUS">שינוי סטטוס שירות (3)</option>
+                  <option value="COMPLETE_SERVICE">השלמת שירות (1)</option>
+                  <option value="SET_SERVICE_OVERRIDE">ביטול חסימת שירות (~15)</option>
+                  <option value="REMOVE_SERVICE_OVERRIDE">הסרת ביטול חסימה (3)</option>
+                  <option value="RESOLVE_SERVICE_OVERDRAFT">פתרון חריגת שירות (1)</option>
+                  <option value="UNRESOLVE_SERVICE_OVERDRAFT">ביטול פתרון חריגה (1)</option>
+                  <option value="ADD_PACKAGE_TO_SERVICE">הוספת חבילה לשירות (4)</option>
+                  <option value="ADD_PACKAGE_TO_STAGE">הוספת חבילה לשלב (1)</option>
+                </optgroup>
+
+                <optgroup label="הסכמי שכ״ט">
+                  <option value="UPLOAD_FEE_AGREEMENT">העלאת הסכם שכ"ט (10)</option>
+                  <option value="DELETE_FEE_AGREEMENT">מחיקת הסכם שכ"ט (1)</option>
+                </optgroup>
+
                 <optgroup label="ניהול משתמשים">
-                  <option value="USER_CREATED">יצירת משתמש</option>
-                  <option value="USER_UPDATED">עדכון משתמש</option>
-                  <option value="USER_DELETED">מחיקת משתמש</option>
-                  <option value="USER_BLOCKED">חסימת משתמש</option>
+                  <option value="VIEW_USER_DETAILS">צפייה בפרטי משתמש (~970)</option>
+                  <option value="CREATE_USER">יצירת משתמש (7)</option>
+                  <option value="UPDATE_USER">עדכון משתמש (~30)</option>
+                  <option value="DELETE_USER">מחיקת משתמש (7)</option>
+                  <option value="delete_user_data_selective">מחיקת נתוני משתמש (חלקית) (~25)</option>
                 </optgroup>
+
                 <optgroup label="מערכת">
-                  <option value="system_config_updated">עדכון הגדרות</option>
+                  <option value="system_config_updated">עדכון הגדרות (6)</option>
                 </optgroup>
               </select>
             </div>
