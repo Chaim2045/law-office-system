@@ -138,20 +138,18 @@ service cloud.firestore {
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Activity Log: User can read their own, admins can read all
+    // ✅ Activity Log: User can read their own (by userId), admins can read all
     match /activity_log/{logId} {
       allow read: if isAuthenticated() && (
-        resource.data.performedBy == request.auth.token.email ||
+        resource.data.userId == request.auth.uid ||
         isAdmin()
       );
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Audit Log: Read-only for authenticated users
-    // Note: Sensitive operations logged server-side only
-    // Future: Restrict to admin-only with custom claims
+    // ✅ Audit Log: Admin-only (contains sensitive admin actions, deletions, etc.)
     match /audit_log/{logId} {
-      allow read: if isAuthenticated();
+      allow read: if isAdmin();
       allow write: if false; // Only through Cloud Functions
     }
 
