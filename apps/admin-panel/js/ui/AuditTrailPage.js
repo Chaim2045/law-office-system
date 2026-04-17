@@ -173,6 +173,9 @@
     filteredProfiles: [],
     selectedProfile: null,
     entries: [],
+    _allEntries: [],
+    _loadToken: 0,
+    _truncated: false,
     currentPage: 1,
     loading: false,
     roleFilter: 'all',
@@ -502,9 +505,9 @@
     },
 
     _loadUserActivity: async function() {
-      if (this.loading) {
- return;
-}
+      // Increment token on every load — stale results are discarded
+      this._loadToken++;
+      const myToken = this._loadToken;
       this.loading = true;
 
       const content = document.getElementById('detail-table-content');
@@ -517,26 +520,41 @@
       const email = profile.email;
 
       try {
-        // Query both collections — by userId (indexed) or email fallback
+        // Primary: query by userId (indexed). activity_log writer always sets userId.
+        // Fallback: query by email fields — union with primary to catch admin actions
+        // logged with adminEmail but without userId, or legacy records missing userId.
         const queries = [];
 
         if (uid) {
           queries.push(this._queryUserCollection('audit_log', 'userId', uid));
           queries.push(this._queryUserCollection('activity_log', 'userId', uid));
-        } else {
-          // No authUID — fallback to email-based queries
+        }
+
+        // Always also query by email to catch edge cases:
+        //  - admin actions in audit_log that use adminEmail/performedBy (may lack userId)
+        //  - legacy activity_log records before userId was standardized
+        if (email) {
           queries.push(this._queryUserCollection('audit_log', 'adminEmail', email));
           queries.push(this._queryUserCollection('activity_log', 'userEmail', email));
         }
 
         const allResults = await Promise.all(queries);
 
+        // Stale-result guard: if another profile was clicked, discard
+        if (myToken !== this._loadToken) {
+          return;
+        }
+
         // Merge and deduplicate by document id
         const seen = {};
         const results = [];
+        let anyTruncated = false;
 
-        allResults.forEach(function(docs) {
-          docs.forEach(function(item) {
+        allResults.forEach(function(queryResult) {
+          if (queryResult.truncated) {
+            anyTruncated = true;
+          }
+          queryResult.docs.forEach(function(item) {
             if (!seen[item.id]) {
               seen[item.id] = true;
               results.push(item);
@@ -544,13 +562,14 @@
           });
         });
 
-        // Sort by timestamp desc
+        // Sort by timestamp desc (stable across timestamp formats)
         results.sort(function(a, b) {
           return b.tsMillis - a.tsMillis;
         });
 
         // Store full dataset — filters work client-side only
         this._allEntries = results;
+        this._truncated = anyTruncated;
         this.entries = results;
 
         // Build action dropdown from full data
@@ -559,31 +578,38 @@
         this._renderActivityTable();
 
       } catch (error) {
+        // Still check token before rendering error — avoid overwriting newer view
+        if (myToken !== this._loadToken) {
+          return;
+        }
         console.error('Error loading user activity:', error);
         if (content) {
           content.innerHTML = '<div class="audit-empty"><i class="fas fa-exclamation-triangle"></i><p>\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05ea \u05e4\u05e2\u05d9\u05dc\u05d5\u05ea</p></div>';
         }
       }
 
-      this.loading = false;
+      if (myToken === this._loadToken) {
+        this.loading = false;
+      }
     },
 
     _queryUserCollection: async function(collectionName, field, value) {
+      const LIMIT = 500;
       const query = this.db.collection(collectionName)
         .where(field, '==', value)
         .orderBy('timestamp', 'desc')
-        .limit(500);
+        .limit(LIMIT);
 
       try {
         const snapshot = await query.get();
-        const results = [];
+        const docs = [];
 
         snapshot.forEach(function(doc) {
           const data = doc.data();
           const det = _parseDetails(data.details);
           const target = data.targetUser || data.targetUserEmail || det.targetEmail || det.targetUser || det.clientName || '';
 
-          results.push({
+          docs.push({
             id: doc.id,
             source: collectionName === 'audit_log' ? 'audit' : 'activity',
             action: data.action || data.type || '',
@@ -592,15 +618,15 @@
             severity: data.severity || 'info',
             timestamp: data.timestamp,
             timestampLocal: data.timestampLocal || null,
-            tsMillis: data.timestamp?.toMillis?.() || 0
+            tsMillis: _timestampToMillis(data.timestamp, data.timestampLocal)
           });
         });
 
-        return results;
+        return { docs: docs, truncated: snapshot.size >= LIMIT };
       } catch (e) {
         // Index might not exist for some field combinations — return empty
         console.warn('Query failed for ' + collectionName + '.' + field + ':', e.message);
-        return [];
+        return { docs: [], truncated: false };
       }
     },
 
@@ -641,11 +667,32 @@
     _renderActivityTable: function() {
       const content = document.getElementById('detail-table-content');
       if (!content) {
- return;
-}
+        return;
+      }
+
+      // Count entries with missing/zero timestamp (excluded from ordering)
+      const missingTimestampCount = this._allEntries
+        ? this._allEntries.filter(function(e) {
+ return !e.tsMillis;
+}).length
+        : 0;
+
+      let banner = '';
+      if (this._truncated) {
+        banner += '<div class="audit-warning-banner">' +
+          '<i class="fas fa-exclamation-triangle"></i> ' +
+          '\u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d4 \u05d0\u05e8\u05d5\u05db\u05d4 \u2014 \u05de\u05d5\u05e6\u05d2\u05d5\u05ea 500 \u05e8\u05e9\u05d5\u05de\u05d5\u05ea \u05d4\u05d0\u05d7\u05e8\u05d5\u05e0\u05d5\u05ea \u05d1\u05dc\u05d1\u05d3. \u05dc\u05e6\u05e4\u05d9\u05d9\u05d4 \u05d1\u05ea\u05e7\u05d5\u05e4\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea \u2014 \u05d4\u05e9\u05ea\u05de\u05e9 \u05d1\u05e1\u05d9\u05e0\u05d5\u05df \u05ea\u05d0\u05e8\u05d9\u05da.' +
+          '</div>';
+      }
+      if (missingTimestampCount > 0) {
+        banner += '<div class="audit-warning-banner">' +
+          '<i class="fas fa-info-circle"></i> ' +
+          missingTimestampCount + ' \u05e8\u05e9\u05d5\u05de\u05d5\u05ea \u05d7\u05e1\u05e8 \u05d1\u05d4\u05df \u05d7\u05d5\u05ea\u05de\u05ea \u05d6\u05de\u05df \u2014 \u05de\u05d5\u05e6\u05d2\u05d5\u05ea \u05d1\u05e1\u05d5\u05e3 \u05d4\u05e8\u05e9\u05d9\u05de\u05d4.' +
+          '</div>';
+      }
 
       if (this.entries.length === 0) {
-        content.innerHTML = '<div class="audit-empty"><i class="fas fa-clipboard-list"></i><p>\u05dc\u05d0 \u05e0\u05de\u05e6\u05d0\u05d5 \u05e8\u05e9\u05d5\u05de\u05d5\u05ea</p></div>';
+        content.innerHTML = banner + '<div class="audit-empty"><i class="fas fa-clipboard-list"></i><p>\u05dc\u05d0 \u05e0\u05de\u05e6\u05d0\u05d5 \u05e8\u05e9\u05d5\u05de\u05d5\u05ea</p></div>';
         return;
       }
 
@@ -659,7 +706,9 @@
         const cat = _getActionCategory(entry.action);
         const actionLabel = ACTION_LABELS[entry.action] || entry.action;
         const timeStr = _formatTimestamp(entry.timestamp, entry.timestampLocal);
-        const detailsStr = _formatDetails(entry.details);
+        const rawDetails = _formatDetails(entry.details);
+        const escapedDetails = _escapeHtml(rawDetails);
+        const escapedTarget = _escapeHtml(entry.target || '');
         const sourceIcon = entry.source === 'audit'
           ? '<i class="fas fa-shield-alt" style="color:#9333ea;font-size:11px" title="\u05e4\u05e2\u05d5\u05dc\u05ea \u05de\u05e0\u05d4\u05dc"></i>'
           : '<i class="fas fa-user" style="color:#6b7280;font-size:11px" title="\u05e4\u05e2\u05d9\u05dc\u05d5\u05ea \u05de\u05e9\u05ea\u05de\u05e9"></i>';
@@ -668,14 +717,14 @@
 
         rows += '<tr>' +
           '<td style="text-align:center">' + sourceIcon + '</td>' +
-          '<td class="audit-time-cell">' + timeStr + '</td>' +
+          '<td class="audit-time-cell">' + _escapeHtml(timeStr) + '</td>' +
           '<td><span class="audit-action-badge ' + cat + '">' + _escapeHtml(actionLabel) + '</span></td>' +
-          '<td class="' + targetCls + '" title="' + _escapeHtml(entry.target || '') + '">' + _escapeHtml(entry.target || '') + '</td>' +
-          '<td class="audit-details" title="' + _escapeHtml(detailsStr) + '">' + detailsStr + '</td>' +
+          '<td class="' + targetCls + '" title="' + escapedTarget + '">' + escapedTarget + '</td>' +
+          '<td class="audit-details" title="' + escapedDetails + '">' + escapedDetails + '</td>' +
           '</tr>';
       });
 
-      content.innerHTML =
+      content.innerHTML = banner +
         '<table class="audit-table">' +
           '<thead>' +
             '<tr>' +
@@ -812,12 +861,42 @@
     return {};
   }
 
+  /**
+   * Convert any Firestore timestamp format to milliseconds.
+   * Handles: Timestamp instance, { seconds, nanoseconds } from JSON round-trip,
+   *          { _seconds, _nanoseconds } from some SDKs, and timestampLocal fallback.
+   */
+  function _timestampToMillis(ts, localStr) {
+    if (ts) {
+      if (typeof ts.toMillis === 'function') {
+        return ts.toMillis();
+      }
+      if (typeof ts.seconds === 'number') {
+        return ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+      }
+      if (typeof ts._seconds === 'number') {
+        return ts._seconds * 1000 + Math.floor((ts._nanoseconds || 0) / 1e6);
+      }
+    }
+    if (localStr) {
+      const d = new Date(localStr);
+      if (!isNaN(d.getTime())) {
+        return d.getTime();
+      }
+    }
+    return 0;
+  }
+
   function _formatTimestamp(ts, localStr) {
-    if (!ts && !localStr) {
- return '-';
-}
+    const ms = _timestampToMillis(ts, localStr);
+    if (!ms) {
+      return '-';
+    }
     try {
-      const date = ts && ts.toDate ? ts.toDate() : new Date(localStr);
+      const date = new Date(ms);
+      if (isNaN(date.getTime())) {
+        return '-';
+      }
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const hours = String(date.getHours()).padStart(2, '0');
@@ -828,16 +907,19 @@
     }
   }
 
+  /**
+   * Returns raw (unescaped) summary string. Caller must escape before HTML injection.
+   */
   function _formatDetails(details) {
     if (!details) {
- return '';
-}
+      return '';
+    }
     const obj = _parseDetails(details);
     if (typeof obj === 'object' && Object.keys(obj).length > 0) {
-      return _escapeHtml(_summarizeObject(obj));
+      return _summarizeObject(obj);
     }
     if (typeof details === 'string') {
-      return _escapeHtml(details.substring(0, 80));
+      return details.substring(0, 80);
     }
     return '';
   }
