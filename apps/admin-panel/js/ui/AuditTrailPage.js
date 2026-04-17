@@ -1,8 +1,13 @@
 /**
- * Audit Trail Page
- * =================
- * Displays activity_log and audit_log entries in a filterable table.
- * Reads directly from Firestore collections.
+ * Audit Trail Page — User Profiles
+ * ==================================
+ * Two views:
+ *   1. Profile list — all employees from Firestore
+ *   2. Profile detail — activity log for a single user
+ *
+ * Data sources:
+ *   - employees collection (profile list)
+ *   - audit_log + activity_log (user activity)
  */
 
 (function() {
@@ -10,127 +15,137 @@
 
   const PAGE_SIZE = 50;
 
-  // Action categories for badge colors
+  // ═══════════════════════════════════════════
+  // Action Categories & Labels (kept from original)
+  // ═══════════════════════════════════════════
+
   const ACTION_CATEGORIES = {
-    create: ['USER_CREATED', 'create_task', 'create_timesheet', 'create_client', 'CREATE_USER'],
-    update: ['USER_UPDATED', 'edit_task', 'edit_timesheet', 'edit_client', 'UPDATE_USER', 'extend_deadline', 'update_progress'],
-    delete: ['USER_DELETED', 'delete_task', 'delete_timesheet', 'delete_client', 'DELETE_USER', 'delete_user_data_selective'],
+    create: ['USER_CREATED', 'create_task', 'create_timesheet', 'create_client', 'CREATE_USER',
+      'CREATE_TASK', 'CREATE_CLIENT', 'CREATE_CASE', 'CREATE_TIMESHEET_ENTRY', 'CREATE_TIMESHEET_ENTRY_V2',
+      'ADD_SERVICE_TO_CLIENT', 'ADD_SERVICE_TO_CASE', 'ADD_SERVICE', 'ADD_PACKAGE',
+      'ADD_PACKAGE_TO_SERVICE', 'ADD_PACKAGE_TO_STAGE', 'CREATE_QUICK_LOG_ENTRY',
+      'UPLOAD_FEE_AGREEMENT', 'ADD_TIME_TO_TASK'],
+    update: ['USER_UPDATED', 'edit_task', 'edit_timesheet', 'edit_client', 'UPDATE_USER',
+      'extend_deadline', 'update_progress', 'COMPLETE_TASK', 'EXTEND_TASK_DEADLINE',
+      'ADJUST_BUDGET', 'UPDATE_CLIENT', 'CHANGE_CLIENT_STATUS', 'CLOSE_CASE',
+      'UPDATE_TASK_BY_ADMIN', 'TASK_UPDATED_BY_ADMIN', 'MOVE_TO_NEXT_STAGE',
+      'CHANGE_SERVICE_STATUS', 'COMPLETE_SERVICE', 'SET_SERVICE_OVERRIDE',
+      'REMOVE_SERVICE_OVERRIDE', 'RESOLVE_SERVICE_OVERDRAFT', 'UNRESOLVE_SERVICE_OVERDRAFT',
+      'complete_task', 'CANCEL_TASK',
+      'MIGRATE_CLIENTS_TO_CASES', 'MIGRATE_CASES_TO_CLIENTS'],
+    delete: ['USER_DELETED', 'delete_task', 'delete_timesheet', 'delete_client',
+      'DELETE_USER', 'delete_user_data_selective', 'DELETE_CLIENT', 'DELETE_SERVICE',
+      'DELETE_FEE_AGREEMENT'],
     block: ['USER_BLOCKED', 'USER_UNBLOCKED', 'block_client', 'unblock_client'],
     login: ['login', 'logout'],
     config: ['system_config_updated', 'system_config_rollback']
   };
 
-  function getActionCategory(action) {
-    for (const [cat, actions] of Object.entries(ACTION_CATEGORIES)) {
-      if (actions.includes(action)) {
- return cat;
-}
-    }
-    return 'other';
-  }
-
-  // Hebrew action labels
   const ACTION_LABELS = {
-    // User activity (lowercase)
-    'login': 'כניסה',
-    'logout': 'יציאה',
-    'create_task': 'יצירת משימה',
-    'edit_task': 'עריכת משימה',
-    'delete_task': 'מחיקת משימה',
-    'complete_task': 'השלמת משימה',
-    'extend_deadline': 'הארכת דדליין',
-    'update_progress': 'עדכון התקדמות',
-    'create_timesheet': 'רישום שעות',
-    'edit_timesheet': 'עריכת שעות',
-    'delete_timesheet': 'מחיקת שעות',
-    'create_client': 'יצירת לקוח',
-    'edit_client': 'עריכת לקוח',
-    'delete_client': 'מחיקת לקוח',
-    'block_client': 'חסימת לקוח',
-    'unblock_client': 'ביטול חסימת לקוח',
-    'generate_report': 'הפקת דוח',
-    'export_data': 'ייצוא נתונים',
-    // Admin actions (UPPERCASE — from audit_log)
-    'USER_CREATED': 'יצירת משתמש',
-    'USER_UPDATED': 'עדכון משתמש',
-    'USER_DELETED': 'מחיקת משתמש',
-    'USER_BLOCKED': 'חסימת משתמש',
-    'USER_UNBLOCKED': 'ביטול חסימה',
-    'CREATE_USER': 'יצירת משתמש',
-    'UPDATE_USER': 'עדכון משתמש',
-    'DELETE_USER': 'מחיקת משתמש',
-    'VIEW_USER_DETAILS': 'צפייה בפרטי משתמש',
-    'CREATE_TASK': 'יצירת משימה',
-    'COMPLETE_TASK': 'השלמת משימה',
-    'ADJUST_BUDGET': 'התאמת תקציב',
-    'EXTEND_TASK_DEADLINE': 'הארכת דדליין',
-    'CREATE_CLIENT': 'יצירת לקוח',
-    'UPDATE_CLIENT': 'עדכון לקוח',
-    'DELETE_CLIENT': 'מחיקת לקוח',
-    'CHANGE_CLIENT_STATUS': 'שינוי סטטוס לקוח',
-    'CLOSE_CASE': 'סגירת תיק',
-    'ADD_SERVICE': 'הוספת שירות',
-    'ADD_PACKAGE': 'הוספת חבילה',
-    'delete_user_data_selective': 'מחיקת נתוני משתמש',
-    'UPLOAD_FEE_AGREEMENT': 'העלאת הסכם שכ"ט',
-    'DELETE_FEE_AGREEMENT': 'מחיקת הסכם שכ"ט',
-    'ADD_TIME_TO_TASK': 'הוספת שעות למשימה',
-    'ADD_SERVICE_TO_CLIENT': 'הוספת שירות ללקוח',
-    'CREATE_QUICK_LOG_ENTRY': 'רישום שעות מהיר',
-    'CANCEL_TASK': 'ביטול משימה',
-    'MOVE_TO_NEXT_STAGE': 'מעבר לשלב הבא',
-    'ADD_PACKAGE_TO_SERVICE': 'הוספת חבילה לשירות',
-    'CHANGE_SERVICE_STATUS': 'שינוי סטטוס שירות',
-    'COMPLETE_SERVICE': 'השלמת שירות',
-    'DELETE_SERVICE': 'מחיקת שירות',
-    'SET_SERVICE_OVERRIDE': 'ביטול חסימת שירות',
-    'REMOVE_SERVICE_OVERRIDE': 'הסרת ביטול חסימה',
-    'RESOLVE_SERVICE_OVERDRAFT': 'פתרון חריגת שירות',
-    'UNRESOLVE_SERVICE_OVERDRAFT': 'ביטול פתרון חריגה',
-    'CREATE_TIMESHEET_ENTRY_V2': 'רישום שעות',
-    'CREATE_USER': 'יצירת משתמש',
-    'system_config_updated': 'עדכון הגדרות',
-    'system_config_rollback': 'שחזור הגדרות'
+    'login': '\u05db\u05e0\u05d9\u05e1\u05d4',
+    'logout': '\u05d9\u05e6\u05d9\u05d0\u05d4',
+    'create_task': '\u05d9\u05e6\u05d9\u05e8\u05ea \u05de\u05e9\u05d9\u05de\u05d4',
+    'edit_task': '\u05e2\u05e8\u05d9\u05db\u05ea \u05de\u05e9\u05d9\u05de\u05d4',
+    'delete_task': '\u05de\u05d7\u05d9\u05e7\u05ea \u05de\u05e9\u05d9\u05de\u05d4',
+    'complete_task': '\u05d4\u05e9\u05dc\u05de\u05ea \u05de\u05e9\u05d9\u05de\u05d4',
+    'extend_deadline': '\u05d4\u05d0\u05e8\u05db\u05ea \u05d3\u05d3\u05dc\u05d9\u05d9\u05df',
+    'update_progress': '\u05e2\u05d3\u05db\u05d5\u05df \u05d4\u05ea\u05e7\u05d3\u05de\u05d5\u05ea',
+    'create_timesheet': '\u05e8\u05d9\u05e9\u05d5\u05dd \u05e9\u05e2\u05d5\u05ea',
+    'edit_timesheet': '\u05e2\u05e8\u05d9\u05db\u05ea \u05e9\u05e2\u05d5\u05ea',
+    'delete_timesheet': '\u05de\u05d7\u05d9\u05e7\u05ea \u05e9\u05e2\u05d5\u05ea',
+    'create_client': '\u05d9\u05e6\u05d9\u05e8\u05ea \u05dc\u05e7\u05d5\u05d7',
+    'edit_client': '\u05e2\u05e8\u05d9\u05db\u05ea \u05dc\u05e7\u05d5\u05d7',
+    'delete_client': '\u05de\u05d7\u05d9\u05e7\u05ea \u05dc\u05e7\u05d5\u05d7',
+    'block_client': '\u05d7\u05e1\u05d9\u05de\u05ea \u05dc\u05e7\u05d5\u05d7',
+    'unblock_client': '\u05d1\u05d9\u05d8\u05d5\u05dc \u05d7\u05e1\u05d9\u05de\u05ea \u05dc\u05e7\u05d5\u05d7',
+    'generate_report': '\u05d4\u05e4\u05e7\u05ea \u05d3\u05d5\u05d7',
+    'export_data': '\u05d9\u05d9\u05e6\u05d5\u05d0 \u05e0\u05ea\u05d5\u05e0\u05d9\u05dd',
+    'USER_CREATED': '\u05d9\u05e6\u05d9\u05e8\u05ea \u05de\u05e9\u05ea\u05de\u05e9',
+    'USER_UPDATED': '\u05e2\u05d3\u05db\u05d5\u05df \u05de\u05e9\u05ea\u05de\u05e9',
+    'USER_DELETED': '\u05de\u05d7\u05d9\u05e7\u05ea \u05de\u05e9\u05ea\u05de\u05e9',
+    'USER_BLOCKED': '\u05d7\u05e1\u05d9\u05de\u05ea \u05de\u05e9\u05ea\u05de\u05e9',
+    'USER_UNBLOCKED': '\u05d1\u05d9\u05d8\u05d5\u05dc \u05d7\u05e1\u05d9\u05de\u05d4',
+    'CREATE_USER': '\u05d9\u05e6\u05d9\u05e8\u05ea \u05de\u05e9\u05ea\u05de\u05e9',
+    'UPDATE_USER': '\u05e2\u05d3\u05db\u05d5\u05df \u05de\u05e9\u05ea\u05de\u05e9',
+    'DELETE_USER': '\u05de\u05d7\u05d9\u05e7\u05ea \u05de\u05e9\u05ea\u05de\u05e9',
+    'VIEW_USER_DETAILS': '\u05e6\u05e4\u05d9\u05d9\u05d4 \u05d1\u05e4\u05e8\u05d8\u05d9 \u05de\u05e9\u05ea\u05de\u05e9',
+    'CREATE_TASK': '\u05d9\u05e6\u05d9\u05e8\u05ea \u05de\u05e9\u05d9\u05de\u05d4',
+    'COMPLETE_TASK': '\u05d4\u05e9\u05dc\u05de\u05ea \u05de\u05e9\u05d9\u05de\u05d4',
+    'ADJUST_BUDGET': '\u05d4\u05ea\u05d0\u05de\u05ea \u05ea\u05e7\u05e6\u05d9\u05d1',
+    'EXTEND_TASK_DEADLINE': '\u05d4\u05d0\u05e8\u05db\u05ea \u05d3\u05d3\u05dc\u05d9\u05d9\u05df',
+    'CREATE_CLIENT': '\u05d9\u05e6\u05d9\u05e8\u05ea \u05dc\u05e7\u05d5\u05d7',
+    'UPDATE_CLIENT': '\u05e2\u05d3\u05db\u05d5\u05df \u05dc\u05e7\u05d5\u05d7',
+    'DELETE_CLIENT': '\u05de\u05d7\u05d9\u05e7\u05ea \u05dc\u05e7\u05d5\u05d7',
+    'CHANGE_CLIENT_STATUS': '\u05e9\u05d9\u05e0\u05d5\u05d9 \u05e1\u05d8\u05d8\u05d5\u05e1 \u05dc\u05e7\u05d5\u05d7',
+    'CLOSE_CASE': '\u05e1\u05d2\u05d9\u05e8\u05ea \u05ea\u05d9\u05e7',
+    'ADD_SERVICE': '\u05d4\u05d5\u05e1\u05e4\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea',
+    'ADD_PACKAGE': '\u05d4\u05d5\u05e1\u05e4\u05ea \u05d7\u05d1\u05d9\u05dc\u05d4',
+    'delete_user_data_selective': '\u05de\u05d7\u05d9\u05e7\u05ea \u05e0\u05ea\u05d5\u05e0\u05d9 \u05de\u05e9\u05ea\u05de\u05e9',
+    'UPLOAD_FEE_AGREEMENT': '\u05d4\u05e2\u05dc\u05d0\u05ea \u05d4\u05e1\u05db\u05dd \u05e9\u05db"\u05d8',
+    'DELETE_FEE_AGREEMENT': '\u05de\u05d7\u05d9\u05e7\u05ea \u05d4\u05e1\u05db\u05dd \u05e9\u05db"\u05d8',
+    'ADD_TIME_TO_TASK': '\u05d4\u05d5\u05e1\u05e4\u05ea \u05e9\u05e2\u05d5\u05ea \u05dc\u05de\u05e9\u05d9\u05de\u05d4',
+    'ADD_SERVICE_TO_CLIENT': '\u05d4\u05d5\u05e1\u05e4\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea \u05dc\u05dc\u05e7\u05d5\u05d7',
+    'CREATE_QUICK_LOG_ENTRY': '\u05e8\u05d9\u05e9\u05d5\u05dd \u05e9\u05e2\u05d5\u05ea \u05de\u05d4\u05d9\u05e8',
+    'CANCEL_TASK': '\u05d1\u05d9\u05d8\u05d5\u05dc \u05de\u05e9\u05d9\u05de\u05d4',
+    'MOVE_TO_NEXT_STAGE': '\u05de\u05e2\u05d1\u05e8 \u05dc\u05e9\u05dc\u05d1 \u05d4\u05d1\u05d0',
+    'ADD_PACKAGE_TO_SERVICE': '\u05d4\u05d5\u05e1\u05e4\u05ea \u05d7\u05d1\u05d9\u05dc\u05d4 \u05dc\u05e9\u05d9\u05e8\u05d5\u05ea',
+    'CHANGE_SERVICE_STATUS': '\u05e9\u05d9\u05e0\u05d5\u05d9 \u05e1\u05d8\u05d8\u05d5\u05e1 \u05e9\u05d9\u05e8\u05d5\u05ea',
+    'COMPLETE_SERVICE': '\u05d4\u05e9\u05dc\u05de\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea',
+    'DELETE_SERVICE': '\u05de\u05d7\u05d9\u05e7\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea',
+    'SET_SERVICE_OVERRIDE': '\u05d1\u05d9\u05d8\u05d5\u05dc \u05d7\u05e1\u05d9\u05de\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea',
+    'REMOVE_SERVICE_OVERRIDE': '\u05d4\u05e1\u05e8\u05ea \u05d1\u05d9\u05d8\u05d5\u05dc \u05d7\u05e1\u05d9\u05de\u05d4',
+    'RESOLVE_SERVICE_OVERDRAFT': '\u05e4\u05ea\u05e8\u05d5\u05df \u05d7\u05e8\u05d9\u05d2\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea',
+    'UNRESOLVE_SERVICE_OVERDRAFT': '\u05d1\u05d9\u05d8\u05d5\u05dc \u05e4\u05ea\u05e8\u05d5\u05df \u05d7\u05e8\u05d9\u05d2\u05d4',
+    'CREATE_TIMESHEET_ENTRY_V2': '\u05e8\u05d9\u05e9\u05d5\u05dd \u05e9\u05e2\u05d5\u05ea',
+    'CREATE_TIMESHEET_ENTRY': '\u05e8\u05d9\u05e9\u05d5\u05dd \u05e9\u05e2\u05d5\u05ea (\u05d2\u05e8\u05e1\u05d4 \u05e7\u05d5\u05d3\u05de\u05ea)',
+    'ADD_SERVICE_TO_CASE': '\u05d4\u05d5\u05e1\u05e4\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea \u05dc\u05ea\u05d9\u05e7',
+    'UPDATE_TASK_BY_ADMIN': '\u05e2\u05d3\u05db\u05d5\u05df \u05de\u05e9\u05d9\u05de\u05d4 \u05e2"\u05d9 \u05de\u05e0\u05d4\u05dc',
+    'TASK_UPDATED_BY_ADMIN': '\u05e2\u05d3\u05db\u05d5\u05df \u05de\u05e9\u05d9\u05de\u05d4 \u05e2"\u05d9 \u05de\u05e0\u05d4\u05dc',
+    'CREATE_CASE': '\u05d9\u05e6\u05d9\u05e8\u05ea \u05ea\u05d9\u05e7',
+    'MIGRATE_CLIENTS_TO_CASES': '\u05d4\u05e2\u05d1\u05e8\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea \u05dc\u05ea\u05d9\u05e7\u05d9\u05dd',
+    'MIGRATE_CASES_TO_CLIENTS': '\u05d4\u05e2\u05d1\u05e8\u05ea \u05ea\u05d9\u05e7\u05d9\u05dd \u05dc\u05dc\u05e7\u05d5\u05d7\u05d5\u05ea',
+    'ADD_PACKAGE_TO_STAGE': '\u05d4\u05d5\u05e1\u05e4\u05ea \u05d7\u05d1\u05d9\u05dc\u05d4 \u05dc\u05e9\u05dc\u05d1',
+    'system_config_updated': '\u05e2\u05d3\u05db\u05d5\u05df \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea',
+    'system_config_rollback': '\u05e9\u05d7\u05d6\u05d5\u05e8 \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea',
+    'VIEW_USER_ACTIVITY': '\u05e6\u05e4\u05d9\u05d9\u05d4 \u05d1\u05e4\u05e2\u05d9\u05dc\u05d5\u05ea \u05de\u05e9\u05ea\u05de\u05e9'
   };
 
-  // Hebrew labels for detail keys
   const DETAIL_KEY_LABELS = {
-    'targetEmail': 'משתמש',
-    'targetName': 'שם',
-    'targetRole': 'תפקיד',
-    'clientId': 'לקוח',
-    'clientName': 'לקוח',
-    'caseNumber': 'תיק',
-    'estimatedHours': 'שעות מוערכות',
-    'actualMinutes': 'דקות בפועל',
-    'minutes': 'זמן',
-    'gapPercent': 'חריגה',
-    'oldEstimate': 'הערכה קודמת',
-    'newEstimate': 'הערכה חדשה',
-    'addedMinutes': 'דקות שנוספו',
-    'reason': 'סיבה',
-    'note': 'הערה',
-    'role': 'תפקיד',
-    'status': 'סטטוס',
-    'message': 'הודעה',
-    'username': 'שם',
-    'changes': 'שינויים',
-    'fileName': 'קובץ',
-    'fileSize': 'גודל',
-    'serviceName': 'שירות',
-    'serviceType': 'סוג שירות',
-    'procedureType': 'סוג הליך',
-    'newDeadline': 'דדליין חדש',
-    'oldDeadline': 'דדליין קודם',
-    'date': 'תאריך',
-    'isInternal': 'פנימי',
-    'fromStageName': 'משלב',
-    'toStageName': 'לשלב',
-    'overrideActive': 'חסימה מבוטלת',
-    'resolved': 'נפתר'
+    'targetEmail': '\u05de\u05e9\u05ea\u05de\u05e9',
+    'targetName': '\u05e9\u05dd',
+    'targetRole': '\u05ea\u05e4\u05e7\u05d9\u05d3',
+    'clientId': '\u05dc\u05e7\u05d5\u05d7',
+    'clientName': '\u05dc\u05e7\u05d5\u05d7',
+    'caseNumber': '\u05ea\u05d9\u05e7',
+    'estimatedHours': '\u05e9\u05e2\u05d5\u05ea \u05de\u05d5\u05e2\u05e8\u05db\u05d5\u05ea',
+    'actualMinutes': '\u05d3\u05e7\u05d5\u05ea \u05d1\u05e4\u05d5\u05e2\u05dc',
+    'minutes': '\u05d6\u05de\u05df',
+    'gapPercent': '\u05d7\u05e8\u05d9\u05d2\u05d4',
+    'oldEstimate': '\u05d4\u05e2\u05e8\u05db\u05d4 \u05e7\u05d5\u05d3\u05de\u05ea',
+    'newEstimate': '\u05d4\u05e2\u05e8\u05db\u05d4 \u05d7\u05d3\u05e9\u05d4',
+    'addedMinutes': '\u05d3\u05e7\u05d5\u05ea \u05e9\u05e0\u05d5\u05e1\u05e4\u05d5',
+    'reason': '\u05e1\u05d9\u05d1\u05d4',
+    'note': '\u05d4\u05e2\u05e8\u05d4',
+    'role': '\u05ea\u05e4\u05e7\u05d9\u05d3',
+    'status': '\u05e1\u05d8\u05d8\u05d5\u05e1',
+    'message': '\u05d4\u05d5\u05d3\u05e2\u05d4',
+    'username': '\u05e9\u05dd',
+    'changes': '\u05e9\u05d9\u05e0\u05d5\u05d9\u05d9\u05dd',
+    'fileName': '\u05e7\u05d5\u05d1\u05e5',
+    'fileSize': '\u05d2\u05d5\u05d3\u05dc',
+    'serviceName': '\u05e9\u05d9\u05e8\u05d5\u05ea',
+    'serviceType': '\u05e1\u05d5\u05d2 \u05e9\u05d9\u05e8\u05d5\u05ea',
+    'procedureType': '\u05e1\u05d5\u05d2 \u05d4\u05dc\u05d9\u05da',
+    'newDeadline': '\u05d3\u05d3\u05dc\u05d9\u05d9\u05df \u05d7\u05d3\u05e9',
+    'oldDeadline': '\u05d3\u05d3\u05dc\u05d9\u05d9\u05df \u05e7\u05d5\u05d3\u05dd',
+    'date': '\u05ea\u05d0\u05e8\u05d9\u05da',
+    'isInternal': '\u05e4\u05e0\u05d9\u05de\u05d9',
+    'fromStageName': '\u05de\u05e9\u05dc\u05d1',
+    'toStageName': '\u05dc\u05e9\u05dc\u05d1',
+    'overrideActive': '\u05d7\u05e1\u05d9\u05de\u05d4 \u05de\u05d1\u05d5\u05d8\u05dc\u05ea',
+    'resolved': '\u05e0\u05e4\u05ea\u05e8'
   };
 
-  // Keys to skip in details (shown elsewhere or internal/technical)
   const DETAIL_SKIP_KEYS = [
     'entityId', 'loginTime', 'isCritical', '_seconds', '_nanoseconds',
     'targetEmail', 'targetUser', 'clientName', 'agreementId',
@@ -140,18 +155,33 @@
     'serviceId', 'fromStageId', 'toStageId'
   ];
 
+  const ROLE_LABELS = {
+    'admin': '\u05de\u05e0\u05d4\u05dc',
+    'lawyer': '\u05e2\u05d5"\u05d3',
+    'employee': '\u05e2\u05d5\u05d1\u05d3'
+  };
+
+  // ═══════════════════════════════════════════
+  // Main Page Object
+  // ═══════════════════════════════════════════
+
   const AuditTrailPage = {
     container: null,
     db: null,
+    view: 'profiles', // 'profiles' | 'detail'
+    profiles: [],
+    filteredProfiles: [],
+    selectedProfile: null,
     entries: [],
-    filteredEntries: [],
+    _allEntries: [],
+    _loadToken: 0,
+    _truncated: false,
     currentPage: 1,
-    totalLoaded: 0,
     loading: false,
-    source: 'all', // 'all', 'activity', 'audit'
-    filters: {
+    roleFilter: 'all',
+    searchQuery: '',
+    detailFilters: {
       action: '',
-      user: '',
       dateFrom: '',
       dateTo: ''
     },
@@ -164,313 +194,505 @@
 
       this.db = window.firebaseDB;
       if (!this.db) {
-        this.container.innerHTML = '<p>שגיאה: Firestore לא מאותחל</p>';
+        this.container.innerHTML = '<p>\u05e9\u05d2\u05d9\u05d0\u05d4: Firestore \u05dc\u05d0 \u05de\u05d0\u05d5\u05ea\u05d7\u05dc</p>';
         return;
       }
 
-      this.render();
-      this.loadData();
+      this._renderProfilesView();
+      this._loadProfiles();
     },
 
-    render: function() {
-      this.container.innerHTML = `
-        <div class="audit-page">
-          <div class="audit-header">
-            <h1><i class="fas fa-history"></i> לוג פעילות</h1>
-            <div class="audit-stats" id="audit-stats"></div>
-          </div>
+    // ═══════════════════════════════════════════
+    // View: Profile List
+    // ═══════════════════════════════════════════
 
-          <div class="audit-filters">
-            <div class="audit-source-tabs" id="source-tabs">
-              <button class="audit-source-tab active" data-source="all">הכל</button>
-              <button class="audit-source-tab" data-source="activity">פעילות משתמשים</button>
-              <button class="audit-source-tab" data-source="audit">פעולות מנהל</button>
-            </div>
+    _renderProfilesView: function() {
+      this.view = 'profiles';
+      this.container.innerHTML =
+        '<div class="audit-page">' +
+          '<div class="audit-header">' +
+            '<h1><i class="fas fa-users"></i> \u05dc\u05d5\u05d2 \u05e4\u05e2\u05d9\u05dc\u05d5\u05ea</h1>' +
+          '</div>' +
+          '<div class="audit-profiles-toolbar">' +
+            '<div class="audit-search-box">' +
+              '<i class="fas fa-search"></i>' +
+              '<input type="text" id="profile-search" placeholder="\u05d7\u05d9\u05e4\u05d5\u05e9 \u05dc\u05e4\u05d9 \u05e9\u05dd \u05d0\u05d5 \u05de\u05d9\u05d9\u05dc..." dir="rtl">' +
+            '</div>' +
+            '<div class="audit-role-filter" id="role-filter">' +
+              '<button class="audit-role-btn active" data-role="all">\u05d4\u05db\u05dc</button>' +
+              '<button class="audit-role-btn" data-role="admin">\u05de\u05e0\u05d4\u05dc\u05d9\u05dd</button>' +
+              '<button class="audit-role-btn" data-role="lawyer">\u05e2\u05d5"\u05d3</button>' +
+              '<button class="audit-role-btn" data-role="employee">\u05e2\u05d5\u05d1\u05d3\u05d9\u05dd</button>' +
+            '</div>' +
+            '<span class="audit-profiles-count" id="profiles-count"></span>' +
+          '</div>' +
+          '<div id="profiles-grid" class="audit-profiles-grid">' +
+            '<div class="audit-loading"><i class="fas fa-spinner fa-spin"></i> \u05d8\u05d5\u05e2\u05df \u05de\u05e9\u05ea\u05de\u05e9\u05d9\u05dd...</div>' +
+          '</div>' +
+        '</div>';
 
-            <div class="audit-filter-group">
-              <label>פעולה:</label>
-              <select class="audit-filter-select" id="filter-action">
-                <option value="">הכל</option>
-                <optgroup label="כניסה/יציאה">
-                  <option value="login">כניסה</option>
-                  <option value="logout">יציאה</option>
-                </optgroup>
-                <optgroup label="משימות">
-                  <option value="create_task">יצירת משימה</option>
-                  <option value="edit_task">עריכת משימה</option>
-                  <option value="delete_task">מחיקת משימה</option>
-                  <option value="complete_task">השלמת משימה</option>
-                </optgroup>
-                <optgroup label="שעתון">
-                  <option value="create_timesheet">רישום שעות</option>
-                  <option value="edit_timesheet">עריכת שעות</option>
-                  <option value="delete_timesheet">מחיקת שעות</option>
-                </optgroup>
-                <optgroup label="לקוחות">
-                  <option value="create_client">יצירת לקוח</option>
-                  <option value="edit_client">עריכת לקוח</option>
-                  <option value="delete_client">מחיקת לקוח</option>
-                </optgroup>
-                <optgroup label="ניהול משתמשים">
-                  <option value="USER_CREATED">יצירת משתמש</option>
-                  <option value="USER_UPDATED">עדכון משתמש</option>
-                  <option value="USER_DELETED">מחיקת משתמש</option>
-                  <option value="USER_BLOCKED">חסימת משתמש</option>
-                </optgroup>
-                <optgroup label="מערכת">
-                  <option value="system_config_updated">עדכון הגדרות</option>
-                </optgroup>
-              </select>
-            </div>
-
-            <div class="audit-filter-group">
-              <label>משתמש:</label>
-              <input type="text" class="audit-filter-input" id="filter-user" placeholder="מייל או שם..." dir="rtl">
-            </div>
-
-            <div class="audit-filter-group">
-              <label>מ:</label>
-              <input type="date" class="audit-filter-input" id="filter-date-from" lang="en">
-            </div>
-            <div class="audit-filter-group">
-              <label>עד:</label>
-              <input type="date" class="audit-filter-input" id="filter-date-to" lang="en">
-            </div>
-
-            <button class="audit-filter-btn" id="btn-apply-filters"><i class="fas fa-search"></i> סנן</button>
-            <button class="audit-filter-btn secondary" id="btn-reset-filters"><i class="fas fa-undo"></i> נקה</button>
-          </div>
-
-          <div class="audit-table-wrapper">
-            <div id="audit-table-content">
-              <div class="audit-loading"><i class="fas fa-spinner fa-spin"></i> טוען נתונים...</div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      this._bindEvents();
+      this._bindProfilesEvents();
     },
 
-    _bindEvents: function() {
+    _bindProfilesEvents: function() {
       const self = this;
 
-      // Source tabs
-      document.querySelectorAll('.audit-source-tab').forEach(function(tab) {
-        tab.addEventListener('click', function() {
-          document.querySelectorAll('.audit-source-tab').forEach(function(t) {
- t.classList.remove('active');
-});
-          tab.classList.add('active');
-          self.source = tab.dataset.source;
-          self.currentPage = 1;
-          self.loadData();
+      // Search
+      const searchInput = document.getElementById('profile-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          self.searchQuery = searchInput.value.trim().toLowerCase();
+          self._filterAndRenderProfiles();
         });
-      });
+      }
 
-      // Apply filters
-      document.getElementById('btn-apply-filters').addEventListener('click', function() {
-        self._applyFilters();
-      });
-
-      // Reset filters
-      document.getElementById('btn-reset-filters').addEventListener('click', function() {
-        document.getElementById('filter-action').value = '';
-        document.getElementById('filter-user').value = '';
-        document.getElementById('filter-date-from').value = '';
-        document.getElementById('filter-date-to').value = '';
-        self.filters = { action: '', user: '', dateFrom: '', dateTo: '' };
-        self.currentPage = 1;
-        self.loadData();
-      });
-
-      // Enter key on user filter
-      document.getElementById('filter-user').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
- self._applyFilters();
-}
+      // Role filter buttons
+      document.querySelectorAll('.audit-role-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.audit-role-btn').forEach(function(b) {
+ b.classList.remove('active');
+});
+          btn.classList.add('active');
+          self.roleFilter = btn.dataset.role;
+          self._filterAndRenderProfiles();
+        });
       });
     },
 
-    _applyFilters: function() {
-      this.filters.action = document.getElementById('filter-action').value;
-      this.filters.user = document.getElementById('filter-user').value.trim().toLowerCase();
-      this.filters.dateFrom = document.getElementById('filter-date-from').value;
-      this.filters.dateTo = document.getElementById('filter-date-to').value;
-      this.currentPage = 1;
-      this.loadData();
+    _loadProfiles: async function() {
+      try {
+        const snapshot = await this.db.collection('employees').get();
+        this.profiles = [];
+        const self = this;
+
+        snapshot.forEach(function(doc) {
+          const data = doc.data();
+          self.profiles.push({
+            id: doc.id,
+            email: data.email || doc.id,
+            displayName: data.displayName || data.name || data.username || doc.id,
+            username: data.username || '',
+            role: data.role || 'employee',
+            isActive: data.isActive !== false && !data.disabled,
+            lastLogin: data.lastLogin || null,
+            authUID: data.authUID || ''
+          });
+        });
+
+        // Sort alphabetically by displayName
+        this.profiles.sort(function(a, b) {
+          return a.displayName.localeCompare(b.displayName, 'he');
+        });
+
+        this._filterAndRenderProfiles();
+      } catch (error) {
+        console.error('Error loading profiles:', error);
+        const grid = document.getElementById('profiles-grid');
+        if (grid) {
+          grid.innerHTML = '<div class="audit-empty"><i class="fas fa-exclamation-triangle"></i><p>\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05ea \u05de\u05e9\u05ea\u05de\u05e9\u05d9\u05dd</p></div>';
+        }
+      }
+    },
+
+    _filterAndRenderProfiles: function() {
+      const self = this;
+      this.filteredProfiles = this.profiles.filter(function(p) {
+        // Role filter
+        if (self.roleFilter !== 'all' && p.role !== self.roleFilter) {
+ return false;
+}
+        // Search filter
+        if (self.searchQuery) {
+          const searchable = (p.displayName + ' ' + p.email + ' ' + p.username).toLowerCase();
+          if (!searchable.includes(self.searchQuery)) {
+ return false;
+}
+        }
+        return true;
+      });
+
+      this._renderProfileCards();
+    },
+
+    _renderProfileCards: function() {
+      const grid = document.getElementById('profiles-grid');
+      const countEl = document.getElementById('profiles-count');
+      if (!grid) {
+ return;
+}
+
+      if (countEl) {
+        countEl.textContent = this.filteredProfiles.length + ' \u05de\u05e9\u05ea\u05de\u05e9\u05d9\u05dd';
+      }
+
+      if (this.filteredProfiles.length === 0) {
+        grid.innerHTML = '<div class="audit-empty"><i class="fas fa-users"></i><p>\u05dc\u05d0 \u05e0\u05de\u05e6\u05d0\u05d5 \u05de\u05e9\u05ea\u05de\u05e9\u05d9\u05dd</p></div>';
+        return;
+      }
+
+      const self = this;
+      let html = '';
+
+      this.filteredProfiles.forEach(function(profile) {
+        const initial = _getInitial(profile.displayName);
+        const roleClass = profile.role;
+        const roleLabel = ROLE_LABELS[profile.role] || profile.role;
+        const statusClass = profile.isActive ? 'active' : 'blocked';
+        const statusTitle = profile.isActive ? '\u05e4\u05e2\u05d9\u05dc' : '\u05d7\u05e1\u05d5\u05dd';
+        const lastLoginStr = _formatLastLogin(profile.lastLogin);
+
+        html +=
+          '<div class="audit-profile-card" data-email="' + _escapeHtml(profile.email) + '">' +
+            '<div class="audit-profile-card-header">' +
+              '<div class="audit-profile-avatar ' + roleClass + '">' + _escapeHtml(initial) + '</div>' +
+              '<div class="audit-profile-info">' +
+                '<div class="audit-profile-name">' + _escapeHtml(profile.displayName) + '</div>' +
+                '<div class="audit-profile-email">' + _escapeHtml(profile.email) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="audit-profile-meta">' +
+              '<div class="audit-profile-badges">' +
+                '<span class="audit-role-badge ' + roleClass + '">' + _escapeHtml(roleLabel) + '</span>' +
+                '<span class="audit-status-dot ' + statusClass + '" title="' + statusTitle + '"></span>' +
+              '</div>' +
+              '<span class="audit-profile-last-login">' + lastLoginStr + '</span>' +
+            '</div>' +
+            '<i class="fas fa-chevron-left audit-profile-arrow"></i>' +
+          '</div>';
+      });
+
+      grid.innerHTML = html;
+
+      // Bind click events on cards
+      grid.querySelectorAll('.audit-profile-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+          const email = card.dataset.email;
+          const profile = self.profiles.find(function(p) {
+ return p.email === email;
+});
+          if (profile) {
+            self._openProfile(profile);
+          }
+        });
+      });
     },
 
     // ═══════════════════════════════════════════
-    // Data Loading
-    // ═══════════��═══════════════════════════════
+    // View: Profile Detail (Activity Log)
+    // ═══════════════════════════════════════════
 
-    loadData: async function() {
-      if (this.loading) {
- return;
-}
+    _openProfile: function(profile) {
+      this.view = 'detail';
+      this.selectedProfile = profile;
+      this.entries = [];
+      this._allEntries = [];
+      this.currentPage = 1;
+      this.detailFilters = { action: '', dateFrom: '', dateTo: '' };
+
+      const roleClass = profile.role;
+      const roleLabel = ROLE_LABELS[profile.role] || profile.role;
+      const statusClass = profile.isActive ? 'active' : 'blocked';
+      const statusLabel = profile.isActive ? '\u05e4\u05e2\u05d9\u05dc' : '\u05d7\u05e1\u05d5\u05dd';
+      const initial = _getInitial(profile.displayName);
+
+      this.container.innerHTML =
+        '<div class="audit-page">' +
+          '<button class="audit-back-btn" id="btn-back"><i class="fas fa-arrow-right"></i> \u05d7\u05d6\u05e8\u05d4 \u05dc\u05e8\u05e9\u05d9\u05de\u05d4</button>' +
+          '<div class="audit-profile-detail-header">' +
+            '<div class="audit-detail-avatar ' + roleClass + '">' + _escapeHtml(initial) + '</div>' +
+            '<div class="audit-detail-info">' +
+              '<h2>' + _escapeHtml(profile.displayName) + '</h2>' +
+              '<div class="audit-detail-email">' + _escapeHtml(profile.email) + '</div>' +
+              '<div class="audit-detail-badges">' +
+                '<span class="audit-role-badge ' + roleClass + '">' + _escapeHtml(roleLabel) + '</span>' +
+                '<span class="audit-status-dot ' + statusClass + '" title="' + statusLabel + '"></span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="audit-detail-filters">' +
+            '<div class="audit-filter-group">' +
+              '<label>\u05e4\u05e2\u05d5\u05dc\u05d4:</label>' +
+              '<select class="audit-filter-select" id="detail-filter-action">' +
+                '<option value="">\u05d4\u05db\u05dc</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="audit-filter-group">' +
+              '<label>\u05de:</label>' +
+              '<input type="date" class="audit-filter-input" id="detail-filter-from" lang="en">' +
+            '</div>' +
+            '<div class="audit-filter-group">' +
+              '<label>\u05e2\u05d3:</label>' +
+              '<input type="date" class="audit-filter-input" id="detail-filter-to" lang="en">' +
+            '</div>' +
+            '<button class="audit-filter-btn" id="btn-detail-filter"><i class="fas fa-search"></i> \u05e1\u05e0\u05df</button>' +
+            '<button class="audit-filter-btn secondary" id="btn-detail-reset"><i class="fas fa-undo"></i> \u05e0\u05e7\u05d4</button>' +
+          '</div>' +
+          '<div class="audit-table-wrapper">' +
+            '<div id="detail-table-content">' +
+              '<div class="audit-loading"><i class="fas fa-spinner fa-spin"></i> \u05d8\u05d5\u05e2\u05df \u05e4\u05e2\u05d9\u05dc\u05d5\u05ea...</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      this._bindDetailEvents();
+      this._loadUserActivity();
+    },
+
+    _bindDetailEvents: function() {
+      const self = this;
+
+      // Back button
+      document.getElementById('btn-back').addEventListener('click', function() {
+        self._renderProfilesView();
+        self._filterAndRenderProfiles();
+      });
+
+      // Filter
+      document.getElementById('btn-detail-filter').addEventListener('click', function() {
+        self._applyDetailFilters();
+      });
+
+      // Reset — restore full list without re-fetching
+      document.getElementById('btn-detail-reset').addEventListener('click', function() {
+        document.getElementById('detail-filter-action').value = '';
+        document.getElementById('detail-filter-from').value = '';
+        document.getElementById('detail-filter-to').value = '';
+        self.detailFilters = { action: '', dateFrom: '', dateTo: '' };
+        self.currentPage = 1;
+        self.entries = self._allEntries.slice();
+        self._renderActivityTable();
+      });
+    },
+
+    _applyDetailFilters: function() {
+      this.detailFilters.action = document.getElementById('detail-filter-action').value;
+      this.detailFilters.dateFrom = document.getElementById('detail-filter-from').value;
+      this.detailFilters.dateTo = document.getElementById('detail-filter-to').value;
+      this.currentPage = 1;
+      // Client-side filter only — no re-fetch
+      this._applyClientFilters();
+      this._renderActivityTable();
+    },
+
+    _applyClientFilters: function() {
+      const actionFilter = this.detailFilters.action;
+      const dateFrom = this.detailFilters.dateFrom;
+      const dateTo = this.detailFilters.dateTo;
+
+      let filtered = this._allEntries.slice();
+
+      if (actionFilter) {
+        filtered = filtered.filter(function(e) {
+          return e.action === actionFilter;
+        });
+      }
+
+      if (dateFrom) {
+        const fromMs = new Date(dateFrom).setHours(0, 0, 0, 0);
+        filtered = filtered.filter(function(e) {
+          return e.tsMillis >= fromMs;
+        });
+      }
+
+      if (dateTo) {
+        const toMs = new Date(dateTo).setHours(23, 59, 59, 999);
+        filtered = filtered.filter(function(e) {
+          return e.tsMillis <= toMs;
+        });
+      }
+
+      this.entries = filtered;
+    },
+
+    _loadUserActivity: async function() {
+      // Increment token on every load — stale results are discarded
+      this._loadToken++;
+      const myToken = this._loadToken;
       this.loading = true;
 
-      const content = document.getElementById('audit-table-content');
-      content.innerHTML = '<div class="audit-loading"><i class="fas fa-spinner fa-spin"></i> טוען נתונים...</div>';
+      const content = document.getElementById('detail-table-content');
+      if (content) {
+        content.innerHTML = '<div class="audit-loading"><i class="fas fa-spinner fa-spin"></i> \u05d8\u05d5\u05e2\u05df \u05e4\u05e2\u05d9\u05dc\u05d5\u05ea...</div>';
+      }
+
+      const profile = this.selectedProfile;
+      const uid = profile.authUID;
+      const email = profile.email;
 
       try {
+        // Primary: query by userId (indexed). activity_log writer always sets userId.
+        // Fallback: query by email fields — union with primary to catch admin actions
+        // logged with adminEmail but without userId, or legacy records missing userId.
+        const queries = [];
+
+        if (uid) {
+          queries.push(this._queryUserCollection('audit_log', 'userId', uid));
+          queries.push(this._queryUserCollection('activity_log', 'userId', uid));
+        }
+
+        // Always also query by email to catch edge cases:
+        //  - admin actions in audit_log that use adminEmail/performedBy (may lack userId)
+        //  - legacy activity_log records before userId was standardized
+        if (email) {
+          queries.push(this._queryUserCollection('audit_log', 'adminEmail', email));
+          queries.push(this._queryUserCollection('activity_log', 'userEmail', email));
+        }
+
+        const allResults = await Promise.all(queries);
+
+        // Stale-result guard: if another profile was clicked, discard
+        if (myToken !== this._loadToken) {
+          return;
+        }
+
+        // Merge and deduplicate by document id
+        const seen = {};
         const results = [];
+        let anyTruncated = false;
 
-        // Load from activity_log
-        if (this.source === 'all' || this.source === 'activity') {
-          const activityDocs = await this._queryCollection('activity_log');
-          activityDocs.forEach(function(doc) {
-            const data = doc.data();
-            // Prefer username (Hebrew) over email, never show raw UID
-            const displayUser = data.username || data.userEmail || _emailFromUid(data.userId) || '';
-            results.push({
-              id: doc.id,
-              source: 'activity',
-              action: data.action || data.type || '',
-              user: displayUser,
-              username: data.username || '',
-              target: data.targetUser || '',
-              details: data.details || '',
-              severity: data.severity || 'info',
-              timestamp: data.timestamp,
-              timestampLocal: data.timestampLocal || null
-            });
-          });
-        }
-
-        // Load from audit_log
-        if (this.source === 'all' || this.source === 'audit') {
-          const auditDocs = await this._queryCollection('audit_log');
-          auditDocs.forEach(function(doc) {
-            const data = doc.data();
-            // Prefer name (Hebrew) over email, never show raw UID
-            const displayUser = data.performedByName || data.username || data.performedBy || data.adminEmail || _emailFromUid(data.userId) || '';
-            // Extract target from details if not in top-level field
-            const det = _parseDetails(data.details);
-            let target = data.targetUser || data.targetUserEmail || '';
-            if (!target) {
-              target = det.targetEmail || det.targetUser || det.clientName || '';
+        allResults.forEach(function(queryResult) {
+          if (queryResult.truncated) {
+            anyTruncated = true;
+          }
+          queryResult.docs.forEach(function(item) {
+            if (!seen[item.id]) {
+              seen[item.id] = true;
+              results.push(item);
             }
-            results.push({
-              id: doc.id,
-              source: 'audit',
-              action: data.action || '',
-              user: displayUser,
-              username: data.performedByName || data.username || '',
-              target: target,
-              details: data.details || '',
-              severity: data.severity || 'info',
-              timestamp: data.timestamp,
-              timestampLocal: data.timestampLocal || null
-            });
           });
-        }
-
-        // Sort by timestamp desc
-        results.sort(function(a, b) {
-          const ta = a.timestamp?.toMillis?.() || 0;
-          const tb = b.timestamp?.toMillis?.() || 0;
-          return tb - ta;
         });
 
+        // Sort by timestamp desc (stable across timestamp formats)
+        results.sort(function(a, b) {
+          return b.tsMillis - a.tsMillis;
+        });
+
+        // Store full dataset — filters work client-side only
+        this._allEntries = results;
+        this._truncated = anyTruncated;
         this.entries = results;
-        this.totalLoaded = results.length;
-        this._renderTable();
-        this._renderStats();
+
+        // Build action dropdown from full data
+        this._buildActionDropdown(results);
+
+        this._renderActivityTable();
 
       } catch (error) {
-        console.error('Error loading audit data:', error);
-        content.innerHTML = '<div class="audit-empty"><i class="fas fa-exclamation-triangle"></i><p>שגיאה בטעינת נתונים</p></div>';
+        // Still check token before rendering error — avoid overwriting newer view
+        if (myToken !== this._loadToken) {
+          return;
+        }
+        console.error('Error loading user activity:', error);
+        if (content) {
+          content.innerHTML = '<div class="audit-empty"><i class="fas fa-exclamation-triangle"></i><p>\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d8\u05e2\u05d9\u05e0\u05ea \u05e4\u05e2\u05d9\u05dc\u05d5\u05ea</p></div>';
+        }
       }
 
-      this.loading = false;
+      if (myToken === this._loadToken) {
+        this.loading = false;
+      }
     },
 
-    _queryCollection: async function(collectionName) {
-      let query = this.db.collection(collectionName)
+    _queryUserCollection: async function(collectionName, field, value) {
+      const LIMIT = 500;
+      const query = this.db.collection(collectionName)
+        .where(field, '==', value)
         .orderBy('timestamp', 'desc')
-        .limit(500);
+        .limit(LIMIT);
 
-      // Date filters
-      if (this.filters.dateFrom) {
-        const from = new Date(this.filters.dateFrom);
-        from.setHours(0, 0, 0, 0);
-        query = query.where('timestamp', '>=', from);
+      try {
+        const snapshot = await query.get();
+        const docs = [];
+
+        snapshot.forEach(function(doc) {
+          const data = doc.data();
+          const det = _parseDetails(data.details);
+          const target = data.targetUser || data.targetUserEmail || det.targetEmail || det.targetUser || det.clientName || '';
+
+          docs.push({
+            id: doc.id,
+            source: collectionName === 'audit_log' ? 'audit' : 'activity',
+            action: data.action || data.type || '',
+            target: target,
+            details: data.details || '',
+            severity: data.severity || 'info',
+            timestamp: data.timestamp,
+            timestampLocal: data.timestampLocal || null,
+            tsMillis: _timestampToMillis(data.timestamp, data.timestampLocal)
+          });
+        });
+
+        return { docs: docs, truncated: snapshot.size >= LIMIT };
+      } catch (e) {
+        // Index might not exist for some field combinations — return empty
+        console.warn('Query failed for ' + collectionName + '.' + field + ':', e.message);
+        return { docs: [], truncated: false };
       }
-
-      if (this.filters.dateTo) {
-        const to = new Date(this.filters.dateTo);
-        to.setHours(23, 59, 59, 999);
-        query = query.where('timestamp', '<=', to);
-      }
-
-      const snapshot = await query.get();
-      const docs = [];
-
-      snapshot.forEach(function(doc) {
- docs.push(doc);
-});
-
-      // Client-side filtering (action and user)
-      return docs.filter(function(doc) {
-        const data = doc.data();
-
-        if (this.filters.action) {
-          const docAction = data.action || data.type || '';
-          if (docAction !== this.filters.action) {
- return false;
-}
-        }
-
-        if (this.filters.user) {
-          const searchTerm = this.filters.user;
-          const userFields = [
-            data.userEmail, data.userId, data.username,
-            data.performedBy, data.adminEmail, data.performedByName,
-            data.targetUser, data.targetUserEmail
-          ].filter(Boolean).join(' ').toLowerCase();
-
-          if (!userFields.includes(searchTerm)) {
- return false;
-}
-        }
-
-        return true;
-      }.bind(this));
     },
 
-    // ═══════════════════════════════════════════
-    // Rendering
-    // ═══════════════════════════════════════════
+    _buildActionDropdown: function(entries) {
+      const actionCounts = {};
+      entries.forEach(function(e) {
+        if (e.action) {
+          actionCounts[e.action] = (actionCounts[e.action] || 0) + 1;
+        }
+      });
 
-    _renderStats: function() {
-      const statsEl = document.getElementById('audit-stats');
-      if (!statsEl) {
+      const select = document.getElementById('detail-filter-action');
+      if (!select) {
  return;
 }
 
-      const actCount = this.entries.filter(function(e) {
- return e.source === 'activity';
-}).length;
-      const audCount = this.entries.filter(function(e) {
- return e.source === 'audit';
-}).length;
+      // Keep the "all" option
+      let html = '<option value="">\u05d4\u05db\u05dc (' + entries.length + ')</option>';
 
-      statsEl.innerHTML =
-        '<span class="audit-stat"><strong>' + this.entries.length + '</strong> רשומות</span>' +
-        '<span class="audit-stat"><strong>' + actCount + '</strong> פעילות</span>' +
-        '<span class="audit-stat"><strong>' + audCount + '</strong> ניהול</span>';
+      // Sort by count desc
+      const actions = Object.keys(actionCounts).sort(function(a, b) {
+        return actionCounts[b] - actionCounts[a];
+      });
+
+      actions.forEach(function(action) {
+        const label = ACTION_LABELS[action] || action;
+        html += '<option value="' + _escapeHtml(action) + '">' + _escapeHtml(label) + ' (' + actionCounts[action] + ')</option>';
+      });
+
+      select.innerHTML = html;
+
+      // Restore filter selection if set
+      if (this.detailFilters.action) {
+        select.value = this.detailFilters.action;
+      }
     },
 
-    _renderTable: function() {
-      const content = document.getElementById('audit-table-content');
+    _renderActivityTable: function() {
+      const content = document.getElementById('detail-table-content');
       if (!content) {
- return;
-}
+        return;
+      }
+
+      // Count entries with missing/zero timestamp (excluded from ordering)
+      const missingTimestampCount = this._allEntries
+        ? this._allEntries.filter(function(e) {
+ return !e.tsMillis;
+}).length
+        : 0;
+
+      let banner = '';
+      if (this._truncated) {
+        banner += '<div class="audit-warning-banner">' +
+          '<i class="fas fa-exclamation-triangle"></i> ' +
+          '\u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d4 \u05d0\u05e8\u05d5\u05db\u05d4 \u2014 \u05de\u05d5\u05e6\u05d2\u05d5\u05ea 500 \u05e8\u05e9\u05d5\u05de\u05d5\u05ea \u05d4\u05d0\u05d7\u05e8\u05d5\u05e0\u05d5\u05ea \u05d1\u05dc\u05d1\u05d3. \u05dc\u05e6\u05e4\u05d9\u05d9\u05d4 \u05d1\u05ea\u05e7\u05d5\u05e4\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea \u2014 \u05d4\u05e9\u05ea\u05de\u05e9 \u05d1\u05e1\u05d9\u05e0\u05d5\u05df \u05ea\u05d0\u05e8\u05d9\u05da.' +
+          '</div>';
+      }
+      if (missingTimestampCount > 0) {
+        banner += '<div class="audit-warning-banner">' +
+          '<i class="fas fa-info-circle"></i> ' +
+          missingTimestampCount + ' \u05e8\u05e9\u05d5\u05de\u05d5\u05ea \u05d7\u05e1\u05e8 \u05d1\u05d4\u05df \u05d7\u05d5\u05ea\u05de\u05ea \u05d6\u05de\u05df \u2014 \u05de\u05d5\u05e6\u05d2\u05d5\u05ea \u05d1\u05e1\u05d5\u05e3 \u05d4\u05e8\u05e9\u05d9\u05de\u05d4.' +
+          '</div>';
+      }
 
       if (this.entries.length === 0) {
-        content.innerHTML = '<div class="audit-empty"><i class="fas fa-clipboard-list"></i><p>לא נמצאו רשומות</p></div>';
+        content.innerHTML = banner + '<div class="audit-empty"><i class="fas fa-clipboard-list"></i><p>\u05dc\u05d0 \u05e0\u05de\u05e6\u05d0\u05d5 \u05e8\u05e9\u05d5\u05de\u05d5\u05ea</p></div>';
         return;
       }
 
@@ -481,45 +703,42 @@
 
       let rows = '';
       pageEntries.forEach(function(entry) {
-        const cat = getActionCategory(entry.action);
+        const cat = _getActionCategory(entry.action);
         const actionLabel = ACTION_LABELS[entry.action] || entry.action;
         const timeStr = _formatTimestamp(entry.timestamp, entry.timestampLocal);
-        const detailsStr = _formatDetails(entry.details);
+        const rawDetails = _formatDetails(entry.details);
+        const escapedDetails = _escapeHtml(rawDetails);
+        const escapedTarget = _escapeHtml(entry.target || '');
         const sourceIcon = entry.source === 'audit'
-          ? '<i class="fas fa-shield-alt" style="color:#9333ea;font-size:11px" title="פעולת מנהל"></i>'
-          : '<i class="fas fa-user" style="color:#6b7280;font-size:11px" title="פעילות משתמש"></i>';
+          ? '<i class="fas fa-shield-alt" style="color:#9333ea;font-size:11px" title="\u05e4\u05e2\u05d5\u05dc\u05ea \u05de\u05e0\u05d4\u05dc"></i>'
+          : '<i class="fas fa-user" style="color:#6b7280;font-size:11px" title="\u05e4\u05e2\u05d9\u05dc\u05d5\u05ea \u05de\u05e9\u05ea\u05de\u05e9"></i>';
 
-        const userCls = entry.user && entry.user.includes('@') ? 'audit-user-cell email-cell' : 'audit-user-cell';
-        const targetCls = entry.target && entry.target.includes('@') ? 'audit-user-cell email-cell' : 'audit-user-cell';
+        const targetCls = entry.target && entry.target.includes('@') ? 'audit-target-cell email-cell' : 'audit-target-cell';
 
         rows += '<tr>' +
           '<td style="text-align:center">' + sourceIcon + '</td>' +
-          '<td class="audit-time-cell">' + timeStr + '</td>' +
+          '<td class="audit-time-cell">' + _escapeHtml(timeStr) + '</td>' +
           '<td><span class="audit-action-badge ' + cat + '">' + _escapeHtml(actionLabel) + '</span></td>' +
-          '<td class="' + userCls + '" title="' + _escapeHtml(entry.user) + '">' + _escapeHtml(entry.user) + '</td>' +
-          '<td class="' + targetCls + '" title="' + _escapeHtml(entry.target || '') + '">' + _escapeHtml(entry.target || '') + '</td>' +
-          '<td class="audit-details" title="' + _escapeHtml(detailsStr) + '">' + detailsStr + '</td>' +
+          '<td class="' + targetCls + '" title="' + escapedTarget + '">' + escapedTarget + '</td>' +
+          '<td class="audit-details" title="' + escapedDetails + '">' + escapedDetails + '</td>' +
           '</tr>';
       });
 
-      content.innerHTML = `
-        <table class="audit-table">
-          <thead>
-            <tr>
-              <th style="width:3%">סוג</th>
-              <th style="width:8%">זמן</th>
-              <th style="width:14%">פעולה</th>
-              <th style="width:10%">בוצע ע"י</th>
-              <th style="width:15%">נוגע ל</th>
-              <th style="width:50%">פרטים</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-        ${this._renderPagination(totalPages)}
-      `;
+      content.innerHTML = banner +
+        '<table class="audit-table">' +
+          '<thead>' +
+            '<tr>' +
+              '<th style="width:4%">\u05e1\u05d5\u05d2</th>' +
+              '<th style="width:10%">\u05d6\u05de\u05df</th>' +
+              '<th style="width:16%">\u05e4\u05e2\u05d5\u05dc\u05d4</th>' +
+              '<th style="width:18%">\u05e0\u05d5\u05d2\u05e2 \u05dc</th>' +
+              '<th style="width:52%">\u05e4\u05e8\u05d8\u05d9\u05dd</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+        this._renderPagination(totalPages);
 
-      // Bind pagination
       this._bindPagination();
     },
 
@@ -542,11 +761,11 @@
 
       btns += '<button class="audit-page-btn" data-page="next" ' + (self.currentPage >= totalPages ? 'disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
 
-      const start = (self.currentPage - 1) * PAGE_SIZE + 1;
-      const end = Math.min(self.currentPage * PAGE_SIZE, self.entries.length);
+      const rangeStart = (self.currentPage - 1) * PAGE_SIZE + 1;
+      const rangeEnd = Math.min(self.currentPage * PAGE_SIZE, self.entries.length);
 
       return '<div class="audit-pagination">' +
-        '<span class="audit-pagination-info">' + start + '-' + end + ' מתוך ' + self.entries.length + '</span>' +
+        '<span class="audit-pagination-info">' + rangeStart + '-' + rangeEnd + ' \u05de\u05ea\u05d5\u05da ' + self.entries.length + '</span>' +
         '<div class="audit-pagination-btns">' + btns + '</div>' +
         '</div>';
     },
@@ -565,9 +784,11 @@
           } else if (page !== 'prev' && page !== 'next') {
             self.currentPage = parseInt(page);
           }
-          self._renderTable();
-          // Scroll to top of table
-          document.querySelector('.audit-table-wrapper')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          self._renderActivityTable();
+          const wrapper = document.querySelector('.audit-table-wrapper');
+          if (wrapper) {
+ wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
         });
       });
     }
@@ -577,25 +798,52 @@
   // Utility Functions
   // ═══════════════════════════════════════════
 
-  /**
-   * If a field contains a raw Firebase UID (no @ sign, long alphanumeric),
-   * return empty string so we don't show it to the user.
-   */
-  function _emailFromUid(val) {
-    if (!val) {
- return '';
+  function _getInitial(name) {
+    if (!name) {
+ return '?';
 }
-    // If it looks like an email, return it
-    if (val.includes('@')) {
- return val;
-}
-    // Raw UID — don't display it
-    return '';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return parts[0].charAt(0) + parts[1].charAt(0);
+    }
+    return parts[0].charAt(0);
   }
 
-  /**
-   * Parse details field — can be string (JSON) or object
-   */
+  function _formatLastLogin(ts) {
+    if (!ts) {
+ return '';
+}
+    try {
+      const date = ts.toDate ? ts.toDate() : new Date(ts);
+      const now = new Date();
+      const diff = now - date;
+      const days = Math.floor(diff / 86400000);
+      if (days === 0) {
+ return '\u05d4\u05d9\u05d5\u05dd';
+}
+      if (days === 1) {
+ return '\u05d0\u05ea\u05de\u05d5\u05dc';
+}
+      if (days < 7) {
+ return '\u05dc\u05e4\u05e0\u05d9 ' + days + ' \u05d9\u05de\u05d9\u05dd';
+}
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      return day + '/' + month + '/' + date.getFullYear();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function _getActionCategory(action) {
+    for (const cat in ACTION_CATEGORIES) {
+      if (ACTION_CATEGORIES[cat].indexOf(action) !== -1) {
+ return cat;
+}
+    }
+    return 'other';
+  }
+
   function _parseDetails(details) {
     if (!details) {
  return {};
@@ -613,13 +861,42 @@
     return {};
   }
 
-  function _formatTimestamp(ts, localStr) {
-    if (!ts && !localStr) {
- return '-';
-}
+  /**
+   * Convert any Firestore timestamp format to milliseconds.
+   * Handles: Timestamp instance, { seconds, nanoseconds } from JSON round-trip,
+   *          { _seconds, _nanoseconds } from some SDKs, and timestampLocal fallback.
+   */
+  function _timestampToMillis(ts, localStr) {
+    if (ts) {
+      if (typeof ts.toMillis === 'function') {
+        return ts.toMillis();
+      }
+      if (typeof ts.seconds === 'number') {
+        return ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+      }
+      if (typeof ts._seconds === 'number') {
+        return ts._seconds * 1000 + Math.floor((ts._nanoseconds || 0) / 1e6);
+      }
+    }
+    if (localStr) {
+      const d = new Date(localStr);
+      if (!isNaN(d.getTime())) {
+        return d.getTime();
+      }
+    }
+    return 0;
+  }
 
+  function _formatTimestamp(ts, localStr) {
+    const ms = _timestampToMillis(ts, localStr);
+    if (!ms) {
+      return '-';
+    }
     try {
-      const date = ts?.toDate?.() || new Date(localStr);
+      const date = new Date(ms);
+      if (isNaN(date.getTime())) {
+        return '-';
+      }
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const hours = String(date.getHours()).padStart(2, '0');
@@ -630,16 +907,19 @@
     }
   }
 
+  /**
+   * Returns raw (unescaped) summary string. Caller must escape before HTML injection.
+   */
   function _formatDetails(details) {
     if (!details) {
- return '';
-}
+      return '';
+    }
     const obj = _parseDetails(details);
     if (typeof obj === 'object' && Object.keys(obj).length > 0) {
-      return _escapeHtml(_summarizeObject(obj));
+      return _summarizeObject(obj);
     }
     if (typeof details === 'string') {
-      return _escapeHtml(details.substring(0, 80));
+      return details.substring(0, 80);
     }
     return '';
   }
@@ -657,7 +937,7 @@
 }
     const parts = [];
     keys.forEach(function(key) {
-      if (DETAIL_SKIP_KEYS.includes(key)) {
+      if (DETAIL_SKIP_KEYS.indexOf(key) !== -1) {
  return;
 }
       if (parts.length >= 3) {
@@ -685,12 +965,12 @@
       if (val >= 60) {
         const h = Math.floor(val / 60);
         const m = val % 60;
-        return m > 0 ? h + ' שעות ' + m + ' דקות' : h + ' שעות';
+        return m > 0 ? h + ' \u05e9\u05e2\u05d5\u05ea ' + m + ' \u05d3\u05e7\u05d5\u05ea' : h + ' \u05e9\u05e2\u05d5\u05ea';
       }
-      return val + ' דקות';
+      return val + ' \u05d3\u05e7\u05d5\u05ea';
     }
     if (key === 'estimatedHours' && typeof val === 'number') {
-      return Math.round(val * 10) / 10 + ' שעות';
+      return Math.round(val * 10) / 10 + ' \u05e9\u05e2\u05d5\u05ea';
     }
     if (key === 'gapPercent' && typeof val === 'number') {
       return val + '%';
@@ -712,7 +992,7 @@
       }
     }
     if (typeof val === 'boolean') {
-      return val ? 'כן' : 'לא';
+      return val ? '\u05db\u05df' : '\u05dc\u05d0';
     }
     return val;
   }
@@ -725,6 +1005,6 @@
   }
 
   window.AuditTrailPage = AuditTrailPage;
-  console.log('✅ Audit Trail Page loaded');
+  console.warn('AuditTrailPage loaded (user profiles)');
 
 })();
