@@ -1,3 +1,8 @@
+---
+description: תכנון מבודד לפיצ'ר ללא הפרוטוקול הרגיל — Intent/Investigation מדלגים, מוציא תוכנית ישירה עם שלבים + קבצים.
+argument-hint: [feature-name]
+---
+
 # PLAN STRICT — ISOLATED MODE
 
 ## HARD ISOLATION
