@@ -1,3 +1,8 @@
+---
+description: שער ולידציה סופי לפני deploy — pre-flight PROD. בודק DEV smoke, cache-bust, functions log, environment match. VERDICT PASS/FAIL בלבד.
+argument-hint: [target-env: dev|prod]
+---
+
 # VALIDATE STRICT — ISOLATED VALIDATION GATE
 
 ## HARD ISOLATION
