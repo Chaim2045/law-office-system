@@ -20,12 +20,18 @@ If not specified — STOP.
 
 ## FEATURE PROTOCOL (STRICT ORDER)
 
+0. **Work Session Check** — `work-session-gatekeeper` agent (MANDATORY FIRST, זהו פרוטוקול ברזל)
 1. Intent — defined by Tommy
 2. Investigation — map flow, read code, find edge cases (NO planning, NO code)
 3. Checkpoint — wait for approval
 4. Planning — only approved scope
 5. Code — only after approval
 6. Gates — prove with evidence (PASS/FAIL only)
+
+## WORK SESSION GATEKEEPER RULE
+Before any new task — `work-session-gatekeeper` MUST run first.
+Returns VERDICT: GO or STOP. If STOP — resolve open work before proceeding.
+Read-only on git. No exceptions. (Details: `.claude/agents/work-session-gatekeeper.md`)
 
 ## MANDATORY RULES
 
