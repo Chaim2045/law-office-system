@@ -54,7 +54,8 @@
 }
 
 .btn:active {
-  transform: translateY(0);
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
 
 .btn:disabled {
@@ -101,6 +102,11 @@
   transform: translateY(-1px);
 }
 
+.btn-secondary:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
 .btn-success {
   background: linear-gradient(
     135deg,
@@ -114,6 +120,11 @@
 .btn-success:hover {
   background: linear-gradient(135deg, var(--green-dark) 0%, #047857 100%);
   box-shadow: 0 4px 12px rgb(16 185 129 / 25%);
+}
+
+.btn-success:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
 
 /* Primary Button - Blue with rounded corners */
@@ -160,6 +171,11 @@
   box-shadow: 0 4px 12px rgb(249 115 22 / 25%);
 }
 
+.btn-warning:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
 .btn-danger {
   background: linear-gradient(
     135deg,
@@ -173,6 +189,11 @@
 .btn-danger:hover {
   background: linear-gradient(135deg, var(--red-dark) 0%, #b91c1c 100%);
   box-shadow: 0 4px 12px rgb(239 68 68 / 25%);
+}
+
+.btn-danger:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
 
 /* כפתור פלוס - 2025 Modern */
@@ -362,4 +383,20 @@ button[onclick*="addTimesheet"]:hover,
 button[onclick*="addBudget"]:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+#addTaskBtn:active,
+#addTimesheetBtn:active,
+#addBudgetBtn:active,
+.add-task-btn:active,
+.add-timesheet-btn:active,
+.add-budget-btn:active,
+.btn-add-task:active,
+.btn-add-timesheet:active,
+.btn-add-budget:active,
+button[onclick*="addTask"]:active,
+button[onclick*="addTimesheet"]:active,
+button[onclick*="addBudget"]:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
