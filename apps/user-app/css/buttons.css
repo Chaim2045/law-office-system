@@ -28,33 +28,14 @@
   overflow: hidden;
 }
 
-.btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(255 255 255 / 15%),
-    transparent
-  );
-  transition: var(--transition-smooth);
-}
-
-.btn:hover::before {
-  left: 100%;
-}
-
 .btn:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
 .btn:active {
-  transform: translateY(0);
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
 
 .btn:disabled {
@@ -101,6 +82,11 @@
   transform: translateY(-1px);
 }
 
+.btn-secondary:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
 .btn-success {
   background: linear-gradient(
     135deg,
@@ -114,6 +100,11 @@
 .btn-success:hover {
   background: linear-gradient(135deg, var(--green-dark) 0%, #047857 100%);
   box-shadow: 0 4px 12px rgb(16 185 129 / 25%);
+}
+
+.btn-success:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
 
 /* Primary Button - Blue with rounded corners */
@@ -160,6 +151,11 @@
   box-shadow: 0 4px 12px rgb(249 115 22 / 25%);
 }
 
+.btn-warning:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
 .btn-danger {
   background: linear-gradient(
     135deg,
@@ -173,6 +169,11 @@
 .btn-danger:hover {
   background: linear-gradient(135deg, var(--red-dark) 0%, #b91c1c 100%);
   box-shadow: 0 4px 12px rgb(239 68 68 / 25%);
+}
+
+.btn-danger:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
 
 /* כפתור פלוס - 2025 Modern */
@@ -198,7 +199,6 @@
               0 0 0 0 rgb(16 185 129 / 0%);
   transform-origin: center;
   position: relative;
-  animation: plusButtonPulse 3s ease-in-out infinite;
 }
 
 .plus-button i {
@@ -210,7 +210,6 @@
   box-shadow: 0 4px 16px rgb(16 185 129 / 35%),
               0 0 0 4px rgb(16 185 129 / 10%);
   background: linear-gradient(135deg, var(--green-dark) 0%, #047857 100%);
-  animation: none;
 }
 
 .plus-button:hover i {
@@ -219,24 +218,11 @@
 
 .plus-button.active {
   transform: rotate(45deg) !important;
-  animation: none;
 }
 
 .plus-button:active {
   transform: scale(0.98);
   box-shadow: 0 1px 4px rgb(16 185 129 / 20%);
-}
-
-@keyframes plusButtonPulse {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgb(59 130 246 / 25%),
-                0 0 0 0 rgb(59 130 246 / 0%);
-  }
-
-  50% {
-    box-shadow: 0 2px 8px rgb(59 130 246 / 25%),
-                0 0 0 6px rgb(59 130 246 / 8%);
-  }
 }
 
 /* כפתור פלוס בפינה עליונה - 2025 Modern */
@@ -267,7 +253,6 @@
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
   box-shadow: 0 2px 8px rgb(59 130 246 / 25%),
               0 0 0 0 rgb(59 130 246 / 0%);
-  animation: plusButtonPulse 3s ease-in-out infinite;
 }
 
 /* כשהטיקר פעיל, תזיז את כפתור הפלוס למטה */
@@ -285,7 +270,6 @@ body.ticker-active .plus-button-top {
   transform: scale(1.05) translateY(-1px);
   box-shadow: 0 4px 16px rgb(59 130 246 / 35%),
               0 0 0 4px rgb(59 130 246 / 10%);
-  animation: none;
 }
 
 .plus-button-top:hover i {
@@ -301,7 +285,6 @@ body.ticker-active .plus-button-top {
 .plus-button-top.active {
   transform: rotate(135deg);
   background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-  animation: none;
 }
 
 .plus-button-top.active:hover {
@@ -362,4 +345,20 @@ button[onclick*="addTimesheet"]:hover,
 button[onclick*="addBudget"]:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+#addTaskBtn:active,
+#addTimesheetBtn:active,
+#addBudgetBtn:active,
+.add-task-btn:active,
+.add-timesheet-btn:active,
+.add-budget-btn:active,
+.btn-add-task:active,
+.btn-add-timesheet:active,
+.btn-add-budget:active,
+button[onclick*="addTask"]:active,
+button[onclick*="addTimesheet"]:active,
+button[onclick*="addBudget"]:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
