@@ -70,6 +70,12 @@ Any PROD action requires:
 - production-stable = PROD
 - Feature branches must be created from main and merged back to main first
 
+## WHAT IS "PROD"?
+"PROD" = the deployed app (Netlify/Firebase), NOT the production-stable branch.
+The branch contains everything (tooling, docs, code) — but only built app
+artifacts reach production. Therefore, merges to production-stable update
+the branch for consistency, not to "release" tooling.
+
 ## DEPLOYMENT RULES
 - Every change must pass DEV before PROD
 - Direct deploy to PROD is forbidden
