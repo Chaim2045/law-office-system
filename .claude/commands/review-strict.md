@@ -1,3 +1,8 @@
+---
+description: ביקורת קוד מבודדת על diff/PR לפי פרוטוקול 6 שלבים (Formatting/Linting/Security/Data/Performance/Architecture). מחזיר VERDICT PASS/FAIL עם ציטוטי שורות.
+argument-hint: [pr-number or diff-path]
+---
+
 # REVIEW STRICT — ISOLATED REVIEW MODE
 
 ## HARD ISOLATION

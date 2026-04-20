@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-04-14
-**סטטוס:** UI performance fixes — popup interaction lag eliminated — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194, #195, #197, #198, #199, #200, #201, #204
+**עדכון אחרון:** 2026-04-17
+**סטטוס:** Audit Trail rebuild — User Profiles + security hardening — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194, #195, #197, #198, #199, #200, #201, #204, #208, #209, #210, #211
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               9d1c989 — UI performance fixes
-production-stable:  merged PR #204
+main:               fc8a808 — Audit Trail rebuild + security hardening
+production-stable:  cbe6f8f — merged PR #211
 אין branches פתוחים.
 ```
 
@@ -69,6 +69,7 @@ production-stable:  merged PR #204
 | #200 | 12/4 | feat: Daily reporting meter (sidebar ring) — מד דיווח יומי עגול ב-sidebar footer. מציג אחוז התקדמות יומי מול תקן העובד (dailyHoursTarget). לחיצה פותחת popup עם פירוט לפי לקוחות + זמן פנימי. real-time updates, zero DB queries נוספות, התראת חריגה חד-פעמית. קבצים: `apps/user-app/js/modules/components/sidebar/daily-meter.js`, `daily-meter.css` |
 | #201 | 12/4 | deploy: Daily reporting meter to PROD |
 | #204 | 14/4 | perf: eliminate popup interaction lag — root cause היה backdrop-filter: blur(12px) על כל popups שגרם ל-GPU recomposite בכל keystroke/DOM change. הסרה מלאה של backdrop-filter, transition: all → ממוקד, animation 0.35s→0.15s, setTimeout(10)→requestAnimationFrame (11 מופעים). כולל: ActionFlowManager דילייים מלאכותיים (minLoadingDuration 200→0, closeDelay 500→150), GuidedTextInput DOM caching, _realTimeListenersStarted guard, 50 unit tests |
+| #208, #209, #210, #211 | 16–17/4 | Audit Trail rebuild — User Profiles view (admin-panel): החליף טאבי role-based ב-2 מצבים: רשימת פרופילים (קלפים) + כניסה לפרופיל → לוג פעולות מלא מ-audit_log + activity_log. Security hardening: audit_log rule הפך ל-admin-only (היה authenticated), activity_log rule תוקן ל-userId (היה performedBy — שדה לא קיים). Correctness: load-token race guard, _timestampToMillis לכל פורמטי Firestore, warning banners (truncation 500 + missing timestamp), double-escape fix ב-tooltip. Indexes: 3 חדשים (activity_log.userId, audit_log.adminEmail, activity_log.userEmail). Client-side filtering (אין re-query ב-Firestore על לחיצת סנן) |
 
 ---
 

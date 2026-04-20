@@ -224,9 +224,17 @@
         }
 
         let query = db.collection('budget_tasks')
-          .where('employee', '==', employee)
-          .orderBy('createdAt', 'desc')
-          .limit(limit);
+          .where('employee', '==', employee);
+
+        if (statusFilter === 'active') {
+          query = query.where('status', '==', 'פעיל').orderBy('deadline', 'asc');
+        } else if (statusFilter === 'completed') {
+          query = query.where('status', '==', 'הושלם').orderBy('completedAt', 'desc');
+        } else {
+          query = query.orderBy('createdAt', 'desc');
+        }
+
+        query = query.limit(limit);
 
         if (this.lastDocs[cacheKey] && loadMore) {
           query = query.startAfter(this.lastDocs[cacheKey]);

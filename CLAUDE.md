@@ -20,12 +20,18 @@ If not specified — STOP.
 
 ## FEATURE PROTOCOL (STRICT ORDER)
 
+0. **Work Session Check** — `work-session-gatekeeper` agent (MANDATORY FIRST, זהו פרוטוקול ברזל)
 1. Intent — defined by Tommy
 2. Investigation — map flow, read code, find edge cases (NO planning, NO code)
 3. Checkpoint — wait for approval
 4. Planning — only approved scope
 5. Code — only after approval
 6. Gates — prove with evidence (PASS/FAIL only)
+
+## WORK SESSION GATEKEEPER RULE
+Before any new task — `work-session-gatekeeper` MUST run first.
+Returns VERDICT: GO or STOP. If STOP — resolve open work before proceeding.
+Read-only on git. No exceptions. (Details: `.claude/agents/work-session-gatekeeper.md`)
 
 ## MANDATORY RULES
 
@@ -63,6 +69,12 @@ Any PROD action requires:
 - main = DEV
 - production-stable = PROD
 - Feature branches must be created from main and merged back to main first
+
+## WHAT IS "PROD"?
+"PROD" = the deployed app (Netlify/Firebase), NOT the production-stable branch.
+The branch contains everything (tooling, docs, code) — but only built app
+artifacts reach production. Therefore, merges to production-stable update
+the branch for consistency, not to "release" tooling.
 
 ## DEPLOYMENT RULES
 - Every change must pass DEV before PROD
