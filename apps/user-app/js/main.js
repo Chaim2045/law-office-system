@@ -1477,11 +1477,14 @@ return;
       this.filteredBudgetTasks = [...this.budgetTasks];
     }
 
-    // Apply current sort preference (default 'deadline') — prevents real-time
-    // listener updates from rendering tasks in arbitrary Firestore order
+    // Apply current sort preference — prevents real-time listener updates
+    // from rendering tasks in arbitrary Firestore order.
+    // Default differs by tab: active uses deadline (closest first),
+    // completed uses recent (most recently updated/completed first).
+    const defaultSort = this.currentTaskFilter === 'completed' ? 'recent' : 'deadline';
     this.filteredBudgetTasks = Search.sortBudgetTasks(
       this.filteredBudgetTasks,
-      this.currentBudgetSort || 'deadline'
+      this.currentBudgetSort || defaultSort
     );
 
     this.renderBudgetView();
