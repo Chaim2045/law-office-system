@@ -1526,6 +1526,27 @@ return;
     Logger.log(`✅ Count badges updated: ${activeCount} active, ${completedCount} completed`);
   }
 
+  /**
+   * Hide all budget view containers.
+   * Each renderer is responsible only for showing its own container;
+   * this centralized helper guarantees exactly one view is visible at a time
+   * and prevents cross-view leakage when switching. Adding a new view
+   * requires only updating this list.
+   */
+  hideAllBudgetViews() {
+    const containerIds = [
+      'budgetContainer',        // cards
+      'budgetTableContainer',   // table
+      'budgetListContainer'     // list
+    ];
+    containerIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden');
+      }
+    });
+  }
+
   async renderBudgetView() {
     // ✅ Calculate statistics on ALL tasks (not filtered) to show total counts
     // Server-first approach with fallback to client calculation
@@ -1544,6 +1565,9 @@ return;
       paginationStatus: null, // Will be added when pagination is implemented
       taskActionsManager: this.taskActionsManager
     };
+
+    // Single Responsibility: hide all views here, renderers only show themselves.
+    this.hideAllBudgetViews();
 
     if (this.currentBudgetView === 'cards') {
       BudgetTasks.renderBudgetCards(this.filteredBudgetTasks, options);
@@ -1572,6 +1596,20 @@ return;
     }
 
     this.renderBudgetView();
+
+    // Scroll to top — each view has its own structure and context;
+    // keeping scroll across views causes a jarring jump.
+    // NB: on this app body.logged-in is the scrolling element (overflow: auto),
+    // not window itself. Cover both to be safe.
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (document.body) {
+        document.body.scrollTop = 0;
+      }
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0;
+      }
+    });
   }
 
   /**

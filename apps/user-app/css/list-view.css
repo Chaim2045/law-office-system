@@ -251,8 +251,19 @@
   background: transparent; /* "later" does not need indicator noise */
 }
 
-.list-row-indicator--completed {
-  background: #10b981;
+/*
+ * Completed tasks:
+ * - clean close (on time, in budget) → no indicator, just like "later"
+ *   (Emil: no color = no signal needed)
+ * - overrun (time or budget) → subtle red, muted to not feel alarming
+ *   (it's historical; the decision has already been made)
+ */
+.list-row-indicator--completed-clean {
+  background: transparent;
+}
+
+.list-row-indicator--completed-overrun {
+  background: rgb(239 68 68 / 60%);
 }
 
 /* ─── Row main content ─── */
@@ -313,6 +324,125 @@
 
 .list-row-meta-emphasis--on-time {
   color: var(--gray-600);
+}
+
+/* ==========================================================================
+   ROW ACTIONS (Phase 2a — hover reveal)
+   ========================================================================== */
+
+/*
+ * Actions container — sits on the left side of the row in RTL.
+ * On hover-capable devices: hidden by default, revealed on row hover.
+ * On touch devices: always visible (no real hover).
+ * Entry uses opacity + a small translateX, never display:none (interruptible).
+ */
+.list-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+
+  /* default — visible on touch/non-hover devices */
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity var(--list-duration-fast) var(--list-ease-out),
+    transform var(--list-duration-fast) var(--list-ease-out);
+}
+
+/* Hover-capable devices: hide until row is hovered/focused */
+@media (hover: hover) and (pointer: fine) {
+  .list-row-actions {
+    opacity: 0;
+
+    /* small translateX in RTL — comes in from the left-inside */
+    transform: translateX(-4px);
+    pointer-events: none;
+  }
+
+  .list-row:hover .list-row-actions,
+  .list-row:focus-within .list-row-actions {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+}
+
+/* Individual action button */
+.list-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+
+  /* Emil: specific transitions, custom easing */
+  transition:
+    background-color var(--list-duration-fast) var(--list-ease-out),
+    color var(--list-duration-fast) var(--list-ease-out),
+    transform 100ms var(--list-ease-out);
+
+  transform-origin: center;
+}
+
+.list-row-action:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+/* Emil rule #1: every pressable must scale on :active */
+.list-row-action:active {
+  transform: scale(0.92);
+}
+
+.list-row-action:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/* Primary action (הוסף זמן) gets a subtle emphasis on hover */
+.list-row-action--primary:hover {
+  background: rgb(59 130 246 / 10%);
+  color: var(--blue-dark);
+}
+
+/* Budget adjust (conditional — over-budget) */
+.list-row-action--budget:hover {
+  background: rgb(234 88 12 / 10%);
+  color: #c2410c;
+}
+
+/* Cancel / danger (conditional — 0 hours logged) */
+.list-row-action--danger:hover {
+  background: rgb(239 68 68 / 10%);
+  color: var(--red-dark);
+}
+
+/* Align actions to the start of the row (left side in RTL),
+   centered vertically against row content */
+.list-row {
+  align-items: center;
+}
+
+/* When reduced motion is preferred, skip reveal animation but keep
+   the hide-until-hover behavior (useful for uncluttered UI). */
+@media (prefers-reduced-motion: reduce) {
+  .list-row-actions,
+  .list-row-action {
+    transition: none;
+  }
+
+  .list-row-action:active {
+    transform: none;
+  }
 }
 
 /* ==========================================================================
