@@ -50,7 +50,7 @@ export const DEFAULTS = {
   // User Preferences (Can be persisted) - ניתן לשמירה
   BUDGET_VIEW: 'cards',            // ✅ ניתן לשמור
   TIMESHEET_VIEW: 'table',         // ✅ ניתן לשמור
-  BUDGET_SORT: 'recent',           // ✅ ניתן לשמור
+  BUDGET_SORT: 'deadline',         // ✅ session-only — תמיד מתחיל ב-deadline
   TIMESHEET_SORT: 'recent'         // ✅ ניתן לשמור
 };
 
@@ -71,7 +71,8 @@ export const SESSION_ONLY_KEYS = [
   'taskFilter',           // ✅ Always reset to 'active'
   'timesheetFilter',      // ✅ Always reset to 'month'
   'currentPage',          // ✅ Always start at page 1
-  'searchQuery'           // ✅ Always start with empty search
+  'searchQuery',          // ✅ Always start with empty search
+  'budgetSort'            // ✅ Always reset to 'deadline' — closest deadline first
 ];
 
 /**
@@ -86,7 +87,6 @@ export const SESSION_ONLY_KEYS = [
 export const PERSISTED_KEYS = [
   'budgetView',           // ✅ cards/table preference
   'timesheetView',        // ✅ cards/table preference
-  'budgetSort',           // ✅ sort preference
   'timesheetSort'         // ✅ sort preference
 ];
 
