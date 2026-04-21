@@ -1476,6 +1476,14 @@ return;
       // 'all' - show everything (including pending_approval)
       this.filteredBudgetTasks = [...this.budgetTasks];
     }
+
+    // Apply current sort preference (default 'deadline') — prevents real-time
+    // listener updates from rendering tasks in arbitrary Firestore order
+    this.filteredBudgetTasks = Search.sortBudgetTasks(
+      this.filteredBudgetTasks,
+      this.currentBudgetSort || 'deadline'
+    );
+
     this.renderBudgetView();
   }
 
