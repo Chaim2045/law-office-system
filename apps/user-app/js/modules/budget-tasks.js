@@ -1037,6 +1037,333 @@ export function renderBudgetTable(tasks, options = {}) {
 }
 
 /* ===========================
+   LIST VIEW (Phase 0 — Grouped Priority List)
+   =========================== */
+
+/**
+ * Group tasks by deadline urgency into 4 buckets:
+ * - overdue   (past deadline)
+ * - this-week (0-7 days)
+ * - this-month (8-30 days)
+ * - later     (>30 days or no deadline)
+ *
+ * @param {Array} tasks - Active tasks (already filtered)
+ * @returns {Object} { overdue: [], 'this-week': [], 'this-month': [], later: [] }
+ */
+export function groupTasksByDeadline(tasks) {
+  const groups = {
+    'overdue': [],
+    'this-week': [],
+    'this-month': [],
+    'later': []
+  };
+
+  if (!Array.isArray(tasks)) {
+    return groups;
+  }
+
+  const now = Date.now();
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+  tasks.forEach((task) => {
+    if (!task || !task.deadline) {
+      groups['later'].push(task);
+      return;
+    }
+
+    const deadlineTime = new Date(task.deadline).getTime();
+    if (Number.isNaN(deadlineTime)) {
+      groups['later'].push(task);
+      return;
+    }
+
+    const daysUntil = Math.ceil((deadlineTime - now) / MS_PER_DAY);
+
+    if (daysUntil < 0) {
+      groups['overdue'].push(task);
+    } else if (daysUntil <= 7) {
+      groups['this-week'].push(task);
+    } else if (daysUntil <= 30) {
+      groups['this-month'].push(task);
+    } else {
+      groups['later'].push(task);
+    }
+  });
+
+  return groups;
+}
+
+/**
+ * Build interpretive meta line for a task row.
+ * Example: "לקוח X · חרגת ב-5 ימים · חריגה (200%)"
+ *
+ * @param {Object} task - Sanitized task data
+ * @param {number} progress - Calculated progress percentage
+ * @returns {string} HTML string of the meta line
+ */
+function buildListRowMeta(task, progress) {
+  const parts = [];
+
+  // Part 1: Client name
+  if (task.clientName) {
+    parts.push(`<span class="list-row-meta-client">${escapeHtml(task.clientName)}</span>`);
+  }
+
+  // Part 2: Deadline interpretation
+  if (task.deadline) {
+    const now = Date.now();
+    const deadlineTime = new Date(task.deadline).getTime();
+    if (!Number.isNaN(deadlineTime)) {
+      const MS_PER_DAY = 1000 * 60 * 60 * 24;
+      const daysUntil = Math.ceil((deadlineTime - now) / MS_PER_DAY);
+
+      let deadlineText = '';
+      let deadlineClass = '';
+
+      if (daysUntil < 0) {
+        const daysLate = Math.abs(daysUntil);
+        deadlineText = daysLate === 1 ? 'חרגת ביום' : `חרגת ב-${daysLate} ימים`;
+        deadlineClass = 'list-row-meta-emphasis--overdue';
+      } else if (daysUntil === 0) {
+        deadlineText = 'היום';
+        deadlineClass = 'list-row-meta-emphasis--overdue';
+      } else if (daysUntil === 1) {
+        deadlineText = 'מחר';
+      } else if (daysUntil <= 7) {
+        deadlineText = `בעוד ${daysUntil} ימים`;
+      } else {
+        const date = new Date(task.deadline);
+        deadlineText = date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        deadlineClass = 'list-row-meta-emphasis--on-time';
+      }
+
+      parts.push(`<span class="${deadlineClass}">${deadlineText}</span>`);
+    }
+  }
+
+  // Part 3: Budget interpretation
+  const actualMinutes = Number(task.actualMinutes || 0);
+  const estimatedMinutes = Number(task.estimatedMinutes || task.originalEstimate || 0);
+
+  if (estimatedMinutes > 0) {
+    const actualHours = (actualMinutes / 60).toFixed(1);
+    const estimatedHours = (estimatedMinutes / 60).toFixed(1);
+
+    if (progress > 100) {
+      parts.push(`<span class="list-row-meta-emphasis--over-budget">חריגה (${progress}%)</span>`);
+    } else {
+      parts.push(`${actualHours}ש / ${estimatedHours}ש`);
+    }
+  }
+
+  return parts.join('<span class="list-row-meta-separator">·</span>');
+}
+
+/**
+ * Minimal HTML escape for values going into innerHTML.
+ * @param {string} s
+ * @returns {string}
+ */
+function escapeHtml(s) {
+  if (s === null || s === undefined) {
+    return '';
+  }
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Create a single list row HTML for one task.
+ *
+ * @param {Object} task - Task data
+ * @param {string} groupKey - 'overdue' | 'this-week' | 'this-month' | 'later' | 'completed'
+ * @returns {string} HTML string
+ */
+export function createTaskListRow(task, groupKey) {
+  const safeTask = sanitizeTaskData(task);
+  const progress = calculateSimpleProgress(safeTask);
+  const safeDescription = escapeHtml(safeTask.description || '');
+  const safeClientName = escapeHtml(safeTask.clientName || '');
+  const metaHtml = buildListRowMeta(safeTask, progress);
+
+  return `
+    <li class="list-row" data-task-id="${escapeHtml(safeTask.id)}">
+      <span class="list-row-indicator list-row-indicator--${groupKey}" aria-hidden="true"></span>
+      <div class="list-row-main">
+        <h5 class="list-row-title" title="${safeDescription}">${safeDescription}</h5>
+        <p class="list-row-meta" title="${safeClientName}">${metaHtml}</p>
+      </div>
+    </li>
+  `;
+}
+
+/**
+ * Group label metadata (title + CSS modifier).
+ */
+const GROUP_META = {
+  'overdue':    { title: 'באיחור',  modifier: 'overdue',    expandedByDefault: true  },
+  'this-week':  { title: 'השבוע',   modifier: 'this-week',  expandedByDefault: false },
+  'this-month': { title: 'החודש',   modifier: 'this-month', expandedByDefault: false },
+  'later':      { title: 'אחר כך',  modifier: 'later',      expandedByDefault: false }
+};
+
+/**
+ * Build HTML for a single deadline-based group.
+ */
+function buildGroup(key, tasks) {
+  const meta = GROUP_META[key];
+  const count = tasks.length;
+  const isExpanded = meta.expandedByDefault && count > 0;
+  const expandedClass = isExpanded ? 'is-expanded' : '';
+
+  const rowsHtml = count > 0
+    ? tasks.map((task) => createTaskListRow(task, key)).join('')
+    : '<li class="list-group-empty">אין משימות בקבוצה זו</li>';
+
+  return `
+    <section class="list-group ${expandedClass}" data-group="${key}">
+      <button
+        type="button"
+        class="list-group-header"
+        onclick="manager.toggleListGroup('${key}')"
+        aria-expanded="${isExpanded ? 'true' : 'false'}"
+      >
+        <div class="list-group-header-left">
+          <i class="fas fa-chevron-down list-group-chevron" aria-hidden="true"></i>
+          <span class="list-group-dot list-group-dot--${meta.modifier}" aria-hidden="true"></span>
+          <h4 class="list-group-title">${meta.title}</h4>
+          <span class="list-group-count">${count}</span>
+        </div>
+      </button>
+      <div class="list-group-items-wrapper">
+        <ul class="list-group-items">
+          ${rowsHtml}
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
+/**
+ * Render budget list view (Phase 0 — view-only).
+ * Active filter: grouped by deadline urgency.
+ * Completed filter: flat list sorted by completion date.
+ *
+ * @param {Array} tasks - Tasks to render (already filtered by status)
+ * @param {Object} options - Rendering options (same shape as other render functions)
+ */
+export function renderBudgetList(tasks, options = {}) {
+  const {
+    stats,
+    currentTaskFilter,
+    paginationStatus,
+    currentBudgetSort
+  } = options;
+
+  const container = document.getElementById('budgetContainer');
+  const tableContainer = document.getElementById('budgetTableContainer');
+  const listContainer = document.getElementById('budgetListContainer');
+
+  // Empty state
+  if (!tasks || tasks.length === 0) {
+    if (listContainer) {
+      listContainer.innerHTML = createEmptyTableState(currentTaskFilter || 'active');
+      listContainer.classList.remove('hidden');
+    }
+    if (container) {
+      container.classList.add('hidden');
+    }
+    if (tableContainer) {
+      tableContainer.classList.add('hidden');
+    }
+    return;
+  }
+
+  // Build body based on filter
+  let bodyHtml;
+  if (currentTaskFilter === 'completed') {
+    // Flat list, sorted newest first (already sorted by caller in most cases)
+    const rowsHtml = tasks.map((task) => createTaskListRow(task, 'completed')).join('');
+    bodyHtml = `<ul class="list-completed">${rowsHtml}</ul>`;
+  } else {
+    // Grouped view (default)
+    const groups = groupTasksByDeadline(tasks);
+    bodyHtml = `
+      <div class="list-groups">
+        ${buildGroup('overdue',    groups['overdue'])}
+        ${buildGroup('this-week',  groups['this-week'])}
+        ${buildGroup('this-month', groups['this-month'])}
+        ${buildGroup('later',      groups['later'])}
+      </div>
+    `;
+  }
+
+  // Shared header + stats bar (reuse existing components)
+  const statsBar = window.StatisticsModule
+    ? window.StatisticsModule.createBudgetStatsBar(stats, currentTaskFilter || 'active')
+    : '';
+
+  const loadMoreButton = paginationStatus?.hasMore ? `
+    <div class="pagination-controls">
+      <button class="load-more-btn" onclick="window.manager.loadMoreBudgetTasks()">
+        <i class="fas fa-chevron-down"></i>
+        טען עוד (${paginationStatus.filteredItems - paginationStatus.displayedItems} רשומות נוספות)
+      </button>
+      <div class="pagination-info">
+        מציג ${paginationStatus.displayedItems} מתוך ${paginationStatus.filteredItems} רשומות
+      </div>
+    </div>
+  ` : '';
+
+  const html = `
+    <div class="modern-list-container">
+      <div class="modern-table-header">
+        <h3 class="modern-table-title">
+          <i class="fas fa-list"></i>
+          משימות מתוקצבות
+        </h3>
+      </div>
+      <div class="stats-with-sort-row">
+        ${statsBar}
+        <div class="sort-dropdown">
+          <label class="sort-label">
+            <i class="fas fa-sort-amount-down"></i>
+            מיין לפי:
+          </label>
+          <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks(event)">
+            <option value="recent"   ${currentBudgetSort === 'recent'   ? 'selected' : ''}>עדכון אחרון</option>
+            <option value="name"     ${currentBudgetSort === 'name'     ? 'selected' : ''}>שם (א-ת)</option>
+            <option value="deadline" ${currentBudgetSort === 'deadline' ? 'selected' : ''}>תאריך יעד</option>
+            <option value="progress" ${currentBudgetSort === 'progress' ? 'selected' : ''}>התקדמות</option>
+          </select>
+        </div>
+      </div>
+      ${bodyHtml}
+      ${loadMoreButton}
+    </div>
+  `;
+
+  if (listContainer) {
+    listContainer.innerHTML = html;
+    listContainer.classList.remove('hidden');
+
+    if (window.DescriptionTooltips) {
+      window.DescriptionTooltips.refresh(listContainer);
+    }
+  }
+  if (container) {
+    container.classList.add('hidden');
+  }
+  if (tableContainer) {
+    tableContainer.classList.add('hidden');
+  }
+}
+
+/* ===========================
    FORM OPERATIONS
    =========================== */
 
@@ -1079,6 +1406,11 @@ export default {
   createEmptyTableState,
   renderBudgetCards,
   renderBudgetTable,
+
+  // List view (Phase 0)
+  groupTasksByDeadline,
+  createTaskListRow,
+  renderBudgetList,
 
   // Form operations
   clearBudgetForm

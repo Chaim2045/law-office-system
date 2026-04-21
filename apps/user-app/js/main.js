@@ -1547,6 +1547,8 @@ return;
 
     if (this.currentBudgetView === 'cards') {
       BudgetTasks.renderBudgetCards(this.filteredBudgetTasks, options);
+    } else if (this.currentBudgetView === 'list') {
+      BudgetTasks.renderBudgetList(this.filteredBudgetTasks, options);
     } else {
       BudgetTasks.renderBudgetTable(this.filteredBudgetTasks, options);
     }
@@ -1557,16 +1559,37 @@ return;
     STATE_CONFIG.setStateValue('budgetView', view);
     this.currentBudgetView = view;
 
-    // Update view tabs
-    document.querySelectorAll('.view-tab').forEach(tab => {
-      if (tab.dataset.view === view) {
-        tab.classList.add('active');
-      } else {
-        tab.classList.remove('active');
-      }
-    });
+    // Update view tabs — only the budget view tabs, not timesheet's
+    const budgetTabsContainer = document.querySelector('#budgetTab .view-tabs');
+    if (budgetTabsContainer) {
+      budgetTabsContainer.querySelectorAll('.view-tab').forEach(tab => {
+        if (tab.dataset.view === view) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+    }
 
     this.renderBudgetView();
+  }
+
+  /**
+   * Toggle expand/collapse of a list-view group (Phase 0).
+   * @param {string} groupKey - 'overdue' | 'this-week' | 'this-month' | 'later'
+   */
+  toggleListGroup(groupKey) {
+    const group = document.querySelector(`.list-group[data-group="${groupKey}"]`);
+    if (!group) {
+      return;
+    }
+
+    const header = group.querySelector('.list-group-header');
+    const isExpanded = group.classList.toggle('is-expanded');
+
+    if (header) {
+      header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+    }
   }
 
   /* ========================================

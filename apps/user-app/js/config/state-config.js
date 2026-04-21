@@ -48,7 +48,7 @@ export const DEFAULTS = {
   TIMESHEET_FILTER: 'month',       // ✅ תמיד מתחיל בחודש נוכחי
 
   // User Preferences (Can be persisted) - ניתן לשמירה
-  BUDGET_VIEW: 'cards',            // ✅ ניתן לשמור
+  BUDGET_VIEW: 'list',             // ✅ ניתן לשמור (Phase 0: default changed from 'cards' to 'list')
   TIMESHEET_VIEW: 'table',         // ✅ ניתן לשמור
   BUDGET_SORT: 'deadline',         // ✅ session-only — תמיד מתחיל ב-deadline
   TIMESHEET_SORT: 'recent'         // ✅ ניתן לשמור
