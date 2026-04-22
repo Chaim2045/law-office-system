@@ -40,45 +40,44 @@
     createTableActionButtons(task, isCompleted) {
       const taskId = task.id;
 
-      // אם המשימה הושלמה - רק כפתור היסטוריה
+      // Lucide icons — Claude.ai-style outlined strokes, 1.5-1.75px weight.
+      // <i data-lucide="..."> placeholders are hydrated into <svg> by
+      // lucide.createIcons() after the row is inserted into the DOM.
       if (isCompleted) {
         return `
-          <button class="action-btn history-btn" onclick="manager.showTaskHistory('${taskId}')" title="היסטוריה">
-            <i class="fas fa-history"></i>
+          <button class="action-btn history-btn" onclick="manager.showTaskHistory('${taskId}')" title="היסטוריה" aria-label="היסטוריה">
+            <i data-lucide="rotate-ccw"></i>
           </button>
         `;
       }
 
-      // משימה פעילה - כל הכפתורים
       const canCancel = Number(task.actualMinutes || 0) === 0;
-
-      // ✅ Check if over budget (same logic as cards view)
       const originalEstimate = task.originalEstimate || task.estimatedMinutes || 0;
       const actualMinutes = Number(task.actualMinutes || 0);
       const isOverBudget = actualMinutes > originalEstimate;
 
       return `
-        <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog('${taskId}')" title="הוסף זמן">
-          <i class="fas fa-clock"></i>
+        <button class="action-btn time-btn" onclick="manager.showAdvancedTimeDialog('${taskId}')" title="הוסף זמן" aria-label="הוסף זמן">
+          <i data-lucide="clock"></i>
         </button>
         ${isOverBudget ? `
-        <button class="action-btn budget-btn" onclick="manager.showAdjustBudgetDialog('${taskId}')" title="עדכן תקציב">
-          <i class="fas fa-edit"></i>
+        <button class="action-btn budget-btn" onclick="manager.showAdjustBudgetDialog('${taskId}')" title="עדכן תקציב" aria-label="עדכן תקציב">
+          <i data-lucide="pencil"></i>
         </button>
         ` : ''}
-        <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog('${taskId}')" title="האריך יעד">
-          <i class="fas fa-calendar-plus"></i>
+        <button class="action-btn extend-btn" onclick="manager.showExtendDeadlineDialog('${taskId}')" title="האריך יעד" aria-label="האריך יעד">
+          <i data-lucide="calendar-plus"></i>
         </button>
-        <button class="action-btn history-btn" onclick="manager.showTaskHistory('${taskId}')" title="היסטוריה">
-          <i class="fas fa-history"></i>
+        <button class="action-btn history-btn" onclick="manager.showTaskHistory('${taskId}')" title="היסטוריה" aria-label="היסטוריה">
+          <i data-lucide="rotate-ccw"></i>
         </button>
         ${canCancel ? `
-        <button class="action-btn cancel-btn" onclick="manager.showCancelTaskDialog('${taskId}')" title="בטל משימה">
-          <i class="fas fa-ban"></i>
+        <button class="action-btn cancel-btn" onclick="manager.showCancelTaskDialog('${taskId}')" title="בטל משימה" aria-label="בטל משימה">
+          <i data-lucide="ban"></i>
         </button>
         ` : ''}
-        <button class="action-btn complete-btn" onclick="manager.completeTask('${taskId}')" title="סיים משימה">
-          <i class="fas fa-check"></i>
+        <button class="action-btn complete-btn" onclick="manager.completeTask('${taskId}')" title="סיים משימה" aria-label="סיים משימה">
+          <i data-lucide="check"></i>
         </button>
       `;
     }

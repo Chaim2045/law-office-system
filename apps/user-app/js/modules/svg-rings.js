@@ -237,49 +237,30 @@
     const radius = 20;
     const strokeWidth = 3;
     const circumference = 2 * Math.PI * radius;
-    // ✅ FIX: הסרת הגבלת 100% - מאפשר להראות איחור אמיתי ברינג מוקטן (טבלה)
-    // הרינג ייראה מלא (100%) כשיש איחור, והאיחור יוצג במספר הימים
+    // Keep ring visually capped at 100% — overrun is surfaced by the days
+    // counter ("איחור N ימים"), not by a ring that spins past full.
     const dashOffset = calculateDashOffset(Math.min(progress, 100), radius);
 
-    // Determine color based on days remaining
-    let color, colorScheme;
+    /*
+     * "2 Signals Only" palette — Emil: gray by default, red ONLY for overdue.
+     * Prior version had 4 color schemes (red / dark-orange / amber / blue)
+     * + gradients + colored backgrounds, which made every row shout. The
+     * compact ring is a small chrome element in each row; it deserves calm.
+     * Flat strokes (no gradient) keep the numeric in the center legible.
+     */
     const isOverdue = daysRemaining < 0;
+    const colorScheme = isOverdue
+      ? {
+          stroke: '#dc2626',
+          bg: 'var(--gray-100)',
+          text: '#dc2626'
+        }
+      : {
+          stroke: 'var(--gray-500)',
+          bg: 'var(--gray-100)',
+          text: 'var(--gray-700)'
+        };
 
-    if (isOverdue) {
-      color = 'red';
-      colorScheme = {
-        start: '#dc2626',
-        end: '#b91c1c',
-        bg: '#fee2e2',
-        text: '#991b1b'
-      };
-    } else if (daysRemaining <= 1) {
-      color = 'orange';
-      colorScheme = {
-        start: '#ea580c',
-        end: '#c2410c',
-        bg: '#fed7aa',
-        text: '#9a3412'
-      };
-    } else if (daysRemaining <= 3) {
-      color = 'orange';
-      colorScheme = {
-        start: '#f59e0b',
-        end: '#d97706',
-        bg: '#fef3c7',
-        text: '#92400e'
-      };
-    } else {
-      color = 'blue';
-      colorScheme = {
-        start: '#2563eb',
-        end: '#1e40af',
-        bg: '#dbeafe',
-        text: '#1e3a8a'
-      };
-    }
-
-    const gradientId = `compact-ring-${Math.random().toString(36).substr(2, 9)}`;
     const displayDays = Math.abs(daysRemaining);
 
     // פורמט תאריך מלא DD.MM.YYYY (אם deadline קיים)
@@ -291,10 +272,12 @@
       fullDateStr = `${day}.${month}.${year}`;
     }
 
+    // Flat stroke (no gradient) — Emil: no unnecessary visual effects.
+    // Text color on date + label inherits from the ring's colorScheme so
+    // the whole cell reads as one calm unit (gray) or one alarm (red).
     return `
       <div class="compact-deadline-ring">
         <svg width="${size}" height="${size}" viewBox="0 0 60 60" class="compact-svg-ring">
-          <!-- Background circle -->
           <circle
             cx="30"
             cy="30"
@@ -303,14 +286,12 @@
             stroke="${colorScheme.bg}"
             stroke-width="${strokeWidth}"
           />
-
-          <!-- Progress circle -->
           <circle
             cx="30"
             cy="30"
             r="${radius}"
             fill="none"
-            stroke="url(#${gradientId})"
+            stroke="${colorScheme.stroke}"
             stroke-width="${strokeWidth}"
             stroke-dasharray="${circumference}"
             stroke-dashoffset="${dashOffset}"
@@ -318,31 +299,19 @@
             transform="rotate(-90 30 30)"
             class="compact-ring-progress"
           />
-
-          <!-- Gradient definition -->
-          <defs>
-            <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="${colorScheme.start}" />
-              <stop offset="100%" stop-color="${colorScheme.end}" />
-            </linearGradient>
-          </defs>
-
-          <!-- Days number in center (only number) -->
           <text
             x="30"
             y="30"
             text-anchor="middle"
             dominant-baseline="central"
             font-size="16"
-            font-weight="700"
+            font-weight="600"
             fill="${colorScheme.text}"
             class="compact-ring-number">
             ${displayDays}
           </text>
         </svg>
-        <!-- תאריך מלא (שורה ראשונה) -->
         ${fullDateStr ? `<div class="compact-ring-date" style="color: ${colorScheme.text};">${fullDateStr}</div>` : ''}
-        <!-- "X ימים" label (שורה שנייה) -->
         <div class="compact-ring-label-below" style="color: ${colorScheme.text};">${displayDays} ימים</div>
         ${isOverdue ? '<div class="compact-ring-status">איחור!</div>' : ''}
       </div>

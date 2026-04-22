@@ -30,6 +30,7 @@ const commonIgnores = [
   'docs/**',
   '.github/**',
   'functions/**', // ✅ Server-side code (Node.js) - different linting rules
+  '**/lib/**',    // ✅ Vendored third-party libraries (e.g. lucide.min.js)
   'vite.config.ts',
   'vitest.config.ts',
   'playwright.config.ts'

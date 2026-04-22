@@ -821,12 +821,20 @@ export function createTableRow(task, options = {}) {
   const isPendingApproval = safeTask.status === 'pending_approval';
   const rowClass = isPendingApproval ? 'pending-approval-row' : '';
 
+  // Single sanitization path for the description — we render the same
+  // escaped string both as the cell's inner text and as its `title` tooltip.
+  // The prior version used safeText() (from options) for the span and
+  // escapeHtml() locally for the title; two different sanitization rules
+  // on the same field is a rough edge (minor XSS surface + visual drift if
+  // the two normalize whitespace/quotes differently). One path, one result.
+  const safeDesc = escapeHtml(safeTask.description || '');
+
   return `
     <tr data-task-id="${safeTask.id}" class="${rowClass}">
       <td>${safeText ? safeText(safeTask.clientName) : safeTask.clientName}</td>
       <td class="td-description">
         <div class="table-description-with-icons">
-          <span>${safeText ? safeText(safeTask.description) : safeTask.description}</span>
+          <span title="${safeDesc}">${safeDesc}</span>
           ${combinedBadge}
         </div>
       </td>

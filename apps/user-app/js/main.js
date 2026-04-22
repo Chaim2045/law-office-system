@@ -1547,6 +1547,70 @@ return;
     });
   }
 
+  /**
+   * Attach scroll listener that toggles .is-scrolled on the sticky table
+   * <thead> — gives it a subtle shadow + firmer border when the page is
+   * scrolled past the header's resting position. Pure CSS isn't enough
+   * because the scroll container is body.logged-in, not the table itself.
+   *
+   * Idempotent: flag prevents double-binding across re-renders. `passive`
+   * avoids scroll-jank.
+   */
+  setupTableScrollShadow() {
+    if (this._tableScrollShadowBound) {
+      return;
+    }
+    this._tableScrollShadowBound = true;
+
+    const threshold = 8;
+
+    // Single listener on window — scroll events bubble there regardless of
+    // which element actually owns the scroll (body vs documentElement). We
+    // read scrollTop from both because `body.logged-in` uses overflow:auto
+    // on this app, which puts the scroll on body in some engines and on
+    // documentElement in others.
+    const onScroll = () => {
+      const thead = document.querySelector('.modern-budget-table thead, .modern-timesheet-table thead');
+      if (!thead) {
+        return;
+      }
+      const y = document.body.scrollTop || document.documentElement.scrollTop || 0;
+      thead.classList.toggle('is-scrolled', y > threshold);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  /**
+   * Delegate clicks on the new Ultra-Minimal stats bar buttons to the
+   * existing toggleTaskView() handler. The stats bar HTML is re-rendered
+   * on every renderBudgetView(), so per-element listeners would leak —
+   * delegation on document.body attaches once, then forwards filter clicks
+   * from any current stats bar (budget tab, list view, card view).
+   *
+   * Idempotent via flag.
+   */
+  setupStatsFilterDelegation() {
+    if (this._statsFilterDelegated) {
+      return;
+    }
+    this._statsFilterDelegated = true;
+
+    document.body.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.stat-clickable[data-filter]');
+      if (!btn) {
+        return;
+      }
+      const filter = btn.dataset.filter;
+      if (filter === 'active' || filter === 'completed') {
+        this.toggleTaskView(filter);
+      }
+      // 'all' is intentionally a no-op for now: currentTaskFilter is
+      // binary (active/completed). Clicking it gives visual feedback
+      // via :active scale but doesn't change state.
+    });
+  }
+
   async renderBudgetView() {
     // ✅ Calculate statistics on ALL tasks (not filtered) to show total counts
     // Server-first approach with fallback to client calculation
@@ -1569,12 +1633,24 @@ return;
     // Single Responsibility: hide all views here, renderers only show themselves.
     this.hideAllBudgetViews();
 
+    // Wire stats-bar filter clicks (idempotent — attaches listener once).
+    this.setupStatsFilterDelegation();
+
     if (this.currentBudgetView === 'cards') {
       BudgetTasks.renderBudgetCards(this.filteredBudgetTasks, options);
     } else if (this.currentBudgetView === 'list') {
       BudgetTasks.renderBudgetList(this.filteredBudgetTasks, options);
     } else {
       BudgetTasks.renderBudgetTable(this.filteredBudgetTasks, options);
+      // Sticky thead needs a scroll listener to know when to render its
+      // "scrolled" state (shadow + firmer border). Only meaningful in table view.
+      this.setupTableScrollShadow();
+      // Hydrate Lucide placeholders (<i data-lucide="...">) into inline SVGs.
+      // Must run after innerHTML is set; guarded for when the library hasn't
+      // loaded yet (slow network) — harmless no-op in that case.
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
     }
   }
 

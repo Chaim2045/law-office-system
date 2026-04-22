@@ -216,15 +216,13 @@
     font-size: 16px;
   }
 
-  .modern-budget-table thead th,
-  .modern-timesheet-table thead th {
-    padding: 24px 32px;
-    font-size: 14px;
-  }
-
+  /*
+   * thead font-size / padding responsive overrides removed
+   * (tables.css owns header typography — 12px, weight 500, no uppercase).
+   */
   .modern-budget-table tbody td,
   .modern-timesheet-table tbody td {
-    padding: 24px 32px;
+    padding: 20px 24px;
   }
 
   .modern-progress-container {
@@ -252,15 +250,10 @@
     margin: 20px auto;
   }
 
-  .modern-budget-table thead th,
-  .modern-timesheet-table thead th {
-    padding: 18px 20px;
-    font-size: 12px;
-  }
-
+  /* thead overrides removed — tables.css owns header typography */
   .modern-budget-table tbody td,
   .modern-timesheet-table tbody td {
-    padding: 18px 20px;
+    padding: 16px 18px;
   }
 
   .table-cell-description,
@@ -288,15 +281,10 @@
     font-size: 13px;
   }
 
-  .modern-budget-table thead th,
-  .modern-timesheet-table thead th {
-    padding: 16px 18px;
-    font-size: 11px;
-  }
-
+  /* thead overrides removed — tables.css owns header typography */
   .modern-budget-table tbody td,
   .modern-timesheet-table tbody td {
-    padding: 16px 18px;
+    padding: 14px 16px;
   }
 
   .table-cell-description,
@@ -341,11 +329,7 @@
     font-size: 12px;
   }
 
-  .modern-budget-table thead th,
-  .modern-timesheet-table thead th {
-    padding: 14px 16px;
-    font-size: 10px;
-  }
+  /* thead overrides removed — tables.css owns header typography */
 
   .modern-budget-table tbody td,
   .modern-timesheet-table tbody td {
@@ -386,11 +370,7 @@
     font-size: 11px;
   }
 
-  .modern-budget-table thead th,
-  .modern-timesheet-table thead th {
-    padding: 12px 14px;
-    font-size: 9px;
-  }
+  /* thead overrides removed — tables.css owns header typography */
 
   .modern-budget-table tbody td,
   .modern-timesheet-table tbody td {
