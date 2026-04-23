@@ -539,89 +539,187 @@ export function getCompletedTasksCount(budgetTasks) {
  * @param {number} daysUntilDeadline - Days until deadline
  * @returns {string} SVG Rings HTML
  */
-function renderSVGRingsSection(
-  task, progress, actualHours, estimatedHours, originalEstimate,
-  wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline
-) {
-  if (!window.SVGRings) {
-return '';
+/**
+ * Horizontal progress rows — Linear / Vercel style replacement for SVG rings.
+ *
+ * Two rows (budget + deadline), each is a label + thin horizontal bar +
+ * value + percentage. The bar is gray in the default state and flips to
+ * red when the metric overruns (>=100% for budget, <0 days for deadline),
+ * matching the 2-signals palette used everywhere else in the card.
+ *
+ * ~60px of vertical space saved vs the previous 56px rings layout, and
+ * the card reads top-to-bottom in one glance instead of requiring the
+ * eye to travel between two round shapes.
+ *
+ * Inline action buttons (עדכן תקציב / הארך יעד) sit at the end of their
+ * respective row when applicable — no separate action row below.
+ */
+
+/**
+ * Format a deadline for display in the progress-row value column, the
+ * table cell, and the compact ring center. Two modes:
+ *
+ *   'date' (default) — absolute calendar date "15.04.26". Users asked
+ *     for this because relative day counts ("5 ימים") are ambiguous
+ *     when scanning the list across multiple sessions; the date is a
+ *     fixed anchor you can plan a week around.
+ *
+ *   'days' — relative counter: "5 ימים" / "איחור 6 ימים". Preserved
+ *     for users who prefer the at-a-glance urgency read.
+ *
+ * The function returns `{ text, title }`:
+ *   - `text` is what goes in the visible cell
+ *   - `title` is the opposite format, used as a native hover tooltip
+ *     so the other reading is always one hover away
+ *
+ * @param {Date} deadline - The deadline Date object
+ * @param {number} daysUntil - Signed days until deadline (negative = overdue)
+ * @param {'date'|'days'} format - User preference from STATE_CONFIG
+ * @returns {{text: string, title: string}}
+ */
+function formatDeadlineValue(deadline, daysUntil, format) {
+  const isOverdue = daysUntil < 0;
+  const absDays = Math.abs(daysUntil);
+  const dd = String(deadline.getDate()).padStart(2, '0');
+  const mm = String(deadline.getMonth() + 1).padStart(2, '0');
+  const yy = String(deadline.getFullYear()).slice(-2);
+  const dateText = `${dd}.${mm}.${yy}`;
+  const daysText = isOverdue ? `איחור ${absDays} ימים` : `${absDays} ימים`;
+
+  if (format === 'days') {
+    return { text: daysText, title: dateText };
+  }
+  // default: date
+  return { text: dateText, title: daysText };
 }
 
-  const now = new Date();
+function renderSVGRingsSection(
+  task, progress, actualHours, estimatedHours, originalEstimate,
+  wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline,
+  deadlineFormat
+) {
   const deadline = new Date(task.deadline);
-  const createdAt = task.createdAt ? new Date(task.createdAt) : now;
+  const isDeadlineOverdue = daysUntilDeadline < 0;
+  const absDays = Math.abs(daysUntilDeadline);
+  const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
 
-  // 🔧 FIX: Handle case where deadline is before createdAt (data inconsistency)
-  // Use deadline as start point if it's earlier than createdAt
+  // Deadline bar % — linear countdown from creation to deadline.
+  // When overdue (<0 days remaining) the bar is rendered full-red regardless.
+  const now = new Date();
+  const createdAt = task.createdAt ? new Date(task.createdAt) : now;
   const startDate = createdAt < deadline ? createdAt : deadline;
   const totalDays = Math.max(1, (deadline - startDate) / (1000 * 60 * 60 * 24));
   const elapsedDays = (now - startDate) / (1000 * 60 * 60 * 24);
-  // ✅ FIX: הסרת הגבלת 100% - מאפשר להראות איחור אמיתי (למשל 120% = איחור של 20%)
-  const deadlineProgress = Math.max(0, Math.round((elapsedDays / totalDays) * 100));
-  const isDeadlineOverdue = daysUntilDeadline < 0;
-  const overdueDays = Math.abs(Math.min(0, daysUntilDeadline));
+  const deadlineFillPercent = isDeadlineOverdue
+    ? 100
+    : Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
 
-  // Budget Ring Config
-  const budgetRingConfig = {
-    progress, // ✅ No 100% cap - shows 150%+ for overage
-    color: getProgressColor(progress), // שימוש בפונקציה המשותפת
-    icon: 'fas fa-clock',
-    label: 'תקציב זמן',
-    value: `${actualHours}ש / ${estimatedHours}ש`,
-    size: 80,
-    button: isOverOriginal ? { // ✅ Removed !wasAdjusted - allows repeated budget updates
-      text: wasAdjusted ? 'עדכן שוב' : 'עדכן תקציב',
-      onclick: `event.stopPropagation(); manager.showAdjustBudgetDialog('${task.id}')`,
-      icon: 'fas fa-edit',
-      cssClass: 'budget-btn',
-      show: true
-    } : null
+  // Budget bar % — capped visually at 100% (overrun is carried by the red
+  // color + the textual "129%" counter, not by a bar that overflows).
+  const budgetFillPercent = Math.min(100, Math.round(progress));
+
+  const budgetAlarm = progress >= 100;
+  const adjustedHint = wasAdjusted
+    ? ' <span class="progress-row-adjusted">(עודכן)</span>'
+    : '';
+
+  /*
+   * Map a progress percentage to a severity level that the CSS uses to
+   * pick a bar color. Thresholds:
+   *   <50   low     → calm blue
+   *   50–79 medium  → deeper blue
+   *   80–99 high    → amber (early warning — user asked for color change
+   *                   before the last moment, not only at overrun)
+   *   >=100 alarm   → red
+   */
+  const levelForPercent = (pct) => {
+    if (pct >= 100) {
+ return 'alarm';
+}
+    if (pct >= 80)  {
+ return 'high';
+}
+    if (pct >= 50)  {
+ return 'medium';
+}
+    return 'low';
   };
 
-  // Deadline Ring Config
-  const wasExtended = task.deadlineExtensions && task.deadlineExtensions.length > 0;
+  const budgetLevel = levelForPercent(progress);
+  const deadlineLevel = isDeadlineOverdue
+    ? 'alarm'
+    : levelForPercent(deadlineFillPercent);
 
-  // ✅ FIX: צבע דינמי מתאים לאחוז התקדמות (כולל מעל 100%)
-  let deadlineColor = 'blue'; // ברירת מחדל - כחול
-  if (deadlineProgress >= 100) {
-    deadlineColor = 'red'; // אדום - איחור
-  } else if (deadlineProgress >= 85) {
-    deadlineColor = 'orange'; // כתום - התקרבות ליעד
-  }
+  /*
+   * Action slot is always rendered (even when empty), so both rows have
+   * the same trailing column width and therefore the same bar width.
+   * Without a placeholder, a row without an action button ends up with
+   * its bar ~32px longer than the one with an action — reads as a data
+   * difference that isn't real.
+   */
+  const budgetUpdateBtn = isOverOriginal ? `
+    <button
+      class="progress-row-action"
+      onclick="event.stopPropagation(); manager.showAdjustBudgetDialog('${task.id}')"
+      title="${wasAdjusted ? 'עדכן שוב' : 'עדכן תקציב'}"
+      aria-label="${wasAdjusted ? 'עדכן שוב' : 'עדכן תקציב'}"
+    >
+      <i class="fas fa-edit"></i>
+    </button>
+  ` : '<span class="progress-row-action-placeholder" aria-hidden="true"></span>';
 
-  // 🐛 DEBUG: Log deadline progress for task with overdue
-  if (deadlineProgress > 100) {
-    console.log(`🔍 Task ${task.id.substring(0, 8)}: deadlineProgress = ${deadlineProgress}%`);
-  }
+  const deadlineExtendBtn = isDeadlineOverdue ? `
+    <button
+      class="progress-row-action"
+      onclick="event.stopPropagation(); manager.showExtendDeadlineDialog('${task.id}')"
+      title="${wasExtended ? 'הארך שוב' : 'הארך יעד'}"
+      aria-label="${wasExtended ? 'הארך שוב' : 'הארך יעד'}"
+    >
+      <i class="fas fa-calendar-plus"></i>
+    </button>
+  ` : '<span class="progress-row-action-placeholder" aria-hidden="true"></span>';
 
-  // ✅ NEW: Use createDeadlineDisplay instead of createSVGRing for deadline
-  const budgetRingHTML = window.SVGRings.createSVGRing(budgetRingConfig);
-  const deadlineRingHTML = window.SVGRings.createDeadlineDisplay({
-    deadline: deadline,
-    daysRemaining: daysUntilDeadline,
-    size: 80,
-    button: isDeadlineOverdue ? {
-      text: wasExtended ? 'הארך שוב' : 'הארך יעד',
-      onclick: `event.stopPropagation(); manager.showExtendDeadlineDialog('${task.id}')`,
-      icon: 'fas fa-calendar-plus',
-      cssClass: 'deadline-btn',
-      show: true
-    } : null
-  });
+  // Deadline value — user-chosen format (date dd.mm.yy or relative days).
+  // The opposite reading is exposed via native title tooltip so no info
+  // is lost when switching formats. Overdue coloring is carried by the
+  // red bar + the is-alarm row class, not by textual prefixes.
+  const deadlineDisplay = formatDeadlineValue(
+    deadline,
+    daysUntilDeadline,
+    deadlineFormat
+  );
+  const deadlineValueText = deadlineDisplay.text;
+  const deadlineValueTitle = deadlineDisplay.title;
 
-  let ringsHTML = `
-    <div class="svg-rings-dual-layout">
-      ${budgetRingHTML}
-      ${deadlineRingHTML}
+  // Always render a percent — keeps the column alignment consistent
+  // between the two rows (otherwise the budget row's "0%" sits in a
+  // column the deadline row leaves empty, breaking the visual grid).
+  // For overdue, "100%" reads as "the window is fully consumed" and
+  // pairs cleanly with the red bar + "איחור N ימים" value.
+  const deadlinePercentText = `${Math.round(deadlineFillPercent)}%`;
+
+  return `
+    <div class="card-progress-rows">
+      <div class="progress-row ${budgetAlarm ? 'is-alarm' : ''}">
+        <span class="progress-row-label">תקציב</span>
+        <span class="progress-row-bar">
+          <span class="progress-row-fill" data-level="${budgetLevel}" style="width: ${budgetFillPercent}%"></span>
+        </span>
+        <span class="progress-row-value">${actualHours}ש / ${estimatedHours}ש${adjustedHint}</span>
+        <span class="progress-row-percent">${Math.min(100, Math.round(progress))}%</span>
+        ${budgetUpdateBtn}
+      </div>
+      <div class="progress-row ${isDeadlineOverdue ? 'is-alarm' : ''}">
+        <span class="progress-row-label">דדליין</span>
+        <span class="progress-row-bar">
+          <span class="progress-row-fill" data-level="${deadlineLevel}" style="width: ${deadlineFillPercent}%"></span>
+        </span>
+        <span class="progress-row-value" title="${deadlineValueTitle}">${deadlineValueText}</span>
+        <span class="progress-row-percent">${deadlinePercentText}</span>
+        ${deadlineExtendBtn}
+      </div>
     </div>
   `;
-
-  // Add info note if budget was adjusted
-  if (wasAdjusted) {
-    ringsHTML += `<div class="budget-adjusted-note" style="text-align: center; margin-top: 12px; font-size: 11px; color: #3b82f6;"><i class="fas fa-info-circle"></i> תקציב עודכן ל-${estimatedHours}ש</div>`;
-  }
-
-  return ringsHTML;
 }
 
 /* ===========================
@@ -635,7 +733,8 @@ return '';
  * @returns {string} HTML string
  */
 export function createTaskCard(task, options = {}) {
-  const { safeText, formatDate, formatShort } = options;
+  const { safeText, formatDate, formatShort, currentDeadlineFormat } = options;
+  const deadlineFormat = currentDeadlineFormat === 'days' ? 'days' : 'date';
 
   const safeTask = sanitizeTaskData(task);
   const progress = calculateSimpleProgress(safeTask);
@@ -698,8 +797,9 @@ export function createTaskCard(task, options = {}) {
 
   // ✅ REMOVED: pendingApprovalIndicator - not needed in UI
 
-  // 🎯 Combined info badge (case + service + stage)
-  // Pass serviceId directly - mapping will be done in the popup
+  // 🎯 Combined info badge (case + service + stage). Rendered into the
+  // meta footer (not the top corner) so all task metadata sits together
+  // and the title gets the full top width.
   const combinedBadge = createCombinedInfoBadge(
     safeTask.caseNumber,
     safeTask.serviceName,
@@ -707,18 +807,24 @@ export function createTaskCard(task, options = {}) {
     safeTask.serviceId || ''
   );
 
-  const badgesRow = combinedBadge ? `
-    <div class="linear-card-badges">
-      ${combinedBadge}
-    </div>
-  ` : '';
+  // Compact creation date string for the unified meta footer.
+  const creationDateText = safeTask.createdAt
+    ? formatDate(safeTask.createdAt)
+    : '';
 
   // For completed tasks — static summary (no live rings).
   const completedSummary = isCompleted ? buildCompletedCardSummary(safeTask) : '';
 
+  /*
+   * Layout — Claude.ai compact card.
+   *
+   * Top corner is now empty. Title gets the full top space. The combined
+   * info badge, client name, and creation date are all consolidated into
+   * a single meta footer row at the bottom, which sits next to the
+   * expand "+" button.
+   */
   return `
     <div class="linear-minimal-card ${isPendingApproval ? 'pending-approval' : ''}" data-task-id="${safeTask.id}">
-      ${badgesRow}
       <div class="linear-card-content">
         <h3 class="linear-card-title" title="${safeClientName}">
           ${safeDescription}
@@ -726,24 +832,17 @@ export function createTaskCard(task, options = {}) {
         </h3>
 
         <!-- 🎯 SVG RINGS (active only) / Completion summary (completed) -->
-        ${!isCompleted && window.SVGRings ? renderSVGRingsSection(safeTask, progress, actualHours, estimatedHours, originalEstimate, wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline) : ''}
+        ${!isCompleted && window.SVGRings ? renderSVGRingsSection(safeTask, progress, actualHours, estimatedHours, originalEstimate, wasAdjusted, isOverOriginal, overageMinutes, daysUntilDeadline, deadlineFormat) : ''}
         ${completedSummary}
       </div>
 
-      <!-- החלק התחתון - מחוץ ל-content -->
+      <!-- Meta footer: badge · client · creation date · expand button -->
       <div class="linear-card-meta">
-        <div class="linear-client-row">
-          <span class="linear-client-label">לקוח:</span>
-          <span class="linear-client-name" title="${safeClientName}">
-            ${clientDisplayName}
-          </span>
-        </div>
-        ${safeTask.createdAt ? `
-        <div class="creation-date-tag">
-          <i class="far fa-clock"></i>
-          <span>נוצר ב-${formatDate(safeTask.createdAt)} ${new Date(safeTask.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-        ` : ''}
+        ${combinedBadge}
+        <span class="linear-client-name" title="${safeClientName}">
+          ${clientDisplayName}
+        </span>
+        ${creationDateText ? `<span class="linear-card-meta-date">· ${creationDateText}</span>` : ''}
       </div>
 
       <button class="linear-expand-btn" onclick="manager.expandTaskCard('${
@@ -762,7 +861,8 @@ export function createTaskCard(task, options = {}) {
  * @returns {string} HTML string
  */
 export function createTableRow(task, options = {}) {
-  const { safeText, formatDate, taskActionsManager } = options;
+  const { safeText, formatDate, taskActionsManager, currentDeadlineFormat } = options;
+  const deadlineFormat = currentDeadlineFormat === 'days' ? 'days' : 'date';
 
   const safeTask = sanitizeTaskData(task);
   const progress = calculateSimpleProgress(safeTask);
@@ -810,7 +910,8 @@ export function createTableRow(task, options = {}) {
         daysRemaining: daysUntilDeadline,
         progress: deadlineProgress,
         deadline: deadline,
-        size: 52
+        size: 52,
+        format: deadlineFormat
       });
     } else {
       deadlineCellHtml = formatDate ? formatDate(safeTask.deadline) : safeTask.deadline;
@@ -990,34 +1091,40 @@ export function renderBudgetCards(tasks, options = {}) {
     </div>
   ` : '';
 
+  /*
+   * Flat layout — Claude.ai / Linear / Vercel pattern.
+   *
+   * Previously the cards grid was wrapped in <div class="modern-cards-container">
+   * with its own white background, border, shadow, and a gradient
+   * <div class="modern-table-header"> carrying the "משימות מתוקצבות" title.
+   * That created a triple-nested "matryoshka" (outer shell + inner grid
+   * canvas + individual cards) which pushed the cards inward, wasted
+   * horizontal space, and gave the UI a heavy framed look.
+   *
+   * The tab context already tells the user what section they're in, so
+   * the title is redundant. Stats + sort controls sit directly above the
+   * grid, and the cards float on the page itself.
+   */
   const html = `
-    <div class="modern-cards-container">
-      <div class="modern-table-header">
-        <h3 class="modern-table-title">
-          <i class="fas fa-chart-bar"></i>
-          משימות מתוקצבות
-        </h3>
+    <div class="stats-with-sort-row">
+      ${statsBar}
+      <div class="sort-dropdown">
+        <label class="sort-label">
+          <i class="fas fa-sort-amount-down"></i>
+          מיין לפי:
+        </label>
+        <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks(event)">
+          <option value="recent" ${currentBudgetSort === 'recent' ? 'selected' : ''}>עדכון אחרון</option>
+          <option value="name" ${currentBudgetSort === 'name' ? 'selected' : ''}>שם (א-ת)</option>
+          <option value="deadline" ${currentBudgetSort === 'deadline' ? 'selected' : ''}>תאריך יעד</option>
+          <option value="progress" ${currentBudgetSort === 'progress' ? 'selected' : ''}>התקדמות</option>
+        </select>
       </div>
-      <div class="stats-with-sort-row">
-        ${statsBar}
-        <div class="sort-dropdown">
-          <label class="sort-label">
-            <i class="fas fa-sort-amount-down"></i>
-            מיין לפי:
-          </label>
-          <select class="sort-select" id="budgetSortSelect" onchange="manager.sortBudgetTasks(event)">
-            <option value="recent" ${currentBudgetSort === 'recent' ? 'selected' : ''}>עדכון אחרון</option>
-            <option value="name" ${currentBudgetSort === 'name' ? 'selected' : ''}>שם (א-ת)</option>
-            <option value="deadline" ${currentBudgetSort === 'deadline' ? 'selected' : ''}>תאריך יעד</option>
-            <option value="progress" ${currentBudgetSort === 'progress' ? 'selected' : ''}>התקדמות</option>
-          </select>
-        </div>
-      </div>
-      <div class="budget-cards-grid">
-        ${tasksHtml}
-      </div>
-      ${loadMoreButton}
     </div>
+    <div class="budget-cards-grid">
+      ${tasksHtml}
+    </div>
+    ${loadMoreButton}
   `;
 
   if (container) {

@@ -278,23 +278,35 @@
    CARD TITLE WITH INFO ICON
    ======================================== */
 
-/* Card title wrapper */
+/*
+ * Card title wrapper — no clamping (Claude-style: show the full name,
+ * let the card grow). Was previously `display: flex` + `white-space:
+ * nowrap` + `text-overflow: ellipsis`, which forced the title onto one
+ * line and cut off long task names. The user relies on seeing the full
+ * task name at a glance and should never have to click to reveal it.
+ *
+ * `position: relative` is kept so child tooltips (.card-description-tooltip)
+ * still anchor correctly.
+ */
 .linear-card-title {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-/* Card title text */
+/*
+ * .linear-card-title-text — used only when the title is split into a
+ * separate span for an info-icon sibling. Kept flexible (wraps, grows)
+ * to match the parent's new behavior.
+ */
 .linear-card-title-text {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
+  word-break: break-word;
   min-width: 0;
 }
 

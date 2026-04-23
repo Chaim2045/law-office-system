@@ -28,135 +28,102 @@
   }
 
   /**
-   * יצירת SVG Ring יחיד
-   * @param {Object} config - Configuration object
-   * @param {number} config.progress - Progress percentage (0-100)
-   * @param {string} config.color - Color theme ('green', 'blue', 'red', 'orange')
-   * @param {string} config.icon - FontAwesome icon class
-   * @param {string} config.label - Label text
-   * @param {string} config.value - Value text (e.g., "12.5h / 20h")
-   * @param {number} [config.size=100] - Ring size in pixels
-   * @param {boolean} [config.overage=false] - Is this an overage ring?
-   * @param {Object} [config.button] - Button configuration { text, onclick, show }
-   * @returns {string} - SVG HTML string
+   * Single SVG ring — Claude.ai / Emil 2-signals minimal.
+   *
+   * Visual language:
+   * - 72x72 ring (was 100x100), 3px stroke (was 6px). A smaller ring lets
+   *   the card breathe and reads as a refined status badge, not a centerpiece.
+   * - Flat strokes, no gradient <defs>, no <linearGradient>. Every decoration
+   *   that didn't carry information is gone.
+   * - "2 signals only" palette: gray for every non-overrun state, red only
+   *   when progress >= 100 (budget overrun) or when the caller passes color
+   *   = 'red' (e.g. overdue deadline from the caller).
+   * - No Font Awesome icon inside the ring — the percentage (or the caller's
+   *   `centerText`) IS the content. Keeps the ring SVG-only (no font deps).
+   *
+   * @param {Object} config
+   * @param {number} config.progress - 0..N; >=100 flips the ring to red
+   * @param {string} [config.color]  - 'red' forces red (e.g. overdue); other
+   *                                   values fall back to the gray ramp
+   * @param {string} config.label    - external label under the ring
+   * @param {string} config.value    - external secondary text under the label
+   * @param {string} [config.centerText] - override text inside the ring;
+   *                                       defaults to `${Math.round(progress)}%`
+   * @param {number} [config.size=72]
+   * @param {boolean} [config.overage=false]
+   * @param {Object} [config.button] - { text, onclick, show, cssClass, icon }
+   * @returns {string} HTML string
    */
   function createSVGRing(config) {
     const {
       progress,
       color,
-      icon,
       label,
       value,
-      size = 100,
+      centerText,
+      size = 56,
       overage = false,
       button = null
     } = config;
 
-    const radius = 32;
-    const strokeWidth = 6;
+    // Ring geometry scaled for the compact 56px size: smaller radius,
+    // thinner stroke (2.5px) reads cleanly without dominating.
+    const radius = 22;
+    const strokeWidth = 2.5;
+    const viewBox = 56;
+    const center = viewBox / 2;
     const circumference = 2 * Math.PI * radius;
-    // ✅ FIX: Allow progress > 100% - ring visual caps at 100%, but text shows actual %
+    // Ring maxes visually at 100% even if progress overruns — the "how much
+    // over" is carried by the red color + the textual label underneath.
     const dashOffset = calculateDashOffset(Math.min(progress, 100), radius);
 
-    // Generate unique gradient ID
-    const gradientId = `ring-gradient-${Math.random().toString(36).substr(2, 9)}`;
+    // 2-signals palette: red only if caller forced it, or if progress is
+    // actually past 100% (real overrun). Otherwise gray.
+    const isAlarm = progress >= 100 || color === 'red';
+    const strokeColor = isAlarm ? '#dc2626' : 'var(--gray-500)';
+    const bgColor = 'var(--gray-200)';
+    const centerColor = isAlarm ? '#dc2626' : 'var(--gray-900)';
 
-    // Color schemes - מילוי צבעוני, רקע אפור
-    const colors = {
-      green: {
-        start: '#059669',
-        end: '#047857',
-        text: '#065f46'
-      },
-      blue: {
-        start: '#2563eb',
-        end: '#1e40af',
-        text: '#1e3a8a'
-      },
-      red: {
-        start: '#dc2626',
-        end: '#b91c1c',
-        text: '#991b1b'
-      },
-      orange: {
-        start: '#ea580c',
-        end: '#c2410c',
-        text: '#9a3412'
-      }
-    };
-
-    const colorScheme = colors[color] || colors.green;
-
-    // הרקע תמיד אפור
-    const bgColor = '#e5e7eb';
-
-    // Meta Clean: Only add status class for DANGER (overage)
-    // Color alone is enough for warning/ok states
-    const statusClass = (progress >= 100 || color === 'red') ? 'status-danger' : '';
+    const statusClass = isAlarm ? 'status-danger' : '';
+    const displayText = centerText !== null && centerText !== undefined ? centerText : `${Math.round(progress)}%`;
 
     return `
       <div class="svg-ring-container ${overage ? 'overage-ring' : ''}">
         <div class="svg-ring-wrapper ${statusClass}">
-          <svg width="${size}" height="${size}" viewBox="0 0 80 80" class="svg-ring">
-            <!-- Background circle (gray) -->
+          <svg width="${size}" height="${size}" viewBox="0 0 ${viewBox} ${viewBox}" class="svg-ring">
             <circle
-              cx="40"
-              cy="40"
+              cx="${center}"
+              cy="${center}"
               r="${radius}"
               fill="none"
               stroke="${bgColor}"
               stroke-width="${strokeWidth}"
             />
-
-            <!-- Progress circle -->
             <circle
-              cx="40"
-              cy="40"
+              cx="${center}"
+              cy="${center}"
               r="${radius}"
               fill="none"
-              stroke="url(#${gradientId})"
+              stroke="${strokeColor}"
               stroke-width="${strokeWidth}"
               stroke-dasharray="${circumference}"
               stroke-dashoffset="${dashOffset}"
               stroke-linecap="round"
-              transform="rotate(-90 40 40)"
+              transform="rotate(-90 ${center} ${center})"
               class="svg-ring-progress"
             />
-
-            <!-- Gradient definition -->
-            <defs>
-              <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="${colorScheme.start}" />
-                <stop offset="100%" stop-color="${colorScheme.end}" />
-              </linearGradient>
-            </defs>
-
-            <!-- Center icon (gray) -->
-            <g transform="translate(40, 40)">
-              <text
-                text-anchor="middle"
-                dominant-baseline="central"
-                font-size="18"
-                fill="#6b7280"
-                class="svg-ring-icon">
-                <tspan class="${icon}"></tspan>
-              </text>
-            </g>
           </svg>
 
-          <!-- Percentage text (overlay, gray) -->
-          <div class="svg-ring-percentage" style="color: #6b7280;">
-            ${Math.round(progress)}%
+          <div class="svg-ring-percentage" style="color: ${centerColor};">
+            ${displayText}
           </div>
         </div>
 
-        <!-- Label and value -->
         <div class="svg-ring-info">
           <div class="svg-ring-label">${label}</div>
           <div class="svg-ring-value">${value}</div>
         </div>
 
-        <!-- Action button (if provided) -->
         ${button && button.show ? `
           <button class="svg-ring-action-btn ${button.cssClass || ''}" onclick="${button.onclick}">
             <i class="${button.icon || 'fas fa-edit'}"></i> ${button.text}
@@ -231,7 +198,8 @@
       daysRemaining,
       progress,
       deadline,
-      size = 52
+      size = 52,
+      format = 'date'
     } = config;
 
     const radius = 20;
@@ -263,14 +231,29 @@
 
     const displayDays = Math.abs(daysRemaining);
 
-    // פורמט תאריך מלא DD.MM.YYYY (אם deadline קיים)
+    // Compact date formats:
+    //   shortDate: dd.mm.yy — fits inside the 52px ring center
+    //   fullDate:  dd.mm.yyyy — used as sublabel or tooltip
+    let shortDateStr = '';
     let fullDateStr = '';
     if (deadline) {
       const day = String(deadline.getDate()).padStart(2, '0');
       const month = String(deadline.getMonth() + 1).padStart(2, '0');
       const year = deadline.getFullYear();
+      const yy = String(year).slice(-2);
+      shortDateStr = `${day}.${month}.${yy}`;
       fullDateStr = `${day}.${month}.${year}`;
     }
+
+    // Which token goes in the ring's center vs under the ring depends on
+    // the user's format preference. We keep the ring itself identical so
+    // the visual progress indicator stays consistent across formats.
+    const showDate = format === 'date';
+    const centerText = showDate ? shortDateStr : String(displayDays);
+    const centerFontSize = showDate ? 11 : 16;
+    const sublabelText = showDate
+      ? `${displayDays} ימים`
+      : fullDateStr;
 
     // Flat stroke (no gradient) — Emil: no unnecessary visual effects.
     // Text color on date + label inherits from the ring's colorScheme so
@@ -304,15 +287,14 @@
             y="30"
             text-anchor="middle"
             dominant-baseline="central"
-            font-size="16"
+            font-size="${centerFontSize}"
             font-weight="600"
             fill="${colorScheme.text}"
             class="compact-ring-number">
-            ${displayDays}
+            ${centerText}
           </text>
         </svg>
-        ${fullDateStr ? `<div class="compact-ring-date" style="color: ${colorScheme.text};">${fullDateStr}</div>` : ''}
-        <div class="compact-ring-label-below" style="color: ${colorScheme.text};">${displayDays} ימים</div>
+        <div class="compact-ring-label-below" style="color: ${colorScheme.text};">${sublabelText}</div>
         ${isOverdue ? '<div class="compact-ring-status">איחור!</div>' : ''}
       </div>
     `;
@@ -374,114 +356,78 @@
    * @param {Object} [config.button] - Button configuration { text, onclick, show }
    * @returns {string} - HTML string
    */
+  /*
+   * Deadline ring — Claude.ai / Emil 2-signals minimal.
+   *
+   * Aligned with createSVGRing: 56x56, 2.5px stroke, flat (no gradient
+   * <defs>), gray by default, red only when overdue. Dropped the third
+   * "orange / ≤3 days approaching" scheme — that was a warning signal
+   * competing with the real signal (overdue), exactly what the "2
+   * signals only" rule is meant to prevent.
+   */
   function createDeadlineDisplay(config) {
     const {
       deadline,
       daysRemaining,
-      size = 100,
+      size = 56,
       button = null
     } = config;
 
     const isOverdue = daysRemaining < 0;
-    const absDays = Math.abs(daysRemaining);
-
-    // צבע המילוי משתנה לפי דחיפות
-    let colorScheme;
-
-    if (isOverdue) {
-      colorScheme = {
-        start: '#dc2626',
-        end: '#b91c1c'
-      };
-    } else if (daysRemaining <= 3) {
-      colorScheme = {
-        start: '#ea580c',
-        end: '#c2410c'
-      };
-    } else {
-      colorScheme = {
-        start: '#2563eb',
-        end: '#1e40af'
-      };
-    }
-
-    // הרקע תמיד אפור
-    const bgColor = '#e5e7eb';
-
-    const radius = 32;
-    const strokeWidth = 6;
-    const circumference = 2 * Math.PI * radius;
-    const gradientId = `deadline-gradient-${Math.random().toString(36).substr(2, 9)}`;
-
-    // מספר הימים (יוצג במרכז העיגול)
     const displayDays = Math.abs(daysRemaining);
 
-    // פורמט תאריך מלא DD.MM.YYYY (יוצג מתחת לעיגול)
+    const strokeColor = isOverdue ? '#dc2626' : 'var(--gray-500)';
+    const bgColor = 'var(--gray-200)';
+    const centerColor = isOverdue ? '#dc2626' : 'var(--gray-900)';
+
+    const radius = 22;
+    const strokeWidth = 2.5;
+    const viewBox = 56;
+    const center = viewBox / 2;
+    const circumference = 2 * Math.PI * radius;
+
     const day = String(deadline.getDate()).padStart(2, '0');
     const month = String(deadline.getMonth() + 1).padStart(2, '0');
     const year = deadline.getFullYear();
     const fullDateStr = `${day}.${month}.${year}`;
 
     return `
-      <div class="svg-ring-container">
+      <div class="svg-ring-container ${isOverdue ? 'status-danger' : ''}">
         <div class="svg-ring-wrapper">
-          <svg width="${size}" height="${size}" viewBox="0 0 80 80" class="svg-ring">
-            <!-- Background circle (gray) -->
+          <svg width="${size}" height="${size}" viewBox="0 0 ${viewBox} ${viewBox}" class="svg-ring">
             <circle
-              cx="40"
-              cy="40"
+              cx="${center}"
+              cy="${center}"
               r="${radius}"
               fill="none"
               stroke="${bgColor}"
               stroke-width="${strokeWidth}"
             />
-
-            <!-- Progress circle (colored - full) -->
             <circle
-              cx="40"
-              cy="40"
+              cx="${center}"
+              cy="${center}"
               r="${radius}"
               fill="none"
-              stroke="url(#${gradientId})"
+              stroke="${strokeColor}"
               stroke-width="${strokeWidth}"
               stroke-dasharray="${circumference}"
               stroke-dashoffset="0"
               stroke-linecap="round"
-              transform="rotate(-90 40 40)"
+              transform="rotate(-90 ${center} ${center})"
               class="svg-ring-progress"
             />
-
-            <!-- Gradient definition -->
-            <defs>
-              <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="${colorScheme.start}" />
-                <stop offset="100%" stop-color="${colorScheme.end}" />
-              </linearGradient>
-            </defs>
-
-            <!-- Center content: Number of days -->
-            <text
-              x="40"
-              y="40"
-              text-anchor="middle"
-              dominant-baseline="central"
-              font-size="20"
-              font-weight="400"
-              fill="#6b7280"
-              opacity="0.85">
-              ${displayDays}
-            </text>
           </svg>
+          <div class="svg-ring-percentage" style="color: ${centerColor};">
+            ${displayDays}
+          </div>
         </div>
 
-        <!-- Label and value -->
         <div class="svg-ring-info">
           <div class="svg-ring-label">תאריך יעד</div>
           <div class="svg-ring-value">${fullDateStr}</div>
           ${isOverdue ? `<div class="svg-ring-overdue-badge">איחור ${displayDays} ימים</div>` : ''}
         </div>
 
-        <!-- Action button (if provided) -->
         ${button && button.show ? `
           <button class="svg-ring-action-btn ${button.cssClass || ''}" onclick="${button.onclick}">
             <i class="${button.icon || 'fas fa-edit'}"></i> ${button.text}
