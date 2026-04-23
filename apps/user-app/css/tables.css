@@ -2019,16 +2019,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* .linear-client-row removed — no longer used; meta footer is a flat row. */
-
-.linear-client-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .linear-client-name {
   font-weight: 500;
   color: var(--gray-900);

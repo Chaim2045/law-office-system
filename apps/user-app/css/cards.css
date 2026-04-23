@@ -868,17 +868,6 @@
 
 /* כותרת יפה עם מסגרת מתרחבת */
 
-/* תגיות מידע בכרטיס (Case + Service) */
-.linear-card-badges {
-  position: absolute;
-  top: 8px; /* ✅ הוזז עוד יותר למעלה - קרוב לכותרת */
-  left: 12px;
-  z-index: var(--z-card-badge);
-  display: inline-flex; /* ✅ רק רוחב התוכן */
-  width: fit-content; /* ✅ לא לכל הרוחב */
-  max-width: calc(100% - 24px); /* ✅ מקסימום עד קצה הכרטיס */
-}
-
 /*
  * Card title — Claude.ai: full name is shown, the card grows as needed.
  * No line-clamp, no ellipsis, no "+" affordance for the hidden remainder.
