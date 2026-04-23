@@ -1,0 +1,517 @@
+/**
+ * List View — Grouped Priority List
+ *
+ * Phase 0 prototype: view-only grouped list for budget tasks
+ * Groups tasks by deadline urgency (overdue / this-week / this-month / later)
+ *
+ * Design principles (Emil Kowalski):
+ * - Grayscale by default, color only as signal
+ * - No gradients, no shadows on rows, no SVG rings
+ * - Task name never truncated to one line — line-clamp: 2
+ * - Specific transitions, no `transition: all`
+ * - No infinite animations
+ * - Custom easing curve (stronger than default ease-out)
+ * - :active scale feedback on pressable elements
+ * - Smooth collapse/expand via grid-template-rows
+ */
+
+/* ==========================================================================
+   DESIGN TOKENS (local to list view)
+   ========================================================================== */
+
+.modern-list-container,
+.list-completed {
+  /* Strong ease-out for UI interactions (Emil) */
+  --list-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --list-duration-fast: 160ms;
+  --list-duration-standard: 220ms;
+}
+
+/* ==========================================================================
+   CONTAINER
+   ========================================================================== */
+
+.modern-list-container {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  margin: 24px auto;
+  width: 100%;
+  max-width: 1200px;
+  overflow: hidden;
+  direction: rtl;
+}
+
+@media (width >= 1920px) {
+  .modern-list-container {
+    max-width: 1400px;
+  }
+}
+
+/* ==========================================================================
+   LIST GROUPS
+   ========================================================================== */
+
+.list-groups {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-group {
+  border-top: 1px solid var(--gray-100);
+}
+
+.list-group:first-child {
+  border-top: none;
+}
+
+/* ─── Group Header ─── */
+.list-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--gray-50);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--list-duration-fast) var(--list-ease-out),
+    transform 120ms var(--list-ease-out);
+  border: none;
+  width: 100%;
+  direction: rtl;
+  text-align: right;
+  font-family: inherit;
+  transform-origin: center;
+}
+
+.list-group-header:hover {
+  background: var(--gray-100);
+}
+
+.list-group-header:hover .list-group-chevron {
+  color: var(--gray-700);
+}
+
+.list-group-header:active {
+  transform: scale(0.99);
+}
+
+.list-group-header:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+.list-group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ─── Chevron ─── */
+.list-group-chevron {
+  font-size: 11px;
+  color: var(--gray-500);
+  transition:
+    transform var(--list-duration-standard) var(--list-ease-out),
+    color var(--list-duration-fast) var(--list-ease-out);
+  width: 12px;
+  text-align: center;
+}
+
+.list-group.is-expanded .list-group-chevron {
+  transform: rotate(180deg);
+}
+
+/* ─── Group dot indicator ─── */
+.list-group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.list-group-dot--overdue {
+  background: #ef4444;
+}
+
+.list-group-dot--this-week {
+  background: #f97316;
+}
+
+.list-group-dot--this-month {
+  background: #eab308;
+}
+
+.list-group-dot--later {
+  background: #94a3b8;
+}
+
+.list-group-dot--completed {
+  background: #10b981;
+}
+
+/* ─── Group title ─── */
+.list-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+/* ─── Group count ─── */
+.list-group-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-600);
+  background: var(--gray-200);
+  padding: 2px 8px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Group items container ───
+ *
+ * Smooth collapse/expand using grid-template-rows (modern CSS).
+ * The wrapper is a grid with a single row that goes 0fr → 1fr.
+ * Inner element has min-height: 0 + overflow: hidden to clip cleanly.
+ * Transitions are interruptible, unlike keyframes.
+ */
+.list-group-items-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows var(--list-duration-standard) var(--list-ease-out),
+    opacity var(--list-duration-fast) var(--list-ease-out);
+  opacity: 0;
+}
+
+.list-group.is-expanded .list-group-items-wrapper {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.list-group-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   LIST ROW (task item)
+   ========================================================================== */
+
+.list-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--gray-100);
+  background: #fff;
+  transition: background-color var(--list-duration-fast) var(--list-ease-out);
+  min-height: 56px;
+  direction: rtl;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .list-row:hover {
+    background: var(--gray-50);
+  }
+}
+
+/* ─── Row indicator (thin colored bar on the right in RTL) ─── */
+.list-row-indicator {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.list-row-indicator--overdue {
+  background: #ef4444;
+}
+
+.list-row-indicator--this-week {
+  background: #f97316;
+}
+
+.list-row-indicator--this-month {
+  background: #eab308;
+}
+
+.list-row-indicator--later {
+  background: transparent; /* "later" does not need indicator noise */
+}
+
+/*
+ * Completed tasks:
+ * - clean close (on time, in budget) → no indicator, just like "later"
+ *   (Emil: no color = no signal needed)
+ * - overrun (time or budget) → subtle red, muted to not feel alarming
+ *   (it's historical; the decision has already been made)
+ */
+.list-row-indicator--completed-clean {
+  background: transparent;
+}
+
+.list-row-indicator--completed-overrun {
+  background: rgb(239 68 68 / 60%);
+}
+
+/* ─── Row main content ─── */
+.list-row-main {
+  flex: 1;
+  min-width: 0; /* allow text-overflow to work in flex */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.list-row-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--gray-900);
+  letter-spacing: var(--letter-spacing-tight);
+
+  /* Up to 2 lines, then ellipsis — but not 1 line! */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.list-row-meta {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--gray-500);
+  letter-spacing: var(--letter-spacing-normal);
+
+  /* Single-line meta — truncate if too long */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-row-meta-separator {
+  display: inline-block;
+  margin: 0 6px;
+  color: var(--gray-300);
+}
+
+/* ─── Emphasis on overdue/over-budget segments ─── */
+.list-row-meta-emphasis--overdue {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.list-row-meta-emphasis--over-budget {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.list-row-meta-emphasis--on-time {
+  color: var(--gray-600);
+}
+
+/* ==========================================================================
+   ROW ACTIONS (Phase 2a — hover reveal)
+   ========================================================================== */
+
+/*
+ * Actions container — sits on the left side of the row in RTL.
+ * On hover-capable devices: hidden by default, revealed on row hover.
+ * On touch devices: always visible (no real hover).
+ * Entry uses opacity + a small translateX, never display:none (interruptible).
+ */
+.list-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+
+  /* default — visible on touch/non-hover devices */
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity var(--list-duration-fast) var(--list-ease-out),
+    transform var(--list-duration-fast) var(--list-ease-out);
+}
+
+/* Hover-capable devices: hide until row is hovered/focused */
+@media (hover: hover) and (pointer: fine) {
+  .list-row-actions {
+    opacity: 0;
+
+    /* small translateX in RTL — comes in from the left-inside */
+    transform: translateX(-4px);
+    pointer-events: none;
+  }
+
+  .list-row:hover .list-row-actions,
+  .list-row:focus-within .list-row-actions {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+}
+
+/* Individual action button */
+.list-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+
+  /* Emil: specific transitions, custom easing */
+  transition:
+    background-color var(--list-duration-fast) var(--list-ease-out),
+    color var(--list-duration-fast) var(--list-ease-out),
+    transform 100ms var(--list-ease-out);
+
+  transform-origin: center;
+}
+
+.list-row-action:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+/* Emil rule #1: every pressable must scale on :active */
+.list-row-action:active {
+  transform: scale(0.92);
+}
+
+.list-row-action:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/* Primary action (הוסף זמן) gets a subtle emphasis on hover */
+.list-row-action--primary:hover {
+  background: rgb(59 130 246 / 10%);
+  color: var(--blue-dark);
+}
+
+/* Budget adjust (conditional — over-budget) */
+.list-row-action--budget:hover {
+  background: rgb(234 88 12 / 10%);
+  color: #c2410c;
+}
+
+/* Cancel / danger (conditional — 0 hours logged) */
+.list-row-action--danger:hover {
+  background: rgb(239 68 68 / 10%);
+  color: var(--red-dark);
+}
+
+/* Align actions to the start of the row (left side in RTL),
+   centered vertically against row content */
+.list-row {
+  align-items: center;
+}
+
+/* When reduced motion is preferred, skip reveal animation but keep
+   the hide-until-hover behavior (useful for uncluttered UI). */
+@media (prefers-reduced-motion: reduce) {
+  .list-row-actions,
+  .list-row-action {
+    transition: none;
+  }
+
+  .list-row-action:active {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   EMPTY GROUP
+   ========================================================================== */
+
+.list-group-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   COMPLETED VIEW (flat list, no groups)
+   ========================================================================== */
+
+.list-completed {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-completed .list-row {
+  border-top: 1px solid var(--gray-100);
+}
+
+.list-completed .list-row:first-child {
+  border-top: none;
+}
+
+/* ==========================================================================
+   RESPONSIVE — desktop only in Phase 0
+   Mobile handled in Phase 5
+   ========================================================================== */
+
+@media (width <= 1024px) {
+  .modern-list-container {
+    margin: 16px auto;
+    border-radius: var(--radius-sm);
+  }
+
+  .list-row {
+    padding: 10px 12px;
+    min-height: 52px;
+  }
+
+  .list-row-title {
+    font-size: 13px;
+  }
+
+  .list-row-meta {
+    font-size: 11px;
+  }
+}
+
+/* ==========================================================================
+   ACCESSIBILITY
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .list-group-chevron,
+  .list-group-header,
+  .list-row,
+  .list-group-items-wrapper {
+    transition: none;
+  }
+
+  .list-group-header:active {
+    transform: none;
+  }
+}

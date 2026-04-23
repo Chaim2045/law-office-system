@@ -2064,43 +2064,23 @@
   }
 }
 
-/* כפתורי פעולות בטבלת תקצוב - Ultra Minimal Ghost Buttons */
+/* כפתורי פעולות בטבלת תקצוב */
 .actions-column {
   text-align: center;
   white-space: nowrap;
-  padding: 8px 4px;
+  padding: 8px 2px;
 }
 
-/* ===== Ghost Buttons - כחול-סגול אחיד ===== */
-
-.action-btn {
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  margin: 0 3px;
-  font-size: 14px;
-  color: #2563eb;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 0;
-}
-
-.action-btn:hover {
-  background: linear-gradient(135deg, rgb(79 70 229 / 10%) 0%, rgb(37 99 235 / 10%) 100%);
-  color: #1d4ed8;
-  border-color: rgb(37 99 235 / 30%);
-  transform: translateY(-1px);
-}
-
-.action-btn:active {
-  transform: translateY(0);
-}
+/*
+ * .action-btn base styles moved to tables.css (single source of truth).
+ * This file previously defined a gradient blue/purple hover state,
+ * 3px margins, and translateY(-1px) lift — all of which fought the
+ * Claude.ai-style monochrome buttons in tables.css since advanced-popups
+ * loads after tables.
+ *
+ * .action-badge below is kept (unrelated — renders a contextual "+20%"
+ * pill in the corner of a button).
+ */
 
 /* Action Badge - מספר קונטקסטואלי (+20%, +3d) */
 .action-badge {

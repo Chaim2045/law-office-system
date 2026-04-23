@@ -69,65 +69,13 @@
   direction: rtl;
 }
 
-.modern-budget-table {
-  width: 100%; /* רוחב מלא - מגיע לקצוות הקונטיינר */
-  margin: 0; /* ללא מרווח - ניצול מקסימלי של השטח */
-  border-collapse: collapse;
-  font-size: 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px; /* פינות מעוגלות לטבלה עצמה */
-}
-
-.modern-budget-table th,
-.modern-budget-table td {
-  padding: 16px 12px;
-  text-align: right;
-  border-bottom: 1px solid #e2e8f0; /* רק קווים אופקיים (לרוחב) */
-  vertical-align: middle;
-}
-
-.modern-budget-table tbody tr:last-child td {
-  border-bottom: none; /* בטל גבול תחתון לשורה האחרונה */
-}
-
-/* פינות מעוגלות לטבלה */
-.modern-budget-table th:first-child {
-  border-top-right-radius: 12px; /* פינה ימנית עליונה */
-}
-
-.modern-budget-table th:last-child {
-  border-top-left-radius: 12px; /* פינה שמאלית עליונה */
-}
-
-.modern-budget-table tbody tr:last-child td:first-child {
-  border-bottom-right-radius: 12px; /* פינה ימנית תחתונה */
-}
-
-.modern-budget-table tbody tr:last-child td:last-child {
-  border-bottom-left-radius: 12px; /* פינה שמאלית תחתונה */
-}
-
-/* Removed duplicate - using single definition above */
-
-.modern-budget-table th {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  font-weight: 700;
-  color: #1f2328;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.modern-budget-table tbody tr:hover {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-
-  /* ללא transform - רק צבע רקע */
-}
-
-.modern-budget-table tbody tr:nth-child(even) {
-  background: rgb(248 250 252 / 50%);
-}
+/*
+ * Duplicate .modern-budget-table rules removed from cards.css.
+ * Table styling lives in tables.css (single source of truth).
+ * This file previously defined gradient headers, UPPERCASE, zebra striping,
+ * and border-radius on th/td — all of which fought the Emil-polished
+ * sticky header in tables.css because cards.css loads later.
+ */
 
 /* תפריט פשוט ועובד */
 .actions-dropdown-container {
@@ -223,14 +171,12 @@
   text-align: center;
 }
 
-/* וודא שעמודת הפעולות תמיד נראית */
-.modern-budget-table th:last-child,
-.modern-budget-table td:last-child {
-  min-width: 100px; /* הרחבה ל-100px */
-  width: 100px;
-  padding: 16px 12px; /* יותר padding */
-  text-align: center;
-}
+/*
+ * Actions column width moved to tables.css (single source of truth).
+ * This rule previously fixed the column to 100px with 16px padding,
+ * which was too cramped for 6 action buttons at 32px each and
+ * contradicted the newer 80px rule in tables.css.
+ */
 
 /* Progress bars בטבלה - Defined in tables.css */
 
