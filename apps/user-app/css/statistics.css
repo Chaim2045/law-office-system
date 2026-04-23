@@ -1,257 +1,268 @@
 /**
- * Statistics Styles - Ultra Minimal Hi-Tech Design
- * משרד עורכי דין - מערכת ניהול מתקדמת
+ * Statistics — Ultra-Minimal (Claude.ai / Emil)
  *
- * נוצר: 08/10/2025
- * עודכן: 29/10/2025
- * גרסה: 5.2.0 - Perfect Layout & Spacing
+ * Layout philosophy:
+ * - Each stat is a vertical block: value (top) + label (bottom).
+ * - Stats are separated by a thin vertical divider (1px gray-200),
+ *   Linear/Claude-style — gives calm visual rhythm without boxes.
+ * - The entire row shares a single baseline: numeric values + text
+ *   values (e.g. "22 אפריל") line up on the same baseline despite
+ *   different font sizes. No more "jumping" heights.
+ * - Inner padding (not gap) does the spacing, so dividers sit flush
+ *   between stats without extra whitespace.
  *
- * תכונות:
- * - Ultra compact design - תגים קטנים ויפים עם רוחב מתאים
- * - מיקום מושלם של אייקונים וטקסט
- * - משתמש במשתנים מ-design-system.css
- * - Font Awesome icons (far = outline)
- * - 4px spacing grid
- * - white-space: nowrap למניעת שבירת טקסט
+ * Color philosophy:
+ * - Everything grayscale by default.
+ * - Only color = the red dot preceding "דחופות" (rendered only > 0).
+ * - Selected filter state: thin 1.5px blue underline under the value.
+ *
+ * Emil checklist:
+ * - ✅ Specific transitions (no `transition: all`)
+ * - ✅ Custom strong easing curve
+ * - ✅ :active scale(0.97) on clickable stats
+ * - ✅ :focus-visible ring
+ * - ✅ prefers-reduced-motion honored
+ * - ✅ No hover-lift / no shadows / no infinite animations
  */
 
-/* ===== Badge Container ===== */
+/* ==========================================================================
+   Container — single row, dividers between items
+   ========================================================================== */
+
 .stats-badge {
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
+  align-items: stretch;         /* stretch so vertical dividers span full height */
+  justify-content: flex-start;
   flex-wrap: wrap;
   direction: rtl;
-  margin: 0 auto;
-  max-width: fit-content;
+  padding: 8px 4px;
+  margin: 0;
+  gap: 0;                       /* no gap — dividers + padding carry the rhythm */
 }
 
-/* ===== Clean Compact Style ===== */
-.stat-compact {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 8px 12px;
+/* ==========================================================================
+   Stat item — vertical block with baseline-aligned typography
+   ========================================================================== */
+
+/*
+ * IMPORTANT: scoped to `.stats-badge .stat-item` on purpose.
+ * Three other files (modals.css, popups-unified.css, popups-rtl.css) define
+ * a global `.stat-item` rule with gradients + 2px border + hover-lift for
+ * popup content. Without `.stats-badge` scoping, those rules outweigh ours
+ * by selector specificity and re-box every stat here.
+ */
+.stats-badge .stat-item {
+  /* reset button defaults (for the clickable variants) */
+  appearance: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  font-family: inherit;
+  text-align: right;
+  direction: rtl;
+  color: inherit;
+
+  /* vertical stack: value on top, label under */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+
+  /* inner spacing defines the rhythm; no margin between items */
+  padding: 4px 24px;
+
+  /* divider between stats — transparent on first child (see below) */
+  border-right: 1px solid var(--gray-200);
+
+  cursor: default;
+  transform-origin: center;
+  transition:
+    color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* First stat in RTL row = rightmost = no divider to its right */
+.stats-badge .stat-item:first-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+/*
+ * Neutralize hover-lift / translateY imposed by popup .stat-item rules.
+ * We keep our own hover semantics (color change only, no motion on the
+ * container itself).
+ */
+.stats-badge .stat-item:hover {
+  transform: none;
+  border-color: var(--gray-200);
+  box-shadow: none;
+}
+
+/* ==========================================================================
+   Clickable variants (filter-switching stats in budget view)
+   ========================================================================== */
+
+.stats-badge .stat-item.stat-clickable {
+  cursor: pointer;
+}
+
+.stats-badge .stat-item.stat-clickable:hover .stat-value {
+  color: var(--gray-900);
+}
+
+.stats-badge .stat-item.stat-clickable:hover .stat-label {
+  color: var(--gray-700);
+}
+
+.stats-badge .stat-item.stat-clickable:active {
+  transform: scale(0.97);
+}
+
+.stats-badge .stat-item.stat-clickable:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   Typography — numbers lead, labels support; all share a baseline
+   ========================================================================== */
+
+/* All inner typography is also scoped — same reason as .stat-item above. */
+.stats-badge .stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+
+  /*
+   * Selected-state underline lives on the value (not the label) — signal
+   * sits directly under the number like a sortable header.
+   */
+  border-bottom: 1.5px solid transparent;
+  padding-bottom: 2px;
+  margin: 0;
+  background: transparent;
+  text-shadow: none;
+  transition:
+    color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/*
+ * Text variant — value is a label, not a number ("22 אפריל"). Smaller
+ * type + slight baseline nudge so the text sits on the same optical
+ * baseline as the larger numeric values next to it.
+ */
+.stats-badge .stat-item.stat-text .stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  padding-bottom: 4px;          /* nudges baseline up to match 18px siblings */
+}
+
+.stats-badge .stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--gray-500);
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  text-transform: none;
+  letter-spacing: 0;
+  transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* ==========================================================================
+   Selected state — thin blue underline under the numeral
+   ========================================================================== */
+
+.stats-badge .stat-item.is-selected .stat-value {
+  border-bottom-color: var(--blue);
+  color: var(--gray-900);
+}
+
+.stats-badge .stat-item.is-selected .stat-label {
+  color: var(--gray-900);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Urgent — the only colored element. Red dot + count; renders only > 0.
+   ========================================================================== */
+
+.stats-badge .stat-item.stat-urgent .stat-value {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-  min-width: auto;
-  height: 42px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
-  position: relative;
+  gap: 6px;
 }
 
-.stat-compact:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgb(0 0 0 / 8%);
-}
-
-/* ===== Small Icon Style ===== */
-.stat-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f9fafb;
-  color: #6b7280;
-  font-size: 10px;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.stat-compact:hover .stat-icon {
-  background: #f3f4f6;
-}
-
-/* ===== Inline Content Style ===== */
-.stat-content {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 5px;
+.stat-urgent-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #dc2626;
   flex-shrink: 0;
 }
 
-.stat-label {
-  font-size: 10px;
-  font-weight: 400;
-  color: #9ca3af;
-  line-height: 1;
-  white-space: nowrap;
-  order: 2;
-}
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
 
-.stat-value {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.3px;
-  color: #111827;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  order: 1;
-}
-
-/* ===== Stat Color Variants ===== */
-
-/* Success - הושלמו */
-.stat-compact.stat-success {
-  background: #fff;
-  border-color: #d1fae5;
-}
-
-.stat-compact.stat-success .stat-icon {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.stat-compact.stat-success .stat-value {
-  color: #111827;
-}
-
-/* Urgent - דחופות */
-.stat-compact.stat-urgent {
-  background: #fff;
-  border-color: #fecaca;
-}
-
-.stat-compact.stat-urgent .stat-icon {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.stat-compact.stat-urgent .stat-value {
-  color: #111827;
-}
-
-/* Highlight - נבחר */
-.stat-compact.stat-highlight {
-  background: #fff;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgb(59 130 246 / 10%);
-}
-
-.stat-compact.stat-highlight .stat-icon {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
-.stat-compact.stat-highlight .stat-value {
-  color: #111827;
-  font-weight: 700;
-}
-
-/* Warning - אזהרה */
-.stat-compact.stat-warning {
-  background: #fff;
-  border-color: #fed7aa;
-}
-
-.stat-compact.stat-warning .stat-icon {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.stat-compact.stat-warning .stat-value {
-  color: #111827;
-}
-
-/* ===== Responsive ===== */
-
-/* טאבלטים */
-@media (width <= 1024px) {
+/*
+ * Responsive behavior — single breakpoint for true mobile.
+ *
+ * The tablet (≤1024px) breakpoint was removed: desktop sizing reads fine
+ * down to narrower windows, and cascading breakpoints were causing the
+ * look to drift whenever the browser window wasn't maximized. Better to
+ * keep one consistent appearance and let narrow windows scroll.
+ *
+ * The true mobile breakpoint (≤600px) switches to horizontal scroll so
+ * numbers never get crushed below legible size. Desktop viewers will
+ * never hit it unless they intentionally squash the window.
+ */
+@media (width <= 600px) {
   .stats-badge {
-    gap: 8px;
-  }
-
-  .stat-compact {
-    padding: 7px 11px;
-    height: 40px;
-  }
-
-  .stat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 9px;
-  }
-
-  .stat-value {
-    font-size: 14px;
-  }
-
-  .stat-label {
-    font-size: 9px;
-  }
-}
-
-/* מובייל גדול */
-@media (width <= 768px) {
-  .stats-badge {
-    gap: var(--space-2);
     overflow-x: auto;
+    flex-wrap: nowrap;
     scrollbar-width: thin;
-    scrollbar-color: var(--gray-300) var(--gray-50);
-    width: 100%;
-    justify-content: flex-start;
+    padding: 6px 4px;
   }
 
-  .stats-badge::-webkit-scrollbar {
-    height: var(--space-2);
+  .stats-badge .stat-item {
+    padding: 4px 14px;
+    flex-shrink: 0;
   }
 
-  .stats-badge::-webkit-scrollbar-track {
-    background: var(--gray-50);
-    border-radius: var(--radius-sm);
+  .stats-badge .stat-value {
+    font-size: 16px;
   }
 
-  .stats-badge::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: var(--radius-sm);
-  }
-
-  .stat-compact {
-    padding: 6px 10px;
-    height: 38px;
-    gap: 6px;
-  }
-
-  .stat-icon {
-    width: 15px;
-    height: 15px;
-    font-size: 8px;
-  }
-
-  .stat-value {
+  .stats-badge .stat-item.stat-text .stat-value {
     font-size: 13px;
   }
 
-  .stat-label {
-    font-size: 8px;
+  .stats-badge .stat-label {
+    font-size: 10px;
   }
 }
 
-/* מובייל קטן */
-@media (width <= 480px) {
-  .stats-badge {
-    gap: 6px;
+@media (prefers-reduced-motion: reduce) {
+  .stats-badge .stat-item,
+  .stats-badge .stat-value,
+  .stats-badge .stat-label {
+    transition: none;
   }
 
-  .stat-compact {
-    padding: 2px 8px;
-    gap: 2px;
-    border-radius: 12px;
-  }
-
-  .stat-value {
-    font-size: 12px;
-  }
-
-  .stat-label {
-    font-size: 7px;
+  .stats-badge .stat-item.stat-clickable:active {
+    transform: none;
   }
 }
+

@@ -123,70 +123,70 @@
 .table-action-btn {
   width: 36px;
   height: 36px;
-  border: 2px solid;
-  border-radius: 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 600;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: #fff;
+  color: var(--gray-600);
   font-size: 12px;
-  backdrop-filter: blur(10px);
+  transform-origin: center;
 }
 
 .table-action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+  color: var(--gray-900);
 }
 
-.table-action-btn.primary {
-  border-color: #3b82f6;
-  color: #3b82f6;
+.table-action-btn:active {
+  transform: scale(0.95);
 }
 
-.table-action-btn.primary:hover {
-  background: #3b82f6;
-  color: white;
+.table-action-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
-.table-action-btn.info {
-  border-color: #6b7280;
-  color: #6b7280;
-}
-
-.table-action-btn.info:hover {
-  background: #6b7280;
-  color: white;
-}
-
-.table-action-btn.warning {
-  border-color: #f59e0b;
-  color: #f59e0b;
-}
-
-.table-action-btn.warning:hover {
-  background: #f59e0b;
-  color: white;
-}
-
-.table-action-btn.success {
-  border-color: #10b981;
-  color: #10b981;
-}
-
+/*
+ * "2 Signals Only" buttons — Emil: color as signal, not decoration.
+ * Default: gray. Hover: gray-darker. Only danger gets red (it's an alarm).
+ * This means a hovered button never competes visually with a real alert.
+ */
+.table-action-btn.primary:hover,
+.table-action-btn.info:hover,
+.table-action-btn.warning:hover,
 .table-action-btn.success:hover {
-  background: #10b981;
-  color: white;
+  background: var(--gray-100);
+  color: var(--gray-900);
+  border-color: var(--gray-400);
 }
 
-/* וודא שעמודת הפעולות תמיד נראית */
+.table-action-btn.danger:hover {
+  background: rgb(239 68 68 / 10%);
+  color: var(--red-dark);
+  border-color: rgb(239 68 68 / 40%);
+}
+
+/*
+ * Actions column — sized to fit 6 compact action buttons at 32px each
+ * with 2px gap + 2px horizontal padding. ~215px feels balanced and avoids
+ * the previous scenario where a too-narrow 80px column forced visual gaps
+ * via oversized margins.
+ */
 .modern-budget-table th:last-child,
 .modern-budget-table td:last-child {
-  min-width: 80px;
-  width: 80px;
-  padding: 16px 8px;
+  min-width: 215px;
+  width: 215px;
+  padding: 12px 4px;
   text-align: center;
 }
 
@@ -205,8 +205,9 @@
 
 .modern-table-title i {
   font-size: 18px;
-  color: #64748b; /* אפור מקצועי אחיד */
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 10%));
+  color: var(--gray-500);
+
+  /* No drop-shadow — Emil: flat, calm, no depth tricks on flat UI */
 }
 
 .modern-table-subtitle {
@@ -218,27 +219,133 @@
   direction: rtl;
 }
 
-/* הבחנה בין שורות - זברה מינימלית */
-.modern-budget-table tbody tr:nth-child(even),
-.modern-timesheet-table tbody tr:nth-child(even) {
+/* ==========================================================================
+   BUDGET/TIMESHEET TABLE — Linear Minimal + Sticky + Dividers + Shadow on scroll
+   Emil: grayscale by default, typography over chrome, specific transitions,
+         no zebra, no borders on tag headers, color only as signal (sort active)
+   ========================================================================== */
+
+/* ─── Rows: no zebra, subtle bottom border, hover reveals soft background + dividers ─── */
+.modern-budget-table tbody tr,
+.modern-timesheet-table tbody tr {
+  background: #fff;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background-color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.modern-budget-table tbody tr:hover,
+.modern-timesheet-table tbody tr:hover {
   background: var(--gray-50);
 }
 
-.modern-budget-table tbody tr:nth-child(odd),
-.modern-timesheet-table tbody tr:nth-child(odd) {
-  background: #fff;
+/* Last row — no border */
+.modern-budget-table tbody tr:last-child,
+.modern-timesheet-table tbody tr:last-child {
+  border-bottom: none;
 }
 
-/* שורות על hover */
-.modern-budget-table tbody tr:hover,
-.modern-timesheet-table tbody tr:hover {
-  background: #fff;
+/* ─── Header: flat, sticky, typography-first ─── */
+.modern-budget-table thead th,
+.modern-timesheet-table thead th {
+  /* Sticky header — stays visible on scroll */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  /* Layout */
+  padding: 12px 16px;
+  text-align: right;
+  height: 44px;
+
+  /* Emil: no tag chrome — flat, translucent, blur for depth */
+  background: rgb(255 255 255 / 85%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: none;
+  border-bottom: 1px solid var(--gray-200);
+  border-radius: 0;
+
+  /* Typography — Emil: Linear-style, not UPPERCASE tag */
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--gray-600);
+
+  /* Specific transitions — Emil: no `transition: all` */
+  transition:
+    background-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* גבול עדין בין השורות */
-.modern-budget-table tbody tr,
-.modern-timesheet-table tbody tr {
-  border-bottom: 1px solid rgb(226 232 240 / 60%);
+/* Column dividers — transparent by default, reveal on row hover */
+.modern-budget-table thead th:not(:first-child),
+.modern-timesheet-table thead th:not(:first-child),
+.modern-budget-table tbody td:not(:first-child),
+.modern-timesheet-table tbody td:not(:first-child) {
+  border-right: 1px solid transparent;
+  transition: border-color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.modern-budget-table tbody tr:hover td:not(:first-child),
+.modern-timesheet-table tbody tr:hover td:not(:first-child) {
+  border-right-color: var(--gray-100);
+}
+
+/* Sortable header — hover & focus states */
+.modern-budget-table thead th.sortable:hover,
+.modern-timesheet-table thead th.sortable:hover {
+  color: var(--gray-900);
+  cursor: pointer;
+}
+
+.modern-budget-table thead th.sortable:active,
+.modern-timesheet-table thead th.sortable:active {
+  transform: scale(0.99);
+}
+
+.modern-budget-table thead th.sortable:focus-visible,
+.modern-timesheet-table thead th.sortable:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+/* Active sort — color is the signal (Emil: color only as signal) */
+.modern-budget-table thead th.sortable.asc,
+.modern-budget-table thead th.sortable.desc,
+.modern-timesheet-table thead th.sortable.asc,
+.modern-timesheet-table thead th.sortable.desc {
+  color: var(--gray-900);
+  box-shadow: inset 0 -1.5px 0 var(--blue);
+}
+
+/* Scroll-triggered state — shadow + firmer border + more opaque */
+.modern-budget-table thead.is-scrolled th,
+.modern-timesheet-table thead.is-scrolled th {
+  background: rgb(255 255 255 / 95%);
+  border-bottom-color: var(--gray-300);
+  box-shadow:
+    0 1px 0 var(--gray-200),
+    0 6px 12px -4px rgb(0 0 0 / 6%);
+}
+
+/* Reduced motion — disable scale + transitions */
+@media (prefers-reduced-motion: reduce) {
+  .modern-budget-table thead th,
+  .modern-timesheet-table thead th,
+  .modern-budget-table tbody tr,
+  .modern-timesheet-table tbody tr,
+  .modern-budget-table tbody td,
+  .modern-timesheet-table tbody td {
+    transition: none;
+  }
+
+  .modern-budget-table thead th.sortable:active,
+  .modern-timesheet-table thead th.sortable:active {
+    transform: none;
+  }
 }
 
 /* כפתורי פעולה גדולים יותר */
@@ -250,42 +357,6 @@
 
 .table-actions-group {
   gap: 8px; /* רווח גדול יותר בין הכפתורים */
-}
-
-/* Headers כתגים מעוגלים - Ultra Minimal */
-.modern-budget-table thead th,
-.modern-timesheet-table thead th {
-  /* Layout & Position */
-  padding: 10px 12px;
-  text-align: right;
-  position: relative;
-  border-bottom: none;
-
-  /* Typography */
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--gray-700);
-
-  /* אפקט תג מעוגל */
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
-  border: 1px solid var(--gray-200);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* רווח בין התגים */
-  border-left: 3px solid transparent;
-  border-right: 3px solid transparent;
-  background-clip: padding-box;
-}
-
-.modern-budget-table thead th:hover,
-.modern-timesheet-table thead th:hover {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  box-shadow: 0 2px 4px rgb(0 0 0 / 12%);
-  transform: translateY(-1px);
 }
 
 
@@ -352,48 +423,37 @@
 .table-progress-fill {
   height: 100%;
   border-radius: 12px;
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 400ms cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
 }
 
-/* צבעים שטוחים - Ultra Minimal */
+/*
+ * "2 Signals Only" palette — Emil: color as signal, not decoration.
+ * All progress levels share a gray ramp (subtle darker = more progress).
+ * RED is reserved exclusively for budget overrun (>100%), making it an
+ * unmistakable alarm when — and only when — something is actually wrong.
+ */
 .progress-fill.low {
-  background: linear-gradient(90deg, var(--green), var(--green-dark));
+  background: var(--gray-400);
 }
 
 .progress-fill.medium {
-  background: linear-gradient(90deg, var(--orange), var(--orange-dark));
+  background: var(--gray-500);
 }
 
 .progress-fill.high {
-  background: linear-gradient(90deg, var(--red), var(--red-dark));
+  background: var(--gray-700);
 }
 
-/* Critical state for budget overrun (>100%) */
 .progress-fill.critical {
-  background: linear-gradient(90deg, #dc2626, #991b1b);
-  box-shadow: 0 0 8px rgb(220 38 38 / 30%);
+  background: #dc2626; /* the only red — budget exceeded */
 }
 
 .progress-fill.complete {
-  background: var(--red-dark);
+  background: var(--gray-700);
 }
 
-.table-progress-fill::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(255 255 255 / 40%),
-    transparent
-  );
-  animation: progressShine 2s ease-in-out infinite;
-}
+/* No infinite shine animation — removed per Emil: never animate frequently-viewed UI */
 
 /* כפתורי פעולה משופרים */
 .table-actions-group {
@@ -407,63 +467,46 @@
 .table-action-btn {
   width: 32px;
   height: 32px;
-  border: 2px solid;
+  border: 1px solid var(--gray-300);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 600;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: #fff;
+  color: var(--gray-600);
   font-size: 12px;
   position: relative;
+  transform-origin: center;
 }
 
 .table-action-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+  color: var(--gray-900);
 }
 
-.table-action-btn.primary {
-  border-color: #3b82f6;
-  color: #3b82f6;
+.table-action-btn:active {
+  transform: scale(0.95);
 }
 
-.table-action-btn.primary:hover {
-  background: #3b82f6;
-  color: white;
+.table-action-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
-.table-action-btn.info {
-  border-color: #6b7280;
-  color: #6b7280;
-}
-
-.table-action-btn.info:hover {
-  background: #6b7280;
-  color: white;
-}
-
-.table-action-btn.warning {
-  border-color: #f59e0b;
-  color: #f59e0b;
-}
-
-.table-action-btn.warning:hover {
-  background: #f59e0b;
-  color: white;
-}
-
-.table-action-btn.success {
-  border-color: #10b981;
-  color: #10b981;
-}
-
-.table-action-btn.success:hover {
-  background: #10b981;
-  color: white;
-}
+/*
+ * Duplicate color-per-variant rules removed — monochrome defaults are
+ * defined once at the top of the file (~line 140). Hover states carry
+ * the functional tint as a soft background + border hint, keeping the
+ * default state fully grayscale.
+ */
 
 /* Pagination Controls */
 .table-pagination {
@@ -497,7 +540,10 @@
 .pagination-btn:hover:not(.disabled) {
   background: var(--gray-50);
   border-color: var(--gray-400);
-  transform: translateY(-1px);
+}
+
+.pagination-btn:active:not(.disabled) {
+  transform: scale(0.97);
 }
 
 .pagination-btn.active {
@@ -585,42 +631,32 @@
 .modern-progress-fill {
   height: 100%;
   border-radius: 6px;
-  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 400ms cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
   overflow: hidden;
 }
 
+/*
+ * "2 Signals Only" — consistent with .progress-fill above.
+ * Gray ramp for normal/warning/complete; red only for actual danger (>100%).
+ */
 .modern-progress-fill.normal {
-  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+  background: var(--gray-500);
 }
 
 .modern-progress-fill.warning {
-  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+  background: var(--gray-700);
 }
 
 .modern-progress-fill.danger {
-  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+  background: #dc2626;
 }
 
 .modern-progress-fill.complete {
-  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  background: var(--gray-600);
 }
 
-.modern-progress-fill::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -50%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(255 255 255 / 40%),
-    transparent
-  );
-  animation: progressShine 2s infinite;
-}
+/* No infinite shine — removed per Emil */
 
 .modern-progress-details {
   margin-top: 4px;
@@ -687,11 +723,15 @@
 .modern-action-btn:hover {
   background: var(--gray-50);
   border-color: var(--gray-400);
-  transform: translateY(-1px);
 }
 
 .modern-action-btn:active {
-  transform: translateY(0);
+  transform: scale(0.95);
+}
+
+.modern-action-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
 .modern-action-btn.primary {
@@ -723,15 +763,21 @@
   font-size: 15px;
 }
 
+/*
+ * Description cell — Emil: "task name never truncated to one line".
+ * No hard max-width — the column grows to available space (helpful on 30"
+ * while staying compact on 14"). Inner span clamps at 4 lines so overly
+ * long descriptions don't blow up row heights unpredictably.
+ */
 .table-cell-description,
 .budget-table-description,
 .td-description {
-  max-width: 180px; /* ✅ Reduced from 250px to bring icons closer */
-  overflow: hidden;
-  color: var(--gray-700);
+  color: var(--gray-800);
   font-weight: 500;
-  line-height: 1.4; /* Match the span line-height */
-  font-size: 13px;
+  line-height: 1.45;
+  font-size: 13.5px;
+  min-width: 200px;
+  word-break: break-word;
 }
 
 /* Table description with combined badge - Linear Minimal */
@@ -744,17 +790,18 @@
 }
 
 .table-description-with-icons span {
-  /* ✅ Line clamp for 3 lines instead of 1 line */
+  /* Emil: allow more space so titles rarely get truncated at all */
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: normal; /* Changed from nowrap */
+  white-space: normal;
   flex: 1;
   min-width: 0;
   text-align: right;
-  line-height: 1.4;
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 /* Compact variant for table rows - TRUE Linear style */
@@ -777,18 +824,23 @@
 }
 
 .table-cell-deadline.normal {
-  color: #475569;
+  color: var(--gray-700);
 }
 
+/*
+ * 'soon' state is a weak signal — Emil: only true emergencies get color.
+ * Upcoming deadlines earn font-weight, not color. Overdue keeps the red.
+ */
 .table-cell-deadline.soon {
-  color: #f59e0b;
-  font-weight: 700;
+  color: var(--gray-900);
+  font-weight: 600;
 }
 
 .table-cell-deadline.overdue {
-  color: #ef4444;
-  font-weight: 700;
-  animation: deadlinePulse 2s infinite;
+  color: #dc2626;
+  font-weight: 600;
+
+  /* No pulse — Emil: color is the signal, infinite animation is noise */
 }
 
 /* Timesheet specific cells */
@@ -1004,7 +1056,9 @@
   cursor: pointer;
   user-select: none;
   position: relative;
-  transition: all 0.2s ease;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .sortable:hover {
@@ -1347,19 +1401,18 @@
   font-weight: 600;
 }
 
-/* Container משותף לכרטיסיות וטבלה - עיצוב אחיד */
+/* Container משותף לכרטיסיות וטבלה - Emil: single border, no shadow, clean */
 .modern-cards-container,
 .modern-table-container {
   background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  margin: 16px 0 12px; /* מרווחים מצומצמים */
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  margin: 16px 0 12px;
   width: 100%;
   max-width: none;
-  overflow-x: auto; /* גלילה אופקית אם צריך */
-  overflow-y: visible; /* הפופאובר לא ייחתך */
-  box-shadow: 0 2px 6px rgb(0 0 0 / 5%);
-  padding: 2px; /* padding אולטרה מינימלי - רוחב מקסימלי */
+  overflow-x: auto; /* גלילה אופקית בטבלה רחבה */
+  overflow-y: visible; /* sticky thead needs this + popover doesn't get cut */
+  padding: 2px;
 }
 
 .modern-table-header {
@@ -1394,44 +1447,51 @@
 
 .modern-budget-table,
 .modern-timesheet-table {
-  width: 100%; /* רוחב מלא */
-  margin: 0; /* ללא מרווח - תופס את כל המקום */
-  border-collapse: separate; /* נדרש עבור border-radius */
-  border-spacing: 0; /* ללא רווחים בין תאים */
+  width: 100%;
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px; /* פינות מעוגלות כמו הקונטיינר */
-  overflow: hidden; /* חותך את הפינות */
+  border: none; /* Container already has border — no double border */
+
+  /*
+   * No overflow:hidden on <table> — it breaks position:sticky on <thead>.
+   * Container (.modern-table-container) handles corner clipping visually.
+   */
 }
 
 .modern-budget-table tbody td,
 .modern-timesheet-table tbody td {
-  padding: 16px 12px;
+  padding: 14px 16px;
   text-align: right;
-  border-bottom: 1px solid #e2e8f0; /* גבול תחתון בלבד */
   vertical-align: middle;
+
+  /*
+   * No per-cell border-bottom — <tr> owns the row border (see above).
+   * Single source of truth avoids double-borders.
+   */
 }
 
-.modern-budget-table tbody tr:last-child td,
-.modern-timesheet-table tbody tr:last-child td {
-  border-bottom: none; /* בטל גבול תחתון לשורה האחרונה */
+/*
+ * Emil: tabular numerals for columns that line up vertically (budget,
+ * actual, progress %, dates). Prevents numeric digits from shifting
+ * column-to-column on every re-render.
+ */
+.modern-budget-table tbody .table-progress-percentage,
+.modern-budget-table tbody .td-number,
+.modern-budget-table tbody .table-cell-deadline,
+.modern-timesheet-table tbody .table-progress-percentage,
+.modern-timesheet-table tbody .td-number,
+.modern-timesheet-table tbody .table-cell-deadline {
+  font-variant-numeric: tabular-nums;
 }
 
-/* פינות מעוגלות לטבלה */
-.modern-budget-table th:first-child,
-.modern-timesheet-table th:first-child {
-  border-top-right-radius: 12px; /* פינה ימנית עליונה */
-}
-
-.modern-budget-table th:last-child,
-.modern-timesheet-table th:last-child {
-  border-top-left-radius: 12px; /* פינה שמאלית עליונה */
-}
-
-.modern-budget-table tbody tr:last-child td:first-child,
-.modern-timesheet-table tbody tr:last-child td:first-child {
-  border-bottom-right-radius: 12px; /* פינה ימנית תחתונה */
-}
+/*
+ * Corner radius removed from <th>/<td>:
+ * 1. Sticky header is a flat strip — rounded corners look wrong when the
+ *    header detaches from the container top on scroll.
+ * 2. Container (.modern-table-container) already clips with border-radius.
+ */
 
 .modern-budget-table tbody tr:last-child td:last-child,
 .modern-timesheet-table tbody tr:last-child td:last-child {
@@ -1456,10 +1516,7 @@
   background: #fff;
 }
 
-.modern-budget-table tbody tr:nth-child(even),
-.modern-timesheet-table tbody tr:nth-child(even) {
-  background: var(--gray-50);
-}
+/* Zebra striping removed — Emil: clean white rows, hover reveals soft bg */
 
 /* ============================================
    Pending Approval Row - שורה ממתינה לאישור
@@ -1627,34 +1684,10 @@
   position: relative;
 }
 
-.table-progress-fill::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -50%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(255 255 255 / 30%),
-    transparent
-  );
-  animation: progressShine 2s infinite;
-}
-
-@keyframes progressShine {
-  0% {
-    left: -50%;
-  }
-
-  100% {
-    left: 150%;
-  }
-}
+/* No infinite shine on progress — removed per Emil */
 
 .table-progress-fill.progress-low {
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  background: #3b82f6;
 }
 
 .table-progress-fill.progress-medium {
@@ -1757,67 +1790,80 @@
   transform: translateY(-2px);
 }
 
-/* כרטיס לינארי ריבועי - Ultra Minimal - גובה אחיד! */
+/*
+ * Linear Minimal Card — Claude.ai / Emil polish.
+ *
+ * Default: flat white, thin border, no shadow, no gradient. The grid's
+ * soft gray canvas (in cards.css) provides the separation between cards;
+ * each card itself is just a clean white surface.
+ *
+ * Hover: border firms up, very soft shadow appears — no lift, no
+ * background re-tint. The card is content's container, not a dramatic
+ * object.
+ *
+ * Density: padding reduced from --space-5 to 16px (a meaningful trim at
+ * 13" where every pixel counts), min-height reduced to 280px so shorter
+ * content no longer forces artificial white space. max-height stays
+ * removed so cards grow with content instead of clipping.
+ */
 .linear-minimal-card {
-  background: linear-gradient(135deg, #fafbfc 0%, #f8f9fb 100%); /* ✅ gradient מט ועדין */
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-lg);
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
   cursor: pointer;
-  transition: var(--transition-smooth);
   position: relative;
 
-  /* ✅ גובה ורוחב קבועים - כולם זהים! */
   width: 100%;
-  min-height: 380px; /* גובה מינימלי אחיד */
-  max-height: 380px; /* גובה מקסימלי אחיד */
-  overflow: visible; /* ✅ שונה מ-hidden - מאפשר לאלמנטים להיות גלויים */
-  padding: var(--space-5);
-  padding-bottom: 70px; /* מקום לכפתור + meta */
 
-  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 6%); /* ✅ צל יותר בולט ומקצועי */
+  /*
+   * No min-height — cards take only the height their content needs.
+   * Cards in the same row will have different heights (different title
+   * lengths, presence of overrun buttons), which matches Claude.ai's
+   * variable-height list pattern. Padding-bottom is the floor (40px)
+   * needed to keep the absolute meta footer + expand button readable.
+   */
+  overflow: visible;
+  padding: 14px 14px 40px;
+
   direction: rtl;
   text-align: right;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 8px;
+
+  transition:
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .linear-minimal-card:hover {
-  background: linear-gradient(135deg, #fff 0%, #fafbfc 100%); /* ✅ gradient בהיר יותר ב-hover */
-  border-color: #d1d5db;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 4%); /* ✅ צל יותר בולט ב-hover */
-  transform: translateY(-2px);
+  border-color: var(--gray-300);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 4%);
 }
 
 /* תאריך יצירה בפינה ימנית עליונה - עיצוב מקצועי */
 .card-creation-date {
   position: absolute;
-  top: 10px; /* ✅ בתוך ה-padding */
-  right: 10px; /* ✅ בתוך ה-padding */
+  top: 10px;
+  right: 10px;
   font-size: 10px;
   font-weight: 500;
-  color: #6b7280;
-  opacity: 0.75;
-  font-style: normal;
+  color: var(--gray-500);
+  opacity: 0.8;
   z-index: 10;
-  background: rgb(255 255 255 / 95%);
+  background: transparent;
   padding: 3px 7px;
-  border-radius: 3px;
-  border: 1px solid rgb(229 231 235 / 60%);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
-  transition: all 0.2s ease;
-  letter-spacing: 0.01em;
   line-height: 1.4;
-  max-width: calc(100% - 40px); /* ✅ מונע overflow */
+  max-width: calc(100% - 40px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .linear-minimal-card:hover .card-creation-date {
-  opacity: 0.95;
-  background: rgb(255 255 255 / 100%);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+  opacity: 1;
+  color: var(--gray-700);
 }
 
 /* תגי שירות ותיק בפינה ימנית עליונה - עיצוב ultra-minimal */
@@ -1850,63 +1896,127 @@
   padding-bottom: 80px; /* ✅ הוגדל (היה 60px) - יותר מרווח מהקו התחתון */
 }
 
-/* כפתור הרחבה - למטה בצד שמאל */
+/*
+ * Expand button — Claude.ai-style pill. Transparent by default so it fades
+ * into the card. Hover reveals a soft gray pill; :active scale gives the
+ * tactile press feedback Emil calls for on every pressable element.
+ */
 .linear-expand-btn {
   position: absolute;
   bottom: 10px;
   left: 10px;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm);
-  background: #fff;
-  border: 1px solid var(--gray-300);
-  color: var(--gray-700);
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--gray-500);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: var(--transition);
   z-index: 2;
-  font-size: 10px;
+  font-size: 11px;
+  padding: 0;
+  transform-origin: center;
+  transition:
+    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .linear-expand-btn:hover {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
-  transform: translateY(-1px);
+  background: var(--gray-100);
+  color: var(--gray-900);
 }
 
-/* מטא-נתונים משופרים של הכרטיס - מוצמד לתחתית */
+/*
+ * Plus icon micro-motion on hover — "opening" feel.
+ * Icon rotates 90° with a small overshoot and settles at ~95° + scale,
+ * hinting that clicking will expand/open more detail. Spring easing
+ * gives it the same physical bounce as the pencil/calendar actions.
+ */
+.linear-expand-btn i {
+  display: inline-block;
+  transform-origin: center;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.linear-expand-btn:hover i {
+  animation: plus-open-hover 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/*
+ * Softened plus rotation — first version (90°) read as dramatic. The
+ * user preferred the folder's gentle "tilt + scale" style, so this
+ * mirrors that: a small clockwise hint (not a full turn) + subtle
+ * scale up. Still readable as "something opens on click".
+ */
+@keyframes plus-open-hover {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  55% {
+    transform: rotate(12deg) scale(1.15);
+  }
+
+  100% {
+    transform: rotate(8deg) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linear-expand-btn i {
+    transition: none;
+  }
+
+  .linear-expand-btn:hover i {
+    animation: none;
+  }
+}
+
+.linear-expand-btn:active {
+  background: var(--gray-200);
+  transform: scale(0.95);
+}
+
+.linear-expand-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/*
+ * Meta footer — single horizontal row consolidating badge + client + date.
+ *
+ * Was a stacked column with a top border that added ~30px to every card.
+ * The new flat row sits flush at the card bottom with no separator and
+ * lets all metadata read at a glance: 🏢 case · client · 13/04 [+]
+ *
+ * Pinned to the bottom (absolute) so cards with variable-height titles
+ * still align their footers cleanly.
+ */
 .linear-card-meta {
-  position: absolute; /* מוצמד לתחתית כמו הכפתור */
-  bottom: 15px; /* אותו גובה כמו כפתור הפלוס */
-  right: 0; /* ✅ לכל הרוחב של הכרטיס */
-  left: 60px; /* מרווח מהכפתור פלוס בצד שמאל */
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  left: 48px; /* leaves clearance for the absolute "+" expand button */
+
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
-  padding-top: 14px; /* ✅ הוגדל (היה 8px) - יותר מרווח מהקו */
-  padding-right: 24px; /* ✅ padding פנימי לטקסט */
-  border-top: 0.5px solid #e5e7eb; /* ✅ קו עדין ודק - אותו כמו העליון */
-  font-size: 13px;
+  flex-wrap: wrap;
+
+  font-size: 11px;
   color: var(--gray-600);
   direction: rtl;
   text-align: right;
+  line-height: 1.3;
 }
 
-/* שורת לקוח */
-.linear-client-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.linear-client-label {
-  font-size: 11px;
-  font-weight: 600;
+.linear-card-meta-date {
   color: var(--gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
 }
 
 .linear-client-name {
@@ -1960,11 +2070,12 @@
   text-align: center;
 }
 
-.linear-expand-btn:hover {
-  background: #e2e8f0;
-  transform: scale(1.1);
-  border-color: #3b82f6;
-}
+/*
+ * Duplicate .linear-expand-btn:hover removed — the canonical hover rule
+ * lives near the button's base definition (~line 1923) and follows the
+ * Claude.ai transparent-pill pattern. This version added scale(1.1) +
+ * a blue border on hover, fighting the calm polish.
+ */
 
 /* אזור התקדמות ויזואלי באמצע הכרטיס */
 .linear-progress-section {
@@ -2050,39 +2161,11 @@
   direction: rtl;
 }
 
-.time-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: center;
-  padding: 6px;
-  background: rgb(59 130 246 / 5%);
-  border-radius: 6px;
-  border: 1px solid rgb(59 130 246 / 10%);
-}
-
-.time-label {
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.time-value {
-  font-weight: 700;
-  color: #1f2328;
-  font-size: 12px;
-}
-
-/* צבע שונה לזמן בפועל */
-.time-item.actual {
-  background: rgb(16 185 129 / 5%);
-  border-color: rgb(16 185 129 / 10%);
-}
-
-.time-item.actual .time-value {
-  color: #059669;
-}
+/*
+ * .time-item / .time-label / .time-value / .time-item.actual rules moved
+ * to cards.css (Emil / Claude.ai typography-first, no colored chips).
+ * Duplicates here were overriding with blue/green tinted chips.
+ */
 
 /* Card title wrapper - holds title and badges */
 .card-title-wrapper {
@@ -2093,93 +2176,89 @@
   direction: rtl;
 }
 
-/* כותרת כרטיס - שורה אחת בלבד + Tooltip */
+/*
+ * Card title — Emil: "task name never truncated to one line".
+ * Superseded by the Claude-style block below (kept for context).
+ */
+
+/*
+ * Card title — Claude-style: show the full task name, let the card grow.
+ * No -webkit-line-clamp, no text-overflow, no min-height. The card owns
+ * whatever height the title needs; sibling cards in the row will naturally
+ * have different heights, which matches how Claude / Linear present lists
+ * of variable-length items. cards.css has its own `.linear-card-title`
+ * rule that wins via load order — this block is only kept for safety in
+ * contexts where cards.css isn't loaded (none in the User App today).
+ */
 .linear-card-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--gray-900);
-  line-height: 1.5;
+  line-height: 1.4;
   letter-spacing: -0.01em;
-  margin: 0;
-  margin-top: 4px; /* ממש בתחילת הכרטיסייה */
-  padding-top: 2px;
-  padding-bottom: 16px;
-  padding-left: 70px; /* מקום לאייקונים */
-  margin-bottom: 20px; /* ✅ מוריד את התוכן שאחרי הקו */
-  min-height: 48px; /* ✅ גובה קבוע - הקו תמיד באותו מקום! */
+  margin: 0 0 12px;
+  padding: 4px 60px 10px 0;
   text-align: right;
   direction: rtl;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap; /* שורה אחת בלבד */
-  border-bottom: 1px solid #e2e8f0; /* הקו תמיד באותו גובה */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+
+  border-bottom: 1px solid var(--gray-100);
   cursor: default;
-  transition: color 0.2s ease;
+  transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.linear-card-title:hover {
-  color: var(--primary-600);
-}
-
-/* ===== Card Badges Button (Click to open modal) ===== */
+/*
+ * Card badges button — Claude.ai pill. Transparent by default, fills in
+ * on hover; no shadow (Emil: flat UI stays flat).
+ */
 .card-badges-button {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: var(--gray-50);
+  background: transparent;
   border: 1px solid var(--gray-200);
   border-radius: 6px;
   font-size: 12px;
   color: var(--gray-600);
   cursor: pointer;
-  transition: var(--transition);
   flex-shrink: 0;
+  transform-origin: center;
+  transition:
+    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .card-badges-button:hover {
-  background: #fff;
+  background: var(--gray-50);
   border-color: var(--gray-300);
-  color: var(--gray-700);
-  box-shadow: 0 2px 4px rgb(0 0 0 / 6%);
+  color: var(--gray-900);
 }
 
 .card-badges-button:active {
   transform: scale(0.96);
 }
 
-/* הוספת tooltip לכותרת ארוכה */
-.linear-card-title::after {
-  content: attr(data-full-text);
-  position: absolute;
-  bottom: 100%;
-  right: 50%;
-  transform: translateX(50%);
-  background: #1f2328;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  white-space: nowrap;
-  z-index: 10;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-  pointer-events: none;
-  max-width: 300px;
-  text-overflow: ellipsis;
-  overflow: hidden;
+.card-badges-button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
-.linear-card-title:hover::after {
-  opacity: 1;
-  visibility: visible;
-  bottom: calc(100% + 8px);
-}
+/*
+ * Custom ::after tooltip removed.
+ * It relied on `data-full-text` (which the HTML template never provides)
+ * and on the title being truncated. Now that the title is never
+ * truncated, there's no "hidden remainder" to reveal on hover. The
+ * :hover partial gray overlay the user noticed was this pseudo-element
+ * rendering with transparent background at certain paint stages.
+ */
 
-/* אנימציה על hover */
+/* Hover on the card lifts the title underline color — calm, not a highlight */
 .linear-minimal-card:hover .linear-card-title {
-  border-color: var(--gray-300);
+  border-color: var(--gray-200);
 }
 
 /* כותרות */
@@ -2258,9 +2337,9 @@
     aspect-ratio: 1.2/1; /* קצת פחות ריבועי בנייד */
   }
 
+  /* .linear-minimal-card mobile override — only padding, height auto */
   .linear-minimal-card {
-    height: 72px;
-    padding: 16px 20px;
+    padding: 12px 14px 36px;
   }
 
   .client-name,
@@ -2282,17 +2361,15 @@
 
 .compact-svg-ring {
   display: block;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 6%));
-}
 
-.compact-deadline-ring:hover .compact-svg-ring {
-  transform: scale(1.04);
-  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 10%));
+  /*
+   * No drop-shadow, no hover scale — Emil: flat, calm, no chrome noise.
+   * The ring renders state (progress + overdue) through its stroke alone.
+   */
 }
 
 .compact-ring-progress {
-  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 400ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .compact-ring-number {
@@ -2337,17 +2414,8 @@
   background: #fee2e2;
   padding: 2px 6px;
   border-radius: 6px;
-  animation: pulse 2s ease-in-out infinite;
-}
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.7;
-  }
+  /* No pulse — Emil: badge color is signal enough */
 }
 
 /* ===== Table Badges Button (Click to open modal) - Unified ===== */
@@ -2548,86 +2616,140 @@
    Added to match card view functionality
    ============================================ */
 
-/* Base action-btn styles (if not already defined) */
+/*
+ * Row action buttons — Claude.ai style.
+ * No border, transparent background by default. Hover reveals a soft
+ * gray pill that houses the icon. Keeps peripheral rows calm while
+ * giving clear affordance on direct pointer contact.
+ *
+ * Emil notes:
+ * - specific transitions (background-color, color, transform); no `all`
+ * - custom strong easing curve (--list-ease-out equivalent)
+ * - scale(0.97) on :active for tactile press feedback
+ * - :focus-visible ring for keyboard users
+ */
 .action-btn {
   width: 32px;
   height: 32px;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-sm);
-  background: #fff;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
   cursor: pointer;
-  transition: var(--transition-fast);
-  font-size: 12px;
+  padding: 0;
+  margin: 0 1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0 2px;
+  transform-origin: center;
+  transition:
+    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .action-btn:hover {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
-  transform: translateY(-1px);
+  background: var(--gray-100);
+  color: var(--gray-900);
 }
 
 .action-btn:active {
-  transform: translateY(0);
+  background: var(--gray-200);
+  transform: scale(0.97);
 }
 
-/* Specific button styles */
-.action-btn.time-btn {
-  color: var(--blue-500, #3b82f6);
+.action-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
+/*
+ * Lucide icons render as <svg> once lucide.createIcons() hydrates them.
+ * stroke-width: 1.5 matches the weight used in Claude.ai, Linear, Vercel —
+ * thinner than the 1.75 default, reads as more refined at small sizes.
+ *
+ * transform transitions here (not in .action-btn) so each icon can layer
+ * its own micro-motion on hover without fighting the button's hover state.
+ */
+.action-btn svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.5;
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/*
+ * Per-icon micro-motion — Emil's framework for "should this animate":
+ * hover is a deliberate pointer gesture (not a 100x/day keyboard action),
+ * so a short, purposeful motion is appropriate. Each motion hints at
+ * the button's intent (clock ticks → time; pencil lifts → edit; etc).
+ *
+ * All motions:
+ *  - fire ONLY on hover (no idle, no infinite)
+ *  - transform only (GPU-accelerated)
+ *  - custom strong ease-out to feel intentional, not lazy
+ *  - auto-disabled under prefers-reduced-motion (see below)
+ */
+.action-btn.time-btn:hover svg {
+  transform: rotate(15deg);
+}
+
+.action-btn.budget-btn:hover svg {
+  transform: translate(-1px, -1px);
+}
+
+.action-btn.extend-btn:hover svg {
+  transform: scale(1.1);
+}
+
+.action-btn.history-btn:hover svg {
+  transform: rotate(-20deg);
+}
+
+.action-btn.complete-btn:hover svg {
+  transform: scale(1.15);
+}
+
+/* Cancel (destructive) intentionally does NOT animate — Emil: never make
+ * a dangerous action feel playful on hover. */
+
+/*
+ * Primary action (🕐 "add time") gets a calm blue tint on hover.
+ * Other buttons stay gray — keeps "2 Signals Only" rule intact
+ * by treating primary intent as a subtle cue, not an alarm.
+ */
 .action-btn.time-btn:hover {
-  background: var(--blue-50, #eff6ff);
-  border-color: var(--blue-300, #93c5fd);
+  background: rgb(59 130 246 / 8%);
+  color: #2563eb;
 }
 
-.action-btn.budget-btn {
-  background: var(--orange-50, #fffbeb);
-  color: var(--orange-500, #f59e0b);
-  border-color: var(--orange-200, #fde68a);
+.action-btn.time-btn:active {
+  background: rgb(59 130 246 / 14%);
 }
 
-.action-btn.budget-btn:hover {
-  background: var(--orange-100, #fef3c7);
-  color: var(--orange-600, #d97706);
-  border-color: var(--orange-300, #fcd34d);
+/* Reduced motion — keep color transitions, drop all transforms */
+@media (prefers-reduced-motion: reduce) {
+  .action-btn,
+  .action-btn svg {
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  .action-btn:active,
+  .action-btn:hover svg {
+    transform: none;
+  }
 }
 
-.action-btn.extend-btn {
-  color: var(--purple-500, #a855f7);
-}
-
-.action-btn.extend-btn:hover {
-  background: var(--purple-50, #f3e8ff);
-  border-color: var(--purple-300, #d8b4fe);
-}
-
-.action-btn.history-btn {
-  color: var(--gray-600, #4b5563);
-}
-
-.action-btn.history-btn:hover {
-  background: var(--gray-100, #f3f4f6);
-  border-color: var(--gray-400, #9ca3af);
-}
-
-.action-btn.cancel-btn {
-  color: var(--red-500, #ef4444);
-}
-
+/*
+ * All variants inherit the monochrome Claude.ai base above.
+ * Only cancel (destructive) diverges on hover — red tint, because a
+ * mis-click here has real consequences and red is the universal stop.
+ */
 .action-btn.cancel-btn:hover {
-  background: var(--red-50, #fef2f2);
-  border-color: var(--red-300, #fca5a5);
+  color: var(--red-dark);
+  background: rgb(239 68 68 / 10%);
 }
 
-.action-btn.complete-btn {
-  color: var(--green-500, #10b981);
-}
-
-.action-btn.complete-btn:hover {
-  background: var(--green-50, #d1fae5);
-  border-color: var(--green-300, #6ee7b7);
+.action-btn.cancel-btn:active {
+  background: rgb(239 68 68 / 16%);
 }

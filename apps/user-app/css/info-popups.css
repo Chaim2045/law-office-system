@@ -163,12 +163,98 @@
 .combined-info-badge i {
   font-size: 14px;
   color: #6b7280;
-  transition: color 0.15s ease;
+  display: inline-block;
+  transform-origin: center;
+  transition:
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Hover - slightly darker, that's it */
 .combined-info-badge:hover i {
   color: #374151;
+}
+
+/*
+ * Per-icon micro-motion on badge hover — each Font Awesome glyph gets
+ * its own keyframed choreography that hints at the concept it represents.
+ * All share the same spring easing + duration for a consistent feel,
+ * so hovering the badge triggers a coordinated "come alive" moment.
+ *
+ *   📁 fa-folder         → tips open (rotate + light lift)
+ *   💼 fa-briefcase      → hops up  (translate up + slight back rotate)
+ *   ⚖️ fa-balance-scale  → sways    (rotate left, right, settle)
+ */
+.combined-info-badge:hover .fa-folder {
+  animation: badge-folder-hover 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.combined-info-badge:hover .fa-briefcase {
+  animation: badge-briefcase-hover 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.combined-info-badge:hover .fa-balance-scale {
+  animation: badge-balance-hover 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/*
+ * Unified gentle "tilt + scale" family — the user explicitly preferred
+ * the folder's soft motion style over the more active translate / swing
+ * variants. Briefcase and balance now share the same gesture with only
+ * the tilt direction changing, so the whole badge reads as one
+ * coordinated family rather than three different moods.
+ */
+@keyframes badge-folder-hover {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  55% {
+    transform: rotate(-10deg) scale(1.15);
+  }
+
+  100% {
+    transform: rotate(-4deg) scale(1.08);
+  }
+}
+
+@keyframes badge-briefcase-hover {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  55% {
+    transform: rotate(8deg) scale(1.15);
+  }
+
+  100% {
+    transform: rotate(4deg) scale(1.08);
+  }
+}
+
+@keyframes badge-balance-hover {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  55% {
+    transform: rotate(-8deg) scale(1.15);
+  }
+
+  100% {
+    transform: rotate(0deg) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combined-info-badge i {
+    transition: color 160ms ease;
+  }
+
+  .combined-info-badge:hover .fa-folder,
+  .combined-info-badge:hover .fa-briefcase,
+  .combined-info-badge:hover .fa-balance-scale {
+    animation: none;
+  }
 }
 
 /* ===== Combined Popup ===== */

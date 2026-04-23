@@ -48,10 +48,11 @@ export const DEFAULTS = {
   TIMESHEET_FILTER: 'month',       // ✅ תמיד מתחיל בחודש נוכחי
 
   // User Preferences (Can be persisted) - ניתן לשמירה
-  BUDGET_VIEW: 'cards',            // ✅ ניתן לשמור
+  BUDGET_VIEW: 'list',             // ✅ ניתן לשמור (Phase 0: default changed from 'cards' to 'list')
   TIMESHEET_VIEW: 'table',         // ✅ ניתן לשמור
   BUDGET_SORT: 'deadline',         // ✅ session-only — תמיד מתחיל ב-deadline
-  TIMESHEET_SORT: 'recent'         // ✅ ניתן לשמור
+  TIMESHEET_SORT: 'recent',        // ✅ ניתן לשמור
+  DEADLINE_FORMAT: 'date'          // ✅ 'date' (15.04.26) | 'days' (5 ימים) — user preference
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -87,7 +88,8 @@ export const SESSION_ONLY_KEYS = [
 export const PERSISTED_KEYS = [
   'budgetView',           // ✅ cards/table preference
   'timesheetView',        // ✅ cards/table preference
-  'timesheetSort'         // ✅ sort preference
+  'timesheetSort',        // ✅ sort preference
+  'deadlineFormat'        // ✅ date vs days preference for deadline rendering
 ];
 
 /* ═══════════════════════════════════════════════════════════════

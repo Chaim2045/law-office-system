@@ -173,65 +173,53 @@ async function calculateBudgetStatistics(tasks) {
 }
 
 /**
- * יצירת HTML לסרגל סטטיסטיקה של תקצוב משימות - Ultra Minimal Design
+ * יצירת HTML לסרגל סטטיסטיקה של תקצוב משימות — Ultra-Minimal (Claude.ai / Emil)
+ *
+ * Philosophy: the numbers are the feature. No boxes, no borders, no colored
+ * icons — just typography. Selected filter state is carried by a thin
+ * underline under the numeral, not a colored box. The "urgent" stat is the
+ * only element that ever shows color (a small red dot preceding it), and it
+ * only renders when count > 0.
+ *
+ * Filter-clickable stats (משימות / פעילות / הושלמו) use <button> so they
+ * get keyboard focus, :focus-visible ring, and :active press feedback for
+ * free — matching the action-button pattern.
+ *
  * @param {Object} stats - אובייקט סטטיסטיקה
  * @param {string} currentFilter - הפילטר הנוכחי (active/completed/all)
  * @returns {string} HTML string
  */
 function createBudgetStatsBar(stats, currentFilter = 'all') {
+  const isSelected = (name) => currentFilter === name ? ' is-selected' : '';
+
+  const urgent = stats.urgent > 0 ? `
+      <div class="stat-item stat-urgent" data-stat="urgent">
+        <div class="stat-value">
+          <span class="stat-urgent-dot" aria-hidden="true"></span>${stats.urgent}
+        </div>
+        <div class="stat-label">דחופות</div>
+      </div>
+  ` : '';
+
   return `
     <div class="stats-badge">
-      <div class="stat-compact ${currentFilter === 'all' ? 'stat-highlight' : ''}">
-        <div class="stat-icon">
-          <i class="far fa-folder-open"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">משימות</div>
-          <div class="stat-value">${stats.total}</div>
-        </div>
+      <button type="button" class="stat-item stat-clickable${isSelected('all')}" data-stat="all" data-filter="all">
+        <div class="stat-value">${stats.total}</div>
+        <div class="stat-label">משימות</div>
+      </button>
+      <button type="button" class="stat-item stat-clickable${isSelected('active')}" data-stat="active" data-filter="active">
+        <div class="stat-value">${stats.active}</div>
+        <div class="stat-label">פעילות</div>
+      </button>
+      <button type="button" class="stat-item stat-clickable${isSelected('completed')}" data-stat="completed" data-filter="completed">
+        <div class="stat-value">${stats.completed}</div>
+        <div class="stat-label">הושלמו</div>
+      </button>
+      <div class="stat-item" data-stat="progress">
+        <div class="stat-value">${stats.overallProgress}%</div>
+        <div class="stat-label">התקדמות</div>
       </div>
-
-      <div class="stat-compact ${currentFilter === 'active' ? 'stat-highlight' : ''}">
-        <div class="stat-icon">
-          <i class="far fa-circle-play"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">פעילות</div>
-          <div class="stat-value">${stats.active}</div>
-        </div>
-      </div>
-
-      <div class="stat-compact stat-success ${currentFilter === 'completed' ? 'stat-highlight' : ''}">
-        <div class="stat-icon">
-          <i class="far fa-circle-check"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">הושלמו</div>
-          <div class="stat-value">${stats.completed}</div>
-        </div>
-      </div>
-
-      <div class="stat-compact">
-        <div class="stat-icon">
-          <i class="far fa-chart-bar"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">התקדמות</div>
-          <div class="stat-value">${stats.overallProgress}%</div>
-        </div>
-      </div>
-
-      ${stats.urgent > 0 ? `
-      <div class="stat-compact stat-urgent">
-        <div class="stat-icon">
-          <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">דחופות</div>
-          <div class="stat-value">${stats.urgent}</div>
-        </div>
-      </div>
-      ` : ''}
+      ${urgent}
     </div>
   `;
 }
@@ -433,71 +421,44 @@ function createTimesheetStatsBar(stats) {
   const currentMonth = monthNames[now.getMonth()];
   const currentDate = `${day} ${currentMonth}`;
 
-  // בדיקה אם יש תקן אישי
+  // בדיקה אם יש תקן אישי — מוצג כאייקון 🎯 על ה-label ("תקן 🎯")
   const employeeData = window.manager?.currentEmployee || {};
   const hasCustomTarget = employeeData.dailyHoursTarget && employeeData.dailyHoursTarget !== 8.45;
-  const targetIcon = hasCustomTarget ? '🎯' : '📊';
 
+  /*
+   * Timesheet stats — same Ultra-Minimal (Claude.ai / Emil) treatment as
+   * budget stats. No icons, no boxes, numbers lead + labels support.
+   *
+   * "תאריך" carries a text value ("22 אפריל") rather than a pure number,
+   * so it uses the `stat-text` variant which applies a smaller type size.
+   * This keeps the visual hierarchy honest — large type belongs to numeric
+   * totals, not to date strings.
+   */
   return `
     <div class="stats-badge">
-      <div class="stat-compact stat-highlight">
-        <div class="stat-icon">
-          <i class="far fa-calendar-check"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">תאריך</div>
-          <div class="stat-value">${currentDate}</div>
-        </div>
+      <div class="stat-item stat-text" data-stat="date">
+        <div class="stat-value">${currentDate}</div>
+        <div class="stat-label">תאריך</div>
       </div>
-
-      <div class="stat-compact stat-highlight">
-        <div class="stat-icon">
-          <i class="far fa-calendar"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">${currentMonth}</div>
-          <div class="stat-value">${stats.monthHours}h</div>
-        </div>
+      <div class="stat-item" data-stat="month-hours">
+        <div class="stat-value">${stats.monthHours}h</div>
+        <div class="stat-label">${currentMonth}</div>
       </div>
-
-      <div class="stat-compact">
-        <div class="stat-icon">
-          <i class="far fa-flag"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">תקן ${targetIcon}</div>
-          <div class="stat-value">${stats.monthlyGoal}h</div>
-        </div>
+      <div class="stat-item" data-stat="target">
+        <div class="stat-value">${stats.monthlyGoal}h</div>
+        <div class="stat-label">תקן ${hasCustomTarget ? '🎯' : ''}</div>
       </div>
-
-      <div class="stat-compact">
-        <div class="stat-icon">
-          <i class="far fa-clock"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">נותר</div>
-          <div class="stat-value">${stats.hoursRemaining}h</div>
-        </div>
+      <div class="stat-item" data-stat="remaining">
+        <div class="stat-value">${stats.hoursRemaining}h</div>
+        <div class="stat-label">נותר</div>
       </div>
-
-      <div class="stat-compact">
-        <div class="stat-icon">
-          <i class="far fa-chart-bar"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">התקדמות</div>
-          <div class="stat-value">${stats.progressPercent}%</div>
-        </div>
+      <div class="stat-item" data-stat="progress">
+        <div class="stat-value">${stats.progressPercent}%</div>
+        <div class="stat-label">התקדמות</div>
       </div>
-
-      <div class="stat-compact">
-        <div class="stat-icon">
-          <i class="far fa-calendar-days"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-label">השבוע</div>
-          <div class="stat-value">${stats.weekHours}h</div>
-        </div>
+      <div class="stat-item" data-stat="week-hours">
+        <div class="stat-value">${stats.weekHours}h</div>
+        <div class="stat-label">השבוע</div>
       </div>
     </div>
   `;

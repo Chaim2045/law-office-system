@@ -8,21 +8,440 @@
  */
 
 /* ==========================================================================
+   CARD PROGRESS ROWS — horizontal bars (Linear / Vercel style)
+
+   Replaces the SVG rings block with two compact rows:
+     label | bar | value | percent | optional action
+   Reads top-to-bottom in one glance, shaves ~60px per card, and the bar
+   fill color carries the 2-signals palette (gray default → red on alarm).
+   ========================================================================== */
+
+.card-progress-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 10px;
+  direction: rtl;
+}
+
+.progress-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gray-700);
+  direction: rtl;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Fixed-width label for column alignment across the two rows */
+.progress-row-label {
+  flex-shrink: 0;
+  flex-grow: 0;
+  width: 40px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-500);
+  text-align: right;
+}
+
+/* Bar track — soft gray pill, expands to fill remaining row width */
+.progress-row-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 7px;
+  background: var(--gray-200);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  transition: background-color 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/*
+ * Row-level hover: the track darkens slightly and the fill picks up a
+ * brighter highlight overlay. This gives the "sheen / hover surface"
+ * feel the user asked for — the bar reads as an interactive element
+ * that's alive under the cursor, matching Claude.ai's row-hover feel.
+ */
+.progress-row:hover .progress-row-bar {
+  background: var(--gray-300);
+}
+
+.progress-row-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 25%) 0%,
+    rgb(255 255 255 / 0%) 60%
+  );
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+}
+
+.progress-row:hover .progress-row-fill::after {
+  opacity: 1;
+}
+
+/*
+ * Bar fill — progressive color based on a data-level attribute set from
+ * the JS render. The level encodes where the bar stands on a 4-stage
+ * severity ramp:
+ *
+ *   low     (0–49%)   = calm blue
+ *   medium  (50–79%)  = deeper blue-teal
+ *   high    (80–99%)  = amber (getting close — early warning)
+ *   alarm   (>=100%)  = red (overrun / overdue)
+ *
+ * Using a gradient (not a flat color) gives the bar a subtle sheen that
+ * reads as a hover-style surface, matching the Claude.ai feel the user
+ * asked for. background-image is animated with a short transition so
+ * the color shift feels smooth when data updates.
+ */
+.progress-row-fill {
+  display: block;
+  position: relative;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(
+    180deg,
+    rgb(59 130 246 / 95%) 0%,
+    rgb(37 99 235 / 100%) 100%
+  );
+  transition:
+    width 400ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.progress-row-fill[data-level="medium"] {
+  background: linear-gradient(
+    180deg,
+    rgb(37 99 235 / 100%) 0%,
+    rgb(29 78 216 / 100%) 100%
+  );
+}
+
+.progress-row-fill[data-level="high"] {
+  background: linear-gradient(
+    180deg,
+    rgb(245 158 11 / 100%) 0%,
+    rgb(217 119 6 / 100%) 100%
+  );
+}
+
+.progress-row-fill[data-level="alarm"] {
+  background: linear-gradient(
+    180deg,
+    rgb(239 68 68 / 100%) 0%,
+    rgb(220 38 38 / 100%) 100%
+  );
+}
+
+/*
+ * Row in alarm state — percent text follows the bar color so the whole
+ * row reads as a single red signal. The value text stays neutral (gray)
+ * so the signal is unambiguous.
+ */
+.progress-row.is-alarm .progress-row-percent {
+  color: #dc2626;
+}
+
+/*
+ * Invisible placeholder reserving the same width as .progress-row-action
+ * (22px box + no margin/padding since the flex gap handles spacing).
+ * Keeps both rows' bars ending at the identical x-coordinate regardless
+ * of whether a row has an update/extend button.
+ */
+.progress-row-action-placeholder {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+}
+
+/*
+ * Main value — fixed width (not min-width). Both rows use the same 88px
+ * so "2.4ש / 3.3ש" (budget row) and "13 ימים" (deadline row) occupy the
+ * same column, guaranteeing the bars end at the same x-position in both
+ * rows. Without this, the deadline bar ends up noticeably longer than
+ * the budget bar purely because its value text is shorter — which reads
+ * like a data difference that isn't real.
+ */
+.progress-row-value {
+  flex-shrink: 0;
+  flex-grow: 0;
+  width: 78px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-800);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Percent — fixed width, same reason as above. Keeping it fixed at 44px
+ * lets "100%", "129%" and "7%" all stay aligned on the right edge.
+ */
+.progress-row-percent {
+  flex-shrink: 0;
+  flex-grow: 0;
+  width: 38px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  letter-spacing: -0.01em;
+}
+
+/* Inline "(עודכן)" hint inside the value cell — quiet caption */
+.progress-row-adjusted {
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Inline action button (עדכן תקציב / הארך יעד) — icon-only pill next to
+ * the row. Claude.ai style: transparent default, soft gray on hover. */
+.progress-row-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  font-size: 10px;
+  transform-origin: center;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.progress-row-action:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+  border-color: var(--gray-300);
+}
+
+.progress-row-action:active {
+  transform: scale(0.95);
+}
+
+.progress-row-action:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/*
+ * Per-icon hover micro-motion — Claude.ai choreography.
+ *
+ * Each icon gets a 2-stage keyframe animation on hover: an overshoot
+ * frame (50%) that goes further than the resting position, then the
+ * rest frame (100%) that settles back. The easing curve
+ * cubic-bezier(0.34, 1.56, 0.64, 1) pushes past the destination and
+ * springs back, giving the motion a physical "bounce" feel rather than
+ * a flat linear glide.
+ *
+ * Duration 320ms is long enough to read the motion without feeling
+ * sluggish on a hover-only interaction. Emil's "don't animate things
+ * triggered 100x/day" rule is satisfied — a hover on an icon-only
+ * action button is a deliberate, occasional gesture.
+ */
+.progress-row-action i {
+  display: inline-block;
+  transform-origin: center;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.progress-row-action:hover .fa-edit {
+  animation: pencil-write-hover 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.progress-row-action:hover .fa-calendar-plus {
+  animation: calendar-open-hover 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/*
+ * Keyframe amplitudes trimmed after user feedback: the earlier version
+ * (translate -3px + rotate -15°) read as "dramatic", not subtle. The
+ * new values still have overshoot (cubic-bezier spring applies to them)
+ * but the resting rotation is only 4° and the translate is ~1px,
+ * giving a tactile-but-quiet feel.
+ */
+@keyframes pencil-write-hover {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  55% {
+    transform: translate(-2px, -2px) rotate(-10deg);
+  }
+
+  100% {
+    transform: translate(-1px, -1px) rotate(-4deg);
+  }
+}
+
+@keyframes calendar-open-hover {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+
+  55% {
+    transform: scale(1.18) rotate(4deg);
+  }
+
+  100% {
+    transform: scale(1.08) rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-row-action i {
+    transition: none;
+  }
+
+  .progress-row-action:hover .fa-edit,
+  .progress-row-action:hover .fa-calendar-plus {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-row-fill,
+  .progress-row-action {
+    transition: none;
+  }
+
+  .progress-row-action:active {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   DEADLINE FORMAT TOGGLE — quiet segmented control next to view-tabs
+
+   Two-state switch (תאריך | ימים) that lets the user pick how deadlines
+   are rendered. Intentionally lower-key than the view-tabs beside it:
+   smaller footprint, no shadow, subtle active-state inversion. This is
+   a display preference, not a primary navigation, so it should recede
+   visually until the user reaches for it.
+   ========================================================================== */
+.deadline-format-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--gray-100, #f3f4f6);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 8px;
+  direction: rtl;
+}
+
+.deadline-format-btn {
+  appearance: none;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-600, #4b5563);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.deadline-format-btn:hover:not(.active) {
+  color: var(--gray-900, #111827);
+  background: rgb(255 255 255 / 60%);
+}
+
+.deadline-format-btn.active {
+  background: #fff;
+  color: var(--gray-900, #111827);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+.deadline-format-btn:active {
+  transform: scale(0.97);
+}
+
+.deadline-format-btn:focus-visible {
+  outline: 2px solid var(--blue, #3b82f6);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deadline-format-btn {
+    transition: none;
+  }
+
+  .deadline-format-btn:active {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
    CARDS - כרטיסיות בסגנון Linear
    ========================================================================== */
 
-/* Grid layouts - 3 כרטיסיות ריבועיות בשורה כמו Linear */
+/*
+ * Grid — density first, flat on the page.
+ *
+ * 300px minimum (comfortably fits 2 rings + card content), no
+ * max-width (grid fills whatever container the app gives it).
+ * Screens become denser instead of blank:
+ *   13" ≈ 1280px viewport → 3 cards
+ *   15" ≈ 1440px viewport → 4 cards
+ *   24" ≈ 1920px viewport → 5-6 cards
+ *   30" ≈ 2560px viewport → 7-8 cards
+ *
+ * No surrounding container, no gray tray, no border — the cards
+ * themselves carry the visual structure (white with thin gray border).
+ * This matches Claude.ai / Linear / Vercel where content grids are
+ * flat on the page, not nested inside wrapper boxes.
+ */
 .cards-grid,
 .budget-cards-grid,
 .timesheet-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); /* ✅ רוחב מינימום קבוע - כולם זהים! */
-  gap: 24px;
-  padding: 0 12px; /* padding מצדדים לתאימות עם הטבלה */
-  margin: 32px auto;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  padding: 0;
+  margin: 16px 0 12px;
   direction: rtl;
-  max-width: 1200px; /* ✅ רוחב מקסימלי גדול יותר */
   width: 100%;
+}
+
+/* On very wide screens (24"+) give the grid more breathing padding so
+ * cards don't crash into the viewport edge, but keep filling the width. */
+@media (width >= 1920px) {
+  .cards-grid,
+  .budget-cards-grid,
+  .timesheet-cards-grid {
+    padding: 0 40px;
+    gap: 20px;
+  }
 }
 
 /* Container משותף לכרטיסיות וטבלה - עיצוב אחיד */
@@ -69,65 +488,13 @@
   direction: rtl;
 }
 
-.modern-budget-table {
-  width: 100%; /* רוחב מלא - מגיע לקצוות הקונטיינר */
-  margin: 0; /* ללא מרווח - ניצול מקסימלי של השטח */
-  border-collapse: collapse;
-  font-size: 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px; /* פינות מעוגלות לטבלה עצמה */
-}
-
-.modern-budget-table th,
-.modern-budget-table td {
-  padding: 16px 12px;
-  text-align: right;
-  border-bottom: 1px solid #e2e8f0; /* רק קווים אופקיים (לרוחב) */
-  vertical-align: middle;
-}
-
-.modern-budget-table tbody tr:last-child td {
-  border-bottom: none; /* בטל גבול תחתון לשורה האחרונה */
-}
-
-/* פינות מעוגלות לטבלה */
-.modern-budget-table th:first-child {
-  border-top-right-radius: 12px; /* פינה ימנית עליונה */
-}
-
-.modern-budget-table th:last-child {
-  border-top-left-radius: 12px; /* פינה שמאלית עליונה */
-}
-
-.modern-budget-table tbody tr:last-child td:first-child {
-  border-bottom-right-radius: 12px; /* פינה ימנית תחתונה */
-}
-
-.modern-budget-table tbody tr:last-child td:last-child {
-  border-bottom-left-radius: 12px; /* פינה שמאלית תחתונה */
-}
-
-/* Removed duplicate - using single definition above */
-
-.modern-budget-table th {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  font-weight: 700;
-  color: #1f2328;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.modern-budget-table tbody tr:hover {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-
-  /* ללא transform - רק צבע רקע */
-}
-
-.modern-budget-table tbody tr:nth-child(even) {
-  background: rgb(248 250 252 / 50%);
-}
+/*
+ * Duplicate .modern-budget-table rules removed from cards.css.
+ * Table styling lives in tables.css (single source of truth).
+ * This file previously defined gradient headers, UPPERCASE, zebra striping,
+ * and border-radius on th/td — all of which fought the Emil-polished
+ * sticky header in tables.css because cards.css loads later.
+ */
 
 /* תפריט פשוט ועובד */
 .actions-dropdown-container {
@@ -137,35 +504,55 @@
   width: 100%;
 }
 
+/*
+ * Actions dropdown button — Claude.ai-style pill.
+ * Default: subtle gray button (no colored border, no gradient background).
+ * Hover: gray fills in. The chevron still rotates 180° on hover because
+ * it conveys state ("about to open"), which Emil allows as a micro-cue
+ * on hover (not idle).
+ */
 .actions-dropdown-btn {
-  padding: 6px 10px; /* הקטנה נוספת */
-  border: 2px solid #3b82f6;
-  border-radius: 4px; /* הקטנה */
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  color: #3b82f6;
+  padding: 6px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--gray-700);
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 11px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 3px; /* הקטנה */
+  gap: 4px;
   direction: rtl;
-  width: 60px; /* הקטנה ל-60px */
+  width: 60px;
   white-space: nowrap;
+  transform-origin: center;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .actions-dropdown-btn:hover {
-  background: #3b82f6;
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgb(59 130 246 / 30%);
+  background: var(--gray-50);
+  color: var(--gray-900);
+  border-color: var(--gray-400);
+}
+
+.actions-dropdown-btn:active {
+  transform: scale(0.97);
+}
+
+.actions-dropdown-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
 .actions-dropdown-btn i {
   font-size: 10px;
-  transition: transform 0.2s ease;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .actions-dropdown-btn:hover i {
@@ -223,14 +610,12 @@
   text-align: center;
 }
 
-/* וודא שעמודת הפעולות תמיד נראית */
-.modern-budget-table th:last-child,
-.modern-budget-table td:last-child {
-  min-width: 100px; /* הרחבה ל-100px */
-  width: 100px;
-  padding: 16px 12px; /* יותר padding */
-  text-align: center;
-}
+/*
+ * Actions column width moved to tables.css (single source of truth).
+ * This rule previously fixed the column to 100px with 16px padding,
+ * which was too cramped for 6 action buttons at 32px each and
+ * contradicted the newer 80px rule in tables.css.
+ */
 
 /* Progress bars בטבלה - Defined in tables.css */
 
@@ -398,52 +783,17 @@
 
 /* תאריך יצירה - כבר מוגדר ב-tables.css */
 
-/* אזור התקדמות ויזואלי - כבר מוגדר ב-tables.css */
+/*
+ * "2 Signals Only" progress fills — Emil: color as signal, not decoration.
+ * Only overrun (>= 100%) earns red; earlier levels share a gray ramp.
+ * No gradients, no infinite shine overlay.
+ */
 .progress-high {
-  background: linear-gradient(
-    90deg,
-    #f59e0b 0%,
-    #d97706 100%
-  ); /* כתום - אזהרה */
+  background: var(--gray-700);
 }
 
 .progress-complete {
-  background: linear-gradient(
-    90deg,
-    #ef4444 0%,
-    #dc2626 100%
-  ); /* אדום - חריגה */
-}
-
-/* אפקט ברק על הבר */
-.linear-progress-fill::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(255 255 255 / 40%),
-    transparent
-  );
-  animation: progressShine 2s ease-in-out infinite;
-}
-
-@keyframes progressShine {
-  0% {
-    left: -100%;
-  }
-
-  50% {
-    left: 100%;
-  }
-
-  100% {
-    left: 100%;
-  }
+  background: #dc2626;
 }
 
 /* טקסט אחוז ליד הבר - סדר נכון לעברית */
@@ -468,11 +818,16 @@
   color: #6b7280;
 }
 
-/* מידע זמנים */
+/*
+ * Time info — Emil / Claude.ai: typography hierarchy, no colored chips.
+ * Label is the demoted role, value is the hero. Removed the blue-tinted
+ * planned chip and green-tinted actual chip — they read as decorative
+ * state, not information (both are just numbers that describe the task).
+ */
 .linear-time-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 12px;
   font-size: 11px;
   direction: rtl;
 }
@@ -482,80 +837,69 @@
   flex-direction: column;
   gap: 2px;
   text-align: center;
-  padding: 6px;
-  background: rgb(59 130 246 / 5%);
-  border-radius: 6px;
-  border: 1px solid rgb(59 130 246 / 10%);
+  padding: 4px 0;
+  background: transparent;
+  border: none;
 }
 
 .time-label {
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  color: var(--gray-500);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
 }
 
 .time-value {
-  font-weight: 700;
-  color: #1f2328;
-  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-900);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* צבע שונה לזמן בפועל */
-.time-item.actual {
-  background: rgb(16 185 129 / 5%);
-  border-color: rgb(16 185 129 / 10%);
-}
-
+/*
+ * .time-item.actual historically was tinted green to mean "done". We keep
+ * the modifier so existing markup still matches, but give it no visual
+ * distinction — the column label ("בפועל") already says what this is.
+ */
 .time-item.actual .time-value {
-  color: #059669;
+  color: var(--gray-900);
 }
 
 /* כותרת יפה עם מסגרת מתרחבת */
 
-/* תגיות מידע בכרטיס (Case + Service) */
-.linear-card-badges {
-  position: absolute;
-  top: 8px; /* ✅ הוזז עוד יותר למעלה - קרוב לכותרת */
-  left: 12px;
-  z-index: var(--z-card-badge);
-  display: inline-flex; /* ✅ רק רוחב התוכן */
-  width: fit-content; /* ✅ לא לכל הרוחב */
-  max-width: calc(100% - 24px); /* ✅ מקסימום עד קצה הכרטיס */
-}
-
+/*
+ * Card title — Claude.ai: full name is shown, the card grows as needed.
+ * No line-clamp, no ellipsis, no "+" affordance for the hidden remainder.
+ * The reader never has to click to learn what a task is called. Cards
+ * end up with varying heights on a row, and that's the correct tradeoff —
+ * Claude / Linear do exactly this.
+ *
+ * The badge icons sit in the corner of the card (absolute positioning),
+ * so `padding-left: 70px` reserves room on the left side (RTL: visual
+ * left, CSS `padding-left`) for their ~64px cluster + 6px breathing room.
+ */
 .linear-card-title {
-  /* Typography */
   font-size: 15px;
   font-weight: 600;
-  color: #1f2328;
-  line-height: 1.5;
+  color: var(--gray-900);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
 
-  /* Layout */
-  margin: 0;
-  margin-top: 4px; /* ממש בתחילת הכרטיסייה */
-  margin-left: -20px; /* ✅ מרחיב את הקו לכל הרוחב */
-  margin-right: -20px; /* ✅ מרחיב את הקו לכל הרוחב */
-  padding-top: 6px;
-  padding-bottom: 12px;
-  padding-left: 94px; /* מקום לאייקונים בצד שמאל */
-  padding-right: 20px; /* ✅ פיצוי על ה-margin השלילי */
-  margin-bottom: 16px; /* ✅ מרווח מהתוכן */
-  min-height: 44px; /* ✅ גובה קבוע - הקו תמיד באותו מקום! */
+  margin: 0 -14px 10px;
+  padding: 2px 14px 10px;
 
-  /* Display */
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: block;
   text-align: right;
   direction: rtl;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 
-  /* Border */
-  border-bottom: 0.5px solid #e5e7eb; /* ✅ קו עדין ודק */
+  border-bottom: 1px solid var(--gray-100);
 
-  /* Behavior */
   cursor: default;
-  position: relative; /* For tooltip positioning */
+  position: relative;
+  transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* כותרות */
@@ -597,49 +941,47 @@
   text-align: center;
 }
 
-/* רספונסיביות - כרטיסיות אחידות */
+/*
+ * Tablet — same density rule as desktop (300px min). Previously this
+ * stepped down to 320px + re-imposed max-height: 380px, which reintroduced
+ * the "2 giant cards on a 13-inch" problem. Now the grid just keeps going.
+ */
 @media (width <= 1024px) {
   .cards-grid,
   .budget-cards-grid,
   .timesheet-cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); /* ✅ 2 כרטיסים בטאבלט */
-    gap: 20px;
-  }
-
-  .linear-minimal-card {
-    min-height: 380px;
-    max-height: 380px;
+    gap: 12px;
+    padding: 12px;
   }
 }
 
+/*
+ * Phone — keep 300px min so horizontal scroll doesn't kick in unnecessarily.
+ * min-height relaxed further because content is the only thing keeping
+ * the card tall at narrow widths.
+ */
 @media (width <= 768px) {
   .cards-grid,
   .budget-cards-grid,
   .timesheet-cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* ✅ אחיד גם במובייל */
-    gap: 16px;
-    padding: 0 8px;
+    gap: 10px;
+    padding: 10px;
   }
 
-  .linear-minimal-card {
-    min-height: 360px;
-    max-height: 360px;
-  }
+  /* No min-height override on tablet — desktop rule (auto) wins */
 }
 
 @media (width <= 480px) {
   .cards-grid,
   .budget-cards-grid,
   .timesheet-cards-grid {
-    grid-template-columns: 1fr; /* ✅ כרטיס אחד במובייל קטן */
-    gap: 16px;
-    padding: 0 4px;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px;
   }
 
   .linear-minimal-card {
-    min-height: 340px;
-    max-height: 340px;
-    padding: 16px;
+    padding: 12px 12px 36px;
   }
 
   .linear-card-title {
@@ -674,41 +1016,42 @@
   font-weight: 600;
 }
 
+/*
+ * "2 Signals Only" deadline info — Emil: color is reserved for a real
+ * alarm. Overdue is red (something is actually wrong). Urgent/soon earn
+ * weight, not color or pulsing — the calendar number already conveys
+ * urgency to the reader.
+ */
 .deadline-info.overdue i {
   color: #dc2626;
-  animation: pulse-danger 2s infinite;
 }
 
-/* Urgent - דחוף (כתום עם אנימציה) */
 .deadline-info.urgent {
-  background: rgb(234 88 12 / 10%);
-  border: 1px solid #ea580c;
-  padding: 6px 12px;
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
   font-weight: 600;
+  color: var(--gray-900);
 }
 
 .deadline-info.urgent i {
-  color: #ea580c;
-  animation: pulse-warning 2s infinite;
+  color: var(--gray-700);
 }
 
-/* Soon - בקרוב (צהוב) */
 .deadline-info.soon {
-  background: rgb(202 138 4 / 10%);
-  border: 1px solid #ca8a04;
-  padding: 6px 12px;
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
   font-weight: 500;
+  color: var(--gray-800);
 }
 
 .deadline-info.soon i {
-  color: #ca8a04;
+  color: var(--gray-600);
 }
 
-/* Regular deadline - רגיל (אפור) */
 .deadline-info:not(.overdue, .urgent, .soon) i {
-  color: #6b7280;
+  color: var(--gray-500);
 }
 
 /* Completed Badge - תג הושלם */
@@ -719,34 +1062,37 @@
 }
 
 .completed-badge i {
-  color: #10b981;
-  font-size: 20px;
+  color: var(--gray-700);
+  font-size: 18px;
   animation: fadeIn 0.3s ease;
 }
 
-/* Pending Approval Badge - תג ממתין לאישור */
+/*
+ * Pending approval badge — flat amber pill, no gradient, no pulse.
+ * The dashed card border + reduced opacity already tell the reader this
+ * task is locked awaiting approval; an infinitely pulsing badge is noise.
+ */
 .pending-approval-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin-right: 8px;
   padding: 4px 12px;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
+  background: #fef3c7;
+  color: #92400e;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  animation: pulse-warning 2s ease-in-out infinite;
 }
 
 .pending-approval-badge i {
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* Pending Approval Card - כרטיס ממתין לאישור */
+/* Pending Approval Card — flat gray, dashed border still communicates locked state */
 .linear-minimal-card.pending-approval {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
-  border: 2px dashed #9ca3af !important;
+  background: var(--gray-50) !important;
+  border: 2px dashed var(--gray-400) !important;
   opacity: 0.75;
   pointer-events: none;
   position: relative;
@@ -776,40 +1122,11 @@
   cursor: not-allowed;
 }
 
-@keyframes pulse-warning {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.8;
-    transform: scale(1.02);
-  }
-}
-
-/* Animations - אנימציות */
-@keyframes pulse-danger {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.7;
-    transform: scale(1.1);
-  }
-}
-
-@keyframes pulse-warning {
-  0%, 100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
-}
+/*
+ * @keyframes pulse-warning + pulse-danger removed — no longer referenced.
+ * (They drove deadline-info and pending-approval-badge animations, which
+ * are now static per Emil's "never animate frequently-viewed UI" rule.)
+ */
 
 @keyframes fadeIn {
   from {

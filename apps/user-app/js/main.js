@@ -119,6 +119,7 @@ class LawOfficeManager {
     this.currentTimesheetFilter = STATE_CONFIG.getStateValue('timesheetFilter'); // ✅ Always 'month'
     this.currentBudgetView = STATE_CONFIG.getStateValue('budgetView'); // ✅ Persisted
     this.currentTimesheetView = STATE_CONFIG.getStateValue('timesheetView'); // ✅ Persisted
+    this.currentDeadlineFormat = STATE_CONFIG.getStateValue('deadlineFormat'); // ✅ Persisted ('date'|'days')
 
     // Filtered Data
     this.filteredBudgetTasks = [];
@@ -1526,6 +1527,91 @@ return;
     Logger.log(`✅ Count badges updated: ${activeCount} active, ${completedCount} completed`);
   }
 
+  /**
+   * Hide all budget view containers.
+   * Each renderer is responsible only for showing its own container;
+   * this centralized helper guarantees exactly one view is visible at a time
+   * and prevents cross-view leakage when switching. Adding a new view
+   * requires only updating this list.
+   */
+  hideAllBudgetViews() {
+    const containerIds = [
+      'budgetContainer',        // cards
+      'budgetTableContainer',   // table
+      'budgetListContainer'     // list
+    ];
+    containerIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden');
+      }
+    });
+  }
+
+  /**
+   * Attach scroll listener that toggles .is-scrolled on the sticky table
+   * <thead> — gives it a subtle shadow + firmer border when the page is
+   * scrolled past the header's resting position. Pure CSS isn't enough
+   * because the scroll container is body.logged-in, not the table itself.
+   *
+   * Idempotent: flag prevents double-binding across re-renders. `passive`
+   * avoids scroll-jank.
+   */
+  setupTableScrollShadow() {
+    if (this._tableScrollShadowBound) {
+      return;
+    }
+    this._tableScrollShadowBound = true;
+
+    const threshold = 8;
+
+    // Single listener on window — scroll events bubble there regardless of
+    // which element actually owns the scroll (body vs documentElement). We
+    // read scrollTop from both because `body.logged-in` uses overflow:auto
+    // on this app, which puts the scroll on body in some engines and on
+    // documentElement in others.
+    const onScroll = () => {
+      const thead = document.querySelector('.modern-budget-table thead, .modern-timesheet-table thead');
+      if (!thead) {
+        return;
+      }
+      const y = document.body.scrollTop || document.documentElement.scrollTop || 0;
+      thead.classList.toggle('is-scrolled', y > threshold);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  /**
+   * Delegate clicks on the new Ultra-Minimal stats bar buttons to the
+   * existing toggleTaskView() handler. The stats bar HTML is re-rendered
+   * on every renderBudgetView(), so per-element listeners would leak —
+   * delegation on document.body attaches once, then forwards filter clicks
+   * from any current stats bar (budget tab, list view, card view).
+   *
+   * Idempotent via flag.
+   */
+  setupStatsFilterDelegation() {
+    if (this._statsFilterDelegated) {
+      return;
+    }
+    this._statsFilterDelegated = true;
+
+    document.body.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.stat-clickable[data-filter]');
+      if (!btn) {
+        return;
+      }
+      const filter = btn.dataset.filter;
+      if (filter === 'active' || filter === 'completed') {
+        this.toggleTaskView(filter);
+      }
+      // 'all' is intentionally a no-op for now: currentTaskFilter is
+      // binary (active/completed). Clicking it gives visual feedback
+      // via :active scale but doesn't change state.
+    });
+  }
+
   async renderBudgetView() {
     // ✅ Calculate statistics on ALL tasks (not filtered) to show total counts
     // Server-first approach with fallback to client calculation
@@ -1541,14 +1627,47 @@ return;
       formatShort: CoreUtils.formatShort,
       currentBudgetSort: this.currentBudgetSort,
       currentTaskFilter: this.currentTaskFilter,
+      currentDeadlineFormat: this.currentDeadlineFormat, // 'date' | 'days'
       paginationStatus: null, // Will be added when pagination is implemented
       taskActionsManager: this.taskActionsManager
     };
 
+    // Single Responsibility: hide all views here, renderers only show themselves.
+    this.hideAllBudgetViews();
+
+    // Wire stats-bar filter clicks (idempotent — attaches listener once).
+    this.setupStatsFilterDelegation();
+
+    // Sync the deadline-format toggle's active state with the current
+    // preference so the correct button is highlighted after initial
+    // render (HTML markup defaults to 'date' active; if the user's
+    // persisted preference is 'days' we need to flip it here).
+    const toggle = document.querySelector('.deadline-format-toggle');
+    if (toggle) {
+      toggle.querySelectorAll('.deadline-format-btn').forEach(btn => {
+        if (btn.dataset.format === this.currentDeadlineFormat) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
     if (this.currentBudgetView === 'cards') {
       BudgetTasks.renderBudgetCards(this.filteredBudgetTasks, options);
+    } else if (this.currentBudgetView === 'list') {
+      BudgetTasks.renderBudgetList(this.filteredBudgetTasks, options);
     } else {
       BudgetTasks.renderBudgetTable(this.filteredBudgetTasks, options);
+      // Sticky thead needs a scroll listener to know when to render its
+      // "scrolled" state (shadow + firmer border). Only meaningful in table view.
+      this.setupTableScrollShadow();
+      // Hydrate Lucide placeholders (<i data-lucide="...">) into inline SVGs.
+      // Must run after innerHTML is set; guarded for when the library hasn't
+      // loaded yet (slow network) — harmless no-op in that case.
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
     }
   }
 
@@ -1557,16 +1676,89 @@ return;
     STATE_CONFIG.setStateValue('budgetView', view);
     this.currentBudgetView = view;
 
-    // Update view tabs
-    document.querySelectorAll('.view-tab').forEach(tab => {
-      if (tab.dataset.view === view) {
-        tab.classList.add('active');
-      } else {
-        tab.classList.remove('active');
-      }
-    });
+    // Update view tabs — only the budget view tabs, not timesheet's
+    const budgetTabsContainer = document.querySelector('#budgetTab .view-tabs');
+    if (budgetTabsContainer) {
+      budgetTabsContainer.querySelectorAll('.view-tab').forEach(tab => {
+        if (tab.dataset.view === view) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+    }
 
     this.renderBudgetView();
+
+    // Scroll to top — each view has its own structure and context;
+    // keeping scroll across views causes a jarring jump.
+    // NB: on this app body.logged-in is the scrolling element (overflow: auto),
+    // not window itself. Cover both to be safe.
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (document.body) {
+        document.body.scrollTop = 0;
+      }
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0;
+      }
+    });
+  }
+
+  /**
+   * Switch how deadlines are rendered across the budget views.
+   * Persisted via STATE_CONFIG so the user's choice sticks across sessions.
+   *
+   * @param {'date'|'days'} format - 'date' shows dd.mm.yy, 'days' shows
+   *   relative "5 ימים" / "איחור 6 ימים".
+   *
+   * Affected surfaces: cards view (progress-row-value), table deadline
+   * cell, and the compact deadline ring's center label.
+   *
+   * We re-render the current view rather than patching the DOM in place
+   * so the transition is atomic — no half-date / half-days state ever
+   * reaches the user.
+   */
+  switchDeadlineFormat(format) {
+    if (format !== 'date' && format !== 'days') {
+      return;
+    }
+    if (this.currentDeadlineFormat === format) {
+      return;
+    }
+    STATE_CONFIG.setStateValue('deadlineFormat', format);
+    this.currentDeadlineFormat = format;
+
+    const toggle = document.querySelector('.deadline-format-toggle');
+    if (toggle) {
+      toggle.querySelectorAll('.deadline-format-btn').forEach(btn => {
+        if (btn.dataset.format === format) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    this.renderBudgetView();
+  }
+
+  /**
+   * Toggle expand/collapse of a list-view group (Phase 0).
+   * @param {string} groupKey - 'overdue' | 'this-week' | 'this-month' | 'later'
+   */
+  toggleListGroup(groupKey) {
+    const group = document.querySelector(`.list-group[data-group="${groupKey}"]`);
+    if (!group) {
+      return;
+    }
+
+    const header = group.querySelector('.list-group-header');
+    const isExpanded = group.classList.toggle('is-expanded');
+
+    if (header) {
+      header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+    }
   }
 
   /* ========================================
