@@ -84,53 +84,18 @@
   pointer-events: none;
 }
 
-/* Budget Adjusted Note - כחול */
-.budget-adjusted-note {
-  position: relative;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border: 1.5px solid #3b82f6;
-  border-radius: 20px;
-  color: #1e3a8a;
-  font-size: 13px;
-  font-weight: 600;
-  overflow: hidden;
-}
-
-.budget-adjusted-note i {
-  margin-left: 6px;
-  position: relative;
-  z-index: 1;
-}
-
-/* Shimmer Effect - כחול */
-.budget-adjusted-note::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgb(255 255 255 / 45%) 50%,
-    transparent 100%
-  );
-  animation: shimmerSlide 3s infinite;
-  animation-delay: 1s;
-  pointer-events: none;
-}
-
-/* Shimmer Animation - מימין לשמאל */
-@keyframes shimmerSlide {
-  0% {
-    right: -100%;
-  }
-
-  100% {
-    right: 100%;
-  }
+/*
+ * Budget-adjusted hint — inline annotation that sits next to the ring's
+ * value, not on a separate row. The previous "row underneath" treatment
+ * (large pill with gradient + shimmer) cost ~30px on every adjusted card.
+ * Now it's a quiet 2-character tag whose only job is to whisper "this
+ * number is the post-adjustment value".
+ */
+.budget-adjusted-inline {
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* ===============================================
@@ -280,101 +245,86 @@
    SVG RINGS - Circular Progress Indicators
    =============================================== */
 
-/* Dual rings layout */
+/*
+ * SVG Rings — Claude.ai / Emil minimal.
+ *
+ * Sized to match the JS rewrite (createSVGRing): 72x72 wrapper, thin
+ * 3px stroke, flat stroke (no gradient <defs>). No drop-shadow (flat UI
+ * stays flat), no hover-lift, no infinite pulse — the red stroke alone
+ * is the overrun signal. Per-icon Font Awesome tspan was removed from
+ * the ring, so the percentage text is now the sole inner content.
+ */
+
+/*
+ * Compact rings — 56px to free vertical space without losing readability.
+ * Pairs with the JS rewrite (createSVGRing + createDeadlineDisplay) which
+ * also shrank the SVG geometry.
+ */
 .svg-rings-dual-layout {
   display: flex;
-  gap: 28px;
+  gap: 24px;
   justify-content: center;
   align-items: flex-start;
-  margin: 14px 0;
+  margin: 6px 0;
   direction: rtl;
 }
 
-/* Single ring container */
 .svg-ring-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  min-width: 110px;
+  gap: 6px;
+  min-width: 78px;
 }
 
-/* Ring wrapper (SVG + percentage overlay) - META CLEAN STYLE */
 .svg-ring-wrapper {
   position: relative;
-  width: 80px;
-  height: 80px;
-
-  /* Clean shadow - no glow, just depth */
-  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 8%))
-          drop-shadow(0 1px 2px rgb(0 0 0 / 6%));
-  transform: translateZ(0);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 56px;
+  height: 56px;
 }
 
-/* 🎯 Hover Effect - Instagram style (micro-interaction) */
-.svg-ring-wrapper:hover {
-  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 12%))
-          drop-shadow(0 2px 6px rgb(0 0 0 / 8%));
-  transform: translateY(-2px) translateZ(0);
-}
-
-/* 🔴 Danger State - Minimal Pulse (only when overage) */
-.svg-ring-wrapper.status-danger {
-  animation: metaPulse 2.5s ease-in-out infinite;
-}
-
-/* Meta Minimal Pulse - 2% scale only */
-@keyframes metaPulse {
-  0%, 100% {
-    transform: scale(1) translateZ(0);
-  }
-
-  50% {
-    transform: scale(1.02) translateZ(0);
-  }
-}
-
-/* SVG ring */
 .svg-ring {
   width: 100%;
   height: 100%;
 }
 
-/* Progress circle animation - Clean transition only */
 .svg-ring-progress {
-  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 400ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Percentage text overlay */
+/* Center text — sits inside the ring. 14px reads cleanly at 56px. */
 .svg-ring-percentage {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgb(255 255 255 / 80%);
+  letter-spacing: -0.01em;
+  line-height: 1;
 }
 
-/* Ring info (label + value) */
 .svg-ring-info {
   text-align: center;
   direction: rtl;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .svg-ring-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #6b7280;
-  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-500);
 }
 
 .svg-ring-value {
-  font-size: 11px;
-  font-weight: 700;
-  color: #1f2937;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
 }
 
 .svg-ring-overdue-badge {
@@ -388,59 +338,60 @@
   display: inline-block;
 }
 
-/* Action button מתחת לרינג */
+/*
+ * Inline action button under a ring — compact icon-first.
+ *
+ * Was a 28-32px tall pill below the ring with full label text; that
+ * added a whole vertical row to every overrun/extension card. Now: small
+ * icon-only button (24x24) that sits flush under the ring's value text.
+ * Hover swaps to a soft gray pill so the affordance is still discoverable.
+ *
+ * Label text still rendered for screen-reader users via the inline `i`
+ * label and the surrounding context — the visible label is condensed to
+ * the icon alone (visual users have the icon + tooltip, AT users have
+ * the inline text after the <i>).
+ */
 .svg-ring-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  margin-top: 8px;
-  color: #fff;
-  border: none;
-  border-radius: 20px; /* יותר מעוגל */
+  justify-content: center;
+  gap: 4px;
+  padding: 0 6px;
+  margin-top: 4px;
+  height: 22px;
+  background: transparent;
+  color: var(--gray-600);
+  border: 1px solid transparent;
+  border-radius: 11px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  transform-origin: center;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Budget button - כחול */
-.svg-ring-action-btn.budget-btn {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  box-shadow: 0 2px 6px rgb(59 130 246 / 25%);
+.svg-ring-action-btn:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+  border-color: var(--gray-300);
 }
 
-.svg-ring-action-btn.budget-btn:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgb(59 130 246 / 35%);
+.svg-ring-action-btn:active {
+  transform: scale(0.95);
 }
 
-.svg-ring-action-btn.budget-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
-}
-
-/* Deadline button - כחול */
-.svg-ring-action-btn.deadline-btn {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  box-shadow: 0 2px 6px rgb(59 130 246 / 25%);
-}
-
-.svg-ring-action-btn.deadline-btn:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgb(59 130 246 / 35%);
-}
-
-.svg-ring-action-btn.deadline-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgb(59 130 246 / 20%);
+.svg-ring-action-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
 .svg-ring-action-btn i {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 /* Overage indicator */
@@ -454,16 +405,21 @@
   gap: 8px;
 }
 
+/*
+ * Overage badge — flat red on light red tint. The overrun is a true
+ * alarm (the whole point of "2 signals only"), so it keeps its red,
+ * just without the gradient and the wider saturation.
+ */
 .svg-ring-overage-badge {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  padding: 5px 10px;
+  background: #fee2e2;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
-  color: #dc2626;
+  color: #991b1b;
 }
 
 .svg-ring-overage-badge i {
@@ -474,33 +430,46 @@
   font-size: 13px;
 }
 
-/* Overage action button */
+/*
+ * Overage action button — Claude.ai pill. Was a saturated amber gradient
+ * pill which competed visually with the red overrun badge directly above.
+ * Now a calm gray pill; the amber badge is the one saying "there is a
+ * problem" and the button is the one saying "here's what you can do".
+ */
 .svg-ring-overage-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #fff;
-  border: none;
+  padding: 5px 12px;
+  background: #fff;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
   border-radius: 8px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgb(245 158 11 / 20%);
   white-space: nowrap;
+  transform-origin: center;
+  transition:
+    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .svg-ring-overage-btn:hover {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgb(245 158 11 / 30%);
+  background: var(--gray-100);
+  color: var(--gray-900);
+  border-color: var(--gray-400);
 }
 
 .svg-ring-overage-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgb(245 158 11 / 20%);
+  transform: scale(0.97);
+}
+
+.svg-ring-overage-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
 .svg-ring-overage-btn i {

@@ -1790,67 +1790,80 @@
   transform: translateY(-2px);
 }
 
-/* כרטיס לינארי ריבועי - Ultra Minimal - גובה אחיד! */
+/*
+ * Linear Minimal Card — Claude.ai / Emil polish.
+ *
+ * Default: flat white, thin border, no shadow, no gradient. The grid's
+ * soft gray canvas (in cards.css) provides the separation between cards;
+ * each card itself is just a clean white surface.
+ *
+ * Hover: border firms up, very soft shadow appears — no lift, no
+ * background re-tint. The card is content's container, not a dramatic
+ * object.
+ *
+ * Density: padding reduced from --space-5 to 16px (a meaningful trim at
+ * 13" where every pixel counts), min-height reduced to 280px so shorter
+ * content no longer forces artificial white space. max-height stays
+ * removed so cards grow with content instead of clipping.
+ */
 .linear-minimal-card {
-  background: linear-gradient(135deg, #fafbfc 0%, #f8f9fb 100%); /* ✅ gradient מט ועדין */
-  border: 1px solid #e5e7eb;
-  border-radius: var(--radius-lg);
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
   cursor: pointer;
-  transition: var(--transition-smooth);
   position: relative;
 
-  /* ✅ גובה ורוחב קבועים - כולם זהים! */
   width: 100%;
-  min-height: 380px; /* גובה מינימלי אחיד */
-  max-height: 380px; /* גובה מקסימלי אחיד */
-  overflow: visible; /* ✅ שונה מ-hidden - מאפשר לאלמנטים להיות גלויים */
-  padding: var(--space-5);
-  padding-bottom: 70px; /* מקום לכפתור + meta */
 
-  box-shadow: 0 2px 8px rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 6%); /* ✅ צל יותר בולט ומקצועי */
+  /*
+   * No min-height — cards take only the height their content needs.
+   * Cards in the same row will have different heights (different title
+   * lengths, presence of overrun buttons), which matches Claude.ai's
+   * variable-height list pattern. Padding-bottom is the floor (40px)
+   * needed to keep the absolute meta footer + expand button readable.
+   */
+  overflow: visible;
+  padding: 14px 14px 40px;
+
   direction: rtl;
   text-align: right;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 8px;
+
+  transition:
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .linear-minimal-card:hover {
-  background: linear-gradient(135deg, #fff 0%, #fafbfc 100%); /* ✅ gradient בהיר יותר ב-hover */
-  border-color: #d1d5db;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 4%); /* ✅ צל יותר בולט ב-hover */
-  transform: translateY(-2px);
+  border-color: var(--gray-300);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 4%);
 }
 
 /* תאריך יצירה בפינה ימנית עליונה - עיצוב מקצועי */
 .card-creation-date {
   position: absolute;
-  top: 10px; /* ✅ בתוך ה-padding */
-  right: 10px; /* ✅ בתוך ה-padding */
+  top: 10px;
+  right: 10px;
   font-size: 10px;
   font-weight: 500;
-  color: #6b7280;
-  opacity: 0.75;
-  font-style: normal;
+  color: var(--gray-500);
+  opacity: 0.8;
   z-index: 10;
-  background: rgb(255 255 255 / 95%);
+  background: transparent;
   padding: 3px 7px;
-  border-radius: 3px;
-  border: 1px solid rgb(229 231 235 / 60%);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
-  transition: all 0.2s ease;
-  letter-spacing: 0.01em;
   line-height: 1.4;
-  max-width: calc(100% - 40px); /* ✅ מונע overflow */
+  max-width: calc(100% - 40px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .linear-minimal-card:hover .card-creation-date {
-  opacity: 0.95;
-  background: rgb(255 255 255 / 100%);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+  opacity: 1;
+  color: var(--gray-700);
 }
 
 /* תגי שירות ותיק בפינה ימנית עליונה - עיצוב ultra-minimal */
@@ -1883,63 +1896,127 @@
   padding-bottom: 80px; /* ✅ הוגדל (היה 60px) - יותר מרווח מהקו התחתון */
 }
 
-/* כפתור הרחבה - למטה בצד שמאל */
+/*
+ * Expand button — Claude.ai-style pill. Transparent by default so it fades
+ * into the card. Hover reveals a soft gray pill; :active scale gives the
+ * tactile press feedback Emil calls for on every pressable element.
+ */
 .linear-expand-btn {
   position: absolute;
   bottom: 10px;
   left: 10px;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm);
-  background: #fff;
-  border: 1px solid var(--gray-300);
-  color: var(--gray-700);
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--gray-500);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: var(--transition);
   z-index: 2;
-  font-size: 10px;
+  font-size: 11px;
+  padding: 0;
+  transform-origin: center;
+  transition:
+    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .linear-expand-btn:hover {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
-  transform: translateY(-1px);
+  background: var(--gray-100);
+  color: var(--gray-900);
 }
 
-/* מטא-נתונים משופרים של הכרטיס - מוצמד לתחתית */
+/*
+ * Plus icon micro-motion on hover — "opening" feel.
+ * Icon rotates 90° with a small overshoot and settles at ~95° + scale,
+ * hinting that clicking will expand/open more detail. Spring easing
+ * gives it the same physical bounce as the pencil/calendar actions.
+ */
+.linear-expand-btn i {
+  display: inline-block;
+  transform-origin: center;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.linear-expand-btn:hover i {
+  animation: plus-open-hover 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/*
+ * Softened plus rotation — first version (90°) read as dramatic. The
+ * user preferred the folder's gentle "tilt + scale" style, so this
+ * mirrors that: a small clockwise hint (not a full turn) + subtle
+ * scale up. Still readable as "something opens on click".
+ */
+@keyframes plus-open-hover {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  55% {
+    transform: rotate(12deg) scale(1.15);
+  }
+
+  100% {
+    transform: rotate(8deg) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linear-expand-btn i {
+    transition: none;
+  }
+
+  .linear-expand-btn:hover i {
+    animation: none;
+  }
+}
+
+.linear-expand-btn:active {
+  background: var(--gray-200);
+  transform: scale(0.95);
+}
+
+.linear-expand-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/*
+ * Meta footer — single horizontal row consolidating badge + client + date.
+ *
+ * Was a stacked column with a top border that added ~30px to every card.
+ * The new flat row sits flush at the card bottom with no separator and
+ * lets all metadata read at a glance: 🏢 case · client · 13/04 [+]
+ *
+ * Pinned to the bottom (absolute) so cards with variable-height titles
+ * still align their footers cleanly.
+ */
 .linear-card-meta {
-  position: absolute; /* מוצמד לתחתית כמו הכפתור */
-  bottom: 15px; /* אותו גובה כמו כפתור הפלוס */
-  right: 0; /* ✅ לכל הרוחב של הכרטיס */
-  left: 60px; /* מרווח מהכפתור פלוס בצד שמאל */
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  left: 48px; /* leaves clearance for the absolute "+" expand button */
+
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
-  padding-top: 14px; /* ✅ הוגדל (היה 8px) - יותר מרווח מהקו */
-  padding-right: 24px; /* ✅ padding פנימי לטקסט */
-  border-top: 0.5px solid #e5e7eb; /* ✅ קו עדין ודק - אותו כמו העליון */
-  font-size: 13px;
+  flex-wrap: wrap;
+
+  font-size: 11px;
   color: var(--gray-600);
   direction: rtl;
   text-align: right;
+  line-height: 1.3;
 }
 
-/* שורת לקוח */
-.linear-client-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.linear-client-label {
-  font-size: 11px;
-  font-weight: 600;
+.linear-card-meta-date {
   color: var(--gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
 }
 
 .linear-client-name {
@@ -1993,11 +2070,12 @@
   text-align: center;
 }
 
-.linear-expand-btn:hover {
-  background: #e2e8f0;
-  transform: scale(1.1);
-  border-color: #3b82f6;
-}
+/*
+ * Duplicate .linear-expand-btn:hover removed — the canonical hover rule
+ * lives near the button's base definition (~line 1923) and follows the
+ * Claude.ai transparent-pill pattern. This version added scale(1.1) +
+ * a blue border on hover, fighting the calm polish.
+ */
 
 /* אזור התקדמות ויזואלי באמצע הכרטיס */
 .linear-progress-section {
@@ -2083,39 +2161,11 @@
   direction: rtl;
 }
 
-.time-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: center;
-  padding: 6px;
-  background: rgb(59 130 246 / 5%);
-  border-radius: 6px;
-  border: 1px solid rgb(59 130 246 / 10%);
-}
-
-.time-label {
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.time-value {
-  font-weight: 700;
-  color: #1f2328;
-  font-size: 12px;
-}
-
-/* צבע שונה לזמן בפועל */
-.time-item.actual {
-  background: rgb(16 185 129 / 5%);
-  border-color: rgb(16 185 129 / 10%);
-}
-
-.time-item.actual .time-value {
-  color: #059669;
-}
+/*
+ * .time-item / .time-label / .time-value / .time-item.actual rules moved
+ * to cards.css (Emil / Claude.ai typography-first, no colored chips).
+ * Duplicates here were overriding with blue/green tinted chips.
+ */
 
 /* Card title wrapper - holds title and badges */
 .card-title-wrapper {
@@ -2126,93 +2176,89 @@
   direction: rtl;
 }
 
-/* כותרת כרטיס - שורה אחת בלבד + Tooltip */
+/*
+ * Card title — Emil: "task name never truncated to one line".
+ * Superseded by the Claude-style block below (kept for context).
+ */
+
+/*
+ * Card title — Claude-style: show the full task name, let the card grow.
+ * No -webkit-line-clamp, no text-overflow, no min-height. The card owns
+ * whatever height the title needs; sibling cards in the row will naturally
+ * have different heights, which matches how Claude / Linear present lists
+ * of variable-length items. cards.css has its own `.linear-card-title`
+ * rule that wins via load order — this block is only kept for safety in
+ * contexts where cards.css isn't loaded (none in the User App today).
+ */
 .linear-card-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--gray-900);
-  line-height: 1.5;
+  line-height: 1.4;
   letter-spacing: -0.01em;
-  margin: 0;
-  margin-top: 4px; /* ממש בתחילת הכרטיסייה */
-  padding-top: 2px;
-  padding-bottom: 16px;
-  padding-left: 70px; /* מקום לאייקונים */
-  margin-bottom: 20px; /* ✅ מוריד את התוכן שאחרי הקו */
-  min-height: 48px; /* ✅ גובה קבוע - הקו תמיד באותו מקום! */
+  margin: 0 0 12px;
+  padding: 4px 60px 10px 0;
   text-align: right;
   direction: rtl;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap; /* שורה אחת בלבד */
-  border-bottom: 1px solid #e2e8f0; /* הקו תמיד באותו גובה */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+
+  border-bottom: 1px solid var(--gray-100);
   cursor: default;
-  transition: color 0.2s ease;
+  transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.linear-card-title:hover {
-  color: var(--primary-600);
-}
-
-/* ===== Card Badges Button (Click to open modal) ===== */
+/*
+ * Card badges button — Claude.ai pill. Transparent by default, fills in
+ * on hover; no shadow (Emil: flat UI stays flat).
+ */
 .card-badges-button {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: var(--gray-50);
+  background: transparent;
   border: 1px solid var(--gray-200);
   border-radius: 6px;
   font-size: 12px;
   color: var(--gray-600);
   cursor: pointer;
-  transition: var(--transition);
   flex-shrink: 0;
+  transform-origin: center;
+  transition:
+    background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .card-badges-button:hover {
-  background: #fff;
+  background: var(--gray-50);
   border-color: var(--gray-300);
-  color: var(--gray-700);
-  box-shadow: 0 2px 4px rgb(0 0 0 / 6%);
+  color: var(--gray-900);
 }
 
 .card-badges-button:active {
   transform: scale(0.96);
 }
 
-/* הוספת tooltip לכותרת ארוכה */
-.linear-card-title::after {
-  content: attr(data-full-text);
-  position: absolute;
-  bottom: 100%;
-  right: 50%;
-  transform: translateX(50%);
-  background: #1f2328;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  white-space: nowrap;
-  z-index: 10;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-  pointer-events: none;
-  max-width: 300px;
-  text-overflow: ellipsis;
-  overflow: hidden;
+.card-badges-button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 
-.linear-card-title:hover::after {
-  opacity: 1;
-  visibility: visible;
-  bottom: calc(100% + 8px);
-}
+/*
+ * Custom ::after tooltip removed.
+ * It relied on `data-full-text` (which the HTML template never provides)
+ * and on the title being truncated. Now that the title is never
+ * truncated, there's no "hidden remainder" to reveal on hover. The
+ * :hover partial gray overlay the user noticed was this pseudo-element
+ * rendering with transparent background at certain paint stages.
+ */
 
-/* אנימציה על hover */
+/* Hover on the card lifts the title underline color — calm, not a highlight */
 .linear-minimal-card:hover .linear-card-title {
-  border-color: var(--gray-300);
+  border-color: var(--gray-200);
 }
 
 /* כותרות */
@@ -2291,9 +2337,9 @@
     aspect-ratio: 1.2/1; /* קצת פחות ריבועי בנייד */
   }
 
+  /* .linear-minimal-card mobile override — only padding, height auto */
   .linear-minimal-card {
-    height: 72px;
-    padding: 16px 20px;
+    padding: 12px 14px 36px;
   }
 
   .client-name,

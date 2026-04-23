@@ -420,15 +420,16 @@ export function createTimesheetCard(entry) {
     safeEntry.serviceId || ''
   );
 
-  const badgesRow = combinedBadge ? `
-    <div class="linear-card-badges">
-      ${combinedBadge}
-    </div>
-  ` : '';
+  // Creation date — quiet caption in the meta footer, same style as
+  // budget-tasks cards. We keep the formatter local so the timesheet's
+  // "dd.mm.yyyy HH:MM" reading stays intact without reaching back into
+  // DatesModule for a different signature.
+  const creationDateText = safeEntry.createdAt
+    ? `${formatDate(safeEntry.createdAt)} ${new Date(safeEntry.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    : '';
 
   return `
     <div class="linear-minimal-card" data-entry-id="${safeEntry.id}">
-      ${badgesRow}
       <div class="linear-card-content">
         <h3 class="linear-card-title" title="${safeClientName}">
           ${safeAction}
@@ -447,20 +448,11 @@ export function createTimesheetCard(entry) {
         </div>
       </div>
 
-      <!-- החלק התחתון - מחוץ ל-content -->
+      <!-- Meta footer: badge · client · creation date — mirrors budget-tasks cards -->
       <div class="linear-card-meta">
-        <div class="linear-client-row">
-          <span class="linear-client-label">לקוח:</span>
-          <span class="linear-client-name" title="${safeClientName}">
-            ${safeClientName}
-          </span>
-        </div>
-        ${safeEntry.createdAt ? `
-        <div class="creation-date-tag">
-          <i class="far fa-clock"></i>
-          <span>נוצר ב-${formatDate(safeEntry.createdAt)} ${new Date(safeEntry.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-        ` : ''}
+        ${combinedBadge}
+        <span class="linear-client-name" title="${safeClientName}">${safeClientName}</span>
+        ${creationDateText ? `<span class="linear-card-meta-date">· ${creationDateText}</span>` : ''}
       </div>
 
       <button class="linear-expand-btn" onclick="event.stopPropagation(); manager.showEditTimesheetDialog('${safeEntry.id}')" title="ערוך">
@@ -608,7 +600,7 @@ export function renderTimesheetTable(entries, stats, paginationStatus, currentSo
         <td style="color: #6b7280; font-size: 13px;">${window.DatesModule.getCreationDateTableCell(entry)}</td>
         <td>${safeText(entry.notes || '—')}</td>
         <td class="actions-column">
-          <button class="action-btn edit-btn" onclick="manager.showEditTimesheetDialog('${entryId}')" title="ערוך שעתון">
+          <button class="action-btn" onclick="manager.showEditTimesheetDialog('${entryId}')" title="ערוך שעתון">
             <i class="fas fa-edit"></i>
           </button>
         </td>

@@ -119,6 +119,7 @@ class LawOfficeManager {
     this.currentTimesheetFilter = STATE_CONFIG.getStateValue('timesheetFilter'); // ✅ Always 'month'
     this.currentBudgetView = STATE_CONFIG.getStateValue('budgetView'); // ✅ Persisted
     this.currentTimesheetView = STATE_CONFIG.getStateValue('timesheetView'); // ✅ Persisted
+    this.currentDeadlineFormat = STATE_CONFIG.getStateValue('deadlineFormat'); // ✅ Persisted ('date'|'days')
 
     // Filtered Data
     this.filteredBudgetTasks = [];
@@ -1626,6 +1627,7 @@ return;
       formatShort: CoreUtils.formatShort,
       currentBudgetSort: this.currentBudgetSort,
       currentTaskFilter: this.currentTaskFilter,
+      currentDeadlineFormat: this.currentDeadlineFormat, // 'date' | 'days'
       paginationStatus: null, // Will be added when pagination is implemented
       taskActionsManager: this.taskActionsManager
     };
@@ -1635,6 +1637,21 @@ return;
 
     // Wire stats-bar filter clicks (idempotent — attaches listener once).
     this.setupStatsFilterDelegation();
+
+    // Sync the deadline-format toggle's active state with the current
+    // preference so the correct button is highlighted after initial
+    // render (HTML markup defaults to 'date' active; if the user's
+    // persisted preference is 'days' we need to flip it here).
+    const toggle = document.querySelector('.deadline-format-toggle');
+    if (toggle) {
+      toggle.querySelectorAll('.deadline-format-btn').forEach(btn => {
+        if (btn.dataset.format === this.currentDeadlineFormat) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
 
     if (this.currentBudgetView === 'cards') {
       BudgetTasks.renderBudgetCards(this.filteredBudgetTasks, options);
@@ -1686,6 +1703,44 @@ return;
         document.documentElement.scrollTop = 0;
       }
     });
+  }
+
+  /**
+   * Switch how deadlines are rendered across the budget views.
+   * Persisted via STATE_CONFIG so the user's choice sticks across sessions.
+   *
+   * @param {'date'|'days'} format - 'date' shows dd.mm.yy, 'days' shows
+   *   relative "5 ימים" / "איחור 6 ימים".
+   *
+   * Affected surfaces: cards view (progress-row-value), table deadline
+   * cell, and the compact deadline ring's center label.
+   *
+   * We re-render the current view rather than patching the DOM in place
+   * so the transition is atomic — no half-date / half-days state ever
+   * reaches the user.
+   */
+  switchDeadlineFormat(format) {
+    if (format !== 'date' && format !== 'days') {
+      return;
+    }
+    if (this.currentDeadlineFormat === format) {
+      return;
+    }
+    STATE_CONFIG.setStateValue('deadlineFormat', format);
+    this.currentDeadlineFormat = format;
+
+    const toggle = document.querySelector('.deadline-format-toggle');
+    if (toggle) {
+      toggle.querySelectorAll('.deadline-format-btn').forEach(btn => {
+        if (btn.dataset.format === format) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    this.renderBudgetView();
   }
 
   /**
