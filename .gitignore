@@ -25,6 +25,10 @@ functions/.env
 *.backup
 *.backup.*
 
+# Local backup snapshots (data may include client names, employee emails, taskIds)
+# Pre-migration data backups stay local — managed Firestore backups serve as canonical recovery
+backups/
+
 # IDE
 .vscode/
 .idea/

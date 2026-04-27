@@ -385,14 +385,17 @@ exports.completeTask = functions.https.onCall(async (data, context) => {
         );
       }
 
-      // ✅ NEW: בדיקה שיש רישומי זמן לפני סיום המשימה
-      const actualHours = taskData.actualHours || 0;
-      if (actualHours === 0) {
+      // ✅ בדיקה שיש רישומי זמן לפני סיום המשימה
+      // משתמש ב-actualMinutes (מקור-אמת אמין) במקום actualHours שעלול להיות שגוי
+      // במשימות ישנות (drift היסטורי לפני commit 0626a47, 2026-03-29)
+      const actualMinutesForValidation = taskData.actualMinutes || 0;
+      if (actualMinutesForValidation === 0) {
+        const taskTitle = taskData.taskDescription || taskData.description || 'משימה ללא כותרת';
         throw new functions.https.HttpsError(
           'failed-precondition',
           `❌ לא ניתן לסיים משימה ללא רישומי זמן!
 
-משימה: ${taskData.title}
+משימה: ${taskTitle}
 תקציב: ${taskData.budgetHours || 0} שעות
 בפועל: 0 שעות
 

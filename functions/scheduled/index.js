@@ -357,6 +357,29 @@ const dailyInvariantCheck = onSchedule({
       }
     });
 
+    // Check 4: task.actualHours vs task.actualMinutes (drift between aggregates)
+    // Tolerance: 1 minute (0.0167h). Catches:
+    //   - Pre-trigger edits (entries edited before 2026-03-01)
+    //   - round2 rounding accumulation in trigger
+    //   - Any future flow that updates one field without the other
+    tasksSnapshot.forEach(doc => {
+      const task = doc.data();
+      const actualMinutes = task.actualMinutes || 0;
+      const actualHours = task.actualHours || 0;
+      const hoursAsMinutes = actualHours * 60;
+      const driftMinutes = Math.abs(hoursAsMinutes - actualMinutes);
+      if (driftMinutes > 1) {
+        discrepancies.push({
+          type: 'task_actualHours_actualMinutes_drift',
+          taskId: doc.id,
+          clientId: task.clientId,
+          actualMinutes,
+          actualHours,
+          driftMinutes
+        });
+      }
+    });
+
     // Save result to system_health_checks
     if (discrepancies.length > 0) {
       await db.collection('system_health_checks').add({
