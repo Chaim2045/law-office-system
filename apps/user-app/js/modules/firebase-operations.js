@@ -31,9 +31,21 @@
 
 // ✅ Import budget tasks functions from dedicated module (DRY principle)
 import { loadBudgetTasksFromFirebase } from './budget-tasks.js';
+import { buildErrorFromResult } from './error-utils.js';
 
 /* === Firebase Functions Wrapper === */
 // Helper to call Firebase Cloud Functions
+// Preserves error.details (carries { code, userMessage } from buildAppError) on the
+// rethrown Error — downstream handlers (ActionFlowManager) read details to render
+// friendly messages with stable error codes.
+const _wrapWithDetails = (originalError, message) => {
+  const err = new Error(message);
+  if (originalError && originalError.details) {
+    err.details = originalError.details;
+  }
+  return err;
+};
+
 const callFunction = async (functionName, data = {}) => {
   try {
     const functions = firebase.functions();
@@ -45,16 +57,16 @@ const callFunction = async (functionName, data = {}) => {
 
     // Handle specific error codes
     if (error.code === 'unauthenticated') {
-      throw new Error('נדרשת התחברות למערכת');
+      throw _wrapWithDetails(error, 'נדרשת התחברות למערכת');
     } else if (error.code === 'permission-denied') {
-      throw new Error('אין לך הרשאה לבצע פעולה זו');
+      throw _wrapWithDetails(error, 'אין לך הרשאה לבצע פעולה זו');
     } else if (error.code === 'invalid-argument') {
-      throw new Error(error.message || 'נתונים לא תקינים');
+      throw _wrapWithDetails(error, error.message || 'נתונים לא תקינים');
     } else if (error.code === 'not-found') {
-      throw new Error('הפריט לא נמצא');
+      throw _wrapWithDetails(error, 'הפריט לא נמצא');
     }
 
-    throw new Error(error.message || 'שגיאה בביצוע הפעולה');
+    throw _wrapWithDetails(error, error.message || 'שגיאה בביצוע הפעולה');
   }
 };
 
@@ -203,7 +215,7 @@ async function saveBudgetTaskToFirebase(taskData) {
     const result = await callFunction('createBudgetTask', taskData);
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בשמירת משימה');
+      throw buildErrorFromResult(result, 'שגיאה בשמירת משימה');
     }
 
     return result.taskId;
@@ -268,7 +280,7 @@ async function saveTimesheetToFirebase_v2(entryData, expectedVersion, idempotenc
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בשמירת שעתון');
+      throw buildErrorFromResult(result, 'שגיאה בשמירת שעתון');
     }
 
     console.log(`✅ [v2.0] Timesheet saved: ${result.entryId}, Version: ${result.version}`);
@@ -322,7 +334,7 @@ async function updateTimesheetEntryFirebase(entryId, minutes, reason = '') {
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בעדכון שעתון');
+      throw buildErrorFromResult(result, 'שגיאה בעדכון שעתון');
     }
 
     return result;
@@ -349,7 +361,7 @@ async function addTimeToTaskFirebase(taskId, timeData) {
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בהוספת זמן למשימה');
+      throw buildErrorFromResult(result, 'שגיאה בהוספת זמן למשימה');
     }
 
     return result;
@@ -374,7 +386,7 @@ async function completeTaskFirebase(taskId, completionNotes = '') {
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בהשלמת משימה');
+      throw buildErrorFromResult(result, 'שגיאה בהשלמת משימה');
     }
 
     return result;
@@ -400,7 +412,7 @@ async function extendTaskDeadlineFirebase(taskId, newDeadline, reason = '') {
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בהארכת תאריך יעד');
+      throw buildErrorFromResult(result, 'שגיאה בהארכת תאריך יעד');
     }
 
     return result;

@@ -8,6 +8,7 @@ const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
+const { ERROR_CODES, buildAppError } = require('../shared/errors');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -284,11 +285,8 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                 const currentRemaining = activePackage.hoursRemaining || 0;
                 const afterDeduction = currentRemaining - hoursWorked;
                 if (afterDeduction < -10 && !hasOverride) {
-                  throw new functions.https.HttpsError(
-                    'resource-exhausted',
-                    'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-                    { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction }
-                  );
+                  throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SOFT,
+                    { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
                 }
                 updatedPackageId = activePackage.id;
               } else {
@@ -307,8 +305,7 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                     const currentRemaining = lastPkg.hoursRemaining || 0;
                     const afterDeduction = currentRemaining - hoursWorked;
                     if (afterDeduction < -10 && !hasOverride) {
-                      throw new functions.https.HttpsError('resource-exhausted',
-                        'הלקוח בחריגה חמורה — כל החבילות מוצו מעבר למגבלה',
+                      throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SEVERE,
                         { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
                     }
                     updatedPackageId = lastPkg.id;
@@ -356,11 +353,8 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
                     const currentRemaining = activePackage.hoursRemaining || 0;
                     const afterDeduction = currentRemaining - hoursWorked;
                     if (afterDeduction < -10) {
-                      throw new functions.https.HttpsError(
-                        'resource-exhausted',
-                        'הלקוח בחריגה נא לעדכן בהקדם את גיא',
-                        { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction }
-                      );
+                      throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SOFT,
+                        { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
                     }
                     updatedPackageId = activePackage.id;
                     deductionResult = applyLegalProcedureDelta(services, lookupServiceId, updatedStageId, updatedPackageId, minutesDelta);
@@ -752,7 +746,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 const currentRemaining = activePackage.hoursRemaining || 0;
                 const afterDeduction = currentRemaining - hoursWorked;
                 if (afterDeduction < -10 && !hasOverride) {
-                  throw new functions.https.HttpsError('resource-exhausted', 'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                  throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SOFT,
                     { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
                 }
                 updatedPackageId = activePackage.id;
@@ -770,8 +764,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                     const currentRemaining = lastPkg.hoursRemaining || 0;
                     const afterDeduction = currentRemaining - hoursWorked;
                     if (afterDeduction < -10 && !hasOverride) {
-                      throw new functions.https.HttpsError('resource-exhausted',
-                        'הלקוח בחריגה חמורה — כל החבילות מוצו מעבר למגבלה',
+                      throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SEVERE,
                         { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
                     }
                     updatedPackageId = lastPkg.id;
@@ -818,7 +811,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                     const currentRemaining = activePackage.hoursRemaining || 0;
                     const afterDeduction = currentRemaining - hoursWorked;
                     if (afterDeduction < -10) {
-                      throw new functions.https.HttpsError('resource-exhausted', 'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                      throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SOFT,
                         { clientId: clientData.caseNumber, currentRemaining, requestedHours: hoursWorked, wouldBe: afterDeduction });
                     }
                     updatedPackageId = activePackage.id;
@@ -1224,8 +1217,7 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
                 const afterDeduction = currentRemaining - hoursDiff;
                 if (afterDeduction < -10 && !hasOverride) {
                   console.error(`🛡️ [UPDATE GUARD] Blocked: package ${targetPackage.id} would drop to ${afterDeduction}h (limit: -10h)`);
-                  throw new functions.https.HttpsError('resource-exhausted',
-                    'הלקוח בחריגה — העריכה תגרום לחריגה מעבר למגבלת -10 שעות',
+                  throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_EDIT,
                     { clientId: entryClientId, currentRemaining, requestedHoursDelta: hoursDiff, wouldBe: afterDeduction });
                 }
               }
@@ -1247,8 +1239,7 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
                   const afterDeduction = currentRemaining - hoursDiff;
                   if (afterDeduction < -10) {
                     console.error(`🛡️ [UPDATE GUARD] Blocked: stage package ${targetPackage.id} would drop to ${afterDeduction}h (limit: -10h)`);
-                    throw new functions.https.HttpsError('resource-exhausted',
-                      'הלקוח בחריגה — העריכה תגרום לחריגה מעבר למגבלת -10 שעות',
+                    throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_EDIT,
                       { clientId: entryClientId, currentRemaining, requestedHoursDelta: hoursDiff, wouldBe: afterDeduction });
                   }
                 }

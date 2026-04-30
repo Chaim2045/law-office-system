@@ -180,6 +180,7 @@ const {
 } = require('./src/modules/aggregation');
 
 const { SYSTEM_CONSTANTS } = require('./shared/constants');
+const { ERROR_CODES, buildAppError } = require('./shared/errors');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -438,8 +439,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                   const currentRemaining = targetPkg.hoursRemaining || 0;
                   const afterDeduction = currentRemaining - (minutesDelta / 60);
                   if (afterDeduction < -10 && !hasOverride) {
-                    throw new functions.https.HttpsError('resource-exhausted',
-                      'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                    throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SOFT,
                       { clientId: taskData.clientId, currentRemaining, requestedHours: minutesDelta / 60, wouldBe: afterDeduction });
                   }
                 }
@@ -472,8 +472,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                       const currentRemaining = targetPkg.hoursRemaining || 0;
                       const afterDeduction = currentRemaining - (minutesDelta / 60);
                       if (afterDeduction < -10) {
-                        throw new functions.https.HttpsError('resource-exhausted',
-                          'הלקוח בחריגה נא לעדכן בהקדם את גיא',
+                        throw buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_SOFT,
                           { clientId: taskData.clientId, currentRemaining, requestedHours: minutesDelta / 60, wouldBe: afterDeduction });
                       }
                     }

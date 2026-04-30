@@ -407,9 +407,23 @@ class ActionFlowManager {
       }
 
       // Show error message
-      const fullErrorMessage = `${errorMessage}: ${error.message || 'שגיאה לא ידועה'}`;
+      // Backend errors built via buildAppError carry { code, userMessage } in error.details
+      const errDetails = error?.details || {};
+      const errCode = errDetails.code || null;
+      const userMessage = errDetails.userMessage || error.message || 'שגיאה לא ידועה';
+
+      // errorMessage may be:
+      //   - function (new contract) → invoked with userMessage
+      //   - string (legacy prefix) → "<prefix>: <userMessage>"
+      let fullErrorMessage;
+      if (typeof errorMessage === 'function') {
+        fullErrorMessage = errorMessage(userMessage);
+      } else {
+        fullErrorMessage = `${errorMessage}: ${userMessage}`;
+      }
+
       if (window.NotificationSystem) {
-        window.NotificationSystem.error(fullErrorMessage, 5000);
+        window.NotificationSystem.error(fullErrorMessage, 5000, { code: errCode });
       } else {
         window.showNotification?.(fullErrorMessage, 'error');
       }

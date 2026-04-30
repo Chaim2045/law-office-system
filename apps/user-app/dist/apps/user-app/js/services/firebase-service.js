@@ -187,6 +187,8 @@ class FirebaseServiceClass {
         catch (error) {
             this.stats.failedCalls++;
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            // Preserve HttpsError.details (carries { code, userMessage } from buildAppError)
+            const errorDetails = error?.details ?? null;
             if (this.debugMode) {
                 console.error(`❌ [Firebase] Error in ${functionName}:`, error);
             }
@@ -199,6 +201,7 @@ class FirebaseServiceClass {
             return {
                 success: false,
                 error: errorMessage,
+                errorDetails,
                 duration: performance.now() - startTime
             };
         }
@@ -247,10 +250,13 @@ class FirebaseServiceClass {
         // All retries failed
         const errorMessage = lastError?.message || 'Unknown error';
         const errorCode = this.getErrorCode(lastError);
+        // Preserve HttpsError.details (carries { code, userMessage } from buildAppError)
+        const errorDetails = lastError?.details ?? null;
         return {
             success: false,
             error: errorMessage,
             errorCode,
+            errorDetails,
             duration: 0,
             retries: retryCount
         };

@@ -45,6 +45,12 @@ export interface FirebaseResponse<T = any> {
   data?: T;
   error?: string;
   errorCode?: string;
+  /**
+   * Preserves HttpsError.details from backend (e.g. { code, userMessage } produced
+   * by functions/shared/errors.js → buildAppError). Consumers attach this to a
+   * rethrown Error so ActionFlowManager can render friendly messages with codes.
+   */
+  errorDetails?: any;
   duration: number;
   cached?: boolean;
   retries?: number;
@@ -315,6 +321,9 @@ class FirebaseServiceClass {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
 
+      // Preserve HttpsError.details (carries { code, userMessage } from buildAppError)
+      const errorDetails = (error as any)?.details ?? null;
+
       if (this.debugMode) {
         console.error(`❌ [Firebase] Error in ${functionName}:`, error);
       }
@@ -329,6 +338,7 @@ class FirebaseServiceClass {
       return {
         success: false,
         error: errorMessage,
+        errorDetails,
         duration: performance.now() - startTime
       };
     }
@@ -395,11 +405,14 @@ class FirebaseServiceClass {
     // All retries failed
     const errorMessage = lastError?.message || 'Unknown error';
     const errorCode = this.getErrorCode(lastError);
+    // Preserve HttpsError.details (carries { code, userMessage } from buildAppError)
+    const errorDetails = (lastError as any)?.details ?? null;
 
     return {
       success: false,
       error: errorMessage,
       errorCode,
+      errorDetails,
       duration: 0,
       retries: retryCount
     };
