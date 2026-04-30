@@ -149,38 +149,46 @@ class FirebaseServiceClass {
             const promise = this.executeCall(functionName, data, retries, timeout, onError);
             // Track in-flight request
             this.inFlightRequests.set(requestKey, promise);
-            // Execute call
-            const response = await promise;
-            // Remove from in-flight
-            this.inFlightRequests.delete(requestKey);
-            // Cache successful response
-            if (response.success && cacheTTL > 0) {
-                this.addToCache(functionName, data, response.data, cacheTTL);
+            try {
+                // Execute call
+                const response = await promise;
+                // Cache successful response
+                if (response.success && cacheTTL > 0) {
+                    this.addToCache(functionName, data, response.data, cacheTTL);
+                }
+                // Update statistics
+                if (response.success) {
+                    this.stats.successfulCalls++;
+                }
+                else {
+                    this.stats.failedCalls++;
+                }
+                const duration = performance.now() - startTime;
+                this.updateAverageResponseTime(duration);
+                if (this.debugMode) {
+                    console.log(`✅ [Firebase] ${functionName} completed in ${duration.toFixed(2)}ms`);
+                }
+                // Emit event
+                EventBus.emit('system:data-loaded', {
+                    dataType: functionName,
+                    recordCount: 1,
+                    duration
+                });
+                return {
+                    ...response,
+                    duration
+                };
             }
-            // Update statistics
-            if (response.success) {
-                this.stats.successfulCalls++;
-            } else {
-                this.stats.failedCalls++;
+            finally {
+                // Always clean up in-flight tracking — covers success, error, and exceptions
+                this.inFlightRequests.delete(requestKey);
             }
-            const duration = performance.now() - startTime;
-            this.updateAverageResponseTime(duration);
-            if (this.debugMode) {
-                console.log(`✅ [Firebase] ${functionName} completed in ${duration.toFixed(2)}ms`);
-            }
-            // Emit event
-            EventBus.emit('system:data-loaded', {
-                dataType: functionName,
-                recordCount: 1,
-                duration
-            });
-            return {
-                ...response,
-                duration
-            };
-        } catch (error) {
+        }
+        catch (error) {
             this.stats.failedCalls++;
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            // Preserve HttpsError.details (carries { code, userMessage } from buildAppError)
+            const errorDetails = error?.details ?? null;
             if (this.debugMode) {
                 console.error(`❌ [Firebase] Error in ${functionName}:`, error);
             }
@@ -193,6 +201,7 @@ class FirebaseServiceClass {
             return {
                 success: false,
                 error: errorMessage,
+                errorDetails,
                 duration: performance.now() - startTime
             };
         }
@@ -223,7 +232,8 @@ class FirebaseServiceClass {
                     duration: 0,
                     retries: retryCount
                 };
-            } catch (error) {
+            }
+            catch (error) {
                 lastError = error;
                 // Check if error is retryable
                 if (!this.isRetryableError(error)) {
@@ -240,10 +250,13 @@ class FirebaseServiceClass {
         // All retries failed
         const errorMessage = lastError?.message || 'Unknown error';
         const errorCode = this.getErrorCode(lastError);
+        // Preserve HttpsError.details (carries { code, userMessage } from buildAppError)
+        const errorDetails = lastError?.details ?? null;
         return {
             success: false,
             error: errorMessage,
             errorCode,
+            errorDetails,
             duration: 0,
             retries: retryCount
         };
@@ -268,8 +281,8 @@ class FirebaseServiceClass {
      */
     isRetryableError(error) {
         if (!error) {
-return false;
-}
+            return false;
+        }
         // Network errors are retryable
         if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
             return true;
@@ -289,14 +302,14 @@ return false;
      */
     getErrorCode(error) {
         if (error?.code) {
-return error.code;
-}
+            return error.code;
+        }
         if (error?.message?.includes('timeout')) {
-return 'timeout';
-}
+            return 'timeout';
+        }
         if (error?.message?.includes('network')) {
-return 'network';
-}
+            return 'network';
+        }
         return undefined;
     }
     /**
@@ -337,13 +350,14 @@ return 'network';
             // Get next request
             const request = this.queue.shift();
             if (!request) {
-break;
-}
+                break;
+            }
             this.stats.queuedRequests--;
             try {
                 const response = await this.call(request.functionName, request.data, { ...request.options, skipRateLimit: true });
                 request.resolve(response);
-            } catch (error) {
+            }
+            catch (error) {
                 request.reject(error);
             }
         }
@@ -368,8 +382,8 @@ break;
         const key = this.getCacheKey(functionName, data);
         const entry = this.cache.get(key);
         if (!entry) {
-return null;
-}
+            return null;
+        }
         // Check expiration
         const now = Date.now();
         if (now - entry.timestamp > entry.ttl) {

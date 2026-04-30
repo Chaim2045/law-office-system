@@ -58,6 +58,7 @@ import {
 import DescriptionTooltips from './description-tooltips.js';
 
 import { createTimesheetEntryV2 } from './timesheet-adapter.js';
+import { buildErrorFromResult } from './error-utils.js';
 
 // Utility functions (assumed to be available globally)
 // - safeText(): Sanitizes text for HTML display
@@ -130,7 +131,7 @@ export async function saveTimesheetToFirebase(entryData) {
     const result = await createTimesheetEntryV2(entryData);
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בשמירת שעתון');
+      throw buildErrorFromResult(result, 'שגיאה בשמירת שעתון');
     }
 
     return result.entryId;
@@ -157,7 +158,7 @@ export async function updateTimesheetEntryFirebase(entryId, minutes, reason = ''
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בעדכון שעתון');
+      throw buildErrorFromResult(result, 'שגיאה בעדכון שעתון');
     }
 
     return result;

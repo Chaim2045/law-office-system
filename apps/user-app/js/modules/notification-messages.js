@@ -84,12 +84,14 @@ class NotificationMessages {
     },
 
     // Error messages
+    // NOTE: Functions accept the user-facing message extracted by ActionFlowManager
+    // (from error.details.userMessage when backend uses buildAppError, otherwise error.message).
     error: {
       notFound: () => 'המשימה לא נמצאה במערכת',
-      createFailed: (error) => `שגיאה ביצירת משימה: ${error}`,
-      completeFailed: (error) => `שגיאה בהשלמת משימה: ${error}`,
-      updateFailed: (error) => `שגיאה בעדכון משימה: ${error}`,
-      deleteFailed: (error) => `שגיאה במחיקת משימה: ${error}`
+      createFailed: (msg) => `שגיאה ביצירת משימה: ${msg}`,
+      completeFailed: (msg) => `שגיאה בהשלמת משימה: ${msg}`,
+      updateFailed: (msg) => `שגיאה בעדכון משימה: ${msg}`,
+      deleteFailed: (msg) => `שגיאה במחיקת משימה: ${msg}`
     },
 
     // Validation messages
@@ -143,11 +145,11 @@ class NotificationMessages {
         'הרשומה נמחקה בהצלחה'
     },
 
-    // Error messages
+    // Error messages — see notes above the tasks.error block for the contract
     error: {
-      createFailed: (error) => `שגיאה ברישום זמן: ${error}`,
-      updateFailed: (error) => `שגיאה בעדכון רשומה: ${error}`,
-      deleteFailed: (error) => `שגיאה במחיקת רשומה: ${error}`,
+      createFailed: (msg) => `שגיאה ברישום זמן: ${msg}`,
+      updateFailed: (msg) => `שגיאה בעדכון רשומה: ${msg}`,
+      deleteFailed: (msg) => `שגיאה במחיקת רשומה: ${msg}`,
       loadFailed: () => 'שגיאה בטעינת נתוני שעתון'
     },
 
