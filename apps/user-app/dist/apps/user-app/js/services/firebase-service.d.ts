@@ -37,6 +37,12 @@ export interface FirebaseResponse<T = any> {
     data?: T;
     error?: string;
     errorCode?: string;
+    /**
+     * Preserves HttpsError.details from backend (e.g. { code, userMessage } produced
+     * by functions/shared/errors.js → buildAppError). Consumers attach this to a
+     * rethrown Error so ActionFlowManager can render friendly messages with codes.
+     */
+    errorDetails?: any;
     duration: number;
     cached?: boolean;
     retries?: number;

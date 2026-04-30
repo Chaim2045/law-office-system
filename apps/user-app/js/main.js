@@ -31,6 +31,7 @@ import { initAddTaskSystem } from '../components/add-task/index.js';
 
 // ✅ Migration v1→v2: Timesheet adapter for enterprise features
 import { createTimesheetEntryV2 } from './modules/timesheet-adapter.js';
+import { buildErrorFromResult } from './modules/error-utils.js';
 
 // System Announcement Ticker - News-style ticker for system announcements
 import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
@@ -1231,7 +1232,7 @@ return false;
           });
 
           if (!result.success) {
-            throw new Error(result.error || 'Failed to create budget task');
+            throw buildErrorFromResult(result, 'Failed to create budget task');
           }
 
           const taskId = result.data?.taskId;
@@ -1830,7 +1831,7 @@ return;
         const result = await createTimesheetEntryV2(entryData);
 
         if (!result.success) {
-          throw new Error(result.error || 'שגיאה ברישום פעילות');
+          throw buildErrorFromResult(result, 'שגיאה ברישום פעילות');
         }
 
         // Invalidate cache to force fresh data on next load
@@ -2154,7 +2155,7 @@ existingError.remove();
         });
 
         if (!result.success) {
-          throw new Error(result.error || 'שגיאה בעדכון רשומת שעתון');
+          throw buildErrorFromResult(result, 'שגיאה בעדכון רשומת שעתון');
         }
 
         // Invalidate cache to force fresh data on next load
@@ -2687,7 +2688,7 @@ return;
         });
 
         if (!result.success) {
-          throw new Error(result.error || 'שגיאה בהארכת יעד');
+          throw buildErrorFromResult(result, 'שגיאה בהארכת יעד');
         }
 
         // Reload tasks (loadData() already refreshes all selectors)
@@ -3016,7 +3017,7 @@ return;
         });
 
         if (!result.success) {
-          throw new Error(result.error || 'שגיאה בהוספת זמן');
+          throw buildErrorFromResult(result, 'שגיאה בהוספת זמן');
         }
 
         // Invalidate clients cache so loadData() fetches fresh from Firestore
@@ -3084,7 +3085,7 @@ return;
         delete window._taskCompletionMetadata;
 
         if (!result.success) {
-          throw new Error(result.error || 'שגיאה בסיום משימה');
+          throw buildErrorFromResult(result, 'שגיאה בסיום משימה');
         }
 
         // Reload tasks
@@ -3152,7 +3153,7 @@ return;
         });
 
         if (!result.success) {
-          throw new Error(result.error || 'שגיאה בעדכון תקציב');
+          throw buildErrorFromResult(result, 'שגיאה בעדכון תקציב');
         }
 
         // Reload tasks

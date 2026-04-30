@@ -95,9 +95,11 @@ class NotificationSystem {
    * @param {string} message - The message to display
    * @param {string} type - Type of notification (success, error, warning, info)
    * @param {number} duration - Duration in ms (0 = no auto-close)
+   * @param {Object} [options] - Additional options
+   * @param {string|null} [options.code] - Error code badge (e.g. ERR-1001) — shown in footer
    * @returns {HTMLElement} The notification element
    */
-  show(message, type = NotificationTypes.INFO, duration = DEFAULT_DURATION) {
+  show(message, type = NotificationTypes.INFO, duration = DEFAULT_DURATION, options = {}) {
     // Validate type
     if (!Object.values(NotificationTypes).includes(type)) {
       console.warn(`Invalid notification type: ${type}, using INFO instead`);
@@ -110,7 +112,7 @@ class NotificationSystem {
     }
 
     // Create notification element
-    const notification = this.createNotificationElement(message, type);
+    const notification = this.createNotificationElement(message, type, options);
 
     // Add to container
     this.container.appendChild(notification);
@@ -134,8 +136,12 @@ class NotificationSystem {
   /**
    * Create notification element with all components
    * @private
+   * @param {string} message
+   * @param {string} type
+   * @param {Object} [options]
+   * @param {string|null} [options.code] - Optional error code badge
    */
-  createNotificationElement(message, type) {
+  createNotificationElement(message, type, options = {}) {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.setAttribute('role', 'alert');
@@ -144,12 +150,17 @@ class NotificationSystem {
     const icon = NotificationIcons[type];
     const color = NotificationColors[type];
 
+    const codeBadge = options && options.code
+      ? `<div class="notification-code" aria-label="קוד שגיאה">קוד: ${this.escapeHtml(String(options.code))}</div>`
+      : '';
+
     notification.innerHTML = `
       <div class="notification-icon" style="color: ${color}">
         <i class="${icon}"></i>
       </div>
       <div class="notification-content">
         <div class="notification-message">${this.escapeHtml(message)}</div>
+        ${codeBadge}
       </div>
       <button class="notification-close" aria-label="סגור התראה" type="button">
         <i class="fas fa-times"></i>
@@ -216,8 +227,8 @@ return;
     return this.show(message, NotificationTypes.SUCCESS, duration);
   }
 
-  error(message, duration = DEFAULT_DURATION) {
-    return this.show(message, NotificationTypes.ERROR, duration);
+  error(message, duration = DEFAULT_DURATION, options = {}) {
+    return this.show(message, NotificationTypes.ERROR, duration, options);
   }
 
   warning(message, duration = DEFAULT_DURATION) {

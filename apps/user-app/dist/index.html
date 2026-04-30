@@ -20,11 +20,8 @@
 
     <!-- ===== ספריות חיצוניות ו-Firebase ===== -->
     <!-- FIREBASE & EXTERNAL LIBRARIES -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ✨ Lottie Animation Library - for modern loading animations -->
+    <!-- ⚡ xlsx, DOMPurify moved to end of body with defer (performance optimization) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-    <!-- 🛡️ DOMPurify - XSS Protection: Sanitizes HTML to prevent script injection -->
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -120,7 +117,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
-    <!-- ===== DESIGN SYSTEM - Must be loaded first ===== -->
+    <!--
+      Lucide icons — modern, outlined, 1.5px stroke; used by row action buttons.
+      Self-hosted (not CDN) to avoid a third-party outage rendering 6 action
+      buttons without icons. See CLAUDE.md "What happens if the network is
+      slow?" and the adversarial review from 2026-04-22.
+    -->
+    <script src="lib/lucide.min.js?v=n8ubd74" defer></script>
+    <!-- ===== DESIGN SYSTEM - Must be loaded first ===== -->
 
     <!-- TaskTimeline Component -->
     <!-- Utility Classes - כלי עזר -->
@@ -128,7 +132,7 @@
     <!-- Responsive Design - מדיה queries -->
 
     <!-- Virtual Assistant Styles - TEMPORARILY DISABLED -->
-    <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=974152d" /> -->
+    <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=n8ubd74" /> -->
 
     <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
 
@@ -286,8 +290,8 @@
       }
     </style>
 
-    <script type="module" crossorigin src="/assets/index-BPwXV1JT.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C2-IqJ8G.css">
+    <script type="module" crossorigin src="/assets/index-BcxwZFff.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BuAPr5-0.css">
   </head>
 
   <body>
@@ -648,6 +652,14 @@
               <div class="view-tabs">
                 <button
                   class="view-tab active"
+                  data-view="list"
+                  onclick="manager.switchBudgetView('list')"
+                >
+                  <i class="fas fa-list"></i>
+                  רשימה
+                </button>
+                <button
+                  class="view-tab"
                   data-view="cards"
                   onclick="manager.switchBudgetView('cards')"
                 >
@@ -661,6 +673,38 @@
                 >
                   <i class="fas fa-table"></i>
                   טבלה
+                </button>
+              </div>
+
+              <!--
+                Deadline format toggle — segmented control.
+                Lets each user pick whether deadlines read as an absolute
+                date (15.04.26) or a relative day count (5 ימים). Saved to
+                localStorage via STATE_CONFIG so the choice survives refresh.
+                Affects cards + table cell + compact ring center.
+              -->
+              <div
+                class="deadline-format-toggle"
+                role="group"
+                aria-label="פורמט תצוגת דדליין"
+              >
+                <button
+                  type="button"
+                  class="deadline-format-btn active"
+                  data-format="date"
+                  onclick="manager.switchDeadlineFormat('date')"
+                  title="תצוגת דדליין: תאריך"
+                >
+                  תאריך
+                </button>
+                <button
+                  type="button"
+                  class="deadline-format-btn"
+                  data-format="days"
+                  onclick="manager.switchDeadlineFormat('days')"
+                  title="תצוגת דדליין: ימים"
+                >
+                  ימים
                 </button>
               </div>
 
@@ -757,6 +801,14 @@
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+
+              <!-- List view container (Phase 0 — Grouped Priority List) -->
+              <div id="budgetListContainer" class="hidden">
+                <div class="loading-message">
+                  <div class="loader"></div>
+                  <span>טוען משימות...</span>
                 </div>
               </div>
             </div>
@@ -1147,16 +1199,18 @@
     <!-- SCRIPTS AND STYLES -->
     <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
-    <script src="js/modules/logger.js?v=974152d"></script>
+    <script src="js/modules/logger.js?v=n8ubd74"></script>
+    <script src="js/core/system-constants.js?v=n8ubd74"></script>
+    <script src="js/core/config-loader.js?v=n8ubd74"></script>
 
     <!-- ===== ⚡ Lazy Loader - Dynamic Script Loading ===== -->
     <!-- טעינה דינמית של סקריפטים - שיפור ביצועים -->
-    <script src="js/modules/lazy-loader.js?v=974152d"></script>
+    <script defer src="js/modules/lazy-loader.js?v=n8ubd74"></script>
 
-    <script src="js/modules/dates.js?v=974152d"></script>
-    <script defer src="js/modules/statistics.js?v=974152d"></script>
-    <script src="js/modules/pagination.js?v=974152d"></script>
-    <script src="js/modules/activity-logger.js?v=974152d"></script>
+    <script defer src="js/modules/dates.js?v=n8ubd74"></script>
+    <script defer src="js/modules/statistics.js?v=n8ubd74"></script>
+    <script defer src="js/modules/pagination.js?v=n8ubd74"></script>
+    <script defer src="js/modules/activity-logger.js?v=n8ubd74"></script>
 
     <!-- ===== 🚀 NEW ARCHITECTURE v2.0 - Event-Driven System ===== -->
     <!-- Type-safe Event Bus + Firebase Facade -->
@@ -1164,38 +1218,37 @@
     <!-- ✨ NEW: Modular Deduction System -->
     <!-- Shared library for hours calculation and deduction logic -->
 
-    <script src="js/modules/task-actions.js?v=974152d"></script>
+    <script defer src="js/modules/task-actions.js?v=n8ubd74"></script>
     <!-- ✨ NEW: Task Completion Validation System -->
     <!-- Industry-standard task completion with time gap validation -->
-    <script src="js/modules/task-completion-validation.js?v=974152d"></script>
+    <script defer src="js/modules/task-completion-validation.js?v=n8ubd74"></script>
     <!-- ✨ NEW: TaskTimeline Component -->
     <!-- Unified timeline display for task history -->
-    <script src="components/task-timeline/TaskTimeline.js?v=974152d"></script>
-    <script src="js/modules/integration-manager.js?v=974152d"></script>
+    <script defer src="components/task-timeline/TaskTimeline.js?v=n8ubd74"></script>
+    <script defer src="js/modules/integration-manager.js?v=n8ubd74"></script>
     <!-- Firebase Functions Migration - Server-side Integration -->
-    <script src="js/modules/api-client-v2.js?v=974152d"></script>
-    <script src="js/modules/firebase-server-adapter.js?v=974152d"></script>
+    <script defer src="js/modules/api-client-v2.js?v=n8ubd74"></script>
+    <script src="js/modules/firebase-server-adapter.js?v=n8ubd74"></script>
     <!-- Employees Management System - ניהול עובדים -->
     <!-- ✅ Presence System - מעקב משתמשים בזמן אמת (Realtime Database) -->
-    <script src="js/modules/presence-system.js?v=974152d"></script>
+    <script defer src="js/modules/presence-system.js?v=n8ubd74"></script>
     <!-- ✅ NEW: Idle Timeout Manager - התנתקות אוטומטית אחרי חוסר פעילות -->
-    <script src="js/modules/idle-timeout-manager.js?v=974152d"></script>
+    <script src="js/modules/idle-timeout-manager.js?v=n8ubd74"></script>
 
     <!-- Cases Management System - ניהול תיקים -->
-    <script src="js/cases.js?v=974152d"></script>
-    <script src="js/cases-integration.js?v=974152d"></script>
-    <!-- Legal Procedures System - ניהול הליכים משפטיים -->
-    <script src="js/legal-procedures.js?v=974152d"></script>
+    <script src="js/cases.js?v=n8ubd74"></script>
+    <script src="js/cases-integration.js?v=n8ubd74"></script>
+
 
     <!-- ===== Lottie Animations Configuration ===== -->
     <!-- MUST BE LOADED BEFORE NotificationSystem -->
-    <script src="js/modules/lottie-animations.js?v=974152d"></script>
-    <script src="js/modules/lottie-manager.js?v=974152d"></script>
+    <script src="js/modules/lottie-animations.js?v=n8ubd74"></script>
+    <script src="js/modules/lottie-manager.js?v=n8ubd74"></script>
 
     <!-- ===== Notification System ===== -->
     <!-- Toast notifications with Lottie animations -->
-    <script src="js/modules/notification-messages.js?v=974152d"></script>
-    <script src="js/modules/notification-system.js?v=974152d"></script>
+    <script defer src="js/modules/notification-messages.js?v=n8ubd74"></script>
+    <script src="js/modules/notification-system.js?v=n8ubd74"></script>
 
     <!-- ===== 🎯 NEW: Unified UI System - Step 1: Load Components ===== -->
     <!-- Feature Flags - Controls whether to use new or legacy system -->
@@ -1206,62 +1259,62 @@
     <!-- ===== Notification Messages Library ===== -->
     <!-- Context-aware messages for all notifications -->
 
-    <!-- ===== 🎯 NEW: Unified UI System - Step 2: Compatibility Wrapper ===== -->
-    <!-- MUST load AFTER NotificationSystem to wrap it properly -->
-    <script src="shared/compatibility/loading-wrapper.js"></script>
+    <!-- ===== 🎯 Unified UI System - Compatibility Wrapper (REMOVED) ===== -->
+    <!-- NotificationSystem now calls UnifiedLoadingOverlay directly — wrapper no longer needed -->
+    <!-- <script src="shared/compatibility/loading-wrapper.js"></script> -->
 
     <!-- ===== NEW: Modals Manager System ===== -->
     <!-- Centralized modal management -->
-    <script src="js/modules/modals-manager.js?v=974152d"></script>
+    <script src="js/modules/modals-manager.js?v=n8ubd74"></script>
     <!-- Compatibility layer for smooth migration -->
-    <script src="js/modules/modals-compat.js?v=974152d"></script>
+    <script defer src="js/modules/modals-compat.js?v=n8ubd74"></script>
 
     <!-- ===== Shared Service Card Renderer ===== -->
     <!-- Prevents code duplication between modules -->
-    <script src="js/modules/service-card-renderer.js?v=974152d"></script>
+    <script defer src="js/modules/service-card-renderer.js?v=n8ubd74"></script>
 
     <!-- ===== Shared Client Search Component ===== -->
     <!-- Unified client search and filtering logic -->
-    <script src="js/modules/ui/client-search.js?v=974152d"></script>
+    <script defer src="js/modules/ui/client-search.js?v=n8ubd74"></script>
 
     <!-- ===== NEW: Client-Case Selector Component ===== -->
     <!-- Unified two-step client→case selection -->
-    <script src="js/modules/client-case-selector.js?v=974152d"></script>
+    <script defer src="js/modules/client-case-selector.js?v=n8ubd74"></script>
     <!-- Client-Case Selectors Initialization -->
-    <script src="js/modules/selectors-init.js?v=974152d"></script>
+    <script defer src="js/modules/selectors-init.js?v=n8ubd74"></script>
 
     <!-- ===== 🔍 Performance Monitoring System ===== -->
     <!-- Real-time performance tracking for critical operations -->
-    <script src="js/modules/monitoring/performance-monitor.js?v=974152d"></script>
+    <script defer src="js/modules/monitoring/performance-monitor.js?v=n8ubd74"></script>
 
     <!-- ===== 🧪 TESTING: New Case Creation Module ===== -->
     <!-- Modern modular case creation system - currently in testing -->
-    <script src="js/modules/case-creation/case-number-generator.js?v=974152d"></script>
-    <script src="js/modules/case-creation/case-form-validator.js?v=974152d"></script>
-    <script src="js/modules/case-creation/case-creation-dialog.js?v=974152d"></script>
+    <script defer src="js/modules/case-creation/case-number-generator.js?v=n8ubd74"></script>
+    <script defer src="js/modules/case-creation/case-form-validator.js?v=n8ubd74"></script>
+    <script defer src="js/modules/case-creation/case-creation-dialog.js?v=n8ubd74"></script>
 
     <!-- ===== Smart Descriptions System ===== -->
     <!-- Structured descriptions manager for tasks and work entries -->
-    <script src="js/modules/descriptions/category-mapping.js?v=974152d"></script>
-    <script src="js/modules/descriptions/descriptions-manager.js?v=974152d"></script>
-    <script src="js/modules/descriptions/smart-combo-selector.js?v=974152d"></script>
-    <script src="js/modules/descriptions/GuidedTextInput.js?v=974152d"></script>
+    <script defer src="js/modules/descriptions/category-mapping.js?v=n8ubd74"></script>
+    <script defer src="js/modules/descriptions/descriptions-manager.js?v=n8ubd74"></script>
+    <script defer src="js/modules/descriptions/smart-combo-selector.js?v=n8ubd74"></script>
+    <script defer src="js/modules/descriptions/GuidedTextInput.js?v=n8ubd74"></script>
 
     <!-- ===== Core Utilities Module ===== -->
     <!-- Must load before dialogs.js (provides safeText) -->
 
     <!-- ===== Dialogs Module ===== -->
     <!-- Task completion, advanced dialogs, and other modals + Smart Descriptions -->
-    <script src="js/modules/dialogs.js?v=974152d"></script>
+    <script defer src="js/modules/dialogs.js?v=n8ubd74"></script>
 
     <!-- ===== System Diagnostics & Snapshot Tool ===== -->
     <!-- Full system state comparison for debugging -->
-    <script defer src="js/modules/system-snapshot.js?v=974152d"></script>
+    <script defer src="js/modules/system-snapshot.js?v=n8ubd74"></script>
     <!-- Event Flow Analyzer - DEV ONLY - removed to prevent CSP errors in production -->
-    <!-- <script defer src="js/modules/event-analyzer.js?v=974152d"></script> -->
+    <!-- <script defer src="js/modules/event-analyzer.js?v=n8ubd74"></script> -->
 
     <!-- ===== SVG RINGS MODULE ===== -->
-    <script src="js/modules/svg-rings.js?v=974152d"></script>
+    <script defer src="js/modules/svg-rings.js?v=n8ubd74"></script>
 
     <!-- ===== INLINE EXPANSION POPOVER (CSS-only) ===== -->
     <!-- popover-positioning.js removed - file does not exist -->
@@ -1274,40 +1327,15 @@
     <!-- Loaded as module by main.js -->
 
     <!-- Work Hours Calculator - Smart Calendar System -->
-    <script src="js/modules/work-hours-calculator.js?v=974152d"></script>
-
-    <!-- ===== 🔍 FUNCTION MONITOR - POC ===== -->
-    <!-- Advanced monitoring and debugging system -->
-    <script defer src="js/modules/function-monitor.js?v=974152d"></script>
-    <script defer src="js/modules/function-monitor-dashboard.js?v=974152d"></script>
-    <script defer src="js/modules/function-monitor-init.js?v=974152d"></script>
+    <script defer src="js/modules/work-hours-calculator.js?v=n8ubd74"></script>
 
     <!-- ===== KNOWLEDGE BASE 1.0.0 - מרכז עזרה וידע ===== -->
-    <!-- 🎓 NEW: Knowledge Base / FAQ System - Simple and Clear -->
-    <!-- 📚 Professional FAQ with categories, search, and articles -->
-    <!-- 🎯 For users age 40-60 - Direct answers, no chat needed -->
-    <!-- ✅ Replaces Virtual Assistant chatbot with classic help center -->
-    <!-- 💡 Click "עזרה" or the floating 💡 button to open -->
+    <!-- ⚡ KB scripts lazy-loaded on first help click (see authentication.js showApp) -->
 
     <!-- CSS -->
 
-    <!-- Icons System -->
-    <script defer src="js/modules/knowledge-base/kb-icons.js?v=974152d"></script>
-
-    <!-- Analytics System -->
-    <script defer src="js/modules/knowledge-base/kb-analytics.js?v=974152d"></script>
-
-    <!-- Data -->
-    <script defer src="js/modules/knowledge-base/kb-data.js?v=974152d"></script>
-
-    <!-- Search Engine -->
-    <script defer src="js/modules/knowledge-base/kb-search.js?v=974152d"></script>
-
-    <!-- Main Logic -->
-    <script defer src="js/modules/knowledge-base/knowledge-base.js?v=974152d"></script>
-
     <!-- ===== Virtual Assistant 3.9.0 - TEMPORARILY DISABLED ===== -->
-    <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=974152d"></script> -->
+    <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=n8ubd74"></script> -->
 
     <!-- ===== AI CHAT SYSTEM (NEW) - LAZY LOADED ===== -->
     <!-- ⚡ NotificationBell is also lazy-loaded (requires authenticated user) -->
@@ -1317,19 +1345,15 @@
     <!-- See: authentication.js -> initAIChatSystem() -->
 
     <!-- OLD: Legacy FAQ Bot (backup) -->
-    <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=974152d"></script> -->
+    <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=n8ubd74"></script> -->
 
     <!-- ===== OLD: Legacy script.js (DEPRECATED - will be removed) ===== -->
-    <!-- <script src="script.js?v=974152d"></script> -->
+    <!-- <script src="script.js?v=n8ubd74"></script> -->
 
-    <!-- 🔧 Admin Migration Tools (Console-based) -->
-    <script src="js/admin-migration-tools.js?v=974152d"></script>
 
-    <!-- 🔍 Validation Script (Post-Migration Testing) -->
-    <script src="js/validation-script.js?v=974152d"></script>
 
-    <!-- 🔧 Fix Old Clients Tool -->
-    <script src="js/fix-old-clients.js?v=974152d"></script>
+    <!-- ⚡ CDN Libraries (deferred from head for performance) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
 
     <!-- Additional CSS for animations -->
     <style>

@@ -33,6 +33,7 @@ import {
   createCombinedInfoBadge,
   createStatusBadge
 } from './timesheet-constants.js';
+import { buildErrorFromResult } from './error-utils.js';
 
 import DescriptionTooltips from './description-tooltips.js';
 
@@ -182,7 +183,7 @@ export async function saveBudgetTaskToFirebase(taskData) {
     const result = await window.callFunction('createBudgetTask', taskData);
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בשמירת משימה');
+      throw buildErrorFromResult(result, 'שגיאה בשמירת משימה');
     }
 
     return result.taskId;
@@ -233,7 +234,7 @@ export async function updateBudgetTask(taskId, updates) {
     });
 
     if (!result.success) {
-      throw new Error(result.message || 'שגיאה בעדכון משימה');
+      throw buildErrorFromResult(result, 'שגיאה בעדכון משימה');
     }
 
     console.log(`✅ Task ${taskId} updated:`, result.changes);
