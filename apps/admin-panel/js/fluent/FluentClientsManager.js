@@ -78,7 +78,9 @@ window.FluentClientsManager = {
      */
     setupAdvancedFilters() {
         const filterPanel = document.getElementById('filterPanel');
-        if (!filterPanel) return;
+        if (!filterPanel) {
+return;
+}
 
         // Close button
         document.getElementById('closeFilterBtn')?.addEventListener('click', () => {
@@ -131,8 +133,12 @@ window.FluentClientsManager = {
 
         // Collect date range
         const dateInputs = document.querySelectorAll('.date-range input[type="date"]');
-        if (dateInputs[0]?.value) filters.dateRange.from = dateInputs[0].value;
-        if (dateInputs[1]?.value) filters.dateRange.to = dateInputs[1].value;
+        if (dateInputs[0]?.value) {
+filters.dateRange.from = dateInputs[0].value;
+}
+        if (dateInputs[1]?.value) {
+filters.dateRange.to = dateInputs[1].value;
+}
 
         console.log('Applying filters:', filters);
 

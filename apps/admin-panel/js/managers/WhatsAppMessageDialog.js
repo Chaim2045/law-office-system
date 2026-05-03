@@ -52,7 +52,7 @@ window.WhatsAppMessageDialog = (function() {
     // ═══════════════════════════════════════════════════════════
 
     function showDialog(userEmail, userName) {
-        console.log(`🟢 showDialog called with:`, { userEmail, userName });
+        console.log('🟢 showDialog called with:', { userEmail, userName });
 
         currentUser = { email: userEmail, name: userName };
         selectedTemplate = null;
@@ -125,17 +125,17 @@ window.WhatsAppMessageDialog = (function() {
         }
 
         // Add modal to body
-        console.log(`🟢 Adding modal to body...`);
+        console.log('🟢 Adding modal to body...');
         document.body.insertAdjacentHTML('beforeend', dialogHTML);
 
         // Verify modal was added
         const addedModal = document.getElementById('whatsappMessageModal');
-        console.log(`🟢 Modal added:`, addedModal ? 'YES' : 'NO');
+        console.log('🟢 Modal added:', addedModal ? 'YES' : 'NO');
 
         // Attach event listeners
-        console.log(`🟢 Attaching event listeners...`);
+        console.log('🟢 Attaching event listeners...');
         attachDialogEventListeners();
-        console.log(`🟢 showDialog completed!`);
+        console.log('🟢 showDialog completed!');
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -206,7 +206,9 @@ window.WhatsAppMessageDialog = (function() {
 
     function updateSendButton() {
         const btn = document.getElementById('sendWhatsAppBtn');
-        if (!btn) return;
+        if (!btn) {
+return;
+}
 
         const hasTemplate = selectedTemplate !== null;
         const needsCustom = selectedTemplate === 'SYSTEM_ANNOUNCEMENT' || selectedTemplate === 'CUSTOM';

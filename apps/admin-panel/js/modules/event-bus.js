@@ -56,7 +56,7 @@ class TypedEventBus {
             totalListeners: 0,
             eventCounts: {},
             averageEmitTime: 0,
-            errors: 0,
+            errors: 0
         };
         // Listener ID counter
         this.listenerIdCounter = 0;
@@ -110,14 +110,13 @@ class TypedEventBus {
                 if (listener.once) {
                     eventListeners.delete(listener);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 errors++;
                 console.error(`❌ [EventBus] Error in listener for ${String(event)}:`, error);
                 this.emit('system:error', {
                     error: error,
                     context: `Event listener for ${String(event)}`,
-                    severity: 'medium',
+                    severity: 'medium'
                 });
             }
         }
@@ -131,7 +130,7 @@ class TypedEventBus {
             timestamp: Date.now(),
             duration,
             listenersNotified,
-            errors,
+            errors
         });
         if (this.debugMode) {
             console.log(`✅ [EventBus] ${String(event)} completed in ${duration.toFixed(2)}ms (${listenersNotified} listeners)`);
@@ -167,7 +166,7 @@ class TypedEventBus {
             callback,
             priority,
             once,
-            id: `listener-${++this.listenerIdCounter}`,
+            id: `listener-${++this.listenerIdCounter}`
         };
         eventListeners.add(listener);
         this.stats.totalListeners++;
@@ -253,7 +252,7 @@ class TypedEventBus {
             totalListeners: this.stats.totalListeners,
             eventCounts: {},
             averageEmitTime: 0,
-            errors: 0,
+            errors: 0
         };
         if (this.debugMode) {
             console.log('🗑️ [EventBus] Statistics reset');

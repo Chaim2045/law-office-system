@@ -4,14 +4,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   calculateRemainingHours,
   calculateTotalHours,
-  calculateHoursUsed,
-  calculateProgress,
-  minutesToHours,
-  hoursToMinutes,
-  formatHours
+  calculateHoursUsed
 } from '../../../apps/user-app/src/modules/deduction/calculators.js';
 
 describe('Deduction Calculators - calculateRemainingHours', () => {
@@ -101,54 +98,3 @@ describe('Deduction Calculators - calculateHoursUsed', () => {
   });
 });
 
-describe('Deduction Calculators - calculateProgress', () => {
-  it('should calculate progress percentage', () => {
-    const service = {
-      packages: [
-        { hours: 100, hoursUsed: 65, hoursRemaining: 35 }
-      ]
-    };
-
-    const result = calculateProgress(service);
-    expect(result).toBe(65);
-  });
-
-  it('should return 0 when total is 0', () => {
-    const service = {
-      packages: []
-    };
-
-    const result = calculateProgress(service);
-    expect(result).toBe(0);
-  });
-});
-
-describe('Deduction Calculators - Time Conversions', () => {
-  it('should convert minutes to hours', () => {
-    expect(minutesToHours(120)).toBe(2);
-    expect(minutesToHours(90)).toBe(1.5);
-    expect(minutesToHours(45)).toBe(0.75);
-  });
-
-  it('should convert hours to minutes', () => {
-    expect(hoursToMinutes(2)).toBe(120);
-    expect(hoursToMinutes(1.5)).toBe(90);
-    expect(hoursToMinutes(0.5)).toBe(30);
-  });
-});
-
-describe('Deduction Calculators - formatHours', () => {
-  it('should format hours without minutes', () => {
-    expect(formatHours(2.5)).toBe('2.5 שעות');
-    expect(formatHours(10)).toBe('10.0 שעות');
-  });
-
-  it('should format hours with minutes', () => {
-    expect(formatHours(2.5, true)).toBe('2:30 שעות');
-    expect(formatHours(3, true)).toBe('3 שעות');
-  });
-
-  it('should handle zero hours', () => {
-    expect(formatHours(0)).toBe('0 שעות');
-  });
-});

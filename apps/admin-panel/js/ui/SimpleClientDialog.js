@@ -163,8 +163,12 @@
             this.dialog.classList.remove('active');
 
             setTimeout(() => {
-                if (this.overlay) this.overlay.remove();
-                if (this.dialog) this.dialog.remove();
+                if (this.overlay) {
+this.overlay.remove();
+}
+                if (this.dialog) {
+this.dialog.remove();
+}
             }, 300);
         }
 
@@ -234,7 +238,9 @@
          */
         showErrors(errors) {
             const errorsDiv = document.getElementById('simpleDialogErrors');
-            if (!errorsDiv) return;
+            if (!errorsDiv) {
+return;
+}
 
             errorsDiv.innerHTML = errors.map(error => `
                 <div class="error-item">
@@ -354,7 +360,9 @@
          * הזרקת CSS
          */
         injectStyles() {
-            if (document.getElementById('simpleDialogStyles')) return;
+            if (document.getElementById('simpleDialogStyles')) {
+return;
+}
 
             const style = document.createElement('style');
             style.id = 'simpleDialogStyles';

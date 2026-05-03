@@ -37,7 +37,7 @@ on:
 # Environment Variables
 # ═══════════════════════════════════════════════════════════════
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   PRODUCTION_URL: 'https://law-office-system-e4801.web.app'
   TZ: 'Asia/Jerusalem'
 

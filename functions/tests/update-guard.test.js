@@ -347,12 +347,14 @@ describe('updateTimesheetEntry — -10h overdraft guard (hours)', () => {
       fail('should have thrown');
     } catch (err) {
       expect(err.code).toBe('resource-exhausted');
-      expect(err.details).toEqual({
+      expect(err.details).toEqual(expect.objectContaining({
         clientId: 'C001',
         currentRemaining: -8,
         requestedHoursDelta: 3,
         wouldBe: -11
-      });
+      }));
+      // buildAppError envelope (added 0f8bc92): code/userMessage/devMessage
+      expect(err.details.code).toBe('ERR-1003');
     }
   });
 
@@ -490,11 +492,15 @@ describe('Code-level verification — UPDATE guard in source', () => {
     expect(matches.length).toBeGreaterThanOrEqual(6);
   });
 
-  test('UPDATE guard section throws resource-exhausted', () => {
+  test('UPDATE guard section throws CLIENT_OVERDRAFT_EDIT via buildAppError', () => {
     const updateGuardSection = timesheetCode.substring(
       timesheetCode.indexOf('UPDATE GUARD'),
       timesheetCode.indexOf('Fix editHistory')
     );
-    expect(updateGuardSection).toContain("'resource-exhausted'");
+    // Source refactored 0f8bc92: literal 'resource-exhausted' replaced by
+    // buildAppError(ERROR_CODES.CLIENT_OVERDRAFT_EDIT, ...). Httpscode
+    // 'resource-exhausted' is now in functions/shared/errors.js (ERR-1003 spec).
+    expect(updateGuardSection).toContain('CLIENT_OVERDRAFT_EDIT');
+    expect(updateGuardSection).toContain('buildAppError');
   });
 });

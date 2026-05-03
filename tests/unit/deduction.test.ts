@@ -2,7 +2,7 @@
  * 🧪 Unit Tests for deduction.js
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Mock the deduction module
 const deduction = {
@@ -17,7 +17,9 @@ const deduction = {
   },
 
   calculateRemainingHours(entity) {
-    if (!entity) return 0;
+    if (!entity) {
+return 0;
+}
 
     if (!entity.packages || entity.packages.length === 0) {
       return entity.hoursRemaining || 0;

@@ -217,10 +217,14 @@
      * @param {*} timestamp - Timestamp in various formats
      */
     toDate(timestamp) {
-      if (!timestamp) return null;
+      if (!timestamp) {
+return null;
+}
 
       // Already a Date object
-      if (timestamp instanceof Date) return timestamp;
+      if (timestamp instanceof Date) {
+return timestamp;
+}
 
       // Firestore Timestamp object (from real-time listener)
       if (timestamp.toDate && typeof timestamp.toDate === 'function') {
