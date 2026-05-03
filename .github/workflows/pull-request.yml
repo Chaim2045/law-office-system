@@ -196,7 +196,7 @@ jobs:
           fi
 
       - name: 📊 Upload Security Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: security-report-pr-${{ github.event.pull_request.number }}
