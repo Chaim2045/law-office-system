@@ -805,9 +805,13 @@ return;
             const reportingConsistency = capacityMetrics.reportingConsistency || 0;
             const score = Math.max(0, Math.min(100, reportingConsistency));
             let level;
-            if (score >= 70) level = 'high';
-            else if (score >= 30) level = 'medium';
-            else level = 'low';
+            if (score >= 70) {
+level = 'high';
+} else if (score >= 30) {
+level = 'medium';
+} else {
+level = 'low';
+}
             return { score: this.roundTo(score, 1), level, reasons: [] };
         }
 

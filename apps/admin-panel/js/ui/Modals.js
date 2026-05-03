@@ -206,7 +206,9 @@
          * סגירת המודאל העליון
          */
         closeTopModal() {
-            if (this.activeModals.size === 0) return;
+            if (this.activeModals.size === 0) {
+return;
+}
 
             // Get last modal ID
             const modalIds = Array.from(this.activeModals.keys());

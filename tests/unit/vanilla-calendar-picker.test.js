@@ -27,13 +27,13 @@ describe('VanillaCalendarPicker v5.0.0', () => {
     mockLogger = {
       log: vi.fn(),
       error: vi.fn(),
-      warn: vi.fn(),
+      warn: vi.fn()
     };
     global.Logger = mockLogger;
 
     // Mock EventBus
     mockEventBus = {
-      emit: vi.fn(),
+      emit: vi.fn()
     };
     global.EventBus = mockEventBus;
 
@@ -45,9 +45,9 @@ describe('VanillaCalendarPicker v5.0.0', () => {
           destroy: vi.fn(),
           update: vi.fn(),
           selectedDates: [],
-          selectedTime: null,
+          selectedTime: null
         };
-      }),
+      })
     };
 
     // Load the VanillaCalendarPicker class
@@ -332,7 +332,7 @@ describe('VanillaCalendarPicker v5.0.0', () => {
       const expectedData = {
         inputId: 'testCalendar',
         date: expect.any(Date),
-        isoString: expect.any(String),
+        isoString: expect.any(String)
       };
       expect(expectedData.inputId).toBe('testCalendar');
     });

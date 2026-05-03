@@ -569,13 +569,11 @@ class ActionEngine {
             // בדוק אם יש פעולה ישירה
             if (action.directAction) {
                 result = await this.executeDirectAction(action.directAction, context);
-            }
-            // בדוק אם יש הדרכה מלאה
-            else if (action.fullGuide) {
+            } else if (action.fullGuide) {
+                // בדוק אם יש הדרכה מלאה
                 result = { success: true, type: 'guide', message: 'Guide available' };
-            }
-            // בדוק אם יש מידע בלבד
-            else if (action.info) {
+            } else if (action.info) {
+                // בדוק אם יש מידע בלבד
                 result = { success: true, type: 'info', message: 'Info displayed' };
             } else {
                 result = { success: false, error: 'No executable action found' };
