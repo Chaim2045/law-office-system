@@ -30,6 +30,7 @@ const commonIgnores = [
   'docs/**',
   '.github/**',
   'functions/**', // ✅ Server-side code (Node.js) - different linting rules
+  'scripts/**',   // ✅ Ad-hoc maintenance/migration scripts (Node.js, console output expected)
   '**/lib/**',    // ✅ Vendored third-party libraries (e.g. lucide.min.js)
   'vite.config.ts',
   'vitest.config.ts',
@@ -73,7 +74,8 @@ export default [
       'devtools/**',
       'docs/**',
       '.github/**',
-      'functions/**'
+      'functions/**',
+      'scripts/**'
     ]
   },
   // TypeScript files - with type checking

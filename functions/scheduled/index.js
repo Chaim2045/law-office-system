@@ -380,6 +380,42 @@ const dailyInvariantCheck = onSchedule({
       }
     });
 
+    // Check 5: package drift — service.totalHours vs Σ(packages.hours)
+    // Catches the regression pattern fixed in commit 974152d (renewServiceHours
+    // updated totalHours but skipped pushing the new package).
+    // Tolerance: 0.05h (3min) to allow rounding noise.
+    const PKG_DRIFT_TOLERANCE = 0.05;
+    clientsSnapshot.docs.forEach(clientDoc => {
+      const data = clientDoc.data();
+      const clientName = data.clientName || data.name || clientDoc.id;
+      (data.services || []).forEach(svc => {
+        const isHours = svc.type === ST.HOURS || svc.serviceType === ST.HOURS;
+        if (!isHours) return;
+        const packages = Array.isArray(svc.packages) ? svc.packages : [];
+        if (packages.length === 0) {
+          // Service with no packages — skip (separate concern)
+          return;
+        }
+        const sumPkgHours = packages.reduce((sum, p) => sum + (p.hours || 0), 0);
+        const totalHours = svc.totalHours || 0;
+        const drift = Math.abs(totalHours - sumPkgHours);
+        if (drift > PKG_DRIFT_TOLERANCE) {
+          discrepancies.push({
+            type: 'package_drift',
+            clientId: clientDoc.id,
+            clientName,
+            serviceId: svc.id,
+            serviceName: svc.name || svc.serviceName || svc.id,
+            totalHours: parseFloat(totalHours.toFixed(2)),
+            sumPkgHours: parseFloat(sumPkgHours.toFixed(2)),
+            drift: parseFloat(drift.toFixed(2)),
+            packageCount: packages.length,
+            renewalHistoryCount: (svc.renewalHistory || []).length
+          });
+        }
+      });
+    });
+
     // Save result to system_health_checks
     if (discrepancies.length > 0) {
       await db.collection('system_health_checks').add({
