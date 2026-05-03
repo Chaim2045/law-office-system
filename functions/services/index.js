@@ -364,6 +364,21 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       service.hoursUsed = svcHoursUsed;
       service.hoursRemaining = round2(service.totalHours - svcHoursUsed);
 
+      // ── Invariant guard: prevent drift between service.totalHours and Σ(packages.hours) ──
+      // Drift happened historically (pre-2026-02-19) when renewServiceHours updated totalHours
+      // but skipped pushing the new package. This guard catches any future regression.
+      const sumPkgHours = round2(
+        service.packages.reduce((sum, pkg) => sum + (pkg.hours || 0), 0)
+      );
+      const drift = round2(service.totalHours - sumPkgHours);
+      if (Math.abs(drift) > 0.05) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `Invariant violation: service.totalHours (${service.totalHours}) ≠ Σ(packages.hours) (${sumPkgHours}). Drift=${drift}h. Refusing to write inconsistent state.`,
+          { serviceId: service.id, totalHours: service.totalHours, sumPkgHours, drift }
+        );
+      }
+
       // עדכון המערך
       services[serviceIndex] = service;
 
