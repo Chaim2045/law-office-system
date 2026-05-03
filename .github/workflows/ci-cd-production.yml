@@ -104,7 +104,7 @@ jobs:
           fi
 
       - name: 📊 Upload Quality Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: code-quality-report
@@ -141,7 +141,7 @@ jobs:
         run: npm run compile-ts
 
       - name: 📊 Upload Compiled Files
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: typescript-dist
           path: apps/user-app/dist/
@@ -182,7 +182,7 @@ jobs:
           fi
 
       - name: 📊 Upload Security Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: security-report
@@ -289,7 +289,7 @@ jobs:
           PLAYWRIGHT_BASE_URL: https://gh-law-office-system.netlify.app
 
       - name: 📤 Upload Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-report
@@ -297,7 +297,7 @@ jobs:
           retention-days: 30
 
       - name: 📤 Upload E2E Screenshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-screenshots
@@ -348,7 +348,7 @@ jobs:
           cp firebase.json build-output/ 2>/dev/null || echo "No firebase.json"
 
       - name: 📤 Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-artifacts
           path: build-output/
