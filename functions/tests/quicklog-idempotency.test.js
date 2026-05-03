@@ -95,7 +95,10 @@ jest.mock('../shared/audit', () => ({
 }));
 
 jest.mock('../shared/validators', () => ({
-  sanitizeString: jest.fn((s) => s)
+  sanitizeString: jest.fn((s) => s),
+  // getDescriptionLimit added in source 2d88fc3 (config-driven limits).
+  // Tests don't exercise length validation; mock returns generous default (500).
+  getDescriptionLimit: jest.fn().mockResolvedValue(500)
 }));
 
 jest.mock('../src/modules/deduction', () => ({
