@@ -53,7 +53,7 @@ import {
   createServiceBadge,
   createServiceInfoHeader,
   createCombinedInfoBadge
-} from './timesheet-constants.js';
+} from './timesheet-constants.js?v=esc5fix';
 
 import DescriptionTooltips from './description-tooltips.js';
 

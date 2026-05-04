@@ -44,7 +44,7 @@
  */
 
 // Import budget tasks load limit constant
-import { BUDGET_TASKS_LOAD_LIMIT } from './budget-tasks.js';
+import { BUDGET_TASKS_LOAD_LIMIT } from './budget-tasks.js?v=esc5fix';
 
 /**
  * Manager for real-time listeners
