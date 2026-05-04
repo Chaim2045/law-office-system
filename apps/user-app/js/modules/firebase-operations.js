@@ -30,7 +30,7 @@
    =========================== */
 
 // ✅ Import budget tasks functions from dedicated module (DRY principle)
-import { loadBudgetTasksFromFirebase } from './budget-tasks.js';
+import { loadBudgetTasksFromFirebase } from './budget-tasks.js?v=esc5fix';
 import { buildErrorFromResult } from './error-utils.js';
 
 /* === Firebase Functions Wrapper === */

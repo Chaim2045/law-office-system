@@ -66,7 +66,7 @@ import * as Forms from './modules/forms.js';
 
 // Budget Tasks Module (v5.2.4 - rings fix with 100%+ support)
 import * as BudgetTasks from './modules/budget-tasks.js?v=esc5fix';
-import { BUDGET_TASKS_LOAD_LIMIT } from './modules/budget-tasks.js';
+import { BUDGET_TASKS_LOAD_LIMIT } from './modules/budget-tasks.js?v=esc5fix';
 
 // Timesheet Module
 import * as Timesheet from './modules/timesheet.js';
