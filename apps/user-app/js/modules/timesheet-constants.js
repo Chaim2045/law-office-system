@@ -272,12 +272,15 @@ export function createServiceInfoHeader(caseNumber, serviceName) {
  * @returns {string} Escaped text
  */
 function escapeHtml(text) {
-  if (!text) {
+  if (text === null || text === undefined) {
 return '';
 }
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /* ========================================
