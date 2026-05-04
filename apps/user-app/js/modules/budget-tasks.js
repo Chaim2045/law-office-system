@@ -32,7 +32,7 @@ import {
   createServiceBadge,
   createCombinedInfoBadge,
   createStatusBadge
-} from './timesheet-constants.js';
+} from './timesheet-constants.js?v=esc5fix';
 import { buildErrorFromResult } from './error-utils.js';
 
 import DescriptionTooltips from './description-tooltips.js';
