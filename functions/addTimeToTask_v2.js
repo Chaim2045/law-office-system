@@ -483,6 +483,18 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                   }
                 }
               }
+            } else if (serviceType === ST.FIXED) {
+              const svcIndex = services.findIndex(s => s.id === lookupServiceId);
+              if (svcIndex !== -1) {
+                const updatedSvc = { ...services[svcIndex] };
+                const work = { ...(updatedSvc.work || { totalMinutesWorked: 0, entriesCount: 0 }) };
+                work.totalMinutesWorked = round2((work.totalMinutesWorked || 0) + minutesDelta);
+                work.entriesCount = (work.entriesCount || 0) + 1;
+                updatedSvc.work = work;
+                const updatedArr = [...services];
+                updatedArr[svcIndex] = updatedSvc;
+                deductionResult = { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
+              }
             }
           }
         }
