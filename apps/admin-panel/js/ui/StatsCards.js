@@ -153,7 +153,9 @@
          * עדכון סטטיסטיקות (without full re-render)
          */
         update(statistics) {
-            if (!statistics) return;
+            if (!statistics) {
+return;
+}
 
             this.cards.forEach(card => {
                 const value = card.getValue(statistics);

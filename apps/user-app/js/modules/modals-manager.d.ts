@@ -353,10 +353,12 @@ declare module 'modals-manager' {
 // GLOBAL DECLARATION (for non-module usage)
 // ═══════════════════════════════════════════════════════════════════════
 
+import type { ModalsManager as ModalsManagerType } from 'modals-manager';
+
 declare global {
   interface Window {
-    ModalsManager: import('modals-manager').ModalsManager;
+    ModalsManager: ModalsManagerType;
   }
 
-  const ModalsManager: import('modals-manager').ModalsManager;
+  const ModalsManager: ModalsManagerType;
 }

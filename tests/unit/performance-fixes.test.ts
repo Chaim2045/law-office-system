@@ -28,40 +28,10 @@ function readJS(relativePath: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. modals.css — blur values
+// 1. modals.css — blur values (REMOVED 2026-05-03)
+// Source CSS no longer contains backdrop-filter blur. Tests deleted as stale.
+// If blur is reintroduced and needs validation, restore from git history.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('modals.css — blur performance', () => {
-  let css: string;
-
-  beforeEach(() => {
-    css = readCSS('css/modals.css');
-  });
-
-  it('popup-overlay / modal-overlay uses blur(4px), not blur(12px)', () => {
-    // Extract the first backdrop-filter occurrence (popup-overlay block)
-    const popupBlock = css.match(
-      /\.popup-overlay[\s\S]*?backdrop-filter:\s*blur\((\d+)px\)/
-    );
-    expect(popupBlock).not.toBeNull();
-    expect(popupBlock![1]).toBe('4');
-  });
-
-  it('legacy modals (#taskModal etc.) use blur(4px), not blur(8px)', () => {
-    const legacyBlock = css.match(
-      /#taskModal[\s\S]*?backdrop-filter:\s*blur\((\d+)px\)/
-    );
-    expect(legacyBlock).not.toBeNull();
-    expect(legacyBlock![1]).toBe('4');
-  });
-
-  it('REGRESSION: no blur value exceeds 4px anywhere in modals.css', () => {
-    const allBlurs = [...css.matchAll(/blur\((\d+)px\)/g)].map(m => Number(m[1]));
-    expect(allBlurs.length).toBeGreaterThan(0);
-    allBlurs.forEach(val => {
-      expect(val).toBeLessThanOrEqual(4);
-    });
-  });
-});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 2. GuidedTextInput.js — DOM cache + CSS classes
@@ -669,7 +639,7 @@ describe('index.html — cache-bust hash updated', () => {
   });
 
   it('all CSS/JS links have a consistent hash', () => {
-    const hashes = [...html.matchAll(/\?v=([a-f0-9]+)/g)].map(m => m[1]);
+    const hashes = [...html.matchAll(/\?v=([a-zA-Z0-9_-]+)/g)].map(m => m[1]);
     expect(hashes.length).toBeGreaterThan(0);
     const uniqueHashes = [...new Set(hashes)];
     // All hashes should be the same (single cache-bust value)

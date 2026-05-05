@@ -2,9 +2,9 @@
 ## law-office-system-e4801
 
 **מנוהל על ידי:** טומי — ראש צוות הפיתוח
-**עדכון אחרון:** 2026-04-17
-**סטטוס:** Audit Trail rebuild — User Profiles + security hardening — PROD
-**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194, #195, #197, #198, #199, #200, #201, #204, #208, #209, #210, #211
+**עדכון אחרון:** 2026-05-01
+**סטטוס:** Package drift migration + invariant guards — PROD
+**PRs:** #144, #145, #146, #166, #168, #169, #170, #171, #172, #173, #176, #177, #178, #183, #188, #189, #190, #191, #192, #194, #195, #197, #198, #199, #200, #201, #204, #208, #209, #210, #211, #233, #234
 
 ---
 
@@ -13,8 +13,8 @@
 ### Branches
 
 ```
-main:               fc8a808 — Audit Trail rebuild + security hardening
-production-stable:  cbe6f8f — merged PR #211
+main:               b38eb20 — package drift migration + invariant guards
+production-stable:  62a1c9a — merged PR #234
 אין branches פתוחים.
 ```
 
@@ -70,6 +70,7 @@ production-stable:  cbe6f8f — merged PR #211
 | #201 | 12/4 | deploy: Daily reporting meter to PROD |
 | #204 | 14/4 | perf: eliminate popup interaction lag — root cause היה backdrop-filter: blur(12px) על כל popups שגרם ל-GPU recomposite בכל keystroke/DOM change. הסרה מלאה של backdrop-filter, transition: all → ממוקד, animation 0.35s→0.15s, setTimeout(10)→requestAnimationFrame (11 מופעים). כולל: ActionFlowManager דילייים מלאכותיים (minLoadingDuration 200→0, closeDelay 500→150), GuidedTextInput DOM caching, _realTimeListenersStarted guard, 50 unit tests |
 | #208, #209, #210, #211 | 16–17/4 | Audit Trail rebuild — User Profiles view (admin-panel): החליף טאבי role-based ב-2 מצבים: רשימת פרופילים (קלפים) + כניסה לפרופיל → לוג פעולות מלא מ-audit_log + activity_log. Security hardening: audit_log rule הפך ל-admin-only (היה authenticated), activity_log rule תוקן ל-userId (היה performedBy — שדה לא קיים). Correctness: load-token race guard, _timestampToMillis לכל פורמטי Firestore, warning banners (truncation 500 + missing timestamp), double-escape fix ב-tooltip. Indexes: 3 חדשים (activity_log.userId, audit_log.adminEmail, activity_log.userEmail). Client-side filtering (אין re-query ב-Firestore על לחיצת סנן) |
+| #233, #234 | 1–2/5 | Package drift migration + invariant guards — תיקן 7 לקוחות עם drift של 202.3h חסרות בין service.totalHours ל-Σ(packages.hours). רקע: באג ב-renewServiceHours pre-2026-02-19 (commit 974152d) שעדכן service.totalHours+renewalHistory בלי לדחוף לpackages[]. תוצאה: Admin הציג שעות זמינות (service-level), backend חסם רישום (getActivePackage ראה רק חבילה ראשונית מוצה). זוהה כשחיים ניסה לרשום שעות ל-2025306 (בן ניסן). Migration v3 (scripts/migrate-package-drift-v3-2026-05-01.js): cascade overdraft chronologically across renewals, sort packages by activity rank (overdraft/active first), tx-level concurrent write detection, snapshot backups ב-migration_backup_2026_05_01, INTENT+RESULT audit log entries, orphan timesheet_entries backfill by date. Code hardening: addPackageToService validates totalHours==Σ(packages.hours) לפני commit (throws failed-precondition), dailyInvariantCheck Check 5 (package_drift) detection. 12 unit tests. לקוחות מועברים: 2025306 (בן ניסן +30h), 2025011 (ליאורה +25h, 2 renewals + cascade tail), 2025002 (אהוד +22.3h+21h, 2 services), 2025333 (דן אלדובי +20h), 2026045 (חיים פרץ +20h), 20251000 (משה קידר +15h). Out of scope (backlog): 2026008 (חזי מאנע — 91h trigger drift נפרד), 2025724 (מאפיית הכפר — empty packages array). Smoke verified ב-2025306. Sweep verification: 7/7 cleared |
 
 ---
 

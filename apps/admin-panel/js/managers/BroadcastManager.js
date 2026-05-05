@@ -59,7 +59,7 @@ window.BroadcastManager = (function() {
     // STATE MANAGEMENT
     // ═══════════════════════════════════════════════════════════
 
-    let state = {
+    const state = {
         selectedEmployees: new Set(),
         selectedTemplate: null,
         customMessage: '',
@@ -269,7 +269,9 @@ window.BroadcastManager = (function() {
 
     function renderEmployeeList(employees) {
         const container = document.getElementById('employeeList');
-        if (!container) return;
+        if (!container) {
+return;
+}
 
         if (employees.length === 0) {
             container.innerHTML = `
@@ -369,7 +371,9 @@ window.BroadcastManager = (function() {
 
     function updateSendButton() {
         const btn = document.getElementById('sendBroadcastBtn');
-        if (!btn) return;
+        if (!btn) {
+return;
+}
 
         const hasTemplate = state.selectedTemplate !== null;
         const hasEmployees = state.selectedEmployees.size > 0;
@@ -384,12 +388,16 @@ window.BroadcastManager = (function() {
     // ═══════════════════════════════════════════════════════════
 
     async function sendBroadcast() {
-        if (state.isSending) return;
+        if (state.isSending) {
+return;
+}
 
         // Confirm before sending
         const count = state.selectedEmployees.size;
         const confirmed = confirm(`האם אתה בטוח שברצונך לשלוח הודעה ל-${count} עובדים?`);
-        if (!confirmed) return;
+        if (!confirmed) {
+return;
+}
 
         state.isSending = true;
 

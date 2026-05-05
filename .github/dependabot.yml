@@ -1,0 +1,60 @@
+# Dependabot configuration
+# Replaces npm audit step in CI (Phase 1, 2026-05-03).
+# Phase 1.5 will revisit firebase 11→12 + firebase-admin 9→13 breaking upgrade.
+
+version: 2
+updates:
+  # Root package.json (User App + tests + Vite/Vitest tooling)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Jerusalem"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+    # Group security updates separately for fast review
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # Firebase Functions (Node 20 backend)
+  - package-ecosystem: "npm"
+    directory: "/functions"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Jerusalem"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps,functions)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "functions"
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore(deps,actions)"
+    labels:
+      - "dependencies"
+      - "ci-cd"

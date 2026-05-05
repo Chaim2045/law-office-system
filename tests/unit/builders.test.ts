@@ -2,7 +2,7 @@
  * 🧪 Unit Tests for builders.js
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Mock the builders module
 const builders = {

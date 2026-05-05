@@ -46,7 +46,9 @@ describe('Data Structure Tests', () => {
 
   test('calculateRemainingHours from packages', () => {
     const calculateRemainingHours = (entity) => {
-      if (!entity) return 0;
+      if (!entity) {
+return 0;
+}
 
       if (!entity.packages || entity.packages.length === 0) {
         return entity.hoursRemaining || 0;

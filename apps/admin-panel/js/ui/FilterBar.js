@@ -205,7 +205,9 @@
          */
         attachSearchInput() {
             const searchInput = document.getElementById('searchInput');
-            if (!searchInput) return;
+            if (!searchInput) {
+return;
+}
 
             // Clone & replace to remove old listeners
             const newInput = searchInput.cloneNode(true);
@@ -230,7 +232,9 @@
          */
         attachSearchClear() {
             const searchClear = document.getElementById('searchClear');
-            if (!searchClear) return;
+            if (!searchClear) {
+return;
+}
 
             const newButton = searchClear.cloneNode(true);
             searchClear.parentNode.replaceChild(newButton, searchClear);
@@ -246,7 +250,9 @@
          */
         attachRoleFilter() {
             const roleFilter = document.getElementById('roleFilter');
-            if (!roleFilter) return;
+            if (!roleFilter) {
+return;
+}
 
             const newSelect = roleFilter.cloneNode(true);
             roleFilter.parentNode.replaceChild(newSelect, roleFilter);
@@ -262,7 +268,9 @@
          */
         attachStatusFilter() {
             const statusFilter = document.getElementById('statusFilter');
-            if (!statusFilter) return;
+            if (!statusFilter) {
+return;
+}
 
             const newSelect = statusFilter.cloneNode(true);
             statusFilter.parentNode.replaceChild(newSelect, statusFilter);
@@ -278,7 +286,9 @@
          */
         attachRefreshButton() {
             const refreshButton = document.getElementById('refreshButton');
-            if (!refreshButton) return;
+            if (!refreshButton) {
+return;
+}
 
             const newButton = refreshButton.cloneNode(true);
             refreshButton.parentNode.replaceChild(newButton, refreshButton);
@@ -294,7 +304,9 @@
          */
         attachExportButton() {
             const exportButton = document.getElementById('exportButton');
-            if (!exportButton) return;
+            if (!exportButton) {
+return;
+}
 
             const newButton = exportButton.cloneNode(true);
             exportButton.parentNode.replaceChild(newButton, exportButton);
@@ -314,7 +326,9 @@
          */
         attachAddUserButton() {
             const addUserButton = document.getElementById('addUserButton');
-            if (!addUserButton) return; // Not on employees page
+            if (!addUserButton) {
+return;
+} // Not on employees page
 
             const newButton = addUserButton.cloneNode(true);
             addUserButton.parentNode.replaceChild(newButton, addUserButton);
