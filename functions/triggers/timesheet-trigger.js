@@ -224,6 +224,28 @@ const onTimesheetEntryChanged = onDocumentWritten({
     return null;
   }
 
+  // ── Observability: detect callables that wrote a taskId entry without setting the flag ──
+  // Background: addTimeToTask had a missing ST.FIXED branch (PR #257) that returned
+  // deductionResult=null → deductedInTransaction stayed false → trigger ran the fallback
+  // CREATE path → actualMinutes was incremented twice (callable + trigger). 7 tasks drifted
+  // for 6 days before user noticed. This warning surfaces the same class of regression
+  // immediately in logs instead of waiting for drift audit.
+  // NOT a behavioral change — trigger fallback still runs as before.
+  if (eventType === 'CREATE' && entry.taskId && entry.deductedInTransaction !== true) {
+    console.warn(JSON.stringify({
+      severity: 'WARNING',
+      event: 'TRIGGER_FALLBACK_WITH_TASK',
+      message: 'Trigger CREATE fallback ran for an entry that has a taskId — possible callable bug (missing deductedInTransaction). If callable already incremented task.actualMinutes, this will double-count.',
+      entryId,
+      taskId: entry.taskId,
+      serviceId: entry.serviceId || null,
+      serviceType: entry.serviceType || null,
+      minutes: entry.minutes || 0,
+      createdBy: entry.createdBy || null,
+      action: entry.action || null,
+    }));
+  }
+
   // ── Guard: clientId required ──
   const clientId = entry.clientId;
   if (!clientId) {
