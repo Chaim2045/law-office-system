@@ -766,6 +766,7 @@ card.classList.add('resolved');
             // Data attributes for selection
             card.dataset.serviceName = serviceInfo.displayName;
             card.dataset.serviceId = serviceInfo.serviceId || serviceInfo.stage || '';
+            card.dataset.stage = serviceInfo.stage || '';
             card.dataset.serviceIndex = index;
             card.dataset.serviceType = serviceInfo.type;
 
@@ -1002,8 +1003,9 @@ card.classList.add('resolved');
             // Update hidden input with sanitized value
             this.selectedServiceInput.value = this.sanitizeInput(serviceName);
             this.selectedServiceInput.dataset.serviceId = card.dataset.serviceId || '';
+            this.selectedServiceInput.dataset.stage = card.dataset.stage || '';
 
-            console.log('✅ Selected service:', serviceName, '| serviceId:', card.dataset.serviceId);
+            console.log('✅ Selected service:', serviceName, '| serviceId:', card.dataset.serviceId, '| stage:', card.dataset.stage);
         }
 
         /**
@@ -1121,6 +1123,7 @@ return '';
                 endDate: this.endDateInput?.value,
                 service: this.selectedServiceInput?.value || '',
                 serviceId: this.selectedServiceInput?.dataset.serviceId || '',
+                stage: this.selectedServiceInput?.dataset.stage || '',
                 reportType,
                 reportFormat
             };

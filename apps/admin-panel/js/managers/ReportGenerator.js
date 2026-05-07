@@ -93,6 +93,14 @@ return true;
                     if (formData.serviceId && entry.service === formData.serviceId) {
 return true;
 }
+                    // legal_procedure stages: entries store stage id (e.g. "stage_a") in serviceId,
+                    // while card holds parent service id. Match by stage when present.
+                    if (formData.stage && entry.serviceId === formData.stage) {
+return true;
+}
+                    if (formData.stage && entry.stage === formData.stage) {
+return true;
+}
                     if (entry.service === formData.service) {
 return true;
 }
