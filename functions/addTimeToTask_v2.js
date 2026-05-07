@@ -189,6 +189,31 @@ function sanitizeString(str) {
   return str.trim().replace(/[<>]/g, '');
 }
 
+/**
+ * Pure: increment work tracking on a fixed-type service.
+ *
+ * Returns deductionResult shape { updatedServices, isOverage, overageMinutes } or null
+ * if the target service is not found. Caller uses non-null result to set
+ * deductedInTransaction=true on the entry, which causes timesheet-trigger to skip the
+ * fallback CREATE path (preventing double-count of task.actualMinutes).
+ *
+ * Extracted in PR #259 (Level 2 hardening) so the FIXED branch is unit-testable in
+ * isolation without spinning up a Firestore transaction.
+ */
+function computeFixedDeduction(services, lookupServiceId, minutesDelta) {
+  if (!Array.isArray(services)) return null;
+  const svcIndex = services.findIndex(s => s && s.id === lookupServiceId);
+  if (svcIndex === -1) return null;
+  const updatedSvc = { ...services[svcIndex] };
+  const work = { ...(updatedSvc.work || { totalMinutesWorked: 0, entriesCount: 0 }) };
+  work.totalMinutesWorked = round2((work.totalMinutesWorked || 0) + minutesDelta);
+  work.entriesCount = (work.entriesCount || 0) + 1;
+  updatedSvc.work = work;
+  const updatedArr = [...services];
+  updatedArr[svcIndex] = updatedSvc;
+  return { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
+}
+
 function lookupServiceIds(clientData, taskData) {
   const result = { stageId: null, packageId: null };
 
@@ -484,17 +509,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                 }
               }
             } else if (serviceType === ST.FIXED) {
-              const svcIndex = services.findIndex(s => s.id === lookupServiceId);
-              if (svcIndex !== -1) {
-                const updatedSvc = { ...services[svcIndex] };
-                const work = { ...(updatedSvc.work || { totalMinutesWorked: 0, entriesCount: 0 }) };
-                work.totalMinutesWorked = round2((work.totalMinutesWorked || 0) + minutesDelta);
-                work.entriesCount = (work.entriesCount || 0) + 1;
-                updatedSvc.work = work;
-                const updatedArr = [...services];
-                updatedArr[svcIndex] = updatedSvc;
-                deductionResult = { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
-              }
+              deductionResult = computeFixedDeduction(services, lookupServiceId, minutesDelta);
             }
           }
         }
@@ -639,4 +654,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
   );
 }
 
-module.exports = { addTimeToTaskWithTransaction };
+module.exports = {
+  addTimeToTaskWithTransaction,
+  _test: { computeFixedDeduction }
+};
