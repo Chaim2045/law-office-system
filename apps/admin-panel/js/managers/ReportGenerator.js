@@ -93,6 +93,14 @@ return true;
                     if (formData.serviceId && entry.service === formData.serviceId) {
 return true;
 }
+                    // legal_procedure stages: entries store stage id (e.g. "stage_a") in serviceId,
+                    // while card holds parent service id. Match by stage when present.
+                    if (formData.stage && entry.serviceId === formData.stage) {
+return true;
+}
+                    if (formData.stage && entry.stage === formData.stage) {
+return true;
+}
                     if (entry.service === formData.service) {
 return true;
 }
@@ -917,33 +925,58 @@ return true;
                     serviceRemainingHours = client.hoursRemaining || 0;
                 }
             } else {
-                const selectedService = client.services?.find(s => {
-                    if (s.name === formData.service) {
-return true;
-}
-                    if (s.serviceName === formData.service) {
-return true;
-}
-                    if (s.displayName === formData.service) {
-return true;
-}
-                    if (s.stage && formData.service.includes(s.stage)) {
-return true;
-}
-                    if (s.displayName && s.displayName.includes(formData.service)) {
-return true;
-}
-                    return false;
-                });
+                // First try: legal_procedure stage (formData.stage holds e.g. "stage_a")
+                let selectedStage = null;
+                if (formData.stage && Array.isArray(client.services)) {
+                    for (const s of client.services) {
+                        if (Array.isArray(s.stages)) {
+                            const match = s.stages.find(st => st.id === formData.stage);
+                            if (match) {
+                                selectedStage = match;
+                                break;
+                            }
+                        }
+                    }
+                }
 
-                if (selectedService) {
-                    serviceTotalHours = selectedService.totalHours || selectedService.hours || selectedService.allocatedHours || selectedService.stageHours || 0;
-                    serviceRemainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
-                    serviceUsedHours = serviceTotalHours - serviceRemainingHours;
+                if (selectedStage) {
+                    serviceTotalHours = selectedStage.totalHours || selectedStage.hours || 0;
+                    serviceRemainingHours = (selectedStage.hoursRemaining !== undefined)
+                        ? selectedStage.hoursRemaining
+                        : (serviceTotalHours - (selectedStage.hoursUsed || 0));
+                    serviceUsedHours = selectedStage.hoursUsed !== undefined
+                        ? selectedStage.hoursUsed
+                        : (serviceTotalHours - serviceRemainingHours);
                 } else {
-                    serviceTotalHours = client.totalHours || 0;
-                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
-                    serviceRemainingHours = client.hoursRemaining || 0;
+                    const selectedService = client.services?.find(s => {
+                        if (s.name === formData.service) {
+return true;
+}
+                        if (s.serviceName === formData.service) {
+return true;
+}
+                        if (s.displayName === formData.service) {
+return true;
+}
+                        if (s.stage && formData.service.includes(s.stage)) {
+return true;
+}
+                        if (s.displayName && s.displayName.includes(formData.service)) {
+return true;
+}
+                        return false;
+                    });
+
+                    if (selectedService) {
+                        serviceTotalHours = selectedService.totalHours || selectedService.hours || selectedService.allocatedHours || selectedService.stageHours || 0;
+                        serviceRemainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
+                        serviceUsedHours = serviceTotalHours - serviceRemainingHours;
+                    } else {
+                        // Last resort: derive from filtered timesheetEntries (already service-scoped)
+                        serviceUsedHours = timesheetEntries.reduce((sum, e) => sum + ((e.minutes || 0) / 60), 0);
+                        serviceTotalHours = 0;
+                        serviceRemainingHours = -serviceUsedHours;
+                    }
                 }
             }
 
