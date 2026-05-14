@@ -776,11 +776,12 @@ exports.closeCase = functions.https.onCall(async (data, context) => {
         };
       });
 
-      // Recalculate client-level aggregates
+      // Recalculate client-level aggregates via canonical calcClientAggregates.
+      // (Previously: manual reduce over ALL services including fixed — fixed
+      // services have hoursUsed > 0 for internal tracking, which leaked into
+      // client.hoursUsed and caused drift. Fixed 2026-05-13.)
       const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const clientHoursUsed = updatedServices.reduce((sum, s) => sum + (s.hoursUsed || 0), 0);
-      const clientHoursRemaining = updatedServices.reduce((sum, s) => sum + (s.hoursRemaining || 0), 0);
-      const clientMinutesRemaining = clientHoursRemaining * 60;
+      const agg = calcClientAggregates(updatedServices, clientTotalHours);
       const totalServices = updatedServices.length;
       const activeServices = 0;
 
@@ -788,16 +789,16 @@ exports.closeCase = functions.https.onCall(async (data, context) => {
       transaction.update(clientRef, {
         status: 'inactive',
         isArchived: true,
-        isBlocked: false,
-        isCritical: false,
+        isBlocked: false,         // forced false on archive (always)
+        isCritical: false,        // forced false on archive (always)
         archivedAt: now,
         services: updatedServices,
         totalServices: totalServices,
         activeServices: activeServices,
         totalHours: clientTotalHours,
-        hoursUsed: clientHoursUsed,
-        hoursRemaining: clientHoursRemaining,
-        minutesRemaining: clientMinutesRemaining,
+        hoursUsed: agg.hoursUsed,                 // canonical: excludes fixed
+        hoursRemaining: agg.hoursRemaining,       // canonical
+        minutesRemaining: agg.minutesRemaining,   // canonical
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastModifiedBy: user.username
       });

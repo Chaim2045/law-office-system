@@ -101,92 +101,18 @@ throw new Error('Firebase לא מחובר');
   }
 }
 
-/**
- * Update client hours immediately in Firebase
- */
-async function updateClientHoursImmediately(clientName, minutesUsed) {
-  try {
-    const db = window.firebaseDB;
-    if (!db) {
-throw new Error('Firebase לא מחובר');
-}
-
-
-    // Find the client
-    const clientsSnapshot = await db
-      .collection('clients')
-      .where('fullName', '==', clientName)
-      .get();
-
-    if (clientsSnapshot.empty) {
-      console.warn(`⚠️ לקוח ${clientName} לא נמצא - לא ניתן לעדכן שעות`);
-      return { success: false, message: 'לקוח לא נמצא' };
-    }
-
-    const clientDoc = clientsSnapshot.docs[0];
-    const clientData = clientDoc.data();
-
-    // Only for hours-based clients
-    if (clientData.type !== 'hours') {
-      return { success: true, message: 'לקוח פיקס - לא נדרש עדכון' };
-    }
-
-    // Recalculate using accurate function
-    const hoursData = await calculateClientHoursAccurate(clientName);
-
-    // Update Firebase document with accurate data
-    await clientDoc.ref.update({
-      minutesRemaining: Math.max(0, hoursData.remainingMinutes),
-      hoursRemaining: Math.max(0, hoursData.remainingHours),
-      lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-      lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-      totalMinutesUsed: hoursData.totalMinutesUsed,
-      isBlocked: hoursData.isBlocked,
-      isCritical: hoursData.isCritical
-    });
-
-
-    // Update local system data
-    if (window.manager && window.manager.clients) {
-      const localClientIndex = window.manager.clients.findIndex(
-        (c) => c.fullName === clientName
-      );
-      if (localClientIndex !== -1) {
-        window.manager.clients[localClientIndex].hoursRemaining = Math.max(
-          0,
-          hoursData.remainingHours
-        );
-        window.manager.clients[localClientIndex].minutesRemaining = Math.max(
-          0,
-          hoursData.remainingMinutes
-        );
-        window.manager.clients[localClientIndex].isBlocked =
-          hoursData.isBlocked;
-        window.manager.clients[localClientIndex].isCritical =
-          hoursData.isCritical;
-        window.manager.clients[localClientIndex].totalMinutesUsed =
-          hoursData.totalMinutesUsed;
-
-        // Update client selectors
-        if (window.manager.clientValidation) {
-          window.manager.clientValidation.updateBlockedClients();
-        }
-      }
-    }
-
-    return {
-      success: true,
-      hoursData,
-      newHoursRemaining: hoursData.remainingHours,
-      newMinutesRemaining: hoursData.remainingMinutes,
-      isBlocked: hoursData.isBlocked,
-      isCritical: hoursData.isCritical
-    };
-  } catch (error) {
-    console.error('❌ שגיאה בעדכון שעות לקוח:', error);
-    throw new Error('שגיאה בעדכון שעות: ' + error.message);
-  }
-}
+// REMOVED 2026-05-13: updateClientHoursImmediately
+//
+// Reason: This function was a parallel write path for client.isBlocked that
+// did not use the canonical calcClientAggregates from functions/shared/aggregates.js.
+// It only checked `type === 'hours'` (missed legal_procedure+hourly), ignored
+// overrideActive and overdraftResolved, and wrote isBlocked directly to Firestore
+// based on a separate computation path (calculateClientHoursAccurate).
+//
+// Verified zero production callers (only window-exposed, no code invocations).
+// Removed to ensure single source of truth for client.isBlocked.
+//
+// Recovery: see .refactor-backups/client-hours.js if needed.
 
 /**
  * Client validation helper
@@ -322,6 +248,5 @@ continue;
 // Exports
 export {
   calculateClientHoursAccurate,
-  updateClientHoursImmediately,
   ClientValidation
 };
