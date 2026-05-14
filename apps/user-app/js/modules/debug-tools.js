@@ -1,15 +1,19 @@
 /**
  * Debug Tools Module
- * Provides debugging and diagnostic utilities for client hours tracking
+ * Read-only diagnostic utilities for client hours tracking
  *
  * Created: 2025
+ * Refactored: 2026-05-13 — removed write paths (fixClientHoursMismatch) that
+ * bypassed canonical calcClientAggregates and wrote isBlocked without checking
+ * overrideActive/overdraftResolved. See .refactor-backups/debug-tools.js.
+ *
  * Part of Law Office Management System
  */
 
-import { calculateClientHoursAccurate, updateClientHoursImmediately } from './client-hours.js';
+import { calculateClientHoursAccurate } from './client-hours.js';
 
 /**
- * Full client hours mismatch diagnostic
+ * Full client hours mismatch diagnostic (READ-ONLY)
  */
 async function debugClientHoursMismatch() {
 
@@ -29,19 +33,19 @@ async function debugClientHoursMismatch() {
     } else {
     }
 
-    // Check Firebase data
-
+    // Check Firebase clients
     const clientsSnapshot = await db.collection('clients').get();
-
     const firebaseClients = [];
+
     clientsSnapshot.forEach((doc, index) => {
       const data = doc.data();
-      firebaseClients.push({ id: doc.id, ...data });
-
+      firebaseClients.push({
+        id: doc.id,
+        ...data
+      });
     });
 
-    // Recalculate from entries for each client
-
+    // Check timesheet entries
     for (const client of firebaseClients) {
       if (client.type === 'hours') {
 
@@ -50,24 +54,23 @@ async function debugClientHoursMismatch() {
           .where('clientName', '==', client.fullName)
           .get();
 
+        let totalMinutes = 0;
+        const employeeBreakdown = {};
+        const entries = [];
 
-        let totalMinutesUsed = 0;
-        const entriesByEmployee = {};
-        const entriesDetails = [];
-
-        timesheetSnapshot.forEach((doc) => {
+        timesheetSnapshot.forEach((doc, i) => {
           const entry = doc.data();
           const minutes = entry.minutes || 0;
           const employee = entry.employee || entry.lawyer || 'לא ידוע';
 
-          totalMinutesUsed += minutes;
+          totalMinutes += minutes;
+          if (!employeeBreakdown[employee]) {
+employeeBreakdown[employee] = 0;
+}
 
-          if (!entriesByEmployee[employee]) {
-            entriesByEmployee[employee] = 0;
-          }
-          entriesByEmployee[employee] += minutes;
+          employeeBreakdown[employee] += minutes;
 
-          entriesDetails.push({
+          entries.push({
             date: entry.date,
             employee: employee,
             minutes: minutes,
@@ -75,26 +78,18 @@ async function debugClientHoursMismatch() {
           });
         });
 
-        // Show entry details
-        entriesDetails.forEach((entry, i) => {
+        entries.forEach((entry, i) => {
         });
 
-        Object.entries(entriesByEmployee).forEach(([employee, minutes]) => {
+        Object.entries(employeeBreakdown).forEach(([emp, mins]) => {
         });
 
-        // Calculate remaining hours
-        const totalMinutesAllocated = (client.totalHours || 0) * 60;
-        const remainingMinutes = totalMinutesAllocated - totalMinutesUsed;
-        const remainingHours = remainingMinutes / 60;
-
-
-        // Compare to saved data
-
-        const localClient = window.manager?.clients?.find(
+        const calculatedRemaining =
+          ((client.totalHours || 0) * 60 - totalMinutes) / 60;
+        const dbClient = window.manager?.clients?.find(
           (c) => c.fullName === client.fullName
         );
-        if (localClient) {
-        }
+
       }
     }
   } catch (error) {
@@ -102,69 +97,18 @@ async function debugClientHoursMismatch() {
   }
 }
 
-/**
- * Fix client hours mismatch
- */
-async function fixClientHoursMismatch() {
-
-  try {
-    const db = window.firebaseDB;
-    if (!db) {
-      console.error('❌ Firebase לא מחובר');
-      return;
-    }
-
-    const clientsSnapshot = await db.collection('clients').get();
-
-    for (const clientDoc of clientsSnapshot.docs) {
-      const clientData = clientDoc.data();
-
-      if (clientData.type === 'hours') {
-
-        const hoursData = await calculateClientHoursAccurate(
-          clientData.fullName
-        );
-
-        await clientDoc.ref.update({
-          hoursRemaining: hoursData.remainingHours,
-          minutesRemaining: hoursData.remainingMinutes,
-          isBlocked: hoursData.isBlocked,
-          isCritical: hoursData.isCritical,
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-          fixedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-
-        // Update local system
-        if (window.manager && window.manager.clients) {
-          const localIndex = window.manager.clients.findIndex(
-            (c) => c.fullName === clientData.fullName
-          );
-          if (localIndex !== -1) {
-            window.manager.clients[localIndex].hoursRemaining =
-              hoursData.remainingHours;
-            window.manager.clients[localIndex].minutesRemaining =
-              hoursData.remainingMinutes;
-            window.manager.clients[localIndex].isBlocked = hoursData.isBlocked;
-            window.manager.clients[localIndex].isCritical =
-              hoursData.isCritical;
-          }
-        }
-      }
-    }
-
-    // Update selectors
-    if (window.manager && window.manager.clientValidation) {
-      window.manager.clientValidation.updateBlockedClients();
-    }
-
-  } catch (error) {
-    console.error('❌ שגיאה בתיקון:', error);
-  }
-}
+// REMOVED 2026-05-13: fixClientHoursMismatch
+//
+// Reason: This function wrote isBlocked/isCritical directly to Firestore for
+// every client, bypassing canonical calcClientAggregates. It only checked
+// `type === 'hours'` (missed legal_procedure+hourly), ignored overrideActive,
+// and was exposed to window — any admin with DevTools could mass-corrupt
+// client.isBlocked. Suspected contributor to the 21-blocked-clients incident.
+//
+// Recovery: see .refactor-backups/debug-tools.js if needed.
 
 /**
- * Show client status summary
+ * Show client status summary (READ-ONLY)
  */
 function showClientStatusSummary() {
 
@@ -201,18 +145,17 @@ function showClientStatusSummary() {
 
 }
 
-// Expose to window for console debugging
+// Expose to window for console debugging (READ-ONLY functions only)
 if (typeof window !== 'undefined') {
   window.debugClientHoursMismatch = debugClientHoursMismatch;
-  window.fixClientHoursMismatch = fixClientHoursMismatch;
   window.showClientStatusSummary = showClientStatusSummary;
   window.calculateClientHoursAccurate = calculateClientHoursAccurate;
-  window.updateClientHoursImmediately = updateClientHoursImmediately;
+  // REMOVED 2026-05-13: window.fixClientHoursMismatch + window.updateClientHoursImmediately
+  // (dangerous write paths that bypassed canonical isBlocked logic).
 }
 
 // Exports
 export {
   debugClientHoursMismatch,
-  fixClientHoursMismatch,
   showClientStatusSummary
 };
