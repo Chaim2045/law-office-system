@@ -360,11 +360,15 @@ return;
         row.appendChild(caseCell);
 
         // Service type
+        // Refactored 2026-05-14: was comparing client.type to a Hebrew string
+        // ('הליך משפטי') that never matches (type stores English IDs). Now uses
+        // typeDisplay computed by ClientsDataManager from services[].
         const typeCell = document.createElement('td');
+        const td = client.typeDisplay || { kind: client.type || 'none', label: client.type || 'ללא', icon: 'fa-briefcase' };
         typeCell.innerHTML = `
-            <span class="service-type-badge" data-type="${client.type}">
-                ${client.type === 'הליך משפטי' ? '<i class="fas fa-balance-scale"></i>' : '<i class="fas fa-briefcase"></i>'}
-                ${this.escapeHtml(client.type)}
+            <span class="service-type-badge" data-type="${this.escapeHtml(td.kind)}">
+                <i class="fas ${td.icon}"></i>
+                ${this.escapeHtml(td.label)}
             </span>
         `;
         row.appendChild(typeCell);
