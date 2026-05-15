@@ -65,7 +65,6 @@
 | Tool | File | Purpose |
 |------|------|---------|
 | **Validation Script** | [js/validation-script.js](js/validation-script.js) | Automated testing |
-| **Fix Old Clients** | [js/fix-old-clients.js](js/fix-old-clients.js) | Cleanup utility |
 | **Migration Tools** | [js/admin-migration-tools.js](js/admin-migration-tools.js) | Admin utilities |
 
 ---

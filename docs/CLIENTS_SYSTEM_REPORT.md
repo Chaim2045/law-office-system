@@ -19,7 +19,6 @@
 - js/cases.js - ניהול תיקים (CasesManager)
 - js/cases-integration.js - אינטגרציה בחירת תיקים
 - js/modules/api-client-v2.js - API client
-- js/fix-old-clients.js - כלי migration
 
 ### Backend (Firebase Functions):
 - functions/index.js - CRUD operations
