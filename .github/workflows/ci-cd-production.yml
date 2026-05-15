@@ -412,7 +412,12 @@ jobs:
   deploy-production:
     name: 🚀 Deploy to Production
     runs-on: ubuntu-latest
-    needs: [deploy-staging, e2e]
+    # E2E removed from needs: it has continue-on-error:true (broken UI selectors,
+    # tracked Phase 4) but GitHub Actions skips dependents when a needed job is
+    # cancelled by timeout — not failed. This caused 12 days of fixes (incl. #266
+    # calcClientAggregates) to not reach Firebase Functions PROD. Restore the gate
+    # only after E2E specs are rewritten.
+    needs: [deploy-staging]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 20
 
