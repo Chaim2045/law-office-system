@@ -439,6 +439,13 @@ jobs:
       - name: 📦 Install Firebase Tools
         run: npm install -g firebase-tools@latest
 
+      # Functions deploy requires functions/node_modules present (firebase
+      # CLI needs to find firebase-functions package). Build artifacts only
+      # include user-app static files, so install Functions deps here.
+      - name: 📦 Install Functions Dependencies
+        working-directory: ./functions
+        run: npm ci --prefer-offline --no-audit
+
       - name: 🚀 Deploy to Firebase Production
         run: |
           echo "🚀 Deploying to Production..."
