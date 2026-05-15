@@ -193,13 +193,23 @@
                 this.clients = snapshot.docs
                     .map(doc => {
                         const clientData = doc.data();
+
+                        // ✅ Compute type display from services[] (canonical source of truth).
+                        // Replaces legacy `type: clientData.type || 'hours'` default which
+                        // wrongly defaulted every fixed client to 'hours' display.
+                        // See apps/admin-panel/js/core/client-type-display.js.
+                        const typeDisplay = window.ClientTypeDisplay
+                            ? window.ClientTypeDisplay.computeClientTypeDisplay(clientData.services)
+                            : { kind: 'none', label: 'ללא', icon: 'fa-question-circle', breakdown: [] };
+
                         const client = {
                             id: doc.id,
                             ...clientData,
                             // Ensure we have the correct field names
                             fullName: clientData.fullName || clientData.clientName || '',
                             caseNumber: clientData.caseNumber || '',
-                            type: clientData.type || 'hours',
+                            type: typeDisplay.kind,  // ← computed: 'hours'/'fixed'/'mixed'/'none' (was: legacy default 'hours')
+                            typeDisplay: typeDisplay,  // ← full object with label/icon/breakdown for UI
                             isBlocked: clientData.isBlocked || false,
                             isCritical: clientData.isCritical || false,
                             status: clientData.status || 'active',
