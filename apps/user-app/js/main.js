@@ -3292,13 +3292,12 @@ window._firebase_saveTimesheetToFirebase_v2_ORIGINAL = FirebaseOps.saveTimesheet
 window._firebase_saveBudgetTaskToFirebase_ORIGINAL = FirebaseOps.saveBudgetTaskToFirebase;
 window._firebase_updateTimesheetEntryFirebase_ORIGINAL = FirebaseOps.updateTimesheetEntryFirebase;
 
-// 🆕 NEW: Keep originals for both old and new client hours functions
-window._firebase_calculateClientHoursByCaseNumber_ORIGINAL = ClientHours.calculateClientHoursByCaseNumber;
-window._firebase_updateClientHoursImmediatelyByCaseNumber_ORIGINAL = ClientHours.updateClientHoursImmediatelyByCaseNumber;
+// REMOVED 2026-05-13: ByCaseNumber variants — functions never existed in
+// ClientHours module (they were assigning undefined to window).
+// REMOVED 2026-05-13: _firebase_updateClientHoursImmediately_ORIGINAL —
+// function removed (parallel write path for isBlocked, ignored override/fixed).
 
-// 🔄 LEGACY: Keep originals for backward compatibility
 window._firebase_calculateClientHoursAccurate_ORIGINAL = ClientHours.calculateClientHoursAccurate;
-window._firebase_updateClientHoursImmediately_ORIGINAL = ClientHours.updateClientHoursImmediately;
 
 window._firebase_addTimeToTaskFirebase_ORIGINAL = FirebaseOps.addTimeToTaskFirebase;
 window._firebase_completeTaskFirebase_ORIGINAL = FirebaseOps.completeTaskFirebase;
@@ -3314,12 +3313,10 @@ window.saveTimesheetToFirebase_v2 = FirebaseOps.saveTimesheetToFirebase_v2;  // 
 window.saveBudgetTaskToFirebase = FirebaseOps.saveBudgetTaskToFirebase;
 window.updateTimesheetEntryFirebase = FirebaseOps.updateTimesheetEntryFirebase;
 
-// 🆕 NEW: caseNumber-based client hours functions (recommended)
-window.calculateClientHoursByCaseNumber = ClientHours.calculateClientHoursByCaseNumber;
-window.updateClientHoursImmediatelyByCaseNumber = ClientHours.updateClientHoursImmediatelyByCaseNumber;
+// REMOVED 2026-05-13: ByCaseNumber + updateClientHoursImmediately exposures
+// — functions either never existed or were parallel write paths for isBlocked.
+// See client-hours.js (removal comment) and .refactor-backups/ for rationale.
 
-// 🔄 LEGACY: clientName-based functions (backward compatibility)
-window.updateClientHoursImmediately = ClientHours.updateClientHoursImmediately;
 window.calculateClientHoursAccurate = ClientHours.calculateClientHoursAccurate;
 
 window.addTimeToTaskFirebase = FirebaseOps.addTimeToTaskFirebase;

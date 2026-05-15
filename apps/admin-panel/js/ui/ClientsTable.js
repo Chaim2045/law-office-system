@@ -312,15 +312,34 @@ return;
         /**
          * Get type badge
          * קבלת תג סוג
+         *
+         * Reads from client.typeDisplay (computed by ClientsDataManager from
+         * services[] — the canonical source of truth). Supports mixed clients
+         * (both hours + fixed active services) and renders a tooltip with
+         * per-service breakdown.
+         *
+         * Refactored 2026-05-14 from binary `client.type === 'hours' ? ...`
+         * which was wrong for fixed clients (DataManager defaulted them to
+         * 'hours') and unable to represent mixed clients.
          */
         getTypeBadge(client) {
-            const typeText = client.type === 'hours' ? 'שעות' : 'קבוע';
-            const icon = client.type === 'hours' ? 'fa-clock' : 'fa-file-invoice-dollar';
+            const td = client.typeDisplay || {
+                kind: 'none', label: 'ללא', icon: 'fa-question-circle', breakdown: []
+            };
+
+            const tooltipHtml = (window.ClientTypeDisplay && window.ClientTypeDisplay.renderTypeTooltip)
+                ? window.ClientTypeDisplay.renderTypeTooltip(td.breakdown)
+                : '';
+
+            // Escape tooltip HTML for safe embedding in data attribute
+            const tooltipAttr = tooltipHtml
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;');
 
             return `
-                <span class="type-badge">
-                    <i class="fas ${icon}"></i>
-                    ${typeText}
+                <span class="type-badge type-badge-${td.kind}" data-tooltip-html="${tooltipAttr}">
+                    <i class="fas ${td.icon}"></i>
+                    ${td.label}
                 </span>
             `;
         }
@@ -328,9 +347,15 @@ return;
         /**
          * Get hours display
          * קבלת תצוגת שעות
+         *
+         * Shows hours info for any client with an active billable service
+         * (hours or legal_procedure+hourly). Pure-fixed clients return '-'.
          */
         getHoursDisplay(client) {
-            if (client.type !== 'hours') {
+            const td = client.typeDisplay;
+            // Show hours for hours-only OR mixed clients (both have billable hours)
+            const hasBillableHours = td && (td.kind === 'hours' || td.kind === 'mixed');
+            if (!hasBillableHours) {
                 return '<span>-</span>';
             }
 
@@ -363,6 +388,12 @@ return;
         /**
          * Get hours warning icon
          * קבלת אייקון התראה לשעות
+         *
+         * Triggers for clients with active billable services low on hours.
+         *
+         * Refactored 2026-05-14 to read from services[] (canonical source)
+         * instead of legacy `client.procedureType` + `client.pricingType`
+         * which weren't reliably maintained for multi-service clients.
          */
         getHoursWarningIcon(client) {
             // Only check active, non-blocked clients
@@ -370,40 +401,36 @@ return;
                 return '';
             }
 
+            const td = client.typeDisplay;
+            // No warning for fixed-only or no-services clients
+            if (!td || td.kind === 'fixed' || td.kind === 'none') {
+                return '';
+            }
+
             const hoursRemaining = client.hoursRemaining || 0;
             const totalHours = client.totalHours || 0;
 
-            // Regular hourly client
-            if (client.procedureType === 'hours') {
-                if (hoursRemaining < 5 || (totalHours > 0 && (hoursRemaining / totalHours) < 0.05)) {
-                    return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות">🔴</span>';
-                }
-                if (hoursRemaining < 10 || (totalHours > 0 && (hoursRemaining / totalHours) < 0.1)) {
-                    return '<span class="hours-warning-icon warning" title="5-10 שעות">🟡</span>';
-                }
+            // Client-level hours warning (covers 'hours' and 'mixed' kinds)
+            if (hoursRemaining < 5 || (totalHours > 0 && (hoursRemaining / totalHours) < 0.05)) {
+                return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות">🔴</span>';
+            }
+            if (hoursRemaining < 10 || (totalHours > 0 && (hoursRemaining / totalHours) < 0.1)) {
+                return '<span class="hours-warning-icon warning" title="5-10 שעות">🟡</span>';
             }
 
-            // Legal procedure - hourly pricing
-            if (client.procedureType === 'legal_procedure' && client.pricingType === 'hourly') {
-                // Check total hours remaining
-                if (hoursRemaining < 5) {
-                    return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות נותרו בהליך">🔴</span>';
-                }
-                if (hoursRemaining < 10) {
-                    return '<span class="hours-warning-icon warning" title="5-10 שעות נותרו בהליך">🟡</span>';
-                }
-
-                // Check current stage hours remaining
-                if (client.services && client.services.length > 0) {
-                    const legalService = client.services.find(s => s.type === 'legal_procedure');
-                    if (legalService && legalService.stages) {
-                        const currentStage = legalService.stages.find(s => s.status === 'active');
-                        if (currentStage) {
-                            const stageRemaining = currentStage.hoursRemaining || 0;
-                            if (stageRemaining < 5) {
-                                return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות בשלב הנוכחי">🔴</span>';
-                            }
-                        }
+            // Additional stage-level warning for active legal_procedure-hourly service
+            const services = Array.isArray(client.services) ? client.services : [];
+            const legalHourlyService = services.find(s =>
+                s.type === 'legal_procedure' &&
+                s.pricingType === 'hourly' &&
+                (!s.status || s.status === 'active')
+            );
+            if (legalHourlyService && Array.isArray(legalHourlyService.stages)) {
+                const currentStage = legalHourlyService.stages.find(s => s.status === 'active');
+                if (currentStage) {
+                    const stageRemaining = currentStage.hoursRemaining || 0;
+                    if (stageRemaining < 5) {
+                        return '<span class="hours-warning-icon critical" title="פחות מ-5 שעות בשלב הנוכחי">🔴</span>';
                     }
                 }
             }
@@ -643,12 +670,14 @@ return '-';
 
             // For now, just show an alert with basic info
             // TODO: Create a proper ClientDetailsModal
+            const td = client.typeDisplay || { kind: 'none', label: 'ללא' };
+            const hasBillableHours = td.kind === 'hours' || td.kind === 'mixed';
             alert(`
 פרטי לקוח:
 שם: ${client.fullName}
 מספר תיק: ${client.caseNumber || '-'}
-סוג: ${client.type === 'hours' ? 'שעות' : 'קבוע'}
-${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''}
+סוג: ${td.label}
+${hasBillableHours ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''}
 סטטוס: ${client.status}
             `.trim());
         }
@@ -671,15 +700,22 @@ ${client.type === 'hours' ? `שעות נותרות: ${client.hoursRemaining || 0
 
             // Convert to CSV
             const headers = ['שם הלקוח', 'מספר תיק', 'סוג', 'שעות נותרות', 'סטטוס', 'צוות', 'כניסה אחרונה'];
-            const rows = clients.map(client => [
-                client.fullName,
-                client.caseNumber || '',
-                client.type === 'hours' ? 'שעות' : 'קבוע',
-                client.type === 'hours' ? client.hoursRemaining || 0 : '-',
-                client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
-                client.assignedTo ? client.assignedTo.join(', ') : '',
-                this.getTeamLastLogin(client)
-            ]);
+            const rows = clients.map(client => {
+                const td = client.typeDisplay || { kind: 'none', breakdown: [] };
+                const typeLabel = (window.ClientTypeDisplay && window.ClientTypeDisplay.renderTypeForCsv)
+                    ? window.ClientTypeDisplay.renderTypeForCsv(td.breakdown)
+                    : (td.label || 'ללא');
+                const hasBillableHours = td.kind === 'hours' || td.kind === 'mixed';
+                return [
+                    client.fullName,
+                    client.caseNumber || '',
+                    typeLabel,
+                    hasBillableHours ? (client.hoursRemaining || 0) : '-',
+                    client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
+                    client.assignedTo ? client.assignedTo.join(', ') : '',
+                    this.getTeamLastLogin(client)
+                ];
+            });
 
             let csv = headers.join(',') + '\n';
             csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');

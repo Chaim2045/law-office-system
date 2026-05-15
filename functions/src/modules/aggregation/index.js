@@ -11,8 +11,11 @@
  * Source of truth for hours: clients.services[].packages[].hoursRemaining
  */
 
-// ⚠️ isFixedService — single source of truth in shared/aggregates.js
-const { isFixedService } = require('../../../shared/aggregates');
+// ⚠️ isFixedService + calcClientAggregates — single source of truth in shared/aggregates.js
+// 2026-05-13: removed local duplicate calcClientAggregates (was missing the
+// `billable.length === 0 → isBlocked=false` early-return; caused 20+ fixed-only
+// clients to be incorrectly marked blocked when the trigger ran).
+const { isFixedService, calcClientAggregates } = require('../../../shared/aggregates');
 const { SYSTEM_CONSTANTS } = require('../../../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
@@ -283,25 +286,12 @@ function applyLegalProcedureDeltaStageOnly(services, serviceId, stageId, minutes
   return { updatedServices, isOverage, overageMinutes };
 }
 
-/**
- * Calculate client-level aggregates from services array
- */
-function calcClientAggregates(services, clientTotalHours) {
-  // ⚠️ isFixedService imported from shared/aggregates.js — covers type=fixed AND legal_procedure+fixed
-  const billableServices = services.filter(svc => !isFixedService(svc));
-  const hoursUsed = round2(
-    billableServices.reduce((sum, svc) => sum + (svc.hoursUsed || 0), 0)
-  );
-  const hoursRemaining = round2((clientTotalHours || 0) - hoursUsed);
-  const minutesUsed = round2(hoursUsed * 60);
-  const minutesRemaining = round2(hoursRemaining * 60);
-  const hasActiveOverride = services.some(svc =>
-    svc.overrideActive === true || svc.overdraftResolved?.isResolved === true
-  );
-  const isBlocked = hoursRemaining <= 0 && !hasActiveOverride;
-  const isCritical = !isBlocked && hoursRemaining <= 5;
-  return { hoursUsed, hoursRemaining, minutesUsed, minutesRemaining, isBlocked, isCritical };
-}
+// REMOVED 2026-05-13: local calcClientAggregates duplicate.
+// The canonical implementation is in functions/shared/aggregates.js (imported above
+// and re-exported below). The local version was missing the
+// `billable.length === 0 → isBlocked=false` early-return, which caused
+// fixed-only clients to be incorrectly blocked whenever the trigger recalculated.
+// See .refactor-backups/aggregation-index-2026-05-13.js for original.
 
 module.exports = {
   round2,

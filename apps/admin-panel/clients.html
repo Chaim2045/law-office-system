@@ -574,12 +574,14 @@
     <script src="js/ui/AnnouncementEditor.js"></script>
 
     <!-- ===== Clients Management Scripts ===== -->
-    <script src="js/managers/ClientsDataManager.js?v=20251205-DATE-FIX"></script>
+    <!-- ClientTypeDisplay MUST load BEFORE ClientsDataManager (used by .loadClients) -->
+    <script src="js/core/client-type-display.js?v=20260514-mixed"></script>
+    <script src="js/managers/ClientsDataManager.js?v=20260514-mixed"></script>
     <script src="js/managers/ReportGenerator.js?v=20260507-stage-2"></script>
     <script src="js/ui/Pagination.js?v=20251215"></script>
     <script src="js/ui/ClientReportModal.js?v=20260507-stage-2"></script>
     <script src="js/ui/ClientManagementModal.js?v=20251127-FINAL"></script>
-    <script src="js/ui/ClientsTable.js?v=20251215-PAGINATION"></script>
+    <script src="js/ui/ClientsTable.js?v=20260514-mixed"></script>
 
     <!-- ===== Shared Components ===== -->
     <script src="js/ui/Notifications.js?v=20251123v1"></script>
