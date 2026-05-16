@@ -10,6 +10,7 @@ const { SYSTEM_CONSTANTS, isValidServiceType, isValidPricingType } = require('..
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { calcClientAggregates } = require('../shared/aggregates');
+const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 
 const db = admin.firestore();
 
@@ -563,12 +564,28 @@ exports.createClient = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * שינוי סטטוס לקוח
+ * שינוי סטטוס לקוח — PR-A.4 refactor (2026-05-16)
+ *
+ * BREAKING CHANGE from prior behavior:
+ *   - `data.isBlocked` is NO LONGER ACCEPTED as input. isBlocked is DERIVED
+ *     from canonical aggregates (calcClientAggregates) and computed by the
+ *     writeClientWithCanonicalAggregates helper. Sending isBlocked=true|false
+ *     returns invalid-argument.
+ *   - `data.isCritical` is also DERIVED (computed from hoursRemaining <= 5).
+ *     Sending isCritical returns invalid-argument.
+ *   - New input `data.isOnHold` (boolean) — manual admin freeze flag.
+ *     Orthogonal to isBlocked. User App guard blocks time entry when
+ *     (isBlocked || isOnHold).
+ *
+ * Why: see CLAUDE.md OUTCOMES GRADER RULE + PR-A.2 docstring on
+ * `writeClientWithCanonicalAggregates`. The 23-client incident (isBlocked
+ * corruption) is structurally prevented by routing all writes through the
+ * helper which strips caller-supplied aggregate fields.
+ *
  * @param {Object} data
  * @param {string} data.clientId - מזהה לקוח
  * @param {string} data.newStatus - סטטוס חדש: active | inactive
- * @param {boolean} [data.isBlocked] - האם חסום (ברירת מחדל: false)
- * @param {boolean} [data.isCritical] - האם קריטי (ברירת מחדל: false)
+ * @param {boolean} [data.isOnHold] - הקפאה ידנית (ברירת מחדל: false)
  * @param {string} [data.note] - הערה אופציונלית
  */
 exports.changeClientStatus = functions.https.onCall(async (data, context) => {
@@ -576,7 +593,7 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
     // 1. Auth
     const user = await checkUserPermissions(context);
 
-    // 2. Validation
+    // 2. Validation — reject derived-field inputs
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(
         'invalid-argument',
@@ -592,22 +609,28 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
       );
     }
 
-    const newIsBlocked = data.isBlocked === true;
-    const newIsCritical = data.isCritical === true;
-
-    // Can't be both blocked AND critical
-    if (newIsBlocked && newIsCritical) {
+    // PR-A.4: isBlocked / isCritical are derived. Reject explicit input.
+    if (data.isBlocked !== undefined) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'לא ניתן להיות חסום וקריטי בו-זמנית'
+        'isBlocked נגזר אוטומטית מהיתרת השעות ולא ניתן לקבוע ידנית. השתמש ב-isOnHold להקפאה ידנית.'
+      );
+    }
+    if (data.isCritical !== undefined) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'isCritical נגזר אוטומטית מהיתרת השעות (<=5 שעות = קריטי) ולא ניתן לקבוע ידנית.'
       );
     }
 
-    // Blocked/Critical only valid with 'active' status
-    if (data.newStatus === 'inactive' && (newIsBlocked || newIsCritical)) {
+    const newIsOnHold = data.isOnHold === true;
+
+    // isOnHold only valid with 'active' status — frozen clients are still active,
+    // just paused. inactive = closed/archived; freeze makes no sense.
+    if (data.newStatus === 'inactive' && newIsOnHold) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'לא ניתן לסמן לקוח לא-פעיל כחסום או קריטי'
+        'לא ניתן לסמן לקוח לא-פעיל כמוקפא. החזר ל-active קודם.'
       );
     }
 
@@ -615,11 +638,12 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
       ? data.note.trim().substring(0, 500)
       : null;
 
-    // 3. Transaction
+    // 3. Transaction — read previous state for audit, then delegate write to helper
     const clientRef = db.collection('clients').doc(data.clientId);
 
     const result = await db.runTransaction(async (transaction) => {
-      // 3a. Read client
+      // Read for previous-state audit + same-state guard.
+      // (Helper also reads — Firestore caches within transaction, no double cost.)
       const clientDoc = await transaction.get(clientRef);
       if (!clientDoc.exists) {
         throw new functions.https.HttpsError(
@@ -630,36 +654,43 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
 
       const clientData = clientDoc.data();
       const currentStatus = clientData.status || 'active';
-      const currentIsBlocked = clientData.isBlocked || false;
-      const currentIsCritical = clientData.isCritical || false;
+      const currentIsOnHold = clientData.isOnHold === true;
+      const previousIsBlocked = clientData.isBlocked === true;
+      const previousIsCritical = clientData.isCritical === true;
 
-      // 3b. Same state guard
-      if (currentStatus === data.newStatus &&
-          currentIsBlocked === newIsBlocked &&
-          currentIsCritical === newIsCritical) {
+      // Same-state guard: now compares status + isOnHold (the two manual fields).
+      // isBlocked/isCritical are derived — they can't be "set to same value".
+      if (currentStatus === data.newStatus && currentIsOnHold === newIsOnHold) {
         throw new functions.https.HttpsError(
           'failed-precondition',
           'הסטטוס כבר זהה'
         );
       }
 
-      const now = new Date().toISOString();
-
-      // 3c. Write
-      transaction.update(clientRef, {
-        status: data.newStatus,
-        isBlocked: newIsBlocked,
-        isCritical: newIsCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // Canonical write via helper. Helper recomputes isBlocked/isCritical from
+      // services and asserts invariants before transaction.update.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          status: data.newStatus,
+          isOnHold: newIsOnHold
+        },
+        {
+          caller: 'changeClientStatus',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       return {
         clientName: clientData.fullName || clientData.clientName,
         previousStatus: currentStatus,
-        previousIsBlocked: currentIsBlocked,
-        previousIsCritical: currentIsCritical,
-        statusChangedAt: now
+        previousIsOnHold: currentIsOnHold,
+        previousIsBlocked,
+        previousIsCritical,
+        derivedIsBlocked: helperResult.aggregates.isBlocked,
+        derivedIsCritical: helperResult.aggregates.isCritical,
+        statusChangedAt: new Date().toISOString()
       };
     });
 
@@ -669,17 +700,20 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
       clientName: result.clientName,
       previousStatus: result.previousStatus,
       newStatus: data.newStatus,
+      previousIsOnHold: result.previousIsOnHold,
+      newIsOnHold: newIsOnHold,
       previousIsBlocked: result.previousIsBlocked,
       previousIsCritical: result.previousIsCritical,
-      newIsBlocked: newIsBlocked,
-      newIsCritical: newIsCritical,
+      derivedIsBlocked: result.derivedIsBlocked,
+      derivedIsCritical: result.derivedIsCritical,
       note: note
     });
 
-    // 5. Build display text
+    // 5. Build display text — manual flag wins, then derived state
     let statusText = data.newStatus === 'active' ? 'פעיל' : 'לא פעיל';
-    if (newIsBlocked) statusText = 'חסום';
-    if (newIsCritical) statusText = 'קריטי';
+    if (newIsOnHold) statusText = 'מוקפא ידנית';
+    else if (result.derivedIsBlocked) statusText = 'חסום (אין שעות)';
+    else if (result.derivedIsCritical) statusText = 'קריטי';
 
     console.log(`✅ Client ${data.clientId} status changed to ${statusText}`);
 
@@ -687,10 +721,12 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
       success: true,
       previousStatus: result.previousStatus,
       newStatus: data.newStatus,
+      previousIsOnHold: result.previousIsOnHold,
+      isOnHold: newIsOnHold,
       previousIsBlocked: result.previousIsBlocked,
       previousIsCritical: result.previousIsCritical,
-      isBlocked: newIsBlocked,
-      isCritical: newIsCritical,
+      isBlocked: result.derivedIsBlocked,
+      isCritical: result.derivedIsCritical,
       statusChangedAt: result.statusChangedAt,
       message: `סטטוס הלקוח "${result.clientName}" שונה ל-"${statusText}"`
     };

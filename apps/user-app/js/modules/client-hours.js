@@ -141,11 +141,14 @@ class ClientValidation {
 continue;
 }
 
-      if (client.isBlocked) {
+      // PR-A.4 (2026-05-16): block on EITHER derived isBlocked OR manual isOnHold.
+      // isOnHold = admin freeze (unpaid, dispute) — orthogonal to hour balance.
+      if (client.isBlocked || client.isOnHold) {
         this.blockedClients.add(client.fullName);
         this.blockedClientsData.push({
           name: client.fullName,
-          hoursRemaining: window.calculateRemainingHours(client)
+          hoursRemaining: window.calculateRemainingHours(client),
+          reason: client.isOnHold ? 'manual_hold' : 'no_hours'
         });
       } else if (
         client.type === 'hours' &&
