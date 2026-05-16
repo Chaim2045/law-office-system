@@ -212,7 +212,14 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       // ✅ שדות חדשים
       services: [],  // ימולא בהמשך לפי סוג הליך
       totalServices: 0,
-      activeServices: 0
+      activeServices: 0,
+
+      // ✅ Manual admin freeze flag (orthogonal to derived isBlocked).
+      // PR-A.3 (2026-05-16): admins can pause time-logging on a client
+      // for non-aggregate reasons (unpaid, dispute, on hold) without
+      // affecting hours/services computation. User App guard checks
+      // (isBlocked || isOnHold). Default false.
+      isOnHold: false
     };
 
     // הוספת שדות ספציפיים לסוג הליך
