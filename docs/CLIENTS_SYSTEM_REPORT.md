@@ -10,6 +10,35 @@
 - Real-time Cache Sync עם listeners
 - Enterprise Features: Version control, idempotency, event sourcing
 
+## שדות לקוח קריטיים (Client document fields)
+
+### שדות חישוביים (DERIVED) — נוצרים מ-`calcClientAggregates`
+
+נכתבים אך ורק דרך `writeClientWithCanonicalAggregates` (functions/shared/client-writer.js). שולחים אותם כקלט ל-CFs = `invalid-argument`.
+
+| שדה | מקור | משמעות |
+|---|---|---|
+| `isBlocked` | calcClientAggregates | יתרת שעות = 0 ואין override. אוטומטי. |
+| `isCritical` | calcClientAggregates | יתרת שעות ≤ 5. אוטומטי. |
+| `hoursUsed` / `hoursRemaining` | calcClientAggregates | סכום על שירותים billable |
+| `minutesUsed` / `minutesRemaining` | calcClientAggregates | המרה |
+| `totalHours` | סכום `svc.totalHours` של billable | רץ ב-helper |
+
+### שדות ידניים (MANUAL) — קלט מ-CFs
+
+| שדה | נכתב על-ידי | משמעות |
+|---|---|---|
+| `status` | changeClientStatus | active \| inactive |
+| `isOnHold` | changeClientStatus (PR-A.4) | הקפאה ידנית של אדמין (אי-תשלום, סכסוך, הקפאה). אורתוגונלי ל-isBlocked. |
+| `assignedTo` | createClient + admin tools | רשימת עורכי דין |
+| `services` | addServiceToClient + עוד | מערך שירותים — מטוטל ידנית, אבל aggregates עליו מחושבים |
+
+### כלל אכיפה ב-User App
+
+טוען לקוח? אל תרשום זמן אם `(client.isBlocked || client.isOnHold)`. שניהם.
+
+ראה: `apps/user-app/js/modules/client-validation.js`, `apps/user-app/js/modules/client-hours.js`.
+
 ## קבצים עיקריים
 
 ### Frontend:

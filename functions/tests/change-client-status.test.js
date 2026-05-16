@@ -1,26 +1,35 @@
 /**
- * Regression baseline for `changeClientStatus` CF (functions/clients/index.js).
+ * Tests for `changeClientStatus` CF (functions/clients/index.js).
  *
- * Purpose: lock current behavior BEFORE the PR-A refactor that introduces
- * `writeClientWithCanonicalAggregates` and deprecates caller-supplied
- * `isBlocked` in favor of a derived value + a separate `isOnHold` manual flag.
+ * Updated for PR-A.4 (2026-05-16). The CF now:
+ *   - Rejects caller-supplied `isBlocked` / `isCritical` (derived fields)
+ *   - Accepts `isOnHold` as the manual freeze flag
+ *   - Routes writes through writeClientWithCanonicalAggregates helper
  *
- * Coverage (current implementation, no behavioral changes):
- *  A. Authentication — propagates errors from checkUserPermissions
- *  B. clientId validation — required + string
- *  C. newStatus validation — required + must be 'active' or 'inactive'
- *  D. isBlocked / isCritical mutual exclusion
- *  E. Inactive status disallows isBlocked/isCritical
+ * Coverage:
+ *  A. Authentication
+ *  B. clientId validation
+ *  C. newStatus validation
+ *  D. Rejection of derived-field inputs (PR-A.4 BREAKING)
+ *  E. isOnHold acceptance + inactive-disallowed constraint
  *  F. Client not-found
- *  G. Same-state guard (status + flags identical)
- *  H. Successful write transitions (active → blocked, blocked → active, etc.)
- *  I. Audit log emission shape
+ *  G. Same-state guard (status + isOnHold only)
+ *  H. Successful write through canonical helper
+ *  I. Audit log includes isOnHold + derived isBlocked/isCritical
  *  J. Return value structure
+ *  K. Invariant bypass defense — caller sneaking aggregate fields is blocked
  *
- * After PR-A merges, some of these will need to change. Each obsolete test
- * must be retained-but-skipped with a `// CONTRACT-CHANGED-IN-PR-A` comment
- * pointing at the new test that replaces it, so the regression history is
- * preserved.
+ * Note on prior CONTRACT-CHANGED-IN-PR-A markers (from PR-A.1):
+ *   - D (mutual exclusion of isBlocked+isCritical): replaced by D (rejection
+ *     of both as input).
+ *   - E (inactive disallows isBlocked/isCritical): replaced by E (inactive
+ *     disallows isOnHold).
+ *   - G (same-state guard on 3 fields): replaced by G (same-state on 2
+ *     fields — status + isOnHold).
+ *   - H (transitions writing isBlocked/isCritical): replaced by H (transitions
+ *     writing isOnHold + canonical derived values via helper).
+ *
+ * No tests deleted — all migrated.
  */
 
 // ═══════════════════════════════════════════════════════════════
@@ -93,10 +102,35 @@ jest.mock('../case-number-transaction', () => ({
 // ═══════════════════════════════════════════════════════════════
 
 const { changeClientStatus } = require('../clients/index');
+const { SYSTEM_CONSTANTS } = require('../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 
 // ═══════════════════════════════════════════════════════════════
 // Test helpers
 // ═══════════════════════════════════════════════════════════════
+
+function makeHoursService(id, { totalHours = 20, hoursUsed = 5 } = {}) {
+  return {
+    id,
+    type: ST.HOURS,
+    name: 'שירות שעתי',
+    totalHours,
+    hoursUsed,
+    hoursRemaining: totalHours - hoursUsed,
+    status: 'active'
+  };
+}
+
+function makeFixedService(id, { fixedPrice = 5000 } = {}) {
+  return {
+    id,
+    type: ST.FIXED,
+    name: 'שירות קבוע',
+    fixedPrice,
+    work: { totalMinutesWorked: 0, entriesCount: 0 },
+    status: 'active'
+  };
+}
 
 function makeClientDoc(overrides = {}) {
   return {
@@ -106,7 +140,11 @@ function makeClientDoc(overrides = {}) {
       status: 'active',
       isBlocked: false,
       isCritical: false,
+      isOnHold: false,
       services: [],
+      totalHours: 0,
+      hoursUsed: 0,
+      hoursRemaining: 0,
       ...overrides
     })
   };
@@ -201,62 +239,83 @@ describe('C. newStatus validation', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// D. isBlocked / isCritical mutual exclusion
-// CONTRACT-CHANGED-IN-PR-A: isBlocked will become derived, not caller input.
+// D. Rejection of derived-field inputs (PR-A.4 BREAKING CHANGE)
 // ═══════════════════════════════════════════════════════════════
 
-describe('D. isBlocked / isCritical mutual exclusion (current behavior)', () => {
-  test('throws invalid-argument when both isBlocked and isCritical are true', async () => {
-    await expect(
-      changeClientStatus(
-        { clientId: 'c1', newStatus: 'active', isBlocked: true, isCritical: true },
-        makeCtx()
-      )
-    ).rejects.toMatchObject({ code: 'invalid-argument' });
-  });
-
-  test('allows isBlocked=true alone', async () => {
-    mockTransaction.get.mockResolvedValue(makeClientDoc());
+describe('D. Derived-field inputs rejected', () => {
+  test('throws invalid-argument when caller sends isBlocked=true', async () => {
     await expect(
       changeClientStatus(
         { clientId: 'c1', newStatus: 'active', isBlocked: true },
         makeCtx()
       )
-    ).resolves.toMatchObject({ success: true, isBlocked: true, isCritical: false });
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
   });
 
-  test('allows isCritical=true alone', async () => {
-    mockTransaction.get.mockResolvedValue(makeClientDoc());
+  test('throws invalid-argument when caller sends isBlocked=false', async () => {
+    await expect(
+      changeClientStatus(
+        { clientId: 'c1', newStatus: 'active', isBlocked: false },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('throws invalid-argument when caller sends isCritical=true', async () => {
     await expect(
       changeClientStatus(
         { clientId: 'c1', newStatus: 'active', isCritical: true },
         makeCtx()
       )
-    ).resolves.toMatchObject({ success: true, isBlocked: false, isCritical: true });
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('error message points caller at isOnHold for manual freeze', async () => {
+    await expect(
+      changeClientStatus(
+        { clientId: 'c1', newStatus: 'active', isBlocked: true },
+        makeCtx()
+      )
+    ).rejects.toThrow(/isOnHold/);
   });
 });
 
 // ═══════════════════════════════════════════════════════════════
-// E. Inactive constraints
+// E. isOnHold acceptance + inactive constraint
 // ═══════════════════════════════════════════════════════════════
 
-describe('E. Inactive constraints', () => {
-  test('throws invalid-argument: inactive + isBlocked=true', async () => {
+describe('E. isOnHold acceptance', () => {
+  test('throws invalid-argument: inactive + isOnHold=true', async () => {
     await expect(
       changeClientStatus(
-        { clientId: 'c1', newStatus: 'inactive', isBlocked: true },
+        { clientId: 'c1', newStatus: 'inactive', isOnHold: true },
         makeCtx()
       )
     ).rejects.toMatchObject({ code: 'invalid-argument' });
   });
 
-  test('throws invalid-argument: inactive + isCritical=true', async () => {
+  test('accepts active + isOnHold=true', async () => {
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({ status: 'active', isOnHold: false })
+    );
     await expect(
       changeClientStatus(
-        { clientId: 'c1', newStatus: 'inactive', isCritical: true },
+        { clientId: 'c1', newStatus: 'active', isOnHold: true },
         makeCtx()
       )
-    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    ).resolves.toMatchObject({ success: true, isOnHold: true });
+  });
+
+  test('accepts active + isOnHold omitted (defaults to false)', async () => {
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({ status: 'inactive', isOnHold: false })
+    );
+    await expect(
+      changeClientStatus(
+        { clientId: 'c1', newStatus: 'active' },
+        makeCtx()
+      )
+    ).resolves.toMatchObject({ success: true, isOnHold: false });
   });
 });
 
@@ -274,29 +333,41 @@ describe('F. Client not-found', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// G. Same-state guard
+// G. Same-state guard (status + isOnHold only)
 // ═══════════════════════════════════════════════════════════════
 
 describe('G. Same-state guard', () => {
-  test('throws failed-precondition when status + flags all match current', async () => {
+  test('throws failed-precondition when status + isOnHold both unchanged', async () => {
     mockTransaction.get.mockResolvedValue(
-      makeClientDoc({ status: 'active', isBlocked: false, isCritical: false })
+      makeClientDoc({ status: 'active', isOnHold: false })
     );
     await expect(
       changeClientStatus(
-        { clientId: 'c1', newStatus: 'active', isBlocked: false, isCritical: false },
+        { clientId: 'c1', newStatus: 'active', isOnHold: false },
         makeCtx()
       )
     ).rejects.toMatchObject({ code: 'failed-precondition' });
   });
 
-  test('allows transition when only isCritical changes', async () => {
+  test('allows transition when only isOnHold changes', async () => {
     mockTransaction.get.mockResolvedValue(
-      makeClientDoc({ status: 'active', isBlocked: false, isCritical: false })
+      makeClientDoc({ status: 'active', isOnHold: false })
     );
     await expect(
       changeClientStatus(
-        { clientId: 'c1', newStatus: 'active', isCritical: true },
+        { clientId: 'c1', newStatus: 'active', isOnHold: true },
+        makeCtx()
+      )
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  test('allows transition when only status changes', async () => {
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({ status: 'active', isOnHold: false })
+    );
+    await expect(
+      changeClientStatus(
+        { clientId: 'c1', newStatus: 'inactive', isOnHold: false },
         makeCtx()
       )
     ).resolves.toMatchObject({ success: true });
@@ -304,94 +375,92 @@ describe('G. Same-state guard', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// H. Successful write transitions
-// CONTRACT-CHANGED-IN-PR-A: writes will go through writeClientWithCanonicalAggregates
+// H. Successful write through canonical helper
 // ═══════════════════════════════════════════════════════════════
 
-describe('H. Successful write transitions (current behavior)', () => {
-  test('active → inactive: writes status only, flags cleared', async () => {
+describe('H. Write through canonical helper', () => {
+  test('writes status + isOnHold AND canonical derived aggregates', async () => {
     mockTransaction.get.mockResolvedValue(
-      makeClientDoc({ status: 'active', isBlocked: false, isCritical: false })
+      makeClientDoc({
+        status: 'active',
+        isOnHold: false,
+        services: [makeHoursService('s1', { totalHours: 10, hoursUsed: 3 })],
+        totalHours: 10
+      })
     );
     await changeClientStatus(
-      { clientId: 'c1', newStatus: 'inactive' },
+      { clientId: 'c1', newStatus: 'active', isOnHold: true },
       makeCtx()
     );
     expect(mockTransaction.update).toHaveBeenCalledTimes(1);
     const [, payload] = mockTransaction.update.mock.calls[0];
     expect(payload).toMatchObject({
-      status: 'inactive',
-      isBlocked: false,
-      isCritical: false,
+      status: 'active',
+      isOnHold: true,
+      isBlocked: false,        // derived — hours remaining
+      isCritical: false,       // derived — > 5h remaining
+      hoursUsed: 3,
+      hoursRemaining: 7,
+      totalHours: 10,
       lastModifiedBy: 'testuser'
     });
   });
 
-  test('active → blocked: writes isBlocked=true', async () => {
+  test('fixed-only client → isBlocked derived as false (I1)', async () => {
     mockTransaction.get.mockResolvedValue(
-      makeClientDoc({ status: 'active', isBlocked: false, isCritical: false })
+      makeClientDoc({
+        status: 'active',
+        isOnHold: false,
+        services: [makeFixedService('s1')]
+      })
     );
     await changeClientStatus(
-      { clientId: 'c1', newStatus: 'active', isBlocked: true },
+      { clientId: 'c1', newStatus: 'active', isOnHold: true },
       makeCtx()
     );
     const [, payload] = mockTransaction.update.mock.calls[0];
-    expect(payload).toMatchObject({
-      status: 'active',
-      isBlocked: true,
-      isCritical: false
-    });
+    expect(payload.isBlocked).toBe(false);
+    expect(payload.isOnHold).toBe(true);
   });
 
-  test('blocked → active: writes isBlocked=false (manual unblock works today)', async () => {
+  test('depleted hours client → isBlocked derived as true', async () => {
     mockTransaction.get.mockResolvedValue(
-      makeClientDoc({ status: 'active', isBlocked: true, isCritical: false })
+      makeClientDoc({
+        status: 'active',
+        isOnHold: false,
+        services: [makeHoursService('s1', { totalHours: 10, hoursUsed: 10 })],
+        totalHours: 10
+      })
     );
     await changeClientStatus(
-      { clientId: 'c1', newStatus: 'active', isBlocked: false },
+      { clientId: 'c1', newStatus: 'inactive' },
       makeCtx()
     );
     const [, payload] = mockTransaction.update.mock.calls[0];
-    expect(payload).toMatchObject({
-      status: 'active',
-      isBlocked: false,
-      isCritical: false
-    });
-  });
-
-  test('active → critical: writes isCritical=true', async () => {
-    mockTransaction.get.mockResolvedValue(
-      makeClientDoc({ status: 'active', isBlocked: false, isCritical: false })
-    );
-    await changeClientStatus(
-      { clientId: 'c1', newStatus: 'active', isCritical: true },
-      makeCtx()
-    );
-    const [, payload] = mockTransaction.update.mock.calls[0];
-    expect(payload).toMatchObject({
-      status: 'active',
-      isBlocked: false,
-      isCritical: true
-    });
+    expect(payload.isBlocked).toBe(true);
+    expect(payload.hoursRemaining).toBe(0);
   });
 });
 
 // ═══════════════════════════════════════════════════════════════
-// I. Audit log emission shape
+// I. Audit log emission
 // ═══════════════════════════════════════════════════════════════
 
 describe('I. Audit log emission', () => {
-  test('logAction called with CHANGE_CLIENT_STATUS action + full payload', async () => {
+  test('logAction called with new payload shape (includes isOnHold + derived)', async () => {
     mockTransaction.get.mockResolvedValue(
       makeClientDoc({
         fullName: 'שלומי לחיאני',
         status: 'active',
+        isOnHold: false,
         isBlocked: false,
-        isCritical: false
+        isCritical: false,
+        services: [makeHoursService('s1', { totalHours: 10, hoursUsed: 7 })],
+        totalHours: 10
       })
     );
     await changeClientStatus(
-      { clientId: 'c1', newStatus: 'active', isBlocked: true, note: 'no payment' },
+      { clientId: 'c1', newStatus: 'active', isOnHold: true, note: 'unpaid invoice' },
       makeCtx()
     );
     expect(mockLogAction).toHaveBeenCalledTimes(1);
@@ -404,20 +473,22 @@ describe('I. Audit log emission', () => {
         clientName: 'שלומי לחיאני',
         previousStatus: 'active',
         newStatus: 'active',
+        previousIsOnHold: false,
+        newIsOnHold: true,
         previousIsBlocked: false,
         previousIsCritical: false,
-        newIsBlocked: true,
-        newIsCritical: false,
-        note: 'no payment'
+        derivedIsBlocked: false,
+        derivedIsCritical: true,  // hoursRemaining=3 <= 5
+        note: 'unpaid invoice'
       })
     );
   });
 
   test('note is trimmed to 500 chars', async () => {
-    mockTransaction.get.mockResolvedValue(makeClientDoc());
+    mockTransaction.get.mockResolvedValue(makeClientDoc({ isOnHold: false }));
     const longNote = 'x'.repeat(600);
     await changeClientStatus(
-      { clientId: 'c1', newStatus: 'active', isBlocked: true, note: longNote },
+      { clientId: 'c1', newStatus: 'active', isOnHold: true, note: longNote },
       makeCtx()
     );
     const noteArg = mockLogAction.mock.calls[0][3].note;
@@ -430,29 +501,91 @@ describe('I. Audit log emission', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('J. Return value structure', () => {
-  test('returns full status object with previous + new values', async () => {
+  test('returns status object with isOnHold + derived isBlocked/isCritical', async () => {
     mockTransaction.get.mockResolvedValue(
       makeClientDoc({
         fullName: 'שלומי לחיאני',
         status: 'active',
+        isOnHold: false,
         isBlocked: false,
-        isCritical: false
+        isCritical: false,
+        services: [makeHoursService('s1', { totalHours: 10, hoursUsed: 4 })],
+        totalHours: 10
       })
     );
     const result = await changeClientStatus(
-      { clientId: 'c1', newStatus: 'active', isBlocked: true },
+      { clientId: 'c1', newStatus: 'active', isOnHold: true },
       makeCtx()
     );
     expect(result).toMatchObject({
       success: true,
       previousStatus: 'active',
       newStatus: 'active',
+      previousIsOnHold: false,
+      isOnHold: true,
       previousIsBlocked: false,
       previousIsCritical: false,
-      isBlocked: true,
-      isCritical: false
+      isBlocked: false,    // derived
+      isCritical: false    // derived (hoursRemaining=6 > 5)
     });
     expect(result.statusChangedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(result.message).toContain('שלומי לחיאני');
+    expect(result.message).toContain('מוקפא');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// K. Invariant bypass defense (PR-A.4 M8)
+// ═══════════════════════════════════════════════════════════════
+
+describe('K. Bypass attempts blocked', () => {
+  test('caller attempt to send both isOnHold AND isBlocked → rejected before any write', async () => {
+    await expect(
+      changeClientStatus(
+        {
+          clientId: 'c1',
+          newStatus: 'active',
+          isOnHold: true,
+          isBlocked: true  // attempt bypass
+        },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+    expect(mockLogAction).not.toHaveBeenCalled();
+  });
+
+  test('caller attempt to send isCritical=true on healthy client → rejected', async () => {
+    // Even though "critical" might seem like a legitimate manual flag,
+    // it's now derived. Reject the input to prevent drift.
+    await expect(
+      changeClientStatus(
+        { clientId: 'c1', newStatus: 'active', isCritical: true },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('helper recomputes aggregates even if caller did not request status change', async () => {
+    // The helper is the SoT. Any successful call recomputes from services
+    // regardless of what the caller asked. This is what stops drift.
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({
+        status: 'active',
+        isOnHold: false,
+        // DB has stale isBlocked=true on a fixed-only client (the 23-victim scenario)
+        isBlocked: true,
+        services: [makeFixedService('s1')]
+      })
+    );
+    await changeClientStatus(
+      { clientId: 'c1', newStatus: 'active', isOnHold: true },
+      makeCtx()
+    );
+    const [, payload] = mockTransaction.update.mock.calls[0];
+    // Helper corrected stale value: fixed-only ⇒ isBlocked=false (I1).
+    expect(payload.isBlocked).toBe(false);
+    expect(payload.isOnHold).toBe(true);
   });
 });

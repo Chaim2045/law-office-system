@@ -278,31 +278,44 @@ return;
             let statusClass = 'active';
             let statusText = 'פעיל';
             let icon = 'fa-check-circle';
+            let title = '';
 
             const hasActiveOverride = client.services?.some(s =>
                 s.type === 'hours' && s.overrideActive === true
             );
 
-            if (client.isBlocked && hasActiveOverride) {
+            // PR-A.4 (2026-05-16): isOnHold (manual freeze) takes precedence
+            // over derived isBlocked. Show both flags distinguishably so admin
+            // sees WHY a client is blocked (no hours vs manual freeze).
+            if (client.isOnHold) {
+                statusClass = 'on-hold';
+                statusText = 'מוקפא ידנית';
+                icon = 'fa-pause';
+                title = 'הקפאה ידנית של אדמין — לא קשור ליתרת השעות';
+            } else if (client.isBlocked && hasActiveOverride) {
                 statusClass = 'warning';
                 statusText = 'חריגה מאושרת';
                 icon = '';
+                title = 'חרגה ליטרת שעות אבל פעיל override';
             } else if (client.isBlocked) {
                 statusClass = 'blocked';
-                statusText = 'חסום';
+                statusText = 'חסום (אין שעות)';
                 icon = 'fa-ban';
+                title = 'יתרת שעות אפסה — חישוב אוטומטי';
             } else if (client.isCritical) {
                 statusClass = 'critical';
                 statusText = 'קריטי';
                 icon = 'fa-exclamation-triangle';
+                title = 'נותרו 5 שעות או פחות';
             } else if (client.status === 'inactive') {
                 statusClass = 'inactive';
                 statusText = 'לא פעיל';
                 icon = 'fa-pause-circle';
             }
 
+            const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
             return `
-                <span class="status-badge ${statusClass}" style="white-space:nowrap;">
+                <span class="status-badge ${statusClass}" style="white-space:nowrap;"${titleAttr}>
                     ${icon ? `<i class="fas ${icon}"></i>` : ''}
                     ${statusText}
                 </span>
@@ -364,7 +377,9 @@ return;
             const percentage = totalHours > 0 ? (remaining / totalHours) * 100 : 0;
 
             let progressClass = '';
-            if (client.isBlocked) {
+            if (client.isOnHold) {
+                progressClass = 'on-hold';  // PR-A.4: manual freeze shown distinctly
+            } else if (client.isBlocked) {
                 progressClass = 'blocked';
             } else if (client.isCritical) {
                 progressClass = 'critical';
@@ -396,8 +411,10 @@ return;
          * which weren't reliably maintained for multi-service clients.
          */
         getHoursWarningIcon(client) {
-            // Only check active, non-blocked clients
-            if (client.status !== 'active' || client.isBlocked) {
+            // Only check active, non-blocked, non-on-hold clients.
+            // PR-A.4: isOnHold suppresses the hours warning — admin already
+            // saw the freeze badge, no need to also warn about hours.
+            if (client.status !== 'active' || client.isBlocked || client.isOnHold) {
                 return '';
             }
 
@@ -711,7 +728,7 @@ ${hasBillableHours ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''
                     client.caseNumber || '',
                     typeLabel,
                     hasBillableHours ? (client.hoursRemaining || 0) : '-',
-                    client.isBlocked ? 'חסום' : client.isCritical ? 'קריטי' : client.status,
+                    client.isOnHold ? 'מוקפא ידנית' : client.isBlocked ? 'חסום (אין שעות)' : client.isCritical ? 'קריטי' : client.status,
                     client.assignedTo ? client.assignedTo.join(', ') : '',
                     this.getTeamLastLogin(client)
                 ];

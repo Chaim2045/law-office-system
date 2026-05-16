@@ -212,6 +212,9 @@
                             typeDisplay: typeDisplay,  // ← full object with label/icon/breakdown for UI
                             isBlocked: clientData.isBlocked || false,
                             isCritical: clientData.isCritical || false,
+                            // PR-A.4 (2026-05-16): manual freeze flag, orthogonal to derived isBlocked.
+                            // === true coerces missing field (pre-migration clients) to false safely.
+                            isOnHold: clientData.isOnHold === true,
                             status: clientData.status || 'active',
                             assignedTo: clientData.assignedTo || [],
                             services: clientData.services || [],

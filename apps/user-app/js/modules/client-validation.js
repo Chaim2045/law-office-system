@@ -34,11 +34,16 @@ export class ClientValidation {
 continue;
 }
 
-      if (client.isBlocked) {
+      // PR-A.4 (2026-05-16): block time entry on EITHER condition:
+      //   - isBlocked  = DERIVED (no remaining billable hours)
+      //   - isOnHold   = MANUAL admin freeze (unpaid, dispute, etc.)
+      // Both must block. The DB may have either flag set independently.
+      if (client.isBlocked || client.isOnHold) {
         this.blockedClients.add(client.fullName);
         this.blockedClientsData.push({
           name: client.fullName,
-          hoursRemaining: client.hoursRemaining || 0
+          hoursRemaining: client.hoursRemaining || 0,
+          reason: client.isOnHold ? 'manual_hold' : 'no_hours'
         });
       } else if (
         client.type === 'hours' &&
