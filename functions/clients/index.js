@@ -1320,19 +1320,20 @@ exports.setServiceOverdraftResolved = functions.https.onCall(async (data, contex
       const updatedServices = [...services];
       updatedServices[serviceIndex] = updatedService;
 
-      const agg = calcClientAggregates(updatedServices, clientData.totalHours);
-
-      transaction.update(clientRef, {
-        services: updatedServices,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedBy: user.username,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      // PR-B.2 (2026-05-17): migrate to canonical helper (pattern from PR-B.1).
+      // Both branches above (resolved=true writes object; resolved=false removes
+      // field via destructuring) collapse into the same wholesale-replace
+      // services[] write — the helper just routes it through canonical
+      // aggregate recomputation + invariants + violation logging.
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services: updatedServices },
+        {
+          caller: 'setServiceOverdraftResolved',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
     });
 
     await logAction(
