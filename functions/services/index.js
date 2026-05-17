@@ -191,24 +191,29 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
       // הוספת השירות למערך services[]
       const services = [...(clientData.services || []), newService];
 
-      // עדכון הלקוח
-      const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(services, clientTotalHours);
+      // Compute non-aggregate derived counts (helper does NOT manage these)
+      const totalServices = services.length;
+      const activeServices = services.filter(s => s.status === 'active').length;
 
-      transaction.update(clientRef, {
-        services: services,
-        totalServices: services.length,
-        activeServices: services.filter(s => s.status === 'active').length,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // PR-B.6 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1-B.5 (#283-#287). First CF in PR-B that ADDS
+      // a service (vs mutating). Helper handles append-at-end the same
+      // way as wholesale-replace — services[] passed in full to the
+      // helper which recomputes totalHours + aggregates from the
+      // (now N+1)-element array.
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'addServiceToClient',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       return { newService };
     });
