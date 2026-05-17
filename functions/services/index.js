@@ -10,6 +10,7 @@ const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
 const { calcClientAggregates, round2, isFixedService } = require('../shared/aggregates');
+const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 
 const db = admin.firestore();
 
@@ -1396,29 +1397,36 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
       // 3e. Immutable removal
       const updatedServices = services.filter((s, idx) => idx !== serviceIndex);
 
-      // 3f. Recalculate client-level aggregates
-      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
+      // 3f. Compute non-aggregate derived counts (helper does NOT manage these)
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
-      // 3g. Write to Firestore (Transaction)
-      transaction.update(clientRef, {
-        services: updatedServices,
-        totalServices: totalServices,
-        activeServices: activeServices,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 3g. PR-B.3 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1/.B.2 (#283/#284). The helper:
+      //   - strips RESTRICTED_KEYS (defense-in-depth)
+      //   - recomputes totalHours + all aggregates from services
+      //   - asserts invariants I1/I2/I4
+      //   - emits violation record + Cloud Logging entry on failure
+      //   - honors global kill-switch
+      // totalServices / activeServices pass through (NOT in RESTRICTED_KEYS).
+      // I1 case is relevant here: removing the last billable service from
+      // a mixed client leaves only fixed services → helper derives
+      // isBlocked=false even if hoursRemaining drops to 0.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'deleteService',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
-      // 3h. Return data from transaction
+      // 3h. Return data from transaction (sourced from helper's canonical aggregates)
       const serviceName = service.name || service.serviceName;
       const serviceType = service.type || service.serviceType;
 
@@ -1427,14 +1435,14 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
         serviceName,
         serviceType,
         aggregates: {
-          totalHours: clientTotalHours,
-          hoursUsed: agg.hoursUsed,
-          hoursRemaining: agg.hoursRemaining,
-          minutesRemaining: agg.minutesRemaining,
-          isBlocked: agg.isBlocked,
-          isCritical: agg.isCritical,
-          totalServices: totalServices,
-          activeServices: activeServices
+          totalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+          hoursUsed: helperResult.aggregates.hoursUsed,
+          hoursRemaining: helperResult.aggregates.hoursRemaining,
+          minutesRemaining: helperResult.aggregates.minutesRemaining,
+          isBlocked: helperResult.aggregates.isBlocked,
+          isCritical: helperResult.aggregates.isCritical,
+          totalServices,
+          activeServices
         }
       };
     });
