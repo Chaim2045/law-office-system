@@ -47,6 +47,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { calcClientAggregates, assertClientAggregateInvariants } = require('./aggregates');
 const { SYSTEM_CONSTANTS } = require('./constants');
+const { getEnforcementMode, VALID_MODES } = require('./enforcement-mode');
 
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
@@ -116,7 +117,11 @@ function defaultViolationLogger(violation) {
  * @param {Function} [options.violationLogger] - optional override of the
  *   violation logger (for tests). Defaults to firestore write +
  *   functions.logger.error.
- * @returns {Promise<{aggregates, previousAggregates, strippedKeys, written}>}
+ * @param {string} [options.mode] - per-call override for the invariant
+ *   enforcement mode. One of 'enforce' | 'log_only' | 'disabled'. If
+ *   omitted, the global config at `system_settings/invariant_enforcement`
+ *   is used (cached 60s per CF instance). See `shared/enforcement-mode.js`.
+ * @returns {Promise<{aggregates, previousAggregates, strippedKeys, written, mode}>}
  */
 async function writeClientWithCanonicalAggregates(
   transaction,
@@ -142,6 +147,11 @@ async function writeClientWithCanonicalAggregates(
   const violationLogger = typeof options.violationLogger === 'function'
     ? options.violationLogger
     : defaultViolationLogger;
+
+  // PR-A.6: per-call mode override; otherwise read global config (cached).
+  const mode = (typeof options.mode === 'string' && VALID_MODES.indexOf(options.mode) !== -1)
+    ? options.mode
+    : await getEnforcementMode();
 
   // ─── 2. Transactional read ───────────────────────────────────────
   const doc = await transaction.get(clientRef);
@@ -215,61 +225,77 @@ async function writeClientWithCanonicalAggregates(
     }
   }
 
-  // ─── 8. Defensive invariant assertion ────────────────────────────
+  // ─── 8. Defensive invariant assertion (mode-aware) ───────────────
   // Should never throw if calcClientAggregates is correct. If it does,
-  // calcClientAggregates has drifted from the documented invariants —
-  // fail fast so the bad write never lands in Firestore.
+  // calcClientAggregates has drifted from the documented invariants.
   //
-  // PR-A.5 (2026-05-17): on assertion failure, ALSO write a structured
-  // violation record to clientInvariantViolations + emit a Cloud Logging
-  // entry. This survives the transaction abort because the violation
-  // writer uses admin.firestore() directly (not the transaction).
-  try {
-    assertClientAggregateInvariants(services, finalPayload, caller);
-  } catch (assertErr) {
-    const violation = {
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      caller,
-      clientId: clientRef.id,
-      error: assertErr.message,
-      proposedAggregates: {
-        isBlocked: finalPayload.isBlocked,
-        isCritical: finalPayload.isCritical,
-        totalHours: finalPayload.totalHours,
-        hoursRemaining: finalPayload.hoursRemaining
-      },
-      servicesSummary: services.map((s) => ({
-        id: s.id || null,
-        type: s.type || null,
-        pricingType: s.pricingType || null,
-        totalHours: typeof s.totalHours === 'number' ? s.totalHours : null,
-        status: s.status || null
-      })),
-      auditMeta: auditMeta || null
-    };
-
-    // Fire-and-forget: do not await, do not let logging block the throw.
-    // Errors writing the violation are caught inside the logger.
+  // PR-A.5 (2026-05-17): on assertion failure, also write a structured
+  // violation record + Cloud Logging entry.
+  // PR-A.6 (2026-05-17): behavior gated by enforcement mode:
+  //   - 'enforce'  (default) — fail fast: throw + log + write aborted
+  //   - 'log_only'           — log + emit mode_log_only marker, write
+  //                            proceeds with canonical aggregates
+  //   - 'disabled'           — skip assertion entirely (EMERGENCY ONLY)
+  if (mode !== 'disabled') {
     try {
-      violationLogger(violation);
-    } catch (loggerErr) {
-      // Logger threw synchronously (shouldn't happen for default, possible
-      // for test mocks). Don't let it mask the original assertion error.
-      functions.logger.error(
-        '[client-writer] violationLogger threw synchronously',
-        { error: loggerErr.message }
-      );
+      assertClientAggregateInvariants(services, finalPayload, caller);
+    } catch (assertErr) {
+      const violation = {
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        caller,
+        clientId: clientRef.id,
+        error: assertErr.message,
+        mode, // PR-A.6: record which mode was active
+        proposedAggregates: {
+          isBlocked: finalPayload.isBlocked,
+          isCritical: finalPayload.isCritical,
+          totalHours: finalPayload.totalHours,
+          hoursRemaining: finalPayload.hoursRemaining
+        },
+        servicesSummary: services.map((s) => ({
+          id: s.id || null,
+          type: s.type || null,
+          pricingType: s.pricingType || null,
+          totalHours: typeof s.totalHours === 'number' ? s.totalHours : null,
+          status: s.status || null
+        })),
+        auditMeta: auditMeta || null
+      };
+
+      // Fire-and-forget violation record.
+      try {
+        violationLogger(violation);
+      } catch (loggerErr) {
+        functions.logger.error(
+          '[client-writer] violationLogger threw synchronously',
+          { error: loggerErr.message }
+        );
+      }
+
+      // Structured Cloud Logging entry (mode included for analysis)
+      functions.logger.error('invariant_violation', {
+        type: 'invariant_violation',
+        caller,
+        clientId: clientRef.id,
+        error: assertErr.message,
+        mode
+      });
+
+      if (mode === 'enforce') {
+        // Default behavior: write aborted, error propagates.
+        throw assertErr;
+      }
+      // mode === 'log_only': emit a marker so analysts can search for it,
+      // then fall through to write the canonical aggregates anyway. This
+      // is the safety net during PR-B migration: surface unexpected
+      // assertions without breaking users.
+      functions.logger.warn('invariant_violation_log_only', {
+        type: 'invariant_violation_log_only',
+        caller,
+        clientId: clientRef.id,
+        error: assertErr.message
+      });
     }
-
-    // Structured Cloud Logging entry (independent of the violation collection)
-    functions.logger.error('invariant_violation', {
-      type: 'invariant_violation',
-      caller,
-      clientId: clientRef.id,
-      error: assertErr.message
-    });
-
-    throw assertErr;
   }
 
   // ─── 9. Write ────────────────────────────────────────────────────
@@ -279,7 +305,8 @@ async function writeClientWithCanonicalAggregates(
     aggregates,
     previousAggregates,
     strippedKeys,
-    written: finalPayload
+    written: finalPayload,
+    mode // PR-A.6: surface the active mode for caller observability
   };
 }
 

@@ -717,3 +717,151 @@ describe('I. Violation logging on assertion failure', () => {
     expect(mockTransaction.update).not.toHaveBeenCalled();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// J. Enforcement mode per-call override (PR-A.6)
+// ═══════════════════════════════════════════════════════════════
+
+describe('J. Enforcement mode (per-call override)', () => {
+  // Helper to seed an assertion that throws on the next call
+  function armAssertionToThrow(message = 'invariant_violation:I1_test [caller=x]') {
+    const err = new Error(message);
+    mockedAssert.mockImplementationOnce(() => {
+      throw err;
+    });
+    return err;
+  }
+
+  describe('enforce mode (default)', () => {
+    test('happy path → write OK, no log, no throw', async () => {
+      mockTransaction.get.mockResolvedValue(
+        makeClientDoc({ services: [makeHoursService('s1')] })
+      );
+      const violationLogger = jest.fn();
+      const result = await writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test', mode: 'enforce', violationLogger }
+      );
+      expect(violationLogger).not.toHaveBeenCalled();
+      expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+      expect(result.mode).toBe('enforce');
+    });
+
+    test('violation → log + throw + no write', async () => {
+      mockTransaction.get.mockResolvedValue(
+        makeClientDoc({ services: [makeHoursService('s1')] })
+      );
+      const err = armAssertionToThrow();
+      const violationLogger = jest.fn();
+
+      await expect(
+        writeClientWithCanonicalAggregates(
+          mockTransaction, clientRef,
+          { status: 'active' },
+          { caller: 'test', mode: 'enforce', violationLogger }
+        )
+      ).rejects.toThrow(err);
+
+      expect(violationLogger).toHaveBeenCalledTimes(1);
+      expect(violationLogger.mock.calls[0][0]).toMatchObject({ mode: 'enforce' });
+      expect(mockTransaction.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('log_only mode', () => {
+    test('happy path → write OK, no log, no throw', async () => {
+      mockTransaction.get.mockResolvedValue(
+        makeClientDoc({ services: [makeHoursService('s1')] })
+      );
+      const violationLogger = jest.fn();
+      const result = await writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test', mode: 'log_only', violationLogger }
+      );
+      expect(violationLogger).not.toHaveBeenCalled();
+      expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+      expect(result.mode).toBe('log_only');
+    });
+
+    test('violation → log + WRITE PROCEEDS (no throw)', async () => {
+      mockTransaction.get.mockResolvedValue(
+        makeClientDoc({ services: [makeHoursService('s1')] })
+      );
+      armAssertionToThrow();
+      const violationLogger = jest.fn();
+
+      const result = await writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test', mode: 'log_only', violationLogger }
+      );
+
+      // Violation was logged with mode=log_only
+      expect(violationLogger).toHaveBeenCalledTimes(1);
+      expect(violationLogger.mock.calls[0][0]).toMatchObject({ mode: 'log_only' });
+
+      // But the write happened anyway — log_only is non-blocking
+      expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+      expect(result.mode).toBe('log_only');
+    });
+  });
+
+  describe('disabled mode', () => {
+    test('happy path → write OK, no log, no throw', async () => {
+      mockTransaction.get.mockResolvedValue(
+        makeClientDoc({ services: [makeHoursService('s1')] })
+      );
+      const violationLogger = jest.fn();
+      const result = await writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test', mode: 'disabled', violationLogger }
+      );
+      expect(violationLogger).not.toHaveBeenCalled();
+      expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+      expect(result.mode).toBe('disabled');
+    });
+
+    test('assertion function NOT called in disabled mode', async () => {
+      mockTransaction.get.mockResolvedValue(
+        makeClientDoc({ services: [makeHoursService('s1')] })
+      );
+      const violationLogger = jest.fn();
+      const callCountBefore = mockedAssert.mock.calls.length;
+
+      const result = await writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test', mode: 'disabled', violationLogger }
+      );
+
+      // Assertion was completely skipped (no new calls)
+      expect(mockedAssert.mock.calls.length).toBe(callCountBefore);
+      // Logger NOT called — disabled mode skips assertion entirely
+      expect(violationLogger).not.toHaveBeenCalled();
+      // Write still happens
+      expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+      expect(result.mode).toBe('disabled');
+    });
+  });
+
+  describe('invalid mode option', () => {
+    test('options.mode="bogus" → falls back to global config (default enforce in tests)', async () => {
+      mockTransaction.get.mockResolvedValue(
+        makeClientDoc({ services: [makeHoursService('s1')] })
+      );
+      const violationLogger = jest.fn();
+      const result = await writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test', mode: 'bogus', violationLogger }
+      );
+      // Global config in test env falls back to 'enforce' (no doc in mock).
+      expect(result.mode).toBe('enforce');
+      expect(violationLogger).not.toHaveBeenCalled();
+      expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+    });
+  });
+});
