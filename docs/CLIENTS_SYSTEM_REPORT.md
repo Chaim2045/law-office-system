@@ -79,6 +79,41 @@ Read access: admins בלבד (לא User App). Write: רק CFs.
 
 ב-PR-C יהיה Admin dashboard + WhatsApp alert.
 
+## Kill-switch — `system_settings/invariant_enforcement` (PR-A.6)
+
+מתג חירום מרכזי לשליטה בהתנהגות ה-helper אם משהו משתבש בפרודקשן. ניתן להחליף בלי deploy חדש.
+
+### 3 מצבים
+
+| מצב | התנהגות | מתי להשתמש |
+|---|---|---|
+| `enforce` (ברירת מחדל) | violation → throw + log + write נדחה | תקין. ייצור רגיל. |
+| `log_only` | violation → log + write **עובר** עם canonical aggregates | במהלך migration של callsites חדשים (PR-B). רוצים להסתכל לפני לחסום. |
+| `disabled` | assertion מדלגים לחלוטין. אין log. אין throw. | **חירום בלבד.** רק אם ה-assertion עצמו באגי. לא להשאיר ככה זמן רב. |
+
+### איך מחליפים (admin)
+
+1. Firebase Console → Firestore → `system_settings`
+2. פותחים מסמך `invariant_enforcement` (יוצרים אם חסר)
+3. שדה `mode` → אחד מ-`enforce` / `log_only` / `disabled`
+4. תוקף תוך עד **60 שניות** (cache TTL לכל CF instance)
+
+### ברירות מחדל בטוחות
+
+כל failure path מחזיר `'enforce'`:
+- מסמך חסר → enforce
+- שדה `mode` חסר → enforce
+- ערך לא תקין (case-sensitive, חייב להיות מ-VALID_MODES) → enforce
+- Firestore read fail (permission, network) → enforce
+
+→ misconfiguration **לא יכולה** להוריד בטיחות בשקט.
+
+### ניטור
+
+כל violation נרשם עם השדה `mode` בtoken — מאפשר ניתוח בדיעבד "האם זה היה enforce או log_only".
+
+ב-Cloud Logging נחפש: `invariant_violation` או `invariant_violation_log_only`.
+
 ## קבצים עיקריים
 
 ### Frontend:
