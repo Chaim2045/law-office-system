@@ -50,11 +50,22 @@ jest.mock('firebase-functions', () => {
   };
 });
 
+// PR-A.5: wrap aggregates module so we can control assertClientAggregateInvariants
+// per-test (default = real impl; tests override via mockImplementationOnce).
+jest.mock('../shared/aggregates', () => {
+  const actual = jest.requireActual('../shared/aggregates');
+  return {
+    ...actual,
+    assertClientAggregateInvariants: jest.fn(actual.assertClientAggregateInvariants)
+  };
+});
+
 // ═══════════════════════════════════════════════════════════════
 // Requires — after mocks
 // ═══════════════════════════════════════════════════════════════
 
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+const { assertClientAggregateInvariants: mockedAssert } = require('../shared/aggregates');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
@@ -578,5 +589,131 @@ describe('H. Return value', () => {
     expect(result.strippedKeys).toEqual(
       expect.arrayContaining(['isBlocked', 'hoursUsed'])
     );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// I. Violation logging (PR-A.5)
+// ═══════════════════════════════════════════════════════════════
+
+describe('I. Violation logging on assertion failure', () => {
+  test('happy path → violationLogger NOT called', async () => {
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({ services: [makeHoursService('s1')] })
+    );
+    const violationLogger = jest.fn();
+    await writeClientWithCanonicalAggregates(
+      mockTransaction, clientRef,
+      { status: 'active' },
+      { caller: 'test', violationLogger }
+    );
+    expect(violationLogger).not.toHaveBeenCalled();
+  });
+
+  test('assertion throws → violationLogger called once with structured payload + original error re-thrown', async () => {
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({
+        services: [makeHoursService('s1', { totalHours: 10, hoursUsed: 3 })],
+        totalHours: 10
+      })
+    );
+    // Force the assertion to throw (simulating drift in calcClientAggregates).
+    const assertErr = new Error('invariant_violation:I4_blocked_and_critical [caller=test]');
+    mockedAssert.mockImplementationOnce(() => {
+      throw assertErr;
+    });
+    const violationLogger = jest.fn();
+
+    await expect(
+      writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        {
+          caller: 'changeClientStatus',
+          auditMeta: { uid: 'user1', username: 'haim' },
+          violationLogger
+        }
+      )
+    ).rejects.toThrow(assertErr);
+
+    // Logger called exactly once
+    expect(violationLogger).toHaveBeenCalledTimes(1);
+
+    // Payload shape
+    const violation = violationLogger.mock.calls[0][0];
+    expect(violation).toMatchObject({
+      caller: 'changeClientStatus',
+      clientId: 'c1',
+      error: 'invariant_violation:I4_blocked_and_critical [caller=test]',
+      proposedAggregates: expect.objectContaining({
+        isBlocked: expect.any(Boolean),
+        isCritical: expect.any(Boolean),
+        totalHours: expect.any(Number),
+        hoursRemaining: expect.any(Number)
+      }),
+      servicesSummary: [
+        expect.objectContaining({
+          id: 's1',
+          type: 'hours',
+          totalHours: 10,
+          status: 'active'
+        })
+      ],
+      auditMeta: { uid: 'user1', username: 'haim' }
+    });
+    expect(violation.timestamp).toBeDefined();
+
+    // Transaction.update was NOT called (write must not happen on violation)
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('default violationLogger used when option omitted (no throw on missing logger)', async () => {
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({ services: [makeHoursService('s1')] })
+    );
+    const assertErr = new Error('invariant_violation:I1_no_billable_but_blocked [caller=x]');
+    mockedAssert.mockImplementationOnce(() => {
+      throw assertErr;
+    });
+
+    // No violationLogger in options → falls back to default. Default uses
+    // admin.firestore() which the firebase-admin mock stubs as a function
+    // returning { collection: jest.fn() }. We don't expect the default
+    // logger to crash the helper.
+    await expect(
+      writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test-default' }
+      )
+    ).rejects.toThrow(assertErr);
+
+    // Helper should still throw the original assertion error and skip the write.
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('violationLogger sync throw does not mask original assertion error', async () => {
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({ services: [makeHoursService('s1')] })
+    );
+    const assertErr = new Error('invariant_violation:I2_override_active_but_blocked [caller=x]');
+    mockedAssert.mockImplementationOnce(() => {
+      throw assertErr;
+    });
+    const badLogger = jest.fn(() => {
+      throw new Error('logger storage backend down');
+    });
+
+    // The original assertion error must propagate, not the logger's error.
+    await expect(
+      writeClientWithCanonicalAggregates(
+        mockTransaction, clientRef,
+        { status: 'active' },
+        { caller: 'test', violationLogger: badLogger }
+      )
+    ).rejects.toThrow(assertErr);
+
+    expect(badLogger).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.update).not.toHaveBeenCalled();
   });
 });
