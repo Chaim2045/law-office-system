@@ -1213,19 +1213,26 @@ exports.setServiceOverride = functions.https.onCall(async (data, context) => {
       const updatedServices = [...services];
       updatedServices[serviceIndex] = updatedService;
 
-      const agg = calcClientAggregates(updatedServices, clientData.totalHours);
-
-      transaction.update(clientRef, {
-        services: updatedServices,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedBy: user.username,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      // PR-B.1 (2026-05-17): migrate to canonical write helper.
+      // Pattern: extract the in-transaction { services + 6 aggregate fields
+      // + lastModified } block, replace with a single helper call. The helper:
+      //   - strips RESTRICTED_KEYS if present (defense-in-depth)
+      //   - recomputes totalHours + aggregates from services
+      //   - asserts invariants (I1/I2/I4) — throws if drift detected
+      //   - emits a violation record + Cloud Logging entry on assertion fail
+      //   - honors the global kill-switch (system_settings/invariant_enforcement)
+      // Behavior is identical to the prior calcClientAggregates + transaction.update
+      // — this is the SAME math, routed through the canonical path for
+      // observability + structural enforcement.
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services: updatedServices },
+        {
+          caller: 'setServiceOverride',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
     });
 
     await logAction(
