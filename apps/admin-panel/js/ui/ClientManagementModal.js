@@ -1170,7 +1170,12 @@ return; // user cancelled
                 const overlay = document.createElement('div');
                 overlay.className = 'cm-status-overlay';
                 overlay.setAttribute('role', 'presentation');
-                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
+                // z-index 10500 — must exceed ClientManagementModal's 10200 (clients-modals.css:53,
+                // documented as "highest in app"). Inline value matches the existing high-z-index
+                // pattern in components.css:2580 ("Higher than UserDetailsModal").
+                // Without this, when this dialog is triggered from inside the management modal,
+                // it renders BEHIND the management modal and becomes invisible/unclickable.
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10500;display:flex;align-items:center;justify-content:center;';
 
                 const dialog = document.createElement('div');
                 dialog.setAttribute('role', 'dialog');
