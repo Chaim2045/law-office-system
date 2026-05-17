@@ -1238,29 +1238,36 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
       // 3e. Immutable array replacement
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3f. Recalculate client-level aggregates
-      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
+      // 3f. Compute non-aggregate derived counts (helper does NOT manage these)
+      // NOTE: activeServices changes when transitioning to/from 'active'.
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
-      // 3g. Write to Firestore (Transaction)
-      transaction.update(clientRef, {
-        services: updatedServices,
-        totalServices: totalServices,
-        activeServices: activeServices,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 3g. PR-B.5 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1/B.2/B.3/B.4 (#283/#284/#285/#286). The helper:
+      //   - strips RESTRICTED_KEYS (defense-in-depth)
+      //   - recomputes totalHours + all aggregates from services
+      //   - asserts invariants I1/I2/I4
+      //   - emits violation record + Cloud Logging entry on failure
+      //   - honors global kill-switch
+      // statusChangeHistory append survives the wholesale services[] replace
+      // because services[serviceIndex] is the new updatedService object
+      // which carries the appended history array.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'changeServiceStatus',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
-      // 3h. Return data from transaction
+      // 3h. Return data from transaction (aggregates sourced from helper)
       const serviceName = service.name || service.serviceName;
       const serviceType = service.type || service.serviceType;
 
@@ -1271,14 +1278,14 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
         newStatus: data.newStatus,
         statusChangedAt: now,
         aggregates: {
-          totalHours: clientTotalHours,
-          hoursUsed: agg.hoursUsed,
-          hoursRemaining: agg.hoursRemaining,
-          minutesRemaining: agg.minutesRemaining,
-          isBlocked: agg.isBlocked,
-          isCritical: agg.isCritical,
-          totalServices: totalServices,
-          activeServices: activeServices
+          totalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+          hoursUsed: helperResult.aggregates.hoursUsed,
+          hoursRemaining: helperResult.aggregates.hoursRemaining,
+          minutesRemaining: helperResult.aggregates.minutesRemaining,
+          isBlocked: helperResult.aggregates.isBlocked,
+          isCritical: helperResult.aggregates.isCritical,
+          totalServices,
+          activeServices
         }
       };
     });
