@@ -1049,41 +1049,48 @@ exports.completeService = functions.https.onCall(async (data, context) => {
       const updatedService = { ...service, status: 'completed', completedAt: now };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3e. Recalculate client-level aggregates
-      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
+      // 3e. Compute non-aggregate derived counts (helper does NOT manage these)
+      // NOTE: activeServices decreases by 1 because the just-completed service
+      // drops out of the `status === 'active'` filter.
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
-      // 3f. Write to Firestore (Transaction)
-      transaction.update(clientRef, {
-        services: updatedServices,
-        totalServices: totalServices,
-        activeServices: activeServices,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 3f. PR-B.4 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1/B.2/B.3 (#283/#284/#285). The helper:
+      //   - strips RESTRICTED_KEYS (defense-in-depth)
+      //   - recomputes totalHours + all aggregates from services
+      //   - asserts invariants I1/I2/I4
+      //   - emits violation record + Cloud Logging entry on failure
+      //   - honors global kill-switch
+      // I1 relevant: completing the last billable service while a fixed-only
+      // remains → helper derives isBlocked=false even if hours depleted.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'completeService',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
-      // 3g. Return data from transaction
+      // 3g. Return data from transaction (aggregates sourced from helper)
       return {
         serviceName: service.name || service.serviceName,
         serviceType: service.type || service.serviceType,
         completedAt: now,
         aggregates: {
-          totalHours: clientTotalHours,
-          hoursRemaining: agg.hoursRemaining,
-          minutesRemaining: agg.minutesRemaining,
-          isBlocked: agg.isBlocked,
-          isCritical: agg.isCritical,
-          totalServices: totalServices,
-          activeServices: activeServices
+          totalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+          hoursRemaining: helperResult.aggregates.hoursRemaining,
+          minutesRemaining: helperResult.aggregates.minutesRemaining,
+          isBlocked: helperResult.aggregates.isBlocked,
+          isCritical: helperResult.aggregates.isCritical,
+          totalServices,
+          activeServices
         }
       };
     });
