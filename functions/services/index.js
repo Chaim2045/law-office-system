@@ -388,22 +388,22 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       // עדכון המערך
       services[serviceIndex] = service;
 
-      // שמירה אטומית
-      const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(services, clientTotalHours);
-
-      transaction.update(clientRef, {
-        services: services,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // PR-B.7 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1-B.6 (#283-#288). Adds a package (sub-document
+      // mutation), NOT a service — so totalServices/activeServices are
+      // NOT passed (count unchanged when adding a package to existing service).
+      // The drift guard above (service.totalHours vs Σ(packages.hours))
+      // runs BEFORE this helper call — service-level invariant complements
+      // the client-level invariants (I1-I4) checked by the helper.
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services },
+        {
+          caller: 'addPackageToService',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       return {
         newPackage,
