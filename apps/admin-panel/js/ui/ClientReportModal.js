@@ -734,8 +734,17 @@ return;
             const totalHours = parseFloat(serviceInfo.totalHours) || 0;
 
             // 🎯 Detect service type and pricing
+            // PR-A.4.1 (2026-05-16): use canonical isFixedService check.
+            // BUG fixed: prior `pricingType === 'fixed'` only matched legal_procedure+fixed
+            // and missed plain `type === 'fixed'` services (e.g. שירות קבוע / "פתיחת חברת יחיד").
+            // Result was the badge falling through to "שעות" + clock icon, despite the
+            // Client Management modal correctly showing "מחיר קבוע".
+            // Canonical check mirrors functions/shared/aggregates.js:isFixedService.
             const isLegalProcedure = serviceInfo.type === 'legal_procedure';
-            const isFixedPrice = serviceInfo.pricingType === 'fixed';
+            const isFixedPrice = (window.ClientTypeDisplay && window.ClientTypeDisplay.isFixedService)
+                ? window.ClientTypeDisplay.isFixedService(serviceInfo)
+                : (serviceInfo.type === 'fixed' ||
+                    (serviceInfo.type === 'legal_procedure' && serviceInfo.pricingType === 'fixed'));
             const isHourlyBased = !isFixedPrice; // שעתי או הליך משפטי שעתי
 
             const hasOverdraft = serviceInfo.overdraftResolved?.isResolved !== true &&
