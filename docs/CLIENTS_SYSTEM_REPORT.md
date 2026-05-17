@@ -39,6 +39,46 @@
 
 ראה: `apps/user-app/js/modules/client-validation.js`, `apps/user-app/js/modules/client-hours.js`.
 
+## אכיפת כתיבה — Firestore Rules + violations collection (PR-A.5)
+
+### Firestore Rules — שכבת הגנה שנייה
+
+`firestore.rules` למסד `/clients/{clientId}` מאכיף **field-level allowlist** מאז PR-A.5:
+
+| פעולה | מותר ל-Admin Browser | חסום |
+|---|---|---|
+| read | ✅ | — |
+| create | ✅ עם שדות אורתוגונליים בלבד (לא aggregate) | ❌ אם כולל isBlocked / isCritical / services / totalHours / hoursUsed/Remaining / minutesUsed/Remaining |
+| update | ✅ עם שדות אורתוגונליים בלבד | ❌ אם נוגע ב-aggregate keys |
+| delete | ✅ | — |
+
+**Cloud Functions אינן מושפעות** — הן משתמשות ב-Admin SDK שעוקף Rules. ה-helper הקנוני (`writeClientWithCanonicalAggregates`) הוא הדרך היחידה לכתוב aggregate fields, ו-Rules מבטיחות שאין דלת אחורית מהדפדפן.
+
+### `clientInvariantViolations` collection
+
+כשה-helper מזהה הפרת invariant (I1/I2/I4 מ-`assertClientAggregateInvariants`), הוא:
+
+1. **כותב רשומה ל-`clientInvariantViolations`** (fire-and-forget, מחוץ ל-transaction שנכשלה)
+2. **emits structured log** `functions.logger.error('invariant_violation', { ... })` ל-Cloud Logging
+3. **re-throws** את שגיאת ה-assertion — ה-write לא קורה
+
+מבנה הרשומה:
+```js
+{
+  timestamp: serverTimestamp,
+  caller: 'changeClientStatus',           // איזה CF טריגר
+  clientId: '2026069',
+  error: 'invariant_violation:I1_no_billable_but_blocked [caller=...]',
+  proposedAggregates: { isBlocked, isCritical, totalHours, hoursRemaining },
+  servicesSummary: [{ id, type, pricingType, totalHours, status }, ...],
+  auditMeta: { uid, username } | null
+}
+```
+
+Read access: admins בלבד (לא User App). Write: רק CFs.
+
+ב-PR-C יהיה Admin dashboard + WhatsApp alert.
+
 ## קבצים עיקריים
 
 ### Frontend:

@@ -84,6 +84,28 @@ function recomputeTotalHours(services) {
 }
 
 /**
+ * Default violation logger — fire-and-forget write to clientInvariantViolations.
+ * Runs OUTSIDE the failing transaction, so the violation persists even when
+ * the transaction aborts. Errors writing the violation are themselves logged
+ * (we don't want logging to mask the original assertion error).
+ *
+ * @param {Object} violation - structured violation document
+ */
+function defaultViolationLogger(violation) {
+  // Use admin.firestore() (not the transaction!) so this is a new
+  // operation, independent of the doomed transaction.
+  admin.firestore()
+    .collection('clientInvariantViolations')
+    .add(violation)
+    .catch((logErr) => {
+      functions.logger.error(
+        '[client-writer] failed to write clientInvariantViolations entry',
+        { error: logErr.message, violation }
+      );
+    });
+}
+
+/**
  * @param {FirebaseFirestore.Transaction} transaction
  * @param {FirebaseFirestore.DocumentReference} clientRef
  * @param {Object} partialUpdate - fields to update; RESTRICTED_KEYS stripped
@@ -91,6 +113,9 @@ function recomputeTotalHours(services) {
  * @param {string} options.caller - short label for assert violation messages
  * @param {Object} [options.auditMeta] - optional { uid, username } → adds
  *   lastModifiedAt (serverTimestamp) + lastModifiedBy
+ * @param {Function} [options.violationLogger] - optional override of the
+ *   violation logger (for tests). Defaults to firestore write +
+ *   functions.logger.error.
  * @returns {Promise<{aggregates, previousAggregates, strippedKeys, written}>}
  */
 async function writeClientWithCanonicalAggregates(
@@ -114,6 +139,9 @@ async function writeClientWithCanonicalAggregates(
   }
 
   const { caller, auditMeta } = options;
+  const violationLogger = typeof options.violationLogger === 'function'
+    ? options.violationLogger
+    : defaultViolationLogger;
 
   // ─── 2. Transactional read ───────────────────────────────────────
   const doc = await transaction.get(clientRef);
@@ -191,7 +219,58 @@ async function writeClientWithCanonicalAggregates(
   // Should never throw if calcClientAggregates is correct. If it does,
   // calcClientAggregates has drifted from the documented invariants —
   // fail fast so the bad write never lands in Firestore.
-  assertClientAggregateInvariants(services, finalPayload, caller);
+  //
+  // PR-A.5 (2026-05-17): on assertion failure, ALSO write a structured
+  // violation record to clientInvariantViolations + emit a Cloud Logging
+  // entry. This survives the transaction abort because the violation
+  // writer uses admin.firestore() directly (not the transaction).
+  try {
+    assertClientAggregateInvariants(services, finalPayload, caller);
+  } catch (assertErr) {
+    const violation = {
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      caller,
+      clientId: clientRef.id,
+      error: assertErr.message,
+      proposedAggregates: {
+        isBlocked: finalPayload.isBlocked,
+        isCritical: finalPayload.isCritical,
+        totalHours: finalPayload.totalHours,
+        hoursRemaining: finalPayload.hoursRemaining
+      },
+      servicesSummary: services.map((s) => ({
+        id: s.id || null,
+        type: s.type || null,
+        pricingType: s.pricingType || null,
+        totalHours: typeof s.totalHours === 'number' ? s.totalHours : null,
+        status: s.status || null
+      })),
+      auditMeta: auditMeta || null
+    };
+
+    // Fire-and-forget: do not await, do not let logging block the throw.
+    // Errors writing the violation are caught inside the logger.
+    try {
+      violationLogger(violation);
+    } catch (loggerErr) {
+      // Logger threw synchronously (shouldn't happen for default, possible
+      // for test mocks). Don't let it mask the original assertion error.
+      functions.logger.error(
+        '[client-writer] violationLogger threw synchronously',
+        { error: loggerErr.message }
+      );
+    }
+
+    // Structured Cloud Logging entry (independent of the violation collection)
+    functions.logger.error('invariant_violation', {
+      type: 'invariant_violation',
+      caller,
+      clientId: clientRef.id,
+      error: assertErr.message
+    });
+
+    throw assertErr;
+  }
 
   // ─── 9. Write ────────────────────────────────────────────────────
   transaction.update(clientRef, finalPayload);
