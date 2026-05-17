@@ -914,27 +914,28 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const updatedService = { ...service, stages: updatedStages };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3h. כתיבה ל-Firestore (Transaction)
+      // 3h. PR-B.8 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1-B.7 (#283-#289). Equivalence verified upfront:
+      // the prior `clientTotalHours` formula (filter !isFixedService, sum
+      // totalHours) is identical to the helper's recomputeTotalHours. Both
+      // use the canonical isFixedService classification.
+      // currentStage + currentStageName are client-level metadata (NOT in
+      // RESTRICTED_KEYS) — pass through to helper.
       const isLastStage = (activeIndex + 1) === service.stages.length - 1;
 
-      const clientTotalHours = (updatedServices || [])
-        .filter(svc => !isFixedService(svc))
-        .reduce((sum, svc) => sum + (svc.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
-
-      transaction.update(clientRef, {
-        services: updatedServices,
-        currentStage: nextStage.id,
-        currentStageName: nextStage.name || nextStage.id,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          currentStage: nextStage.id,
+          currentStageName: nextStage.name || nextStage.id
+        },
+        {
+          caller: 'moveToNextStage',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       // 3i. return data from transaction
       return {
