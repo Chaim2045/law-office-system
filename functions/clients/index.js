@@ -9,7 +9,6 @@ const { generateCaseNumberWithTransaction } = require('../case-number-transactio
 const { SYSTEM_CONSTANTS, isValidServiceType, isValidPricingType } = require('../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
-const { calcClientAggregates } = require('../shared/aggregates');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 
 const db = admin.firestore();
@@ -819,32 +818,43 @@ exports.closeCase = functions.https.onCall(async (data, context) => {
         };
       });
 
-      // Recalculate client-level aggregates via canonical calcClientAggregates.
-      // (Previously: manual reduce over ALL services including fixed — fixed
-      // services have hoursUsed > 0 for internal tracking, which leaked into
-      // client.hoursUsed and caused drift. Fixed 2026-05-13.)
-      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
       const totalServices = updatedServices.length;
       const activeServices = 0;
 
-      // ── Phase 3: WRITE ──
-      transaction.update(clientRef, {
-        status: 'inactive',
-        isArchived: true,
-        isBlocked: false,         // forced false on archive (always)
-        isCritical: false,        // forced false on archive (always)
-        archivedAt: now,
-        services: updatedServices,
-        totalServices: totalServices,
-        activeServices: activeServices,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,                 // canonical: excludes fixed
-        hoursRemaining: agg.hoursRemaining,       // canonical
-        minutesRemaining: agg.minutesRemaining,   // canonical
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // ── Phase 3: WRITE via canonical helper ──
+      // PR-B.14 (2026-05-18): final migration in PR-B series.
+      // Two changes bundled because they touch the same lines:
+      //   (1) Migration — helper recomputes totalHours/hoursUsed/
+      //       hoursRemaining/minutesUsed/minutesRemaining/isBlocked/
+      //       isCritical canonically from services. lastModifiedAt/By
+      //       added via auditMeta.
+      //   (2) ReferenceError fix — the prior return block referenced
+      //       `clientHoursUsed`/`clientHoursRemaining`/`clientMinutes­min­ing`
+      //       which were never defined; closeCase would throw on every
+      //       call after the transaction committed. Now sourced from
+      //       helperResult.aggregates.
+      //
+      // Behavioral change: pre-migration forced isBlocked: false and
+      // isCritical: false on archive. Helper derives both canonically.
+      // For archived clients in overdraft, isBlocked may now be true.
+      // No UI impact (archived views filter by status/isArchived, not
+      // isBlocked). Brings archive in line with invariant I1.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          status: 'inactive',
+          isArchived: true,
+          archivedAt: now,
+          services: updatedServices,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'closeCase',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       return {
         clientName: clientData.fullName || clientData.clientName,
@@ -853,14 +863,14 @@ exports.closeCase = functions.https.onCall(async (data, context) => {
         servicesAlreadyCompleted,
         closedAt: now,
         aggregates: {
-          totalHours: clientTotalHours,
-          hoursUsed: clientHoursUsed,
-          hoursRemaining: clientHoursRemaining,
-          minutesRemaining: clientMinutesRemaining,
-          isBlocked: false,
-          isCritical: false,
-          totalServices: totalServices,
-          activeServices: activeServices
+          totalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+          hoursUsed: helperResult.aggregates.hoursUsed,
+          hoursRemaining: helperResult.aggregates.hoursRemaining,
+          minutesRemaining: helperResult.aggregates.minutesRemaining,
+          isBlocked: helperResult.aggregates.isBlocked,
+          isCritical: helperResult.aggregates.isCritical,
+          totalServices,
+          activeServices
         }
       };
     });
