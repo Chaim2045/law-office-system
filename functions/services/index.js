@@ -9,7 +9,7 @@ const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
-const { calcClientAggregates, round2, isFixedService } = require('../shared/aggregates');
+const { round2, isFixedService } = require('../shared/aggregates');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 
 const db = admin.firestore();
@@ -696,25 +696,24 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 
       services[legalProcedureIndex] = legalProcedure;
 
-      // 🔄 Step 8: עדכון ה-client
-      // ✅ CRITICAL: חישוב aggregates של client מחדש מכל ה-services (Single Source of Truth!)
-      const clientTotalHours = services.reduce((sum, service) =>
-        sum + (service.totalHours || 0), 0);
-      const agg = calcClientAggregates(services, clientTotalHours);
-
-      // 💾 Step 9: שמירה אטומית
-      transaction.update(clientRef, {
-        services: services,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 🔄 Step 8: עדכון ה-client via canonical helper
+      // PR-B.13 (2026-05-18): replaces manual aggregate write. Helper
+      // recomputes totalHours/hoursUsed/hoursRemaining/minutesUsed/
+      // minutesRemaining/isBlocked/isCritical canonically from services
+      // array. Stage- and service-level aggregates above (lines 673-695)
+      // are nested inside services[] — NOT in RESTRICTED_KEYS — and pass
+      // through unchanged. lastModifiedAt + lastModifiedBy added by helper
+      // via auditMeta.
+      // Pattern source: PR-B.12 (no per-call mode — uses global config).
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services },
+        {
+          caller: 'addHoursPackageToStage',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       // ✅ Step 10: החזרת נתונים ל-audit log
       return {
@@ -722,9 +721,9 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         newPackage,
         targetStage,
         legalProcedure,
-        clientTotalHours,
-        clientHoursUsed: agg.hoursUsed,
-        clientHoursRemaining: agg.hoursRemaining,
+        clientTotalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+        clientHoursUsed: helperResult.aggregates.hoursUsed,
+        clientHoursRemaining: helperResult.aggregates.hoursRemaining,
         stageWasCompleted
       };
     });
