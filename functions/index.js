@@ -62,6 +62,12 @@ exports.updateSystemConfig = systemConfig.updateSystemConfig;
 exports.getSystemConfig = systemConfig.getSystemConfig;
 exports.rollbackSystemConfig = systemConfig.rollbackSystemConfig;
 
+// PR-D (2026-05-18): on-demand audit + repair for client aggregate drift.
+// See functions/admin/repair-aggregates.js for the canonical-recompute rationale.
+const repairAggregates = require('./admin/repair-aggregates');
+exports.auditClientAggregates = repairAggregates.auditClientAggregates;
+exports.repairClientAggregates = repairAggregates.repairClientAggregates;
+
 // Auth Functions (imported from ./auth)
 const authModule = require('./auth');
 exports.createAuthUser = authModule.createAuthUser;
