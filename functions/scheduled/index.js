@@ -7,7 +7,78 @@ const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
+// PR-C.1 (2026-05-18): nightly companion to PR-D's on-demand audit.
+const { calcClientAggregates } = require('../shared/aggregates');
+const { _recomputeTotalHours } = require('../shared/client-writer');
+
 const db = admin.firestore();
+
+// PR-C.1: aggregate-drift tolerance for client-level invariants.
+// Matches `dailyInvariantCheck`'s internal TOLERANCE and PR-D's audit.
+const AGG_DRIFT_TOLERANCE = 0.02;
+
+/**
+ * Pure helper — detect drift between stored client aggregates and the
+ * canonical computation. Used by `dailyInvariantCheck` (Check 6) and
+ * exposed via `_test` for unit testing.
+ *
+ * Returns an array of { field, current, canonical, diff? } entries.
+ * Empty array means the client is canonical (no drift).
+ *
+ * Empty-services clients return [] regardless of stored values — those
+ * are flagged by other checks (or by Haim manually) since they may
+ * represent a different bug class (e.g. data loss).
+ */
+function detectAggregateDrift(clientData) {
+  const services = Array.isArray(clientData && clientData.services)
+    ? clientData.services.filter(Boolean)
+    : [];
+  if (services.length === 0) {
+    return [];
+  }
+
+  const canonicalTotalHours = _recomputeTotalHours(services);
+  const canonical = calcClientAggregates(services, canonicalTotalHours);
+
+  const drifts = [];
+  const numericFields = [
+    { key: 'totalHours', expected: canonicalTotalHours },
+    { key: 'hoursUsed', expected: canonical.hoursUsed },
+    { key: 'hoursRemaining', expected: canonical.hoursRemaining },
+    { key: 'minutesUsed', expected: canonical.minutesUsed },
+    { key: 'minutesRemaining', expected: canonical.minutesRemaining }
+  ];
+
+  for (const { key, expected } of numericFields) {
+    const stored = typeof clientData[key] === 'number' ? clientData[key] : 0;
+    const diff = Math.abs(stored - expected);
+    if (diff > AGG_DRIFT_TOLERANCE) {
+      drifts.push({
+        field: key,
+        current: parseFloat(stored.toFixed(2)),
+        canonical: parseFloat(expected.toFixed(2)),
+        diff: parseFloat(diff.toFixed(2))
+      });
+    }
+  }
+
+  const booleanFields = [
+    { key: 'isBlocked', expected: canonical.isBlocked },
+    { key: 'isCritical', expected: canonical.isCritical }
+  ];
+  for (const { key, expected } of booleanFields) {
+    const stored = clientData[key] === true;
+    if (stored !== (expected === true)) {
+      drifts.push({
+        field: key,
+        current: stored,
+        canonical: expected === true
+      });
+    }
+  }
+
+  return drifts;
+}
 
 /**
  * formatDate - פורמט תאריך לתצוגה בעברית
@@ -416,6 +487,27 @@ const dailyInvariantCheck = onSchedule({
       });
     });
 
+    // Check 6: client-aggregate drift (PR-C.1 — I1-I4 invariants).
+    // Companion to PR-D's on-demand audit (admin/repair-aggregates.js).
+    // Same comparison logic, same tolerance — nightly automation so any
+    // drift introduced before the PR-B migrations (or by a future
+    // architectural regression) surfaces in `system_health_checks`
+    // without requiring Haim to trigger an audit manually.
+    clientsSnapshot.docs.forEach(clientDoc => {
+      const clientId = clientDoc.id;
+      if (SKIP_CLIENTS.includes(clientId)) return;
+      const data = clientDoc.data();
+      const driftFields = detectAggregateDrift(data);
+      if (driftFields.length > 0) {
+        discrepancies.push({
+          type: 'aggregate_drift',
+          clientId,
+          clientName: data.fullName || data.clientName || data.name || clientId,
+          driftFields
+        });
+      }
+    });
+
     // Save result to system_health_checks
     if (discrepancies.length > 0) {
       await db.collection('system_health_checks').add({
@@ -456,4 +548,13 @@ const dailyInvariantCheck = onSchedule({
   }
 });
 
-module.exports = { dailyTaskReminders, dailyBudgetWarnings, dailyInvariantCheck };
+module.exports = {
+  dailyTaskReminders,
+  dailyBudgetWarnings,
+  dailyInvariantCheck,
+  // Exported for unit testing only (PR-C.1).
+  _test: {
+    detectAggregateDrift,
+    AGG_DRIFT_TOLERANCE
+  }
+};
