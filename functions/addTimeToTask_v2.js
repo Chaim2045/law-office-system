@@ -181,6 +181,7 @@ const {
 
 const { SYSTEM_CONSTANTS } = require('./shared/constants');
 const { ERROR_CODES, buildAppError } = require('./shared/errors');
+const { writeClientWithCanonicalAggregates } = require('./shared/client-writer');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -514,7 +515,10 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           }
         }
 
-        // Calculate overage (dual-layer: package + client)
+        // Calculate overage (dual-layer: package + client) — still computed
+        // locally for entryIsOverage / entryOverageMinutes attached to the
+        // timesheet entry. The CLIENT-doc aggregate fields are written by
+        // writeClientWithCanonicalAggregates in Phase 3 (PR-B.9).
         let clientUpdate = null;
         if (deductionResult && clientData) {
           deductedInTransaction = true;
@@ -524,14 +528,11 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           entryIsOverage = deductionResult.isOverage || clientOverage;
           entryOverageMinutes = Math.max(deductionResult.overageMinutes, clientOverageMinutes);
 
+          // PR-B.9: trimmed payload — only the fields the helper does NOT
+          // manage. Helper computes services aggregates + writes them
+          // (RESTRICTED_KEYS stripped if accidentally included).
           clientUpdate = {
             services: deductionResult.updatedServices,
-            hoursUsed: agg.hoursUsed,
-            hoursRemaining: agg.hoursRemaining,
-            minutesUsed: agg.minutesUsed,
-            minutesRemaining: agg.minutesRemaining,
-            isBlocked: agg.isBlocked,
-            isCritical: agg.isCritical,
             lastActivity: admin.firestore.FieldValue.serverTimestamp()
           };
           console.log(`✅ [addTimeToTask] Deduction calculated: hoursRemaining=${agg.hoursRemaining}, isBlocked=${agg.isBlocked}`);
@@ -578,7 +579,30 @@ async function addTimeToTaskWithTransaction(db, data, user) {
 
         console.log(`✍️ [Transaction Phase 3] Writing updates...`);
 
-        // 3️⃣ עדכון המשימה (merged: timeEntries + actualMinutes + actualHours)
+        // 3️⃣ PR-B.9 (2026-05-18): client write FIRST via canonical helper.
+        // Pattern from PR-B.1-B.8 (#283-#290). MUST precede the other 3
+        // writes because the helper does its own `transaction.get(clientRef)`
+        // internally, and Firestore enforces "all reads before all writes"
+        // within a transaction. The Phase 1 read of clientRef is cached, so
+        // the helper's get is a cache lookup — no double Firestore read cost.
+        // Equivalence verified: helper's recomputeTotalHours produces the
+        // same result as the prior `calcClientAggregates(..., clientData.totalHours)`
+        // for clients without drift, and corrects totalHours for clients
+        // with drift (drift cleanup-on-touch).
+        if (clientUpdate && clientRef) {
+          await writeClientWithCanonicalAggregates(
+            transaction,
+            clientRef,
+            clientUpdate,
+            {
+              caller: 'addTimeToTaskWithTransaction',
+              auditMeta: { uid: user.uid, username: user.username }
+            }
+          );
+          console.log(`✅ Client deduction written via canonical helper: deductedInTransaction=true`);
+        }
+
+        // 4️⃣ עדכון המשימה (merged: timeEntries + actualMinutes + actualHours)
         transaction.update(taskRef, {
           timeEntries: admin.firestore.FieldValue.arrayUnion(timeEntry),
           actualMinutes: admin.firestore.FieldValue.increment(data.minutes),
@@ -588,16 +612,10 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         });
         console.log(`✅ Task updated: ${data.taskId} (actualMinutes incremented)`);
 
-        // 4️⃣ יצירת רשומת שעתון
+        // 5️⃣ יצירת רשומת שעתון
         const timesheetRef = db.collection('timesheet_entries').doc();
         transaction.set(timesheetRef, timesheetEntry);
         console.log(`✅ Timesheet entry created: ${timesheetRef.id}`);
-
-        // 5️⃣ עדכון לקוח (deduction + aggregates)
-        if (clientUpdate && clientRef) {
-          transaction.update(clientRef, clientUpdate);
-          console.log(`✅ Client deduction written: deductedInTransaction=true`);
-        }
 
         // 6️⃣ לוג פעולה
         const logRef = db.collection('action_logs').doc();

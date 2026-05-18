@@ -61,7 +61,10 @@ jest.mock('firebase-functions', () => ({
       }
     },
     onCall: jest.fn((fn) => fn)
-  }
+  },
+  // PR-B.9: writeClientWithCanonicalAggregates + enforcement-mode call
+  // functions.logger.{info,warn,error}. Mock to silence + prevent undefined.
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
 }));
 
 jest.mock('firebase-functions/v2/firestore', () => ({
@@ -152,6 +155,9 @@ const defaultData = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // PR-B.9: mockResolvedValueOnce queue persists across clearAllMocks. Reset
+  // transaction.get fully so prior tests' un-consumed mock values don't leak.
+  mockTransaction.get.mockReset();
   mockRunTransaction.mockImplementation(async (fn) => fn(mockTransaction));
 });
 
@@ -173,6 +179,8 @@ describe('addTimeToTaskWithTransaction — stage_ parentServiceId gates', () => 
 
     mockTransaction.get
       .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      // PR-B.9: helper re-reads clientRef internally
       .mockResolvedValueOnce(clientDoc);
 
     const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
@@ -190,6 +198,8 @@ describe('addTimeToTaskWithTransaction — stage_ parentServiceId gates', () => 
 
     mockTransaction.get
       .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      // PR-B.9: helper re-reads clientRef internally
       .mockResolvedValueOnce(clientDoc);
 
     await expect(
@@ -211,6 +221,8 @@ describe('addTimeToTaskWithTransaction — stage_ parentServiceId gates', () => 
 
     mockTransaction.get
       .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      // PR-B.9: helper re-reads clientRef internally
       .mockResolvedValueOnce(clientDoc);
 
     await expect(
@@ -229,6 +241,8 @@ describe('addTimeToTaskWithTransaction — stage_ parentServiceId gates', () => 
 
     mockTransaction.get
       .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      // PR-B.9: helper re-reads clientRef internally
       .mockResolvedValueOnce(clientDoc);
 
     const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
@@ -246,6 +260,8 @@ describe('addTimeToTaskWithTransaction — stage_ parentServiceId gates', () => 
 
     mockTransaction.get
       .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      // PR-B.9: helper re-reads clientRef internally
       .mockResolvedValueOnce(clientDoc);
 
     await expect(
