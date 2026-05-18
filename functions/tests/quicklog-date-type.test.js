@@ -77,7 +77,10 @@ jest.mock('firebase-functions', () => ({
       }
     },
     onCall: jest.fn((fn) => fn)
-  }
+  },
+  // PR-B.10: writeClientWithCanonicalAggregates + enforcement-mode call
+  // functions.logger.{info,warn,error}. Mock to silence + prevent undefined.
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
 }));
 
 jest.mock('../shared/auth', () => ({
