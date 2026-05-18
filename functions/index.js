@@ -68,6 +68,11 @@ const repairAggregates = require('./admin/repair-aggregates');
 exports.auditClientAggregates = repairAggregates.auditClientAggregates;
 exports.repairClientAggregates = repairAggregates.repairClientAggregates;
 
+// PR-C.2-fns (2026-05-18): outbox trigger for system_health_checks → bot.
+// See functions/triggers/system-reports-outbox-trigger.js for the outbox-pattern rationale.
+const systemReportsOutboxTrigger = require('./triggers/system-reports-outbox-trigger');
+exports.onSystemHealthCheckCreated = systemReportsOutboxTrigger.onSystemHealthCheckCreated;
+
 // Auth Functions (imported from ./auth)
 const authModule = require('./auth');
 exports.createAuthUser = authModule.createAuthUser;
