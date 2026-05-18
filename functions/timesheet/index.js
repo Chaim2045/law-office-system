@@ -855,31 +855,42 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
           const clientOverageMinutes = clientOverage ? round2(Math.abs(agg.hoursRemaining) * 60) : 0;
           isOverage = deductionResult.isOverage || clientOverage;
           overageMinutes = Math.max(deductionResult.overageMinutes, clientOverageMinutes);
-
-          // Write client: version + deduction + aggregates (single update)
-          transaction.update(clientRef, {
-            _version: nextVersion,
-            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-            _modifiedBy: user.username,
-            services: deductionResult.updatedServices,
-            hoursUsed: agg.hoursUsed,
-            hoursRemaining: agg.hoursRemaining,
-            minutesUsed: agg.minutesUsed,
-            minutesRemaining: agg.minutesRemaining,
-            isBlocked: agg.isBlocked,
-            isCritical: agg.isCritical,
-            lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          });
-          console.log(`✅ [v2.0] Deduction written: hoursRemaining=${agg.hoursRemaining}, isBlocked=${agg.isBlocked}`);
-        } else {
-          // No deduction — metadata only
-          transaction.update(clientRef, {
-            _version: nextVersion,
-            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-            _modifiedBy: user.username,
-            lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          });
         }
+
+        // PR-B.11 (2026-05-18): both branches (with-deduction + no-deduction)
+        // route through canonical helper. Pattern from PR-B.9/B.10 (#291/#292).
+        //
+        // `_version`, `_lastModified`, `_modifiedBy`, `lastActivity` are NOT
+        // in RESTRICTED_KEYS — helper passes them through. Optimistic-locking
+        // guarantee (`_version` increment) preserved.
+        //
+        // No-deduction branch: services omitted from partialUpdate → helper
+        // uses current services to recompute aggregates (no change in steady
+        // state; drift cleanup-on-touch as side effect).
+        const helperPayload = deductionResult
+          ? {
+            services: deductionResult.updatedServices,
+            _version: nextVersion,
+            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+            _modifiedBy: user.username,
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          }
+          : {
+            _version: nextVersion,
+            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+            _modifiedBy: user.username,
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          };
+        await writeClientWithCanonicalAggregates(
+          transaction,
+          clientRef,
+          helperPayload,
+          {
+            caller: 'createTimesheetEntry_v2',
+            auditMeta: { uid: user.uid, username: user.username }
+          }
+        );
+        console.log(`✅ [v2.0] Client written via canonical helper: deductedInTransaction=${deductedInTransaction}, version=${nextVersion}`);
       }
 
       // ── Phase 3: WRITES ──
