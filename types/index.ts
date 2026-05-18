@@ -6,6 +6,11 @@
  * גרסה: 1.0.0
  */
 
+// PR-E (2026-05-18): canonical Service discriminated union + ClientV2.
+// Legacy `Client` interface below preserved for backward compatibility —
+// migrate to `ClientV2` for new code.
+export * from './services';
+
 /* ===== Firebase Types ===== */
 
 /**
