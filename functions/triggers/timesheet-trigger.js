@@ -24,6 +24,10 @@ const {
   calcClientAggregates
 } = require('../src/modules/aggregation');
 
+// PR-B.12 (2026-05-18): canonical helper for client writes.
+// Pattern source: PR-B.11.
+const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
@@ -437,7 +441,9 @@ const onTimesheetEntryChanged = onDocumentWritten({
 
       const { updatedServices, isOverage: pkgOverage, overageMinutes: pkgOverageMinutes } = result;
 
-      // ── Calculate client-level aggregates ──
+      // ── Calculate client-level aggregates (for entry overage flag only) ──
+      // Helper recomputes these canonically below; we only need hoursRemaining
+      // here to derive overage flags written onto the entry doc.
       const agg = calcClientAggregates(updatedServices, clientData.totalHours);
 
       // ── Overage: package-level or client-level (whichever is larger) ──
@@ -446,17 +452,31 @@ const onTimesheetEntryChanged = onDocumentWritten({
       const isOverage = pkgOverage || clientOverage;
       const overageMinutes = Math.max(pkgOverageMinutes, clientOverageMinutes);
 
-      // ── Write 1: Update client document ──
-      transaction.update(clientRef, {
-        services: updatedServices,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastActivity: admin.firestore.FieldValue.serverTimestamp()
-      });
+      // ── Write 1: Update client document (via canonical helper) ──
+      // PR-B.12 (2026-05-18): replaces manual aggregate write. Helper
+      // recomputes hoursUsed/hoursRemaining/minutesUsed/minutesRemaining/
+      // isBlocked/isCritical/totalHours canonically from services array.
+      //
+      // No auditMeta: trigger fires on system events (no human author).
+      //
+      // `mode: 'log_only'` is the 24h soak override for initial rollout.
+      // Trigger fires on every timesheet_entries write in prod; we don't
+      // want an unexpected invariant assertion to abort real user writes
+      // before the migration is observed in production. Follow-up
+      // PR-B.12.1 removes this override after 24h of zero
+      // `invariant_violation_log_only` events on this caller.
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          lastActivity: admin.firestore.FieldValue.serverTimestamp()
+        },
+        {
+          caller: 'onTimesheetEntryChanged',
+          mode: 'log_only'
+        }
+      );
 
       // ── Write 2: Update overage flags on entry (CREATE/UPDATE only, not DELETE) ──
       if (afterData) {
