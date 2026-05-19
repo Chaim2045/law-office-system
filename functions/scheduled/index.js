@@ -548,13 +548,77 @@ const dailyInvariantCheck = onSchedule({
   }
 });
 
+// PR-G.1 (2026-05-19): nightly sync of Israeli holiday calendar
+// (current year + 5 forward) into Firestore `system_holidays/{year}`.
+// Uses @hebcal/core offline — no HTTP, deterministic.
+const calendarLib = require('../shared/calendar');
+const crypto = require('crypto');
+
+const FORWARD_YEARS = 5;
+
+function _hashHolidays(holidays) {
+  return crypto.createHash('sha1').update(JSON.stringify(holidays)).digest('hex');
+}
+
+async function syncHolidaysForYear(year) {
+  const docRef = db.collection('system_holidays').doc(String(year));
+  const holidays = calendarLib.getHolidaysForYear(year);
+  const contentHash = _hashHolidays(holidays);
+
+  const existing = await docRef.get();
+  if (existing.exists && existing.data().contentHash === contentHash) {
+    console.log(`[holidaysCalendarSync] ${year} — hash matches, skip write`);
+    return { year, status: 'unchanged', count: holidays.length };
+  }
+
+  await docRef.set({
+    year,
+    generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    source: `@hebcal/core@${calendarLib.HEBCAL_VERSION}`,
+    holidays,
+    contentHash
+  });
+  console.log(`[holidaysCalendarSync] ${year} — wrote ${holidays.length} holidays`);
+  return { year, status: existing.exists ? 'updated' : 'created', count: holidays.length };
+}
+
+const holidaysCalendarSync = onSchedule({
+  schedule: '0 3 * * *',
+  timeZone: 'Asia/Jerusalem',
+  region: 'us-central1'
+}, async () => {
+  console.log('🕯️  Starting holidays calendar sync...');
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = 0; i <= FORWARD_YEARS; i++) {
+    years.push(currentYear + i);
+  }
+
+  const results = [];
+  for (const year of years) {
+    try {
+      const r = await syncHolidaysForYear(year);
+      results.push(r);
+    } catch (err) {
+      console.error(`[holidaysCalendarSync] year ${year} failed:`, err.message);
+      results.push({ year, status: 'error', error: err.message });
+    }
+  }
+
+  console.log(`✅ Holidays sync complete: ${JSON.stringify(results)}`);
+  return null;
+});
+
 module.exports = {
   dailyTaskReminders,
   dailyBudgetWarnings,
   dailyInvariantCheck,
-  // Exported for unit testing only (PR-C.1).
+  holidaysCalendarSync,
+  // Exported for unit testing only (PR-C.1 + PR-G.1).
   _test: {
     detectAggregateDrift,
-    AGG_DRIFT_TOLERANCE
+    AGG_DRIFT_TOLERANCE,
+    syncHolidaysForYear,
+    _hashHolidays
   }
 };

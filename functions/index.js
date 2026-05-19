@@ -32,6 +32,7 @@ const scheduled = require('./scheduled');
 exports.dailyTaskReminders = scheduled.dailyTaskReminders;
 exports.dailyBudgetWarnings = scheduled.dailyBudgetWarnings;
 exports.dailyInvariantCheck = scheduled.dailyInvariantCheck;
+exports.holidaysCalendarSync = scheduled.holidaysCalendarSync;  // PR-G.1
 
 // WhatsApp Functions (imported from ./whatsapp)
 const whatsapp = require('./whatsapp');
