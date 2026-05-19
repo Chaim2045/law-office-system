@@ -28,8 +28,15 @@ export class DailyMeter {
 
     this._dailyTarget = DEFAULT_DAILY_TARGET;
     this._todayEntries = [];
+    this._allEntries = [];           // PR-F: full entry list — needed for week view
     this._isPopupOpen = false;
     this._overageAlertedToday = false;
+
+    // PR-F: active tab — 'today' | 'week'. Default to 'today' (current behavior).
+    this._activeTab = 'today';
+
+    // PR-F: per-day expand state in week view — { 'YYYY-MM-DD': true|false }
+    this._expandedDays = {};
 
     // Store date string for "today" — recalculated on update
     this._todayStr = this._getTodayStr();
@@ -95,7 +102,8 @@ return;
    */
   update(allEntries) {
     this._todayStr = this._getTodayStr();
-    this._todayEntries = this._filterToday(allEntries);
+    this._allEntries = Array.isArray(allEntries) ? allEntries : [];  // PR-F
+    this._todayEntries = this._filterToday(this._allEntries);
 
     const totalMinutes = this._todayEntries.reduce(
       (sum, e) => sum + (e.minutes || 0), 0
@@ -250,6 +258,70 @@ return 'orange';
 return;
 }
 
+    // PR-F: header + tabs always visible — body depends on active tab.
+    // Addresses silent-miss gap from docs/architecture/TIME-TRACKING-FLOW.md
+    // (workdays with zero entries surface visually in week view).
+    const headerHtml = `
+      <div class="gh-daily-meter-popup-header">
+        <span class="gh-daily-meter-popup-title">
+          <i class="fas fa-chart-pie"></i>
+          דיווח יומי
+        </span>
+        <button class="gh-daily-meter-popup-close" title="סגור">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="gh-daily-meter-popup-tabs">
+        <button class="gh-daily-meter-popup-tab${this._activeTab === 'today' ? ' active' : ''}" data-tab="today">היום</button>
+        <button class="gh-daily-meter-popup-tab${this._activeTab === 'week' ? ' active' : ''}" data-tab="week">השבוע</button>
+      </div>
+    `;
+
+    const bodyHtml = this._activeTab === 'week'
+      ? this._renderWeekBody()
+      : this._renderTodayBody();
+
+    this._popupEl.innerHTML = headerHtml + bodyHtml;
+
+    // Close button handler
+    const closeBtn = this._popupEl.querySelector('.gh-daily-meter-popup-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._closePopup();
+      });
+    }
+
+    // Tab switch handlers
+    this._popupEl.querySelectorAll('.gh-daily-meter-popup-tab').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const next = btn.getAttribute('data-tab');
+        if (next && next !== this._activeTab) {
+          this._activeTab = next;
+          this._renderPopupContent();
+        }
+      });
+    });
+
+    // Day-row toggle handlers (week view only)
+    this._popupEl.querySelectorAll('.gh-daily-meter-popup-day-header').forEach(hdr => {
+      hdr.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dayKey = hdr.getAttribute('data-day');
+        if (dayKey) {
+          this._expandedDays[dayKey] = !this._expandedDays[dayKey];
+          this._renderPopupContent();
+        }
+      });
+    });
+  }
+
+  // ════════════════════════════════════
+  // Tab Bodies (PR-F)
+  // ════════════════════════════════════
+
+  _renderTodayBody() {
     const grouped = this._groupByClient(this._todayEntries);
     const totalMinutes = this._todayEntries.reduce(
       (sum, e) => sum + (e.minutes || 0), 0
@@ -299,16 +371,7 @@ return;
       statusClass = 'status-normal';
     }
 
-    this._popupEl.innerHTML = `
-      <div class="gh-daily-meter-popup-header">
-        <span class="gh-daily-meter-popup-title">
-          <i class="fas fa-chart-pie"></i>
-          דיווח יומי
-        </span>
-        <button class="gh-daily-meter-popup-close" title="סגור">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
+    return `
       ${listHtml}
       <div class="gh-daily-meter-popup-divider"></div>
       <div class="gh-daily-meter-popup-total">
@@ -319,15 +382,122 @@ return;
         ${statusHtml}
       </div>
     `;
+  }
 
-    // Close button handler
-    const closeBtn = this._popupEl.querySelector('.gh-daily-meter-popup-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._closePopup();
-      });
+  _renderWeekBody() {
+    const range = this._getCurrentWeekRange();  // { startStr, days[] — Sun..Sat }
+    const grouped = this._groupByDay(this._allEntries, range);
+
+    // Holiday detection NOT in scope here — Fri/Sat treated as non-workdays.
+    // See rubric M3.
+    const todayStr = this._todayStr;
+
+    let listHtml = '<div class="gh-daily-meter-popup-week-list">';
+    let weekHours = 0;
+    let workdayCountElapsed = 0;  // workdays up to and including today
+
+    for (const dayInfo of grouped) {
+      const isWeekend = dayInfo.dayOfWeek === 5 || dayInfo.dayOfWeek === 6;
+      const isFuture = dayInfo.dateStr > todayStr;
+      const isToday = dayInfo.dateStr === todayStr;
+
+      if (!isWeekend && !isFuture) {
+        workdayCountElapsed += 1;
+      }
+
+      weekHours += dayInfo.totalHours;
+
+      // Day status badge
+      let badgeHtml = '';
+      let dayClass = '';
+      if (isWeekend) {
+        dayClass = ' weekend';
+      } else if (isFuture) {
+        dayClass = ' future';
+      } else if (dayInfo.totalHours === 0) {
+        // Workday with no reports — flag it
+        dayClass = ' missing';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge missing" title="יום עבודה ללא דיווחים">⚠️</span>';
+      } else if (dayInfo.totalHours >= this._dailyTarget) {
+        dayClass = ' met';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge met" title="עמדת בתקן">✓</span>';
+      } else if (isToday) {
+        dayClass = ' today partial';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge partial" title="חלקי (היום)">~</span>';
+      } else {
+        dayClass = ' partial';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge partial" title="חלקי">~</span>';
+      }
+
+      const expanded = !!this._expandedDays[dayInfo.dateStr];
+      const chevron = dayInfo.totalHours > 0
+        ? `<i class="fas fa-chevron-${expanded ? 'up' : 'down'} gh-daily-meter-popup-day-chevron"></i>`
+        : '';
+
+      listHtml += `
+        <div class="gh-daily-meter-popup-day${dayClass}">
+          <div class="gh-daily-meter-popup-day-header" data-day="${dayInfo.dateStr}">
+            <span class="gh-daily-meter-popup-day-label">
+              ${chevron}
+              ${badgeHtml}
+              ${this._escapeHtml(dayInfo.label)}
+            </span>
+            <span class="gh-daily-meter-popup-day-hours">${dayInfo.totalHours > 0 ? this._fmt(dayInfo.totalHours) : '—'}</span>
+          </div>
+      `;
+
+      if (expanded && dayInfo.clients.length > 0) {
+        listHtml += '<div class="gh-daily-meter-popup-day-clients">';
+        for (const item of dayInfo.clients) {
+          const dotColor = item.isInternal ? '#f59e0b' : '#3b82f6';
+          const rowClass = item.isInternal ? ' internal' : '';
+          listHtml += `
+            <div class="gh-daily-meter-popup-row${rowClass}">
+              <span class="gh-daily-meter-popup-row-name">
+                <span class="dot" style="background:${dotColor}"></span>
+                ${this._escapeHtml(item.name)}
+              </span>
+              <span class="gh-daily-meter-popup-row-hours">${this._fmt(item.hours)}</span>
+            </div>
+          `;
+        }
+        listHtml += '</div>';
+      }
+
+      listHtml += '</div>';
     }
+    listHtml += '</div>';
+
+    // Weekly target: only workdays elapsed (Sun-Thu, up to and including today).
+    // Prevents "you're at 40% of week" alarm on Monday morning.
+    const weekTarget = workdayCountElapsed * this._dailyTarget;
+    const weekRemaining = Math.max(weekTarget - weekHours, 0);
+
+    let weekStatusHtml;
+    let weekStatusClass;
+    if (weekTarget === 0) {
+      // Week hasn't started (Sunday before any work day elapsed — edge)
+      weekStatusHtml = '<i class="fas fa-calendar" style="margin-left:4px"></i> תחילת השבוע';
+      weekStatusClass = 'status-normal';
+    } else if (weekHours >= weekTarget) {
+      weekStatusHtml = '<i class="fas fa-check-circle" style="margin-left:4px"></i> עומד בתקן השבוע';
+      weekStatusClass = 'status-done';
+    } else {
+      weekStatusHtml = `<i class="fas fa-clock" style="margin-left:4px"></i> נותרו ${this._fmt(weekRemaining)} ש' לעמידה בתקן השבוע`;
+      weekStatusClass = 'status-normal';
+    }
+
+    return `
+      ${listHtml}
+      <div class="gh-daily-meter-popup-divider"></div>
+      <div class="gh-daily-meter-popup-total">
+        <span>סה"כ השבוע</span>
+        <span>${this._fmt(weekHours)} / ${this._fmt(weekTarget)}</span>
+      </div>
+      <div class="gh-daily-meter-popup-status ${weekStatusClass}">
+        ${weekStatusHtml}
+      </div>
+    `;
   }
 
   // ════════════════════════════════════
@@ -350,6 +520,79 @@ return false;
         : new Date(e.date).toISOString().slice(0, 10);
       return entryDate === todayStr;
     });
+  }
+
+  // PR-F: compute current week range (Sun..Sat) in Asia/Jerusalem.
+  // Returns { startStr, days: [{ dateStr, dayOfWeek, label }] }
+  _getCurrentWeekRange() {
+    const todayStr = this._todayStr;
+    // Parse YYYY-MM-DD as local (Asia/Jerusalem already applied by _getTodayStr)
+    const [y, m, d] = todayStr.split('-').map(Number);
+    const todayDate = new Date(y, m - 1, d);
+    const todayDow = todayDate.getDay();  // 0=Sun..6=Sat
+
+    // Start of week — Sunday
+    const sunday = new Date(todayDate);
+    sunday.setDate(todayDate.getDate() - todayDow);
+
+    const days = [];
+    const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(sunday);
+      dt.setDate(sunday.getDate() + i);
+      const yy = dt.getFullYear();
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getDate()).padStart(2, '0');
+      const dateStr = `${yy}-${mm}-${dd}`;
+      const dowStr = String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0');
+      days.push({
+        dateStr,
+        dayOfWeek: dt.getDay(),
+        label: `${DAY_NAMES[dt.getDay()]} ${dowStr}`
+      });
+    }
+
+    return { startStr: days[0].dateStr, days };
+  }
+
+  // PR-F: group entries by day for week-view rendering.
+  // Returns array aligned to range.days, each entry with { dateStr, dayOfWeek,
+  // label, totalHours, clients[] }.
+  // Pure function (testable via _test export).
+  _groupByDay(allEntries, range) {
+    const byDate = new Map();
+    for (const day of range.days) {
+      byDate.set(day.dateStr, { ...day, entries: [] });
+    }
+
+    for (const e of allEntries || []) {
+      if (!e || !e.date) {
+continue;
+}
+      const entryDateStr = typeof e.date === 'string'
+        ? e.date.slice(0, 10)
+        : (e.date && typeof e.date.toDate === 'function'
+            ? e.date.toDate().toISOString().slice(0, 10)
+            : new Date(e.date).toISOString().slice(0, 10));
+      const bucket = byDate.get(entryDateStr);
+      if (bucket) {
+        bucket.entries.push(e);
+      }
+    }
+
+    const result = [];
+    for (const day of range.days) {
+      const bucket = byDate.get(day.dateStr);
+      const totalMinutes = bucket.entries.reduce((s, x) => s + (x.minutes || 0), 0);
+      result.push({
+        dateStr: day.dateStr,
+        dayOfWeek: day.dayOfWeek,
+        label: day.label,
+        totalHours: totalMinutes / 60,
+        clients: this._groupByClient(bucket.entries)
+      });
+    }
+    return result;
   }
 
   _groupByClient(entries) {
@@ -474,3 +717,19 @@ return;
     }
   }
 }
+
+// PR-F: pure helpers exposed for unit testing (no DOM required).
+// Mirrors _test export pattern from functions/triggers/timesheet-trigger.js.
+export const _test = {
+  /**
+   * Group entries by day given a pre-computed week range.
+   * @param {Array} allEntries - timesheet entries
+   * @param {{ startStr: string, days: Array<{dateStr: string, dayOfWeek: number, label: string}> }} range
+   * @returns {Array<{dateStr, dayOfWeek, label, totalHours, clients: Array}>}
+   */
+  groupByDay(allEntries, range) {
+    // Reuse the instance method via a temporary instance — keeps logic single-source.
+    const meter = new DailyMeter();
+    return meter._groupByDay(allEntries, range);
+  }
+};
