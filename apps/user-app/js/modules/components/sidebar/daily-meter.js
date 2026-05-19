@@ -35,8 +35,9 @@ export class DailyMeter {
     // PR-F: active tab — 'today' | 'week'. Default to 'today' (current behavior).
     this._activeTab = 'today';
 
-    // PR-F: per-day expand state in week view — { 'YYYY-MM-DD': true|false }
-    this._expandedDays = {};
+    // PR-F.4: single expanded day at a time (accordion). 'YYYY-MM-DD' or null.
+    // Replaces the per-key map from PR-F so only one day is open simultaneously.
+    this._expandedDay = null;
 
     // Store date string for "today" — recalculated on update
     this._todayStr = this._getTodayStr();
@@ -309,15 +310,17 @@ return;
       });
     });
 
-    // Day-row toggle handlers (week view only)
+    // Day-row toggle handlers (week view only) — accordion (PR-F.4)
     this._popupEl.querySelectorAll('.gh-daily-meter-popup-day-header').forEach(hdr => {
       hdr.addEventListener('click', (e) => {
         e.stopPropagation();
         const dayKey = hdr.getAttribute('data-day');
-        if (dayKey) {
-          this._expandedDays[dayKey] = !this._expandedDays[dayKey];
-          this._renderPopupContent();
+        if (!dayKey) {
+          return;
         }
+        // Same row → toggle close. Different row → switch (auto-close prior).
+        this._expandedDay = this._expandedDay === dayKey ? null : dayKey;
+        this._renderPopupContent();
       });
     });
   }
@@ -434,7 +437,7 @@ return;
         badgeHtml = '<span class="gh-daily-meter-popup-day-badge partial" title="חלקי"><i class="fas fa-hourglass-half"></i></span>';
       }
 
-      const expanded = !!this._expandedDays[dayInfo.dateStr];
+      const expanded = this._expandedDay === dayInfo.dateStr;
       const chevron = dayInfo.totalHours > 0
         ? `<i class="fas fa-chevron-${expanded ? 'up' : 'down'} gh-daily-meter-popup-day-chevron"></i>`
         : '';
