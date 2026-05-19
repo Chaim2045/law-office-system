@@ -412,7 +412,12 @@ jobs:
   deploy-production:
     name: 🚀 Deploy to Production
     runs-on: ubuntu-latest
-    needs: [deploy-staging, e2e]
+    # E2E removed from needs: it has continue-on-error:true (broken UI selectors,
+    # tracked Phase 4) but GitHub Actions skips dependents when a needed job is
+    # cancelled by timeout — not failed. This caused 12 days of fixes (incl. #266
+    # calcClientAggregates) to not reach Firebase Functions PROD. Restore the gate
+    # only after E2E specs are rewritten.
+    needs: [deploy-staging]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 20
 
@@ -433,6 +438,13 @@ jobs:
 
       - name: 📦 Install Firebase Tools
         run: npm install -g firebase-tools@latest
+
+      # Functions deploy requires functions/node_modules present (firebase
+      # CLI needs to find firebase-functions package). Build artifacts only
+      # include user-app static files, so install Functions deps here.
+      - name: 📦 Install Functions Dependencies
+        working-directory: ./functions
+        run: npm ci --prefer-offline --no-audit
 
       - name: 🚀 Deploy to Firebase Production
         run: |

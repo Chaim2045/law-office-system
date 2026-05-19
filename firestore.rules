@@ -95,12 +95,48 @@ service cloud.firestore {
                          .hasOnly(['lastLogin', 'loginCount', 'phone', 'phoneVerified', 'phoneAddedAt', 'phoneAddedBy', 'phoneUpdatedAt', 'approvalsPanelLastViewed', 'lastSeen', 'isOnline']);
     }
 
-    // ✅ Clients: READ for all authenticated, WRITE for admins only
-    // Reason: Users need to see clients list to assign tasks
-    // Security: Only admins can create/update/delete clients
+    // ✅ Clients: READ for all authenticated, WRITE for admins WITH field-level deny.
+    //
+    // PR-A.5 (2026-05-17): tighten direct admin writes. Aggregate fields
+    // (isBlocked, isCritical, services, totalHours, hoursUsed/Remaining,
+    // minutesUsed/Remaining) can ONLY be written by Cloud Functions through
+    // writeClientWithCanonicalAggregates. Admins from the browser console
+    // can no longer set them directly — closing the bypass that allowed
+    // the 23-client isBlocked corruption.
+    //
+    // CFs use Admin SDK which bypasses these rules — they remain unaffected.
+    // Direct browser writes (SimpleClientDialog.js creates new clients with
+    // ONLY orthogonal fields: fullName/phone/email/idNumber/address/notes/
+    // status/createdAt/createdBy/caseNumber — verified safe under this rule).
+    function clientAggregateKeys() {
+      return ['isBlocked', 'isCritical', 'services',
+              'totalHours', 'hoursUsed', 'hoursRemaining',
+              'minutesUsed', 'minutesRemaining'];
+    }
+
     match /clients/{clientId} {
-      allow read: if isAuthenticated(); // ✅ All authenticated users can read
-      allow write: if isAdmin(); // ✅ Only admins can create/update/delete
+      allow read: if isAuthenticated();
+
+      // CREATE: admin only, must not include any aggregate field in initial doc
+      allow create: if isAdmin() &&
+        !request.resource.data.keys().hasAny(clientAggregateKeys());
+
+      // UPDATE: admin only, cannot touch aggregate fields directly
+      allow update: if isAdmin() &&
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(clientAggregateKeys());
+
+      // DELETE: admin only
+      allow delete: if isAdmin();
+    }
+
+    // ✅ clientInvariantViolations: structured log of canonical aggregate
+    // invariant breaches caught by assertClientAggregateInvariants in
+    // writeClientWithCanonicalAggregates. Read-only for admins (dashboard
+    // in PR-C). Written exclusively by Cloud Functions (Admin SDK).
+    match /clientInvariantViolations/{violationId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     // 🔒 Cases: ADMIN-ONLY ACCESS (SECURITY ENHANCEMENT)

@@ -1059,8 +1059,15 @@ return '';
         }
 
         /**
-         * Change client status
-         * שינוי סטטוס לקוח
+         * Change client status — PR-A.4 refactor (2026-05-16)
+         *
+         * BREAKING UX CHANGES:
+         *   - Native prompt() replaced with a proper modal dialog
+         *   - Choices simplified: active / inactive / on hold (manual freeze)
+         *   - 'blocked' and 'critical' choices REMOVED — both derived now
+         *
+         * The CF rejects caller-supplied isBlocked/isCritical (returns
+         * invalid-argument). Manual freeze must use isOnHold.
          */
         async changeStatus() {
             console.log('🔄 Changing client status');
@@ -1068,96 +1075,80 @@ return '';
             const currentStatus = this.currentClient.status || 'active';
             const isBlocked = this.currentClient.isBlocked || false;
             const isCritical = this.currentClient.isCritical || false;
+            const isOnHold = this.currentClient.isOnHold || false;
 
-            // Build status display text
+            // Build current status display text (for modal header)
             let currentStatusText = 'פעיל';
-            if (isBlocked) {
-                currentStatusText = 'חסום';
+            if (isOnHold) {
+                currentStatusText = 'מוקפא ידנית';
+            } else if (isBlocked) {
+                currentStatusText = 'חסום (אין שעות)';
             } else if (isCritical) {
                 currentStatusText = 'קריטי';
             } else if (currentStatus === 'inactive') {
                 currentStatusText = 'לא פעיל';
             }
 
-            // Prompt for new status
-            const message = `סטטוס נוכחי: ${currentStatusText}\n\nבחר סטטוס חדש:\n1 - פעיל\n2 - לא פעיל\n3 - חסום\n4 - קריטי`;
-            const choice = prompt(message, '1');
-
+            // Present choices via modal. The "blocked" and "critical" choices
+            // from the old prompt are gone — those are derived state.
+            const choice = await this._showStatusChangeDialog(currentStatusText, {
+                isOnHold,
+                currentStatus
+            });
             if (!choice) {
-return;
-} // User cancelled
+return; // user cancelled
+}
 
-            const choiceNum = parseInt(choice);
-            if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > 4) {
-                this.showNotification('בחירה לא תקינה', 'warning');
-                return;
-            }
-
-            // Map choice to status
+            // Map choice → CF input. NEVER send isBlocked/isCritical.
             let newStatus = 'active';
-            let newIsBlocked = false;
-            let newIsCritical = false;
-            let statusText = '';
-
-            switch (choiceNum) {
-                case 1: // Active
+            let newIsOnHold = false;
+            let displayText = '';
+            switch (choice.action) {
+                case 'active':
                     newStatus = 'active';
-                    newIsBlocked = false;
-                    newIsCritical = false;
-                    statusText = 'פעיל';
+                    newIsOnHold = false;
+                    displayText = 'פעיל';
                     break;
-                case 2: // Inactive
+                case 'inactive':
                     newStatus = 'inactive';
-                    newIsBlocked = false;
-                    newIsCritical = false;
-                    statusText = 'לא פעיל';
+                    newIsOnHold = false;
+                    displayText = 'לא פעיל';
                     break;
-                case 3: // Blocked
+                case 'on_hold':
                     newStatus = 'active';
-                    newIsBlocked = true;
-                    newIsCritical = false;
-                    statusText = 'חסום';
+                    newIsOnHold = true;
+                    displayText = 'מוקפא ידנית';
                     break;
-                case 4: // Critical
-                    newStatus = 'active';
-                    newIsBlocked = false;
-                    newIsCritical = true;
-                    statusText = 'קריטי';
-                    break;
-            }
-
-            if (!confirm(`האם לשנות סטטוס ל-"${statusText}"?`)) {
-                return;
+                default:
+                    this.showNotification('בחירה לא תקינה', 'warning');
+                    return;
             }
 
             try {
                 this.showLoading('משנה סטטוס...');
 
-                // Call CF instead of direct Firestore write
                 const changeStatusFn = window.firebaseFunctions.httpsCallable('changeClientStatus');
                 const result = await changeStatusFn({
                     clientId: this.currentClient.id,
-                    newStatus: newStatus,
-                    isBlocked: newIsBlocked,
-                    isCritical: newIsCritical
+                    newStatus,
+                    isOnHold: newIsOnHold,
+                    note: choice.note || undefined
                 });
 
                 if (!result.data.success) {
                     throw new Error(result.data.message || 'שגיאה בשינוי סטטוס');
                 }
 
-                // Update local state from CF response
+                // Update local state from CF response (canonical aggregates included)
                 this.currentClient.status = result.data.newStatus;
-                this.currentClient.isBlocked = result.data.isBlocked;
-                this.currentClient.isCritical = result.data.isCritical;
+                this.currentClient.isOnHold = result.data.isOnHold;
+                this.currentClient.isBlocked = result.data.isBlocked;     // derived
+                this.currentClient.isCritical = result.data.isCritical;   // derived
 
-                // Re-render client info
                 this.renderClientInfo();
-
                 this.hideLoading();
-                this.showNotification(result.data.message, 'success');
+                this.showNotification(result.data.message || `סטטוס שונה ל-${displayText}`, 'success');
 
-                // Refresh parent data
                 if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
                     await window.ClientsDataManager.loadClients();
                 }
@@ -1167,6 +1158,130 @@ return;
                 this.hideLoading();
                 this.showNotification('שגיאה בשינוי סטטוס: ' + error.message, 'error');
             }
+        }
+
+        /**
+         * Modal dialog for status change. Returns { action, note } or null on cancel.
+         * Accessible: keyboard nav (Tab/Esc), focus trap, ARIA roles.
+         */
+        _showStatusChangeDialog(currentStatusText, ctx) {
+            return new Promise((resolve) => {
+                // Build overlay + dialog
+                const overlay = document.createElement('div');
+                overlay.className = 'cm-status-overlay';
+                overlay.setAttribute('role', 'presentation');
+                // z-index 10500 — must exceed ClientManagementModal's 10200 (clients-modals.css:53,
+                // documented as "highest in app"). Inline value matches the existing high-z-index
+                // pattern in components.css:2580 ("Higher than UserDetailsModal").
+                // Without this, when this dialog is triggered from inside the management modal,
+                // it renders BEHIND the management modal and becomes invisible/unclickable.
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10500;display:flex;align-items:center;justify-content:center;';
+
+                const dialog = document.createElement('div');
+                dialog.setAttribute('role', 'dialog');
+                dialog.setAttribute('aria-modal', 'true');
+                dialog.setAttribute('aria-labelledby', 'cm-status-title');
+                dialog.setAttribute('aria-describedby', 'cm-status-desc');
+                dialog.style.cssText = 'background:#fff;border-radius:10px;padding:24px;min-width:380px;max-width:520px;box-shadow:0 10px 40px rgba(0,0,0,0.25);font-family:inherit;direction:rtl;';
+
+                const initialAction =
+                    ctx.isOnHold ? 'on_hold' :
+                    ctx.currentStatus === 'inactive' ? 'inactive' :
+                    'active';
+
+                dialog.innerHTML = `
+                    <h2 id="cm-status-title" style="margin:0 0 6px;font-size:1.25rem;">שינוי סטטוס לקוח</h2>
+                    <p id="cm-status-desc" style="margin:0 0 16px;color:#666;font-size:0.9rem;">סטטוס נוכחי: <strong>${currentStatusText}</strong></p>
+
+                    <fieldset style="border:none;padding:0;margin:0 0 12px;">
+                        <legend style="font-weight:600;margin-bottom:8px;">סטטוס חדש:</legend>
+                        <label style="display:block;padding:8px;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:6px;cursor:pointer;">
+                            <input type="radio" name="cm-status-choice" value="active" ${initialAction === 'active' ? 'checked' : ''}>
+                            <strong>פעיל</strong> — רישום זמן רגיל מותר
+                        </label>
+                        <label style="display:block;padding:8px;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:6px;cursor:pointer;">
+                            <input type="radio" name="cm-status-choice" value="inactive" ${initialAction === 'inactive' ? 'checked' : ''}>
+                            <strong>לא פעיל</strong> — תיק סגור/ארכיון
+                        </label>
+                        <label style="display:block;padding:8px;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:6px;cursor:pointer;">
+                            <input type="radio" name="cm-status-choice" value="on_hold" ${initialAction === 'on_hold' ? 'checked' : ''}>
+                            <strong>מוקפא ידנית</strong> — חסום זמן עד הסרת ההקפאה (סכסוך, אי-תשלום וכו')
+                        </label>
+                    </fieldset>
+
+                    <p style="font-size:0.78rem;color:#888;margin:8px 0 14px;line-height:1.4;">
+                        ⓘ "חסום" ו"קריטי" נגזרים אוטומטית מיתרת השעות — לא נבחרים ידנית.
+                    </p>
+
+                    <label style="display:block;margin-bottom:14px;">
+                        <span style="font-weight:600;display:block;margin-bottom:4px;">הערה (אופציונלי):</span>
+                        <textarea id="cm-status-note" rows="2" maxlength="500" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;font-family:inherit;direction:rtl;"></textarea>
+                    </label>
+
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button type="button" id="cm-status-cancel" style="padding:8px 16px;border:1px solid #ccc;background:#f5f5f5;border-radius:6px;cursor:pointer;">ביטול</button>
+                        <button type="button" id="cm-status-confirm" style="padding:8px 16px;border:none;background:#2563eb;color:#fff;border-radius:6px;cursor:pointer;">אישור</button>
+                    </div>
+                `;
+
+                overlay.appendChild(dialog);
+                document.body.appendChild(overlay);
+
+                // Focus trap setup
+                const focusable = dialog.querySelectorAll('input, textarea, button');
+                if (focusable.length > 0) {
+                    focusable[0].focus();
+                }
+
+                const cleanup = (result) => {
+                    document.removeEventListener('keydown', onKey);
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                    resolve(result);
+                };
+
+                const onKey = (e) => {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cleanup(null);
+                    } else if (e.key === 'Tab') {
+                        // Simple focus trap
+                        const items = Array.from(focusable);
+                        const idx = items.indexOf(document.activeElement);
+                        if (e.shiftKey && idx === 0) {
+                            e.preventDefault();
+                            items[items.length - 1].focus();
+                        } else if (!e.shiftKey && idx === items.length - 1) {
+                            e.preventDefault();
+                            items[0].focus();
+                        }
+                    } else if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                        e.preventDefault();
+                        confirmBtn.click();
+                    }
+                };
+                document.addEventListener('keydown', onKey);
+
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        cleanup(null);
+                    }
+                });
+
+                const confirmBtn = dialog.querySelector('#cm-status-confirm');
+                const cancelBtn = dialog.querySelector('#cm-status-cancel');
+
+                cancelBtn.addEventListener('click', () => cleanup(null));
+                confirmBtn.addEventListener('click', () => {
+                    const selected = dialog.querySelector('input[name="cm-status-choice"]:checked');
+                    if (!selected) {
+                        return;
+                    }
+                    const note = (dialog.querySelector('#cm-status-note').value || '').trim();
+                    cleanup({ action: selected.value, note: note || undefined });
+                });
+            });
         }
 
         /**

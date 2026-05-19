@@ -71,7 +71,10 @@ jest.mock('firebase-functions', () => ({
       }
     },
     onCall: jest.fn((fn) => fn)
-  }
+  },
+  // PR-B.9: writeClientWithCanonicalAggregates + enforcement-mode call
+  // functions.logger.{info,warn,error}. Mock to silence + prevent undefined.
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
 }));
 
 jest.mock('firebase-functions/v2/firestore', () => ({
@@ -274,6 +277,8 @@ describe('addTimeToTaskWithTransaction — serviceId validation GATEs', () => {
 
     mockTransaction.get
       .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      // PR-B.9: writeClientWithCanonicalAggregates re-reads clientRef internally
       .mockResolvedValueOnce(clientDoc);
 
     const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
@@ -297,6 +302,8 @@ describe('addTimeToTaskWithTransaction — serviceId validation GATEs', () => {
 
     mockTransaction.get
       .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      // PR-B.9: helper re-reads
       .mockResolvedValueOnce(clientDoc);
 
     const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
@@ -488,14 +495,17 @@ describe('createTimesheetEntry_v2 — serviceId validation GATEs (logic verifica
 describe('addServiceToClient — transaction wrapping verification', () => {
 
   /**
-   * The key change: addServiceToClient was refactored to use db.runTransaction.
-   * Before: clientRef.get() → services.push(newService) → clientRef.update()
-   * After:  db.runTransaction → transaction.get(clientRef) → transaction.update(clientRef)
+   * History:
+   *   - Original refactor: clientRef.get/update → db.runTransaction + transaction.get/update.
+   *   - PR-B.6 (2026-05-17): the `transaction.update(clientRef, ...)` write was
+   *     delegated to writeClientWithCanonicalAggregates (single canonical write
+   *     path for the clients collection). The transaction still wraps the
+   *     read+write; the write is just inside the helper now.
    *
    * We verify:
    * 1. db.runTransaction is called (not direct read/update)
    * 2. Inside transaction: transaction.get is used for reads
-   * 3. Inside transaction: transaction.update is used for writes
+   * 3. Inside transaction: writeClientWithCanonicalAggregates is called for writes
    * 4. Immutable array: services = [...existing, newService] (not push)
    */
 
@@ -523,8 +533,14 @@ describe('addServiceToClient — transaction wrapping verification', () => {
     expect(fnBlock).toContain('transaction.get(clientRef)');
   });
 
-  test('addServiceToClient uses transaction.update inside transaction', () => {
-    expect(fnBlock).toContain('transaction.update(clientRef');
+  test('addServiceToClient delegates write to writeClientWithCanonicalAggregates (PR-B.6)', () => {
+    // PR-B.6: the direct `transaction.update(clientRef, ...)` was replaced
+    // by a call to the canonical write helper. The helper itself issues
+    // the transaction.update internally.
+    expect(fnBlock).toContain('writeClientWithCanonicalAggregates');
+    expect(fnBlock).toContain("caller: 'addServiceToClient'");
+    // Must NOT contain a direct transaction.update(clientRef, ...) anymore
+    expect(fnBlock).not.toMatch(/transaction\.update\(clientRef[\s\S]{0,200}hoursUsed/);
   });
 
   test('addServiceToClient uses immutable spread for services array', () => {

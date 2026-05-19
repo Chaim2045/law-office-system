@@ -10,6 +10,110 @@
 - Real-time Cache Sync עם listeners
 - Enterprise Features: Version control, idempotency, event sourcing
 
+## שדות לקוח קריטיים (Client document fields)
+
+### שדות חישוביים (DERIVED) — נוצרים מ-`calcClientAggregates`
+
+נכתבים אך ורק דרך `writeClientWithCanonicalAggregates` (functions/shared/client-writer.js). שולחים אותם כקלט ל-CFs = `invalid-argument`.
+
+| שדה | מקור | משמעות |
+|---|---|---|
+| `isBlocked` | calcClientAggregates | יתרת שעות = 0 ואין override. אוטומטי. |
+| `isCritical` | calcClientAggregates | יתרת שעות ≤ 5. אוטומטי. |
+| `hoursUsed` / `hoursRemaining` | calcClientAggregates | סכום על שירותים billable |
+| `minutesUsed` / `minutesRemaining` | calcClientAggregates | המרה |
+| `totalHours` | סכום `svc.totalHours` של billable | רץ ב-helper |
+
+### שדות ידניים (MANUAL) — קלט מ-CFs
+
+| שדה | נכתב על-ידי | משמעות |
+|---|---|---|
+| `status` | changeClientStatus | active \| inactive |
+| `isOnHold` | changeClientStatus (PR-A.4) | הקפאה ידנית של אדמין (אי-תשלום, סכסוך, הקפאה). אורתוגונלי ל-isBlocked. |
+| `assignedTo` | createClient + admin tools | רשימת עורכי דין |
+| `services` | addServiceToClient + עוד | מערך שירותים — מטוטל ידנית, אבל aggregates עליו מחושבים |
+
+### כלל אכיפה ב-User App
+
+טוען לקוח? אל תרשום זמן אם `(client.isBlocked || client.isOnHold)`. שניהם.
+
+ראה: `apps/user-app/js/modules/client-validation.js`, `apps/user-app/js/modules/client-hours.js`.
+
+## אכיפת כתיבה — Firestore Rules + violations collection (PR-A.5)
+
+### Firestore Rules — שכבת הגנה שנייה
+
+`firestore.rules` למסד `/clients/{clientId}` מאכיף **field-level allowlist** מאז PR-A.5:
+
+| פעולה | מותר ל-Admin Browser | חסום |
+|---|---|---|
+| read | ✅ | — |
+| create | ✅ עם שדות אורתוגונליים בלבד (לא aggregate) | ❌ אם כולל isBlocked / isCritical / services / totalHours / hoursUsed/Remaining / minutesUsed/Remaining |
+| update | ✅ עם שדות אורתוגונליים בלבד | ❌ אם נוגע ב-aggregate keys |
+| delete | ✅ | — |
+
+**Cloud Functions אינן מושפעות** — הן משתמשות ב-Admin SDK שעוקף Rules. ה-helper הקנוני (`writeClientWithCanonicalAggregates`) הוא הדרך היחידה לכתוב aggregate fields, ו-Rules מבטיחות שאין דלת אחורית מהדפדפן.
+
+### `clientInvariantViolations` collection
+
+כשה-helper מזהה הפרת invariant (I1/I2/I4 מ-`assertClientAggregateInvariants`), הוא:
+
+1. **כותב רשומה ל-`clientInvariantViolations`** (fire-and-forget, מחוץ ל-transaction שנכשלה)
+2. **emits structured log** `functions.logger.error('invariant_violation', { ... })` ל-Cloud Logging
+3. **re-throws** את שגיאת ה-assertion — ה-write לא קורה
+
+מבנה הרשומה:
+```js
+{
+  timestamp: serverTimestamp,
+  caller: 'changeClientStatus',           // איזה CF טריגר
+  clientId: '2026069',
+  error: 'invariant_violation:I1_no_billable_but_blocked [caller=...]',
+  proposedAggregates: { isBlocked, isCritical, totalHours, hoursRemaining },
+  servicesSummary: [{ id, type, pricingType, totalHours, status }, ...],
+  auditMeta: { uid, username } | null
+}
+```
+
+Read access: admins בלבד (לא User App). Write: רק CFs.
+
+ב-PR-C יהיה Admin dashboard + WhatsApp alert.
+
+## Kill-switch — `system_settings/invariant_enforcement` (PR-A.6)
+
+מתג חירום מרכזי לשליטה בהתנהגות ה-helper אם משהו משתבש בפרודקשן. ניתן להחליף בלי deploy חדש.
+
+### 3 מצבים
+
+| מצב | התנהגות | מתי להשתמש |
+|---|---|---|
+| `enforce` (ברירת מחדל) | violation → throw + log + write נדחה | תקין. ייצור רגיל. |
+| `log_only` | violation → log + write **עובר** עם canonical aggregates | במהלך migration של callsites חדשים (PR-B). רוצים להסתכל לפני לחסום. |
+| `disabled` | assertion מדלגים לחלוטין. אין log. אין throw. | **חירום בלבד.** רק אם ה-assertion עצמו באגי. לא להשאיר ככה זמן רב. |
+
+### איך מחליפים (admin)
+
+1. Firebase Console → Firestore → `system_settings`
+2. פותחים מסמך `invariant_enforcement` (יוצרים אם חסר)
+3. שדה `mode` → אחד מ-`enforce` / `log_only` / `disabled`
+4. תוקף תוך עד **60 שניות** (cache TTL לכל CF instance)
+
+### ברירות מחדל בטוחות
+
+כל failure path מחזיר `'enforce'`:
+- מסמך חסר → enforce
+- שדה `mode` חסר → enforce
+- ערך לא תקין (case-sensitive, חייב להיות מ-VALID_MODES) → enforce
+- Firestore read fail (permission, network) → enforce
+
+→ misconfiguration **לא יכולה** להוריד בטיחות בשקט.
+
+### ניטור
+
+כל violation נרשם עם השדה `mode` בtoken — מאפשר ניתוח בדיעבד "האם זה היה enforce או log_only".
+
+ב-Cloud Logging נחפש: `invariant_violation` או `invariant_violation_log_only`.
+
 ## קבצים עיקריים
 
 ### Frontend:
@@ -19,7 +123,6 @@
 - js/cases.js - ניהול תיקים (CasesManager)
 - js/cases-integration.js - אינטגרציה בחירת תיקים
 - js/modules/api-client-v2.js - API client
-- js/fix-old-clients.js - כלי migration
 
 ### Backend (Firebase Functions):
 - functions/index.js - CRUD operations

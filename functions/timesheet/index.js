@@ -9,6 +9,7 @@ const { logAction } = require('../shared/audit');
 const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const { ERROR_CODES, buildAppError } = require('../shared/errors');
+const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -399,14 +400,11 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         isOverage = pkgOverage || clientOverage;
         overageMinutes = Math.max(pkgOverageMinutes, clientOverageMinutes);
 
+        // PR-B.10 (2026-05-18): trimmed payload — only fields the helper does
+        // NOT manage. Helper computes services aggregates + writes them
+        // (RESTRICTED_KEYS stripped if accidentally included).
         clientUpdate = {
           services: updatedServices,
-          hoursUsed: agg.hoursUsed,
-          hoursRemaining: agg.hoursRemaining,
-          minutesUsed: agg.minutesUsed,
-          minutesRemaining: agg.minutesRemaining,
-          isBlocked: agg.isBlocked,
-          isCritical: agg.isCritical,
           lastActivity: admin.firestore.FieldValue.serverTimestamp()
         };
 
@@ -469,15 +467,29 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
 
       console.log(`✍️ [Quick Log Transaction Phase 3] Writing updates...`);
 
-      // Write #1: Client update — deduction + aggregates (or metadata only if no deduction)
-      if (clientUpdate) {
-        transaction.update(clientRef, clientUpdate);
-        console.log(`✅ Client deduction written: deductedInTransaction=true`);
-      } else {
-        transaction.update(clientRef, {
-          lastActivity: admin.firestore.FieldValue.serverTimestamp()
-        });
-      }
+      // PR-B.10 (2026-05-18): Write #1 — CLIENT FIRST via canonical helper.
+      // Pattern from PR-B.9 (#291). MUST precede the timesheet + audit writes
+      // because the helper does its own `transaction.get(clientRef)` internally,
+      // and Firestore enforces "all reads before all writes" within a transaction.
+      // Phase 1 already read clientRef — helper's get hits the transaction cache.
+      //
+      // BOTH branches route through helper (consistency + drift cleanup-on-touch):
+      //   - With deduction: pass { services: updatedServices, lastActivity }
+      //   - Without deduction: pass { lastActivity } only — helper uses current
+      //     services to recompute aggregates (no change in steady state).
+      const helperPayload = clientUpdate || {
+        lastActivity: admin.firestore.FieldValue.serverTimestamp()
+      };
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        helperPayload,
+        {
+          caller: 'createQuickLogEntry',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
+      console.log(`✅ Client written via canonical helper: deductedInTransaction=${deductedInTransaction}`);
 
       // Write #2: Create timesheet entry
       const timesheetRef = db.collection('timesheet_entries').doc();
@@ -843,31 +855,42 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
           const clientOverageMinutes = clientOverage ? round2(Math.abs(agg.hoursRemaining) * 60) : 0;
           isOverage = deductionResult.isOverage || clientOverage;
           overageMinutes = Math.max(deductionResult.overageMinutes, clientOverageMinutes);
-
-          // Write client: version + deduction + aggregates (single update)
-          transaction.update(clientRef, {
-            _version: nextVersion,
-            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-            _modifiedBy: user.username,
-            services: deductionResult.updatedServices,
-            hoursUsed: agg.hoursUsed,
-            hoursRemaining: agg.hoursRemaining,
-            minutesUsed: agg.minutesUsed,
-            minutesRemaining: agg.minutesRemaining,
-            isBlocked: agg.isBlocked,
-            isCritical: agg.isCritical,
-            lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          });
-          console.log(`✅ [v2.0] Deduction written: hoursRemaining=${agg.hoursRemaining}, isBlocked=${agg.isBlocked}`);
-        } else {
-          // No deduction — metadata only
-          transaction.update(clientRef, {
-            _version: nextVersion,
-            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
-            _modifiedBy: user.username,
-            lastActivity: admin.firestore.FieldValue.serverTimestamp()
-          });
         }
+
+        // PR-B.11 (2026-05-18): both branches (with-deduction + no-deduction)
+        // route through canonical helper. Pattern from PR-B.9/B.10 (#291/#292).
+        //
+        // `_version`, `_lastModified`, `_modifiedBy`, `lastActivity` are NOT
+        // in RESTRICTED_KEYS — helper passes them through. Optimistic-locking
+        // guarantee (`_version` increment) preserved.
+        //
+        // No-deduction branch: services omitted from partialUpdate → helper
+        // uses current services to recompute aggregates (no change in steady
+        // state; drift cleanup-on-touch as side effect).
+        const helperPayload = deductionResult
+          ? {
+            services: deductionResult.updatedServices,
+            _version: nextVersion,
+            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+            _modifiedBy: user.username,
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          }
+          : {
+            _version: nextVersion,
+            _lastModified: admin.firestore.FieldValue.serverTimestamp(),
+            _modifiedBy: user.username,
+            lastActivity: admin.firestore.FieldValue.serverTimestamp()
+          };
+        await writeClientWithCanonicalAggregates(
+          transaction,
+          clientRef,
+          helperPayload,
+          {
+            caller: 'createTimesheetEntry_v2',
+            auditMeta: { uid: user.uid, username: user.username }
+          }
+        );
+        console.log(`✅ [v2.0] Client written via canonical helper: deductedInTransaction=${deductedInTransaction}, version=${nextVersion}`);
       }
 
       // ── Phase 3: WRITES ──

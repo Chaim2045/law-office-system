@@ -9,7 +9,8 @@ const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
-const { calcClientAggregates, round2, isFixedService } = require('../shared/aggregates');
+const { round2, isFixedService } = require('../shared/aggregates');
+const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 
 const db = admin.firestore();
 
@@ -190,24 +191,29 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
       // הוספת השירות למערך services[]
       const services = [...(clientData.services || []), newService];
 
-      // עדכון הלקוח
-      const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(services, clientTotalHours);
+      // Compute non-aggregate derived counts (helper does NOT manage these)
+      const totalServices = services.length;
+      const activeServices = services.filter(s => s.status === 'active').length;
 
-      transaction.update(clientRef, {
-        services: services,
-        totalServices: services.length,
-        activeServices: services.filter(s => s.status === 'active').length,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // PR-B.6 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1-B.5 (#283-#287). First CF in PR-B that ADDS
+      // a service (vs mutating). Helper handles append-at-end the same
+      // way as wholesale-replace — services[] passed in full to the
+      // helper which recomputes totalHours + aggregates from the
+      // (now N+1)-element array.
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'addServiceToClient',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       return { newService };
     });
@@ -382,22 +388,22 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       // עדכון המערך
       services[serviceIndex] = service;
 
-      // שמירה אטומית
-      const clientTotalHours = services.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(services, clientTotalHours);
-
-      transaction.update(clientRef, {
-        services: services,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // PR-B.7 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1-B.6 (#283-#288). Adds a package (sub-document
+      // mutation), NOT a service — so totalServices/activeServices are
+      // NOT passed (count unchanged when adding a package to existing service).
+      // The drift guard above (service.totalHours vs Σ(packages.hours))
+      // runs BEFORE this helper call — service-level invariant complements
+      // the client-level invariants (I1-I4) checked by the helper.
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services },
+        {
+          caller: 'addPackageToService',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       return {
         newPackage,
@@ -690,25 +696,24 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 
       services[legalProcedureIndex] = legalProcedure;
 
-      // 🔄 Step 8: עדכון ה-client
-      // ✅ CRITICAL: חישוב aggregates של client מחדש מכל ה-services (Single Source of Truth!)
-      const clientTotalHours = services.reduce((sum, service) =>
-        sum + (service.totalHours || 0), 0);
-      const agg = calcClientAggregates(services, clientTotalHours);
-
-      // 💾 Step 9: שמירה אטומית
-      transaction.update(clientRef, {
-        services: services,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 🔄 Step 8: עדכון ה-client via canonical helper
+      // PR-B.13 (2026-05-18): replaces manual aggregate write. Helper
+      // recomputes totalHours/hoursUsed/hoursRemaining/minutesUsed/
+      // minutesRemaining/isBlocked/isCritical canonically from services
+      // array. Stage- and service-level aggregates above (lines 673-695)
+      // are nested inside services[] — NOT in RESTRICTED_KEYS — and pass
+      // through unchanged. lastModifiedAt + lastModifiedBy added by helper
+      // via auditMeta.
+      // Pattern source: PR-B.12 (no per-call mode — uses global config).
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services },
+        {
+          caller: 'addHoursPackageToStage',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       // ✅ Step 10: החזרת נתונים ל-audit log
       return {
@@ -716,9 +721,9 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         newPackage,
         targetStage,
         legalProcedure,
-        clientTotalHours,
-        clientHoursUsed: agg.hoursUsed,
-        clientHoursRemaining: agg.hoursRemaining,
+        clientTotalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+        clientHoursUsed: helperResult.aggregates.hoursUsed,
+        clientHoursRemaining: helperResult.aggregates.hoursRemaining,
         stageWasCompleted
       };
     });
@@ -908,27 +913,28 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const updatedService = { ...service, stages: updatedStages };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3h. כתיבה ל-Firestore (Transaction)
+      // 3h. PR-B.8 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1-B.7 (#283-#289). Equivalence verified upfront:
+      // the prior `clientTotalHours` formula (filter !isFixedService, sum
+      // totalHours) is identical to the helper's recomputeTotalHours. Both
+      // use the canonical isFixedService classification.
+      // currentStage + currentStageName are client-level metadata (NOT in
+      // RESTRICTED_KEYS) — pass through to helper.
       const isLastStage = (activeIndex + 1) === service.stages.length - 1;
 
-      const clientTotalHours = (updatedServices || [])
-        .filter(svc => !isFixedService(svc))
-        .reduce((sum, svc) => sum + (svc.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
-
-      transaction.update(clientRef, {
-        services: updatedServices,
-        currentStage: nextStage.id,
-        currentStageName: nextStage.name || nextStage.id,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          currentStage: nextStage.id,
+          currentStageName: nextStage.name || nextStage.id
+        },
+        {
+          caller: 'moveToNextStage',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
       // 3i. return data from transaction
       return {
@@ -1048,41 +1054,48 @@ exports.completeService = functions.https.onCall(async (data, context) => {
       const updatedService = { ...service, status: 'completed', completedAt: now };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3e. Recalculate client-level aggregates
-      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
+      // 3e. Compute non-aggregate derived counts (helper does NOT manage these)
+      // NOTE: activeServices decreases by 1 because the just-completed service
+      // drops out of the `status === 'active'` filter.
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
-      // 3f. Write to Firestore (Transaction)
-      transaction.update(clientRef, {
-        services: updatedServices,
-        totalServices: totalServices,
-        activeServices: activeServices,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 3f. PR-B.4 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1/B.2/B.3 (#283/#284/#285). The helper:
+      //   - strips RESTRICTED_KEYS (defense-in-depth)
+      //   - recomputes totalHours + all aggregates from services
+      //   - asserts invariants I1/I2/I4
+      //   - emits violation record + Cloud Logging entry on failure
+      //   - honors global kill-switch
+      // I1 relevant: completing the last billable service while a fixed-only
+      // remains → helper derives isBlocked=false even if hours depleted.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'completeService',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
-      // 3g. Return data from transaction
+      // 3g. Return data from transaction (aggregates sourced from helper)
       return {
         serviceName: service.name || service.serviceName,
         serviceType: service.type || service.serviceType,
         completedAt: now,
         aggregates: {
-          totalHours: clientTotalHours,
-          hoursRemaining: agg.hoursRemaining,
-          minutesRemaining: agg.minutesRemaining,
-          isBlocked: agg.isBlocked,
-          isCritical: agg.isCritical,
-          totalServices: totalServices,
-          activeServices: activeServices
+          totalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+          hoursRemaining: helperResult.aggregates.hoursRemaining,
+          minutesRemaining: helperResult.aggregates.minutesRemaining,
+          isBlocked: helperResult.aggregates.isBlocked,
+          isCritical: helperResult.aggregates.isCritical,
+          totalServices,
+          activeServices
         }
       };
     });
@@ -1230,29 +1243,36 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
       // 3e. Immutable array replacement
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3f. Recalculate client-level aggregates
-      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
+      // 3f. Compute non-aggregate derived counts (helper does NOT manage these)
+      // NOTE: activeServices changes when transitioning to/from 'active'.
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
-      // 3g. Write to Firestore (Transaction)
-      transaction.update(clientRef, {
-        services: updatedServices,
-        totalServices: totalServices,
-        activeServices: activeServices,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 3g. PR-B.5 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1/B.2/B.3/B.4 (#283/#284/#285/#286). The helper:
+      //   - strips RESTRICTED_KEYS (defense-in-depth)
+      //   - recomputes totalHours + all aggregates from services
+      //   - asserts invariants I1/I2/I4
+      //   - emits violation record + Cloud Logging entry on failure
+      //   - honors global kill-switch
+      // statusChangeHistory append survives the wholesale services[] replace
+      // because services[serviceIndex] is the new updatedService object
+      // which carries the appended history array.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'changeServiceStatus',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
-      // 3h. Return data from transaction
+      // 3h. Return data from transaction (aggregates sourced from helper)
       const serviceName = service.name || service.serviceName;
       const serviceType = service.type || service.serviceType;
 
@@ -1263,14 +1283,14 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
         newStatus: data.newStatus,
         statusChangedAt: now,
         aggregates: {
-          totalHours: clientTotalHours,
-          hoursUsed: agg.hoursUsed,
-          hoursRemaining: agg.hoursRemaining,
-          minutesRemaining: agg.minutesRemaining,
-          isBlocked: agg.isBlocked,
-          isCritical: agg.isCritical,
-          totalServices: totalServices,
-          activeServices: activeServices
+          totalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+          hoursUsed: helperResult.aggregates.hoursUsed,
+          hoursRemaining: helperResult.aggregates.hoursRemaining,
+          minutesRemaining: helperResult.aggregates.minutesRemaining,
+          isBlocked: helperResult.aggregates.isBlocked,
+          isCritical: helperResult.aggregates.isCritical,
+          totalServices,
+          activeServices
         }
       };
     });
@@ -1396,29 +1416,36 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
       // 3e. Immutable removal
       const updatedServices = services.filter((s, idx) => idx !== serviceIndex);
 
-      // 3f. Recalculate client-level aggregates
-      const clientTotalHours = updatedServices.reduce((sum, s) => sum + (s.totalHours || 0), 0);
-      const agg = calcClientAggregates(updatedServices, clientTotalHours);
+      // 3f. Compute non-aggregate derived counts (helper does NOT manage these)
       const totalServices = updatedServices.length;
       const activeServices = updatedServices.filter(s => s.status === 'active').length;
 
-      // 3g. Write to Firestore (Transaction)
-      transaction.update(clientRef, {
-        services: updatedServices,
-        totalServices: totalServices,
-        activeServices: activeServices,
-        totalHours: clientTotalHours,
-        hoursUsed: agg.hoursUsed,
-        hoursRemaining: agg.hoursRemaining,
-        minutesUsed: agg.minutesUsed,
-        minutesRemaining: agg.minutesRemaining,
-        isBlocked: agg.isBlocked,
-        isCritical: agg.isCritical,
-        lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastModifiedBy: user.username
-      });
+      // 3g. PR-B.3 (2026-05-17): migrate to canonical helper.
+      // Pattern from PR-B.1/.B.2 (#283/#284). The helper:
+      //   - strips RESTRICTED_KEYS (defense-in-depth)
+      //   - recomputes totalHours + all aggregates from services
+      //   - asserts invariants I1/I2/I4
+      //   - emits violation record + Cloud Logging entry on failure
+      //   - honors global kill-switch
+      // totalServices / activeServices pass through (NOT in RESTRICTED_KEYS).
+      // I1 case is relevant here: removing the last billable service from
+      // a mixed client leaves only fixed services → helper derives
+      // isBlocked=false even if hoursRemaining drops to 0.
+      const helperResult = await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        {
+          services: updatedServices,
+          totalServices,
+          activeServices
+        },
+        {
+          caller: 'deleteService',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
 
-      // 3h. Return data from transaction
+      // 3h. Return data from transaction (sourced from helper's canonical aggregates)
       const serviceName = service.name || service.serviceName;
       const serviceType = service.type || service.serviceType;
 
@@ -1427,14 +1454,14 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
         serviceName,
         serviceType,
         aggregates: {
-          totalHours: clientTotalHours,
-          hoursUsed: agg.hoursUsed,
-          hoursRemaining: agg.hoursRemaining,
-          minutesRemaining: agg.minutesRemaining,
-          isBlocked: agg.isBlocked,
-          isCritical: agg.isCritical,
-          totalServices: totalServices,
-          activeServices: activeServices
+          totalHours: helperResult.aggregates.totalHours ?? helperResult.written.totalHours,
+          hoursUsed: helperResult.aggregates.hoursUsed,
+          hoursRemaining: helperResult.aggregates.hoursRemaining,
+          minutesRemaining: helperResult.aggregates.minutesRemaining,
+          isBlocked: helperResult.aggregates.isBlocked,
+          isCritical: helperResult.aggregates.isCritical,
+          totalServices,
+          activeServices
         }
       };
     });

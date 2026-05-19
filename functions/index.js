@@ -32,6 +32,7 @@ const scheduled = require('./scheduled');
 exports.dailyTaskReminders = scheduled.dailyTaskReminders;
 exports.dailyBudgetWarnings = scheduled.dailyBudgetWarnings;
 exports.dailyInvariantCheck = scheduled.dailyInvariantCheck;
+exports.holidaysCalendarSync = scheduled.holidaysCalendarSync;  // PR-G.1
 
 // WhatsApp Functions (imported from ./whatsapp)
 const whatsapp = require('./whatsapp');
@@ -61,6 +62,17 @@ const systemConfig = require('./admin/system-config');
 exports.updateSystemConfig = systemConfig.updateSystemConfig;
 exports.getSystemConfig = systemConfig.getSystemConfig;
 exports.rollbackSystemConfig = systemConfig.rollbackSystemConfig;
+
+// PR-D (2026-05-18): on-demand audit + repair for client aggregate drift.
+// See functions/admin/repair-aggregates.js for the canonical-recompute rationale.
+const repairAggregates = require('./admin/repair-aggregates');
+exports.auditClientAggregates = repairAggregates.auditClientAggregates;
+exports.repairClientAggregates = repairAggregates.repairClientAggregates;
+
+// PR-C.2-fns (2026-05-18): outbox trigger for system_health_checks → bot.
+// See functions/triggers/system-reports-outbox-trigger.js for the outbox-pattern rationale.
+const systemReportsOutboxTrigger = require('./triggers/system-reports-outbox-trigger');
+exports.onSystemHealthCheckCreated = systemReportsOutboxTrigger.onSystemHealthCheckCreated;
 
 // Auth Functions (imported from ./auth)
 const authModule = require('./auth');

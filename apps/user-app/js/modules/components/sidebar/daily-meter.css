@@ -146,11 +146,19 @@
    ═══════════════════════════════════════ */
 
 .gh-daily-meter-popup {
-  position: absolute;
-  left: calc(-230px - 14px);
-  bottom: 0;
+  /* PR-F.2: position: fixed anchored to viewport bottom-right so popup never
+     extends above the viewport top when content is tall (week view + expanded
+     day rows). Previous absolute+bottom:0 anchor caused top-clipping because
+     max-height capped popup HEIGHT but not its absolute Y position.
+     Sidebar width = 72px (sidebar-config.js); 14px gap from sidebar edge. */
+  position: fixed;
+  right: calc(72px + 8px);  /* PR-F.3: tightened from 14px gap → 8px */
+  bottom: 20px;
   transform: translateX(10px);
   width: 230px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
   background: #1e293b;
   border-radius: 12px;
   padding: 16px 18px;
@@ -182,6 +190,167 @@
   visibility: visible;
   transform: translateX(0);
   pointer-events: auto;
+}
+
+/* ═══════════════════════════════════════
+   PR-F: Tabs + Week View
+   ═══════════════════════════════════════ */
+
+.gh-daily-meter-popup-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 3px;
+  background: rgb(0 0 0 / 25%);
+  border-radius: 8px;
+}
+
+.gh-daily-meter-popup-tab {
+  flex: 1;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gh-daily-meter-popup-tab:hover {
+  color: #cbd5e1;
+}
+
+.gh-daily-meter-popup-tab.active {
+  background: rgb(59 130 246 / 15%);
+  color: #93c5fd;
+  box-shadow: inset 0 0 0 1px rgb(59 130 246 / 25%);
+}
+
+/* ─── Week View — Day Rows ─── */
+.gh-daily-meter-popup-week-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  /* PR-F.1: flex-grow inside capped popup. min-height: 0 allows shrinking. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.gh-daily-meter-popup-day {
+  background: rgb(255 255 255 / 2%);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.gh-daily-meter-popup-day.missing {
+  background: rgb(239 68 68 / 7%);
+  border-color: rgb(239 68 68 / 25%);
+}
+
+.gh-daily-meter-popup-day.met {
+  background: rgb(34 197 94 / 6%);
+}
+
+.gh-daily-meter-popup-day.partial {
+  background: rgb(245 158 11 / 5%);
+}
+
+.gh-daily-meter-popup-day.weekend {
+  background: rgb(255 255 255 / 1%);
+  opacity: 0.6;
+}
+
+.gh-daily-meter-popup-day.future {
+  opacity: 0.4;
+}
+
+.gh-daily-meter-popup-day.today.partial {
+  /* Today is allowed to be partial during the day — softer style */
+  background: rgb(59 130 246 / 6%);
+}
+
+.gh-daily-meter-popup-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.gh-daily-meter-popup-day-header:hover {
+  background: rgb(255 255 255 / 3%);
+}
+
+.gh-daily-meter-popup-day-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.gh-daily-meter-popup-day-chevron {
+  font-size: 9px;
+  color: #64748b;
+  width: 10px;
+}
+
+.gh-daily-meter-popup-day-badge {
+  /* PR-F.1: unified cream icon color. Semantic color comes from the
+     row's tinted background (.missing/.met/.partial). Keeps badges
+     elegant + consistent with sidebar palette. */
+  font-size: 10px;
+  width: 16px;
+  text-align: center;
+  color: #f1f5f9;
+  opacity: 0.9;
+}
+
+.gh-daily-meter-popup-day-badge i {
+  font-size: 11px;
+}
+
+.gh-daily-meter-popup-day-hours {
+  font-weight: 600;
+  color: #e2e8f0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.gh-daily-meter-popup-day.missing .gh-daily-meter-popup-day-hours,
+.gh-daily-meter-popup-day.weekend .gh-daily-meter-popup-day-hours,
+.gh-daily-meter-popup-day.future .gh-daily-meter-popup-day-hours {
+  color: #64748b;
+}
+
+.gh-daily-meter-popup-day-clients {
+  border-top: 1px solid rgb(255 255 255 / 5%);
+  padding: 4px 6px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Scrollbar in week list */
+.gh-daily-meter-popup-week-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.gh-daily-meter-popup-week-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gh-daily-meter-popup-week-list::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
 }
 
 /* ─── Popup Header ─── */
@@ -228,6 +397,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+
+  /* PR-F.1: flex-grow inside capped popup; cap kept for today view sanity */
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: 260px;
   overflow-y: auto;
 }

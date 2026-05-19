@@ -33,6 +33,11 @@ Before any new task — `work-session-gatekeeper` MUST run first.
 Returns VERDICT: GO or STOP. If STOP — resolve open work before proceeding.
 Read-only on git. No exceptions. (Details: `.claude/agents/work-session-gatekeeper.md`)
 
+## OUTCOMES GRADER RULE
+Before opening any PR — `outcomes-grader` MUST evaluate work against rubric `.claude/rubrics/<scope>.md`.
+Returns VERDICT: PASS / FAIL / PASS_WITH_WARNINGS. FAIL blocks PR open.
+Read-only. Separate context. No exceptions. (Details: `.claude/docs/OUTCOMES-GRADER-USAGE.md`)
+
 ## MANDATORY RULES
 
 - Every task starts with:

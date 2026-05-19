@@ -75,7 +75,10 @@ jest.mock('firebase-functions', () => ({
       }
     },
     onCall: jest.fn((fn) => fn)
-  }
+  },
+  // PR-B.7: helper calls functions.logger.warn/error/info on stripped keys
+  // and on enforcement-mode reads. Mock to silence + prevent undefined errors.
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
 }));
 
 jest.mock('firebase-functions/v2/firestore', () => ({
@@ -178,7 +181,11 @@ describe('addPackageToService — Transaction', () => {
 
   test('happy path — adds package to hours service, returns correct structure', async () => {
     const clientDoc = makeClientDoc();
-    mockTransaction.get.mockResolvedValueOnce(clientDoc);
+    // PR-B.7: addPackageToService now delegates client write to the canonical
+    // helper, which performs its own transaction.get(clientRef). Hence two
+    // resolved values (CF body + helper internal). Firestore caches reads
+    // within a real transaction; mocking just chains them.
+    mockTransaction.get.mockResolvedValueOnce(clientDoc).mockResolvedValueOnce(clientDoc);
 
     const result = await addPackageToService(
       { clientId: 'C001', serviceId: 'svc_1', hours: 10 },
@@ -268,7 +275,7 @@ describe('addPackageToService — Transaction', () => {
     });
 
     const clientDoc = makeClientDoc();
-    mockTransaction.get.mockResolvedValueOnce(clientDoc);
+    mockTransaction.get.mockResolvedValueOnce(clientDoc).mockResolvedValueOnce(clientDoc);
 
     const result = await addPackageToService(
       { clientId: 'C001', serviceId: 'svc_1', hours: 10 },
@@ -309,7 +316,7 @@ describe('addPackageToService — Transaction', () => {
     });
 
     const clientDoc = makeClientDoc();
-    mockTransaction.get.mockResolvedValueOnce(clientDoc);
+    mockTransaction.get.mockResolvedValueOnce(clientDoc).mockResolvedValueOnce(clientDoc);
 
     const result = await addPackageToService(
       { clientId: 'C001', serviceId: 'svc_1', hours: 10 },
@@ -341,7 +348,7 @@ describe('addPackageToService — Transaction', () => {
 
   test('caseId alias works same as clientId', async () => {
     const clientDoc = makeClientDoc();
-    mockTransaction.get.mockResolvedValueOnce(clientDoc);
+    mockTransaction.get.mockResolvedValueOnce(clientDoc).mockResolvedValueOnce(clientDoc);
 
     const result = await addPackageToService(
       { caseId: 'C001', serviceId: 'svc_1', hours: 5 },
