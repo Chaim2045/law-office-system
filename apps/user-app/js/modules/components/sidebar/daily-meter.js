@@ -417,16 +417,16 @@ return;
       } else if (dayInfo.totalHours === 0) {
         // Workday with no reports — flag it
         dayClass = ' missing';
-        badgeHtml = '<span class="gh-daily-meter-popup-day-badge missing" title="יום עבודה ללא דיווחים">⚠️</span>';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge missing" title="יום עבודה ללא דיווחים"><i class="fas fa-circle-exclamation"></i></span>';
       } else if (dayInfo.totalHours >= this._dailyTarget) {
         dayClass = ' met';
-        badgeHtml = '<span class="gh-daily-meter-popup-day-badge met" title="עמדת בתקן">✓</span>';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge met" title="עמדת בתקן"><i class="fas fa-check"></i></span>';
       } else if (isToday) {
         dayClass = ' today partial';
-        badgeHtml = '<span class="gh-daily-meter-popup-day-badge partial" title="חלקי (היום)">~</span>';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge partial" title="חלקי (היום)"><i class="fas fa-hourglass-half"></i></span>';
       } else {
         dayClass = ' partial';
-        badgeHtml = '<span class="gh-daily-meter-popup-day-badge partial" title="חלקי">~</span>';
+        badgeHtml = '<span class="gh-daily-meter-popup-day-badge partial" title="חלקי"><i class="fas fa-hourglass-half"></i></span>';
       }
 
       const expanded = !!this._expandedDays[dayInfo.dateStr];

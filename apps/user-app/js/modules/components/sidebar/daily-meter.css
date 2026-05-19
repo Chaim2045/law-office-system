@@ -151,6 +151,13 @@
   bottom: 0;
   transform: translateX(10px);
   width: 230px;
+
+  /* PR-F.1: cap to viewport so tall week-view never clips above screen top.
+     Reserve 24px buffer from viewport edge. Internal scrolling via the
+     list block below. */
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
   background: #1e293b;
   border-radius: 12px;
   padding: 16px 18px;
@@ -226,7 +233,10 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  max-height: 320px;
+
+  /* PR-F.1: flex-grow inside capped popup. min-height: 0 allows shrinking. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -293,16 +303,19 @@
 }
 
 .gh-daily-meter-popup-day-badge {
+  /* PR-F.1: unified cream icon color. Semantic color comes from the
+     row's tinted background (.missing/.met/.partial). Keeps badges
+     elegant + consistent with sidebar palette. */
   font-size: 10px;
   width: 16px;
   text-align: center;
+  color: #f1f5f9;
+  opacity: 0.9;
 }
 
-.gh-daily-meter-popup-day-badge.missing { color: #ef4444; }
-
-.gh-daily-meter-popup-day-badge.met { color: #22c55e; }
-
-.gh-daily-meter-popup-day-badge.partial { color: #f59e0b; }
+.gh-daily-meter-popup-day-badge i {
+  font-size: 11px;
+}
 
 .gh-daily-meter-popup-day-hours {
   font-weight: 600;
@@ -383,6 +396,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+
+  /* PR-F.1: flex-grow inside capped popup; cap kept for today view sanity */
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: 260px;
   overflow-y: auto;
 }
