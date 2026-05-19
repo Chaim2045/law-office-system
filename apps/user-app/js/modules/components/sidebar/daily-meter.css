@@ -146,16 +146,17 @@
    ═══════════════════════════════════════ */
 
 .gh-daily-meter-popup {
-  position: absolute;
-  left: calc(-230px - 14px);
-  bottom: 0;
+  /* PR-F.2: position: fixed anchored to viewport bottom-right so popup never
+     extends above the viewport top when content is tall (week view + expanded
+     day rows). Previous absolute+bottom:0 anchor caused top-clipping because
+     max-height capped popup HEIGHT but not its absolute Y position.
+     Sidebar width = 72px (sidebar-config.js); 14px gap from sidebar edge. */
+  position: fixed;
+  right: calc(72px + 14px);
+  bottom: 20px;
   transform: translateX(10px);
   width: 230px;
-
-  /* PR-F.1: cap to viewport so tall week-view never clips above screen top.
-     Reserve 24px buffer from viewport edge. Internal scrolling via the
-     list block below. */
-  max-height: calc(100vh - 24px);
+  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
   background: #1e293b;
