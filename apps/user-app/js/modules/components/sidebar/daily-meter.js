@@ -129,6 +129,11 @@ return;
   _render(container) {
     this._el = document.createElement('div');
     this._el.className = 'gh-daily-meter';
+    // PR-F.3: popup is a SIBLING of the ring (not a child). The ring uses
+    // `transform: scale(1.06)` on hover, which would otherwise turn the
+    // ring into the containing block for the popup's `position: fixed`
+    // (CSS spec — a transformed ancestor anchors fixed-positioned
+    // descendants), causing the popup to drift on hover.
     this._el.innerHTML = `
       <div class="gh-daily-meter-ring" title="מד דיווח יומי — לחץ לפירוט">
         ${this._isNewFeature() ? '<span class="gh-daily-meter-badge-new"></span>' : ''}
@@ -142,9 +147,9 @@ return;
           <div class="gh-daily-meter-pct">0%</div>
           <div class="gh-daily-meter-hours">0:00</div>
         </div>
-        <div class="gh-daily-meter-popup"></div>
       </div>
       <span class="gh-daily-meter-label">דיווח יומי</span>
+      <div class="gh-daily-meter-popup"></div>
     `;
 
     // Insert as first child of footer (above break button)
