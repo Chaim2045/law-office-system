@@ -14,7 +14,13 @@
 
 const RADIUS = 21;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const DEFAULT_DAILY_TARGET = 8.45;
+
+// PR-G.2: DEFAULT_DAILY_TARGET centralized — see js/shared/work-hours-constants.js.
+// That file is a classic script that assigns to window.WORK_HOURS_CONSTANTS;
+// it MUST be loaded before this module (it is — see index.html).
+const DEFAULT_DAILY_TARGET = (typeof window !== 'undefined' && window.WORK_HOURS_CONSTANTS)
+  ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET
+  : 8.45; // fallback should never fire in production; safety net for test/SSR contexts
 
 export class DailyMeter {
   constructor() {

@@ -3110,7 +3110,7 @@ return 0;
                         <strong style="color: #2563eb;">⏰ מכסת שעות:</strong><br>
                         • תקן חודשי: <strong>186 שעות</strong> (ממוצע)<br>
                         • מכסה לחודש זה: <strong>${h.monthlyQuota} שעות</strong><br>
-                        <span style="font-size: 12px; color: #6b7280;">(${h.workDaysTotal} ימי עבודה × 8.45 שעות)</span>
+                        <span style="font-size: 12px; color: #6b7280;">(${h.workDaysTotal} ימי עבודה × ${window.WORK_HOURS_CONSTANTS ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET : 8.45} שעות)</span>
                     </div>
 
                     <div style="background: white; padding: 10px; border-radius: 6px; margin: 8px 0;">

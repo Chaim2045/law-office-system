@@ -422,8 +422,11 @@ function createTimesheetStatsBar(stats) {
   const currentDate = `${day} ${currentMonth}`;
 
   // בדיקה אם יש תקן אישי — מוצג כאייקון 🎯 על ה-label ("תקן 🎯")
+  // PR-G.2: centralized predicate — see js/shared/work-hours-constants.js
   const employeeData = window.manager?.currentEmployee || {};
-  const hasCustomTarget = employeeData.dailyHoursTarget && employeeData.dailyHoursTarget !== 8.45;
+  const hasCustomTarget = window.WORK_HOURS_CONSTANTS
+    ? window.WORK_HOURS_CONSTANTS.isCustomDailyTarget(employeeData.dailyHoursTarget)
+    : (employeeData.dailyHoursTarget && employeeData.dailyHoursTarget !== 8.45);
 
   /*
    * Timesheet stats — same Ultra-Minimal (Claude.ai / Emil) treatment as
