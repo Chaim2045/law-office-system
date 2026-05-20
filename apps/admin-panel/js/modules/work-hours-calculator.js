@@ -6,12 +6,16 @@
 
 class WorkHoursCalculator {
     constructor(dailyHoursTarget = null) {
-        // תקן שעות יומי (ברירת מחדל: 8.45 שעות/יום)
-        // אם מועבר תקן אישי - משתמש בו, אחרת 8.45
-        this.DAILY_HOURS_TARGET = dailyHoursTarget || 8.45;
+        // PR-G.2: DEFAULT_DAILY_TARGET centralized — see js/shared/work-hours-constants.js
+        const _C = (typeof window !== 'undefined' && window.WORK_HOURS_CONSTANTS) || null;
+        const DEFAULT_DAILY_TARGET = _C ? _C.DEFAULT_DAILY_TARGET : 8.45;
+        const DEFAULT_MONTHLY_HOURS = _C ? _C.DEFAULT_MONTHLY_HOURS : 186;
+
+        // תקן שעות יומי (אם מועבר תקן אישי - משתמש בו, אחרת ברירת המחדל)
+        this.DAILY_HOURS_TARGET = dailyHoursTarget || DEFAULT_DAILY_TARGET;
 
         // מדד שעות חודשי ממוצע (למען תאימות לאחור)
-        this.MONTHLY_HOURS_TARGET = 186;
+        this.MONTHLY_HOURS_TARGET = DEFAULT_MONTHLY_HOURS;
 
         // חגים ישראליים 2025 (תאריכים גרגוריאניים)
         this.holidays2025 = [
@@ -245,7 +249,8 @@ class WorkHoursCalculator {
             monthlyQuota,
             avgHoursPerDay: Math.round(dailyTarget * 10) / 10,
             dailyTarget: Math.round(dailyTarget * 10) / 10,
-            isCustomTarget: this.DAILY_HOURS_TARGET !== 8.45 // האם זה תקן אישי
+            // PR-G.2: compare against centralized default
+            isCustomTarget: this.DAILY_HOURS_TARGET !== (window.WORK_HOURS_CONSTANTS ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET : 8.45)
         };
     }
 

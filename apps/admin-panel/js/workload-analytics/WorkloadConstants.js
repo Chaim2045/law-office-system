@@ -98,7 +98,10 @@
         // WORK HOURS - שעות עבודה
         // ═══════════════════════════════════════════════════════════════
         WORK_HOURS: {
-            DEFAULT_DAILY_HOURS: 8.45,      // שעות עבודה יומיות (ברירת מחדל)
+            // PR-G.2: DEFAULT_DAILY_HOURS centralized — see js/shared/work-hours-constants.js
+            DEFAULT_DAILY_HOURS: (typeof window !== 'undefined' && window.WORK_HOURS_CONSTANTS)
+                ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET
+                : 8.45,         // שעות עבודה יומיות (ברירת מחדל)
             DEFAULT_WEEKLY_HOURS: 42.25,    // שעות עבודה שבועיות (5 ימים)
             WORK_DAYS_PER_WEEK: 5,          // ימי עבודה בשבוע
 
