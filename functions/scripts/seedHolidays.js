@@ -41,24 +41,25 @@ async function seed() {
   console.log(`Source: @hebcal/core@${calendarLib.HEBCAL_VERSION}`);
 
   for (const year of years) {
-    const holidays = calendarLib.getHolidaysForYear(year);
-    const contentHash = hashHolidays(holidays);
+    const holidaysAuto = calendarLib.getHolidaysForYear(year);
+    const contentHash = hashHolidays(holidaysAuto);
     const docRef = db.collection('system_holidays').doc(String(year));
 
     const existing = await docRef.get();
     if (existing.exists && existing.data().contentHash === contentHash) {
-      console.log(`  ${year}: hash matches (${holidays.length} holidays) — skipping`);
+      console.log(`  ${year}: hash matches (${holidaysAuto.length} auto holidays) — skipping`);
       continue;
     }
 
+    // PR-G.3.3: merge write — never destroys `holidaysOverrides` if present.
     await docRef.set({
       year,
       generatedAt: admin.firestore.FieldValue.serverTimestamp(),
       source: `@hebcal/core@${calendarLib.HEBCAL_VERSION}`,
-      holidays,
+      holidaysAuto,
       contentHash
-    });
-    console.log(`  ${year}: ${existing.exists ? 'updated' : 'created'} (${holidays.length} holidays)`);
+    }, { merge: true });
+    console.log(`  ${year}: ${existing.exists ? 'updated' : 'created'} (${holidaysAuto.length} auto holidays, any overrides preserved)`);
   }
 
   console.log('Done.');

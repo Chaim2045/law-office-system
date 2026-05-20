@@ -13,7 +13,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 
 declare global {
 
@@ -116,6 +116,90 @@ describe('PR-G.3.1 — _mergeHolidaysArraysToMap', () => {
     ];
     const m = merge([arr]);
     expect(m.size).toBe(1);
+  });
+});
+
+describe('PR-G.3.3 — _mergeAutoAndOverrides (auto + overrides + suppress)', () => {
+  let mergeAO: (docs: Array<any>) => Map<string, any>;
+  beforeAll(() => {
+    mergeAO = (globalThis as any).WORK_HOURS_HOLIDAYS_CACHE._test.mergeAutoAndOverrides;
+  });
+
+  it('returns empty Map for no docs', () => {
+    const m = mergeAO([]);
+    expect(m.size).toBe(0);
+  });
+
+  it('auto-only doc: builds from holidaysAuto', () => {
+    const doc = { holidaysAuto: [{ date: '2026-04-02', isWorking: false, isHalfDay: false }] };
+    const m = mergeAO([doc]);
+    expect(m.size).toBe(1);
+    expect(m.get('2026-04-02').isWorking).toBe(false);
+  });
+
+  it('backward compat: falls back to data.holidays if holidaysAuto missing', () => {
+    const doc = { holidays: [{ date: '2026-04-02', isWorking: false, isHalfDay: false }] };
+    const m = mergeAO([doc]);
+    expect(m.size).toBe(1);
+    expect(m.get('2026-04-02').isWorking).toBe(false);
+  });
+
+  it('override wins over auto on same date', () => {
+    const doc = {
+      holidaysAuto: [{ date: '2026-04-22', isWorking: false, isHalfDay: false, nameEn: 'Yom HaAtzma\'ut auto' }],
+      holidaysOverrides: [{
+        date: '2026-04-22',
+        isWorking: true,
+        isHalfDay: false,
+        nameEn: 'Yom HaAtzma\'ut OVERRIDE',
+        _overrideMeta: { by: 'haim@gh', at: '2026-04-15T10:00:00Z', reason: 'Office decided to work' }
+      }]
+    };
+    const m = mergeAO([doc]);
+    expect(m.get('2026-04-22').isWorking).toBe(true);
+    expect(m.get('2026-04-22').nameEn).toBe('Yom HaAtzma\'ut OVERRIDE');
+  });
+
+  it('_suppress: true removes the auto entry', () => {
+    const doc = {
+      holidaysAuto: [{ date: '2026-04-22', isWorking: false, isHalfDay: false, nameEn: 'Yom HaAtzma\'ut' }],
+      holidaysOverrides: [{
+        date: '2026-04-22',
+        _suppress: true,
+        _overrideMeta: { by: 'haim@gh', at: '2026-04-15T10:00:00Z', reason: 'Not observed' }
+      }]
+    };
+    const m = mergeAO([doc]);
+    expect(m.has('2026-04-22')).toBe(false);
+  });
+
+  it('override without _overrideMeta still applied (warn-only)', () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const doc = {
+      holidaysAuto: [],
+      holidaysOverrides: [{ date: '2026-04-22', isWorking: false, isHalfDay: false }]
+    };
+    const m = mergeAO([doc]);
+    expect(m.has('2026-04-22')).toBe(true);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('multi-year: merges auto + overrides across years', () => {
+    const docA = { holidaysAuto: [{ date: '2026-04-02', isWorking: false, isHalfDay: false }] };
+    const docB = {
+      holidaysAuto: [{ date: '2027-04-22', isWorking: false, isHalfDay: false }],
+      holidaysOverrides: [{
+        date: '2027-04-22',
+        isWorking: true,
+        isHalfDay: false,
+        _overrideMeta: { by: 'haim@gh', at: '2027-01-01T00:00:00Z', reason: 'Test' }
+      }]
+    };
+    const m = mergeAO([docA, docB]);
+    expect(m.size).toBe(2);
+    expect(m.get('2026-04-02').isWorking).toBe(false);  // auto
+    expect(m.get('2027-04-22').isWorking).toBe(true);   // override
   });
 });
 

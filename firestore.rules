@@ -485,6 +485,17 @@ service cloud.firestore {
       allow write: if false; // Only Cloud Functions (Admin SDK)
     }
 
+    // PR-G.3.3 (2026-05-20): system_holidays collection.
+    // Populated by `holidaysCalendarSync` cron (Admin SDK). Frontend reads
+    // via Web SDK onSnapshot. Schema: { year, generatedAt, source,
+    // contentHash, holidaysAuto[], holidaysOverrides[] }. Overrides are
+    // managed via Firebase Console (manual) or future admin UI — never
+    // by end users.
+    match /system_holidays/{year} {
+      allow read: if isAuthenticated();
+      allow write: if false;  // Admin SDK + Firebase Console only
+    }
+
     // ❌ Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;
