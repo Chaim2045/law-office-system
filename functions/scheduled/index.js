@@ -562,24 +562,30 @@ function _hashHolidays(holidays) {
 
 async function syncHolidaysForYear(year) {
   const docRef = db.collection('system_holidays').doc(String(year));
-  const holidays = calendarLib.getHolidaysForYear(year);
-  const contentHash = _hashHolidays(holidays);
+  const holidaysAuto = calendarLib.getHolidaysForYear(year);
+  const contentHash = _hashHolidays(holidaysAuto);
 
   const existing = await docRef.get();
   if (existing.exists && existing.data().contentHash === contentHash) {
     console.log(`[holidaysCalendarSync] ${year} — hash matches, skip write`);
-    return { year, status: 'unchanged', count: holidays.length };
+    return { year, status: 'unchanged', count: holidaysAuto.length };
   }
 
+  // PR-G.3.3 (2026-05-20): write via `update` semantics (set with merge:true)
+  // so we NEVER touch `holidaysOverrides` (admin-managed). Cron owns only
+  // `holidaysAuto + contentHash + source + generatedAt + year`. Frontend
+  // merges auto + overrides on read.
+  // Important: do NOT write a `holidays` field — it's gone in the new schema.
+  // Backward compat is handled by frontend (`data.holidaysAuto || data.holidays`).
   await docRef.set({
     year,
     generatedAt: admin.firestore.FieldValue.serverTimestamp(),
     source: `@hebcal/core@${calendarLib.HEBCAL_VERSION}`,
-    holidays,
+    holidaysAuto,
     contentHash
-  });
-  console.log(`[holidaysCalendarSync] ${year} — wrote ${holidays.length} holidays`);
-  return { year, status: existing.exists ? 'updated' : 'created', count: holidays.length };
+  }, { merge: true });
+  console.log(`[holidaysCalendarSync] ${year} — wrote ${holidaysAuto.length} auto holidays (overrides preserved)`);
+  return { year, status: existing.exists ? 'updated' : 'created', count: holidaysAuto.length };
 }
 
 const holidaysCalendarSync = onSchedule({

@@ -69,9 +69,9 @@
 
   /**
    * Pure: merge per-year holiday arrays into one Map<dateStr, Holiday>.
-   * Conflict rule: closed-day (`isWorking: false`) wins over half-day eve;
-   * half-day eve wins over open. Mirrors `functions/shared/calendar.js`
-   * `buildHolidaysMap` logic. Exported for unit tests.
+   * Conflict rule (auto-only merge): closed-day (`isWorking: false`) wins
+   * over half-day eve; half-day eve wins over open. Mirrors
+   * `functions/shared/calendar.js` `buildHolidaysMap` logic.
    *
    * @param {Array<Array<Object>>} yearArrays
    * @returns {Map<string, Object>}
@@ -102,12 +102,65 @@
     return map;
   }
 
+  /**
+   * PR-G.3.3: merge `holidaysAuto + holidaysOverrides` per-year per the new
+   * schema. Overrides win by date. `_suppress: true` removes the matching
+   * auto entry (admin can cancel a Hebcal-determined holiday).
+   *
+   * Backward compat: if `holidaysAuto` missing, falls back to `data.holidays`
+   * (PR-G.3.1 shape). Kept for one deploy cycle; removed in G.3.5 cleanup.
+   *
+   * @param {Array<{holidaysAuto?: Array, holidaysOverrides?: Array, holidays?: Array}>} yearDocs
+   * @returns {Map<string, Object>}
+   */
+  function _mergeAutoAndOverrides(yearDocs) {
+    // 1. Collect auto entries from all years
+    const autoArrays = [];
+    const overrideArrays = [];
+    for (const data of yearDocs || []) {
+      if (!data) {
+        continue;
+      }
+      const auto = Array.isArray(data.holidaysAuto)
+        ? data.holidaysAuto
+        : (Array.isArray(data.holidays) ? data.holidays : []);  // BC fallback
+      autoArrays.push(auto);
+      if (Array.isArray(data.holidaysOverrides)) {
+        overrideArrays.push(data.holidaysOverrides);
+      }
+    }
+
+    // 2. Build auto map via existing logic
+    const map = _mergeHolidaysArraysToMap(autoArrays);
+
+    // 3. Apply overrides: override wins by date; `_suppress: true` removes
+    for (const overrides of overrideArrays) {
+      for (const o of overrides) {
+        if (!o || typeof o.date !== 'string') {
+          continue;
+        }
+        if (o._suppress === true) {
+          map.delete(o.date);
+          continue;
+        }
+        if (!o._overrideMeta) {
+          console.warn('[holidays-cache] override missing _overrideMeta:', o.date, '— still applied');
+        }
+        map.set(o.date, o);
+      }
+    }
+
+    return map;
+  }
+
   function _engageFallback(reason) {
     if (window.WORK_HOURS_HOLIDAYS_FALLBACK_USED) {
       return;
     }
     window.WORK_HOURS_HOLIDAYS_FALLBACK_USED = true;
-    const map = _mergeHolidaysArraysToMap([EMBEDDED_FALLBACK_2026]);
+    // PR-G.3.3: route through the new merger for consistency (no overrides
+    // available offline — only auto fallback). The merger handles single-array.
+    const map = _mergeAutoAndOverrides([{ holidaysAuto: EMBEDDED_FALLBACK_2026 }]);
     window.WORK_HOURS_HOLIDAYS_MAP = map;
     console.warn('[holidays-cache] engaged embedded fallback:', reason);
     if (_resolveReady) {
@@ -117,8 +170,11 @@
   }
 
   function _rebuildMap() {
-    const arrays = Array.from(_holidaysByYear.values());
-    const map = _mergeHolidaysArraysToMap(arrays);
+    // PR-G.3.3: pass full year docs (with both holidaysAuto + holidaysOverrides)
+    // to the new merge. Each entry in `_holidaysByYear` is now the full doc
+    // data object, not just an array. See `_init()` snapshot handler.
+    const docs = Array.from(_holidaysByYear.values());
+    const map = _mergeAutoAndOverrides(docs);
     window.WORK_HOURS_HOLIDAYS_MAP = map;
     window.WORK_HOURS_HOLIDAYS_FALLBACK_USED = false; // real data overrides fallback
     if (_resolveReady) {
@@ -157,11 +213,16 @@
               return;
             }
             const data = snap.data() || {};
-            const holidays = Array.isArray(data.holidays) ? data.holidays : [];
-            _holidaysByYear.set(year, holidays);
+            // PR-G.3.3: store FULL doc (both holidaysAuto + holidaysOverrides
+            // + BC fallback `holidays`). Merge logic in `_mergeAutoAndOverrides`.
+            _holidaysByYear.set(year, data);
             _yearsLoaded.add(year);
             _rebuildMap();
-            console.log('[holidays-cache] loaded ' + year + ' (' + holidays.length + ' entries)');
+            const autoCount = Array.isArray(data.holidaysAuto)
+              ? data.holidaysAuto.length
+              : (Array.isArray(data.holidays) ? data.holidays.length : 0);
+            const ovCount = Array.isArray(data.holidaysOverrides) ? data.holidaysOverrides.length : 0;
+            console.log('[holidays-cache] loaded ' + year + ' (auto=' + autoCount + ', overrides=' + ovCount + ')');
           },
           (err) => {
             console.error('[holidays-cache] subscribe error year ' + year + ':', err.message);
@@ -213,6 +274,7 @@
   window.WORK_HOURS_HOLIDAYS_CACHE = Object.freeze({
     _test: {
       mergeHolidaysArraysToMap: _mergeHolidaysArraysToMap,
+      mergeAutoAndOverrides: _mergeAutoAndOverrides,  // PR-G.3.3
       EMBEDDED_FALLBACK_2026: EMBEDDED_FALLBACK_2026,
       // PR-G.3.2 (R8 mitigation): vitest fixture injection — tests set a
       // synthetic holidays map without needing Firestore mocks. Resolves the
