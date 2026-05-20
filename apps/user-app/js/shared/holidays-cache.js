@@ -125,6 +125,11 @@
       _resolveReady();
       _resolveReady = null;
     }
+    // PR-G.3.2 (R2 mitigation): notify consumers so they can re-render with
+    // the fresh holiday data. Fires on every snapshot update (admin edits etc).
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event('holidays:loaded'));
+    }
   }
 
   // ─── Init ──────────────────────────────────────────────────
@@ -173,6 +178,13 @@
       if (_yearsLoaded.size === 0) {
         _engageFallback('first-load timeout (' + FIRST_LOAD_TIMEOUT_MS + 'ms) — Firestore unreachable?');
       }
+      // PR-G.3.2 (R9 mitigation): next-year may be missing if cron hasn't
+      // seeded it yet (rare — current+1 should always exist). Warn so ops
+      // sees the issue in dev console.
+      const nextYear = new Date().getFullYear() + 1;
+      if (!_yearsLoaded.has(nextYear)) {
+        console.warn('[holidays-cache] system_holidays/' + nextYear + ' not loaded after ' + FIRST_LOAD_TIMEOUT_MS + 'ms — cron may need re-seed for next-year boundary safety');
+      }
     }, FIRST_LOAD_TIMEOUT_MS);
   }
 
@@ -201,7 +213,24 @@
   window.WORK_HOURS_HOLIDAYS_CACHE = Object.freeze({
     _test: {
       mergeHolidaysArraysToMap: _mergeHolidaysArraysToMap,
-      EMBEDDED_FALLBACK_2026: EMBEDDED_FALLBACK_2026
+      EMBEDDED_FALLBACK_2026: EMBEDDED_FALLBACK_2026,
+      // PR-G.3.2 (R8 mitigation): vitest fixture injection — tests set a
+      // synthetic holidays map without needing Firestore mocks. Resolves the
+      // ready Promise so consumers awaiting it can proceed.
+      setMap: function (map) {
+        if (!(map instanceof Map)) {
+          throw new Error('setMap requires a Map instance');
+        }
+        window.WORK_HOURS_HOLIDAYS_MAP = map;
+        window.WORK_HOURS_HOLIDAYS_FALLBACK_USED = false;
+        if (_resolveReady) {
+          _resolveReady();
+          _resolveReady = null;
+        }
+        if (typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new Event('holidays:loaded'));
+        }
+      }
     }
   });
 

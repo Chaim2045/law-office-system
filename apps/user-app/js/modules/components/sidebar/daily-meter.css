@@ -267,6 +267,13 @@
   opacity: 0.6;
 }
 
+/* PR-G.3.2: holiday + eve (per Tommy 2026-05-20: "אין עבודה בערב חג")
+   — gold/yellow tint, distinct from red `missing` and from `weekend`. */
+.gh-daily-meter-popup-day.holiday {
+  background: rgb(234 179 8 / 7%);
+  border-color: rgb(234 179 8 / 25%);
+}
+
 .gh-daily-meter-popup-day.future {
   opacity: 0.4;
 }
