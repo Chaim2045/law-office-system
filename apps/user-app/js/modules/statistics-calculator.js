@@ -378,7 +378,13 @@ function calculateSmartGoals(monthHours, now) {
   // מטרת חודש: 160 שעות (40 שעות/שבוע × 4 שבועות)
   const monthlyGoal = 160;
 
-  // חישוב ימי עבודה בחודש (ללא שישי-שבת)
+  // חישוב ימי עבודה בחודש — שישי-שבת וחגים (כולל ערבי חג לפי policy 2026-05-20).
+  // PR-G.3.2: היה Fri/Sat בלבד; כעת משתמש ב-WorkHoursCalculator שקורא חגים
+  // מ-window.WORK_HOURS_HOLIDAYS_MAP. הערה: הקובץ עדיין מכיל monthlyGoal=160
+  // hardcoded — נושא נפרד שיטופל ב-G.4.
+  const calculator = (typeof window !== 'undefined' && typeof window.WorkHoursCalculator === 'function')
+    ? new window.WorkHoursCalculator()
+    : null;
   const year = now.getFullYear();
   const month = now.getMonth();
   const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
@@ -388,15 +394,13 @@ function calculateSmartGoals(monthHours, now) {
 
   for (let day = 1; day <= lastDayOfMonth; day++) {
     const date = new Date(year, month, day);
-    const dayOfWeek = date.getDay();
-
-    // לא ספירת שישי (5) ושבת (6)
-    if (dayOfWeek !== 5 && dayOfWeek !== 6) {
+    const isWorkday = calculator
+      ? calculator.isWorkDay(date)
+      : (date.getDay() !== 5 && date.getDay() !== 6); // safety fallback if calculator missing
+    if (isWorkday) {
       workDaysInMonth++;
-      if (day < now.getDate()) {
+      if (day <= now.getDate()) {
         workDaysPassed++;
-      } else if (day === now.getDate()) {
-        workDaysPassed++; // כולל היום הנוכחי
       }
     }
   }

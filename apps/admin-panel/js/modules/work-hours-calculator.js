@@ -17,69 +17,16 @@ class WorkHoursCalculator {
         // מדד שעות חודשי ממוצע (למען תאימות לאחור)
         this.MONTHLY_HOURS_TARGET = DEFAULT_MONTHLY_HOURS;
 
-        // חגים ישראליים 2025 (תאריכים גרגוריאניים)
-        this.holidays2025 = [
-            // ראש השנה
-            { name: 'ראש השנה', start: new Date(2025, 8, 23), end: new Date(2025, 8, 24) }, // 23-24 ספטמבר
-
-            // יום כיפור
-            { name: 'יום כיפור', start: new Date(2025, 9, 2), end: new Date(2025, 9, 2) }, // 2 אוקטובר
-
-            // סוכות
-            { name: 'סוכות', start: new Date(2025, 9, 7), end: new Date(2025, 9, 8) }, // 7-8 אוקטובר
-            { name: 'שמחת תורה', start: new Date(2025, 9, 14), end: new Date(2025, 9, 14) }, // 14 אוקטובר
-
-            // חנוכה (לא חג רשמי, אבל כאן לידע)
-
-            // פורים
-            { name: 'פורים', start: new Date(2025, 2, 14), end: new Date(2025, 2, 14) }, // 14 מרץ
-
-            // פסח
-            { name: 'פסח', start: new Date(2025, 3, 13), end: new Date(2025, 3, 14) }, // 13-14 אפריל
-            { name: 'פסח (ז׳ חג)', start: new Date(2025, 3, 19), end: new Date(2025, 3, 20) }, // 19-20 אפריל
-
-            // יום העצמאות
-            { name: 'יום הזיכרון', start: new Date(2025, 4, 1), end: new Date(2025, 4, 1) }, // 1 מאי
-            { name: 'יום העצמאות', start: new Date(2025, 4, 2), end: new Date(2025, 4, 2) }, // 2 מאי
-
-            // שבועות
-            { name: 'שבועות', start: new Date(2025, 5, 2), end: new Date(2025, 5, 2) }, // 2 יוני
-
-            // תשעה באב (לא חג רשמי אבל חלק מהמקומות לא עובדים)
-            { name: 'תשעה באב', start: new Date(2025, 7, 3), end: new Date(2025, 7, 3) } // 3 אוגוסט
-        ];
-
-        // חגים 2024 (למי שצריך)
-        this.holidays2024 = [
-            { name: 'ראש השנה', start: new Date(2024, 9, 3), end: new Date(2024, 9, 4) },
-            { name: 'יום כיפור', start: new Date(2024, 9, 12), end: new Date(2024, 9, 12) },
-            { name: 'סוכות', start: new Date(2024, 9, 17), end: new Date(2024, 9, 18) },
-            { name: 'שמחת תורה', start: new Date(2024, 9, 24), end: new Date(2024, 9, 24) },
-            { name: 'פורים', start: new Date(2024, 2, 24), end: new Date(2024, 2, 24) },
-            { name: 'פסח', start: new Date(2024, 3, 23), end: new Date(2024, 3, 24) },
-            { name: 'פסח (ז׳ חג)', start: new Date(2024, 3, 29), end: new Date(2024, 3, 30) },
-            { name: 'יום הזיכרון', start: new Date(2024, 4, 13), end: new Date(2024, 4, 13) },
-            { name: 'יום העצמאות', start: new Date(2024, 4, 14), end: new Date(2024, 4, 14) },
-            { name: 'שבועות', start: new Date(2024, 5, 12), end: new Date(2024, 5, 12) },
-            { name: 'תשעה באב', start: new Date(2024, 7, 13), end: new Date(2024, 7, 13) }
-        ];
-
-        // חגים 2026 (למי שצריך)
-        this.holidays2026 = [
-            { name: 'ראש השנה', start: new Date(2026, 8, 12), end: new Date(2026, 8, 13) },
-            { name: 'יום כיפור', start: new Date(2026, 8, 21), end: new Date(2026, 8, 21) },
-            { name: 'סוכות', start: new Date(2026, 8, 26), end: new Date(2026, 8, 27) },
-            { name: 'שמחת תורה', start: new Date(2026, 9, 3), end: new Date(2026, 9, 3) },
-            { name: 'פורים', start: new Date(2026, 2, 3), end: new Date(2026, 2, 3) },
-            { name: 'פסח', start: new Date(2026, 3, 2), end: new Date(2026, 3, 3) },
-            { name: 'פסח (ז׳ חג)', start: new Date(2026, 3, 8), end: new Date(2026, 3, 9) },
-            { name: 'יום הזיכרון', start: new Date(2026, 3, 21), end: new Date(2026, 3, 21) },
-            { name: 'יום העצמאות', start: new Date(2026, 3, 22), end: new Date(2026, 3, 22) },
-            { name: 'שבועות', start: new Date(2026, 4, 22), end: new Date(2026, 4, 22) },
-            { name: 'תשעה באב', start: new Date(2026, 6, 23), end: new Date(2026, 6, 23) }
-        ];
-
-        this.allHolidays = [...this.holidays2024, ...this.holidays2025, ...this.holidays2026];
+        // PR-G.3.2 (2026-05-20): holidays come from `window.WORK_HOURS_HOLIDAYS_MAP`
+        // populated by `js/shared/holidays-cache.js` (PR-G.3.1) which subscribes to
+        // Firestore `system_holidays/{year}` via onSnapshot. NO LOCAL CACHE — the
+        // map is read LIVE on every `isHoliday()` call, so:
+        //   (a) admin edits to a holiday doc are visible immediately
+        //   (b) late-arriving snapshots populate the map after this constructor ran
+        //   (c) the legacy `holidays2024/2025/2026` hardcoded arrays were removed
+        // Office policy (Tommy 2026-05-20): "אין עבודה בערב חג". Eve days
+        // (`isHalfDay: true`) are treated as full non-working days, identical to
+        // closed holidays. See `isHoliday()` below.
     }
 
     /**
@@ -104,23 +51,25 @@ class WorkHoursCalculator {
     }
 
     /**
-     * בודק אם תאריך הוא חג
+     * בודק אם תאריך הוא חג (או ערב חג, לפי policy החדש מ-2026-05-20).
+     * PR-G.3.2: reads `window.WORK_HOURS_HOLIDAYS_MAP` LIVE on each call.
+     * Empty map → returns false → graceful degradation to weekend-only logic.
+     *
      * @param {Date} date - התאריך לבדיקה
-     * @returns {boolean} - האם זה חג
+     * @returns {boolean} - האם זה חג או ערב חג
      */
     isHoliday(date) {
         const dateStr = this.dateToString(date);
-
-        for (const holiday of this.allHolidays) {
-            const startStr = this.dateToString(holiday.start);
-            const endStr = this.dateToString(holiday.end);
-
-            if (dateStr >= startStr && dateStr <= endStr) {
-                return true;
-            }
+        const map = (typeof window !== 'undefined') ? window.WORK_HOURS_HOLIDAYS_MAP : null;
+        if (!map || typeof map.get !== 'function') {
+            return false;
         }
-
-        return false;
+        const h = map.get(dateStr);
+        if (!h) {
+            return false;
+        }
+        // Closed holiday OR eve (per Tommy 2026-05-20: no work on eves)
+        return !h.isWorking || h.isHalfDay === true;
     }
 
     /**
@@ -130,16 +79,17 @@ class WorkHoursCalculator {
      */
     getHolidayName(date) {
         const dateStr = this.dateToString(date);
-
-        for (const holiday of this.allHolidays) {
-            const startStr = this.dateToString(holiday.start);
-            const endStr = this.dateToString(holiday.end);
-
-            if (dateStr >= startStr && dateStr <= endStr) {
-                return holiday.name;
-            }
+        const map = (typeof window !== 'undefined') ? window.WORK_HOURS_HOLIDAYS_MAP : null;
+        if (!map || typeof map.get !== 'function') {
+            return null;
         }
-
+        const h = map.get(dateStr);
+        if (!h) {
+            return null;
+        }
+        if (!h.isWorking || h.isHalfDay === true) {
+            return h.nameHe || null;
+        }
         return null;
     }
 

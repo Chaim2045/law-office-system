@@ -336,7 +336,9 @@ function calculateSmartGoals(monthHours, now) {
   // תקן חודשי דינמי לפי ימי עבודה (מוריד שישי-שבת וחגים)
   const monthlyGoal = quota.monthlyQuota;
 
-  // חישוב ימי עבודה בחודש (ללא שישי-שבת)
+  // חישוב ימי עבודה בחודש — לפי calculator.isWorkDay (כולל קיזוז חגים)
+  // PR-G.3.2 (2026-05-20): היה Fri/Sat בלבד; כעת קורא חגים מ-window.WORK_HOURS_HOLIDAYS_MAP
+  // דרך calculator.isWorkDay. ההערה לעיל ("מוריד שישי-שבת וחגים") הופכת אמיתית.
   const year = now.getFullYear();
   const month = now.getMonth();
   const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
@@ -346,15 +348,11 @@ function calculateSmartGoals(monthHours, now) {
 
   for (let day = 1; day <= lastDayOfMonth; day++) {
     const date = new Date(year, month, day);
-    const dayOfWeek = date.getDay();
 
-    // לא ספירת שישי (5) ושבת (6)
-    if (dayOfWeek !== 5 && dayOfWeek !== 6) {
+    if (calculator.isWorkDay(date)) {
       workDaysInMonth++;
-      if (day < now.getDate()) {
+      if (day <= now.getDate()) {
         workDaysPassed++;
-      } else if (day === now.getDate()) {
-        workDaysPassed++; // כולל היום הנוכחי
       }
     }
   }

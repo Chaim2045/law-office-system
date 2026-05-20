@@ -85,12 +85,27 @@ return;
     this._dailyTarget =
       window.manager?.currentEmployee?.dailyHoursTarget || DEFAULT_DAILY_TARGET;
 
+    // PR-G.3.2: re-render when holidays map populates / updates so the
+    // current popup view reflects holiday badges + correct workday counts.
+    if (typeof window !== 'undefined') {
+      this._onHolidaysLoaded = () => {
+        if (this._isPopupOpen) {
+          this._renderPopupContent();
+        }
+      };
+      window.addEventListener('holidays:loaded', this._onHolidaysLoaded);
+    }
+
     // Initial update
     this.update(window.manager?.timesheetEntries || []);
   }
 
   destroy() {
     this._closePopup();
+    if (this._onHolidaysLoaded && typeof window !== 'undefined') {
+      window.removeEventListener('holidays:loaded', this._onHolidaysLoaded);
+      this._onHolidaysLoaded = null;
+    }
     if (this._el) {
       this._el.remove();
       this._el = null;
@@ -410,12 +425,22 @@ return;
     let weekHours = 0;
     let workdayCountElapsed = 0;  // workdays up to and including today
 
+    // PR-G.3.2: read holidays map live from window. Empty map → behaves like
+    // pre-G.3 (weekend-only awareness). Populated map → holidays + eves treated
+    // as full non-working days (Tommy 2026-05-20: "אין עבודה בערב חג").
+    const holidaysMap = (typeof window !== 'undefined' && window.WORK_HOURS_HOLIDAYS_MAP) || null;
+
     for (const dayInfo of grouped) {
       const isWeekend = dayInfo.dayOfWeek === 5 || dayInfo.dayOfWeek === 6;
       const isFuture = dayInfo.dateStr > todayStr;
       const isToday = dayInfo.dateStr === todayStr;
 
-      if (!isWeekend && !isFuture) {
+      // PR-G.3.2: holiday lookup (closed-day OR eve per new policy).
+      // Weekend wins display priority (Friday-eve = "שישי", not "ערב חג").
+      const holidayEntry = holidaysMap ? holidaysMap.get(dayInfo.dateStr) : null;
+      const isHoliday = !isWeekend && holidayEntry && (!holidayEntry.isWorking || holidayEntry.isHalfDay === true);
+
+      if (!isWeekend && !isFuture && !isHoliday) {
         workdayCountElapsed += 1;
       }
 
@@ -426,6 +451,11 @@ return;
       let dayClass = '';
       if (isWeekend) {
         dayClass = ' weekend';
+      } else if (isHoliday) {
+        // PR-G.3.2: holiday or eve — no "missing" flag, show holiday name
+        dayClass = ' holiday';
+        const holidayName = this._escapeHtml(holidayEntry.nameHe || '');
+        badgeHtml = `<span class="gh-daily-meter-popup-day-badge holiday" title="${holidayName}"><i class="fas fa-star-of-david"></i></span>`;
       } else if (isFuture) {
         dayClass = ' future';
       } else if (dayInfo.totalHours === 0) {
