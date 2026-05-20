@@ -38,6 +38,40 @@ Before opening any PR — `outcomes-grader` MUST evaluate work against rubric `.
 Returns VERDICT: PASS / FAIL / PASS_WITH_WARNINGS. FAIL blocks PR open.
 Read-only. Separate context. No exceptions. (Details: `.claude/docs/OUTCOMES-GRADER-USAGE.md`)
 
+## DECISION POINT RULE (חובה)
+**Before any AskUserQuestion that asks Tommy to choose between approaches/scopes/architecture/priorities — Claude MUST consult the relevant specialized sub-agent first** (from `.claude/agents/`). The question presented to Tommy must include:
+
+1. The investigating agent's name
+2. The agent's verdict / finding (1-2 lines)
+3. The agent's recommendation
+4. Alternatives with trade-offs
+
+**Trigger:** approach choice (A/B/C), scope sizing (1 PR or N?), prioritization (X first or Y?), architectural trade-offs, behavioral changes, resource decisions (new dep, infra).
+
+**Skip:** trivial yes/no ("להמשיך?"), clarification of wording, tiny changes (<50 lines, no architectural impact), status checks ("איפה אנחנו?"), after-deploy smoke results.
+
+**Relevant agents** (`.claude/agents/`): `intent-refiner`, `devils-advocate`, `navigator`, `data-investigator`, `outcomes-grader`, `reviewer`, `security`, `performance`, `firebase-rules`, `refactoring`, `tester`, `backend`, `frontend`, `ci-cd`, `devops`, `explainer`.
+
+**Anti-pattern (forbidden):**
+```
+AskUserQuestion("איזה approach? A או B?")  # ← no agent consulted = blocked
+```
+
+**Correct pattern:**
+```
+[Invoke devils-advocate / navigator / etc.]
+[Receive verdict + recommendation + reasoning]
+AskUserQuestion(
+  question: "🤖 [agent-name]: [verdict]. ממליץ [option].
+            
+            [options with trade-offs]"
+)
+```
+
+**Why:** Tommy's explicit demand 2026-05-20 — "אני מחפש צוות שנעבוד תמיד יחד אבל שתמיד יהיה בפעולה ועבודה". Decisions made by Claude alone are weaker than decisions backed by specialized agent analysis. Each agent is a perspective. Together = engineered work.
+
+**Exemption:** if Tommy says "מהר" / "תחליט אתה" / "פשוט תעשה" — skip agent consultation. Note the skip in response (auditable).
+
 ## MANDATORY RULES
 
 - Every task starts with:
