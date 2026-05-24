@@ -38,6 +38,11 @@ const {
 
 const { getOrCreateInternalCase } = require('./internal-case');
 
+// PR-G.3.9: TZ-safe `data.date` normalization for all write paths.
+// DO NOT use `.toISOString().substring(0,10)` on a caller-supplied Date —
+// it converts to UTC and shifts the day by -1 for Asia/Jerusalem local-midnight.
+const { normalizeDateToYMD } = require('../shared/calendar');
+
 /**
  * ════════════════════════════════════════════════════════════════════════════
  * 🎯 Quick Log Entry - Manager/Admin Only
@@ -134,44 +139,17 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
     // 3️⃣ DATE PARSING (Before transaction)
     // ═══════════════════════════════════════════════════════════════════
 
-    // Parse date - normalize ALL formats to "YYYY-MM-DD" string
-    // (matches createTimesheetEntry_v2 and all existing queries)
+    // PR-G.3.9: normalize ALL formats to `YYYY-MM-DD` string via shared
+    // TZ-safe helper. Replaces ad-hoc parsing that used
+    // `.toISOString().substring(0,10)` on the {seconds} / Timestamp paths —
+    // which converted local-midnight to UTC and shifted by -1 day.
     let dateString;
-    const dateType = typeof data.date;
-
-    if (dateType === 'string') {
-      // ISO string format (current format from frontend)
-      // e.g. "2026-04-02T00:00:00.000Z" or "2026-04-02"
-      const d = new Date(data.date);
-      if (isNaN(d.getTime())) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'Invalid date string format'
-        );
-      }
-      // Extract YYYY-MM-DD directly from input to avoid timezone shift
-      dateString = data.date.substring(0, 10);
-      console.log('[Quick Log] Date parsed from string:', data.date, '→', dateString);
-
-    } else if (data.date && dateType === 'object' && typeof data.date.seconds === 'number') {
-      // Firestore Timestamp-like map: {seconds, nanoseconds}
-      // (legacy format from Callable Function serialization)
-      const d = new Date(data.date.seconds * 1000);
-      dateString = d.toISOString().substring(0, 10);
-      console.log('[Quick Log] Date parsed from {seconds, nanoseconds} map →', dateString);
-
-    } else if (data.date && typeof data.date.toDate === 'function') {
-      // Real Firestore Timestamp object (unlikely but supported)
-      const d = data.date.toDate();
-      dateString = d.toISOString().substring(0, 10);
-      console.log('[Quick Log] Date parsed from Timestamp object →', dateString);
-
-    } else {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Invalid date format. Expected ISO string, {seconds, nanoseconds}, or Timestamp object'
-      );
+    try {
+      dateString = normalizeDateToYMD(data.date);
+    } catch (e) {
+      throw new functions.https.HttpsError('invalid-argument', e.message);
     }
+    console.log('[Quick Log] Date normalized:', data.date, '→', dateString);
 
     // ═══════════════════════════════════════════════════════════════════
     // 4️⃣ TRANSACTION - All operations atomic
@@ -507,7 +485,8 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
           clientId: data.clientId,
           clientName: finalClientName,
           minutes: data.minutes,
-          date: data.date
+          // PR-G.3.9: use normalized YYYY-MM-DD (not raw input) for audit consistency
+          date: dateString
         },
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         userAgent: null,
@@ -612,6 +591,15 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
 
     if (!data.date) {
       throw new functions.https.HttpsError('invalid-argument', 'חסר תאריך');
+    }
+
+    // PR-G.3.9: normalize date input (string / {seconds} / Timestamp) to
+    // 'YYYY-MM-DD' in Asia/Jerusalem. Previously this function wrote
+    // `data.date` raw — inconsistent schema if any caller sent a Timestamp.
+    try {
+      data.date = normalizeDateToYMD(data.date);
+    } catch (e) {
+      throw new functions.https.HttpsError('invalid-argument', e.message);
     }
 
     if (typeof data.minutes !== 'number' || data.minutes <= 0) {
@@ -1123,6 +1111,15 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
         'invalid-argument',
         'חסר תאריך'
       );
+    }
+
+    // PR-G.3.9: normalize date input to 'YYYY-MM-DD' in Asia/Jerusalem.
+    // Mirrors createQuickLogEntry + addTimeEntry; ensures consistent schema
+    // on UPDATE path regardless of caller-supplied format.
+    try {
+      data.date = normalizeDateToYMD(data.date);
+    } catch (e) {
+      throw new functions.https.HttpsError('invalid-argument', e.message);
     }
 
     if (typeof data.minutes !== 'number' || data.minutes <= 0) {

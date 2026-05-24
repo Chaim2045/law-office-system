@@ -135,6 +135,63 @@ function todayInJerusalemYMD() {
  *
  * @returns {Date}
  */
+/**
+ * PR-G.3.9 (2026-05-25): convert any caller-supplied date input to
+ * `YYYY-MM-DD` in Asia/Jerusalem TZ.
+ *
+ * Accepts:
+ *   - String (ISO 8601 or `YYYY-MM-DD`) — preserves the input prefix to
+ *     avoid TZ shift (matches existing createQuickLogEntry contract).
+ *   - `{seconds, nanoseconds}` map (legacy Callable Timestamp serialization)
+ *   - Object with `.toDate()` (Firestore Timestamp)
+ *
+ * Throws on null / number / unsupported type / unparseable string.
+ *
+ * Bug class (G.3.7/G.3.8 family): previous code used
+ * `d.toISOString().substring(0, 10)` which converts to UTC. If the caller
+ * sent a Timestamp built from local-midnight (e.g. `new Date(2026, 3, 2)`
+ * in Asia/Jerusalem = `2026-04-01T21:00:00Z`), the slice yielded
+ * `"2026-04-01"` — wrong day by -1. Theoretical for the current
+ * `apps/user-app/js/quick-log.js` frontend (which sends ISO strings), but
+ * a latent trap if any caller ever sends a Timestamp.
+ *
+ * @param {*} input - the raw value from `data.date`
+ * @returns {string} `YYYY-MM-DD`
+ * @throws {Error} on invalid input
+ */
+function normalizeDateToYMD(input) {
+  if (input == null) {
+    throw new Error('normalizeDateToYMD: input is null/undefined');
+  }
+  const t = typeof input;
+  if (t === 'string') {
+    // Preserve input prefix — TZ-safe for both 'YYYY-MM-DD' and
+    // 'YYYY-MM-DDTHH:mm:ss.sssZ'. Validates parseability first.
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new Error(`normalizeDateToYMD: invalid date string '${input}'`);
+    }
+    return input.substring(0, 10);
+  }
+  if (t !== 'object') {
+    throw new Error(`normalizeDateToYMD: unsupported type '${t}'`);
+  }
+  // Firestore Timestamp-like map (legacy Callable serialization)
+  if (typeof input.seconds === 'number') {
+    const d = new Date(input.seconds * 1000);
+    return _JERUSALEM_DATE_FMT.format(d);
+  }
+  // Firestore Timestamp object
+  if (typeof input.toDate === 'function') {
+    const d = input.toDate();
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
+      throw new Error('normalizeDateToYMD: .toDate() did not return a valid Date');
+    }
+    return _JERUSALEM_DATE_FMT.format(d);
+  }
+  throw new Error('normalizeDateToYMD: object has no recognized shape (need .seconds or .toDate)');
+}
+
 function startOfTodayInJerusalem() {
   const ymd = todayInJerusalemYMD(); // 'YYYY-MM-DD'
   // Construct from local IL fields → produce instant for 00:00 IL.
@@ -413,6 +470,8 @@ module.exports = {
   // PR-G.3.8: TZ-safe "today" helpers for Cloud Functions
   todayInJerusalemYMD,
   startOfTodayInJerusalem,
+  // PR-G.3.9: normalize caller-supplied date input → YYYY-MM-DD (Asia/Jerusalem)
+  normalizeDateToYMD,
   // Exported for unit tests
   _test: {
     classifyEvent,
@@ -420,6 +479,7 @@ module.exports = {
     _hdateToISO,  // PR-G.3.7
     todayInJerusalemYMD,        // PR-G.3.8
     startOfTodayInJerusalem,    // PR-G.3.8
+    normalizeDateToYMD,         // PR-G.3.9
     CLOSED_MODERN_BASENAMES,
     CLOSED_MINOR_BASENAMES
   }
