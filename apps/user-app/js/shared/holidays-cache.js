@@ -35,12 +35,25 @@
   const COLLECTION = 'system_holidays';
   const FIRST_LOAD_TIMEOUT_MS = 5000;  // After this, fallback engages
   const YEAR_WINDOW = [-1, 0, 1];      // current year ±1
+  // PR-G.3.6 (2026-05-24): wait window for `firebase.auth()` to resolve to a
+  // non-null user before engaging embedded fallback. Chosen at 6000ms because
+  // SESSION persistence restores from IndexedDB (local), typically <500ms.
+  // If `onAuthStateChanged` hasn't produced a user by 6s, the user is on the
+  // login screen (no consumer of holidays there) or auth is broken — fallback
+  // is the right answer.
+  const AUTH_WAIT_TIMEOUT_MS = 6000;
+  // Cap on firebase-init polling to prevent infinite retry on broken init.
+  const MAX_BOOT_POLL_ATTEMPTS = 50;   // 5s total at 100ms intervals
 
   // ─── State (private) ───────────────────────────────────────
   let _resolveReady = null;
   let _unsubs = [];
   let _yearsLoaded = new Set();
   const _holidaysByYear = new Map(); // year → holidays[]
+  // PR-G.3.6: auth-gating state
+  let _authUnsub = null;                // captured onAuthStateChanged unsub
+  let _fallbackTimer = null;            // safety-net timer for auth timeout
+  let _lastUserUid = null;              // skip same-user re-emits (defense)
 
   // ─── Public globals ────────────────────────────────────────
   /** @type {Map<string, Object>} */
@@ -296,6 +309,122 @@
     }
   });
 
-  // Boot
-  _init();
+  // ─── PR-G.3.6 helpers (auth-gated boot) ─────────────────────
+
+  /**
+   * Reset the `WORK_HOURS_HOLIDAYS_READY` promise so consumers that await it
+   * AFTER logout get a fresh promise that will resolve on next login. Without
+   * this, the original promise stays resolved with whatever state it had at
+   * resolution time — silently misleading new awaiters.
+   */
+  function _resetReadyPromise() {
+    window.WORK_HOURS_HOLIDAYS_READY = new Promise(function (resolve) {
+      _resolveReady = resolve;
+    });
+  }
+
+  /**
+   * Tear down all active Firestore subscriptions and clear loaded-years
+   * tracking. Safe to call repeatedly. Swallowed errors per existing pattern.
+   */
+  function _tearDownSubs() {
+    for (const u of _unsubs) {
+      try {
+ u();
+} catch (_e) { /* ignore */ }
+    }
+    _unsubs = [];
+    _yearsLoaded = new Set();
+  }
+
+  /**
+   * PR-G.3.6 boot: defer Firestore subscription until `firebase.auth()`
+   * resolves to a non-null user. Rules require `isAuthenticated()` → if we
+   * subscribe pre-auth, `onSnapshot` silently fails with permission-denied
+   * and the 5s timeout engages embedded fallback (bug fixed by this PR).
+   *
+   * Behavior:
+   * - Polls for firebase init (max 5s); engages fallback on timeout.
+   * - Subscribes to `onAuthStateChanged` once; captures unsub to prevent leak.
+   * - On user resolve: clears prior subs, resets state, calls `_init()`.
+   * - On user null (logout / pre-auth): tears down subs, resets ready promise.
+   * - On same-user re-emit (defense vs token-refresh): no-op.
+   * - Safety net: if no user within `AUTH_WAIT_TIMEOUT_MS`, engages fallback
+   *   (real data still wins later via `_rebuildMap` → FALLBACK_USED=false).
+   */
+  function _bootWhenAuthReady(attempts) {
+    attempts = attempts || 0;
+    if (typeof window.firebase === 'undefined' ||
+        !window.firebase.apps ||
+        window.firebase.apps.length === 0) {
+      if (attempts >= MAX_BOOT_POLL_ATTEMPTS) {
+        console.error('[holidays-cache] firebase never initialized after ' +
+          (MAX_BOOT_POLL_ATTEMPTS * 100) + 'ms');
+        _engageFallback('firebase init timeout');
+        return;
+      }
+      setTimeout(function () {
+ _bootWhenAuthReady(attempts + 1);
+}, 100);
+      return;
+    }
+
+    let auth;
+    try {
+      auth = window.firebase.auth();
+    } catch (err) {
+      console.error('[holidays-cache] firebase.auth() threw:', err.message);
+      _engageFallback('auth() unavailable');
+      return;
+    }
+
+    // Capture unsub to prevent listener leak (reviewer BLOCKER #2).
+    _authUnsub = auth.onAuthStateChanged(function (user) {
+      if (user) {
+        // Defense vs same-user re-emit (token refresh, etc) — reviewer MINOR.
+        if (user.uid === _lastUserUid && _unsubs.length > 0) {
+          return;
+        }
+        _lastUserUid = user.uid;
+
+        // Cancel pending fallback timer so it can't fire after auth resolved
+        // (reviewer MAJOR #4 — prevents double-source on slow auth).
+        if (_fallbackTimer) {
+          clearTimeout(_fallbackTimer);
+          _fallbackTimer = null;
+        }
+
+        // Tear down any prior subs (different user / fresh boot).
+        _tearDownSubs();
+        _holidaysByYear.clear();
+
+        // Reset READY promise if it was already resolved (e.g. fallback fired
+        // first). New consumers awaiting fresh data get a fresh promise.
+        if (!_resolveReady) {
+          _resetReadyPromise();
+        }
+
+        _init();
+      } else {
+        // Logout / pre-auth: tear down + reset state. Prevents
+        // permission-denied console spam on logged-in→logged-out transition.
+        _tearDownSubs();
+        _lastUserUid = null;
+        _holidaysByYear.clear();
+        _resetReadyPromise();  // reviewer BLOCKER #1
+      }
+    });
+
+    // Safety net: if auth never resolves with a user, engage fallback.
+    _fallbackTimer = setTimeout(function () {
+      if (_yearsLoaded.size === 0 && !window.WORK_HOURS_HOLIDAYS_FALLBACK_USED) {
+        _engageFallback('auth not resolved with user within ' +
+          AUTH_WAIT_TIMEOUT_MS + 'ms');
+      }
+      _fallbackTimer = null;
+    }, AUTH_WAIT_TIMEOUT_MS);
+  }
+
+  // Boot — PR-G.3.6: auth-gated. See `_bootWhenAuthReady` JSDoc.
+  _bootWhenAuthReady();
 })();
