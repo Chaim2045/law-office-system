@@ -26,13 +26,65 @@
 
 const { HebrewCalendar, flags } = require('@hebcal/core');
 
+/**
+ * PR-G.3.7 (2026-05-24): resolve `@hebcal/core` version via filesystem walkup
+ * from the resolved entry-point path.
+ *
+ * Previously used `require('@hebcal/core/package.json')` — which throws
+ * `ERR_PACKAGE_PATH_NOT_EXPORTED` on Node ≥22 because @hebcal/core@3.50.4
+ * doesn't expose `./package.json` via the `exports` field. The silent
+ * try/catch hid this — `HEBCAL_VERSION` reported `'unknown'` in production.
+ *
+ * Fix: walk up from `require.resolve('@hebcal/core')` (which resolves to the
+ * entry main, often inside `dist/`) until we find a `package.json` whose
+ * `name === '@hebcal/core'`. Capped at 5 levels for safety.
+ */
 const HEBCAL_VERSION = (() => {
   try {
-    return require('@hebcal/core/package.json').version;
-  } catch (e) {
+    const path = require('path');
+    const fs = require('fs');
+    const corePath = require.resolve('@hebcal/core');
+    let dir = path.dirname(corePath);
+    for (let i = 0; i < 5; i++) {
+      const pkgPath = path.join(dir, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg.name === '@hebcal/core') {
+          return pkg.version;
+        }
+      }
+      dir = path.dirname(dir);
+    }
+    return 'unknown';
+  } catch (_e) {
     return 'unknown';
   }
 })();
+
+/**
+ * PR-G.3.7 (2026-05-24): convert a Hebcal `HDate`'s Gregorian `Date` to
+ * `YYYY-MM-DD` (Gregorian ISO date), timezone-safe.
+ *
+ * Bug fixed: previous implementation used `.toISOString().slice(0, 10)`
+ * which converts to UTC. Hebcal builds Dates via `new Date(y, m, d)` —
+ * local-midnight. On hosts NOT in UTC (e.g. Asia/Jerusalem UTC+3),
+ * Apr 2 local-midnight becomes Apr 1 21:00 UTC; the slice then yields
+ * `"2026-04-01"` (off by -1).
+ *
+ * Fix: read the local-time year/month/day fields back from the same Date
+ * — this is the inverse of the `new Date(y, m, d)` constructor and is
+ * TZ-invariant.
+ *
+ * @param {{ greg: () => Date }} hdate - Hebcal HDate (anything with .greg())
+ * @returns {string} `YYYY-MM-DD`
+ */
+function _hdateToISO(hdate) {
+  const g = hdate.greg();
+  const y = g.getFullYear();
+  const m = String(g.getMonth() + 1).padStart(2, '0');
+  const d = String(g.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 /**
  * Modern (Israel-state) days where the office is CLOSED.
@@ -150,7 +202,10 @@ function getHolidaysForYear(year) {
 
   const holidays = [];
   for (const e of events) {
-    const dateISO = e.getDate().greg().toISOString().slice(0, 10);
+    // PR-G.3.7: TZ-safe via _hdateToISO. NEVER use toISOString().slice(0,10)
+    // on a local-midnight Date — it converts to UTC and yields wrong day on
+    // non-UTC hosts.
+    const dateISO = _hdateToISO(e.getDate());
     const cls = classifyEvent(e);
 
     holidays.push({
@@ -277,6 +332,7 @@ module.exports = {
   _test: {
     classifyEvent,
     _dayOfWeekUTC,
+    _hdateToISO,  // PR-G.3.7
     CLOSED_MODERN_BASENAMES,
     CLOSED_MINOR_BASENAMES
   }
