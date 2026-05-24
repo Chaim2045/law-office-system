@@ -142,14 +142,20 @@ class AIContextBuilder {
         return [];
       }
 
-      // חודש אחרון
+      // חודש אחרון — PR-G.3.10: use IL-TZ helper so Firestore boundary
+      // (`date` is YYYY-MM-DD string from backend) matches IL semantics.
+      // Was: `.toISOString().substring(0,10)` (UTC slice) — drifted by
+      // one day for users in non-IL TZs or at IL midnight.
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const oneMonthAgoStr = (window.TZHelper && window.TZHelper.dateToJerusalemYMD)
+        ? window.TZHelper.dateToJerusalemYMD(oneMonthAgo)
+        : oneMonthAgo.toISOString().substring(0, 10); // safety fallback if tz-helper not loaded
 
       const snapshot = await this.db
         .collection('timesheet_entries')
         .where('userId', '==', userId)
-        .where('date', '>=', oneMonthAgo.toISOString().substring(0, 10))
+        .where('date', '>=', oneMonthAgoStr)
         .orderBy('date', 'desc')
         .limit(10) // רק 10 אחרונים (מציגים 5, שומרים 10 לחישובים)
         .get();
