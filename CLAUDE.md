@@ -22,11 +22,14 @@ If not specified — STOP.
 
 0. **Work Session Check** — `work-session-gatekeeper` agent (MANDATORY FIRST, זהו פרוטוקול ברזל)
 1. Intent — defined by Tommy
+1a. **Effort Scaling** — `effort-scaler` agent (לפני dispatch של >3 agents — חובה)
 2. Investigation — map flow, read code, find edge cases (NO planning, NO code)
+2a. **Completeness Check** — `completeness-checker` agent (אחרי investigation, לפני checkpoint — חובה)
 3. Checkpoint — wait for approval
 4. Planning — only approved scope
 5. Code — only after approval
 6. Gates — prove with evidence (PASS/FAIL only)
+6a. **Evaluator-Optimizer** — אם outcomes-grader = FAIL, `evaluator-optimizer` יבצע עד 3 retries לפני escalate
 
 ## WORK SESSION GATEKEEPER RULE
 Before any new task — `work-session-gatekeeper` MUST run first.
@@ -37,6 +40,39 @@ Read-only on git. No exceptions. (Details: `.claude/agents/work-session-gatekeep
 Before opening any PR — `outcomes-grader` MUST evaluate work against rubric `.claude/rubrics/<scope>.md`.
 Returns VERDICT: PASS / FAIL / PASS_WITH_WARNINGS. FAIL blocks PR open.
 Read-only. Separate context. No exceptions. (Details: `.claude/docs/OUTCOMES-GRADER-USAGE.md`)
+
+## EFFORT SCALING RULE (PR-META-1)
+לפני dispatching >3 sub-agents במקביל — `effort-scaler` חובה (model: haiku, מהיר).
+מחזיר LIGHT (1-3) / MEDIUM (4-7) / HEAVY (8-15) + רשימת agents מומלצים.
+מטרה: לא לבזבז טוקנים על task פשוט, לא לחתוך בעבודה גדולה.
+מבוסס על [Anthropic Multi-Agent Research System](https://www.anthropic.com/engineering/multi-agent-research-system) — sweet spot 3-5 agents במקביל.
+(Details: `.claude/agents/effort-scaler.md`)
+
+## COMPLETENESS CHECK RULE (PR-META-1)
+אחרי investigation, **לפני checkpoint** — `completeness-checker` חובה.
+סורק loose ends: adjacent bugs, untracked files, drift, backlog correlation, stale comments.
+מחזיר רשימה ממוינת severity (🔴/🟡/🟢) + recommendation per item.
+מבוסס על Anthropic "synthesis step" pattern.
+ה-findings חייבים להופיע ב-AskUserQuestion של ה-checkpoint.
+(Details: `.claude/agents/completeness-checker.md`)
+
+## EVALUATOR-OPTIMIZER RULE (PR-META-1)
+אם `outcomes-grader` = FAIL → `evaluator-optimizer` מנסה לתקן אוטומטית, עד 3 retries.
+אם אחרי 3 עוד FAIL → escalate ל-Tommy עם:
+- ניסיונות + reasoning
+- root cause hypothesis
+- suggested manual fix
+**אסור** לעקוף assertion / לskip test כדי שgrader יעבור.
+מבוסס על [Anthropic Evaluator-Optimizer pattern](https://www.anthropic.com/engineering/building-effective-agents).
+(Details: `.claude/agents/evaluator-optimizer.md`)
+
+## PR-CREATE HOOK RULE (PR-META-1)
+`.claude/hooks/require-outcomes-pass.sh` חוסם `gh pr create` אם:
+- אין rubric file ב-`.claude/rubrics/`
+- אין VERDICT ב-PR body
+- VERDICT != PASS / PASS_WITH_WARNINGS
+Hook severity = **deny**. **אסור לעקוף.**
+אם hook חוסם → לתקן את הגrader artifact, לא לבטל hook.
 
 ## DECISION POINT RULE (חובה)
 **Before any AskUserQuestion that asks Tommy to choose between approaches/scopes/architecture/priorities — Claude MUST consult the relevant specialized sub-agent first** (from `.claude/agents/`). The question presented to Tommy must include:
@@ -50,7 +86,7 @@ Read-only. Separate context. No exceptions. (Details: `.claude/docs/OUTCOMES-GRA
 
 **Skip:** trivial yes/no ("להמשיך?"), clarification of wording, tiny changes (<50 lines, no architectural impact), status checks ("איפה אנחנו?"), after-deploy smoke results.
 
-**Relevant agents** (`.claude/agents/`): `intent-refiner`, `devils-advocate`, `navigator`, `data-investigator`, `outcomes-grader`, `reviewer`, `security`, `performance`, `firebase-rules`, `refactoring`, `tester`, `backend`, `frontend`, `ci-cd`, `devops`, `explainer`.
+**Relevant agents** (`.claude/agents/`): `intent-refiner`, `devils-advocate`, `navigator`, `data-investigator`, `outcomes-grader`, `reviewer`, `security`, `performance`, `firebase-rules`, `refactoring`, `tester`, `backend`, `frontend`, `ci-cd`, `devops`, `explainer`, `effort-scaler` (PR-META-1), `completeness-checker` (PR-META-1), `evaluator-optimizer` (PR-META-1).
 
 **Anti-pattern (forbidden):**
 ```
