@@ -90,6 +90,78 @@ function _hdateToISO(hdate) {
 }
 
 /**
+ * PR-G.3.8 (2026-05-24): canonical "today in Asia/Jerusalem" helpers for
+ * any Cloud Function or Node code that needs to query Firestore for IL
+ * "today" data.
+ *
+ * Bug class: `new Date().toISOString().slice(0,10)` and
+ * `new Date().setHours(0,0,0,0)` use the host's idea of "today" — which on
+ * Cloud Functions (UTC) is wrong for Asia/Jerusalem between 00:00-03:00
+ * local time (winter) or 00:00-04:00 (DST). Result: queries return
+ * yesterday's data, or Timestamp ranges miss 3-4 hours of IL "today".
+ *
+ * Fix pattern:
+ *   - For string `where('date','==',X)` queries → use `todayInJerusalemYMD()`
+ *   - For Timestamp `where('approvedAt','>=',X)` queries → use `startOfTodayInJerusalem()`
+ *
+ * Implementation uses `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' })`
+ * which yields `YYYY-MM-DD` regardless of host TZ. `en-CA` chosen over
+ * `sv-SE` for broader Intl coverage.
+ *
+ * NEVER use `.toISOString().slice(0,10)` or `setHours(0,0,0,0)` on a
+ * fresh `new Date()` for IL-tied logic — that's the bug this helper fixes.
+ */
+
+const _JERUSALEM_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Jerusalem',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
+/**
+ * Return today's date in Asia/Jerusalem as `YYYY-MM-DD`.
+ *
+ * @returns {string} e.g. `'2026-05-24'`
+ */
+function todayInJerusalemYMD() {
+  // en-CA formatter yields `YYYY-MM-DD` directly.
+  return _JERUSALEM_DATE_FMT.format(new Date());
+}
+
+/**
+ * Return a `Date` object representing 00:00:00 of today in Asia/Jerusalem,
+ * suitable for Firestore Timestamp `where('field','>=',X)` queries.
+ *
+ * @returns {Date}
+ */
+function startOfTodayInJerusalem() {
+  const ymd = todayInJerusalemYMD(); // 'YYYY-MM-DD'
+  // Construct from local IL fields → produce instant for 00:00 IL.
+  // We cannot trust `new Date('YYYY-MM-DDT00:00:00')` (parses as host-local),
+  // so build the UTC instant manually: IL midnight = UTC midnight − offset.
+  // Offset: derive from a probe date so we honor DST automatically.
+  const [y, m, d] = ymd.split('-').map(Number);
+  // Probe: noon IL is unambiguous (never crosses DST boundary within the
+  // hour). Compute its UTC ms and derive the IL UTC offset for that day.
+  const probeUTC = Date.UTC(y, m - 1, d, 12, 0, 0);
+  const probeAsIL = _JERUSALEM_DATE_FMT.formatToParts(new Date(probeUTC));
+  // We just need the offset. Re-format the probe as IL time-of-day.
+  const ilHourFmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jerusalem',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = ilHourFmt.format(new Date(probeUTC)).split(':');
+  const ilHour = Number(parts[0]);
+  // probeUTC is 12:00 UTC. If IL shows e.g. "15:00", offset = +3h.
+  const offsetHours = ilHour - 12;
+  // IL midnight = UTC midnight − offsetHours
+  return new Date(Date.UTC(y, m - 1, d, -offsetHours, 0, 0));
+}
+
+/**
  * Modern (Israel-state) days where the office is CLOSED.
  * Other modern days like Family Day, Hebrew Language Day, Yom HaAliyah,
  * Herzl Day, Yom Yerushalayim → not in this set → open by default.
@@ -338,11 +410,16 @@ module.exports = {
   buildHolidaysMap,
   isWorkday,
   getDayInfo,
+  // PR-G.3.8: TZ-safe "today" helpers for Cloud Functions
+  todayInJerusalemYMD,
+  startOfTodayInJerusalem,
   // Exported for unit tests
   _test: {
     classifyEvent,
     _dayOfWeekUTC,
     _hdateToISO,  // PR-G.3.7
+    todayInJerusalemYMD,        // PR-G.3.8
+    startOfTodayInJerusalem,    // PR-G.3.8
     CLOSED_MODERN_BASENAMES,
     CLOSED_MINOR_BASENAMES
   }
