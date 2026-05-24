@@ -6,10 +6,13 @@
  *
  *   - CLOSED:   major holidays (Pesach I/VII, Shavuot, RH, YK, Sukkot, ShAtz,
  *               Simchat Torah), Yom HaAtzma'ut, Yom HaZikaron, Yom HaShoah,
- *               Purim, Tish'a B'Av
- *   - HALF-DAY: erev (eve) of any closed day
+ *               Purim, Tish'a B'Av, AND eves of those (per PR-G.3.12
+ *               policy 2026-05-20: "אין עבודה בערב חג")
  *   - WORKING:  Chol HaMoed (intermediate days of Pesach/Sukkot), Chanukah,
  *               minor holidays (Tu BiShvat, Lag BaOmer, etc.), minor fasts
+ *
+ * Historical: eves were classified HALF-DAY through PR-G.3.11; flipped to
+ * CLOSED in PR-G.3.12 per office policy change 2026-05-20.
  *
  * Policy mirrors `hachnasovitz/daily-reports/calendar.js` (the bot already
  * encodes this). DRY across repos is not feasible — both files stay in
@@ -137,9 +140,12 @@ function classifyEvent(e) {
     return { type: 'modern', isWorking: true, isHalfDay: false, eveOf: null };
   }
 
-  // Erev (eve) — half-day regardless of category
+  // PR-G.3.12 (office policy 2026-05-20): "אין עבודה בערב חג" — eves of
+  // closed holidays are FULL non-working days (previously half-day).
+  // The `eveOf` field is retained so consumers can still distinguish an
+  // eve from a regular closed holiday in UI if desired.
   if (isEve) {
-    return { type: 'eve', isWorking: true, isHalfDay: true, eveOf: basename };
+    return { type: 'eve', isWorking: false, isHalfDay: false, eveOf: basename };
   }
 
   // Chol HaMoed (intermediate Pesach/Sukkot days) — office open
@@ -235,8 +241,12 @@ function getHolidaysForYear(year) {
 function buildHolidaysMap(holidays) {
   const map = new Map();
   for (const h of holidays || []) {
-    // If multiple events share a date (e.g. Erev + Yom Tov), prefer the
-    // non-working classification (closed wins over eve, eve wins over open)
+    // If multiple events share a date (e.g. Erev + minor fast like
+    // Ta'anit Bechorot), prefer the non-working classification.
+    // PR-G.3.12: post-policy-update, eves are also closed (isWorking:false),
+    // so the "closed wins" branch below handles both eves and yom tov; the
+    // half-day tiebreaker is now dead code but retained as defensive guard
+    // in case a future override carries `isHalfDay:true` on a working day.
     const existing = map.get(h.date);
     if (!existing) {
       map.set(h.date, h);
