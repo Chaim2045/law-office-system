@@ -54,12 +54,25 @@ describe('PR-G.1 — getHolidaysForYear', () => {
     expect(cholHaMoed.isWorking).toBe(true);
   });
 
-  test('Erev Pesach is half-day', () => {
+  test('Erev Pesach is FULL non-working day (PR-G.3.12 policy)', () => {
+    // PR-G.3.12 (office policy 2026-05-20): "אין עבודה בערב חג".
+    // Was: isHalfDay:true, isWorking:true (half-day).
+    // Now: isHalfDay:false, isWorking:false (full closed).
     const h = getHolidaysForYear(2026);
     const eve = h.find(x => x.type === 'eve' && x.eveOf === 'Pesach');
     expect(eve).toBeDefined();
-    expect(eve.isHalfDay).toBe(true);
-    expect(eve.isWorking).toBe(true);
+    expect(eve.isHalfDay).toBe(false);
+    expect(eve.isWorking).toBe(false);
+  });
+
+  test('all eves of closed holidays are non-working (PR-G.3.12)', () => {
+    const h = getHolidaysForYear(2026);
+    const eves = h.filter(x => x.type === 'eve');
+    expect(eves.length).toBeGreaterThan(3); // Pesach, Shavuot, RH, YK, Sukkot at minimum
+    for (const eve of eves) {
+      expect(eve.isWorking).toBe(false);
+      expect(eve.isHalfDay).toBe(false);
+    }
   });
 
   test('Chanukah is a working holiday', () => {
@@ -191,12 +204,19 @@ describe('PR-G.1 — getDayInfo', () => {
     map = buildHolidaysMap(getHolidaysForYear(2026));
   });
 
-  test('Erev Pesach → type: eve, isHalfDay: true', () => {
+  test('Erev Pesach → type: eve, FULL non-working (PR-G.3.12)', () => {
     // PR-G.3.7: was '2026-03-31' (TZ bug). Canonical: Erev Pesach = Wed Apr 1, 2026.
+    // PR-G.3.12 (policy 2026-05-20): eve is FULL closed now (was half-day).
     const info = getDayInfo('2026-04-01', map);
     expect(info.type).toBe('eve');
-    expect(info.isHalfDay).toBe(true);
+    expect(info.isHalfDay).toBe(false);
+    expect(info.isWorking).toBe(false);
     expect(info.eveOf).toBe('Pesach');
+  });
+
+  test('isWorkday: Erev Pesach → false (PR-G.3.12)', () => {
+    // After PR-G.3.12, eves are non-working — isWorkday must reflect this.
+    expect(isWorkday('2026-04-01', map)).toBe(false);
   });
 
   test('Pesach I → type: holiday, isWorking: false', () => {
