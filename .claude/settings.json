@@ -41,6 +41,17 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/log-agent-usage.sh",
+            "async": true
+          }
+        ]
+      }
     ]
   }
 }

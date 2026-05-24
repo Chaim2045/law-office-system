@@ -74,6 +74,19 @@ Read-only. Separate context. No exceptions. (Details: `.claude/docs/OUTCOMES-GRA
 Hook severity = **deny**. **אסור לעקוף.**
 אם hook חוסם → לתקן את הגrader artifact, לא לבטל hook.
 
+## AGENT USAGE REVIEW RULE (PR-META-2)
+Hook `.claude/hooks/log-agent-usage.sh` רושם כל קריאת sub-agent ל-`.claude/logs/agent-usage.jsonl` (לוקלי, לא commited).
+
+**שגרת weekly review (כל שבוע):**
+1. הרץ `bash .claude/scripts/agent-usage-report.sh`
+2. בחן רשימת dormant agents (0 קריאות) — מועמדים להסרה
+3. בחן co-occurrence patterns (תמיד יחד) — מועמדים למיזוג
+4. אם 2+ agents dormant → PR-META-3 (consolidation) מומלץ
+
+**Anthropic baseline:** Code Review = 3 agents. Research = 3-5. אנחנו עם 20 — pool גדול. Weekly review מבטיח שלא ניצא יד מהשליטה.
+
+מטרה: לקבל החלטות consolidation לפי **data אמיתי**, לא תיאוריה.
+
 ## DECISION POINT RULE (חובה)
 **Before any AskUserQuestion that asks Tommy to choose between approaches/scopes/architecture/priorities — Claude MUST consult the relevant specialized sub-agent first** (from `.claude/agents/`). The question presented to Tommy must include:
 

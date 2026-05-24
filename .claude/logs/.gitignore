@@ -1,0 +1,5 @@
+# PR-META-2: agent usage logs are LOCAL ONLY.
+# They contain timestamps + agent names from this developer's sessions.
+# Not relevant to other devs; would conflict on merge if committed.
+*.jsonl
+*.log
