@@ -29,6 +29,7 @@ const commonIgnores = [
   'devtools/**',
   'docs/**',
   '.github/**',
+  '.claude/**', // ✅ PR-G.3.11: agent prompts, hooks, one-off Firestore investigation scripts
   'functions/**', // ✅ Server-side code (Node.js) - different linting rules
   'scripts/**',   // ✅ Ad-hoc maintenance/migration scripts (Node.js, console output expected)
   '**/lib/**',    // ✅ Vendored third-party libraries (e.g. lucide.min.js)
@@ -60,6 +61,24 @@ const commonJsRules = {
     ignoreComments: true,
     ignoreStrings: true,
     ignoreTemplateLiterals: true
+  }],
+
+  // PR-G.3.11: Ban `.toISOString().slice/substring/split(...)` — UTC date,
+  // drifts at IL midnight + breaks for users abroad. Use TZ-safe helpers:
+  //   frontend: `apps/user-app/js/modules/tz-helper.js` →
+  //     todayInJerusalemYMD / dateToJerusalemYMD / dateTimeToJerusalemLocalInput
+  //   backend: `functions/shared/calendar.js` →
+  //     todayInJerusalemYMD / normalizeDateToYMD / startOfTodayInJerusalem
+  // Severity = 'warn' INITIALLY — flips to 'error' in a follow-up PR after
+  // the ~30 pre-existing violations across admin-panel + user-app are
+  // cleaned up incrementally. Setting 'error' now would block CI on
+  // unrelated PRs. The warning still surfaces the rule, prevents NEW
+  // violations from going unnoticed in review, and lets `npx eslint
+  // --max-warnings=0` enforce it locally for any developer who opts in.
+  // Allowlist: tz-helper.js (the helper itself) — see overrides below.
+  'no-restricted-syntax': ['warn', {
+    selector: "CallExpression[callee.property.name=/^(slice|substring|split)$/][callee.object.type='CallExpression'][callee.object.callee.property.name='toISOString']",
+    message: 'Use tz-helper (todayInJerusalemYMD / dateToJerusalemYMD / dateTimeToJerusalemLocalInput) instead of .toISOString().slice/substring/split — returns UTC, drifts at IL midnight. PR-G.3.7→G.3.11.'
   }]
 };
 
@@ -74,6 +93,7 @@ export default [
       'devtools/**',
       'docs/**',
       '.github/**',
+      '.claude/**',
       'functions/**',
       'scripts/**'
     ]
@@ -144,6 +164,20 @@ export default [
       'import/no-duplicates': 'error',
 
       ...commonJsRules
+    }
+  },
+  // PR-G.3.11: allowlist for tz-helper itself (defines the canonical
+  // `Intl.DateTimeFormat` usage and may legitimately format Date objects).
+  // Test files also exempt — they may intentionally exercise the old pattern
+  // for regression coverage.
+  {
+    files: [
+      'apps/user-app/js/modules/tz-helper.js',
+      'tests/**/*.test.{js,ts}',
+      'tests/**/*.spec.{js,ts}'
+    ],
+    rules: {
+      'no-restricted-syntax': 'off'
     }
   }
 ];

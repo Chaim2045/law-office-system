@@ -28,35 +28,51 @@ describe('PR-G.1 — getHolidaysForYear', () => {
     expect(rh.type).toBe('holiday');
   });
 
-  test('Yom Kippur 2026 is on 2026-09-20 → closed (major fast)', () => {
+  test('Yom Kippur 2026 is on 2026-09-21 → closed (major fast)', () => {
+    // PR-G.3.7: was '2026-09-20' (encoded the toISOString TZ bug on IL hosts).
+    // Canonical: 10 Tishrei 5787 = Mon Sep 21, 2026 (per Chief Rabbinate luach).
     const h = getHolidaysForYear(2026);
-    // Find non-Erev Yom Kippur entry
     const yk = h.find(x => x.nameEn === 'Yom Kippur');
     expect(yk).toBeDefined();
-    expect(yk.date).toBe('2026-09-20');
+    expect(yk.date).toBe('2026-09-21');
     expect(yk.isWorking).toBe(false);
   });
 
-  test('Pesach I 2026 (2026-04-01) is closed', () => {
+  test('Pesach I 2026 (2026-04-02) is closed', () => {
+    // PR-G.3.7: was '2026-04-01' (TZ bug). Canonical: 15 Nisan 5786 = Thu Apr 2, 2026.
     const h = getHolidaysForYear(2026);
-    const pesachI = h.find(x => x.date === '2026-04-01' && x.nameEn === 'Pesach I');
+    const pesachI = h.find(x => x.date === '2026-04-02' && x.nameEn === 'Pesach I');
     expect(pesachI).toBeDefined();
     expect(pesachI.isWorking).toBe(false);
   });
 
   test('Chol HaMoed Pesach is working (2026-04-03 to 2026-04-07)', () => {
+    // PR-G.3.7: Chol HaMoed window shifted by +1 day after TZ fix.
     const h = getHolidaysForYear(2026);
-    const cholHaMoed = h.find(x => x.date === '2026-04-04' && x.type === 'cholhamoed');
+    const cholHaMoed = h.find(x => x.date === '2026-04-05' && x.type === 'cholhamoed');
     expect(cholHaMoed).toBeDefined();
     expect(cholHaMoed.isWorking).toBe(true);
   });
 
-  test('Erev Pesach is half-day', () => {
+  test('Erev Pesach is FULL non-working day (PR-G.3.12 policy)', () => {
+    // PR-G.3.12 (office policy 2026-05-20): "אין עבודה בערב חג".
+    // Was: isHalfDay:true, isWorking:true (half-day).
+    // Now: isHalfDay:false, isWorking:false (full closed).
     const h = getHolidaysForYear(2026);
     const eve = h.find(x => x.type === 'eve' && x.eveOf === 'Pesach');
     expect(eve).toBeDefined();
-    expect(eve.isHalfDay).toBe(true);
-    expect(eve.isWorking).toBe(true);
+    expect(eve.isHalfDay).toBe(false);
+    expect(eve.isWorking).toBe(false);
+  });
+
+  test('all eves of closed holidays are non-working (PR-G.3.12)', () => {
+    const h = getHolidaysForYear(2026);
+    const eves = h.filter(x => x.type === 'eve');
+    expect(eves.length).toBeGreaterThan(3); // Pesach, Shavuot, RH, YK, Sukkot at minimum
+    for (const eve of eves) {
+      expect(eve.isWorking).toBe(false);
+      expect(eve.isHalfDay).toBe(false);
+    }
   });
 
   test('Chanukah is a working holiday', () => {
@@ -75,8 +91,9 @@ describe('PR-G.1 — getHolidaysForYear', () => {
   });
 
   test('Purim is closed (minor by Hebcal, closed by office policy)', () => {
+    // PR-G.3.7: was '2026-03-02' (TZ bug). Canonical: 14 Adar 5786 = Tue Mar 3, 2026.
     const h = getHolidaysForYear(2026);
-    const purim = h.find(x => x.date === '2026-03-02' && x.nameEn === 'Purim');
+    const purim = h.find(x => x.date === '2026-03-03' && x.nameEn === 'Purim');
     expect(purim).toBeDefined();
     expect(purim.isWorking).toBe(false);
   });
@@ -94,9 +111,13 @@ describe('PR-G.1 — getHolidaysForYear', () => {
     expect(() => getHolidaysForYear(null)).toThrow();
   });
 
-  test('HEBCAL_VERSION is defined string', () => {
+  test('HEBCAL_VERSION is a real semver string', () => {
+    // PR-G.3.7: previously could silently return 'unknown' when
+    // require('@hebcal/core/package.json') failed under subpath-exports
+    // restriction (Node ≥22). New impl uses fs walkup; must succeed.
     expect(typeof HEBCAL_VERSION).toBe('string');
-    expect(HEBCAL_VERSION.length).toBeGreaterThan(0);
+    expect(HEBCAL_VERSION).not.toBe('unknown');
+    expect(HEBCAL_VERSION).toMatch(/^\d+\.\d+\.\d+/);
   });
 });
 
@@ -146,8 +167,8 @@ describe('PR-G.1 — isWorkday', () => {
   });
 
   test('Yom Kippur → false', () => {
-    // 2026-09-20 is YK (Sunday)
-    expect(isWorkday('2026-09-20', map)).toBe(false);
+    // PR-G.3.7: was '2026-09-20' (TZ bug). Canonical: YK 5787 = Mon Sep 21, 2026.
+    expect(isWorkday('2026-09-21', map)).toBe(false);
   });
 
   test('Chol HaMoed Pesach (Sunday) → true (working)', () => {
@@ -183,24 +204,33 @@ describe('PR-G.1 — getDayInfo', () => {
     map = buildHolidaysMap(getHolidaysForYear(2026));
   });
 
-  test('Erev Pesach → type: eve, isHalfDay: true', () => {
-    // 2026-03-31 is Erev Pesach (Tuesday)
-    const info = getDayInfo('2026-03-31', map);
+  test('Erev Pesach → type: eve, FULL non-working (PR-G.3.12)', () => {
+    // PR-G.3.7: was '2026-03-31' (TZ bug). Canonical: Erev Pesach = Wed Apr 1, 2026.
+    // PR-G.3.12 (policy 2026-05-20): eve is FULL closed now (was half-day).
+    const info = getDayInfo('2026-04-01', map);
     expect(info.type).toBe('eve');
-    expect(info.isHalfDay).toBe(true);
+    expect(info.isHalfDay).toBe(false);
+    expect(info.isWorking).toBe(false);
     expect(info.eveOf).toBe('Pesach');
   });
 
+  test('isWorkday: Erev Pesach → false (PR-G.3.12)', () => {
+    // After PR-G.3.12, eves are non-working — isWorkday must reflect this.
+    expect(isWorkday('2026-04-01', map)).toBe(false);
+  });
+
   test('Pesach I → type: holiday, isWorking: false', () => {
-    // 2026-04-01 is Pesach I (Wednesday)
-    const info = getDayInfo('2026-04-01', map);
+    // PR-G.3.7: was '2026-04-01' (TZ bug). Canonical: Pesach I = Thu Apr 2, 2026.
+    const info = getDayInfo('2026-04-02', map);
     expect(info.type).toBe('holiday');
     expect(info.isWorking).toBe(false);
   });
 
   test('Chol HaMoed → type: cholhamoed, isWorking: true', () => {
-    // 2026-04-02 is Pesach II / Chol HaMoed (Thursday)
-    const info = getDayInfo('2026-04-02', map);
+    // PR-G.3.7: was '2026-04-02' (TZ bug). Canonical: Pesach II/CHM = Fri Apr 3, 2026.
+    // But Fri is "friday" — use Pesach III/CHM = Sat Apr 4... also weekend.
+    // Pesach IV (CHM) = Sun Apr 5, 2026 — a working chol hamoed.
+    const info = getDayInfo('2026-04-05', map);
     expect(info.type).toBe('cholhamoed');
     expect(info.isWorking).toBe(true);
   });

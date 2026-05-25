@@ -2126,14 +2126,16 @@ return;
                 .filter(e => e.billable)
                 .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
 
-            // Daily target from user data - automatically uses employee's personal target
-            const dailyTarget = user.dailyHoursTarget || 8.45;
+            // PR-G.2: daily target via centralized helper — see js/shared/work-hours-constants.js
+            const _WHC = window.WORK_HOURS_CONSTANTS;
+            const dailyTarget = _WHC ? _WHC.getEmployeeDailyTarget(user) : (user.dailyHoursTarget || 8.45);
+            const _DEFAULT = _WHC ? _WHC.DEFAULT_DAILY_TARGET : 8.45;
             const quotaProgress = dailyTarget > 0 ? Math.round((totalHours / dailyTarget) * 100) : 0;
 
             // Debug log to verify target is loaded correctly
             console.log(`📊 Daily Target for ${user.displayName || user.email}: ${dailyTarget} hours`, {
                 hasPersonalTarget: !!user.dailyHoursTarget,
-                source: user.dailyHoursTarget ? 'employee profile' : 'default (8.45)'
+                source: user.dailyHoursTarget ? 'employee profile' : `default (${_DEFAULT})`
             });
 
             // Filter completed tasks for selected date
@@ -6390,8 +6392,10 @@ return true;
             // Working days (unique dates with entries)
             const workingDays = new Set(entries.map(e => (e.date || '').substring(0, 10))).size;
 
-            // Daily target
-            const dailyTarget = user.dailyHoursTarget || 8.45;
+            // PR-G.2: daily target via centralized helper
+            const dailyTarget = window.WORK_HOURS_CONSTANTS
+                ? window.WORK_HOURS_CONSTANTS.getEmployeeDailyTarget(user)
+                : (user.dailyHoursTarget || 8.45);
             const totalHours = totalMinutes / 60;
             const monthlyTarget = workingDays * dailyTarget;
             const quotaPercent = monthlyTarget > 0 ? Math.round((totalHours / monthlyTarget) * 100) : 0;

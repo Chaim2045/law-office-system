@@ -98,6 +98,10 @@
     <!-- ✅ v4.1.0: Data Accuracy Fixes (dual field support) -->
     <!-- ✅ v5.1.0: Single source of truth for workday counting -->
     <!-- ✅ v5.2.0: Fail-fast requires WorkHoursCalculator -->
+    <!-- PR-G.2: shared work-hours constants — must load BEFORE work-hours-calculator -->
+    <script src="js/shared/work-hours-constants.js?v=5.2.0"></script>
+    <!-- PR-G.3.1: holidays cache — subscribes to system_holidays/{year} on boot. -->
+    <script src="js/shared/holidays-cache.js?v=5.2.0"></script>
     <script src="js/modules/work-hours-calculator.js?v=5.2.0"></script>
     <script>
         // Verify WorkHoursCalculator loaded successfully

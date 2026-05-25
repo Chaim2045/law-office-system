@@ -1373,6 +1373,12 @@
     <!-- ===== SYSTEM ANNOUNCEMENT TICKER ===== -->
     <!-- Loaded as module by main.js -->
 
+    <!-- PR-G.2: shared work-hours constants — must load BEFORE work-hours-calculator + daily-meter -->
+    <script src="js/shared/work-hours-constants.js?v=esc5fix"></script>
+    <!-- PR-G.3.1: holidays cache — subscribes to system_holidays/{year} on boot.
+         Must load AFTER firebase init + work-hours-constants + BEFORE work-hours-calculator -->
+    <script src="js/shared/holidays-cache.js?v=esc5fix"></script>
+
     <!-- Work Hours Calculator - Smart Calendar System -->
     <script defer src="js/modules/work-hours-calculator.js?v=esc5fix"></script>
 

@@ -8,6 +8,11 @@
 
 const admin = require('firebase-admin');
 const SessionManager = require('./SessionManager');
+// PR-G.3.8: TZ-safe "today" helpers — DO NOT replace with
+// `new Date().toISOString().slice(0,10)` or `new Date().setHours(0,0,0,0)`.
+// Cloud Functions runs in UTC; those patterns return yesterday's date
+// for IL clock 00:00-03:00 (winter) / 00:00-04:00 (DST).
+const { todayInJerusalemYMD, startOfTodayInJerusalem } = require('../../shared/calendar');
 
 class WhatsAppBot {
     constructor() {
@@ -649,8 +654,9 @@ class WhatsAppBot {
      */
     async showStats(userInfo, session) {
         try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            // PR-G.3.8: IL midnight (not host UTC midnight) — skews
+            // approvedToday/rejectedToday by 3-4h on Cloud Functions otherwise.
+            const today = startOfTodayInJerusalem();
 
             const [approvedToday, rejectedToday, pendingTotal] = await Promise.all([
                 // אושרו היום
@@ -992,8 +998,9 @@ class WhatsAppBot {
      */
     async showAllEmployeesTimesheets() {
         try {
-            // date field is stored as "YYYY-MM-DD" string — query with string match
-            const todayStr = new Date().toISOString().substring(0, 10);
+            // date field is stored as "YYYY-MM-DD" string — query with string match.
+            // PR-G.3.8: use Asia/Jerusalem (not host UTC) for "today".
+            const todayStr = todayInJerusalemYMD();
 
             // קבל את כל רישומי השעות של היום
             const timesheetsSnapshot = await this.db.collection('timesheet_entries')
@@ -1065,8 +1072,9 @@ class WhatsAppBot {
      */
     async showEmployeeTimesheets(employee) {
         try {
-            // date field is stored as "YYYY-MM-DD" string — query with string match
-            const todayStr = new Date().toISOString().substring(0, 10);
+            // date field is stored as "YYYY-MM-DD" string — query with string match.
+            // PR-G.3.8: use Asia/Jerusalem (not host UTC) for "today".
+            const todayStr = todayInJerusalemYMD();
 
             // קבל רישומי שעות של העובד להיום
             const timesheetsSnapshot = await this.db.collection('timesheet_entries')

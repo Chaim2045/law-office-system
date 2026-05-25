@@ -224,6 +224,11 @@
     <script src="js/ui/DashboardUI.js?v=e02c45c"></script>
 
     <!-- ===== Phase 3: User Management Logic ===== -->
+    <!-- PR-G.2: shared work-hours constants — must load BEFORE consumers (UserForm, UserDetailsModal) -->
+    <script src="js/shared/work-hours-constants.js?v=e02c45c"></script>
+    <!-- PR-G.3.1: holidays cache — subscribes to system_holidays/{year} on boot.
+         Must load AFTER firebase init + work-hours-constants + BEFORE consumers -->
+    <script src="js/shared/holidays-cache.js?v=e02c45c"></script>
     <script src="js/managers/AuditLogger.js?v=e02c45c"></script>
     <script src="js/ui/Modals.js?v=e02c45c"></script>
     <script src="js/ui/Notifications.js?v=e02c45c"></script>

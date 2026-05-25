@@ -12,9 +12,19 @@
  *   - window.manager.showNotification (for overage alert)
  */
 
+// PR-G.3.10: canonical IL-TZ date helpers (frontend SSOT).
+// DO NOT use `.toISOString().slice(0,10)` — returns UTC, drifts at IL midnight.
+import { todayInJerusalemYMD, dateToJerusalemYMD, addDaysYMD, dayOfWeekYMD } from '../../tz-helper.js';
+
 const RADIUS = 21;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const DEFAULT_DAILY_TARGET = 8.45;
+
+// PR-G.2: DEFAULT_DAILY_TARGET centralized — see js/shared/work-hours-constants.js.
+// That file is a classic script that assigns to window.WORK_HOURS_CONSTANTS;
+// it MUST be loaded before this module (it is — see index.html).
+const DEFAULT_DAILY_TARGET = (typeof window !== 'undefined' && window.WORK_HOURS_CONSTANTS)
+  ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET
+  : 8.45; // fallback should never fire in production; safety net for test/SSR contexts
 
 export class DailyMeter {
   constructor() {
@@ -79,12 +89,27 @@ return;
     this._dailyTarget =
       window.manager?.currentEmployee?.dailyHoursTarget || DEFAULT_DAILY_TARGET;
 
+    // PR-G.3.2: re-render when holidays map populates / updates so the
+    // current popup view reflects holiday badges + correct workday counts.
+    if (typeof window !== 'undefined') {
+      this._onHolidaysLoaded = () => {
+        if (this._isPopupOpen) {
+          this._renderPopupContent();
+        }
+      };
+      window.addEventListener('holidays:loaded', this._onHolidaysLoaded);
+    }
+
     // Initial update
     this.update(window.manager?.timesheetEntries || []);
   }
 
   destroy() {
     this._closePopup();
+    if (this._onHolidaysLoaded && typeof window !== 'undefined') {
+      window.removeEventListener('holidays:loaded', this._onHolidaysLoaded);
+      this._onHolidaysLoaded = null;
+    }
     if (this._el) {
       this._el.remove();
       this._el = null;
@@ -404,12 +429,22 @@ return;
     let weekHours = 0;
     let workdayCountElapsed = 0;  // workdays up to and including today
 
+    // PR-G.3.2: read holidays map live from window. Empty map → behaves like
+    // pre-G.3 (weekend-only awareness). Populated map → holidays + eves treated
+    // as full non-working days (Tommy 2026-05-20: "אין עבודה בערב חג").
+    const holidaysMap = (typeof window !== 'undefined' && window.WORK_HOURS_HOLIDAYS_MAP) || null;
+
     for (const dayInfo of grouped) {
       const isWeekend = dayInfo.dayOfWeek === 5 || dayInfo.dayOfWeek === 6;
       const isFuture = dayInfo.dateStr > todayStr;
       const isToday = dayInfo.dateStr === todayStr;
 
-      if (!isWeekend && !isFuture) {
+      // PR-G.3.2: holiday lookup (closed-day OR eve per new policy).
+      // Weekend wins display priority (Friday-eve = "שישי", not "ערב חג").
+      const holidayEntry = holidaysMap ? holidaysMap.get(dayInfo.dateStr) : null;
+      const isHoliday = !isWeekend && holidayEntry && (!holidayEntry.isWorking || holidayEntry.isHalfDay === true);
+
+      if (!isWeekend && !isFuture && !isHoliday) {
         workdayCountElapsed += 1;
       }
 
@@ -420,6 +455,11 @@ return;
       let dayClass = '';
       if (isWeekend) {
         dayClass = ' weekend';
+      } else if (isHoliday) {
+        // PR-G.3.2: holiday or eve — no "missing" flag, show holiday name
+        dayClass = ' holiday';
+        const holidayName = this._escapeHtml(holidayEntry.nameHe || '');
+        badgeHtml = `<span class="gh-daily-meter-popup-day-badge holiday" title="${holidayName}"><i class="fas fa-star-of-david"></i></span>`;
       } else if (isFuture) {
         dayClass = ' future';
       } else if (dayInfo.totalHours === 0) {
@@ -522,45 +562,40 @@ return [];
       if (!e.date) {
 return false;
 }
-      // entries store date as YYYY-MM-DD string
-      const entryDate = typeof e.date === 'string'
-        ? e.date.slice(0, 10)
-        : new Date(e.date).toISOString().slice(0, 10);
+      // PR-G.3.10: normalize via IL-TZ helper to match _todayStr (also IL).
+      // Was: `.toISOString().slice(0,10)` (UTC) — mixed with IL todayStr.
+      const entryDate = dateToJerusalemYMD(e.date);
       return entryDate === todayStr;
     });
   }
 
   // PR-F: compute current week range (Sun..Sat) in Asia/Jerusalem.
+  // PR-G.3.10: pure string arithmetic via tz-helper — no host-TZ leakage
+  // through `new Date(y,m,d)` + `dt.getFullYear()/Month/Date()` (which
+  // could drift for browsers outside Asia/Jerusalem).
   // Returns { startStr, days: [{ dateStr, dayOfWeek, label }] }
   _getCurrentWeekRange() {
     const todayStr = this._todayStr;
-    // Parse YYYY-MM-DD as local (Asia/Jerusalem already applied by _getTodayStr)
-    const [y, m, d] = todayStr.split('-').map(Number);
-    const todayDate = new Date(y, m - 1, d);
-    const todayDow = todayDate.getDay();  // 0=Sun..6=Sat
-
-    // Start of week — Sunday
-    const sunday = new Date(todayDate);
-    sunday.setDate(todayDate.getDate() - todayDow);
+    const todayDow = dayOfWeekYMD(todayStr);  // 0=Sun..6=Sat
+    const startStr = addDaysYMD(todayStr, -todayDow);
 
     const days = [];
     const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
     for (let i = 0; i < 7; i++) {
-      const dt = new Date(sunday);
-      dt.setDate(sunday.getDate() + i);
-      const yy = dt.getFullYear();
-      const mm = String(dt.getMonth() + 1).padStart(2, '0');
-      const dd = String(dt.getDate()).padStart(2, '0');
-      const dateStr = `${yy}-${mm}-${dd}`;
-      const dowStr = String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0');
+      const dateStr = addDaysYMD(startStr, i);
+      const dow = dayOfWeekYMD(dateStr);
+      // Build dd/mm label from the dateStr itself (string slice — TZ-safe).
+      const dd = dateStr.slice(8, 10);
+      const mm = dateStr.slice(5, 7);
+      const dowStr = `${dd}/${mm}`;
       days.push({
         dateStr,
-        dayOfWeek: dt.getDay(),
-        label: `${DAY_NAMES[dt.getDay()]} ${dowStr}`
+        dayOfWeek: dow,
+        label: `${DAY_NAMES[dow]} ${dowStr}`
       });
     }
 
-    return { startStr: days[0].dateStr, days };
+    return { startStr, days };
   }
 
   // PR-F: group entries by day for week-view rendering.
@@ -577,11 +612,8 @@ return false;
       if (!e || !e.date) {
 continue;
 }
-      const entryDateStr = typeof e.date === 'string'
-        ? e.date.slice(0, 10)
-        : (e.date && typeof e.date.toDate === 'function'
-            ? e.date.toDate().toISOString().slice(0, 10)
-            : new Date(e.date).toISOString().slice(0, 10));
+      // PR-G.3.10: route through IL-TZ helper (matches range.days[].dateStr).
+      const entryDateStr = dateToJerusalemYMD(e.date);
       const bucket = byDate.get(entryDateStr);
       if (bucket) {
         bucket.entries.push(e);
@@ -661,12 +693,10 @@ return a.isInternal ? 1 : -1;
     return `${hrs}:${String(mins).padStart(2, '0')}`;
   }
 
+  // PR-G.3.10: delegate to IL-TZ helper. Previously used host-TZ fields
+  // (`d.getFullYear()` etc) — correct only if browser TZ matches IL.
   _getTodayStr() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return todayInJerusalemYMD();
   }
 
   _escapeHtml(str) {

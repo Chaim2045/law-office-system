@@ -35,6 +35,53 @@ model: inherit
 - [ ] אין hardcoded secrets/keys בקוד
 - [ ] Rate limiting על endpoints ציבוריים
 
+## רשימת בדיקות מורחבת (PR-META-1, 2026-05-24):
+
+### WhatsApp Bot
+- [ ] Input sanitization על כל message מ-WhatsApp webhook (מניעת command injection / template injection)
+- [ ] Webhook signature verification (Meta WhatsApp signs requests — וודא verification)
+- [ ] Rate limiting per phone number על WhatsApp endpoints
+- [ ] אין PII echoed back בresponse של bot (numbers, IDs, emails)
+
+### Token & Session Management
+- [ ] JWT/Firebase tokens **לא** נשמרים ב-localStorage (XSS-vulnerable). השתמש ב-HttpOnly cookies או IndexedDB
+- [ ] Token refresh rotation מיושם (לא reuse של refresh token)
+- [ ] Session timeout מוגדר (idle-timeout-manager existing)
+- [ ] Logout מנקה את כל ה-tokens מ-storage
+
+### CSP & Headers
+- [ ] Content Security Policy מוגדר ב-HTML / hosting config
+- [ ] X-Frame-Options: DENY (מניעת clickjacking)
+- [ ] X-Content-Type-Options: nosniff
+- [ ] Strict-Transport-Security לproduction
+- [ ] Referrer-Policy שמפלטר context רגיש
+
+### CORS
+- [ ] Cloud Functions CORS config מוגדר בdomain whitelist (לא `*`)
+- [ ] חוקי CORS שונים בין User App ל-Admin Panel אם נדרש
+- [ ] WhatsApp webhook לא חייב CORS (server-to-server)
+
+### Firebase Logs PII Scan
+- [ ] **אסור console.log של email/phone/ID/SSN** (Israeli תעודת זהות)
+- [ ] **אסור console.log של auth tokens / API keys**
+- [ ] Cloud Functions logs לא מכילים שדות רגישים מ-request body
+- [ ] Audit logs (system_audit_log וכו') hash או מסכים PII
+
+### Israeli Privacy Law (חוק הגנת הפרטיות 1981)
+- [ ] **תעודת זהות** = מידע רגיש לפי החוק → אסור באחזור public, אסור בlogs
+- [ ] **חיסיון עו"ד-לקוח** = מידע מועד לprivilege → field-level encryption recommended
+- [ ] **כתובת email** של עובד/לקוח = PII → לא לקוד בURL params, לא בlogs
+- [ ] **רשומות פיננסיות** (תשלומים, חשבוניות) = מידע פיננסי → access scoped per user
+- [ ] **Right to be forgotten** (סעיף 14): user יכול לבקש מחיקה — וודא שיש flow
+
+## חיווי לbug classes חוזרים
+
+אם זיהית bug class אחד — חפש את ה-pattern בעוד מקומות:
+- TZ bug class (G.3.7): כל `.toISOString().slice(0,N)` — חיפוש repo-wide חובה
+- PII leak: כל `console.log(\${user.*})` — חיפוש repo-wide
+- localStorage tokens: כל `localStorage.setItem.*token` — חיפוש repo-wide
+- Eval/dangerously*: כל `eval(`, `dangerouslySetInnerHTML`, `new Function(` — חיפוש repo-wide
+
 ## ⚠️ חובה אחרי הצעת שינוי באבטחה:
 כל שינוי שנוגע ב-auth, claims, permissions, rules, או חשיפת שדות — **חובה להוסיף בסוף ההצעה**:
 

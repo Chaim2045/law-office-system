@@ -383,7 +383,12 @@ describe('WhatsApp Bot — date query and display', () => {
   // ───────────────────────────────────────────────────────────
 
   test('showAllEmployeesTimesheets queries date with "YYYY-MM-DD" string', async () => {
-    const todayStr = new Date().toISOString().substring(0, 10);
+    // PR-G.3.8: source-of-truth is the same helper the bot uses, NOT
+    // `new Date().toISOString().substring(0,10)` — the bug we just fixed.
+    // Comparing against the helper means the test passes on CI (UTC) AND
+    // local dev machines (Asia/Jerusalem) without encoding the bug.
+    const { todayInJerusalemYMD } = require('../shared/calendar');
+    const todayStr = todayInJerusalemYMD();
 
     const mockGet = jest.fn().mockResolvedValue({ empty: true, forEach: jest.fn() });
     const mockWhere = jest.fn().mockReturnValue({ get: mockGet });
@@ -408,7 +413,9 @@ describe('WhatsApp Bot — date query and display', () => {
   // ───────────────────────────────────────────────────────────
 
   test('showEmployeeTimesheets queries date with "YYYY-MM-DD" string', async () => {
-    const todayStr = new Date().toISOString().substring(0, 10);
+    // PR-G.3.8: source-of-truth via helper (see comment in test above).
+    const { todayInJerusalemYMD } = require('../shared/calendar');
+    const todayStr = todayInJerusalemYMD();
 
     const mockGet = jest.fn().mockResolvedValue({ empty: true, forEach: jest.fn() });
     const mockWhere2 = jest.fn().mockReturnValue({ get: mockGet });
@@ -434,7 +441,10 @@ describe('WhatsApp Bot — date query and display', () => {
   // ───────────────────────────────────────────────────────────
 
   test('showEmployeeTimesheets handles entry.date as "YYYY-MM-DD" string', async () => {
-    const todayStr = new Date().toISOString().substring(0, 10);
+    // PR-G.3.8: todayStr unused in this test (display path); kept for clarity.
+    const { todayInJerusalemYMD } = require('../shared/calendar');
+    const todayStr = todayInJerusalemYMD();
+    void todayStr;
     const entries = [{
       data: () => ({
         minutes: 60,
@@ -464,7 +474,10 @@ describe('WhatsApp Bot — date query and display', () => {
   });
 
   test('showEmployeeTimesheets handles entry.date as legacy Timestamp', async () => {
-    const todayStr = new Date().toISOString().substring(0, 10);
+    // PR-G.3.8: todayStr unused in this test (display path); kept for clarity.
+    const { todayInJerusalemYMD } = require('../shared/calendar');
+    const todayStr = todayInJerusalemYMD();
+    void todayStr;
     const entries = [{
       data: () => ({
         minutes: 45,

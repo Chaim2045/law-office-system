@@ -6,10 +6,13 @@
  *
  *   - CLOSED:   major holidays (Pesach I/VII, Shavuot, RH, YK, Sukkot, ShAtz,
  *               Simchat Torah), Yom HaAtzma'ut, Yom HaZikaron, Yom HaShoah,
- *               Purim, Tish'a B'Av
- *   - HALF-DAY: erev (eve) of any closed day
+ *               Purim, Tish'a B'Av, AND eves of those (per PR-G.3.12
+ *               policy 2026-05-20: "אין עבודה בערב חג")
  *   - WORKING:  Chol HaMoed (intermediate days of Pesach/Sukkot), Chanukah,
  *               minor holidays (Tu BiShvat, Lag BaOmer, etc.), minor fasts
+ *
+ * Historical: eves were classified HALF-DAY through PR-G.3.11; flipped to
+ * CLOSED in PR-G.3.12 per office policy change 2026-05-20.
  *
  * Policy mirrors `hachnasovitz/daily-reports/calendar.js` (the bot already
  * encodes this). DRY across repos is not feasible — both files stay in
@@ -26,13 +29,194 @@
 
 const { HebrewCalendar, flags } = require('@hebcal/core');
 
+/**
+ * PR-G.3.7 (2026-05-24): resolve `@hebcal/core` version via filesystem walkup
+ * from the resolved entry-point path.
+ *
+ * Previously used `require('@hebcal/core/package.json')` — which throws
+ * `ERR_PACKAGE_PATH_NOT_EXPORTED` on Node ≥22 because @hebcal/core@3.50.4
+ * doesn't expose `./package.json` via the `exports` field. The silent
+ * try/catch hid this — `HEBCAL_VERSION` reported `'unknown'` in production.
+ *
+ * Fix: walk up from `require.resolve('@hebcal/core')` (which resolves to the
+ * entry main, often inside `dist/`) until we find a `package.json` whose
+ * `name === '@hebcal/core'`. Capped at 5 levels for safety.
+ */
 const HEBCAL_VERSION = (() => {
   try {
-    return require('@hebcal/core/package.json').version;
-  } catch (e) {
+    const path = require('path');
+    const fs = require('fs');
+    const corePath = require.resolve('@hebcal/core');
+    let dir = path.dirname(corePath);
+    for (let i = 0; i < 5; i++) {
+      const pkgPath = path.join(dir, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg.name === '@hebcal/core') {
+          return pkg.version;
+        }
+      }
+      dir = path.dirname(dir);
+    }
+    return 'unknown';
+  } catch (_e) {
     return 'unknown';
   }
 })();
+
+/**
+ * PR-G.3.7 (2026-05-24): convert a Hebcal `HDate`'s Gregorian `Date` to
+ * `YYYY-MM-DD` (Gregorian ISO date), timezone-safe.
+ *
+ * Bug fixed: previous implementation used `.toISOString().slice(0, 10)`
+ * which converts to UTC. Hebcal builds Dates via `new Date(y, m, d)` —
+ * local-midnight. On hosts NOT in UTC (e.g. Asia/Jerusalem UTC+3),
+ * Apr 2 local-midnight becomes Apr 1 21:00 UTC; the slice then yields
+ * `"2026-04-01"` (off by -1).
+ *
+ * Fix: read the local-time year/month/day fields back from the same Date
+ * — this is the inverse of the `new Date(y, m, d)` constructor and is
+ * TZ-invariant.
+ *
+ * @param {{ greg: () => Date }} hdate - Hebcal HDate (anything with .greg())
+ * @returns {string} `YYYY-MM-DD`
+ */
+function _hdateToISO(hdate) {
+  const g = hdate.greg();
+  const y = g.getFullYear();
+  const m = String(g.getMonth() + 1).padStart(2, '0');
+  const d = String(g.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * PR-G.3.8 (2026-05-24): canonical "today in Asia/Jerusalem" helpers for
+ * any Cloud Function or Node code that needs to query Firestore for IL
+ * "today" data.
+ *
+ * Bug class: `new Date().toISOString().slice(0,10)` and
+ * `new Date().setHours(0,0,0,0)` use the host's idea of "today" — which on
+ * Cloud Functions (UTC) is wrong for Asia/Jerusalem between 00:00-03:00
+ * local time (winter) or 00:00-04:00 (DST). Result: queries return
+ * yesterday's data, or Timestamp ranges miss 3-4 hours of IL "today".
+ *
+ * Fix pattern:
+ *   - For string `where('date','==',X)` queries → use `todayInJerusalemYMD()`
+ *   - For Timestamp `where('approvedAt','>=',X)` queries → use `startOfTodayInJerusalem()`
+ *
+ * Implementation uses `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' })`
+ * which yields `YYYY-MM-DD` regardless of host TZ. `en-CA` chosen over
+ * `sv-SE` for broader Intl coverage.
+ *
+ * NEVER use `.toISOString().slice(0,10)` or `setHours(0,0,0,0)` on a
+ * fresh `new Date()` for IL-tied logic — that's the bug this helper fixes.
+ */
+
+const _JERUSALEM_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Jerusalem',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
+/**
+ * Return today's date in Asia/Jerusalem as `YYYY-MM-DD`.
+ *
+ * @returns {string} e.g. `'2026-05-24'`
+ */
+function todayInJerusalemYMD() {
+  // en-CA formatter yields `YYYY-MM-DD` directly.
+  return _JERUSALEM_DATE_FMT.format(new Date());
+}
+
+/**
+ * Return a `Date` object representing 00:00:00 of today in Asia/Jerusalem,
+ * suitable for Firestore Timestamp `where('field','>=',X)` queries.
+ *
+ * @returns {Date}
+ */
+/**
+ * PR-G.3.9 (2026-05-25): convert any caller-supplied date input to
+ * `YYYY-MM-DD` in Asia/Jerusalem TZ.
+ *
+ * Accepts:
+ *   - String (ISO 8601 or `YYYY-MM-DD`) — preserves the input prefix to
+ *     avoid TZ shift (matches existing createQuickLogEntry contract).
+ *   - `{seconds, nanoseconds}` map (legacy Callable Timestamp serialization)
+ *   - Object with `.toDate()` (Firestore Timestamp)
+ *
+ * Throws on null / number / unsupported type / unparseable string.
+ *
+ * Bug class (G.3.7/G.3.8 family): previous code used
+ * `d.toISOString().substring(0, 10)` which converts to UTC. If the caller
+ * sent a Timestamp built from local-midnight (e.g. `new Date(2026, 3, 2)`
+ * in Asia/Jerusalem = `2026-04-01T21:00:00Z`), the slice yielded
+ * `"2026-04-01"` — wrong day by -1. Theoretical for the current
+ * `apps/user-app/js/quick-log.js` frontend (which sends ISO strings), but
+ * a latent trap if any caller ever sends a Timestamp.
+ *
+ * @param {*} input - the raw value from `data.date`
+ * @returns {string} `YYYY-MM-DD`
+ * @throws {Error} on invalid input
+ */
+function normalizeDateToYMD(input) {
+  if (input == null) {
+    throw new Error('normalizeDateToYMD: input is null/undefined');
+  }
+  const t = typeof input;
+  if (t === 'string') {
+    // Preserve input prefix — TZ-safe for both 'YYYY-MM-DD' and
+    // 'YYYY-MM-DDTHH:mm:ss.sssZ'. Validates parseability first.
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new Error(`normalizeDateToYMD: invalid date string '${input}'`);
+    }
+    return input.substring(0, 10);
+  }
+  if (t !== 'object') {
+    throw new Error(`normalizeDateToYMD: unsupported type '${t}'`);
+  }
+  // Firestore Timestamp-like map (legacy Callable serialization)
+  if (typeof input.seconds === 'number') {
+    const d = new Date(input.seconds * 1000);
+    return _JERUSALEM_DATE_FMT.format(d);
+  }
+  // Firestore Timestamp object
+  if (typeof input.toDate === 'function') {
+    const d = input.toDate();
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
+      throw new Error('normalizeDateToYMD: .toDate() did not return a valid Date');
+    }
+    return _JERUSALEM_DATE_FMT.format(d);
+  }
+  throw new Error('normalizeDateToYMD: object has no recognized shape (need .seconds or .toDate)');
+}
+
+function startOfTodayInJerusalem() {
+  const ymd = todayInJerusalemYMD(); // 'YYYY-MM-DD'
+  // Construct from local IL fields → produce instant for 00:00 IL.
+  // We cannot trust `new Date('YYYY-MM-DDT00:00:00')` (parses as host-local),
+  // so build the UTC instant manually: IL midnight = UTC midnight − offset.
+  // Offset: derive from a probe date so we honor DST automatically.
+  const [y, m, d] = ymd.split('-').map(Number);
+  // Probe: noon IL is unambiguous (never crosses DST boundary within the
+  // hour). Compute its UTC ms and derive the IL UTC offset for that day.
+  const probeUTC = Date.UTC(y, m - 1, d, 12, 0, 0);
+  const probeAsIL = _JERUSALEM_DATE_FMT.formatToParts(new Date(probeUTC));
+  // We just need the offset. Re-format the probe as IL time-of-day.
+  const ilHourFmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jerusalem',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = ilHourFmt.format(new Date(probeUTC)).split(':');
+  const ilHour = Number(parts[0]);
+  // probeUTC is 12:00 UTC. If IL shows e.g. "15:00", offset = +3h.
+  const offsetHours = ilHour - 12;
+  // IL midnight = UTC midnight − offsetHours
+  return new Date(Date.UTC(y, m - 1, d, -offsetHours, 0, 0));
+}
 
 /**
  * Modern (Israel-state) days where the office is CLOSED.
@@ -85,9 +269,12 @@ function classifyEvent(e) {
     return { type: 'modern', isWorking: true, isHalfDay: false, eveOf: null };
   }
 
-  // Erev (eve) — half-day regardless of category
+  // PR-G.3.12 (office policy 2026-05-20): "אין עבודה בערב חג" — eves of
+  // closed holidays are FULL non-working days (previously half-day).
+  // The `eveOf` field is retained so consumers can still distinguish an
+  // eve from a regular closed holiday in UI if desired.
   if (isEve) {
-    return { type: 'eve', isWorking: true, isHalfDay: true, eveOf: basename };
+    return { type: 'eve', isWorking: false, isHalfDay: false, eveOf: basename };
   }
 
   // Chol HaMoed (intermediate Pesach/Sukkot days) — office open
@@ -150,7 +337,10 @@ function getHolidaysForYear(year) {
 
   const holidays = [];
   for (const e of events) {
-    const dateISO = e.getDate().greg().toISOString().slice(0, 10);
+    // PR-G.3.7: TZ-safe via _hdateToISO. NEVER use toISOString().slice(0,10)
+    // on a local-midnight Date — it converts to UTC and yields wrong day on
+    // non-UTC hosts.
+    const dateISO = _hdateToISO(e.getDate());
     const cls = classifyEvent(e);
 
     holidays.push({
@@ -180,8 +370,12 @@ function getHolidaysForYear(year) {
 function buildHolidaysMap(holidays) {
   const map = new Map();
   for (const h of holidays || []) {
-    // If multiple events share a date (e.g. Erev + Yom Tov), prefer the
-    // non-working classification (closed wins over eve, eve wins over open)
+    // If multiple events share a date (e.g. Erev + minor fast like
+    // Ta'anit Bechorot), prefer the non-working classification.
+    // PR-G.3.12: post-policy-update, eves are also closed (isWorking:false),
+    // so the "closed wins" branch below handles both eves and yom tov; the
+    // half-day tiebreaker is now dead code but retained as defensive guard
+    // in case a future override carries `isHalfDay:true` on a working day.
     const existing = map.get(h.date);
     if (!existing) {
       map.set(h.date, h);
@@ -273,10 +467,19 @@ module.exports = {
   buildHolidaysMap,
   isWorkday,
   getDayInfo,
+  // PR-G.3.8: TZ-safe "today" helpers for Cloud Functions
+  todayInJerusalemYMD,
+  startOfTodayInJerusalem,
+  // PR-G.3.9: normalize caller-supplied date input → YYYY-MM-DD (Asia/Jerusalem)
+  normalizeDateToYMD,
   // Exported for unit tests
   _test: {
     classifyEvent,
     _dayOfWeekUTC,
+    _hdateToISO,  // PR-G.3.7
+    todayInJerusalemYMD,        // PR-G.3.8
+    startOfTodayInJerusalem,    // PR-G.3.8
+    normalizeDateToYMD,         // PR-G.3.9
     CLOSED_MODERN_BASENAMES,
     CLOSED_MINOR_BASENAMES
   }

@@ -241,7 +241,7 @@
                         <small class="form-hint">פורמט: +972501234567 (נדרש ל-WhatsApp)</small>
                     </div>
 
-                    <!-- Daily Hours Target (Optional) -->
+                    <!-- Daily Hours Target (Optional) — PR-G.2: placeholder/hint pull from centralized constant -->
                     <div class="form-group">
                         <label for="dailyHoursTarget" class="form-label">
                             <i class="fas fa-business-time"></i>
@@ -252,13 +252,13 @@
                             id="dailyHoursTarget"
                             name="dailyHoursTarget"
                             class="form-input"
-                            placeholder="8.45"
+                            placeholder="${window.WORK_HOURS_CONSTANTS ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET : 8.45}"
                             min="1"
                             max="24"
                             step="0.5"
                         >
                         <div class="form-error" data-error="dailyHoursTarget"></div>
-                        <small class="form-hint">ברירת מחדל: 8.45 שעות/יום. המערכת תחשב אוטומטית את התקן החודשי לפי ימי העבודה בפועל (מוריד שישי-שבת וחגים).</small>
+                        <small class="form-hint">ברירת מחדל: ${window.WORK_HOURS_CONSTANTS ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET : 8.45} שעות/יום. המערכת תחשב אוטומטית את התקן החודשי לפי ימי העבודה בפועל (מוריד שישי-שבת וחגים).</small>
                     </div>
 
                     <!-- WhatsApp Enabled -->

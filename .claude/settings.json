@@ -28,5 +28,30 @@
     "additionalDirectories": [
       "c:\\Users\\haim\\Projects\\law-office-system\\devtools"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/require-outcomes-pass.sh",
+            "if": "Bash(gh pr create *)"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/log-agent-usage.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
   }
 }
