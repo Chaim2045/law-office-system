@@ -32,7 +32,8 @@ model: inherit
 ### שלב 1: הבן את הrubric
 - קרא את הrubric שצוין ב-prompt (לדוגמה `.claude/rubrics/pr-a-4.md`)
 - קרא תמיד גם את `.claude/rubrics/global-quality-bar.md`
-- צור רשימה משולבת של קריטריונים
+- **קרא תמיד גם את `.claude/rubrics/_PRODUCT-GRADE-GATES.md`** (PR-META-3) — 7 גייטים גלובליים שכל PR חייב לעמוד בהם
+- צור רשימה משולבת של קריטריונים: per-PR rubric + global quality bar + 7 PRODUCT-GRADE gates
 
 ### שלב 2: אסוף ראיות
 - `git diff main...HEAD` — מה השתנה
@@ -50,10 +51,20 @@ model: inherit
 - **N/A** — לא רלוונטי לPR הזה (חייב נימוק)
 - **UNCLEAR** — אין מספיק ראיה (חייב לציין מה היית צריך לראות)
 
+### שלב 3.5: דרג PRODUCT-GRADE Gates (PR-META-3, חובה)
+לכל אחד מ-7 הgates ב-`_PRODUCT-GRADE-GATES.md` (G1-G7):
+- **PASS** — gate רלוונטי, criteria נעמדו (חייב ראיה ספציפית)
+- **N/A** — gate לא רלוונטי לscope של PR זה (חייב נימוק קצר)
+- **FAIL** — gate רלוונטי, criteria לא נעמדו (verdict יהיה FAIL)
+
+**אסור לדלג על gate.** אם לא בטוח אם רלוונטי → PASS/FAIL, לא לזרוק N/A "ליתר ביטחון".
+
 ### שלב 4: צבור verdict
-- **PASS overall:** כל ה-MUST = PASS, וה-SHOULD = PASS/FAIL מקובל
-- **FAIL overall:** לפחות MUST אחד = FAIL/UNCLEAR
-- **WARNING:** כל ה-MUST = PASS, אבל SHOULDs נכשלו → PASS עם warnings
+- **PASS overall:** כל ה-MUST = PASS, **כל ה-Gates = PASS או N/A**, וה-SHOULD = PASS/FAIL מקובל
+- **FAIL overall:** לפחות MUST אחד = FAIL/UNCLEAR **OR** לפחות Gate אחד = FAIL
+- **WARNING:** כל ה-MUST + Gates = PASS, אבל SHOULDs נכשלו → PASS עם warnings
+
+**חשוב:** Gate FAIL אחד מספיק לFAIL גלובלי, גם אם כל ה-MUST = PASS.
 
 ## פלט נדרש
 
@@ -96,6 +107,20 @@ model: inherit
 | 7 | Docs updated | PASS/FAIL/N/A | <which docs> |
 | 8 | Lint 0 errors | PASS/FAIL | <npm run lint output> |
 | 9 | All existing tests pass | PASS/FAIL | <test count> |
+
+## PRODUCT-GRADE Gates (PR-META-3 — חובה)
+
+| # | Gate | Status | Evidence |
+|---|---|---|---|
+| G1 | Customer-visible errors are professional (Hebrew, no stack traces, no `[object Object]`) | PASS/N/A/FAIL | <quote from diff or "no customer-facing error paths added"> |
+| G2 | Rollback path documented (under 5 minutes) | PASS/N/A/FAIL | <PR body "Rollback" section quote> |
+| G3 | Monitoring touched if data-mutating (log on success + failure) | PASS/N/A/FAIL | <log lines added OR "read-only PR"> |
+| G4 | Test proves the customer scenario (integration, not just helper) | PASS/N/A/FAIL | <test file:line + scenario described> |
+| G5 | Hebrew customer-facing text (no English UI strings) | PASS/N/A/FAIL | <quote OR "no UI strings added"> |
+| G6 | No breaking change without migration plan | PASS/N/A/FAIL | <PR body "Breaking change" section OR "no schema/contract change"> |
+| G7 | Security agent reviewed if PII / auth / permissions touched | PASS/N/A/FAIL | <security agent verdict OR "no PII/auth/permissions touched"> |
+
+**Gate FAIL = overall FAIL.** Justify N/A with a sentence per gate.
 
 ## Issues found (block FAILs)
 

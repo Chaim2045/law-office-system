@@ -41,6 +41,26 @@ Before opening any PR — `outcomes-grader` MUST evaluate work against rubric `.
 Returns VERDICT: PASS / FAIL / PASS_WITH_WARNINGS. FAIL blocks PR open.
 Read-only. Separate context. No exceptions. (Details: `.claude/docs/OUTCOMES-GRADER-USAGE.md`)
 
+## PRODUCT-GRADE RULE (PR-META-3, 2026-05-25)
+**המערכת הזאת תימכר.** Internal-tool standards do not survive a paying customer.
+Every PR is evaluated against **7 global gates** on top of its per-PR rubric:
+
+- **G1** — Customer-visible errors are professional (Hebrew, no stack traces)
+- **G2** — Rollback path documented (under 5 minutes)
+- **G3** — Monitoring touched if data-mutating (log on success + failure)
+- **G4** — Test proves the customer scenario (not just helper-level)
+- **G5** — Hebrew customer-facing text (no English in UI strings)
+- **G6** — No breaking change without migration plan
+- **G7** — Security agent reviewed if PII / auth / permissions touched
+
+Each gate: **PASS / N/A / FAIL**. Any FAIL → grader returns FAIL.
+PR body MUST contain `PRODUCT-GRADE GATES` section with status per gate.
+Pre-PR hook (`require-outcomes-pass.sh`) blocks `gh pr create` if missing.
+
+Full spec: `.claude/rubrics/_PRODUCT-GRADE-GATES.md`. **Read it. Every gate.**
+
+Inspired by [Anthropic Claude Code Auto Mode](https://www.anthropic.com/engineering/claude-code-auto-mode) — two-layer safety classifier pattern.
+
 ## EFFORT SCALING RULE (PR-META-1)
 לפני dispatching >3 sub-agents במקביל — `effort-scaler` חובה (model: haiku, מהיר).
 מחזיר LIGHT (1-3) / MEDIUM (4-7) / HEAVY (8-15) + רשימת agents מומלצים.
