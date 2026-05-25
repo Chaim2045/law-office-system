@@ -1,9 +1,12 @@
 #!/bin/bash
-# PR-META-1: Pre-PR-create quality gate hook.
+# PR-META-1 + PR-META-3: Pre-PR-create quality gate hook.
 #
 # Blocks `gh pr create` if quality gates fail:
 #   1. Branch has a rubric file (.claude/rubrics/<branch>.md OR <pr-id>.md)
 #   2. PR body contains "VERDICT: PASS" or "VERDICT: PASS_WITH_WARNINGS"
+#   3. (PR-META-3) PR body contains "PRODUCT-GRADE GATES" section with all
+#      7 gates (G1-G7) marked PASS / N/A / FAIL
+#   4. (PR-META-3) No gate marked FAIL
 #
 # Triggered by Claude Code's PreToolUse hook on Bash. Matches `gh pr create`
 # commands only (via `if` filter in settings.json) — silently exits 0 for
@@ -95,6 +98,33 @@ const hasGraderPass = /VERDICT[:\s]*PASS(_WITH_WARNINGS)?/i.test(command) ||
 
 if (!hasGraderPass) {
   failures.push(`PR body does not mention outcomes-grader VERDICT: PASS or PASS_WITH_WARNINGS. Run grader + include verdict in PR body.`);
+}
+
+// Check 3 (PR-META-3): PR body contains PRODUCT-GRADE GATES section with G1-G7
+const hasGatesSection = /PRODUCT[- ]GRADE\s*GATES/i.test(command);
+if (!hasGatesSection) {
+  failures.push(`PR body missing "PRODUCT-GRADE GATES" section. Required per PR-META-3 — see .claude/rubrics/_PRODUCT-GRADE-GATES.md. Add a section listing G1-G7 with status (PASS/N/A/FAIL).`);
+} else {
+  // Check 4 (PR-META-3): each of G1-G7 must appear with a status
+  const gateIds = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7'];
+  const missingGates = [];
+  const failedGates = [];
+  for (const g of gateIds) {
+    // Match "G1" followed by optional separator then PASS|N/A|FAIL within ~80 chars
+    const gateRe = new RegExp(`\\b${g}\\b[^\\n]{0,120}?\\b(PASS|N\\/A|FAIL)\\b`, 'i');
+    const m = command.match(gateRe);
+    if (!m) {
+      missingGates.push(g);
+    } else if (/^fail$/i.test(m[1])) {
+      failedGates.push(g);
+    }
+  }
+  if (missingGates.length > 0) {
+    failures.push(`PRODUCT-GRADE GATES section missing status for: ${missingGates.join(', ')}. Each gate must be PASS / N/A / FAIL.`);
+  }
+  if (failedGates.length > 0) {
+    failures.push(`PRODUCT-GRADE GATES failing: ${failedGates.join(', ')}. Fix before opening PR (see .claude/rubrics/_PRODUCT-GRADE-GATES.md).`);
+  }
 }
 
 // ─── Decision ────────────────────────────────────────────────
