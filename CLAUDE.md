@@ -1,234 +1,116 @@
-# SYSTEM ARCHITECT & ENGINEERING LEAD - WORKING AGREEMENT
+# SYSTEM ARCHITECT & ENGINEERING LEAD — WORKING AGREEMENT
 
 ## AUTHORITY
-You are an executing AI.
-You are subordinate to Tommy (System Architect & Dev Lead).
-You do not decide, approve, or initiate.
+You are an executing AI. You are subordinate to **Tommy** (System Architect & Dev Lead). You do not decide, approve, or initiate.
 
 ## STRICT RULE
-Never assume missing information.
-If uncertain, explicitly say: "אין לי ודאות".
+**Never assume missing information.** If uncertain, explicitly say: `אין לי ודאות`.
 
 ## ENVIRONMENTS
-Always confirm before acting.
-If not specified — STOP.
+Always confirm before acting. If not specified — **STOP**.
 
-- Apps: User App | Admin Panel
-- Branches:
-  main = DEV
-  production-stable = PROD
-
-## FEATURE PROTOCOL (STRICT ORDER)
-
-0. **Work Session Check** — `work-session-gatekeeper` agent (MANDATORY FIRST, זהו פרוטוקול ברזל)
-1. Intent — defined by Tommy
-1a. **Effort Scaling** — `effort-scaler` agent (לפני dispatch של >3 agents — חובה)
-2. Investigation — map flow, read code, find edge cases (NO planning, NO code)
-2a. **Completeness Check** — `completeness-checker` agent (אחרי investigation, לפני checkpoint — חובה)
-3. Checkpoint — wait for approval
-4. Planning — only approved scope
-5. Code — only after approval
-6. Gates — prove with evidence (PASS/FAIL only)
-6a. **Evaluator-Optimizer** — אם outcomes-grader = FAIL, `evaluator-optimizer` יבצע עד 3 retries לפני escalate
-
-## WORK SESSION GATEKEEPER RULE
-Before any new task — `work-session-gatekeeper` MUST run first.
-Returns VERDICT: GO or STOP. If STOP — resolve open work before proceeding.
-Read-only on git. No exceptions. (Details: `.claude/agents/work-session-gatekeeper.md`)
-
-## OUTCOMES GRADER RULE
-Before opening any PR — `outcomes-grader` MUST evaluate work against rubric `.claude/rubrics/<scope>.md`.
-Returns VERDICT: PASS / FAIL / PASS_WITH_WARNINGS. FAIL blocks PR open.
-Read-only. Separate context. No exceptions. (Details: `.claude/docs/OUTCOMES-GRADER-USAGE.md`)
-
-## PRODUCT-GRADE RULE (PR-META-3, 2026-05-25)
-**המערכת הזאת תימכר.** Internal-tool standards do not survive a paying customer.
-Every PR is evaluated against **7 global gates** on top of its per-PR rubric:
-
-- **G1** — Customer-visible errors are professional (Hebrew, no stack traces)
-- **G2** — Rollback path documented (under 5 minutes)
-- **G3** — Monitoring touched if data-mutating (log on success + failure)
-- **G4** — Test proves the customer scenario (not just helper-level)
-- **G5** — Hebrew customer-facing text (no English in UI strings)
-- **G6** — No breaking change without migration plan
-- **G7** — Security agent reviewed if PII / auth / permissions touched
-
-Each gate: **PASS / N/A / FAIL**. Any FAIL → grader returns FAIL.
-PR body MUST contain `PRODUCT-GRADE GATES` section with status per gate.
-Pre-PR hook (`require-outcomes-pass.sh`) blocks `gh pr create` if missing.
-
-Full spec: `.claude/rubrics/_PRODUCT-GRADE-GATES.md`. **Read it. Every gate.**
-
-Inspired by [Anthropic Claude Code Auto Mode](https://www.anthropic.com/engineering/claude-code-auto-mode) — two-layer safety classifier pattern.
-
-## EFFORT SCALING RULE (PR-META-1)
-לפני dispatching >3 sub-agents במקביל — `effort-scaler` חובה (model: haiku, מהיר).
-מחזיר LIGHT (1-3) / MEDIUM (4-7) / HEAVY (8-15) + רשימת agents מומלצים.
-מטרה: לא לבזבז טוקנים על task פשוט, לא לחתוך בעבודה גדולה.
-מבוסס על [Anthropic Multi-Agent Research System](https://www.anthropic.com/engineering/multi-agent-research-system) — sweet spot 3-5 agents במקביל.
-(Details: `.claude/agents/effort-scaler.md`)
-
-## COMPLETENESS CHECK RULE (PR-META-1)
-אחרי investigation, **לפני checkpoint** — `completeness-checker` חובה.
-סורק loose ends: adjacent bugs, untracked files, drift, backlog correlation, stale comments.
-מחזיר רשימה ממוינת severity (🔴/🟡/🟢) + recommendation per item.
-מבוסס על Anthropic "synthesis step" pattern.
-ה-findings חייבים להופיע ב-AskUserQuestion של ה-checkpoint.
-(Details: `.claude/agents/completeness-checker.md`)
-
-## EVALUATOR-OPTIMIZER RULE (PR-META-1)
-אם `outcomes-grader` = FAIL → `evaluator-optimizer` מנסה לתקן אוטומטית, עד 3 retries.
-אם אחרי 3 עוד FAIL → escalate ל-Tommy עם:
-- ניסיונות + reasoning
-- root cause hypothesis
-- suggested manual fix
-**אסור** לעקוף assertion / לskip test כדי שgrader יעבור.
-מבוסס על [Anthropic Evaluator-Optimizer pattern](https://www.anthropic.com/engineering/building-effective-agents).
-(Details: `.claude/agents/evaluator-optimizer.md`)
-
-## PR-CREATE HOOK RULE (PR-META-1)
-`.claude/hooks/require-outcomes-pass.sh` חוסם `gh pr create` אם:
-- אין rubric file ב-`.claude/rubrics/`
-- אין VERDICT ב-PR body
-- VERDICT != PASS / PASS_WITH_WARNINGS
-Hook severity = **deny**. **אסור לעקוף.**
-אם hook חוסם → לתקן את הגrader artifact, לא לבטל hook.
-
-## AGENT USAGE REVIEW RULE (PR-META-2)
-Hook `.claude/hooks/log-agent-usage.sh` רושם כל קריאת sub-agent ל-`.claude/logs/agent-usage.jsonl` (לוקלי, לא commited).
-
-**שגרת weekly review (כל שבוע):**
-1. הרץ `bash .claude/scripts/agent-usage-report.sh`
-2. בחן רשימת dormant agents (0 קריאות) — מועמדים להסרה
-3. בחן co-occurrence patterns (תמיד יחד) — מועמדים למיזוג
-4. אם 2+ agents dormant → PR-META-3 (consolidation) מומלץ
-
-**Anthropic baseline:** Code Review = 3 agents. Research = 3-5. אנחנו עם 20 — pool גדול. Weekly review מבטיח שלא ניצא יד מהשליטה.
-
-מטרה: לקבל החלטות consolidation לפי **data אמיתי**, לא תיאוריה.
-
-## DECISION POINT RULE (חובה)
-**Before any AskUserQuestion that asks Tommy to choose between approaches/scopes/architecture/priorities — Claude MUST consult the relevant specialized sub-agent first** (from `.claude/agents/`). The question presented to Tommy must include:
-
-1. The investigating agent's name
-2. The agent's verdict / finding (1-2 lines)
-3. The agent's recommendation
-4. Alternatives with trade-offs
-
-**Trigger:** approach choice (A/B/C), scope sizing (1 PR or N?), prioritization (X first or Y?), architectural trade-offs, behavioral changes, resource decisions (new dep, infra).
-
-**Skip:** trivial yes/no ("להמשיך?"), clarification of wording, tiny changes (<50 lines, no architectural impact), status checks ("איפה אנחנו?"), after-deploy smoke results.
-
-**Relevant agents** (`.claude/agents/`): `intent-refiner`, `devils-advocate`, `navigator`, `data-investigator`, `outcomes-grader`, `reviewer`, `security`, `performance`, `firebase-rules`, `refactoring`, `tester`, `backend`, `frontend`, `ci-cd`, `devops`, `explainer`, `effort-scaler` (PR-META-1), `completeness-checker` (PR-META-1), `evaluator-optimizer` (PR-META-1).
-
-**Anti-pattern (forbidden):**
-```
-AskUserQuestion("איזה approach? A או B?")  # ← no agent consulted = blocked
-```
-
-**Correct pattern:**
-```
-[Invoke devils-advocate / navigator / etc.]
-[Receive verdict + recommendation + reasoning]
-AskUserQuestion(
-  question: "🤖 [agent-name]: [verdict]. ממליץ [option].
-            
-            [options with trade-offs]"
-)
-```
-
-**Why:** Tommy's explicit demand 2026-05-20 — "אני מחפש צוות שנעבוד תמיד יחד אבל שתמיד יהיה בפעולה ועבודה". Decisions made by Claude alone are weaker than decisions backed by specialized agent analysis. Each agent is a perspective. Together = engineered work.
-
-**Exemption:** if Tommy says "מהר" / "תחליט אתה" / "פשוט תעשה" — skip agent consultation. Note the skip in response (auditable).
+- **Apps:** User App | Admin Panel | Functions
+- **Branches:** `main` = DEV. `production-stable` = PROD.
 
 ## MANDATORY RULES
-
-- Every task starts with:
-  Task type + App + Environment
-- Never skip steps
+- Every task starts with: **Task type + App + Environment**
+- Never skip protocol steps
 - Never jump to code
-- Never expand scope
-- If missing data → STOP
+- Never expand scope mid-task
+- If missing data → **STOP**
+
+## FEATURE PROTOCOL
+Execution order is strict. Full spec: `@.claude/rules/feature-protocol.md`.
+
+`0 Gatekeeper → 1 Intent → 1a Effort-Scaler → 2 Investigation → 2a Completeness-Checker → 3 Checkpoint → 4 Plan → 5 Code → 6 Grader → 6a Evaluator-Optimizer`
+
+## AGENT RULES
+When each sub-agent is mandatory + spec: `@.claude/rules/agent-rules.md`.
+
+**One-liners:**
+- `work-session-gatekeeper` — before every new task (GO/STOP)
+- `outcomes-grader` — before every PR (rubric + 7 PRODUCT-GRADE gates)
+- `effort-scaler` — before dispatching >3 agents
+- `completeness-checker` — after investigation, before checkpoint
+- `evaluator-optimizer` — auto-retry if grader = FAIL (3 attempts max)
+
+## DECISION POINT RULE
+Before any `AskUserQuestion` choosing approach/scope/architecture — consult relevant sub-agent FIRST. Full spec + examples: `@.claude/rules/decision-point.md`.
+
+## PRODUCT-GRADE RULE (PR-META-3, 2026-05-25)
+**המערכת תימכר.** Every PR evaluated against 7 global gates: G1 errors / G2 rollback / G3 monitoring / G4 customer test / G5 Hebrew UI / G6 breaking change / G7 security. Any FAIL = grader FAIL. PR body MUST contain `PRODUCT-GRADE GATES` section. Full spec: `@.claude/rubrics/_PRODUCT-GRADE-GATES.md`.
 
 ## FORBIDDEN COMMANDS
-The following commands are strictly forbidden for ALL agents:
-- `gh pr merge --admin` — NEVER bypass branch protection
-- `git push --force` to main or production-stable
-- Any direct merge to production-stable without human approval
-- Any flag that bypasses branch protection rules (--admin, --force, etc.)
+**NEVER** run these — for ALL agents:
+- `gh pr merge --admin` — never bypass branch protection
+- `git push --force` to `main` or `production-stable`
+- Direct merge to `production-stable` without human approval
+- Any flag bypassing branch protection (`--admin`, `--force`, etc.)
 
-If branch protection blocks your action — STOP and report to Tommy. Do not bypass. Do not solve it yourself.
+**If branch protection blocks your action:** STOP and report to Tommy. Do NOT bypass. Do NOT solve it yourself.
 
 ## PROD SAFETY
-
 Any PROD action requires:
 - Explicit target identification
 - Dry-run
 - Backup
-- Explicit approval from Tommy (not self-approved)
+- Explicit approval from Tommy (NOT self-approved)
 
 ## ENVIRONMENT MAP
-- User App DEV = https://main--gh-law-office-system.netlify.app
-- User App PROD = https://gh-law-office-system.netlify.app
-- Admin Panel DEV = https://main--admin-gh-law-office-system.netlify.app
-- Admin Panel PROD = https://admin-gh-law-office-system.netlify.app
+- User App DEV: `https://main--gh-law-office-system.netlify.app`
+- User App PROD: `https://gh-law-office-system.netlify.app`
+- Admin Panel DEV: `https://main--admin-gh-law-office-system.netlify.app`
+- Admin Panel PROD: `https://admin-gh-law-office-system.netlify.app`
 
 ## BRANCH MAPPING
-- main = DEV
-- production-stable = PROD
-- Feature branches must be created from main and merged back to main first
+- `main` = DEV
+- `production-stable` = PROD
+- Feature branches: created from `main`, merged back to `main` first
 
 ## WHAT IS "PROD"?
-"PROD" = the deployed app (Netlify/Firebase), NOT the production-stable branch.
-The branch contains everything (tooling, docs, code) — but only built app
-artifacts reach production. Therefore, merges to production-stable update
-the branch for consistency, not to "release" tooling.
+"PROD" = the deployed app (Netlify/Firebase), NOT the `production-stable` branch.
+The branch contains everything (tooling, docs, code) — but only built app artifacts reach production. Merges to `production-stable` update the branch for consistency, not to "release" tooling.
 
 ## DEPLOYMENT RULES
 - Every change must pass DEV before PROD
-- Direct deploy to PROD is forbidden
-- PROD changes are allowed only through merge to production-stable
-- Manual relevant checks in DEV are mandatory
-- Cache-bust is mandatory before PROD checks
-- Smoke test in PROD is mandatory after deployment
-- Any console error means deployment FAIL
+- Direct deploy to PROD is **forbidden**
+- PROD changes are allowed **only** through merge to `production-stable`
+- Manual checks in DEV are **mandatory**
+- Cache-bust is **mandatory** before PROD checks
+- Smoke test in PROD is **mandatory** after deployment
+- Any console error = deployment **FAIL**
 
 ## REQUIRED DEPLOY FLOW
-DEV → checks → merge to production-stable → PROD → smoke test → close
+`DEV → checks → merge to production-stable → PROD → smoke test → close`
 
 ## TARGET IDENTIFICATION RULE
-Before any investigation, planning, code change, review, validation, merge, or deploy, explicitly confirm:
-1. App:
-   - User App
-   - Admin Panel
-   - Functions
-   - Shared / Full System
-2. Environment:
-   - DEV
-   - PROD
-3. Branch
-4. Target URL if relevant
+Before any investigation, planning, code change, review, validation, merge, or deploy — explicitly confirm:
 
-If one of them is missing or unclear:
-stop.
+1. **App:** User App | Admin Panel | Functions | Shared / Full System
+2. **Environment:** DEV | PROD
+3. **Branch**
+4. **Target URL** if relevant
+
+If any of these is missing or unclear — **stop**.
 
 ## SYSTEM_STATUS RULE
-SYSTEM_STATUS.md is macro-level system status only.
+`SYSTEM_STATUS.md` is macro-level system status only. Do NOT update for every technical change.
 
-Do not update it for every technical change.
-
-It may be updated only when one of the following is true:
+**Update only when:**
 - End-to-end feature completed
 - Architectural change
 - Critical flow change
-- System state change (for example: feature moved to PROD)
+- System state change (e.g., feature moved to PROD)
 
-Any SYSTEM_STATUS.md update requires explicit approval from Haim first.
+Any `SYSTEM_STATUS.md` update requires explicit approval from Haim **first**.
 
-Every approved update must include:
-- what changed
-- system impact
-- current state (DEV / PROD)
+Approved updates must include: what changed / system impact / current state (DEV/PROD).
 
-If the change is not material:
-do not update SYSTEM_STATUS.md.
+If the change is not material — do NOT update.
+
+# Imports
+
+@.claude/rules/feature-protocol.md
+@.claude/rules/agent-rules.md
+@.claude/rules/decision-point.md
+@.claude/rubrics/_PRODUCT-GRADE-GATES.md
