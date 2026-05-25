@@ -22,6 +22,8 @@ window.CONFIG = {
 
 // Core Utilities & State Management
 import * as CoreUtils from './modules/core-utils.js';
+// PR-G.3.10: canonical IL-TZ date helpers (frontend SSOT)
+import { todayInJerusalemYMD, dateToJerusalemYMD, startOfMonthYMD, addDaysYMD, dayOfWeekYMD } from './modules/tz-helper.js';
 import { DOMCache } from './modules/dom-cache.js';
 import DataCache from './modules/data-cache.js';
 import STATE_CONFIG from './config/state-config.js';
@@ -1899,29 +1901,18 @@ plusButton.classList.remove('active');
 
   loadMonthlyTimesheetStats() {
     try {
-      const getDateString = (date) => {
-        if (!date) {
-return '';
-}
-        if (typeof date === 'string') {
-return date;
-}
-        if (date.toDate) {
-return date.toDate().toISOString().substring(0, 10);
-}
-        if (date instanceof Date) {
-return date.toISOString().substring(0, 10);
-}
-        return String(date);
-      };
+      // PR-G.3.10: all date semantics anchored to Asia/Jerusalem via
+      // tz-helper. Was: `.toISOString().substring(0,10)` (UTC slice) +
+      // host-TZ `now.getFullYear()/getMonth()` for boundaries. At IL
+      // midnight or for users abroad, that misclassified month/week.
+      const getDateString = (date) => dateToJerusalemYMD(date);
 
-      const now = new Date();
-      const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const todayStr = todayInJerusalemYMD();
+      const startOfMonth = startOfMonthYMD(todayStr);
 
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth()+1).padStart(2,'0')}-${String(startOfWeek.getDate()).padStart(2,'0')}`;
+      // Start-of-week = Sunday in Asia/Jerusalem
+      const todayDow = dayOfWeekYMD(todayStr);  // 0=Sun..6=Sat
+      const startOfWeekStr = addDaysYMD(todayStr, -todayDow);
 
       const entries = this.timesheetEntries || [];
       const monthEntries = entries.filter(e => getDateString(e.date) >= startOfMonth);

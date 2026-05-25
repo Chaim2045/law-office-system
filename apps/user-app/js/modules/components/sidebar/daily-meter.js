@@ -12,6 +12,10 @@
  *   - window.manager.showNotification (for overage alert)
  */
 
+// PR-G.3.10: canonical IL-TZ date helpers (frontend SSOT).
+// DO NOT use `.toISOString().slice(0,10)` — returns UTC, drifts at IL midnight.
+import { todayInJerusalemYMD, dateToJerusalemYMD, addDaysYMD, dayOfWeekYMD } from '../../tz-helper.js';
+
 const RADIUS = 21;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -558,45 +562,40 @@ return [];
       if (!e.date) {
 return false;
 }
-      // entries store date as YYYY-MM-DD string
-      const entryDate = typeof e.date === 'string'
-        ? e.date.slice(0, 10)
-        : new Date(e.date).toISOString().slice(0, 10);
+      // PR-G.3.10: normalize via IL-TZ helper to match _todayStr (also IL).
+      // Was: `.toISOString().slice(0,10)` (UTC) — mixed with IL todayStr.
+      const entryDate = dateToJerusalemYMD(e.date);
       return entryDate === todayStr;
     });
   }
 
   // PR-F: compute current week range (Sun..Sat) in Asia/Jerusalem.
+  // PR-G.3.10: pure string arithmetic via tz-helper — no host-TZ leakage
+  // through `new Date(y,m,d)` + `dt.getFullYear()/Month/Date()` (which
+  // could drift for browsers outside Asia/Jerusalem).
   // Returns { startStr, days: [{ dateStr, dayOfWeek, label }] }
   _getCurrentWeekRange() {
     const todayStr = this._todayStr;
-    // Parse YYYY-MM-DD as local (Asia/Jerusalem already applied by _getTodayStr)
-    const [y, m, d] = todayStr.split('-').map(Number);
-    const todayDate = new Date(y, m - 1, d);
-    const todayDow = todayDate.getDay();  // 0=Sun..6=Sat
-
-    // Start of week — Sunday
-    const sunday = new Date(todayDate);
-    sunday.setDate(todayDate.getDate() - todayDow);
+    const todayDow = dayOfWeekYMD(todayStr);  // 0=Sun..6=Sat
+    const startStr = addDaysYMD(todayStr, -todayDow);
 
     const days = [];
     const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
     for (let i = 0; i < 7; i++) {
-      const dt = new Date(sunday);
-      dt.setDate(sunday.getDate() + i);
-      const yy = dt.getFullYear();
-      const mm = String(dt.getMonth() + 1).padStart(2, '0');
-      const dd = String(dt.getDate()).padStart(2, '0');
-      const dateStr = `${yy}-${mm}-${dd}`;
-      const dowStr = String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0');
+      const dateStr = addDaysYMD(startStr, i);
+      const dow = dayOfWeekYMD(dateStr);
+      // Build dd/mm label from the dateStr itself (string slice — TZ-safe).
+      const dd = dateStr.slice(8, 10);
+      const mm = dateStr.slice(5, 7);
+      const dowStr = `${dd}/${mm}`;
       days.push({
         dateStr,
-        dayOfWeek: dt.getDay(),
-        label: `${DAY_NAMES[dt.getDay()]} ${dowStr}`
+        dayOfWeek: dow,
+        label: `${DAY_NAMES[dow]} ${dowStr}`
       });
     }
 
-    return { startStr: days[0].dateStr, days };
+    return { startStr, days };
   }
 
   // PR-F: group entries by day for week-view rendering.
@@ -613,11 +612,8 @@ return false;
       if (!e || !e.date) {
 continue;
 }
-      const entryDateStr = typeof e.date === 'string'
-        ? e.date.slice(0, 10)
-        : (e.date && typeof e.date.toDate === 'function'
-            ? e.date.toDate().toISOString().slice(0, 10)
-            : new Date(e.date).toISOString().slice(0, 10));
+      // PR-G.3.10: route through IL-TZ helper (matches range.days[].dateStr).
+      const entryDateStr = dateToJerusalemYMD(e.date);
       const bucket = byDate.get(entryDateStr);
       if (bucket) {
         bucket.entries.push(e);
@@ -697,12 +693,10 @@ return a.isInternal ? 1 : -1;
     return `${hrs}:${String(mins).padStart(2, '0')}`;
   }
 
+  // PR-G.3.10: delegate to IL-TZ helper. Previously used host-TZ fields
+  // (`d.getFullYear()` etc) — correct only if browser TZ matches IL.
   _getTodayStr() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return todayInJerusalemYMD();
   }
 
   _escapeHtml(str) {
