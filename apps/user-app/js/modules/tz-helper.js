@@ -120,6 +120,47 @@ export function startOfMonthYMD(ymd) {
   return `${ymd.slice(0, 7)}-01`;
 }
 
+/**
+ * PR-G.3.11: format a Date as `YYYY-MM-DDTHH:mm` in Asia/Jerusalem.
+ * Suitable for `<input type="datetime-local">` `.value` assignments.
+ *
+ * Bug fixed: was `date.toISOString().slice(0, 16)` which yields UTC
+ * (e.g. for IL 17:00 winter, UTC is 15:00, so the picker default jumps
+ * back 2-3h for IL users; worse for users abroad).
+ *
+ * @param {Date} date - JS Date instance
+ * @returns {string} `YYYY-MM-DDTHH:mm` or `''` on invalid input
+ */
+const _JERUSALEM_DATETIME_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Jerusalem',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
+
+export function dateTimeToJerusalemLocalInput(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+  // en-CA + above options yields parts in form 'YYYY-MM-DD, HH:mm' on Chrome
+  // and 'YYYY-MM-DD, HH:mm' on Firefox. Use formatToParts for stable output.
+  const parts = _JERUSALEM_DATETIME_FMT.formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  const y = get('year');
+  const m = get('month');
+  const d = get('day');
+  let h = get('hour');
+  const min = get('minute');
+  // Some engines emit '24' for midnight under hour12:false — normalize to '00'.
+  if (h === '24') {
+    h = '00';
+  }
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Window mirror — for non-module consumers (matches dates.js pattern)
 // ─────────────────────────────────────────────────────────────────
@@ -129,6 +170,7 @@ if (typeof window !== 'undefined') {
     dateToJerusalemYMD,
     addDaysYMD,
     dayOfWeekYMD,
-    startOfMonthYMD
+    startOfMonthYMD,
+    dateTimeToJerusalemLocalInput
   };
 }
