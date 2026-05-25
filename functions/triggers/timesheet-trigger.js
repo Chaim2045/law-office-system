@@ -354,12 +354,40 @@ const onTimesheetEntryChanged = onDocumentWritten({
           let resolvedPackageId = packageId;
 
           if (!resolvedPackageId) {
-            // Fallback: find first eligible package (same priority as getActivePackage)
-            const fallbackPkg = (targetService.packages || []).find((pkg) => {
-              const status = pkg.status || 'active';
-              return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
-                && (hasOverride || (pkg.hoursRemaining || 0) > -10);
-            });
+            // PR-DED-1 (2026-05-25): two-pass selection — prefer FRESH packages
+            // (hoursRemaining > 0, active/pending) over depleted ones. FIFO
+            // tie-break by purchaseDate/createdAt ASC. Matches updated
+            // getActivePackage in deduction-logic.js.
+            //
+            // ⚠️ DO NOT EDIT IN ISOLATION — the canonical implementation lives
+            // at `functions/src/modules/deduction/deduction-logic.js`
+            // `getActivePackage`. This inline duplicate exists because the
+            // trigger runs as a separate process and reimports the module
+            // would add cold-start cost. ANY change to the canonical selection
+            // priority MUST be mirrored here, and vice versa.
+            const _orderKey = (p) => {
+              const raw = p.purchaseDate || p.createdAt;
+              if (!raw) return Number.POSITIVE_INFINITY;
+              const t = new Date(raw).getTime();
+              return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+            };
+            const _packages = targetService.packages || [];
+            const _fresh = _packages
+              .filter((pkg) => {
+                const status = pkg.status || 'active';
+                const isFresh = ['active', 'pending'].includes(status);
+                return isFresh && (pkg.hoursRemaining || 0) > 0;
+              })
+              .sort((a, b) => _orderKey(a) - _orderKey(b));
+            let fallbackPkg = _fresh[0] || null;
+            if (!fallbackPkg) {
+              // Fallback: depleted/overdraft within -10h floor (override bypasses).
+              fallbackPkg = _packages.find((pkg) => {
+                const status = pkg.status || 'active';
+                return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
+                  && (hasOverride || (pkg.hoursRemaining || 0) > -10);
+              });
+            }
             if (fallbackPkg) {
               resolvedPackageId = fallbackPkg.id;
               console.log(`🔧 [timesheet-trigger] Resolved missing packageId → ${resolvedPackageId} for entry ${entryId}`);
@@ -393,12 +421,38 @@ const onTimesheetEntryChanged = onDocumentWritten({
           }
 
           if (targetStage.pricingType !== PT.FIXED && !packageId) {
-            // Fallback: find first eligible package from stage
-            const fallbackStagePkg = (targetStage.packages || []).find((pkg) => {
-              const status = pkg.status || 'active';
-              return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
-                && (pkg.hoursRemaining || 0) > -10;
-            });
+            // PR-DED-1 (2026-05-25): two-pass selection — prefer FRESH packages
+            // (hoursRemaining > 0) over depleted ones. FIFO tie-break.
+            // NOTE: overrideActive propagation for legal_procedure is a
+            // separate feature gap (PR-DED-2); this PR only fixes selection
+            // priority, preserving the current behavior of ignoring override
+            // on this code path.
+            //
+            // ⚠️ DO NOT EDIT IN ISOLATION — see note above the HOURS-path
+            // inline duplicate. Mirror with deduction-logic.js getActivePackage.
+            const _orderKey = (p) => {
+              const raw = p.purchaseDate || p.createdAt;
+              if (!raw) return Number.POSITIVE_INFINITY;
+              const t = new Date(raw).getTime();
+              return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+            };
+            const _packages = targetStage.packages || [];
+            const _fresh = _packages
+              .filter((pkg) => {
+                const status = pkg.status || 'active';
+                const isFresh = ['active', 'pending'].includes(status);
+                return isFresh && (pkg.hoursRemaining || 0) > 0;
+              })
+              .sort((a, b) => _orderKey(a) - _orderKey(b));
+            let fallbackStagePkg = _fresh[0] || null;
+            if (!fallbackStagePkg) {
+              // Fallback: depleted/overdraft within -10h floor.
+              fallbackStagePkg = _packages.find((pkg) => {
+                const status = pkg.status || 'active';
+                return ['active', 'pending', 'overdraft', 'depleted'].includes(status)
+                  && (pkg.hoursRemaining || 0) > -10;
+              });
+            }
 
             if (fallbackStagePkg) {
               console.log(`🔧 [timesheet-trigger] Resolved missing packageId → ${fallbackStagePkg.id} for hourly stage ${resolvedStageId}`);

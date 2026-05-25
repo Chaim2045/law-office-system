@@ -46,57 +46,144 @@
  */
 
 /**
- * Finds the active package in a stage
+ * Finds the active package in a stage/service for deduction.
  *
- * @param {Object} stage - Stage object with packages array
- * @param {boolean} allowOverdraft - Allow packages with negative hours (up to -10)
- * @returns {Object|null} Active package or null if not found
+ * @param {Object} stage - Stage or service object with packages array
+ * @param {boolean} allowOverdraft - Allow falling back to packages with negative hours (up to -10)
+ * @param {boolean} overrideActive - When true, the -10h floor is bypassed in the fallback pass
+ * @returns {Object|null} Selected package or null if none eligible
  *
- * 🔥 FIX (2025-12-01): במבנה החדש של Legal Procedure v2.0,
- * כאשר stage.status === 'active', החבילה הראשונה צריכה להיות active
- * גם אם package.status === 'pending' (זה מצב תקין!)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📝 SELECTION PRIORITY (PR-DED-1, 2026-05-25)
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * ✅ UPGRADE (2025-12-21): תמיכה ב-overdraft עד -10 שעות
- * כדי למנוע הפרעה למהלך העבודה התקין
+ * Two-pass selection:
+ *   1. **Fresh pass:** prefer the OLDEST package (by purchaseDate / createdAt
+ *      ascending) with `hoursRemaining > 0` AND status in
+ *      ['active', 'pending', no-status]. This drains old "additional"
+ *      packages FIFO before newer ones — matches per-package billing model
+ *      surfaced by `ReportGenerator.renderPackagesBreakdown`.
+ *
+ *   2. **Fallback pass (only if allowOverdraft):** if no fresh package
+ *      exists, return the first eligible package within the -10h floor
+ *      (or any package if overrideActive=true). Status set includes
+ *      'overdraft' and 'depleted' to keep BC for legacy single-package
+ *      overdraft flows.
+ *
+ * Why this exists:
+ *   Before this fix, `.find()` returned the FIRST eligible package, which
+ *   meant a depleted initial package (hoursRemaining=-7.6, status=depleted)
+ *   was selected even when a fresh additional package (hoursRemaining=35.5,
+ *   status=active) existed alongside it. Result: customer-blocking
+ *   CLIENT_OVERDRAFT_SOFT errors despite having paid for fresh hours.
+ *
+ * Historical context (preserved):
+ *   - 2025-12-01: pending packages eligible when stage.status === 'active'
+ *   - 2025-12-21: overdraft window (-10h) for uninterrupted workflow
+ *   - 2026-05-25 (this fix): fresh-first priority over depleted
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 const { SYSTEM_CONSTANTS } = require('../../../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
+
+// Helper: ascending sort key for FIFO tie-break of fresh packages
+function _packageOrderKey(pkg) {
+  const raw = pkg.purchaseDate || pkg.createdAt;
+  if (!raw) return Number.POSITIVE_INFINITY; // no timestamp → sort to end
+  const t = new Date(raw).getTime();
+  return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+}
 
 function getActivePackage(stage, allowOverdraft = true, overrideActive = false) {
   if (!stage || !stage.packages || stage.packages.length === 0) {
     return null;
   }
 
-  // 🔥 FIX: אם השלב הוא active, קח את החבילה הראשונה עם שעות
-  // זה פותר את הבאג שבו stage_b.status='active' אבל package.status='pending'
+  // Branch A: modern data — packages live under an active/completed stage.
+  // Eligible statuses include 'pending' (legal_procedure v2.0 — stage active,
+  // first package may carry status='pending' initially).
   if (stage.status === 'active' || stage.status === 'completed') {
-    return stage.packages.find(pkg => {
-      const isActiveOrPending = !pkg.status || pkg.status === 'active' || pkg.status === 'pending' || pkg.status === 'overdraft' || pkg.status === 'depleted';
-      const hoursRemaining = pkg.hoursRemaining || 0;
+    const eligibleStatus = (s) =>
+      !s || s === 'active' || s === 'pending' || s === 'overdraft' || s === 'depleted';
 
-      if (allowOverdraft) {
-        // ✅ אפשר חריגה עד -10 שעות (כולל חבילות depleted)
-        return isActiveOrPending && (overrideActive || hoursRemaining > -10);
-      } else {
-        // התנהגות מקורית - רק חבילות עם שעות חיוביות
-        return isActiveOrPending && hoursRemaining > 0;
-      }
+    // Pass 1 (fresh): hoursRemaining > 0 AND status fresh-or-pending.
+    // FIFO tie-break by purchaseDate/createdAt ascending — old "additional"
+    // packages drain before newly purchased ones.
+    const freshCandidates = stage.packages.filter(pkg => {
+      const status = pkg.status;
+      const isFresh = !status || status === 'active' || status === 'pending';
+      return isFresh && (pkg.hoursRemaining || 0) > 0;
+    });
+    if (freshCandidates.length > 0) {
+      freshCandidates.sort((a, b) => _packageOrderKey(a) - _packageOrderKey(b));
+      return freshCandidates[0];
+    }
+
+    // No allowOverdraft → strict mode, no depleted fallback.
+    if (!allowOverdraft) {
+      return null;
+    }
+
+    // Pass 2 (fallback): depleted/overdraft within -10h floor (or any if override).
+    const fallbackA = stage.packages.find(pkg => {
+      if (!eligibleStatus(pkg.status)) return false;
+      const hoursRemaining = pkg.hoursRemaining || 0;
+      return overrideActive || hoursRemaining > -10;
     }) || null;
+    if (fallbackA) {
+      try {
+        console.warn(
+          `[deduction] getActivePackage fallback to non-fresh package id=${fallbackA.id} ` +
+          `status=${fallbackA.status || 'none'} hoursRemaining=${fallbackA.hoursRemaining || 0} ` +
+          `overrideActive=${overrideActive}`
+        );
+      } catch (_) { /* logging is best-effort */ }
+    }
+    return fallbackA;
   }
 
-  // Backward compatibility: packages ישנים ללא stage.status
-  // Find first package with status 'active' (or no status) and hoursRemaining > 0
-  return stage.packages.find(pkg => {
-    const isActive = !pkg.status || pkg.status === 'active' || pkg.status === 'overdraft' || pkg.status === 'depleted';
-    const hoursRemaining = pkg.hoursRemaining || 0;
+  // Branch B: BC — legacy packages without an explicit stage.status.
+  // Eligible statuses tighter ('pending' NOT included here, matching legacy).
+  const eligibleStatusBC = (s) =>
+    !s || s === 'active' || s === 'overdraft' || s === 'depleted';
 
-    if (allowOverdraft) {
-      return isActive && (overrideActive || hoursRemaining > -10);
-    } else {
-      return isActive && hoursRemaining > 0;
-    }
+  // Pass 1 (fresh): hoursRemaining > 0 AND status active-or-none.
+  const freshCandidatesBC = stage.packages.filter(pkg => {
+    const status = pkg.status;
+    const isFresh = !status || status === 'active';
+    return isFresh && (pkg.hoursRemaining || 0) > 0;
+  });
+  if (freshCandidatesBC.length > 0) {
+    freshCandidatesBC.sort((a, b) => _packageOrderKey(a) - _packageOrderKey(b));
+    return freshCandidatesBC[0];
+  }
+
+  if (!allowOverdraft) {
+    return null;
+  }
+
+  // Pass 2 (fallback): same -10h floor + override semantics as Branch A.
+  const fallback = stage.packages.find(pkg => {
+    if (!eligibleStatusBC(pkg.status)) return false;
+    const hoursRemaining = pkg.hoursRemaining || 0;
+    return overrideActive || hoursRemaining > -10;
   }) || null;
+
+  // PR-DED-1 G3 monitoring: log when fallback path is taken (depleted/overdraft
+  // selected because no fresh package exists). Helps spot misconfigured stages
+  // post-deploy.
+  if (fallback) {
+    try {
+      console.warn(
+        `[deduction] getActivePackage fallback to non-fresh package id=${fallback.id} ` +
+        `status=${fallback.status || 'none'} hoursRemaining=${fallback.hoursRemaining || 0} ` +
+        `overrideActive=${overrideActive}`
+      );
+    } catch (_) { /* logging is best-effort */ }
+  }
+  return fallback;
 }
 
 /**

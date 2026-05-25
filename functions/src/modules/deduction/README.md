@@ -88,8 +88,44 @@ const hours = DeductionSystem.calculateRemainingHours(service);
 
 ### Deduction Logic
 
-#### `getActivePackage(stage)`
-מוצא חבילה פעילה בשלב.
+#### `getActivePackage(stage, allowOverdraft = true, overrideActive = false)`
+מוצא חבילה לקיזוז בשלב/בשירות, לפי סדר עדיפויות.
+
+**Parameters:**
+- `stage` (Object) — Stage or service object with `packages` array
+- `allowOverdraft` (boolean) — אם `false`, מחזיר רק חבילות עם שעות חיוביות (strict mode)
+- `overrideActive` (boolean) — אם `true`, רצפת ה-10h- נעקפת בpass הfallback
+
+**Selection priority (PR-DED-1, 2026-05-25):**
+
+1. **Fresh pass** — מעדיף חבילה **הוותיקה ביותר** (לפי `purchaseDate` / `createdAt` עולה) שעומדת בכל אלה:
+   - `hoursRemaining > 0`
+   - `status ∈ {'active', 'pending', no-status}`
+
+2. **Fallback pass** (רק אם `allowOverdraft=true`) — אם אין fresh, מחזיר חבילה ראשונה שעומדת ב:
+   - `status ∈ {'active', 'pending', 'overdraft', 'depleted'}` (Branch A — modern stage)
+   - או `status ∈ {'active', 'overdraft', 'depleted', no-status}` (Branch B — BC, stage ללא `.status`)
+   - `hoursRemaining > -10` (או כל ערך אם `overrideActive=true`)
+
+3. אם אין מועמדים → `null`.
+
+**Why two passes:** מערכת ה-billing מציגה ללקוח breakdown פר-חבילה (`ReportGenerator.renderPackagesBreakdown`). drain של חבילה ישנה לפני חדשה הוא FIFO billing נכון. בנוסף — חבילה depleted אסור שתבלוק רישום שעות אם יש חבילה טריה זמינה.
+
+**Example (Miri Daniel, client 2026065 stage_a):**
+```javascript
+const stage = {
+  status: 'active',
+  packages: [
+    { id: 'pkg_initial',    status: 'depleted', hoursRemaining: -7.6, purchaseDate: '2025-06-01' },
+    { id: 'pkg_additional', status: 'active',   hoursRemaining: 35.5, purchaseDate: '2026-05-25' }
+  ]
+};
+const pkg = DeductionSystem.getActivePackage(stage);
+// Pre-PR-DED-1: returned pkg_initial (depleted, blocked customer at -10h floor)
+// Post-PR-DED-1: returns pkg_additional (fresh, customer can log hours)
+```
+
+**G3 monitoring:** הפונקציה כותבת `console.warn` כש-fallback נבחר (חבילה לא-fresh). מאפשר זיהוי שלבים שצריכים חבילה חדשה.
 
 #### `deductHoursFromPackage(pkg, hours)`
 קיזוז שעות מחבילה (כולל סגירה אוטומטית).
@@ -156,6 +192,16 @@ npm run test calculators.test.ts
 - [DATA_STRUCTURE_STANDARD.md](../../docs/DATA_STRUCTURE_STANDARD.md) - מבנה הנתונים
 
 ## 📝 Version History
+
+### v3.1.0 (2026-05-25) — PR-DED-1
+- 🐛 fix: `getActivePackage` בחר חבילה ראשונה במערך גם אם depleted, מתעלם מחבילה טרייה שזמינה
+- ✨ selection priority חדש: fresh-first ב-pass ראשון, fallback ל-depleted/overdraft רק אם אין fresh
+- ✨ FIFO tie-break לפי `purchaseDate` / `createdAt` ASC (drain ישן לפני חדש)
+- ✨ G3 monitoring: `console.warn` בfallback path
+- 🧪 18 בדיקות חדשות ב-`functions/tests/get-active-package.test.js`
+
+### v3.0.0 (2025-11-23)
+- 🏗️ Architectural upgrade — immutable patterns ב-`deductHoursFromPackage` / `deductHoursFromStage`
 
 ### v1.0.0 (2025-11-11)
 - ✨ מודול מודולרי חדש
