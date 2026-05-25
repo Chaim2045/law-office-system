@@ -1307,12 +1307,9 @@ tasksByDay[dateKey] = [];
                     console.log('  workHoursCalculator.isWorkDay(peakDay):', isWorkDay);
                 }
 
-                // 🐛 DEBUG: Date key generation format
-                const sampleDate = new Date(2026, 0, 17); // Jan 17, 2026
-                console.log('  Date key format test (2026-01-17):');
-                console.log('    dateToString:', this.dateToString(sampleDate));
-                console.log('    toISOString().slice(0,10):', sampleDate.toISOString().slice(0, 10));
-
+                // PR-G.3.11: removed debug log comparing dateToString vs
+                // .toISOString().slice(0,10). The bug it documented is now
+                // covered by the repo-wide ESLint rule; debug no longer needed.
                 window._peakDebugLogged = true;
             }
 

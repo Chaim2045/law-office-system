@@ -7,6 +7,9 @@
  */
 
 const admin = require('firebase-admin');
+// PR-G.3.11: TZ-safe "today" helper. DO NOT use `.toISOString().split('T')[0]`
+// — UTC, audit log silently writes to wrong day's bucket near IL midnight.
+const { todayInJerusalemYMD } = require('../../shared/calendar');
 
 /**
  * Log deletion attempt
@@ -97,7 +100,9 @@ async function logDeletionAttempt(db, {
  */
 async function updateDeletionMetrics(db, adminEmail, deletedCounts) {
   try {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    // PR-G.3.11: IL-anchored "today" so daily_${today} bucket key matches
+    // the IL day at midnight (was UTC slice → 3-4h skew).
+    const today = todayInJerusalemYMD();
 
     const metricsRef = db.collection('deletion_metrics').doc(`daily_${today}`);
 

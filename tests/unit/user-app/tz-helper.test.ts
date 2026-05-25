@@ -15,7 +15,8 @@ import {
   dateToJerusalemYMD,
   addDaysYMD,
   dayOfWeekYMD,
-  startOfMonthYMD
+  startOfMonthYMD,
+  dateTimeToJerusalemLocalInput
 } from '../../../apps/user-app/js/modules/tz-helper.js';
 
 describe('todayInJerusalemYMD', () => {
@@ -200,5 +201,53 @@ describe('integration: week-range computation (mirror of daily-meter logic)', ()
     expect(dow).toBe(3);
     const startStr = addDaysYMD(todayStr, -dow);
     expect(startStr).toBe('2026-05-24');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
+// PR-G.3.11: dateTimeToJerusalemLocalInput
+// ─────────────────────────────────────────────────────────────────
+describe('dateTimeToJerusalemLocalInput (PR-G.3.11)', () => {
+  it('returns YYYY-MM-DDTHH:mm format', () => {
+    const out = dateTimeToJerusalemLocalInput(new Date('2026-04-02T15:30:00.000Z'));
+    expect(out).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+  });
+
+  it('15:30 UTC summer DST = 18:30 IL (UTC+3)', () => {
+    const out = dateTimeToJerusalemLocalInput(new Date('2026-07-02T15:30:00.000Z'));
+    expect(out).toBe('2026-07-02T18:30');
+  });
+
+  it('15:30 UTC winter = 17:30 IL (UTC+2)', () => {
+    const out = dateTimeToJerusalemLocalInput(new Date('2026-01-15T15:30:00.000Z'));
+    expect(out).toBe('2026-01-15T17:30');
+  });
+
+  it('CRITICAL: tomorrow 17:00 local-IL (DST) round-trips correctly', () => {
+    // Build "tomorrow 17:00 IL" the way TaskFormManager does:
+    //   const tomorrow = new Date(); tomorrow.setDate(+1); tomorrow.setHours(17,0,0,0);
+    // On a JS host in any TZ, .setHours(17,0,0,0) sets HOST-local 17:00.
+    // We simulate a host in Asia/Jerusalem by using a pinned host-local moment.
+    // For deterministic test: pass a Date whose UTC value equals 2026-07-02T14:00:00Z
+    // (= 2026-07-02 17:00 IL DST). Expected: '2026-07-02T17:00'.
+    const out = dateTimeToJerusalemLocalInput(new Date('2026-07-02T14:00:00.000Z'));
+    expect(out).toBe('2026-07-02T17:00');
+  });
+
+  it('invalid Date → empty string', () => {
+    expect(dateTimeToJerusalemLocalInput(new Date('invalid'))).toBe('');
+  });
+
+  it('non-Date input → empty string', () => {
+    // @ts-expect-error - intentionally wrong type for defensive coverage
+    expect(dateTimeToJerusalemLocalInput('2026-07-02T14:00:00Z')).toBe('');
+    // @ts-expect-error - same
+    expect(dateTimeToJerusalemLocalInput(null)).toBe('');
+  });
+
+  it('midnight 00:00 IL — preserves the date without rolling back', () => {
+    // 2026-07-01T21:00:00Z = 2026-07-02 00:00 IL DST.
+    const out = dateTimeToJerusalemLocalInput(new Date('2026-07-01T21:00:00.000Z'));
+    expect(out).toBe('2026-07-02T00:00');
   });
 });

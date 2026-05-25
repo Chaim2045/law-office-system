@@ -15,6 +15,10 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
+// PR-G.3.11: TZ-safe date helpers. DO NOT use `.toISOString().split('T')[0]`
+// or `.slice(0,10)` — UTC, drifts at IL midnight.
+const { normalizeDateToYMD } = require('../shared/calendar');
+
 // שימוש ב-Admin SDK הקיים (מאותחל ב-index.js)
 const db = admin.firestore();
 const auth = admin.auth();
@@ -656,9 +660,10 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
     }));
 
     // חישוב סטטיסטיקות שעות
+    // PR-G.3.11: weekAgoStr anchored to Asia/Jerusalem; was UTC slice → off-by-1 at IL midnight.
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+    const weekAgoStr = normalizeDateToYMD(weekAgo);
 
     let hoursThisWeek = 0;
     let hoursThisMonth = 0;

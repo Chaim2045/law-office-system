@@ -14,6 +14,10 @@
  * - קבלת נתוני הטופס
  */
 
+// PR-G.3.11: canonical IL-TZ helper. DO NOT use .toISOString().slice(0,16)
+// for datetime-local input — yields UTC, jumps back 2-3h for IL users.
+import { dateTimeToJerusalemLocalInput } from '../../js/modules/tz-helper.js';
+
 const DRAFT_STORAGE_KEY = 'addTaskDraft';
 
 /**
@@ -57,9 +61,10 @@ export class TaskFormManager {
 
       const deadlineInput = this.form.querySelector('#taskDeadline');
       if (deadlineInput) {
-        // Format for datetime-local input: YYYY-MM-DDTHH:MM
-        const formattedDate = tomorrow.toISOString().slice(0, 16);
-        deadlineInput.value = formattedDate;
+        // Format for datetime-local input: YYYY-MM-DDTHH:MM in Asia/Jerusalem
+        // PR-G.3.11: was `.toISOString().slice(0, 16)` (UTC) — jumped back
+        // 2-3h for IL users, more for users abroad.
+        deadlineInput.value = dateTimeToJerusalemLocalInput(tomorrow);
       }
     }
 

@@ -150,7 +150,8 @@ class AIContextBuilder {
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       const oneMonthAgoStr = (window.TZHelper && window.TZHelper.dateToJerusalemYMD)
         ? window.TZHelper.dateToJerusalemYMD(oneMonthAgo)
-        : oneMonthAgo.toISOString().substring(0, 10); // safety fallback if tz-helper not loaded
+        // eslint-disable-next-line no-restricted-syntax -- PR-G.3.11: safety fallback for load-order race (classic-script vs ES-module); never fires in production. See lines 145-148 above.
+        : oneMonthAgo.toISOString().substring(0, 10);
 
       const snapshot = await this.db
         .collection('timesheet_entries')
