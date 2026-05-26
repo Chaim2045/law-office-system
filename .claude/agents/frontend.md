@@ -71,8 +71,8 @@ window.calculateRemainingHours(entity)
 - **יש hoursUsed שלא תואם ל-SUM(entries)** — pure data issue, לא frontend
 - **חשד ל-drift של נתונים** בין collections — העבר מיד לחקירה
 
-### ➡️ העבר ל-/ביקורת (code-reviewer):
-- **לפני כל PR** — self-check פורמלי
+### ➡️ העבר ל-/מדרג (outcomes-grader):
+- **לפני כל PR** — self-check פורמלי (כולל code review 6-stage + PROD safety)
 - **אחרי שינוי ב-innerHTML** — וידוא שה-sanitization לא נשבר
 - **שינוי >50 שורות** — עובר במסלול הביקורת המלא
 
