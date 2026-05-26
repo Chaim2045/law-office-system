@@ -574,6 +574,8 @@
     <script src="js/ui/AnnouncementEditor.js"></script>
 
     <!-- ===== Clients Management Scripts ===== -->
+    <!-- PR-2.1.1: business-rules-adapter loads window.BUSINESS_RULES — must come before any consumer -->
+    <script src="js/shared/business-rules-adapter.js?v=20260526-pr-2-1-1"></script>
     <!-- ClientTypeDisplay MUST load BEFORE ClientsDataManager (used by .loadClients) -->
     <script src="js/core/client-type-display.js?v=20260514-mixed"></script>
     <script src="js/managers/ClientsDataManager.js?v=20260516-isOnHold"></script>
