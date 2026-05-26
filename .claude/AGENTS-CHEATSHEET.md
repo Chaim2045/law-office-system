@@ -2,7 +2,7 @@
 
 **משרד עו"ד גיא הרשקוביץ | Law Office System**
 
-**עודכן:** 2026-05-26 · **גרסה:** 3.0 (Lead Agent + 11 sub-agents) · **ראה גם:** `CLAUDE.md` (הסכם העבודה)
+**עודכן:** 2026-05-26 · **גרסה:** 3.1 (Lead Agent + 12 sub-agents) · **ראה גם:** `CLAUDE.md` (הסכם העבודה)
 
 ---
 
@@ -43,7 +43,7 @@
 
 ---
 
-## 🤖 הצוות — 11 sub-agents + Lead Agent
+## 🤖 הצוות — 12 sub-agents + Lead Agent
 
 ### 🎯 Lead Agent (Orchestrator) — לא subagent
 זה ה-Claude Code session הראשי. תפקידו: לפרק בקשה, להפעיל workers במקביל, לאסוף תוצאות, להגיש ל-Haim. מוגדר ב-`CLAUDE.md`.
@@ -66,6 +66,11 @@
 | סוכן | תחום | מתי |
 |---|---|---|
 | `devils-advocate` | 5 התנגדויות + הגנה, ראיות file:line | לפני merge גדול, רפקטור >100 שורות, schema/rules change |
+
+### Specialty (1)
+| סוכן | תחום | מתי |
+|---|---|---|
+| `refactoring-expert` | רפקטור עם SSOT preservation, isolated context | רפקטור על >3 קבצים, שינוי ב-SSOT module, cross-app refactor |
 
 ### Meta (3)
 | סוכן | תחום | מודל | מתי |
@@ -97,7 +102,7 @@
 | פקודה | למה זה טוב |
 |---|---|
 | `/intent [רעיון]` | חידוד בקשה מעורפלת ל-Intent מוגדר |
-| `/טומי [רעיון]` | מצב Architect — חושב, לא עושה |
+| `/architect [רעיון]` (alias: `/טומי`) | מצב Architect — חושב, לא עושה |
 | `/אבחון [בעיה]` | אבחון ראשוני לפני חקירה |
 | `/תכנון [בעיה]` | תכנון פתרון עם 2-3 אופציות |
 | `/פרקליט-שטן [החלטה]` | 5 התנגדויות חזקות עם ראיות מהקוד |
@@ -122,13 +127,6 @@
 | `/ענף-חדש [שם]` | יצירת feature branch בטוח |
 | `/משוך-מהבית` | git pull בטוח |
 | `/עדכן-לעבודה [msg]` | commit + push בטוח |
-
-### מצבים מבודדים
-| פקודה | למה זה טוב |
-|---|---|
-| `/plan-strict [feature]` | תכנון בלי הפרוטוקול |
-| `/review-strict [pr]` | ביקורת בלי הפרוטוקול |
-| `/validate-strict [env]` | ולידציה בלי הפרוטוקול |
 
 ---
 
@@ -199,7 +197,7 @@ window.calculateRemainingHours(entity)        // שעות נותרות
 
 ## 💡 טיפים מהניסיון
 
-1. **תמיד תתחיל ב-/intent** או `/טומי` — חושבים לפני שעושים
+1. **תמיד תתחיל ב-/intent** או `/architect` — חושבים לפני שעושים
 2. **אל תדלג על Checkpoint** — זה השומר הכי טוב שלך
 3. **בעיות נתונים → /חקירת-נתונים**, לא frontend
 4. **כל שינוי ב-rules → security-access-expert + /פרקליט-שטן + /ביקורת**
@@ -220,4 +218,4 @@ window.calculateRemainingHours(entity)        // שעות נותרות
 
 ---
 
-**שאלות? הקלד `/ניווט` או `/intent`.**
+**שאלות? הקלד `/ניווט` או `/intent` או `/architect`.**

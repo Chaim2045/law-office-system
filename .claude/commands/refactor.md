@@ -1,9 +1,11 @@
 ---
-description: הנחיות רפקטור בטוח ב-Law Office System (behavior preservation, SSOT, tests first). מחליף את הסוכן refactoring-expert (2026-05-26).
+description: הנחיות מהירות לרפקטור פשוט (rename, extract פונקציה בקובץ אחד). לרפקטורים מורכבים על SSOT modules או מספר קבצים — Lead Agent יפעיל את הסוכן `refactoring-expert`.
 argument-hint: [תיאור הרפקטור]
 ---
 
 # REFACTOR GUIDANCE — Law Office System
+
+**שימוש:** הנחיות מהירות לרפקטור פשוט. לרפקטור מורכב (>3 קבצים, SSOT modules, cross-app) — Lead Agent יפעיל את `refactoring-expert` agent (context מבודד, ניתוח עמוק יותר).
 
 ## כללי ברזל:
 1. **Behavior preservation:** רפקטורינג = שינוי מבנה בלבד. **אפס שינוי התנהגות**. אם יש חשד שההתנהגות משתנה — עצור, דווח, עבור ל-Planning.

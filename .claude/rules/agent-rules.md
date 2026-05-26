@@ -8,13 +8,14 @@
 
 **Product Owner — Haim.** Approves scope, plans, PROD deploys.
 
-**11 sub-agents** organized by function:
+**12 sub-agents** organized by function:
 
 | Layer | Agents |
 |-------|--------|
 | **Workers (4)** | `backend-firebase-expert`, `frontend-ui-expert`, `data-investigator`, `security-access-expert` |
 | **Quality (2)** | `outcomes-grader`, `testing-quality-expert` |
 | **Challenger (1)** | `devils-advocate` |
+| **Specialty (1)** | `refactoring-expert` |
 | **Meta (3)** | `effort-scaler`, `completeness-checker`, `evaluator-optimizer` |
 | **Ops (1)** | `ops` |
 
@@ -25,8 +26,9 @@
 
 **Slash commands (not agents):**
 - `/intent` — refine vague request into Intent statement
-- `/refactor` — refactoring guidance
+- `/refactor` — quick refactoring guidance (complex refactors → `refactoring-expert` agent)
 - `/perf` — performance guidance
+- `/architect` (alias: `/טומי`) — thinking-only architect mode
 
 ## Outcomes Grader (subsumes code-reviewer + prod-gatekeeper)
 
@@ -131,7 +133,7 @@
 3. Review co-occurrence patterns (always together) — candidates for merge
 4. If 2+ agents dormant → consolidation PR recommended
 
-**Anthropic baseline:** Lead + 2-4 workers + grader = 4 roles. Current project: 11 agents — within Anthropic's "complex research" tier (5-10+). Watch for drift back toward bloat.
+**Anthropic baseline:** Lead + 2-4 workers + grader = 4 roles. Current project: 12 agents — within Anthropic's "complex research" tier (5-10+) plus one specialty agent (refactoring) justified by SSOT-critical production codebase. Watch for drift back toward bloat.
 
 ## Recursive spawning — FORBIDDEN
 

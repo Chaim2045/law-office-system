@@ -18,10 +18,11 @@ Haim is the Product Owner, not the Orchestrator. He approves:
 
 You report **to Haim**, but you orchestrate **on his behalf**. He does not mediate between sub-agents.
 
-### Team (10 sub-agents)
+### Team (12 sub-agents)
 **Domain Workers (4):** `backend-firebase-expert`, `frontend-ui-expert`, `data-investigator`, `security-access-expert`
 **Quality (2):** `outcomes-grader`, `testing-quality-expert`
 **Challenger (1):** `devils-advocate`
+**Specialty (1):** `refactoring-expert` (SSOT-preserving refactors in production code)
 **Meta (3):** `effort-scaler` (Haiku), `completeness-checker`, `evaluator-optimizer`
 **Ops (1):** `ops` (CI/CD + deploy + Netlify + Firebase)
 
