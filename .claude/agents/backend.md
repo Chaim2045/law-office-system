@@ -36,9 +36,9 @@ model: inherit
 > 🚨 **חובה להריץ `/פרקליט-שטן [תיאור השינוי]` לפני שמתחילים לכתוב קוד.**
 > שינויים ב-backend פרודקשן הם הכי קשים לתקן — data drift, race conditions שנחשפים רק תחת עומס, migrations שנתקעים באמצע. פרקליט השטן יחפש edge cases שלא חשבת עליהם, בעיות rollback, והשפעה על 1000+ רשומות קיימות.
 
-## גישור לסוכנים אחרים:
+## גישור לסוכנים אחרים (Lead Agent ינתב):
 - ➡️ `data-investigator` — לפני שינוי בלוגיקת שעות/כסף, לוודא שה-data תואם
-- ➡️ `firebase-rules-expert` — אם השינוי דורש עדכון ברולס
+- ➡️ `security-access-expert` — אם השינוי דורש עדכון בfirestore.rules/storage.rules (השכבה הזו מאוחדת אצלו כעת)
 - ➡️ `testing-quality-expert` — כיסוי בדיקות לפני merge
-- ➡️ `devils-advocate` — חובה לכל שינוי high-stakes
-- ➡️ `code-reviewer` → `prod-gatekeeper` — שערי יציאה
+- ➡️ `devils-advocate` — Lead Agent מפעיל לכל שינוי high-stakes
+- ➡️ `outcomes-grader` — שער יציאה לפני PR (כולל code review 6-stage + PROD safety + Anti-Premature Closure)

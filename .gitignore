@@ -20,6 +20,8 @@ functions/.env
 .claude/firestore-data/*.txt
 .claude/firestore-scripts/
 .claude/backups/
+.claude/agents.backup-*/
+.claude/scheduled_tasks.lock
 
 # Backup files
 *.backup

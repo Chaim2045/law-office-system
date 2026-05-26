@@ -2,115 +2,133 @@
 
 **משרד עו"ד גיא הרשקוביץ | Law Office System**
 
-**עודכן:** 2026-04-17 · **גרסה:** 2.0 · **ראה גם:** `CLAUDE.md` (הסכם העבודה)
+**עודכן:** 2026-05-26 · **גרסה:** 3.0 (Lead Agent + 11 sub-agents) · **ראה גם:** `CLAUDE.md` (הסכם העבודה)
 
 ---
 
 ## 🟢 תוך 30 שניות — מה לעשות עכשיו?
 
-| המצב שלך | הפקודה להקליד |
+| המצב שלך | הפקודה |
 |---|---|
-| רק רציתי להתחיל משהו חדש | `/טומי [רעיון]` |
+| בקשה מעורפלת — צריך לחדד | `/intent [רעיון]` |
 | יש לי בעיה ואני לא בטוח מה זה | `/אבחון [תיאור]` |
 | אני יודע מה הבעיה, רוצה לחקור | `/ארכיטקט [הנושא]` |
 | רוצה תוכנית פעולה | `/תכנון [הבעיה]` |
-| רוצה שיכתבו לי קוד עכשיו | ראה "בחירת סוכן" למטה |
-| סיימתי קוד — רוצה ביקורת | `/ביקורת` |
+| סיימתי קוד — רוצה ביקורת | `/ביקורת` (מפעיל outcomes-grader) |
 | רוצה לדחוף ל-DEV | `/ולידציה dev` |
 | רוצה להעלות ל-PROD | `/ולידציה prod` |
 | **רוצה שיתקפו את ההחלטה שלי** | `/פרקליט-שטן [ההחלטה]` |
 | אני מבולבל מהשלב | `/ניווט` |
+| רוצה הנחיות רפקטור | `/refactor [תיאור]` |
+| רוצה הנחיות ביצועים | `/perf [בעיה]` |
 
 ---
 
 ## 🧭 הפרוטוקול הקבוע (חובה לפי CLAUDE.md)
 
 ```
-1. Intent          ← אתה מגדיר מה רוצים
-2. Investigation   ← הסוכן חוקר (READ ONLY)
-3. Checkpoint      ← אתה מאשר להמשיך ⚠️
-4. Planning        ← הסוכן מציע תוכנית
-5. Code            ← הסוכן כותב קוד
-6. Gates           ← /ביקורת + /ולידציה ⚠️
+0. Work Session Check  ← SessionStart hook אוטומטי (לא דורש פעולה)
+1. Intent              ← Haim מגדיר; אם מעורפל → /intent
+1a. Effort Scaling     ← effort-scaler אם >3 sub-agents
+2. Investigation       ← workers במקביל (READ ONLY)
+2a. Completeness Check ← completeness-checker
+3. Checkpoint          ← Haim מאשר ⚠️
+4. Planning            ← Lead Agent מציע תוכנית
+5. Code                ← Lead Agent + workers
+6. Gates               ← /ביקורת או /ולידציה (outcomes-grader) ⚠️
+6a. Evaluator-Optimizer ← אם grader = FAIL, auto-retry x3
 ```
 
 **אסור לדלג על Checkpoint.** אם דילגת — `/ניווט` יחזיר אותך למסלול.
 
 ---
 
-## 📋 הפקודות (Commands) — לפי תדירות
+## 🤖 הצוות — 11 sub-agents + Lead Agent
 
-### ⭐ יומיומי
+### 🎯 Lead Agent (Orchestrator) — לא subagent
+זה ה-Claude Code session הראשי. תפקידו: לפרק בקשה, להפעיל workers במקביל, לאסוף תוצאות, להגיש ל-Haim. מוגדר ב-`CLAUDE.md`.
+
+### Workers (4) — מומחי דומיין
+| סוכן | תחום | טריגרים |
+|---|---|---|
+| `backend-firebase-expert` | Cloud Functions, Firestore, Transactions, Triggers, Idempotency | "שנה ב-Firestore", "Cloud Function", "race condition", "trigger" |
+| `frontend-ui-expert` | HTML/CSS/JS, EventBus, DOMPurify, SSOT modules | "תקן UI", "המסך לא מתעדכן", "innerHTML" |
+| `data-investigator` | פערי נתונים, reconciliation, timesheet_entries SSOT | "שעות לא נכונות", "יש drift", "סכום לא תואם" |
+| `security-access-expert` | firestore.rules, storage.rules, Auth, Claims, XSS, PII, חוק הפרטיות | "תבדוק אבטחה", "הרשאות", "rules", "privilege escalation" |
+
+### Quality (2)
+| סוכן | תחום | מתי |
+|---|---|---|
+| `outcomes-grader` | **גרידה + Code Review 6-stage + PROD Safety + Anti-Premature Closure** (מאחד 3 תפקידים) | לפני כל PR |
+| `testing-quality-expert` | Vitest, Playwright, coverage | חובה לפני merge |
+
+### Challenger (1)
+| סוכן | תחום | מתי |
+|---|---|---|
+| `devils-advocate` | 5 התנגדויות + הגנה, ראיות file:line | לפני merge גדול, רפקטור >100 שורות, schema/rules change |
+
+### Meta (3)
+| סוכן | תחום | מודל | מתי |
+|---|---|---|---|
+| `effort-scaler` | LIGHT/MEDIUM/HEAVY classification | Haiku | לפני dispatch >3 agents |
+| `completeness-checker` | loose ends, adjacent bugs, drift, backlog | inherit | אחרי investigation, לפני checkpoint |
+| `evaluator-optimizer` | auto-fix on grader FAIL (max 3 retries) | sonnet | אוטומטית כש-grader=FAIL |
+
+### Ops (1)
+| סוכן | תחום |
+|---|---|
+| `ops` | CI/CD + Deploy + Environments (מאחד ci-cd-expert + devops-deploy-manager לשעבר) |
+
+---
+
+## 🪝 Hooks אוטומטיים (לא דורשים פעולה)
+
+| הוק | אירוע | מטרה |
+|---|---|---|
+| `work-session-gatekeeper.sh` | SessionStart | מזרים מצב git (open work / open PRs / deploy drift) ל-Lead Agent |
+| `require-outcomes-pass.sh` | PreToolUse on `gh pr create` | חוסם פתיחת PR בלי VERDICT: PASS + PRODUCT-GRADE Gates |
+| `log-agent-usage.sh` | SubagentStart | telemetry על שימוש בסוכנים → `.claude/logs/agent-usage.jsonl` |
+
+---
+
+## 📋 Slash Commands
+
+### יומיומי
 | פקודה | למה זה טוב |
 |---|---|
-| `/טומי [רעיון]` | System Architect — חושב, לא עושה |
+| `/intent [רעיון]` | חידוד בקשה מעורפלת ל-Intent מוגדר |
+| `/טומי [רעיון]` | מצב Architect — חושב, לא עושה |
 | `/אבחון [בעיה]` | אבחון ראשוני לפני חקירה |
 | `/תכנון [בעיה]` | תכנון פתרון עם 2-3 אופציות |
 | `/פרקליט-שטן [החלטה]` | 5 התנגדויות חזקות עם ראיות מהקוד |
-| `/ביקורת` | ביקורת קוד ב-6 שלבים |
-| `/ולידציה [dev\|prod]` | gate לפני deploy |
+| `/ביקורת` | outcomes-grader עם Code Review 6-stage |
+| `/ולידציה [dev\|prod]` | outcomes-grader עם PROD Safety layer |
 | `/ניווט` | איפה אני, מה הבא |
 | `/סטטוס` | דוח מצב של הפרויקט |
+| `/מדרג [pr-id]` | outcomes-grader על PR ספציפי |
+| `/refactor [תיאור]` | הנחיות רפקטור (SSOT, behavior preservation) |
+| `/perf [בעיה]` | הנחיות ביצועים (Firestore, bundle, render) |
 
-### 🔧 עבודה טכנית
+### עבודה טכנית
 | פקודה | למה זה טוב |
 |---|---|
 | `/ארכיטקט [נושא]` | חקירת מערכת, READ ONLY |
 | `/בדיקות [מודול]` | כתיבת בדיקות Vitest/Playwright |
 | `/חקירת-נתונים [id]` | חקירת פערי נתונים |
 
-### 🔄 Git
+### Git
 | פקודה | למה זה טוב |
 |---|---|
 | `/ענף-חדש [שם]` | יצירת feature branch בטוח |
 | `/משוך-מהבית` | git pull בטוח |
 | `/עדכן-לעבודה [msg]` | commit + push בטוח |
 
-### ⚙️ מצבים מבודדים (Isolated)
+### מצבים מבודדים
 | פקודה | למה זה טוב |
 |---|---|
 | `/plan-strict [feature]` | תכנון בלי הפרוטוקול |
 | `/review-strict [pr]` | ביקורת בלי הפרוטוקול |
 | `/validate-strict [env]` | ולידציה בלי הפרוטוקול |
-
-### 🇮🇱 Aliases בעברית (כדי שיהיה לך נוח)
-| בעברית | שווה ל |
-|---|---|
-| `/ביקורת` | `/review-strict` |
-| `/ולידציה` | `/validate-strict` |
-| `/ניווט` | navigator agent |
-
----
-
-## 🤖 הסוכנים (Agents) — מי עושה מה
-
-### Tier 1 — ראשי (מופעלים אוטומטית)
-| סוכן | תחום | מתי יפעל |
-|---|---|---|
-| `intent-refiner` | חידוד בקשה | כשאין App/Env/Scope ברורים |
-| `navigator-process-guide` | ניווט בתהליך | כשאתה מתבלבל בפרוטוקול |
-| `explainer-hebrew` | תרגום לעברית | אחרי פלט טכני של סוכן אחר |
-
-### Tier 2 — מומחי תחום
-| סוכן | תחום | טריגרים |
-|---|---|---|
-| `backend-firebase-expert` | Cloud Functions, Firestore, Transactions | "שנה ב-Firestore", "Cloud Function", "race condition" |
-| `frontend-ui-expert` | HTML/CSS/JS, EventBus, DOMPurify | "תקן UI", "המסך לא מתעדכן", "innerHTML" |
-| `data-investigator` | פערי נתונים, reconciliation | "שעות לא נכונות", "יש drift", "סכום לא תואם" |
-| `security-access-expert` | Rules, Auth, Claims, XSS | "תבדוק אבטחה", "הרשאות", "privilege escalation" |
-| `firebase-rules-expert` | firestore.rules, storage.rules | "תעדכן rules", "emulator test for rules" |
-| `testing-quality-expert` | Vitest, Playwright, coverage | "תכתוב בדיקות", "coverage", "e2e" |
-| `performance-expert` | Bundle, queries, cold starts | "איטי", "נתקע", "lighthouse" |
-| `refactoring-expert` | ביטול כפילות, SSOT | "כפילות", "refactor", "SSOT violation" |
-
-### Tier 3 — שערים ופיקוח
-| סוכן | תחום | מתי יפעל |
-|---|---|---|
-| `code-reviewer` | ביקורת קוד פורמלית | לפני PR, אחרי קוד |
-| `prod-gatekeeper` | gate לפני PROD | לפני merge ל-production-stable |
-| `devils-advocate` | **תקיפת החלטות עם 5 התנגדויות + הגנה** | לפני merge גדול, רפקטור, שינוי rules |
-| `devops-deploy-manager` | פריסה, CI/CD, סביבות | כל deploy |
-| `ci-cd-expert` | GitHub Actions, husky, lint-staged | כשל ב-CI, שינוי ב-pipeline |
 
 ---
 
@@ -157,43 +175,15 @@ window.calculateRemainingHours(entity)        // שעות נותרות
 מ-CLAUDE.md:
 - ❌ `gh pr merge --admin` — עקיפת branch protection
 - ❌ `git push --force` ל-main / production-stable
-- ❌ merge ישיר ל-production-stable בלי אישור מחיים
+- ❌ merge ישיר ל-production-stable בלי אישור מ-Haim
 - ❌ `--admin`, `--force`, `--no-verify` לעקיפת checks
 - ❌ deploy ישיר ל-PROD בלי DEV
 - ❌ שינוי ב-SYSTEM_STATUS.md בלי אישור
+- ❌ **Recursive spawning** — sub-agent מפעיל sub-agent (רק Lead Agent מפעיל)
 
-אם CI חוסם — **לעצור ולדווח**, לא לעקוף.
-
----
-
-## 🔄 תהליך Deploy המלא
-
-```
-feature/xyz → merge ל-main → Netlify DEV deploy → /ולידציה dev
-         ↓
-  בדיקה ידנית ב-DEV URLs
-         ↓
-  PR מ-main ל-production-stable
-         ↓
-  /ביקורת → /ולידציה prod → merge (אחרי אישור חיים)
-         ↓
-  Netlify PROD deploy → Smoke test → סיום
-```
-
-Functions נפרד: `firebase deploy --only functions`
+אם CI חוסם — **לעצור ולדווח ל-Haim**, לא לעקוף.
 
 ---
-
-## 💡 טיפים מהניסיון
-
-1. **תמיד תתחיל ב-/טומי** — חושבים לפני שעושים
-2. **אל תדלג על Checkpoint** — זה השומר הכי טוב שלך
-3. **בעיות נתונים → /חקירת-נתונים**, לא frontend
-4. **כל שינוי ב-rules → firebase-rules-expert + /פרקליט-שטן + /ביקורת**
-5. **לפני merge גדול → /פרקליט-שטן** (גם אם הכל עבר ביקורת)
-6. **לא סגור ב-DEV? אל תעלה ל-PROD**
-7. **console.error = FAIL** — גם אם הכל עובד לעין
-8. **לא סגור איך? שאל /ניווט**
 
 ## 🛡️ מתי /פרקליט-שטן הוא חובה (לא אופציה)
 
@@ -205,20 +195,29 @@ Functions נפרד: `firebase deploy --only functions`
 - 🚨 Migration על collection קיים
 - 🚨 שינוי ב-auth flow / admin claims
 
-**הסוכנים האחרים יזכירו לך** להפעיל אותו ברגעים האלה — אבל אתה הבוס. אם אתה רוצה תקיפה — `/פרקליט-שטן [ההחלטה]`.
+---
+
+## 💡 טיפים מהניסיון
+
+1. **תמיד תתחיל ב-/intent** או `/טומי` — חושבים לפני שעושים
+2. **אל תדלג על Checkpoint** — זה השומר הכי טוב שלך
+3. **בעיות נתונים → /חקירת-נתונים**, לא frontend
+4. **כל שינוי ב-rules → security-access-expert + /פרקליט-שטן + /ביקורת**
+5. **לפני merge גדול → /פרקליט-שטן** (גם אם הכל עבר ביקורת)
+6. **לא סגור ב-DEV? אל תעלה ל-PROD**
+7. **console.error = FAIL** — גם אם הכל עובד לעין
+8. **לא בטוח איך? שאל /ניווט**
 
 ---
 
 ## 📚 מסמכים חשובים
 
-- `CLAUDE.md` — הסכם העבודה עם חיים (טומי), חוקי ברזל
-- `.claude/PROJECT-CONTEXT.md` — הקשר הפרויקט, branches, URLs
-- `.claude/project-rules.md` — כללי SSOT, דפוסים אסורים
-- `.claude/senior-engineer-protocol.md` — פרוטוקול מפתח בכיר
-- `README.md` (root) — סקירת הפרויקט
-- `SYSTEM_MAP.md` — מפת functions ו-collections
+- `CLAUDE.md` — הסכם העבודה + Lead Agent role + 11 sub-agents
+- `.claude/rules/feature-protocol.md` — סדר הפרוטוקול
+- `.claude/rules/agent-rules.md` — מתי כל סוכן חובה
+- `.claude/rules/decision-point.md` — מתי להתייעץ עם סוכן לפני AskUserQuestion
+- `.claude/rubrics/_PRODUCT-GRADE-GATES.md` — 7 שערים גלובליים
 
 ---
 
-**נוצר אוטומטית כחלק משדרוג מערכת הסוכנים v2.0.**
-**שאלות? הקלד `/ניווט` או `/טומי`.**
+**שאלות? הקלד `/ניווט` או `/intent`.**
