@@ -15,14 +15,15 @@ const { SYSTEM_CONSTANTS } = require('./constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
+// isFixedService is now consumed from the canonical service-classification module.
+// PR-2.1.1 (2026-05-26): consolidated 4 prior copies into one SOT. Mirror lives
+// inside functions/ (in-tree) so Cloud Functions deploy picks it up.
+// See shared/business-rules/service-classification.js (canonical) and
+// tests/unit/shared/business-rules.sync.test.ts (drift guard).
+const { isFixedService } = require('./business-rules/service-classification');
+
 function round2(n) {
   return Math.round((n || 0) * 100) / 100;
-}
-
-// ⚠️ Keep in sync: also used by functions/src/modules/aggregation/index.js (imported from here)
-function isFixedService(svc) {
-  return svc.type === ST.FIXED ||
-    (svc.type === ST.LEGAL_PROCEDURE && svc.pricingType === PT.FIXED);
 }
 
 /**

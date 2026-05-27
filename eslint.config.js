@@ -64,26 +64,44 @@ const commonJsRules = {
   }],
 
   // PR-G.3.11: Ban `.toISOString().slice/substring/split(...)` — UTC date,
-  // drifts at IL midnight + breaks for users abroad. Use TZ-safe helpers:
-  //   frontend: `apps/user-app/js/modules/tz-helper.js` →
-  //     todayInJerusalemYMD / dateToJerusalemYMD / dateTimeToJerusalemLocalInput
-  //   backend: `functions/shared/calendar.js` →
-  //     todayInJerusalemYMD / normalizeDateToYMD / startOfTodayInJerusalem
-  // Severity = 'warn' INITIALLY — flips to 'error' in a follow-up PR after
-  // the ~30 pre-existing violations across admin-panel + user-app are
-  // cleaned up incrementally. Setting 'error' now would block CI on
-  // unrelated PRs. The warning still surfaces the rule, prevents NEW
-  // violations from going unnoticed in review, and lets `npx eslint
-  // --max-warnings=0` enforce it locally for any developer who opts in.
-  // Allowlist: tz-helper.js (the helper itself) — see overrides below.
-  'no-restricted-syntax': ['warn', {
-    selector: "CallExpression[callee.property.name=/^(slice|substring|split)$/][callee.object.type='CallExpression'][callee.object.callee.property.name='toISOString']",
-    message: 'Use tz-helper (todayInJerusalemYMD / dateToJerusalemYMD / dateTimeToJerusalemLocalInput) instead of .toISOString().slice/substring/split — returns UTC, drifts at IL midnight. PR-G.3.7→G.3.11.'
-  }]
+  // drifts at IL midnight + breaks for users abroad. Use TZ-safe helpers.
+  //
+  // PR-2.1.1 (2026-05-26): Ban inline service-type classification:
+  //   `svc.type === 'fixed' | 'hours' | 'legal_procedure'`
+  //   `svc.pricingType === 'fixed' | 'hourly'`
+  // Use the canonical predicates from shared/business-rules/service-classification.js
+  // (mirror at functions/shared/business-rules/ for backend, window.BUSINESS_RULES
+  // for browser).
+  //
+  // Severity = 'warn' INITIALLY — there are 61 pre-existing inline-classification
+  // sites mapped in PR-2.1.1 investigation; they migrate in PR-2.1.2. Setting
+  // 'error' now would block CI on unrelated PRs. Warning surfaces new violations
+  // in review.
+  //
+  // Allowlist: see overrides block at the bottom of this config.
+  'no-restricted-syntax': ['warn',
+    {
+      selector: "CallExpression[callee.property.name=/^(slice|substring|split)$/][callee.object.type='CallExpression'][callee.object.callee.property.name='toISOString']",
+      message: 'Use tz-helper (todayInJerusalemYMD / dateToJerusalemYMD / dateTimeToJerusalemLocalInput) instead of .toISOString().slice/substring/split — returns UTC, drifts at IL midnight. PR-G.3.7→G.3.11.'
+    },
+    {
+      selector: "BinaryExpression[operator='==='][left.type='MemberExpression'][left.property.name=/^(type|pricingType)$/][right.type='Literal'][right.value=/^(fixed|hours|hourly|legal_procedure)$/]",
+      message: "Inline service-type classification is banned. Use shared/business-rules/service-classification.js predicates (isFixedService / isHourlyService / isLegalProcedureService) — in browser via window.BUSINESS_RULES, in functions via require('./business-rules/service-classification'). PR-2.1.1."
+    },
+    {
+      selector: "BinaryExpression[operator='==='][right.type='MemberExpression'][right.property.name=/^(type|pricingType)$/][left.type='Literal'][left.value=/^(fixed|hours|hourly|legal_procedure)$/]",
+      message: 'Inline service-type classification is banned (reversed comparison). Use shared/business-rules/service-classification.js predicates. PR-2.1.1.'
+    }
+  ]
 };
 
 export default [
-  // Global ignores (applied to all files)
+  // Global ignores (applied to all files).
+  // PR-2.1.1 (2026-05-26): removed 'functions/**' + 'scripts/**' from global
+  // ignores so the Node-targeted block at the bottom can lint them with the
+  // service-classification ban. They REMAIN in `commonIgnores` so the standard
+  // TS/JS rule cascade still skips them — avoiding a thousand pre-existing
+  // backend lint errors landing in this PR.
   {
     ignores: [
       'node_modules/**',
@@ -93,9 +111,7 @@ export default [
       'devtools/**',
       'docs/**',
       '.github/**',
-      '.claude/**',
-      'functions/**',
-      'scripts/**'
+      '.claude/**'
     ]
   },
   // TypeScript files - with type checking
@@ -166,15 +182,77 @@ export default [
       ...commonJsRules
     }
   },
-  // PR-G.3.11: allowlist for tz-helper itself (defines the canonical
-  // `Intl.DateTimeFormat` usage and may legitimately format Date objects).
-  // Test files also exempt — they may intentionally exercise the old pattern
-  // for regression coverage.
+  // PR-G.3.11 / PR-2.1.1: allowlist for canonical helpers + tests.
+  //   - tz-helper.js: canonical TZ implementation; may use Intl.DateTimeFormat.
+  //   - business-rules-adapter.js / service-classification.js: canonical
+  //     service-classification module; defines the predicates that all other
+  //     code must use, so it legitimately contains inline type comparisons.
+  //   - tests: may intentionally exercise old patterns for regression coverage.
   {
     files: [
       'apps/user-app/js/modules/tz-helper.js',
+      'apps/admin-panel/js/shared/business-rules-adapter.js',
+      'apps/user-app/js/shared/business-rules-adapter.js',
+      'shared/business-rules/**',
       'tests/**/*.test.{js,ts}',
       'tests/**/*.spec.{js,ts}'
+    ],
+    rules: {
+      'no-restricted-syntax': 'off'
+    }
+  },
+  // PR-2.1.1: Node-targeted block for backend lint of service-classification ban.
+  // Standard JS/TS rules (commonIgnores) still skip functions/** + scripts/**,
+  // so this block applies ONLY the service-classification restricted-syntax —
+  // no cascade of style errors from pre-existing backend code.
+  // Canonical module + tests inside functions/ are exempted via the second block below.
+  {
+    files: ['functions/**/*.js', 'scripts/**/*.js'],
+    ignores: [
+      'functions/node_modules/**',
+      'functions/lib/**'
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
+      // sourceType: 'module' accepts both CommonJS (require/module.exports) and
+      // ES modules (import/export) — needed because some files in functions/src/
+      // use ES modules (e.g. functions/src/modules/deduction/{aggregators,calculators,validators}.js).
+      sourceType: 'module',
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly'
+      }
+    },
+    rules: {
+      'no-restricted-syntax': ['warn',
+        {
+          selector: "BinaryExpression[operator='==='][left.type='MemberExpression'][left.property.name=/^(type|pricingType)$/][right.type='Literal'][right.value=/^(fixed|hours|hourly|legal_procedure)$/]",
+          message: "Inline service-type classification is banned in backend code. Use require('./business-rules/service-classification') predicates (isFixedService / isHourlyService / isLegalProcedureService). The canonical lives at shared/business-rules/, mirrored in functions/shared/business-rules/ for deploy. PR-2.1.1."
+        },
+        {
+          selector: "BinaryExpression[operator='==='][right.type='MemberExpression'][right.property.name=/^(type|pricingType)$/][left.type='Literal'][left.value=/^(fixed|hours|hourly|legal_procedure)$/]",
+          message: 'Inline service-type classification is banned (reversed comparison). Use shared service-classification predicates. PR-2.1.1.'
+        }
+      ]
+    }
+  },
+  // PR-2.1.1: exempt the canonical functions/ mirror + functions tests.
+  {
+    files: [
+      'functions/shared/business-rules/**',
+      'functions/tests/**/*.js',
+      'functions/tests/**/*.test.js'
     ],
     rules: {
       'no-restricted-syntax': 'off'

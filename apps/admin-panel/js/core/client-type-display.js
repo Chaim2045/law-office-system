@@ -20,8 +20,16 @@
     'use strict';
 
     /**
-     * Canonical fixed-service check.
-     * Mirrors functions/shared/aggregates.js:isFixedService — keep in sync.
+     * Fixed-service check — kept in sync with the canonical SOT.
+     *
+     * Canonical: shared/business-rules/service-classification.js
+     * Drift guard: tests/unit/shared/business-rules.sync.test.ts
+     *
+     * This local copy is preserved (not delegated to window.BUSINESS_RULES) so
+     * the existing Vitest unit tests (`tests/unit/admin-panel/client-type-display.test.ts`)
+     * continue to work without test-setup changes. The sync test enforces parity.
+     *
+     * DO NOT EDIT THIS FUNCTION DIRECTLY. Edit the canonical and propagate.
      *
      * @param {Object} svc - service object
      * @returns {boolean}

@@ -204,6 +204,17 @@
     color: #0d9488;
 }
 
+/* PR-G.3.13: service-status badges (parity with ClientManagementModal:1571-1574 colors) */
+.report-card-badge.archived {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.report-card-badge.completed {
+    background: #eef2ff;
+    color: #6366f1;
+}
+
 .report-card-badge i {
     font-size: 0.625rem;
     margin-left: 4px;

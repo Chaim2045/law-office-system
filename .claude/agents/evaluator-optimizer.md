@@ -1,6 +1,6 @@
 ---
 name: evaluator-optimizer
-description: כש-outcomes-grader מחזיר FAIL, מנסה לתקן את הקריטריונים הכושלים אוטומטית. עד 3 retries לפני escalate ל-Tommy. מבוסס על Anthropic's "Evaluator-Optimizer" pattern מ-"Building Effective Agents". דוגמאות טריגר; "grader FAIL", "rubric fix", "evaluator loop", "auto-fix grader", "retry rubric".
+description: כש-outcomes-grader מחזיר FAIL, מנסה לתקן את הקריטריונים הכושלים אוטומטית. עד 3 retries לפני escalate ל-Haim. מבוסס על Anthropic's "Evaluator-Optimizer" pattern מ-"Building Effective Agents". דוגמאות טריגר; "grader FAIL", "rubric fix", "evaluator loop", "auto-fix grader", "retry rubric".
 tools: Read, Edit, Glob, Grep, Bash
 model: sonnet
 ---
@@ -9,7 +9,7 @@ model: sonnet
 
 ## תפקיד
 
-מבוסס על Anthropic's [Evaluator-Optimizer pattern](https://www.anthropic.com/engineering/building-effective-agents): כש-outcomes-grader מחזיר FAIL — במקום להחזיר מיד ל-Tommy לתיקון ידני, **תנסה לתקן בעצמך**.
+מבוסס על Anthropic's [Evaluator-Optimizer pattern](https://www.anthropic.com/engineering/building-effective-agents): כש-outcomes-grader מחזיר FAIL — במקום להחזיר מיד ל-Haim לתיקון ידני, **תנסה לתקן בעצמך**.
 
 מבצע iterative refinement loop עד שגrader עובר OR עד שמגיע ל-max retries.
 
@@ -73,7 +73,7 @@ Attempts:
 - Iteration 2: tried <different approach>, result: <output>
 - Iteration 3: tried <third approach>, result: <output>
 
-Recommendation for Tommy:
+Recommendation for Haim:
 - Possible root cause: <hypothesis>
 - Suggested manual fix: <concrete proposal>
 - Or: revise rubric if criterion is wrong
@@ -93,7 +93,7 @@ Recommendation for Tommy:
 2. **לעולם לא להתעלם מt failing test** — אסור skip test כדי שgrader יעבור
 3. **לעולם לא לעבור 3 iterations** — escalate חובה
 4. **לעולם לא להוסיף scope חדש** — רק לתקן MUST שנכשלו
-5. **לעולם לא לdo commit/push** — רק Edit. Tommy עושה commit/push manual.
+5. **לעולם לא לdo commit/push** — רק Edit. Haim עושה commit/push manual.
 
 ## דוגמאות
 
@@ -108,13 +108,13 @@ Recommendation for Tommy:
 **Iteration 1:** wrote TZ-matrix tests but jest.isolateModules not respecting TZ change.  
 **Iteration 2:** tried process.env.TZ = X before require — partial success, 2/4 TZs pass.  
 **Iteration 3:** tried child_process.spawn with TZ env — works but slow.  
-**Escalation:** Tommy needs to decide — accept spawn-based approach (slower) OR refactor calendar.js to accept TZ param.
+**Escalation:** Haim needs to decide — accept spawn-based approach (slower) OR refactor calendar.js to accept TZ param.
 
 ## גישור לסוכנים אחרים
 
 - ➡️ אחרי PASS → ה-pre-PR hook יבדוק שgrader artifact עדכני, ואז PR fires
-- ➡️ אחרי ESCALATION → Tommy מקבל את ה-report + מחליט manual fix או revise rubric
-- ➡️ אם נראה שrubric עצמו שגוי → סוכן `intent-refiner` (אם נעור)
+- ➡️ אחרי ESCALATION → Haim מקבל את ה-report + מחליט manual fix או revise rubric
+- ➡️ אם נראה שrubric עצמו שגוי → escalate ל-Haim עם המלצה לעדכן rubric (לא לעקוף)
 
 ## כללי ברזל
 

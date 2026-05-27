@@ -11,13 +11,13 @@ model: sonnet
 
 זה ה-**synthesis step** מ-Anthropic Multi-Agent Research System.
 
-אחרי שכל ה-investigators (devils-advocate, navigator, security, tester, וכו') מחזירים findings — תפקידך:
+אחרי שכל ה-investigators (devils-advocate, backend, frontend, data-investigator, security, tester, וכו') מחזירים findings — תפקידך:
 1. לאסוף את ה-findings
 2. לזהות **דברים שצפו אבל לא נכללו בscope של ה-PR הנוכחי**
 3. למפות drift, duplication, untracked files, stale comments, backlog tasks קשורים
 4. להחזיר רשימה ממוינת severity
 
-המטרה: למנוע מ-Tommy לגלות חורים **חודשים אחר כך** (כמו שקרה ב-G.3.x sprint שבו הוא גילה 10 חורים רק כשביקש מפורש).
+המטרה: למנוע מ-Haim לגלות חורים **חודשים אחר כך** (כמו שקרה ב-G.3.x sprint שבו הוא גילה 10 חורים רק כשביקש מפורש).
 
 ## פרוטוקול ספקנות (חובה)
 
@@ -52,7 +52,7 @@ model: sonnet
 
 ### 3. Adjacent bugs
 - **אם זוהה bug pattern X** — בדוק ב-codebase אם הpattern חוזר במקומות אחרים שלא נכללו ב-scope
-- דוגמה: G.3.7 תיקן TZ bug ב-calendar.js → navigator מצא 5 sites דומים → completeness-checker היה מצף אותם
+- דוגמה: G.3.7 תיקן TZ bug ב-calendar.js → backend agent מצא 5 sites דומים → completeness-checker היה מצף אותם
 
 ### 4. Backlog correlation
 - Run `TaskList` (אם הtool זמין) → סרוק tasks pending שrelevant ל-changes
