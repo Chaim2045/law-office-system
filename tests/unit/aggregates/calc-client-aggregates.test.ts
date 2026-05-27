@@ -258,6 +258,99 @@ describe('assertClientAggregateInvariants — fail-fast guard', () => {
   });
 });
 
+describe('calcClientAggregates — PR-G.3.14 status filter (archived excluded)', () => {
+  /**
+   * PR-G.3.14 (2026-05-27): exclude services with status === 'archived' from
+   * client-level aggregates. NOT 'completed' (audit history), NOT 'on_hold'
+   * (temporary pause). Lifetime contract pool preserved in services[].
+   * Triggering case: client 2025724 archived service inflating totalHours.
+   */
+
+  it('T1: archived service excluded from hoursUsed, totalHours, hoursRemaining', () => {
+    // Mirrors client 2025724: archived 42h-service + active 34h-service in overdraft.
+    const services = [
+      {
+        type: 'hours',
+        status: 'archived',
+        totalHours: 42,
+        hoursUsed: 14.17,
+        hoursRemaining: 27.83
+      },
+      {
+        type: 'hours',
+        status: 'active',
+        totalHours: 34,
+        hoursUsed: 42.93,
+        hoursRemaining: -8.93,
+        overrideActive: true
+      }
+    ];
+    const result = calcClientAggregates(services, 76 /* legacy stored totalHours */);
+
+    // Choice A: derived from active billable only
+    expect(result.totalHours).toBe(34);
+    expect(result.hoursUsed).toBe(42.93);
+    expect(result.hoursRemaining).toBe(-8.93);
+
+    // overrideActive on the active service still suppresses block
+    expect(result.isBlocked).toBe(false);
+    expect(result.isCritical).toBe(false);
+  });
+
+  it('T2: completed service is STILL counted (narrowed scope per Haim decision)', () => {
+    // Confirms PR-G.3.14 narrowed filter — 'completed' deferred, NOT excluded.
+    // Mirrors the canonical behavior in functions/tests/complete-service.test.js:264-280.
+    const services = [
+      {
+        type: 'hours',
+        status: 'completed',
+        totalHours: 10,
+        hoursUsed: 10
+      }
+    ];
+    const result = calcClientAggregates(services, 10);
+
+    // Completed service still in books — drives isBlocked=true
+    expect(result.totalHours).toBe(10);
+    expect(result.hoursUsed).toBe(10);
+    expect(result.hoursRemaining).toBe(0);
+    expect(result.isBlocked).toBe(true);
+  });
+
+  it('T3: all-archived services array → billable empty → I1 holds (not blocked, not critical)', () => {
+    const services = [
+      { type: 'hours', status: 'archived', totalHours: 50, hoursUsed: 50 },
+      { type: 'hours', status: 'archived', totalHours: 20, hoursUsed: 19 }
+    ];
+    const result = calcClientAggregates(services, 70 /* legacy stored totalHours */);
+
+    // After archived filter: billableServices.length === 0 → I1 branch fires
+    expect(result.totalHours).toBe(0);
+    expect(result.hoursUsed).toBe(0);
+    expect(result.hoursRemaining).toBe(0);
+    expect(result.isBlocked).toBe(false);
+    expect(result.isCritical).toBe(false);
+  });
+
+  it('T1b: invariant assert passes for client 2025724 shape (round-trip)', () => {
+    // Sanity round-trip: agg output for the 2025724-shaped client passes
+    // assertClientAggregateInvariants without throwing.
+    const services = [
+      { type: 'hours', status: 'archived', totalHours: 42, hoursUsed: 14.17 },
+      {
+        type: 'hours',
+        status: 'active',
+        totalHours: 34,
+        hoursUsed: 42.93,
+        overrideActive: true
+      }
+    ];
+    const agg = calcClientAggregates(services, 76);
+    expect(() => assertClientAggregateInvariants(services, agg, 'pr-g-3-14-test'))
+      .not.toThrow();
+  });
+});
+
 describe('calcClientAggregates — REAL PRODUCTION FIXTURES (21 blocked clients)', () => {
   const fixturesDir = path.join(__dirname, '..', '..', '..', 'test-fixtures', 'problem-clients');
   const hasFixtures = fs.existsSync(fixturesDir);

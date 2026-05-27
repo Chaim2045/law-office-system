@@ -20,9 +20,16 @@
 |---|---|---|
 | `isBlocked` | calcClientAggregates | יתרת שעות = 0 ואין override. אוטומטי. |
 | `isCritical` | calcClientAggregates | יתרת שעות ≤ 5. אוטומטי. |
-| `hoursUsed` / `hoursRemaining` | calcClientAggregates | סכום על שירותים billable |
+| `hoursUsed` / `hoursRemaining` | calcClientAggregates | סכום על שירותים billable **פעילים** |
 | `minutesUsed` / `minutesRemaining` | calcClientAggregates | המרה |
-| `totalHours` | סכום `svc.totalHours` של billable | רץ ב-helper |
+| `totalHours` | סכום `svc.totalHours` של billable **פעילים** | רץ ב-helper |
+
+**הגדרת "billable פעיל" (PR-G.3.14, 2026-05-27):**
+- `!isFixedService(svc)` (לא שירות קבוע)
+- `(svc.status || 'active') !== 'archived'` (לא בארכיון)
+- שני סטטוסים שעדיין נספרים: `'completed'` (היסטוריית billing, ראה `functions/tests/complete-service.test.js:264-280`) ו-`'on_hold'` (השהיה זמנית — עשוי לחזור)
+- ערך החוזה ההיסטורי המלא (כל הסטטוסים): `services.reduce((s, svc) => s + (svc.totalHours || 0), 0)`
+- ה-SSOT של רשימת הסטטוסים שמוצאים: `functions/shared/aggregates.js → NON_AGGREGATING_STATUSES`
 
 ### שדות ידניים (MANUAL) — קלט מ-CFs
 
