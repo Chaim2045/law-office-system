@@ -45,7 +45,7 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { calcClientAggregates, assertClientAggregateInvariants } = require('./aggregates');
+const { calcClientAggregates, assertClientAggregateInvariants, NON_AGGREGATING_STATUSES } = require('./aggregates');
 const { SYSTEM_CONSTANTS } = require('./constants');
 const { getEnforcementMode, VALID_MODES } = require('./enforcement-mode');
 
@@ -72,12 +72,18 @@ const RESTRICTED_KEYS = Object.freeze([
  * Recompute totalHours from services array.
  * Billable = not fixed (ST.FIXED) and not legal_procedure+fixed.
  *
+ * PR-G.3.14 (2026-05-27): also skip services with status in NON_AGGREGATING_STATUSES
+ * (currently `['archived']`). Aligns with calcClientAggregates' filter so both
+ * helpers compute totalHours on the same active subset (no drift).
+ *
  * @param {Array} services
  * @returns {number}
  */
 function recomputeTotalHours(services) {
   return services.reduce((sum, svc) => {
     if (!svc) return sum;
+    // PR-G.3.14: status filter must match aggregates.js NON_AGGREGATING_STATUSES.
+    if (NON_AGGREGATING_STATUSES.includes(svc.status || 'active')) return sum;
     if (svc.type === ST.FIXED) return sum;
     if (svc.type === ST.LEGAL_PROCEDURE && svc.pricingType === PT.FIXED) return sum;
     return sum + (typeof svc.totalHours === 'number' ? svc.totalHours : 0);

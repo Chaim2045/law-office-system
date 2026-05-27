@@ -412,6 +412,39 @@ describe('D. Aggregate computation', () => {
     expect(payload.isBlocked).toBe(false);  // I1 path
     expect(payload.hoursUsed).toBe(0);
   });
+
+  // PR-G.3.14 (2026-05-27): recomputeTotalHours skips archived services.
+  // Tests the writer path applies the same NON_AGGREGATING_STATUSES filter as
+  // calcClientAggregates. Without this alignment, totalHours and aggregates would
+  // diverge on every write to a client with archived services.
+  test('PR-G.3.14 T4: archived service excluded from recomputeTotalHours + aggregates', async () => {
+    // Mirror client 2025724 shape: 1 archived (42h), 1 active in overdraft (34h).
+    const archivedService = {
+      ...makeHoursService('arch1', { totalHours: 42, hoursUsed: 14.17 }),
+      status: 'archived'
+    };
+    const activeService = {
+      ...makeHoursService('act1', { totalHours: 34, hoursUsed: 42.93, overrideActive: true })
+    };
+    mockTransaction.get.mockResolvedValue(
+      makeClientDoc({
+        services: [archivedService, activeService],
+        totalHours: 76 /* legacy stored value pre-fix */
+      })
+    );
+    await writeClientWithCanonicalAggregates(
+      mockTransaction, clientRef, {}, { caller: 'pr-g-3-14-test' }
+    );
+    const [, payload] = mockTransaction.update.mock.calls[0];
+
+    // Writer's recomputeTotalHours skips archived → totalHours derived from active billable only.
+    expect(payload.totalHours).toBe(34);
+    expect(payload.hoursUsed).toBe(42.93);
+    expect(payload.hoursRemaining).toBe(-8.93);
+
+    // overrideActive on active service still suppresses block.
+    expect(payload.isBlocked).toBe(false);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
