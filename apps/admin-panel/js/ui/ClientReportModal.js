@@ -447,7 +447,10 @@ return;
 } // Skip if no valid key
 
                     // Calculate hours for this service/stage
-                    let usedMinutes = 0;
+                    // PR-G.3.13 (2026-05-27): usedMinutes recomputation removed.
+                    // service.hoursUsed is SSOT per SYSTEM_STATUS.md:251-254 +
+                    // functions/shared/aggregates.js:43-73. Prior name-matching recalc was
+                    // unreliable when service.name is undefined (e.g. legacy serviceName-only docs).
                     let totalHours = 0;
 
                     // Get total hours based on type with extensive checking
@@ -485,45 +488,17 @@ return;
                         });
                     }
 
-                    // Calculate used hours from timesheet entries
-                    if (window.ClientsDataManager) {
-                        const timesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
-
-                        console.log(`⏱️ Timesheet entries for ${client.fullName}:`, timesheetEntries);
-
-                        timesheetEntries.forEach(entry => {
-                            const entryService = entry.serviceName || entry.service || entry.stage;
-                            // החשוב: minutes הוא השדה העיקרי במערכת שלכם!
-                            const entryDuration = entry.minutes || entry.duration || entry.hours || 0;
-
-                            console.log('  Checking entry:', {
-                                service: entryService,
-                                duration: entryDuration,
-                                stage: entry.stage,
-                                comparing_with: {
-                                    serviceKey: serviceKey,
-                                    displayName: displayName,
-                                    stage: stage
-                                }
-                            });
-
-                            // Match by service name or stage
-                            if ((serviceType === 'legal_procedure' && entry.serviceId === stage) ||
-                                (entryService === serviceKey) ||
-                                (entryService === displayName)) {
-                                // Handle different duration formats
-                                if (typeof entryDuration === 'number') {
-                                    usedMinutes += entryDuration;
-                                } else if (entry.hours) {
-                                    usedMinutes += (entry.hours * 60);
-                                }
-                                console.log(`    ✅ Matched! Added ${entryDuration} minutes. Total: ${usedMinutes}`);
-                            }
-                        });
-                    }
-
-                    const usedHours = (usedMinutes / 60).toFixed(1);
-                    const remainingHours = (totalHours - parseFloat(usedHours)).toFixed(1); // 🔥 Allow negative for overage
+                    // PR-G.3.13: read SSOT hoursUsed / hoursRemaining directly from the service doc.
+                    // functions/shared/aggregates.js maintains these values transactionally on every
+                    // timesheet write — UI MUST NOT recompute (recompute was failing for services
+                    // with undefined `name`, and was masking overdraft via Math.max(0, …) clamp).
+                    const usedHoursNumeric = parseFloat(service.hoursUsed) || 0;
+                    const usedHours = usedHoursNumeric.toFixed(1);
+                    const remainingHours = (
+                        typeof service.hoursRemaining === 'number'
+                            ? service.hoursRemaining
+                            : (totalHours - usedHoursNumeric) // 🔥 Allow negative for overage
+                    ).toFixed(1);
 
                     servicesMap.set(serviceKey, {
                         displayName: displayName,
@@ -567,68 +542,17 @@ return;
                 });
             }
 
-            // Recalculate hours for all services after collection
-            if (servicesMap.size > 0) {
-                let allTimesheetEntries = [];
-
-                // Try different methods to get timesheet entries
-                if (window.ClientsDataManager && window.ClientsDataManager.getClientTimesheetEntries) {
-                    allTimesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
-                    console.log('🔄 Got entries from ClientsDataManager.getClientTimesheetEntries');
-                } else if (window.ClientsDataManager && window.ClientsDataManager.timesheetEntries) {
-                    // Fallback: filter timesheet entries manually
-                    allTimesheetEntries = window.ClientsDataManager.timesheetEntries.filter(entry =>
-                        entry.clientName === client.fullName
-                    );
-                    console.log('🔄 Got entries from ClientsDataManager.timesheetEntries');
-                } else if (client.timesheetEntries) {
-                    // Fallback: check if client object has timesheet entries
-                    allTimesheetEntries = client.timesheetEntries;
-                    console.log('🔄 Got entries from client.timesheetEntries');
-                }
-
-                console.log(`🔄 Recalculating hours for all services. Total timesheet entries: ${allTimesheetEntries.length}`);
-
-                // Log first few entries to understand structure
-                if (allTimesheetEntries.length > 0) {
-                    console.log('📝 Sample timesheet entries:', allTimesheetEntries.slice(0, 3));
-                }
-
-                servicesMap.forEach((serviceInfo, serviceKey) => {
-                    let totalUsedMinutes = 0;
-
-                    allTimesheetEntries.forEach(entry => {
-                        const entryService = entry.serviceName || entry.service || entry.stage;
-                        const entryDuration = entry.minutes || entry.duration || entry.hours || 0;
-
-                        // Check if this entry matches this service
-                        if (entryService === serviceKey ||
-                            entryService === serviceInfo.displayName ||
-                            (serviceInfo.stage && entry.serviceId === serviceInfo.stage)) {
-
-                            if (typeof entryDuration === 'number') {
-                                totalUsedMinutes += entryDuration;
-                            } else if (entry.hours) {
-                                totalUsedMinutes += (entry.hours * 60);
-                            }
-                        }
-                    });
-
-                    const recalcUsedHours = (totalUsedMinutes / 60).toFixed(1);
-                    const recalcRemainingHours = Math.max(0, serviceInfo.totalHours - parseFloat(recalcUsedHours)).toFixed(1);
-
-                    // Update the service info
-                    serviceInfo.usedHours = recalcUsedHours;
-                    serviceInfo.remainingHours = recalcRemainingHours;
-
-                    console.log(`📊 Service: ${serviceKey}`, {
-                        totalHours: serviceInfo.totalHours,
-                        usedHours: recalcUsedHours,
-                        remainingHours: recalcRemainingHours,
-                        totalMinutes: totalUsedMinutes
-                    });
-                });
-            }
+            // PR-G.3.13 (2026-05-27): UI-side timesheet recalc REMOVED.
+            //
+            // Previously this block walked timesheet entries and matched them to services by
+            // `entry.serviceName === serviceKey || === displayName` — which silently produced
+            // usedHours = 0 whenever the service had no `name` field (only legacy `serviceName`).
+            // It also CLAMPED hoursRemaining with `Math.max(0, …)`, hiding overdraft.
+            //
+            // Both fields are now read directly from `service.hoursUsed` / `service.hoursRemaining`
+            // at populate time (see OLD ARCHITECTURE FALLBACK above). `functions/shared/aggregates.js`
+            // is the SSOT and updates these fields transactionally on every timesheet write.
+            // See SYSTEM_STATUS.md:251-254.
 
             // ════════════════════════════════════════════════════════════════
             // 🎯 LEGAL PROCEDURE REPORT FIX: Auto-Select Active Stage Only
@@ -828,9 +752,27 @@ card.classList.add('resolved');
             badgesContainer.style.gap = '0.5rem';
             badgesContainer.style.flexWrap = 'wrap';
 
-            // Badge priority order: resolved > overdraft > pricing-type > current-stage
+            // Badge priority order: service-status > resolved > overdraft > pricing-type > current-stage
+            //
+            // PR-G.3.13 (2026-05-27): archived/completed badge added — parity with
+            // ClientManagementModal.js:479-487 getServiceStatusBadge. Service-level status
+            // (archived/completed) is the highest-priority visual marker because it tells staff
+            // the service is closed; overdraft/resolved are secondary to that fact.
 
-            // 1. Status badges (highest priority)
+            // 0. Service status badge (archived/completed) — highest priority for non-active services
+            if (serviceInfo.status === 'archived') {
+                const badge = document.createElement('div');
+                badge.className = 'report-card-badge archived';
+                badge.innerHTML = '<i class="fas fa-archive"></i> בארכיון';
+                badgesContainer.appendChild(badge);
+            } else if (serviceInfo.status === 'completed') {
+                const badge = document.createElement('div');
+                badge.className = 'report-card-badge completed';
+                badge.innerHTML = '<i class="fas fa-lock"></i> הושלם';
+                badgesContainer.appendChild(badge);
+            }
+
+            // 1. Status badges (overdraft / resolved)
             if (serviceInfo.overdraftResolved?.isResolved) {
                 const badge = document.createElement('div');
                 badge.className = 'report-card-badge resolved';
