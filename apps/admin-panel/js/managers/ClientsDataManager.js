@@ -123,6 +123,29 @@
         }
 
         /**
+         * Determine whether a service contributes to client-level aggregates.
+         * PR-G.3.14 (2026-05-27): archived services are excluded from client-level
+         * totalHours / hoursRemaining / needsAttention / overdraft signals.
+         *
+         * Mirror of `NON_AGGREGATING_STATUSES` in functions/shared/aggregates.js.
+         * Backend SSOT keeps the canonical list; frontend filter MUST stay in sync.
+         * If you add another status (e.g. 'on_hold'), update BOTH places.
+         *
+         * Lifetime contract value (across all statuses) reachable via:
+         *   client.services.reduce((s, svc) => s + (svc.totalHours || 0), 0)
+         *
+         * @param {Object} service - one entry from client.services[]
+         * @returns {boolean} true if the service counts toward client-level aggregates
+         */
+        _isServiceCountedForClientAggregate(service) {
+            if (!service) {
+                return false;
+            }
+            const status = service.status || 'active';
+            return status !== 'archived';
+        }
+
+        /**
          * Calculate remaining hours from services array
          * חישוב שעות נותרות מתוך מערך השירותים
          */
@@ -134,6 +157,10 @@
             let totalRemaining = 0;
 
             client.services.forEach(service => {
+                // PR-G.3.14: skip archived services from client-level total
+                if (!this._isServiceCountedForClientAggregate(service)) {
+                    return;
+                }
                 // Check if this is a legal procedure with stages
                 if (service.type === 'legal_procedure' && service.stages && Array.isArray(service.stages)) {
                     // For legal procedures: sum only ACTIVE stages
@@ -163,6 +190,10 @@
             let totalHours = 0;
 
             client.services.forEach(service => {
+                // PR-G.3.14: skip archived services from client-level total
+                if (!this._isServiceCountedForClientAggregate(service)) {
+                    return;
+                }
                 // Check if this is a legal procedure with stages
                 if (service.type === 'legal_procedure' && service.stages && Array.isArray(service.stages)) {
                     // For legal procedures: sum only ACTIVE stages

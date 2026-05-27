@@ -635,10 +635,14 @@ return true;
             // Handle "all services" option (hour packages only)
             if (formData.service === 'all' || formData.service === 'כל השירותים') {
                 // Sum all services
+                // PR-G.3.14 (2026-05-27): exclude archived services from "כל השירותים"
+                // aggregation. Matches frontend table (ClientsDataManager) + backend SSOT
+                // (aggregates.js NON_AGGREGATING_STATUSES). Consistency across screens.
                 if (client.services && client.services.length > 0) {
-                    serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
-                    serviceUsedHours = client.services.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
-                    serviceRemainingHours = client.services.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
+                    const billableServices = client.services.filter(s => (s?.status || 'active') !== 'archived');
+                    serviceTotalHours = billableServices.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
+                    serviceUsedHours = billableServices.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
+                    serviceRemainingHours = billableServices.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
                 } else {
                     serviceTotalHours = client.totalHours || 0;
                     serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
@@ -811,8 +815,10 @@ return true;
             if (client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') {
                 if (formData.service === 'all') {
                     // If "all services" selected, sum up all service hours
+                    // PR-G.3.14: exclude archived services (consistent with aggregates.js).
                     if (client.services && client.services.length > 0) {
-                        const totalHours = client.services.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
+                        const billableServices = client.services.filter(s => (s?.status || 'active') !== 'archived');
+                        const totalHours = billableServices.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
                         serviceTotalMinutes = totalHours * 60;
                     } else {
                         serviceTotalMinutes = (client.totalHours || 0) * 60;
@@ -915,10 +921,12 @@ return true;
             let serviceRemainingHours = 0;
 
             if (formData.service === 'all' || formData.service === 'כל השירותים') {
+                // PR-G.3.14: exclude archived services from "כל השירותים" totals.
                 if (client.services && client.services.length > 0) {
-                    serviceTotalHours = client.services.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
-                    serviceUsedHours = client.services.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
-                    serviceRemainingHours = client.services.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
+                    const billableServices = client.services.filter(s => (s?.status || 'active') !== 'archived');
+                    serviceTotalHours = billableServices.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
+                    serviceUsedHours = billableServices.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
+                    serviceRemainingHours = billableServices.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
                 } else {
                     serviceTotalHours = client.totalHours || 0;
                     serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
