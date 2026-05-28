@@ -351,3 +351,220 @@ exports.setAdminClaims = functions.https.onRequest(async (req, res) => {
     results: results
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🔍 VERIFY CLAIMS — Read-Only Diagnostic (PR-H.0.0.A)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Purpose: Inspect the actual state of Firebase Auth custom claims vs the
+// employees collection role field. NO WRITES. Pure observability.
+//
+// Why this exists (planning context):
+//   The AI Management Layer plan (Pre-H.0.0) depends on a custom claim
+//   `role: 'partner'` for Guy and Haim. Earlier investigation suggested
+//   that drift exists between employees.role (Firestore field) and
+//   auth.token.role (custom claim). Devils-advocate then flagged that:
+//     1. `firestore.rules:239` matches `request.auth.token.role in
+//        resource.data.toRoles` — so setting a 'partner' claim is NOT
+//        infrastructure-only, it could grant immediate read access to any
+//        messages document whose toRoles array contains 'partner'.
+//     2. Two claim shapes coexist in this codebase:
+//        - {admin: true}     — written by initializeAdminClaims (legacy)
+//        - {role: 'admin'}   — written by setAdminClaims
+//        apps/admin-panel/js/core/auth.js accepts both. Overwriting one
+//        with the other would silently demote that user.
+//     3. The employees document might not be the absolute source of truth.
+//        Someone may have been granted a claim manually via Firebase Console.
+//   Before any partner-claim write, we MUST inspect the actual production
+//   state. This function provides that inspection without any side effects.
+//
+// Auth: caller MUST be an admin (accepts BOTH claim shapes during the
+// transition, since this is the function diagnosing the transition).
+exports.verifyClaims = functions.https.onCall(async (data, context) => {
+  // ─── Auth gate — accepts BOTH legacy and current claim shapes ───
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'נדרשת התחברות למערכת'
+    );
+  }
+  const claims = context.auth.token || {};
+  const isAdmin = (claims.role === 'admin') || (claims.admin === true);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'גישה לדיאגנוסטיקה זו מותרת רק למנהל מערכת'
+    );
+  }
+
+  const startedAt = Date.now();
+  const report = {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    triggeredBy: {
+      uid: context.auth.uid,
+      email: claims.email || null
+    },
+    employees: [],
+    claimShapeBreakdown: {
+      role_string_only: 0,
+      admin_boolean_only: 0,
+      both_shapes: 0,
+      no_claim: 0,
+      auth_user_missing: 0
+    },
+    mismatches: [],
+    messagesWithPartnerToRoles: { scanned: false, count: 0, samples: [], error: null },
+    summary: {},
+    notes: []
+  };
+
+  // ─── (1) Read all employees from Firestore ───
+  let employeesSnapshot;
+  try {
+    employeesSnapshot = await db.collection('employees').get();
+  } catch (err) {
+    console.error('[verifyClaims] Failed to read employees collection', {
+      error: err.message,
+      triggeredBy: report.triggeredBy.email
+    });
+    throw new functions.https.HttpsError(
+      'internal',
+      'שגיאה בקריאת רשימת העובדים. נסה שוב או פנה למפתח.'
+    );
+  }
+
+  // ─── (2) For each employee, fetch their auth user record + custom claims ───
+  for (const empDoc of employeesSnapshot.docs) {
+    const empEmail = empDoc.id;
+    const empData = empDoc.data() || {};
+    const firestoreRole = empData.role || null;
+    const isActive = empData.isActive !== false; // default true unless explicitly false
+
+    const entry = {
+      email: empEmail,
+      isActive: isActive,
+      firestoreRole: firestoreRole,
+      authUid: null,
+      authError: null,
+      customClaims: null,
+      claimShape: 'no_claim',
+      tokenRole: null,
+      adminBoolean: false,
+      mismatch: null
+    };
+
+    try {
+      const authUser = await auth.getUserByEmail(empEmail);
+      entry.authUid = authUser.uid;
+      const cc = authUser.customClaims || {};
+      entry.customClaims = cc;
+      entry.tokenRole = cc.role || null;
+      entry.adminBoolean = cc.admin === true;
+
+      // Determine claim shape
+      if (entry.tokenRole && entry.adminBoolean) {
+        entry.claimShape = 'both_shapes';
+        report.claimShapeBreakdown.both_shapes++;
+      } else if (entry.tokenRole) {
+        entry.claimShape = 'role_string_only';
+        report.claimShapeBreakdown.role_string_only++;
+      } else if (entry.adminBoolean) {
+        entry.claimShape = 'admin_boolean_only';
+        report.claimShapeBreakdown.admin_boolean_only++;
+      } else {
+        entry.claimShape = 'no_claim';
+        report.claimShapeBreakdown.no_claim++;
+      }
+    } catch (err) {
+      // Auth user does not exist for this employee email
+      entry.authError = err.code || err.message || 'unknown';
+      report.claimShapeBreakdown.auth_user_missing++;
+    }
+
+    // ─── (3) Detect mismatches (Firestore vs claim) ───
+    // Rules:
+    //   - Firestore says admin → expect claim is admin (either shape)
+    //   - Firestore says partner → expect tokenRole === 'partner'
+    //   - Firestore says employee/null → expect NO elevated claim
+    if (entry.authError) {
+      entry.mismatch = null; // can't compare without auth user
+    } else if (firestoreRole === 'admin') {
+      const hasAdminClaim = entry.tokenRole === 'admin' || entry.adminBoolean;
+      if (!hasAdminClaim) {
+        entry.mismatch = 'firestore_admin_no_claim';
+      }
+    } else if (firestoreRole === 'partner') {
+      if (entry.tokenRole !== 'partner') {
+        entry.mismatch = 'firestore_partner_no_claim';
+      }
+    } else {
+      // employee or null — should have NO elevated claim
+      if (entry.tokenRole || entry.adminBoolean) {
+        entry.mismatch = 'firestore_employee_has_elevated_claim';
+      }
+    }
+
+    if (entry.mismatch) {
+      report.mismatches.push({
+        email: entry.email,
+        firestoreRole: entry.firestoreRole,
+        tokenRole: entry.tokenRole,
+        adminBoolean: entry.adminBoolean,
+        kind: entry.mismatch
+      });
+    }
+
+    report.employees.push(entry);
+  }
+
+  // ─── (4) Scan messages collection for any doc with 'partner' in toRoles ───
+  // This is the Devils-Advocate concern: setting a partner claim could grant
+  // immediate read access to any such document via firestore.rules:239.
+  try {
+    const messagesSnap = await db.collection('messages')
+      .where('toRoles', 'array-contains', 'partner')
+      .limit(100)
+      .get();
+
+    report.messagesWithPartnerToRoles.scanned = true;
+    report.messagesWithPartnerToRoles.count = messagesSnap.size;
+    report.messagesWithPartnerToRoles.samples = messagesSnap.docs.slice(0, 10).map(d => {
+      const md = d.data() || {};
+      return {
+        id: d.id,
+        toRoles: md.toRoles || null,
+        createdAt: md.createdAt || md.timestamp || null
+      };
+    });
+    if (messagesSnap.size === 100) {
+      report.notes.push('messages_with_partner_role: hit 100-doc limit; actual count may be higher');
+    }
+  } catch (err) {
+    report.messagesWithPartnerToRoles.scanned = false;
+    report.messagesWithPartnerToRoles.error = err.message || 'unknown';
+    report.notes.push(
+      'messages scan failed — may indicate collection does not exist or index is missing. Not necessarily critical.'
+    );
+  }
+
+  // ─── (5) Summary ───
+  report.summary = {
+    totalEmployees: report.employees.length,
+    matchedCount: report.employees.filter(e => !e.mismatch && !e.authError).length,
+    mismatchCount: report.mismatches.length,
+    authMissingCount: report.claimShapeBreakdown.auth_user_missing,
+    legacyAdminBooleanCount: report.claimShapeBreakdown.admin_boolean_only + report.claimShapeBreakdown.both_shapes,
+    messagesWithPartnerToRoles: report.messagesWithPartnerToRoles.count,
+    elapsedMs: Date.now() - startedAt
+  };
+
+  // ─── (6) Structured log for observability (G3) — no PII beyond aggregate counts ───
+  console.log('[verifyClaims] Diagnostic completed', {
+    triggeredBy: report.triggeredBy.email,
+    schemaVersion: report.schemaVersion,
+    summary: report.summary
+  });
+
+  return report;
+});
