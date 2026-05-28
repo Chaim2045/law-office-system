@@ -417,7 +417,9 @@ this.passwordInput.value = '';
                 // Why: Custom Claims are cryptographically signed by Firebase
                 //      Cannot be tampered with by client-side code
                 //      No database lookup required (instant verification)
-                // Set via: run set-admin-claims.js script
+                // Set via: setAdminClaims callable (functions/src-ts/set-admin-claims.ts)
+                //          or initializeAdminClaims for bulk sync. Both require an
+                //          existing admin caller. Recovery: docs/ADMIN_CLAIMS_RECOVERY.md
                 const tokenResult = await user.getIdTokenResult();
 
                 const isAdminRole = tokenResult.claims.role === window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN;
@@ -432,11 +434,12 @@ this.passwordInput.value = '';
                 // LAYER 2: Email List (DEPRECATED - BACKWARDS COMPATIBILITY)
                 // ════════════════════════════════════════════════════════════
                 // Why deprecated: Client-side lists can be modified (low risk)
-                // Migration: Run set-admin-claims.js to set Custom Claims
+                // Migration: invoke the setAdminClaims callable (Pre-H.0.0.B) to set
+                //            the dual-shape custom claim {admin:true, role:'admin'}.
                 // Will be removed in: v3.0.0
                 if (this.adminEmails.includes(user.email.toLowerCase())) {
                     console.warn('⚠️ Admin verified (Email List - DEPRECATED):', user.email);
-                    console.warn('   🔧 Please run set-admin-claims.js to enable Custom Claims');
+                    console.warn('   🔧 Have an existing admin call setAdminClaims to grant a Custom Claim');
                     console.warn('   📝 Email list verification will be removed in v3.0.0');
                     return true;
                 }
@@ -453,7 +456,7 @@ this.passwordInput.value = '';
                     const employeeData = employeeDoc.data();
                     if (employeeData.role === window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN) {
                         console.warn('⚠️ Admin verified (Firestore - SLOW FALLBACK):', user.email);
-                        console.warn('   🔧 Please run set-admin-claims.js for better performance');
+                        console.warn('   🔧 Have an existing admin call setAdminClaims to set the Custom Claim');
                         return true;
                     }
                 }

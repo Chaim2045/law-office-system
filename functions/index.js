@@ -78,10 +78,15 @@ exports.onSystemHealthCheckCreated = systemReportsOutboxTrigger.onSystemHealthCh
 const authModule = require('./auth');
 exports.createAuthUser = authModule.createAuthUser;
 exports.linkAuthToEmployee = authModule.linkAuthToEmployee;
-exports.setAdminClaim = authModule.setAdminClaim;
-exports.initializeAdminClaims = authModule.initializeAdminClaims;
-exports.setAdminClaims = authModule.setAdminClaims;
+exports.setAdminClaim = authModule.setAdminClaim; // legacy onCall singular form (revoke + grant)
 exports.verifyClaims = authModule.verifyClaims; // PR-H.0.0.A — read-only diagnostic
+
+// Auth Functions (TS — Pre-H.0.0.B replacements for the legacy unauth'd setAdminClaims
+// and the under-auth'd initializeAdminClaims). Both compiled from functions/src-ts/.
+const setAdminClaimsModule = require('./lib/set-admin-claims');
+exports.setAdminClaims = setAdminClaimsModule.setAdminClaims;
+const initializeAdminClaimsModule = require('./lib/initialize-admin-claims');
+exports.initializeAdminClaims = initializeAdminClaimsModule.initializeAdminClaims;
 
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');

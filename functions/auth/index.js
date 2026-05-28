@@ -177,13 +177,29 @@ exports.linkAuthToEmployee = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * setAdminClaim - מגדיר Custom Claim של admin למשתמש
- * מאפשר הרשאות מתקדמות ב-Security Rules
+ * setAdminClaim - מגדיר Custom Claim של admin למשתמש (LEGACY — singular form)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Note (Pre-H.0.0.B, 2026-05-28):
+ *   This singular-form callable predates the new TS endpoints
+ *   `setAdminClaims` / `initializeAdminClaims` in `functions/src-ts/`.
+ *   Why it survives this PR:
+ *     - It accepts `{email, isAdmin: boolean}` and supports BOTH grant AND revoke.
+ *     - The new TS endpoints currently only handle GRANT (Zod role: 'admin').
+ *     - Revoke flow is out of Pre-H.0.0.B scope.
+ *   What this PR fixes here:
+ *     - Replaces the undefined `logActivity(...)` call (latent crash bug) with
+ *       the canonical `logAction(...)` from `shared/audit.js`.
+ *     - On GRANT, writes DUAL-SHAPE claim `{admin:true, role:'admin'}` to
+ *       match the new TS endpoints; aligns this writer with PR-H.0.0.A's
+ *       PARTNER_CLAIM_DIAGNOSTIC intent.
+ *     - On REVOKE, preserves the legacy `{admin:false}` behavior.
+ *   Future:
+ *     - Pre-H.0.0.D/E/F may consolidate this into the TS module after the
+ *       partner-claim flow is designed. Do NOT extend this function further
+ *       without updating PARTNER_CLAIM_DIAGNOSTIC.md.
  */
 exports.setAdminClaim = functions.https.onCall(async (data, context) => {
   try {
-    console.log('🔐 Starting setAdminClaim...');
-
     // בדיקת הרשאות - רק מי שכבר admin יכול להריץ
     const employee = await checkUserPermissions(context);
     if (!employee.isAdmin) {
@@ -202,28 +218,29 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // self-elevation block (Pre-H.0.0.B) — caller cannot grant/revoke their own admin
+    if (employee.email === email) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'אסור לשנות את הרשאת ה-admin של עצמך. בקש מאדמין אחר.'
+      );
+    }
+
     // מצא את המשתמש לפי email
     const userRecord = await auth.getUserByEmail(email);
 
-    // הגדר את ה-custom claim
-    await auth.setCustomUserClaims(userRecord.uid, {
-      admin: isAdmin === true
-    });
+    // הגדר את ה-custom claim — DUAL-SHAPE on grant, legacy revoke shape preserved
+    const newClaims = isAdmin === true
+      ? { admin: true, role: 'admin' }
+      : { admin: false };
+    await auth.setCustomUserClaims(userRecord.uid, newClaims);
 
-    console.log(`✅ Custom claim set for ${email}: admin=${isAdmin}`);
-
-    // רישום פעילות
-    await logActivity({
-      actionType: 'ADMIN_CLAIM_SET',
-      targetType: 'user',
-      targetId: userRecord.uid,
-      performedBy: employee.name,
-      performedByUID: context.auth.uid,
-      details: {
-        email: email,
-        isAdmin: isAdmin
-      },
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    // רישום פעילות — uses logAction (canonical audit helper from shared/audit.js)
+    await logAction('ADMIN_CLAIM_SET', context.auth.uid, employee.username, {
+      targetEmail: email,
+      targetUid: userRecord.uid,
+      isAdmin: isAdmin === true,
+      claimShapeWritten: newClaims
     });
 
     return {
@@ -247,110 +264,27 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
   }
 });
 
-/**
- * initializeAdminClaims - מאתחל custom claims לכל המנהלים
- * פועל פעם אחת להגדרת ההרשאות הראשונית
- * אין בדיקת הרשאות כי זו הפעם הראשונה
- */
-exports.initializeAdminClaims = functions.https.onCall(async (data, context) => {
-  try {
-    console.log('🔐 Starting initializeAdminClaims...');
-
-    // בדיקה שהמשתמש מחובר (אבל לא בודקים אם הוא admin כי זו הפעם הראשונה)
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'נדרשת התחברות למערכת'
-      );
-    }
-
-    // מצא את כל העובדים שמסומנים כ-admin
-    const adminsSnapshot = await db.collection('employees')
-      .where('isAdmin', '==', true)
-      .get();
-
-    const results = [];
-
-    for (const doc of adminsSnapshot.docs) {
-      const employeeData = doc.data();
-      const email = employeeData.email;
-
-      try {
-        const userRecord = await auth.getUserByEmail(email);
-
-        await auth.setCustomUserClaims(userRecord.uid, {
-          admin: true
-        });
-
-        console.log(`✅ Set admin claim for: ${email}`);
-        results.push({
-          email: email,
-          success: true
-        });
-
-      } catch (error) {
-        console.error(`❌ Failed to set claim for ${email}:`, error);
-        results.push({
-          email: email,
-          success: false,
-          error: error.message
-        });
-      }
-    }
-
-    console.log(`✅ Initialized admin claims for ${results.filter(r => r.success).length}/${results.length} users`);
-
-    return {
-      success: true,
-      message: `אותחלו הרשאות admin`,
-      results: results,
-      totalProcessed: results.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length
-    };
-
-  } catch (error) {
-    console.error('Error in initializeAdminClaims:', error);
-
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-
-    throw new functions.https.HttpsError(
-      'internal',
-      `שגיאה באתחול הרשאות: ${error.message}`
-    );
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════════
-// 🔐 SET ADMIN CLAIMS - One-Time Setup Function
-// ═══════════════════════════════════════════════════════════════════════
-exports.setAdminClaims = functions.https.onRequest(async (req, res) => {
-  const adminEmails = [
-    'haim@ghlawoffice.co.il',
-    'guy@ghlawoffice.co.il'
-  ];
-
-  const results = [];
-
-  for (const email of adminEmails) {
-    try {
-      const user = await auth.getUserByEmail(email);
-      await auth.setCustomUserClaims(user.uid, { role: 'admin' });
-      results.push(`✅ Set admin claims for: ${email}`);
-      console.log(`✅ Set admin claims for: ${email}`);
-    } catch (error) {
-      results.push(`❌ Error setting claims for ${email}: ${error.message}`);
-      console.error(`❌ Error setting claims for ${email}:`, error);
-    }
-  }
-
-  res.json({
-    success: true,
-    results: results
-  });
-});
+// ─── REMOVED IN Pre-H.0.0.B ──────────────────────────────────────────────────
+// The following functions were deleted from this file and re-implemented in
+// TypeScript under `functions/src-ts/`:
+//
+//   - initializeAdminClaims  (was an onCall that SKIPPED admin gating —
+//     "אין בדיקת הרשאות כי זו הפעם הראשונה" — meaning any logged-in user
+//     could re-promote every employee with isAdmin:true)
+//     → New: functions/src-ts/initialize-admin-claims.ts (admin-gated, locked,
+//       idempotent, dual-shape writer)
+//
+//   - setAdminClaims (plural) (was an onRequest with ZERO auth — anyone with
+//     the public Cloud Function URL could trigger it, hardcoded to grant
+//     admin to haim@ + guy@)
+//     → New: functions/src-ts/set-admin-claims.ts (onCall, admin-gated, Zod
+//       input, audit-first/claim-second, self-elevation blocked)
+//
+// Both new endpoints are wired in `functions/index.js` via `require('./lib/...')`
+// after `npm run build:ts`. The TypeScript compiles to `functions/lib/` which
+// is committed to the repo (decision recorded in Pre-H.0.0.B checkpoint —
+// preserves deploy determinism without adding a predeploy build step).
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🔍 VERIFY CLAIMS — Read-Only Diagnostic (PR-H.0.0.A)
