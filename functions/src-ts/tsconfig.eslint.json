@@ -1,0 +1,18 @@
+{
+  // ESLint-only tsconfig — includes test files (which the build tsconfig
+  // excludes from emit). Used by `eslint.config.js` parserOptions.project so
+  // type-aware rules (no-floating-promises, await-thenable, etc.) can run on
+  // both production code AND tests without polluting `functions/lib/`.
+  //
+  // Do NOT use this tsconfig for `tsc` builds — `tsconfig.json` is the
+  // build-authoritative file. This one widens the include for tooling only.
+  "extends": "./tsconfig.json",
+  "include": [
+    "./**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "../lib",
+    "../node_modules"
+  ]
+}

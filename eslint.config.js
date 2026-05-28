@@ -279,7 +279,9 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        project: ['./functions/src-ts/tsconfig.json']
+        // Use the ESLint-only tsconfig that re-includes __tests__ — the build
+        // tsconfig.json excludes tests so they don't land in functions/lib/.
+        project: ['./functions/src-ts/tsconfig.eslint.json']
       },
       globals: {
         process: 'readonly',
