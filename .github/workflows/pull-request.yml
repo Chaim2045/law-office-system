@@ -101,6 +101,20 @@ jobs:
       - name: 🎨 Lint CSS Files
         run: npm run css:lint
 
+      # PR-META-6: Lint new TypeScript backend code in functions/src-ts/.
+      # Existing JS in functions/ is intentionally NOT linted here — the
+      # commonIgnores in eslint.config.js still applies, so this step is a
+      # NO-OP if no .ts files exist under functions/src-ts/ yet.
+      # 0 errors blocks merge; warnings are reported but don't fail the step.
+      - name: 🟦 Lint functions/src-ts (PR-META-6)
+        run: |
+          if [ -d functions/src-ts ] && find functions/src-ts -name '*.ts' -not -path '*/node_modules/*' -print -quit | grep -q .; then
+            echo "Linting functions/src-ts/ TypeScript files..."
+            npx eslint 'functions/src-ts/**/*.ts'
+          else
+            echo "⏭️  Skipped — no .ts files in functions/src-ts/ yet."
+          fi
+
       - name: 📊 Changed Files Statistics
         run: |
           echo "📊 Files Changed in This PR:"
@@ -155,6 +169,20 @@ jobs:
 
       - name: 🏗️ Compile TypeScript
         run: npm run compile-ts
+
+      # PR-META-6: Typecheck + build new TS code under functions/src-ts/.
+      # Uses functions/src-ts/tsconfig.json which extends the root tsconfig
+      # but emits to functions/lib/ (Node 20 CommonJS).
+      - name: 📘 Typecheck functions/src-ts (PR-META-6)
+        run: |
+          if [ -d functions/src-ts ] && find functions/src-ts -name '*.ts' -not -path '*/node_modules/*' -print -quit | grep -q .; then
+            echo "Installing functions/ dependencies..."
+            cd functions && npm ci --prefer-offline --no-audit && cd ..
+            echo "Typechecking functions/src-ts/..."
+            cd functions && npm run typecheck:ts && cd ..
+          else
+            echo "⏭️  Skipped — no .ts files in functions/src-ts/ yet."
+          fi
 
       - name: ✅ TypeScript Validation Passed
         run: echo "✅ All TypeScript files compiled successfully!"

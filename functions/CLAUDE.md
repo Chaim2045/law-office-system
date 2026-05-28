@@ -93,3 +93,39 @@ The file path is:
 - Be skeptical
 - Do not minimize backend risk
 - Do not assume a fix is safe just because syntax looks correct
+
+## TYPESCRIPT PATH FOR NEW BACKEND CODE (PR-META-6, 2026-05)
+
+**All new Cloud Functions backend code lives in `functions/src-ts/` and is written in TypeScript.**
+
+### What this means in practice
+
+- **New module?** Create it as `functions/src-ts/<module-name>.ts`. Compile via `npm run build:ts` (from `functions/`). Output lands in `functions/lib/`. Import in `functions/index.js` via `require('./lib/<module-name>')`.
+- **Existing JS module?** Stays as JS. Do NOT migrate it as a side effect of unrelated work. A separate PR with explicit motivation is required.
+- **Tests** for new code: `functions/src-ts/__tests__/<module>.test.ts`. Jest with `ts-jest` runs them via the `src-ts` project in `functions/jest.config.js`.
+- **Tests** for existing code: `functions/tests/<module>.test.js`. Jest runs them via the `legacy-js` project — same as before META-6.
+
+### Strict bar for `functions/src-ts/**`
+
+See `docs/ENGINEERING_BAR.md` for the full standard. Highlights:
+- TypeScript strict mode (`strict: true`, `allowJs: false`)
+- ESLint with 0 errors enforced (warnings reported but not blocking)
+- `no-restricted-syntax` forbids `console.*` — use `require('../shared/logger')` shim
+- Zod for input/output validation on callables
+- v2 Cloud Functions (`firebase-functions/v2/*`) for all new endpoints
+- `defineSecret` for v2 secrets; `process.env.X` for v1 callables that aren't being migrated
+- Test coverage target: 60% to start, growing to 80%
+
+### What NEVER changes
+
+- The existing `functions/*.js` files keep working unchanged.
+- The existing `functions/tests/` Jest suite keeps running on Jest defaults (now via the `legacy-js` project).
+- `functions/test/setup.js` is sacred — DO NOT modify (it mocks `global.console` for the existing 38 tests; changing it would leak data to the public CI log).
+- `firebase.json` deploy config is unchanged. Compiled TS output in `functions/lib/` deploys naturally.
+
+### Where to find canonical examples
+
+- Logger shim: `functions/shared/logger.js`
+- TS config: `functions/src-ts/tsconfig.json`
+- Sample test asserting "no writes": `functions/src-ts/__tests__/verify-claims.test.ts`
+- Engineering standard: `docs/ENGINEERING_BAR.md`
