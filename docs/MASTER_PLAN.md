@@ -1,79 +1,387 @@
 # MASTER PLAN — Law Office System
 
 **Status anchor:** 2026-05-28
-**Owner:** Haim (Product Owner)
+**Owner:** Haim (Product Owner, partner at משרד עו"ד גיא הרשקוביץ ושות')
 **Orchestrator:** Lead Agent (Claude Code session)
-**Purpose:** Single source of truth for the multi-phase initiative. Survives session resets, claims context after compaction, lets any new agent answer "where are we?" in 30 seconds.
+**Purpose:** Single source of truth for the multi-phase initiative — vision, standard, agreement, decisions, plan, timeline. Survives session resets.
 
-> **Read this file FIRST** when a new session starts and the request mentions the AI Management Layer, profitability, tofes-mecher integration, or Pre-H.0.0 work. The Lead Agent's working memory of the plan ends when the session ends — this file is what persists.
-
----
-
-## North star
-
-Build an **AI Management Layer in the Admin Panel** (Claude-based, MCP integration, read-only chat for queries) that:
-1. Bridges the existing `tofes-mecher` system (separate Firebase project `law-office-sales-form`) as the system-of-record for all transactions — eliminates manual client/service creation drift.
-2. Provides real-time **per-case profitability** (cost-per-hour × hours-worked vs. fee paid), exposed as both Static Plan and Dynamic Forecast.
-3. Replaces the current manual admin "create client → create service" flow with a **gated pipeline**: `sales_record` in tofes-mecher → signed PDF → AI signature-presence check → admin approval → deterministic creation.
-4. Reframes the **Exception modal** from "loss" to "open debt to collect from client" (semantic clarity for legal-billing reality).
-5. Centralizes **task budgeting** with hybrid rules (partner-assigned vs employee-self-opened with auto-approve <3h).
-
-**Why this exists:** the system is being prepared for commercial sale. Internal-tool standards do not survive paying customers. The plan is structured to elevate the system to commercial-grade BEFORE expanding features.
+> **Read this file FIRST** when a new session starts and the request mentions the AI Management Layer, profitability, tofes-mecher integration, or Pre-H.0.0 work. The Lead Agent's working memory of the plan ends when the session ends — this file is what persists. The Lead Agent is **allowed to trust this file over its own session memory** when they conflict.
 
 ---
 
-## Hard constraints (apply to every PR in this plan)
+## 1. Product Vision
+
+### 1.1 Who uses this system
+
+- **Haim** — senior partner. Approves scope, PROD deploys, architectural decisions. Reviews PRs. Receives weekly profitability summaries. Uses the AI chat to query "which cases are bleeding cash this month?"
+- **Guy** — senior partner. Same role as Haim.
+- **8 employees** (lawyers + administrative) — daily users of the User App for time entry, task management, client interactions.
+- **Accountant** (external) — produces per-employee cost-per-hour data → uploaded into the system via a controlled flow.
+- **Future buyer (commercial)** — the system is being prepared for sale. Internal-tool standards do not survive paying customers.
+
+### 1.2 What pain points we are solving
+
+| Pain | Current state | Cost |
+|---|---|---|
+| Manual client/service creation | Admin types client details into Admin Panel → no validation, no audit, easy drift | Errors propagate to billing, time entry; no one knows when/why a wrong client was opened |
+| No real-time profitability | Hours are tracked. Fees are tracked. But cost-per-hour × hours is never computed. We don't know if a case is bleeding cash until quarterly accountant review | Bad cases run for months before anyone notices |
+| Exception modal says "loss" | When a service overruns, the modal frames it as a "loss" to the firm | Wrong mental model — for legal billing, "overrun" = "open debt to collect from client", not a write-off |
+| tofes-mecher data is siloed | The `tofes-mecher` system (separate Firebase project `law-office-sales-form`) holds sales_record data that is **already accountant-verified**. Currently no integration with law-office-system | We re-enter what's already authoritative elsewhere; numbers drift |
+| No AI assistance | Haim/Guy have no fast query path into the data. "Show me all clients with negative forecast" requires manual spreadsheet work | Hours of partner time lost to data-wrangling |
+| Task budgeting is inconsistent | Employees self-open tasks without budget. Partners assign tasks without enforced budgets. No approval workflow | Hours pile up without anyone catching it |
+
+### 1.3 Desired end state (MVP)
+
+When this plan is complete:
+
+1. **Single Source of Truth for transactions = tofes-mecher.** Every new client/service goes through a gated pipeline: `sales_record` exists in tofes-mecher → signed PDF uploaded → AI signature-presence check passes → admin reviews → admin approves → law-office-system creates the client + service **deterministically** from the sales_record data. No more manual typing.
+
+2. **Real-time per-case profitability dashboard in Admin Panel.** For every active case shows:
+   - **Plan** (Static): fees committed × expected hours at intake → expected profit
+   - **Forecast** (Dynamic): fees-paid-so-far + cost-of-hours-logged-so-far → current projection
+   - Color-coded alerts when Forecast drops below Plan by X%
+   - Includes BOTH hourly and fixed-price clients (for internal measurement, not for billing)
+
+3. **AI Chat in Admin Panel.** Claude-backed, MCP integration, **read-only** queries. Examples:
+   - "Show me all cases opened in 2026 with current forecast below break-even"
+   - "Which employees logged more than their typical hours on case X in the last month?"
+   - "Compare this month's total billable hours vs same month last year"
+   - Powered by BigQuery export of tofes-mecher + law-office-system data (Pattern D)
+
+4. **Cross-Project Bridge to tofes-mecher.** Hybrid architecture:
+   - **Pattern A (live blocking)**: Cross-Project Cloud Function — when an admin tries to create a client in law-office-system without a matching tofes-mecher sales_record, the operation is blocked at the Cloud Function level
+   - **Pattern D (analytical)**: BigQuery export of tofes-mecher data → AI chat can query joined data
+
+5. **Task budgeting with hybrid rules**:
+   - **Partner-assigned task** → requires partner approval before opening
+   - **Employee-self-opened task** → auto-approves if <3 hours, requires partner approval if ≥3 hours
+   - All tasks have explicit budget at creation; budget overruns trigger the Exception modal
+
+6. **Exception modal reframed**. When a service overruns budget:
+   - **Old text**: "הפסד למשרד"
+   - **New text**: "חוב פתוח לגביה מהלקוח" + explicit workflow to track collection
+   - Semantic shift only — no calculation change
+
+7. **Cost foundation**:
+   - `employee_costs/{email}` collection — CF-only access, never exposed to client SDK (PII-safe)
+   - `costPerHourAtEntry` snapshot on every timesheet entry at write time
+   - **NEVER re-derive from current `employee_costs`** — historical entries are immutable for cost purposes
+   - When accountant updates costs (monthly), new entries get new snapshots; old entries keep their old snapshots
+
+### 1.4 What this MVP is NOT
+
+- Not a billing system. Existing billing flow stays.
+- Not a fraud-detection system. The "AI signature check" verifies **presence** of a signature, not authenticity.
+- Not a write-capable AI. Chat is read-only. Mutations stay in the existing UI.
+- Not a customer-facing tool. Admin Panel only. Users don't see the AI or the profitability dashboard.
+- Not a replacement for the accountant. Cost data still comes from the accountant; the system just stores + applies it.
+
+---
+
+## 2. The Standard ("commercial-grade")
+
+> "המערכת תימכר" — Haim's words. Internal-tool shortcuts do not survive paying customers. This section defines what "commercial-grade" means concretely.
+
+### 2.1 Error handling (G1, G5)
+
+- **NO English error messages** where the UI is Hebrew. Mixed sentences are forbidden (`"שגיאה: Permission denied"` is a FAIL).
+- **NO stack traces** in customer-visible output. Never `at functionName (file.js:42:13)`.
+- **NO raw FirebaseError leakage.** `FirebaseError: 7 PERMISSION_DENIED` → wrap and translate.
+- **NO undefined / null / [object Object] / NaN** in customer-visible output.
+- **YES Hebrew, user-friendly text** with a next-action suggestion ("נסה שוב", "פנה לתמיכה", "ודא שהפרטים תקינים").
+- **YES correlation ID** logged server-side so support can trace.
+
+### 2.2 Audit & monitoring (G3)
+
+- **Every write path** has `logger.info('action.success', {actor, entityId, ...})` on success and `logger.error('action.failure', {actor, errorCode, ...})` on failure.
+- **Every delete path** has an `audit_log` entry: who, what, when, why. Soft-delete preferred over hard-delete where reversible.
+- **Audit-FIRST, mutation-SECOND, compensating-doc-on-failure** ordering for critical writes (admin claims, financial mutations, schema changes). Established by Pre-H.0.0.B; canonicalized by Pre-H.0.0.C.
+- **NO PII in log fields.** `actor: {uid}`, never `actor: {email}`. The repo is PUBLIC; CI logs are world-readable.
+
+### 2.3 Testing (G4)
+
+- **Integration-level tests** that exercise the customer scenario, not just helper functions. Pre-H.0.0.B set the bar at 51 tests across 3 suites for a 3-function PR.
+- **Static AST guards** for "this code MUST not contain X" invariants (e.g., write APIs in a read-only function, missing audit calls). Mirror the dual pattern from `verify-claims.test.ts`.
+- **Manual smoke test** acceptable only when integration test is impractical, and only with exact steps + expected results in the PR body.
+- **NO test that mocks every dependency** such that it can't fail in production. Mock the SDK boundary, not the logic.
+
+### 2.4 Hebrew UI (G5)
+
+- Every customer-facing string in Hebrew, RTL clean.
+- Internal logs / code identifiers / comments / admin-only developer tooltips — English acceptable.
+- New page declares `dir="rtl" lang="he"` at the `<html>` element.
+- Direction-aware icons (chevrons, arrows) must be RTL-aware.
+
+### 2.5 Accessibility (Design Bar)
+
+- WCAG AA contrast on all text.
+- `prefers-reduced-motion` respected — never hardcode literal `transition: 200ms ease`; use `var(--transition-smooth)` which respects the user's preference via the safety net in `design-system.css`.
+- Every interactive element has accessible name (`aria-label` if not visually labeled).
+- `:focus-visible` styling on all interactive elements.
+
+### 2.6 Engineering Bar (backend)
+
+- New backend code in TypeScript under `functions/src-ts/`, strict mode, `allowJs: false`.
+- ESLint 0 errors enforced (warnings allowed, counted, not blocking).
+- `no-restricted-syntax` forbids `console.*` in new TS code → use `require('../shared/logger')` shim.
+- Zod for input validation on callables. `.strict()` schemas reject unknown fields.
+- v2 Cloud Functions (`firebase-functions/v2/*`) for all new endpoints.
+- `defineSecret` for v2 secrets; `process.env.X` only for v1 callables not being migrated.
+- Test coverage target: 60% growing to 80%.
+
+### 2.7 Design Bar (frontend, new pages)
+
+- Extend `apps/admin-panel/css/design-system.css` tokens — never introduce parallel token files.
+- Use `ModalManager` (`apps/admin-panel/js/ui/Modals.js`) for modals. Inline `<div class="modal">` is forbidden in new code.
+- Existing 11 admin pages are grandfathered (per `docs/DESIGN_BAR.md`). New pages clear the bar from day one.
+
+### 2.8 Public-repo discipline
+
+- No PII in code fixtures (use `admin@example.com`, `target-uid-fixture-yy`, never real emails).
+- No secrets in source. Service-account JSONs gitignored via `service-account*.json` / `firebase-admin-key.json`.
+- No `process.env.*` values printed in logs (CI logs are world-readable).
+- The repo is PUBLIC — assume every diff is read by competitors.
+
+### 2.9 Per-PR governance
+
+- Every PR has a rubric in `.claude/rubrics/` with MUST + SHOULD criteria.
+- Every PR body has a `PRODUCT-GRADE GATES` section with each gate (G1–G7) marked PASS / N/A / FAIL.
+- Any FAIL → grader FAIL → pre-PR hook (`require-outcomes-pass.sh`) blocks `gh pr create`.
+- Every PR has a `Rollback` section with the exact `git revert` command(s).
+
+---
+
+## 3. Working Agreement
+
+> Defined by Haim 2026-05-20: "אני מחפש צוות שנעבוד תמיד יחד אבל שתמיד יהיה בפעולה ועבודה". Confirmed in subsequent sessions.
+
+### 3.1 Roles
+
+- **Lead Agent (Claude Code session)** — orchestrates. Parses requests, decomposes into subtasks, spawns sub-agents in parallel, aggregates, presents to Haim. Never delegates orchestration to Haim. Reports to Haim, orchestrates on his behalf.
+- **Haim — Product Owner**. Approves scope at checkpoints, approves PROD deploys (always explicit, never self-approved), approves architectural decisions. Does NOT mediate between sub-agents.
+- **12 sub-agents** organized by function (see `@.claude/rules/agent-rules.md`).
+
+### 3.2 Communication preferences
+
+- **All `AskUserQuestion` in Hebrew.** All option labels Hebrew. All descriptions Hebrew.
+- **Every AskUserQuestion has a recommendation** — the first option marked `(Recommended)` and justified by an agent verdict.
+- **Decision-point rule** (`@.claude/rules/decision-point.md`): before any AskUserQuestion choosing approach/scope/architecture, Lead Agent MUST consult the relevant specialist agent first and present the verdict alongside the choices. Skipping is a process violation.
+- **Exemption**: if Haim says "מהר" / "תחליט אתה" / "פשוט תעשה" → skip agent consultation. **Note the skip in the response** (auditable).
+- **Status updates** in Hebrew. Tables, headers, lists welcome — Haim parses fast.
+- **No emojis in code or files** unless Haim explicitly requests. Emojis in chat / status messages are fine.
+
+### 3.3 Agent model selection
+
+- **All sub-agents = Opus** by default.
+- **Exception**: `effort-scaler` = Haiku (per spec — fast classification of LIGHT/MEDIUM/HEAVY).
+- Per Haim 2026-05-27: "אוקיי מסכים איתך לגמרי איפה שיש נמלה לא צריך פטיש אבל איפה שכן אז כן ועדיף פטיש הכי מקצועי שיש".
+
+### 3.4 Feature Protocol
+
+Strict order, no skipping (see `@.claude/rules/feature-protocol.md`):
+
+```
+0 Gatekeeper → 1 Intent → 1a Effort-Scaler → 2 Investigation →
+2a Completeness-Checker → 3 Checkpoint → 4 Plan → 5 Code →
+6 Grader → 6a Evaluator-Optimizer (if grader = FAIL)
+```
+
+- **Effort-Scaler skipped** only if obviously LIGHT (single file, ≤20 lines change). Mark explicitly: "skipping effort-scaler — task is obviously LIGHT".
+- **Completeness-checker findings MUST appear in the AskUserQuestion** of the checkpoint. Hidden findings = process violation.
+- **No code before checkpoint approval.** Investigation produces findings, not patches.
+- **No scope expansion mid-task.** New scope after checkpoint = new PR.
+
+### 3.5 Production safety
+
+- **10 daily users, 200+ active clients, 6 months in production.** No regressions tolerated.
+- **Never `--admin`, never `--force`** to `main` or `production-stable`. Branch protection is sacred.
+- **Never skip hooks** (`--no-verify`, `--no-gpg-sign`) unless Haim explicitly requests.
+- **PROD action requires**: explicit target identification + dry-run + backup + Haim's explicit approval.
+- **`main` = DEV, `production-stable` = PROD.** Feature branches off `main`, merged to `main`, then promoted to `production-stable`.
+
+### 3.6 Honesty rules
+
+- **Never assume missing information.** If uncertain, explicitly say `אין לי ודאות` (CLAUDE.md STRICT RULE).
+- **Trust but verify** sub-agent outputs. A sub-agent's summary describes intent, not necessarily what happened. Lead Agent checks the actual changes.
+- **Acknowledge process misses.** When the Lead Agent makes a mistake (e.g., Pre-H.0.0.B's CI miss — didn't run root-level type-check), name it explicitly and propose prevention. Don't paper over.
+
+### 3.7 Tone
+
+- Partnership. "מעולה סומך עלינו עלי ועלייך קלוד" (Haim 2026-05-27).
+- Direct. No filler, no apologies for asking, no preamble before tables.
+- Skeptical of own work — Lead Agent invokes `devils-advocate` before high-stakes decisions even when confident.
+
+---
+
+## 4. Hard Constraints
 
 These are fixed for the entire initiative — do NOT relitigate per PR:
 
-- **Production live**: 10 daily users, 200+ active clients, 6 months in production. No regressions tolerated.
-- **Repo is PUBLIC on GitHub** — CI logs world-readable. No secrets, no PII in log fields, no real client emails in code or fixtures.
-- **`main` = DEV, `production-stable` = PROD.** Feature branches off `main`, merged back to `main`, then merged to `production-stable` with explicit Haim approval.
-- **Branch protection is sacred.** Never `--admin`, never `--force` to main or production-stable. No bypassing hooks.
-- **All sub-agents Opus** except `effort-scaler` (Haiku, per spec).
-- **Feature Protocol is mandatory** (`@.claude/rules/feature-protocol.md`): Gatekeeper → Intent → Effort-Scaler → Investigation → Completeness-Checker → Checkpoint → Plan → Code → Grader. No code before checkpoint approval.
-- **7 PRODUCT-GRADE Gates** (`@.claude/rubrics/_PRODUCT-GRADE-GATES.md`) on every PR.
-- **Two-key flows for write-paths**: audit-FIRST, mutation-SECOND, compensating-log-on-failure. Established by Pre-H.0.0.B.
+- **Production live**: 10 daily users, 200+ active clients, 6 months in production.
+- **Repo is PUBLIC on GitHub** — CI logs world-readable.
+- **`main` = DEV, `production-stable` = PROD.**
+- **Branch protection is sacred.**
+- **All sub-agents Opus** except `effort-scaler` (Haiku).
+- **Feature Protocol is mandatory.**
+- **7 PRODUCT-GRADE Gates** on every PR.
+- **Audit-FIRST, mutation-SECOND, compensating-log-on-failure** for write paths.
 - **The `partner` custom claim does NOT exist yet.** Do NOT build rules that depend on it until Pre-H.0.0.D/E/F land.
-- **`tofes-mecher` data is accountant-verified** — Haim has explicitly said this. Treat its sales_record state as authoritative for fee-paid amounts.
+- **`tofes-mecher` data is accountant-verified.** Treat its sales_record state as authoritative for fee-paid amounts.
+- **Cost stamping is by snapshot, never re-derived.** `costPerHourAtEntry` is immutable per timesheet entry.
 
 ---
 
-## Phase 0 — Meta Infrastructure ✅ DONE
+## 5. Timeline
+
+### 5.1 Estimate (sustainable cadence)
+
+- **1 PR per 2-3 days** is bar-sustainable (Pre-H.0.0.B was 3 days, including review). Sprint mode (1 PR/day) is possible but raises burnout / scope-fatigue risk.
+- Estimate below assumes sustainable cadence.
+
+| Phase | Remaining PRs | Estimate | Target completion |
+|---|---|---|---|
+| Phase 1 (Pre-H.0.0.C–G) | 5 | ~2 weeks | **2026-06-12 to 2026-06-15** |
+| Phase 2 (H.0–H.9) | 10 | ~6-8 weeks | **2026-07-15 to 2026-08-15** |
+| **MVP complete** | — | **8-10 weeks from 2026-05-28** | **Early to mid August 2026** |
+
+### 5.2 Risk factors
+
+- **Production fires** — 10 daily users, 200+ clients. Estimated 1-2 days/month lost.
+- **Scope expansion at checkpoints** — Pre-H.0.0.B grew from 1 function to 3 mid-investigation. Pattern likely to recur.
+- **Holidays / court schedule** — Haim's calendar drives review cadence.
+- **Phase 2 LARGE rocks** — H.1 (cross-project bridge), H.3 (profitability dashboard), H.6 (cutover), H.8 (AI chat) are each 1-2 week efforts on their own.
+
+### 5.3 Acceleration levers
+
+- **Parallel Phase 1 PRs** — C, F, G are technically independent. Could run 2 in parallel after C lands.
+- **Defer H.7 + H.9** — Exception modal (H.7) and polish (H.9) are smallest. Could move post-MVP if pressure rises.
+
+---
+
+## 6. Phase 0 — Meta Infrastructure ✅ DONE
 
 The cross-cutting standards that every later PR rests on.
 
-| # | Title | PR | Status | Date |
+| # | Title | PR | Status | Merged |
 |---|---|---|---|---|
-| 0.1 | `verifyClaims` read-only diagnostic | [#336](https://github.com/Chaim2045/law-office-system/pull/336) | ✅ merged | 2026-05-26 |
-| 0.2 | META-6 — Engineering Bar (TypeScript infra) | [#337](https://github.com/Chaim2045/law-office-system/pull/337) | ✅ merged | 2026-05-27 |
+| 0.1 | `verifyClaims` read-only diagnostic | [#336](https://github.com/Chaim2045/law-office-system/pull/336) | ✅ merged | 2026-05-28 |
+| 0.2 | META-6 — Engineering Bar (TypeScript infra) | [#337](https://github.com/Chaim2045/law-office-system/pull/337) | ✅ merged | 2026-05-28 |
 | 0.3 | META-7 — Design Bar (UI standard) | [#338](https://github.com/Chaim2045/law-office-system/pull/338) | ✅ merged | 2026-05-28 |
 
 **Phase 0 outcomes (referenced by Phase 1+):**
-- `functions/src-ts/` TypeScript project. Strict mode, Zod, ts-jest, ESLint 0 errors enforced. Spec: `docs/ENGINEERING_BAR.md`.
-- `apps/admin-panel/css/design-system.css` tokens + `prefers-reduced-motion` safety net + `ModalManager` requirement. Spec: `docs/DESIGN_BAR.md`.
+- `functions/src-ts/` TypeScript project. Strict mode, Zod, ts-jest, ESLint 0 errors enforced.
+- `apps/admin-panel/css/design-system.css` tokens + `prefers-reduced-motion` safety net + `ModalManager` requirement.
 - `functions/shared/logger.js` structured-logging shim with `firebase-functions/logger` underneath.
-- `verifyClaims` callable: pure-read diagnostic of Auth custom claims vs `employees.role`. Used by every subsequent claim-related PR to validate the production state.
+- `verifyClaims` callable: pure-read diagnostic of Auth custom claims vs `employees.role`.
 
 ---
 
-## Phase 1 — Foundational Safety (Pre-H.0.0) 🟡 IN PROGRESS (2/7)
+## 7. Phase 1 — Foundational Safety (Pre-H.0.0) 🟡 IN PROGRESS (2/7)
+
+### 7.1 Overview
 
 Closes the security and audit gaps that block any commercial release. Every Phase 2 PR depends on these landing first.
 
 | # | Title | PR | Status | Size | Depends on |
 |---|---|---|---|---|---|
 | A | `verifyClaims` callable | #336 | ✅ merged | (in Phase 0.1) | — |
-| B | Admin-claim endpoint lockdown (TS port + dual-write + audit-first) | [#339](https://github.com/Chaim2045/law-office-system/pull/339) | ✅ merged | LARGE (2174 lines) | A |
-| **C** | `logCriticalAction` audit primitive (throws on failure) | _next_ | ⏸️ pending | LIGHT (~50 lines) | B |
-| **D** | `isPartner()` helper in `firestore.rules` + tests | _pending_ | ⏸️ pending | LIGHT | A (diagnostic data) |
-| **E** | Claim shape consolidation — retire legacy `{admin:true}` field | _pending_ | ⏸️ pending | MEDIUM (data migration) | B + D + admin-panel auth.js:424 cleanup |
-| **F** | `syncRoleClaims` utility (dryRun default, `--apply` flag) | _pending_ | ⏸️ pending | MEDIUM | C + D + E |
-| **G** | `employee_costs/{email}` collection schema (CF-only access) | _pending_ | ⏸️ pending | MEDIUM | C |
+| B | Admin-claim endpoint lockdown | [#339](https://github.com/Chaim2045/law-office-system/pull/339) | ✅ merged | LARGE | A |
+| C | `logCriticalAction` audit primitive | _next_ | ⏸️ pending | LIGHT | B |
+| D | `isPartner()` helper in `firestore.rules` | _pending_ | ⏸️ pending | LIGHT | A |
+| E | Claim shape consolidation | _pending_ | ⏸️ pending | MEDIUM | B + D + auth.js:424 cleanup |
+| F | `syncRoleClaims` utility | _pending_ | ⏸️ pending | MEDIUM | C + D + E |
+| G | `employee_costs/{email}` schema | _pending_ | ⏸️ pending | MEDIUM | C |
 
-**Phase 1 critical path:** C → D → E (sequential; each unblocks the next). F and G are independent of each other but both need C.
+**Critical path:** C → D → E (sequential). F and G are independent of each other but both need C.
 
-**Phase 1 exit criteria:**
+### 7.2 Pre-H.0.0.C — `logCriticalAction` audit primitive
+
+**Why:** Pre-H.0.0.B introduced a local helper `writeAuditOrThrow` that writes audit-FIRST and rethrows on failure (so callers can abort the mutation). This pattern will be needed by every future write-critical endpoint (C, F, G, H.2, H.4, H.6, H.8). Canonicalize it now to prevent duplication and drift.
+
+**Scope:**
+- Add `functions/shared/auditCritical.js` (legacy JS to match `shared/audit.js` convention) OR `functions/src-ts/audit-critical.ts` (TS — preferred if we keep tightening the bar)
+- Signature: `logCriticalAction(action: string, actorUid: string, payload: object): Promise<string>` (returns audit doc ID)
+- Throws if Firestore write fails — caller catches and aborts mutation
+- Co-located `.d.ts` for TS consumers if JS implementation chosen
+- Update `set-admin-claims.ts` + `initialize-admin-claims.ts` to import from the canonical helper instead of the local `writeAuditOrThrow`
+- Update `docs/ENGINEERING_BAR.md` with the audit-FIRST pattern as canonical for write paths
+- Test: AST guard that asserts the canonical helper is used (no local `writeAuditOrThrow` clones)
+
+**Estimated size:** LIGHT (~50-80 lines + small refactor of 2 callers).
+
+**Locked decisions:**
+- JS vs TS: TBD at investigation. JS matches `shared/audit.js` convention but TS gives proper types. Lean TS.
+- Collection: stays `audit_log` (canonical, set by `shared/audit.js`).
+
+### 7.3 Pre-H.0.0.D — `isPartner()` helper in `firestore.rules`
+
+**Why:** Phase 2 needs partner-only paths (task budgeting approval, profitability dashboard visibility). Currently `firestore.rules` only knows `isAdmin()`. Without `isPartner()`, every partner-gated rule has to inline the check.
+
+**Scope:**
+- Add `function isPartner()` in `firestore.rules` that checks `request.auth.token.role == 'partner'`
+- Add unit tests via Firebase rules-unit-testing emulator
+- **Does NOT yet write any `partner` claim** — that's F's job. D only defines the read-side helper.
+- Document the new helper in `docs/PARTNER_CLAIM_DIAGNOSTIC.md`
+
+**Estimated size:** LIGHT (~30 lines rules + tests).
+
+**Locked decisions:**
+- Claim shape: `{role: 'partner'}` — matches the canonical `{role: 'admin'}` shape from Phase 1 B.
+- No `{partner: true}` legacy shape — we are NOT introducing a new legacy.
+
+### 7.4 Pre-H.0.0.E — Claim shape consolidation
+
+**Why:** After D, partner reads use `token.role`. After B, admin writes use `{admin:true, role:'admin'}` dual-shape. E retires the legacy `{admin:true}` field by:
+1. Grepping all consumers — the only one is `apps/admin-panel/js/core/auth.js:424`
+2. Updating that consumer to read only `token.role === 'admin'`
+3. Migrating all existing admins to single-shape `{role:'admin'}` via the F utility
+4. Updating `setAdminClaim` (legacy singular) and the new TS endpoints to write only `{role:'admin'}` going forward
+5. Final `verifyClaims` run — confirm `claimShapeBreakdown.admin_boolean_only` = 0
+
+**Scope:**
+- Modify `apps/admin-panel/js/core/auth.js:424` — remove `claims.admin === true` read
+- Modify `functions/auth/index.js setAdminClaim` — remove `admin:true` from grant payload
+- Modify `functions/src-ts/set-admin-claims.ts` — remove `admin:true` from grant payload + audit + response shape
+- Modify `functions/src-ts/initialize-admin-claims.ts` — remove `admin:true`
+- Run F utility with `--apply` to migrate existing claims
+- `verifyClaims` smoke after migration
+
+**Estimated size:** MEDIUM. Touches 5 files + runs a data migration.
+
+**Migration plan (G6):**
+- E is a deliberate breaking change for the `claims.admin` consumer. Existing tokens with `{admin:true}` will continue to work until token refresh; after F migration + token refresh, only `{role:'admin'}` remains.
+- Rollback: revert the consumer change. The dual-shape writes from B continue to grant `admin:true` until the writer change deploys.
+
+### 7.5 Pre-H.0.0.F — `syncRoleClaims` utility
+
+**Why:** D defines `isPartner()`. We need a way to write `partner` claims to the relevant employees (Haim + Guy). Also need to migrate the existing `admin` claims to single-shape after E.
+
+**Scope:**
+- New `functions/src-ts/sync-role-claims.ts` — v2 callable, admin-gated
+- Reads `employees` collection, sees `role` field (admin / partner / employee)
+- For each employee whose Auth custom claim drifts from the Firestore role → updates the claim
+- **DRY-RUN by default.** Returns a diff plan, no writes. `--apply` flag (in callable input) actually writes.
+- Idempotent. Uses lock doc (mirror initializeAdminClaims pattern). Audit per employee via `logCriticalAction` (from C).
+- Tests: dry-run mode, apply mode, idempotency, lock contention, role transitions (admin→employee, employee→partner, etc.)
+
+**Estimated size:** MEDIUM (~200-300 lines TS + tests).
+
+### 7.6 Pre-H.0.0.G — `employee_costs/{email}` collection schema
+
+**Why:** H.2 (Cost foundation) needs a place to store per-employee cost-per-hour. The accountant produces this data. We must store it CF-only — never readable from the client SDK (PII-sensitive financial data).
+
+**Scope:**
+- Define schema: `{ email, costPerHour, currency, validFrom, validUntil, updatedBy, updatedAt, source }`
+- `firestore.rules`: `match /employee_costs/{email} { allow read, write: if false; }` — CF-only access
+- New callable `setEmployeeCost(email, costPerHour)` — admin-gated, audit-first
+- New callable `getEmployeeCost(email)` — admin-gated, read-only (NOT exposed to employee Self)
+- Schema definition file: `functions/src-ts/schemas/employee-cost.ts` (Zod)
+- Tests + documentation
+
+**Estimated size:** MEDIUM (~250 lines TS + tests + rules).
+
+### 7.7 Phase 1 exit criteria
+
 - All admin-claim writers go through audited, gated, dual-shape-aware endpoints (B ✅).
 - `logCriticalAction` is canonical (C); no future PR uses ad-hoc `writeAuditOrThrow`.
 - `partner` custom claim infrastructure exists in `firestore.rules` + claim writers (D + F).
@@ -84,63 +392,224 @@ Until Phase 1 exit, no Phase 2 PR begins.
 
 ---
 
-## Phase 2 — H.0 → H.9 (The actual AI Management Layer) ⏸️ WAITING
+## 8. Phase 2 — H.0–H.9 (The actual AI Management Layer) ⏸️ WAITING
 
-Real feature delivery. Locked architectural decisions:
+### 8.1 Locked architectural decisions
 
 - **Cross-Project Bridge to `tofes-mecher`**: Pattern A (Cross-Project Cloud Function — live blocking) + Pattern D (BigQuery analytical export). Hybrid; not "pick one".
-- **Cost stamping**: `costPerHourAtEntry` snapshot at time of write. Never re-derive from current `employee_costs` (historical entries don't re-price).
+- **Cost stamping**: `costPerHourAtEntry` snapshot at time of write. Never re-derive.
 - **Profitability model**: "Plan" (Static, set at intake) + "Forecast" (Dynamic, updates as hours accrue). Both visible to admins.
 - **Exception semantics**: "open debt to collect from client" — NOT "loss". Modal text + UX reframed.
 - **Task budgeting**: hybrid rules — partner-assigned tasks require approval; employee-self-opened tasks auto-approve <3h, partner-approval ≥3h.
 - **AI chat**: read-only queries. No write actions through AI. MCP integration. Claude-backed with prompt caching.
+- **AI signature verification**: presence-only, not fraud detection.
 
-| # | Title | Size | Depends on |
-|---|---|---|---|
-| **H.0** | Foundations — project structure, secrets vault, env config | MEDIUM | Phase 1 complete |
-| **H.1** | Cross-project bridge to `tofes-mecher` (Pattern A + D) | LARGE | H.0 |
-| **H.2** | Cost foundation — `costPerHour` + `costPerHourAtEntry` snapshot | MEDIUM | H.0 + G |
-| **H.3** | Profitability layer — Static Plan + Dynamic Forecast + dashboard | LARGE | H.2 |
-| **H.4** | Task budgeting — hybrid rules + auto-approve <3h | MEDIUM | D + H.3 |
-| **H.5** | PDF signature pipeline — AI presence check on sales_record PDFs | MEDIUM | H.1 |
-| **H.6** | Cutover — replace manual client/service creation with gated flow | LARGE | H.5 + H.4 |
-| **H.7** | Exception modal reframed — "open debt", not "loss" | SMALL | H.6 |
-| **H.8** | AI chat in Admin Panel — Claude + MCP, read-only | LARGE | H.1 + H.3 (BigQuery surface) |
-| **H.9** | Polish — UX, telemetry, runbooks, customer documentation | MEDIUM | All H.0–H.8 |
+### 8.2 H.0 — Foundations
 
-**Phase 2 staging assumption**: ~1 PR per week sustainable cadence. If pace exceeds that, deferred items go to Phase 3 (post-MVP).
+**Goal:** Set up the infrastructure that H.1–H.9 will depend on.
+
+**Sub-tasks:**
+- Cross-project service account: provision a service account in `law-office-sales-form` (tofes-mecher) project with `datastore.user` role; download key locally (gitignored) + load into `defineSecret` for Cloud Function use
+- Environment config: extend `functions/src-ts/config/` with typed env handling, separate DEV/PROD secrets
+- BigQuery dataset provisioning: create `law_office_analytics` dataset in `law-office-system-e4801`, define schemas for synced tables
+- CI extension: add a job that runs Phase 2 integration tests against a Firestore emulator
+- Documentation: `docs/PHASE_2_FOUNDATIONS.md` explaining the cross-project IAM setup so a future engineer can reproduce
+
+**Estimated size:** MEDIUM.
+
+### 8.3 H.1 — Cross-project bridge to `tofes-mecher`
+
+**Goal:** Pattern A live blocking + Pattern D analytical export.
+
+**Sub-tasks:**
+- **Pattern A — live blocking CF**:
+  - New CF `validateSalesRecordExists(salesRecordId)` — admin-gated, queries tofes-mecher Firestore via service account, returns `{exists, fee, customer, signedPdfUrl, signedAt}`
+  - Used by H.6 cutover flow before creating a client
+  - Tests against fake tofes-mecher project (emulator)
+- **Pattern D — BigQuery export**:
+  - Scheduled CF (every 1h) reads tofes-mecher `sales_records` collection → upserts into BigQuery `law_office_analytics.sales_records` table
+  - Schema mapping: tofes-mecher fields → BQ columns
+  - Error handling + dead-letter queue for failed rows
+  - Documentation: schema reference for future H.8 (AI chat) queries
+- Shared module: `functions/src-ts/tofes-mecher/` with both clients
+
+**Estimated size:** LARGE.
+
+### 8.4 H.2 — Cost foundation
+
+**Goal:** Every timesheet entry stamps the cost-per-hour at write time. Backfill historical entries with current cost (one-time, documented).
+
+**Sub-tasks:**
+- Modify `createQuickLogEntry` + `createTimesheetEntry_v2` to read `employee_costs` (via getEmployeeCost from G) and stamp `costPerHourAtEntry` on the entry
+- Migration script: `functions/scripts/backfill-cost-per-hour.js` — dry-run default, `--apply` flag, stamps current cost on all historical entries with logging
+- Update timesheet trigger to handle the new field
+- Tests + documentation
+
+**Dependencies:** G (employee_costs schema must exist first).
+**Estimated size:** MEDIUM.
+
+### 8.5 H.3 — Profitability layer
+
+**Goal:** Real-time per-case "Plan" + "Forecast" with dashboard.
+
+**Sub-tasks:**
+- **Plan calculation**: at client + service creation, compute and store `plan.expectedHours`, `plan.expectedCost`, `plan.expectedRevenue`, `plan.expectedProfit`. Locked at intake.
+- **Forecast calculation**: aggregate trigger on timesheet entries → recompute `forecast.actualHours`, `forecast.actualCost` (Σ costPerHourAtEntry × hours), `forecast.paidRevenue` (from invoices), `forecast.projectedProfit`
+- **Dashboard UI**: new admin panel page `profitability.html` with sortable table, color-coded alerts when forecast drops below plan by X%
+- **Real-time updates**: dashboard uses Firestore live listeners on client aggregates
+- Includes BOTH hourly and fixed-price clients (per Haim 2026-05-27: "אני רוצה שכבר מהרגע הראשון שתיק לקוח נפתח במערכת אז יהיה חישוב אוטומטי")
+
+**Dependencies:** H.2.
+**Estimated size:** LARGE.
+
+### 8.6 H.4 — Task budgeting
+
+**Goal:** Hybrid approval rules + budget enforcement.
+
+**Sub-tasks:**
+- Modify `createBudgetTask` to require partner approval if `assignedBy === partner` OR (`assignedBy === employee_self` AND `budgetHours >= 3`)
+- New approval workflow: pending tasks list for partner, approve/reject with reason
+- Partner notification via existing WhatsApp + Admin Panel inbox
+- UI updates: task creation modal asks budget upfront; warning displayed when overrun is imminent
+- Tests for all 4 paths (partner-assigned, self-opened <3h, self-opened ≥3h pending, self-opened ≥3h rejected)
+
+**Dependencies:** D (isPartner helper) + H.3.
+**Estimated size:** MEDIUM.
+
+### 8.7 H.5 — PDF signature pipeline
+
+**Goal:** AI presence check on sales_record signed PDFs.
+
+**Sub-tasks:**
+- New CF `verifySignaturePresence(pdfStorageUrl)` — downloads PDF from Storage, sends to Claude with prompt asking "does this document have BOTH a client signature AND a lawyer signature?"
+- Returns `{clientSignaturePresent: bool, lawyerSignaturePresent: bool, confidence: float, reasoning: string}`
+- NOT fraud detection — only presence (per Haim 2026-05-27: "אוקיי נניח ואני מדלג על אימות שלא מרמים אבל כן לזהות שיש חתימה")
+- Used by H.6 cutover flow
+- Cost monitoring: log every call with token usage for cost tracking
+- Tests against synthetic PDFs
+
+**Dependencies:** H.1 (CF pattern + secrets).
+**Estimated size:** MEDIUM.
+
+### 8.8 H.6 — Cutover to gated client/service creation
+
+**Goal:** Replace manual client/service creation with `sales_record + PDF + AI check + admin approval → deterministic creation`.
+
+**Sub-tasks:**
+- New admin UI: "Pending Client Creation" page lists sales_records from tofes-mecher that don't yet have a law-office-system client
+- For each row: shows tofes-mecher data + PDF link + signature check result (from H.5) + "Approve and Create" button
+- On approve: CF `createClientFromSalesRecord(salesRecordId)` → reads sales_record (Pattern A), validates AI signature check passed, creates client + service deterministically, audit trail
+- Disable the OLD manual "Create Client" UI behind a feature flag (gradual rollout). After 2 weeks of zero-issue use of the new flow, remove the old UI in a follow-up PR.
+- Idempotency: re-calling `createClientFromSalesRecord` for the same sales_record is safe (no duplicate creation)
+- Rollback path: if a client is created with wrong data, the audit log has the source sales_record + admin who approved
+- Tests: happy path, missing PDF, failed signature check, missing sales_record, idempotency
+
+**Dependencies:** H.5 + H.4 (task budgeting since the flow creates initial tasks).
+**Estimated size:** LARGE.
+
+### 8.9 H.7 — Exception modal reframed
+
+**Goal:** "Open debt to collect" instead of "Loss".
+
+**Sub-tasks:**
+- Modify `ExceptionModal.js` text strings: "הפסד למשרד" → "חוב פתוח לגביה מהלקוח"
+- New "collection workflow" buttons: "מסומן כנגבה" / "בתהליך גביה" / "בלתי-גביה"
+- Status persisted on the service / client aggregate
+- Profitability dashboard reflects the collection status in Forecast (collected = revenue counted; uncollected = revenue still pending)
+- No calculation change — semantic shift only
+
+**Dependencies:** H.6 (or earlier — text-only change can ship anytime).
+**Estimated size:** SMALL.
+
+### 8.10 H.8 — AI chat in Admin Panel
+
+**Goal:** Read-only Claude chat with MCP, answering admin queries against joined data.
+
+**Sub-tasks:**
+- New admin UI: chat sidebar in Admin Panel, opens with Cmd+K or floating button
+- New CF `aiChat(messages, conversationId)` — Anthropic SDK with prompt caching, Claude Sonnet model
+- MCP server config: exposes BigQuery query tool (read-only), Firestore read tool, formatted result rendering
+- System prompt: includes schema reference, query examples, "you are a read-only assistant for Haim and Guy"
+- Token budget per conversation; cost monitoring
+- Conversation persistence in `ai_conversations/{uid}/{conversationId}` (admin-only)
+- Tests: query examples, token budget enforcement, MCP tool invocation
+
+**Dependencies:** H.1 (BigQuery surface) + H.3 (profitability data available).
+**Estimated size:** LARGE.
+
+### 8.11 H.9 — Polish
+
+**Goal:** Ship-ready quality.
+
+**Sub-tasks:**
+- UX walkthroughs: short in-app tour for the new dashboard + AI chat
+- Telemetry: usage metrics for the new features, alerts on errors
+- Runbooks: `docs/RUNBOOK_PROFITABILITY.md`, `docs/RUNBOOK_AI_CHAT.md`, `docs/RUNBOOK_TOFES_MECHER_BRIDGE.md`
+- Customer-facing docs: short guide for Haim+Guy explaining the new flows
+- Performance pass: lighthouse audit on the new dashboard
+- Accessibility pass: keyboard nav, screen reader on new pages
+
+**Estimated size:** MEDIUM.
 
 ---
 
-## How to update this file
+## 9. Decisions Locked (architectural choices made)
 
-This file is the plan, not a changelog. The rules:
+Each row: what was decided, when, why, what was rejected. New rows append-only.
 
-1. **Status flips** happen the moment a PR is merged. Update on the same session, same Lead Agent. Commit the status update as a follow-up commit to the merge.
+| Date | Decision | Why | Alternatives rejected |
+|---|---|---|---|
+| 2026-05-27 | Hybrid Pattern A + D for tofes-mecher bridge | Pattern A for live blocking (H.6 cutover), Pattern D for AI chat analytics (H.8). Each pattern alone misses a use case. | Pattern A only; Pattern D only |
+| 2026-05-27 | `costPerHourAtEntry` snapshot at entry write | Historical entries are immutable for cost purposes. If accountant updates cost, old entries keep old snapshot. | Live re-derive from current `employee_costs` |
+| 2026-05-27 | Profitability = Static Plan + Dynamic Forecast | Plan = expectation at intake; Forecast = current projection. Two numbers = clearer signal than one. | Single profitability number |
+| 2026-05-27 | Task budgeting hybrid (partner=approval, self<3h=auto, self≥3h=approval) | Trust + control balance. Self-opened small tasks shouldn't bottleneck on partner. | All-approval; all-auto |
+| 2026-05-27 | Exception modal = "open debt to collect" | Legal billing reality — client pays, just need to collect. "Loss" implies write-off. | "Loss"; "Write-off" |
+| 2026-05-27 | AI signature check = presence only, not fraud | "אוקיי נניח ואני מדלג על אימות שלא מרמים אבל כן לזהות שיש חתימה". Low ROI on fraud detection for now. | Full fraud detection |
+| 2026-05-27 | Cost calc includes FIXED-PRICE clients (for internal measurement) | "כל מה שעובר בטופס מכר זה עובר להנהלת חשבונות ולכן זה מאוד מדוייק". Internal profitability needs all cases, not just hourly. | Hourly clients only |
+| 2026-05-27 | AI chat = read-only | Safety + simplicity. No write actions through AI. | Full agent with mutations |
+| 2026-05-27 | tofes-mecher = system-of-record for transactions | Accountant-verified data lives there. Don't duplicate. | Duplicate in law-office-system |
+| 2026-05-27 | Engineering Bar BEFORE feature work | First production TS PR must prove the bar works. Pre-H.0.0.B was that proof. | Feature first, bar later |
+| 2026-05-28 | 2-commit split (additive A + cutover B) for write-path PRs | Reviewer can verify A in isolation before B activates. Reduces "neither works" window. Devils-advocate finding #6. | Single commit |
+| 2026-05-28 | Commit `functions/lib/` to git | Deploy determinism, no build-time dependency, transparent in PRs. | `predeploy` hook |
+| 2026-05-28 | Dual-write claims `{admin:true, role:'admin'}` transitionally | admin-panel `auth.js:424` reads `claims.admin === true`. Cleanup deferred to E. Devils-advocate finding #1. | Single `{role:'admin'}` immediately |
+| 2026-05-28 | Audit-FIRST, mutation-SECOND, compensating-doc-on-failure | If audit fails, mutation must not happen (fail-secure). Devils-advocate finding #3. | Mutation-first; concurrent |
+| 2026-05-28 | Self-elevation block in all admin-claim endpoints | Prevents token-theft → self-grant chain. Standard security pattern. | Allow self-elevation |
+| 2026-05-28 | Recovery script `grant-admin-emergency.js` with `--apply` flag | All in-app paths require existing admin. Need break-glass tool. Devils-advocate finding #2. | No bootstrap recovery path |
+| 2026-05-28 | All sub-agents Opus, effort-scaler Haiku | "פטיש הכי מקצועי שיש". Haiku only where the task is trivial classification. | All Haiku; all Opus |
+| 2026-05-28 | Pre-PR must run BOTH root + functions typecheck | Pre-H.0.0.B CI miss: root tsc included functions/src-ts/*.ts. Lesson: mirror CI locally. | Functions-only typecheck pre-PR |
+
+---
+
+## 10. How to update this file
+
+The rules:
+
+1. **Status flips** happen the moment a PR is merged. Update on the same session, same Lead Agent. Commit as a follow-up to the merge.
 2. **New rows** (added PR scope mid-phase) need explicit Haim approval first. No silent scope additions.
 3. **Cross-phase reorderings** (e.g., promoting H.2 above H.1) require a documented rationale at the end of this file under "Plan revisions".
-4. **PR links** added once the PR is opened (not at planning time — PRs are real artifacts, not placeholders).
-5. **Size estimates** are LIGHT (≤80 lines) / MEDIUM (80-500 lines) / LARGE (>500 lines). Used by the Lead Agent to decide if `effort-scaler` is needed (LIGHT skips effort-scaler with declaration).
+4. **PR links** added once the PR is opened (not at planning time).
+5. **Size estimates** are LIGHT (≤80 lines) / MEDIUM (80-500 lines) / LARGE (>500 lines).
+6. **New architectural decisions** append to "Decisions Locked" with date + rationale + rejected alternatives.
 
-If you (Lead Agent or Haim) find this file out of date when starting a session, the FIRST action is to reconcile it with merged-PR state before doing anything else.
+If you find this file out of date when starting a session, the FIRST action is to reconcile it with merged-PR state before doing anything else.
 
 ---
 
-## What happens if the session crashes mid-PR?
+## 11. Session crash recovery
 
 This file is the recovery instruction.
 
 1. New session starts → Lead Agent reads `CLAUDE.md` (auto-loaded) → sees `MASTER_PLAN.md` reference in the imports.
-2. Lead Agent reads this file → finds the row marked "in progress" (if any).
+2. Lead Agent reads this file → finds the row marked "in progress" or "_next_" (if any).
 3. Lead Agent runs `git status` + `git log --oneline -10` + checks for open PRs (`gh pr list`).
-4. If a branch matches the in-progress row → resume from where work stopped (read the rubric file, re-run tests, check what's committed vs. pending).
+4. If a branch matches an in-progress row → resume from where work stopped (read the rubric file, re-run tests, check what's committed vs. pending).
 5. If no branch matches → ask Haim "Were we in the middle of [in-progress row]? Status shows X, repo shows Y."
 
 The Lead Agent is allowed to **trust this file** over their own session memory. If this file says "Pre-H.0.0.C in progress" and the Lead Agent has no recollection — believe the file.
 
 ---
 
-## Related references
+## 12. Related references
 
 | Topic | Where |
 |---|---|
@@ -152,11 +621,13 @@ The Lead Agent is allowed to **trust this file** over their own session memory. 
 | Design Bar (frontend UI standard) | `docs/DESIGN_BAR.md` |
 | Partner claim diagnostic findings | `docs/PARTNER_CLAIM_DIAGNOSTIC.md` |
 | Admin claim recovery playbook | `docs/ADMIN_CLAIMS_RECOVERY.md` |
+| System map (functions inventory) | `SYSTEM_MAP.md` |
 
 ---
 
-## Plan revisions
+## 13. Plan revisions
 
-_Document any cross-phase reorderings or material plan changes here. Date + rationale required._
+_Cross-phase reorderings or material plan changes. Date + rationale required._
 
-- **2026-05-28**: Initial plan committed. Based on accumulated Intent decisions from sessions through 2026-05-28 + Pre-H.0.0.B merge. Phase 0 fully done; Phase 1 at 2/7 (A + B). Phase 2 untouched.
+- **2026-05-28 (initial)**: Plan committed. Phase 0 fully done; Phase 1 at 2/7 (A + B). Phase 2 untouched.
+- **2026-05-28 (expansion)**: Expanded from skeletal to comprehensive — added Product Vision, Standard, Working Agreement, Timeline (ETA early-mid August 2026 for MVP), per-PR sub-tasks for Phase 1 C-G and Phase 2 H.0-H.9, Decisions Locked log capturing 18 architectural choices from sessions through 2026-05-28. Reason: skeletal version was insufficient as a single source of truth — a cold-start agent reading it could not have planned the next PR. Haim explicit request: "אי אפשר ככה איך תרחיב אם אתה לא יודע על מה".
