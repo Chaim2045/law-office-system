@@ -1,7 +1,7 @@
 # Admin Panel Design System
 
 **Name:** Ultra Minimal Hi-Tech
-**Canonical source:** `apps/admin-panel/css/design-system.css` (346 lines)
+**Canonical source:** `apps/admin-panel/css/design-system.css` (this file is the single source of truth — token names, values, and structure may evolve)
 **Introduced:** Pre-existing (before META-7); formally documented in PR-META-7.
 **Scope:** Admin Panel only. The User App has its own separate design system (out of META-7 scope).
 
@@ -87,17 +87,17 @@ Each accent has three tones: base, `-light` (10% alpha tint for backgrounds), an
 
 | Token | Weight | Use |
 |---|---|---|
-| `--weight-medium` | 500 | Body emphasis |
-| `--weight-semibold` | 600 | Subhead, button label |
-| `--weight-bold` | 700 | Page title |
+| `--font-medium` | 500 | Body emphasis |
+| `--font-semibold` | 600 | Subhead, button label |
+| `--font-bold` | 700 | Page title |
 
 ### Letter spacing
 
 | Token | Value | Use |
 |---|---|---|
-| `--tracking-tight`  | -0.01em | Large display type |
-| `--tracking-normal` | 0       | Default |
-| `--tracking-wide`   | 0.04em  | Uppercase / badge text |
+| `--letter-spacing-tight`  | -0.02em | Large display type |
+| `--letter-spacing-normal` | 0em     | Default |
+| `--letter-spacing-wide`   | 0.05em  | Uppercase / badge text |
 
 ### Font family
 

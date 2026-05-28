@@ -24,7 +24,7 @@ Rather than retrofit 12,500 lines of legacy CSS (see `docs/CSS_CLEANUP_GUIDE.md`
 - Substantial rewrites (>100 lines) of existing UI that are deliberately modernizing it
 
 ### OUT of scope — these are grandfathered, document don't enforce
-- The 11 existing `.html` pages: `index.html`, `clients.html`, `tasks.html`, `workload.html`, `timesheet.html`, `audit-trail.html`, `settings.html`, `system-announcements.html`, `feature-flags.html`, `clients-fluent.html`, `client-edit.html`
+- The 11 existing `.html` pages: `index.html`, `clients.html`, `tasks.html`, `workload.html`, `timesheet.html`, `audit-trail.html`, `settings.html`, `system-announcements.html`, `feature-flags.html`, `clients-fluent.html`, `debug-firebase-init.html` (last is a dev artifact — included for completeness, though not user-facing)
 - The 50+ existing CSS files (the legacy `style.css` is documented in `docs/CSS_CLEANUP_GUIDE.md` as ~12,500 lines with 273 duplicate selectors — known debt)
 - The Microsoft Fluent design system at `apps/admin-panel/css/fluent-design.css` — **FROZEN, not deprecated**: actively used by `clients-fluent.html` + the Fluent JS managers; removal is a deliberate separate PR after usage investigation
 - The `apps/user-app/` design system (separate scope, separate PR)
