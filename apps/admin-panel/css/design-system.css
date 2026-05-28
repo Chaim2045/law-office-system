@@ -143,6 +143,33 @@
   --z-critical: 99999;
 }
 
+/*
+ * ─── prefers-reduced-motion safety net (PR-META-7) ─────────────────────────
+ * Users with the OS setting "reduce motion" get instant transitions instead
+ * of the 120-300ms defaults. This single block makes EVERY existing CSS rule
+ * that uses --transition-fast / --transition-smooth / --transition-slow
+ * automatically respect the user's a11y preference — without rewriting any
+ * of the 58 existing call sites across components.css, audit-trail.css,
+ * main.css, settings.css, user-details.css, and this file.
+ *
+ * Why this lives at the token layer:
+ *   Token-level override = compliance for every existing consumer in one
+ *   place. The Design Bar (docs/DESIGN_BAR.md) declares
+ *   `prefers-reduced-motion: MUST` for all new code; this block makes the
+ *   existing admin-panel CSS comply without a 6-CSS-file refactor.
+ *
+ * Caveat: rules that hardcode their OWN duration (literal "200ms" inline,
+ * not via the variable) are NOT covered by this. New code MUST use the
+ * tokens. See docs/DESIGN_BAR.md "Motion" section for the policy.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-smooth: 0ms;
+    --transition-slow: 0ms;
+  }
+}
+
 /* ========== UTILITY CLASSES ========== */
 
 /* Spacing Utilities */
