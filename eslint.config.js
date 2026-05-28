@@ -257,5 +257,88 @@ export default [
     rules: {
       'no-restricted-syntax': 'off'
     }
+  },
+  // ───────────────────────────────────────────────────────────────────────────
+  // PR-META-6 (Engineering Bar Elevation): NEW TypeScript code under
+  // functions/src-ts/ gets STRICT linting. Existing JS in functions/ is
+  // unaffected — commonIgnores at the top still applies to all the other
+  // blocks. This block explicitly opts INTO linting for src-ts/ only.
+  //
+  // Policy from META-6 checkpoint:
+  //   - 0 errors enforced (CI blocks merge)
+  //   - warnings allowed but counted in PR summary (devils-advocate #5 defense:
+  //     "0 warnings forces // @ts-ignore culture" — we don't want that)
+  //   - console.* is FORBIDDEN — use require('../shared/logger') shim
+  //   - any in-file is a warning, not error (occasional `any` for migration
+  //     glue is acceptable; weekly review trims them)
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    files: ['functions/src-ts/**/*.ts'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        project: ['./functions/src-ts/tsconfig.json']
+      },
+      globals: {
+        process: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly', // Available globally; usage forbidden via no-restricted-syntax below
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+      'import': importPlugin
+    },
+    rules: {
+      // === Type safety — strict (errors block CI) ===
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_'
+      }],
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+
+      // === Migration-friendly warnings (visible in PR summary, don't block) ===
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+
+      // === Logger discipline — forbid console.*, force shim ===
+      'no-restricted-syntax': ['error',
+        {
+          selector: "CallExpression[callee.object.name='console']",
+          message: "Use require('../shared/logger') instead of console.* — structured logging is required for new code (PR-META-6). console.log is silenced by Cloud Logging anyway."
+        }
+      ],
+
+      // === Import hygiene ===
+      'import/no-duplicates': 'error',
+
+      // === Common rules (semi, quotes, prefer-const, etc.) ===
+      // We intentionally do NOT spread commonJsRules here — commonJsRules
+      // contains the PR-G.3.11 toISOString ban that targets browser code, and
+      // the PR-2.1.1 inline service-classification ban that the Node-targeted
+      // block already handles for functions/. Apply only the syntax rules:
+      'no-debugger': 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'eqeqeq': ['error', 'always'],
+      'semi': ['error', 'always'],
+      'quotes': ['error', 'single', { avoidEscape: true }],
+      'comma-dangle': ['error', 'never'],
+      'no-trailing-spaces': 'error'
+    }
   }
 ];

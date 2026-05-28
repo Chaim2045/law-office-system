@@ -174,19 +174,26 @@ const sendBroadcastMessage = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // Initialize Twilio (get credentials from Firebase Config)
-    const twilioConfig = functions.config().twilio;
+    // Initialize Twilio (credentials from environment — PR-META-6 removed the
+    // deprecated functions.config() fallback. functions.config() is slated
+    // for removal by Firebase in March 2026, and the public repo means CI
+    // dumps of `functions.config()` would expose live credentials. Set the
+    // env vars via Cloud Functions runtime configuration or .env.local for
+    // emulator runs.)
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
-    if (!twilioConfig || !twilioConfig.account_sid || !twilioConfig.auth_token) {
+    if (!twilioAccountSid || !twilioAuthToken) {
       throw new functions.https.HttpsError(
         'failed-precondition',
-        'Twilio לא מוגדר. הרץ: firebase functions:config:set twilio.account_sid="YOUR_SID" twilio.auth_token="YOUR_TOKEN" twilio.whatsapp_number="whatsapp:+14155238886"'
+        'Twilio לא מוגדר. הגדר משתני סביבה: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER'
       );
     }
 
     const twilio = require('twilio');
-    const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
-    const fromNumber = twilioConfig.whatsapp_number || 'whatsapp:+14155238886'; // Twilio Sandbox default
+    const client = twilio(twilioAccountSid, twilioAuthToken);
+    const fromNumber = twilioWhatsAppNumber || 'whatsapp:+14155238886'; // Twilio Sandbox default
 
     // Message templates
     const templates = {
@@ -334,15 +341,19 @@ const sendWhatsAppApprovalNotification = functions.https.onCall(async (data, con
       return { success: true, sent: 0, message: 'אין מנהלים עם WhatsApp מופעל' };
     }
 
-    // Initialize Twilio
-    const twilioConfig = functions.config().twilio;
-    if (!twilioConfig?.account_sid || !twilioConfig?.auth_token) {
-      throw new functions.https.HttpsError('failed-precondition', 'Twilio לא מוגדר');
+    // Initialize Twilio (PR-META-6: process.env only — see comment on the
+    // sendBroadcastMessage call site above for the rationale).
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+
+    if (!twilioAccountSid || !twilioAuthToken) {
+      throw new functions.https.HttpsError('failed-precondition', 'Twilio לא מוגדר. הגדר TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN.');
     }
 
     const twilio = require('twilio');
-    const client = twilio(twilioConfig.account_sid, twilioConfig.auth_token);
-    const fromNumber = twilioConfig.whatsapp_number || 'whatsapp:+14155238886';
+    const client = twilio(twilioAccountSid, twilioAuthToken);
+    const fromNumber = twilioWhatsAppNumber || 'whatsapp:+14155238886';
 
     const results = [];
 

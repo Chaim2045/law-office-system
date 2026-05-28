@@ -11,7 +11,11 @@
     "logs": "firebase functions:log",
     "test": "jest --verbose",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:ts": "jest --selectProjects src-ts --verbose",
+    "test:legacy": "jest --selectProjects legacy-js --verbose",
+    "build:ts": "tsc --project src-ts/tsconfig.json",
+    "typecheck:ts": "tsc --project src-ts/tsconfig.json --noEmit"
   },
   "engines": {
     "node": "20"
@@ -23,12 +27,16 @@
     "joi": "^17.11.0",
     "twilio": "^5.3.4",
     "uuid": "^9.0.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
+    "@types/node": "^20.11.0",
     "firebase-functions-test": "^3.1.0",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.5"
   },
   "private": true
 }
