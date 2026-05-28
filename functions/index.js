@@ -81,6 +81,7 @@ exports.linkAuthToEmployee = authModule.linkAuthToEmployee;
 exports.setAdminClaim = authModule.setAdminClaim;
 exports.initializeAdminClaims = authModule.initializeAdminClaims;
 exports.setAdminClaims = authModule.setAdminClaims;
+exports.verifyClaims = authModule.verifyClaims; // PR-H.0.0.A — read-only diagnostic
 
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
