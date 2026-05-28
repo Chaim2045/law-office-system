@@ -91,3 +91,28 @@ The file path is:
 - Be skeptical of displayed truth
 - Do not minimize operational risk
 - Do not assume UI correctness means system correctness
+
+## DESIGN PATH FOR NEW UI (PR-META-7, 2026-05)
+
+**All new UI in the Admin Panel must clear the Design Bar.** Existing 11 pages are grandfathered — see `docs/DESIGN_BAR.md` "Scope" section.
+
+### What this means in practice
+
+- **New page or new component?** Read `docs/DESIGN_BAR.md` BEFORE you write CSS. The bar is short and concrete; ignoring it means re-work.
+- **Extend `apps/admin-panel/css/design-system.css` tokens** — never introduce parallel token files (`fluent-design.css` is FROZEN, not a template). Never introduce parallel design systems.
+- **Use `ModalManager` for modals** — inline `<div class="modal">` HTML is legacy and forbidden in new code. Spec: `apps/admin-panel/js/ui/Modals.js`.
+- **`prefers-reduced-motion`** — declared MUST in the Design Bar. New CSS uses the `--transition-*` tokens (which already respect the user's preference via the safety net in `design-system.css`). Never hardcode literal durations like `transition: 200ms ease` — always `transition: var(--transition-smooth)`.
+- **RTL Hebrew** — every new page declares `dir="rtl" lang="he"` at the `<html>` element. Icons that imply direction (chevrons, arrows) must be RTL-aware. See `docs/DESIGN_BAR.md` "RTL" section.
+- **Accessibility** — `.input-minimal` already has a focus ring; `.btn-minimal` doesn't. New buttons MUST have a visible `:focus-visible` style. New interactive elements need accessible names (`aria-label` if not visually labeled).
+
+### What NEVER changes in this directory by accident
+
+- `apps/admin-panel/css/design-system.css` — base tokens. Changes here ripple to every page. Token additions are fine; renames or removals are breaking changes.
+- `apps/admin-panel/css/fluent-design.css` — FROZEN (referenced by `clients-fluent.html` + Fluent JS managers; removal is a deliberate separate PR). Do not refactor opportunistically.
+- `apps/admin-panel/index.html` and the other 10 page files — these are the grandfathered surface. Touching them for unrelated reasons risks "admin display change" (see ADMIN SAFETY RULE above).
+
+### Where to find canonical references
+
+- Design standard: `docs/DESIGN_BAR.md`
+- Token documentation: `docs/DESIGN_SYSTEM.md`
+- Engineering counterpart: `docs/ENGINEERING_BAR.md` (for backend code in `functions/src-ts/`)

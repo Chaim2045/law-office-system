@@ -103,11 +103,21 @@ Coverage: Z%
 - [ ] No SQL injection risks
 - [ ] Secrets/credentials removed
 
-### Accessibility
-- [ ] Keyboard navigation works
-- [ ] Screen reader compatible
-- [ ] Color contrast sufficient
-- [ ] Focus indicators visible
+### Accessibility (Design Bar — PR-META-7)
+
+**Grader-verifiable (these are auto-checked when the PR diff touches HTML/CSS):**
+- [ ] Every interactive element in NEW code has a visible `:focus-visible` style (CSS) OR I declare `N/A — no new interactive elements`
+- [ ] Every `<img>` in NEW code has an `alt` attribute (empty `alt=""` is fine for decorative) OR I declare `N/A — no new images`
+- [ ] Every form input in NEW code has a matched `<label for="...">` OR `aria-labelledby` OR I declare `N/A — no new form inputs`
+
+**Aspirational (reviewer attention; not auto-enforced — see `docs/DESIGN_BAR.md` "Aspirational guidance" section):**
+- [ ] Keyboard navigation works (Tab order is logical, ESC closes modals)
+- [ ] Screen reader (NVDA + Hebrew voice) reads each control correctly
+- [ ] Color contrast verified (text + background ≥ 4.5:1 normal; ≥ 3:1 large/UI)
+- [ ] Tested at 200% browser zoom — no clipped content or horizontal scroll
+- [ ] RTL Hebrew layout correct; directional icons mirrored appropriately
+- [ ] Loading / empty / error states all have visible feedback
+- [ ] No console errors on page load
 
 ---
 
@@ -178,25 +188,27 @@ Coverage: Z%
 ---
 
 ## 👥 Reviewers
-<!-- Tag specific reviewers -->
-@tech-lead @senior-engineer
+<!-- Solo + AI review model — no codeowners team in this repo -->
+Reviewer: @Chaim2045 (Product Owner — Haim)
 
 ### Review Focus
-<!-- What should reviewers pay attention to? -->
+<!-- What should the reviewer + outcomes-grader pay attention to? -->
 - [ ] Architecture/design patterns
 - [ ] Performance implications
 - [ ] Security concerns
 - [ ] Test coverage
+- [ ] Design Bar compliance (if UI) — see `docs/DESIGN_BAR.md`
+- [ ] Engineering Bar compliance (if backend TS) — see `docs/ENGINEERING_BAR.md`
 
 ---
 
 ## ✅ Pre-Merge Checklist
 - [ ] All CI checks passing
-- [ ] Code reviewed by at least 2 engineers
+- [ ] `outcomes-grader` verdict = PASS or PASS_WITH_WARNINGS in PR body
+- [ ] PRODUCT-GRADE GATES section in PR body (G1-G7)
 - [ ] Tests passing locally
-- [ ] Documentation updated
+- [ ] Documentation updated (if behavior/architecture changed)
 - [ ] No merge conflicts
-- [ ] Approved by tech lead
 
 ---
 
@@ -205,6 +217,5 @@ Coverage: Z%
 
 ---
 
-**PR Created:** [Date]
-**Target Branch:** `main` / `develop`
-**Author:** @[username]
+**Target Branch:** `main` (DEV) or `production-stable` (PROD)
+**Author:** @Chaim2045
