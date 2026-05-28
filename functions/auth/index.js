@@ -2,7 +2,9 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { onRequest } = require('firebase-functions/v2/https');
+// Pre-H.0.0.B (2026-05-28): the v2 `onRequest` import was used by the legacy
+// `setAdminClaims` handler at line 329 (deleted in this PR — see TS port at
+// `functions/src-ts/set-admin-claims.ts`). No remaining callers in this file.
 const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString, isValidEmail } = require('../shared/validators');

@@ -111,7 +111,11 @@ export default [
       'devtools/**',
       'docs/**',
       '.github/**',
-      '.claude/**'
+      '.claude/**',
+      // PR-Pre-H.0.0.B: TypeScript declaration files (.d.ts) are pure type
+      // metadata — no runtime code to lint. Including them in the parsed
+      // project surface broke ESLint when the build tsconfig excluded them.
+      '**/*.d.ts'
     ]
   },
   // TypeScript files - with type checking
