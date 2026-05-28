@@ -256,6 +256,46 @@ These are fixed for the entire initiative — do NOT relitigate per PR:
 - **Parallel Phase 1 PRs** — C, F, G are technically independent. Could run 2 in parallel after C lands.
 - **Defer H.7 + H.9** — Exception modal (H.7) and polish (H.9) are smallest. Could move post-MVP if pressure rises.
 
+### 5.4 Visible Milestones in DEV (the "buds" / ניצנים)
+
+Haim's question 2026-05-29: "מה בפועל אני יכול לראות בDEV את הניצנים?" — when does visible UI progress land in DEV?
+
+Honest answer: **first major business-value bud lands Week 5-6** (Profitability Dashboard, H.3). Until then it's backend plumbing — invisible but foundational. This is unavoidable for the locked architecture (data must flow before it can be displayed).
+
+Week-by-week visibility map (assumes sustainable cadence, no bud accelerators):
+
+| Week | Target | What's visible in DEV |
+|---|---|---|
+| 1 | by 2026-06-05 | ❌ Backend only — Pre-H.0.0.C (`logCriticalAction`). Audit primitive — no UI |
+| 1–2 | by 2026-06-09 | ❌ Backend only — Pre-H.0.0.D (`isPartner()` rule helper) |
+| 2 | by 2026-06-12 | ❌ Backend only — Pre-H.0.0.G (`employee_costs` schema). Data layer ready, no UI |
+| 2–3 | by 2026-06-16 | ❌ Backend only — Pre-H.0.0.E (claim shape consolidation) + F (`syncRoleClaims`) |
+| 3 | by 2026-06-19 | ❌ Backend only — H.0 foundations (cross-project IAM, BigQuery dataset) |
+| 4 | by 2026-06-26 | ❌ Backend only — H.1 bridge starts. tofes-mecher data starts flowing into BigQuery but is NOT shown anywhere in the admin panel |
+| 5 | by 2026-07-03 | 🌱 **First bud**: H.2 done — `costPerHourAtEntry` stamped on every new timesheet entry. Visible only by inspecting Firestore docs (admin diagnostic) |
+| 6 | by 2026-07-10 | 🌳 H.3 partial — **Profitability Dashboard preview** (sortable table, no alerts yet). FIRST major UI deliverable |
+| 7 | by 2026-07-17 | 🌳 H.3 complete — **Full Profitability Dashboard** with color-coded alerts. H.4 budgeting starts |
+| 8 | by 2026-07-24 | 🌳 H.4 complete — **Task budgeting workflow UI** (partner approval, auto-approve <3h). H.5 PDF check starts |
+| 9 | by 2026-07-31 | 🌳 H.5 done + H.6 partial — **PDF signature presence check** working; gated cutover UI preview |
+| 10 | by 2026-08-07 | 🌳 H.6 complete — **Gated client creation flow live in DEV**. H.7 reframed exception modal |
+| 11 | by 2026-08-14 | 🌳 H.8 in progress — **AI Chat sidebar visible** (partial functionality) |
+| 12 | by 2026-08-21 | 🌳 H.8 complete + H.9 polish — **MVP COMPLETE** |
+
+**Bottom line**: 4 weeks of invisible backend → 1 small bud Week 5 → major UI deliverables every week from Week 6 onward.
+
+### 5.5 Optional bud accelerators (bring visible progress forward)
+
+If the 4-week backend stretch without visible progress is unacceptable, these optional bonus PRs land visible UI sooner. Each is +1 PR (~2-3 days), so all four = +2 weeks pushed to MVP date.
+
+| Bonus | What | Week visible | Cost |
+|---|---|---|---|
+| **A — System Audit page** | Admin page showing `verifyClaims` output, recent `audit_log` entries, system status. Pure metadata. Demonstrates Phase 1 is real. | Week 1-2 | +1 PR |
+| **B — Cost-per-Employee diagnostic** | Admin diagnostic page showing the `employee_costs` schema (after G). Read-only. | Week 3 | +1 PR |
+| **C — tofes-mecher Sales Records Preview** | Read-only admin window into tofes-mecher data flowing via Pattern A. Lands during H.1. | Week 4 | +1 PR |
+| **D — Thin-slice profitability on client page** | Just "expected profit" field on existing client detail page — not the full dashboard. Lands after H.2. | Week 4-5 | +1 PR |
+
+**Status**: NOT in current plan. Decision deferred to Haim — if requested, schedule these as inserts between the corresponding backend PRs.
+
 ---
 
 ## 6. Phase 0 — Meta Infrastructure ✅ DONE
@@ -553,7 +593,54 @@ Until Phase 1 exit, no Phase 2 PR begins.
 
 ---
 
-## 9. Decisions Locked (architectural choices made)
+## 9. Phase 3 — MVP → Commercial Ready ⏸️ SCOPE NOT YET LOCKED
+
+When MVP completes (~mid-August 2026), the system works end-to-end for Hershkowitz Law Office in production. But "the system will be sold" (Haim's words 2026-05-25) requires more than MVP. Phase 3 covers the gap.
+
+> **Status**: scope is NOT YET locked. The items below are placeholders based on what a typical commercial SaaS release requires. Final scope + ordering to be decided when Phase 2 nears completion (target lock date: 2026-07-15). At that point Haim + Lead Agent will run a fresh Intent + checkpoint cycle for Phase 3 specifically.
+
+### 9.1 Likely scope (to be confirmed)
+
+| # | Title | Why needed for commercial release | Estimate |
+|---|---|---|---|
+| **C.0** | Multi-tenant architecture | Today the system is single-tenant (Hershkowitz only). For sale, needs to support multiple law firms with isolated data, claims, billing | LARGE (4-6 weeks) |
+| **C.1** | Customer onboarding flow | "I bought the system, now what?" — guided sign-up, initial config, importing existing client list, configuring `employee_costs` | MEDIUM |
+| **C.2** | Admin / firm setup wizard | New firm: define partners, employees, fee structures, approval rules | MEDIUM |
+| **C.3** | User documentation (Hebrew + English) | End-user manual for lawyers (time entry, tasks), admin manual for partners (profitability, AI chat), accountant integration guide | MEDIUM |
+| **C.4** | Demo / sandbox environment | Sales pitches need a pre-populated demo instance reset nightly | MEDIUM |
+| **C.5** | Support runbooks | How to triage common customer issues (password reset, claim mismatch, billing dispute, data export request) | MEDIUM |
+| **C.6** | Compliance documentation | Israeli privacy law (חוק הגנת הפרטיות), GDPR (if EU customers), financial data retention. DPA template, sub-processor list | MEDIUM |
+| **C.7** | Production hardening | Rate limits per tenant, abuse prevention, expanded telemetry, alerting beyond MVP | MEDIUM |
+| **C.8** | Performance optimization | Based on observed production load patterns from MVP period | MEDIUM |
+| **C.9** | Legal review | Terms of service, privacy policy, customer contract templates | (Haim's domain, outside dev scope) |
+| **C.10** | Initial customer migration | If a specific buyer is identified during MVP — actual migration of their existing data, parallel running, cutover | LARGE |
+
+### 9.2 What Phase 3 is NOT (out of dev scope)
+
+- Sales pipeline / marketing materials — Haim's role
+- Pricing / business model — Haim's role
+- Customer acquisition — Haim's role
+- Sales contract negotiation — Haim's role
+- Partnership / reseller agreements — Haim's role
+
+### 9.3 Phase 3 timeline estimate (rough)
+
+- If multi-tenant (C.0) is required for first sale: **8-12 weeks** post-MVP → **commercial-ready ~early November 2026**
+- If first sale is to Hershkowitz-only (single-tenant), Phase 3 narrower: **4-6 weeks** post-MVP → **commercial-ready ~mid-September 2026**
+- Decision on multi-tenant requirement = **MUST be made by 2026-07-15** to avoid Phase 2 re-work
+
+### 9.4 Phase 3 exit criteria (proposed, to confirm)
+
+- System runs at least 2 isolated tenants in DEV (Hershkowitz + a synthetic demo firm)
+- Documentation complete (user manual, admin manual, accountant guide)
+- Onboarding flow tested end-to-end with a "fresh" simulated buyer
+- Compliance documents signed off by Haim's legal counsel
+- Production monitoring + alerting + runbooks cover the top-20 expected support issues
+- One actual paying customer onboarded (or a documented commitment to onboard within X weeks)
+
+---
+
+## 10. Decisions Locked (architectural choices made)
 
 Each row: what was decided, when, why, what was rejected. New rows append-only.
 
@@ -580,7 +667,7 @@ Each row: what was decided, when, why, what was rejected. New rows append-only.
 
 ---
 
-## 10. How to update this file
+## 11. How to update this file
 
 The rules:
 
@@ -595,7 +682,7 @@ If you find this file out of date when starting a session, the FIRST action is t
 
 ---
 
-## 11. Session crash recovery
+## 12. Session crash recovery
 
 This file is the recovery instruction.
 
@@ -609,7 +696,7 @@ The Lead Agent is allowed to **trust this file** over their own session memory. 
 
 ---
 
-## 12. Related references
+## 13. Related references
 
 | Topic | Where |
 |---|---|
@@ -625,9 +712,10 @@ The Lead Agent is allowed to **trust this file** over their own session memory. 
 
 ---
 
-## 13. Plan revisions
+## 14. Plan revisions
 
 _Cross-phase reorderings or material plan changes. Date + rationale required._
 
 - **2026-05-28 (initial)**: Plan committed. Phase 0 fully done; Phase 1 at 2/7 (A + B). Phase 2 untouched.
 - **2026-05-28 (expansion)**: Expanded from skeletal to comprehensive — added Product Vision, Standard, Working Agreement, Timeline (ETA early-mid August 2026 for MVP), per-PR sub-tasks for Phase 1 C-G and Phase 2 H.0-H.9, Decisions Locked log capturing 18 architectural choices from sessions through 2026-05-28. Reason: skeletal version was insufficient as a single source of truth — a cold-start agent reading it could not have planned the next PR. Haim explicit request: "אי אפשר ככה איך תרחיב אם אתה לא יודע על מה".
+- **2026-05-29 (visibility + Phase 3)**: Added §5.4 weekly Visible Milestones table (week-by-week DEV bud schedule, honest that first major UI lands Week 5-6), §5.5 optional bud accelerators (4 bonus PRs that bring visible progress forward at cost of +2 weeks to MVP date), new §9 Phase 3 — MVP → Commercial Ready (multi-tenant / onboarding / docs / demo / compliance / hardening). Reason: Haim's question "מה בפועל אני יכול לראות בDEV את הניצנים?" exposed that the plan ended at MVP without addressing commercial readiness, and that the 4-week backend stretch before any UI was not flagged. Phase 3 scope is NOT YET LOCKED — final scope + ordering decided when Phase 2 nears completion (lock date target 2026-07-15).
