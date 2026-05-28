@@ -49,6 +49,16 @@
     "dist",
     "apps/user-app/dist",
     "**/*.spec.ts",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "**/*.d.ts",
+    // PR-Pre-H.0.0.B (2026-05-28): exclude the entire functions/src-ts/
+    // sub-project. It has its OWN tsconfig (functions/src-ts/tsconfig.json)
+    // that targets Node 20 CommonJS + uses functions/node_modules/. Letting
+    // the ROOT tsc parse it caused TS2307 "Cannot find module 'firebase-functions/v2/https'"
+    // because ROOT node_modules doesn't have firebase-functions installed —
+    // it's a functions/-only dep. The ROOT tsconfig handles browser code
+    // under apps/user-app/, types/, and the few root *.ts utilities; the
+    // backend TS project is build separately via `cd functions && npm run build:ts`.
+    "functions/**"
   ]
 }

@@ -111,7 +111,11 @@ export default [
       'devtools/**',
       'docs/**',
       '.github/**',
-      '.claude/**'
+      '.claude/**',
+      // PR-Pre-H.0.0.B: TypeScript declaration files (.d.ts) are pure type
+      // metadata — no runtime code to lint. Including them in the parsed
+      // project surface broke ESLint when the build tsconfig excluded them.
+      '**/*.d.ts'
     ]
   },
   // TypeScript files - with type checking
@@ -279,7 +283,9 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        project: ['./functions/src-ts/tsconfig.json']
+        // Use the ESLint-only tsconfig that re-includes __tests__ — the build
+        // tsconfig.json excludes tests so they don't land in functions/lib/.
+        project: ['./functions/src-ts/tsconfig.eslint.json']
       },
       globals: {
         process: 'readonly',

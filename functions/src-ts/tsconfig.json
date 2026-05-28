@@ -48,6 +48,8 @@
     "node_modules",
     "../lib",
     "../node_modules",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/__tests__/**"
   ]
 }
