@@ -100,6 +100,75 @@ This is the highest-order rule in the entire project. Restated for the Lead Agen
 
 This principle is **codified into the Working Agreement** (§3.8 below) and applies to every PR for the life of the project.
 
+### 2.0.1 What "the bar" is, formally
+
+> **Anchor — Anthropic Constitutional AI (Bai et al., 2022):** Following the paper's central finding that an *explicit* written constitution outperforms implicit guidance, because explicit principles can be inspected, debated, and updated — whereas implicit norms drift over time without anyone noticing. Paraphrased; see "Constitutional AI: Harmlessness from AI Feedback" at anthropic.com/research/constitutional-ai-harmlessness-from-ai-feedback for the original argument.
+
+The bar = the union of exactly these **five** sources:
+
+1. The 7 PRODUCT-GRADE Gates — `@.claude/rubrics/_PRODUCT-GRADE-GATES.md`
+2. §2.1–§2.9 of this document (Standard)
+3. Engineering Bar — `@docs/ENGINEERING_BAR.md` (backend)
+4. Design Bar — `@docs/DESIGN_BAR.md` (frontend)
+5. MUST criteria of the per-PR rubric in `.claude/rubrics/<pr-id>.md`
+
+**Anything outside these five sources is PREFERENCE, not bar.**
+
+The Lead Agent may NOT refuse a Haim request based on preference. If a concern is not anchored in one of the five sources above, it is a **recommendation**, not a **refusal trigger**.
+
+If the Lead Agent finds itself wanting to refuse but cannot cite a specific item in one of the five sources, the correct action is to **document the concern as a recommendation** and proceed with Haim's request.
+
+### 2.0.2 How each rule is measured
+
+> **Anchor — Anthropic Evals documentation:** Following Anthropic's published guidance that programmatic (code-based) graders are preferred over model-based (LLM-as-judge) graders when the criterion can be automated, because programmatic graders are deterministic and auditable. Model-based grading is reserved for criteria that genuinely cannot be automated. Paraphrased; see docs.anthropic.com/en/docs/test-and-evaluate/develop-tests for the canonical guidance.
+
+Every bar item is classified as one of two measurement types:
+
+- **Mechanical** — verifiable by test / lint / grep / AST scan / automated checker. Deterministic. No interpretive judgment.
+- **Subjective** — requires Lead Agent judgment. Non-deterministic. Different sessions may reasonably reach different conclusions.
+
+When the Lead Agent invokes the bar to refuse, the refusal MUST cite (a) the specific bar item and (b) its measurement type.
+
+#### Bar items classified
+
+| Source | Item | Type | Measurement method |
+|---|---|---|---|
+| G1 | No stack traces in customer output | Mechanical | grep diff for `at file.js:N:N` patterns |
+| G1 | No `undefined` / `null` / `[object Object]` / `NaN` in customer output | Mechanical | grep diff |
+| G1 | No raw `FirebaseError` leakage | Mechanical | grep diff for `FirebaseError:` |
+| G1 | English error messages where UI is Hebrew | Mechanical | grep diff for English string literals in `lang="he"` files |
+| G1 | "User-friendly" Hebrew error text with next-action | Subjective | Lead Agent verdict |
+| G2 | "Rollback" section in PR body | Mechanical | grep PR body |
+| G2 | Rollback executable in ≤ 5 minutes | Subjective | Lead Agent verdict |
+| G3 | `logger.info` on success / `logger.error` on failure for write paths | Mechanical | AST scan for `transaction.update` / `transaction.set` without adjacent logger call |
+| G3 | Log fields include actor/entityId/timestamp | Mechanical | AST scan of logger calls |
+| G3 | `audit_log` entry on DELETE paths | Mechanical | AST scan |
+| G4 | Integration-style test exists for new code paths | Mechanical | grep test names for action verbs |
+| G4 | Test "proves the customer scenario" | Subjective | Lead Agent verdict |
+| G5 | Customer-facing strings in Hebrew | Mechanical | grep diff for English string literals in UI files |
+| G6 | "Breaking change" section if PR changes contracts | Mechanical | diff scan + PR body check |
+| G6 | Migration plan adequate when breaking | Subjective | Lead Agent verdict |
+| G7 | Security agent consulted when auth/PII/permissions touched | Mechanical | PR body grep for "security agent" mention |
+| §2.5 | WCAG AA contrast on all text | Mechanical | automated contrast checker |
+| §2.5 | `prefers-reduced-motion` respected (no hardcoded transition ms) | Mechanical | grep CSS for hardcoded transition durations |
+| §2.6 | TypeScript strict, no `any` | Mechanical | `tsc --strict` + `eslint no-explicit-any` |
+| §2.6 | ESLint 0 errors | Mechanical | `eslint . --max-warnings 0` |
+| §2.6 | v2 Cloud Functions for new endpoints | Mechanical | grep `firebase-functions/v2/*` |
+| §2.6 | Zod `.strict()` schemas on callable inputs | Mechanical | grep `.strict()` adjacent to `z.object(` |
+| §2.7 | New page uses `ModalManager` (not inline modal) | Mechanical | grep new HTML for `<div class="modal"` |
+| §2.7 | New page extends `design-system.css` tokens (no parallel tokens) | Mechanical | grep new CSS for hardcoded color/spacing literals |
+| §2.8 | No PII in code fixtures | Subjective | Lead Agent verdict on fixture realism |
+| §2.8 | No secrets in source | Mechanical | gitleaks scan |
+| Architecture | "Audit-FIRST, mutation-SECOND" ordering | Mechanical | AST scan: audit call precedes mutation in write paths |
+| Architecture | "Professional" code organization | Subjective | Lead Agent verdict |
+| Architecture | Single Source of Truth preserved (no duplicate business logic) | Subjective | Lead Agent verdict, informed by canonical helpers list in `shared/` |
+
+**Cross-reference:** the canonical definitions of G1–G7 live in `@.claude/rubrics/_PRODUCT-GRADE-GATES.md` — this table classifies their measurement, it does not redefine them.
+
+**Coverage gap fallback.** This table is **not exhaustive**. Items in the bar's five sources (§2.0.1) that are NOT listed here default to **Subjective** for refusal-mechanism purposes — meaning Haim may override per §3.8.5 CASE B. Rationale: an unclassified item is by definition not yet mechanized; treating it as Subjective preserves Haim's recourse while the classification gap remains open. Expanding the table to cover every Engineering Bar / Design Bar item is tracked as a separate task — not a blocker for governance.
+
+**Implication:** Mechanical refusals are objective and final. Subjective refusals (including unclassified items) are Lead Agent opinions and are eligible for override (see §3.8.5).
+
 ### 2.1 Error handling (G1, G5)
 
 - **NO English error messages** where the UI is Hebrew. Mixed sentences are forbidden (`"שגיאה: Permission denied"` is a FAIL).
@@ -244,6 +313,46 @@ Concrete protocol the Lead Agent follows in every session:
 5. **Audit trail**: every refusal logged in the response so a future session reading the chat can verify the bar was preserved.
 
 This protocol is the Lead Agent's job. **Haim does not need to remind the Lead Agent of the bar** — the Lead Agent enforces it proactively.
+
+### 3.8.5 Override mechanism for Subjective refusals
+
+> **Anchor — Anthropic "Building Effective Agents" (2024):** Following Anthropic's published guidance that agent systems need clear human oversight points, particularly where the agent might decline or err on the side of caution. The operational principle: provide explicit override paths with logging. Refusals without an override path convert reasonable disagreements into deadlocks. Paraphrased; see anthropic.com/engineering/building-effective-agents for the canonical framework.
+
+When the Lead Agent refuses a Haim request based on the bar (§3.8), the refusal falls into one of two cases:
+
+**CASE A — Mechanical refusal.**
+The refusal cites a Mechanical bar item (see §2.0.2). The check is deterministic — a test fails, an ESLint rule errors, a grep matches a forbidden pattern.
+
+→ **No override.** Haim cannot override a Mechanical refusal. The failure must be fixed. The bar item is engineering reality, not Claude opinion.
+
+If Haim believes the Mechanical check is itself wrong (e.g., the ESLint rule is over-broad, the test is testing the wrong thing), the correct response is to **change the check via a Bar Revision** (see §15), not to override the result.
+
+**CASE B — Subjective refusal.**
+The refusal cites a Subjective bar item (see §2.0.2). The verdict is the Lead Agent's interpretation — different sessions could reasonably disagree.
+
+→ **Override is available.** Haim may override with the following exact text format:
+
+```
+> I acknowledge the [G-X / Bar item Y] concern raised by the Lead Agent.
+> I override for [specific business reason].
+> Override classification: Subjective.
+```
+
+The override MUST be logged in the PR body under a heading "Subjective bar overrides". Example format:
+
+```markdown
+## Subjective bar overrides
+
+- **Item:** G4 — "Test proves customer scenario"
+- **Lead Agent's concern:** the integration test mocks the email-sending step, so it doesn't exercise the real delivery path.
+- **Haim's override:** I acknowledge the G4 concern. I override because the email delivery path is owned by a third party (SendGrid) and is not under test in any of our other endpoints. Override classification: Subjective.
+```
+
+**The override creates an auditable trail.** A future Lead Agent reading the PR can see that the Subjective concern was raised, acknowledged, and consciously overridden — not silently ignored.
+
+**No override of overrides.** Once Haim writes the override, the Lead Agent must accept it and proceed. The Lead Agent does not get to refuse the override itself.
+
+**Mechanical vs Subjective is determined per §2.0.2.** If the Lead Agent claims a refusal is Mechanical but the item is classified as Subjective in §2.0.2's table, Haim may override. The classification table is the authority.
 
 ---
 
@@ -754,3 +863,46 @@ _Cross-phase reorderings or material plan changes. Date + rationale required._
 - **2026-05-28 (expansion)**: Expanded from skeletal to comprehensive — added Product Vision, Standard, Working Agreement, Timeline (ETA early-mid August 2026 for MVP), per-PR sub-tasks for Phase 1 C-G and Phase 2 H.0-H.9, Decisions Locked log capturing 18 architectural choices from sessions through 2026-05-28. Reason: skeletal version was insufficient as a single source of truth — a cold-start agent reading it could not have planned the next PR. Haim explicit request: "אי אפשר ככה איך תרחיב אם אתה לא יודע על מה".
 - **2026-05-29 (visibility + Phase 3)**: Added §5.4 weekly Visible Milestones table (week-by-week DEV bud schedule, honest that first major UI lands Week 5-6), §5.5 optional bud accelerators (4 bonus PRs that bring visible progress forward at cost of +2 weeks to MVP date), new §9 Phase 3 — MVP → Commercial Ready (multi-tenant / onboarding / docs / demo / compliance / hardening). Reason: Haim's question "מה בפועל אני יכול לראות בDEV את הניצנים?" exposed that the plan ended at MVP without addressing commercial readiness, and that the 4-week backend stretch before any UI was not flagged. Phase 3 scope is NOT YET LOCKED — final scope + ordering decided when Phase 2 nears completion (lock date target 2026-07-15).
 - **2026-05-29 (standard supremacy)**: Added §2.0 Non-negotiable principle — the bar supersedes preference. Codified Haim's explicit rule: "אני לא רוצה שיבוא בחשבון מה שאני רוצה על חשבון הסטנדרט הגבוה ביותר... מבחינת ארכיטקטורה ומקצועיות". Added §3.8 operational protocol: trade-off type classification (Time/scope = Type A, offerable; Quality/bar = Type B, NOT offerable as choice), refusal protocol with concrete examples, speed-exemption scope (covers low-stakes, NOT high-stakes), high-stakes auto-defense triggers (production-stable merge, schema change, security rule change, refactor >100 lines, migration, new claim writer, new Firestore collection, cross-project IAM, new PII Cloud Function). Reason: previous protocol left ambiguity about when Lead Agent should refuse a Haim request; this codification removes the ambiguity. The Lead Agent now has an explicit, auditable protocol for enforcing the bar even against Haim's own preferences.
+- **2026-05-29 (bar specification)**: Added §2.0.1 (formal definition of "the bar" as the union of 5 enumerated sources — the 7 Gates, §2.1–§2.9, Engineering Bar, Design Bar, per-PR rubric MUSTs; everything outside is preference, not refusal trigger), §2.0.2 (measurement classification table — every bar item labeled Mechanical or Subjective, with the measurement method spelled out), §3.8.5 (override mechanism for Subjective refusals — CASE A Mechanical = no override, CASE B Subjective = explicit override with audit-logged format in PR body), §15 (Bar Revisions Log — separate update protocol for the bar itself; bar changes ship as own PR with own rubric, forward-only, explicit Haim approval required). Reason: §2.0 + §3.8 (from PR #340) codified "the bar supersedes preference" and gave the Lead Agent authority to refuse, but the principle was incomplete — Haim's question "מה רף הסטנדרט ולפי מה הוא נמדד" exposed that the bar was nowhere defined formally, no measurement classification existed, no recourse for Subjective disagreements was specified, and no evolution path was documented. Without these four pieces, refusal authority was unanchored — Claude could invent "bar concerns" in the moment without traceability. Each addition is anchored to a specific Anthropic publication (Constitutional AI for explicit specs over implicit, Evals docs for programmatic over model-based grading, Building Effective Agents for override paths over deadlocks, Multi-Agent Research System for versioned specs over silent drift).
+
+---
+
+## 15. Bar Revisions Log
+
+> **Anchor — Anthropic "How we built our multi-agent research system" (2025):** Following Anthropic's published learning that agent specifications must be versioned explicitly — when the spec changes, behavior changes, and the team needs an auditable trail of *why* the spec changed. Implicit spec drift was the failure mode they explicitly named. Paraphrased; see anthropic.com/engineering/multi-agent-research-system for the canonical post.
+
+This log records every change to **the bar itself** — the five sources enumerated in §2.0.1. It is intentionally separate from §14 (Plan revisions). Plan changes are about scope and direction; Bar revisions are about what makes work *acceptable*.
+
+### Update protocol
+
+1. **Bar changes require their own PR.** A bar revision must NEVER ship inside a feature PR. It is its own unit of work with its own rubric in `.claude/rubrics/`.
+2. **Explicit Haim approval required.** A bar revision is never implicit in a feature scope discussion. The PR description must contain Haim's explicit approval text.
+3. **Devils-advocate review MANDATORY.** Every bar revision PR must invoke `devils-advocate` against the proposed change before merge. The agent's verdict must be cited in the PR body. Rationale: bar revisions are the one place where Haim approves Haim — without an adversarial check, the loop is self-sealed.
+4. **Forward-only with file-touch carry rule.** Bar revisions apply to PRs opened **after** the revision merges. Previously-merged PRs are grandfathered and NOT retroactively re-graded. **However:** when a PR opened after a revision touches a file that contains grandfathered code, only the **new or modified lines** must meet the current bar — untouched lines remain grandfathered. This prevents single bar changes from forcing wholesale file rewrites.
+5. **Rollback path mandatory.** Every bar revision PR includes a `git revert` rollback that restores the previous bar.
+6. **Log entry mandatory.** Every bar revision adds a row to the table below at merge time.
+
+### Log table
+
+| Date | Bar item touched | Before | After | Rationale | PR |
+|---|---|---|---|---|---|
+| 2026-05-29 | Baseline — initial bar specification | (none — §2.0 was principle only, no formal definition or measurement) | §2.0.1 (5-source union definition) + §2.0.2 (Mechanical/Subjective classification table) + §3.8.5 (override mechanism for Subjective refusals) + §15 (this log) | Close the §2.0 / §3.8 specification gap exposed by Haim 2026-05-29: "מה רף הסטנדרט ולפי מה הוא נמדד זה למשל חסר". Without a formal definition and measurement classification, the refusal authority granted in §3.8 was unanchored. This entry establishes the baseline that future revisions diverge from. | PR-META-8 |
+
+### What is NOT a bar revision
+
+The following changes do NOT trigger this protocol:
+
+- Adding a new per-PR rubric in `.claude/rubrics/<pr-id>.md` — that's per-PR governance, not the bar itself.
+- Updating `SYSTEM_STATUS.md` or `SYSTEM_MAP.md` — those are status documents, not bar.
+- Documenting a new architectural decision in §10 (Decisions Locked) — that's a decision log entry, not a bar change.
+- Tightening a rubric MUST for a specific PR — that's per-PR scope, not bar.
+- Adjusting the per-PR rubric's SHOULD criteria — same reason.
+
+The bar revision protocol applies only when the **change affects how future PRs are evaluated** at the level of one of the five sources in §2.0.1.
+
+### Why this is separate from §14
+
+§14 logs plan revisions — changes to scope, timeline, architecture decisions, what we're building.
+§15 logs bar revisions — changes to what makes the work *acceptable* (quality threshold, refusal rules, measurement classification).
+
+The two evolve on different cadences. Plan changes happen as the project learns; bar changes happen as the standard itself evolves (industry, customer feedback, regulatory changes, internal learning about what "professional" means in this codebase). Mixing them in one log would conflate "we're now building H.10" with "we now require AST audit-FIRST scans" — these are not the same kind of change and shouldn't be grepped together.
