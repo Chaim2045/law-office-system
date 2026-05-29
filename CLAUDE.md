@@ -139,9 +139,13 @@ Approved updates must include: what changed / system impact / current state (DEV
 
 If the change is not material — do NOT update.
 
+## MASTER PLAN
+The multi-phase initiative (AI Management Layer + tofes-mecher bridge + profitability + cutover) is anchored in `docs/MASTER_PLAN.md`. **Read it first** when starting a new session and the request mentions Pre-H.0.0, the AI layer, profitability, or tofes-mecher. It is the source of truth that survives session resets. The Lead Agent is allowed to trust the file over its own working memory.
+
 # Imports
 
 @.claude/rules/feature-protocol.md
 @.claude/rules/agent-rules.md
 @.claude/rules/decision-point.md
 @.claude/rubrics/_PRODUCT-GRADE-GATES.md
+@docs/MASTER_PLAN.md
