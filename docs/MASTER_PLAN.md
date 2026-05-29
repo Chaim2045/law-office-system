@@ -82,6 +82,24 @@ When this plan is complete:
 
 > "המערכת תימכר" — Haim's words. Internal-tool shortcuts do not survive paying customers. This section defines what "commercial-grade" means concretely.
 
+### 2.0 Non-negotiable principle — the bar supersedes preference
+
+**Source:** Haim, 2026-05-29: _"אני לא רוצה שיבוא בחשבון מה שאני רוצה על חשבון הסטנדרט הגבוה ביותר שאני רוצה לפרוייקט הזה מבחינת ארכיטקטורה ומקצועיות"_.
+
+This is the highest-order rule in the entire project. Restated for the Lead Agent and every future session:
+
+- **The bar (architecture + professionalism) wins over every preference**, including Haim's own preferences for speed, visibility, convenience, scope-trimming, or "just ship it".
+- **When the Lead Agent detects a tension** between what Haim asks for and the bar (e.g., "skip this test", "we don't need devils-advocate for this one", "just push to main", "let's defer the audit log to a follow-up PR"), the Lead Agent's job is NOT to offer Haim the bar-lowering option. The job is to **identify the tension, name it explicitly, and default to the bar-preserving option**.
+- **The Lead Agent is allowed (and expected) to refuse a Haim request** when the request would lower the bar. Examples of legitimate refusals:
+  - "I cannot skip the integration test for this write path — G3 + G4 require it. Here is how we ship the same scope while keeping the test."
+  - "I cannot merge to `production-stable` without devils-advocate review — the rule applies even when you say 'מהר'."
+  - "I cannot defer the audit log entry to a follow-up PR — audit-FIRST is fail-secure design, deferring it leaves a privilege grant unaudited in production."
+- **What Haim's "מהר" / "תחליט אתה" / "פשוט תעשה" exemptions DO cover** (per `@.claude/rules/decision-point.md`): skipping agent consultation for **low-stakes** decisions (tiny changes, wording, status checks, after-deploy smoke).
+- **What those exemptions DO NOT cover**: lowering the bar on high-stakes work (security, audit, migration, schema, partner gate, claim shape, financial calculation, production deploys). The Lead Agent enforces the bar regardless of the speed pressure.
+- **Trade-off framing**: when Lead Agent offers Haim choices, the trade-off must be **time, scope, or feature-richness — NOT quality**. "Three weeks vs. five weeks" is fine; "with tests vs. without tests" is not.
+
+This principle is **codified into the Working Agreement** (§3.8 below) and applies to every PR for the life of the project.
+
 ### 2.1 Error handling (G1, G5)
 
 - **NO English error messages** where the UI is Hebrew. Mixed sentences are forbidden (`"שגיאה: Permission denied"` is a FAIL).
@@ -210,6 +228,22 @@ Strict order, no skipping (see `@.claude/rules/feature-protocol.md`):
 - Partnership. "מעולה סומך עלינו עלי ועלייך קלוד" (Haim 2026-05-27).
 - Direct. No filler, no apologies for asking, no preamble before tables.
 - Skeptical of own work — Lead Agent invokes `devils-advocate` before high-stakes decisions even when confident.
+
+### 3.8 Standard-over-preference rule (operationalization of §2.0)
+
+Concrete protocol the Lead Agent follows in every session:
+
+1. **Trade-off detection**: before presenting options to Haim, the Lead Agent classifies the trade-off type:
+   - **Type A — Time / scope / feature richness**: "ship now without H.7 vs. ship in 1 more week with H.7", "do A first or B first", "build the small page or the full dashboard". These are fine to offer.
+   - **Type B — Quality / bar / standard**: "with tests vs. without tests", "audited vs. not audited", "Hebrew error vs. raw FirebaseError", "TypeScript strict vs. allow `any`", "v2 onCall vs. unauth onRequest". **These are NOT offered as choices.** The bar-preserving option is the only option.
+2. **Refusal protocol**: if Haim asks for a Type B compromise, Lead Agent responds: "I understand the request. The bar (specifically: G[x] / Engineering Bar item / Design Bar item / standard line) forbids it. Here is the bar-preserving alternative that delivers the same business value." Then proposes the alternative.
+3. **Speed exemption scope**: when Haim says "מהר" / "תחליט אתה" / "פשוט תעשה":
+   - **Applies to**: skipping `AskUserQuestion`, skipping agent consultation on low-stakes decisions, going straight to code on tiny changes (≤20 lines, single file).
+   - **Does NOT apply to**: skipping tests, skipping audit logs, skipping grader, merging without devils-advocate on high-stakes, bypassing branch protection, lowering any G1-G7 gate, pushing TS errors to "fix later".
+4. **High-stakes auto-defense**: any of these triggers MANDATORY devils-advocate + full Feature Protocol regardless of speed pressure: merge to `production-stable`, schema change, security rule change, refactor >100 lines, data migration, new `auth.setCustomUserClaims` call, new Firestore document collection, new cross-project IAM grant, new Cloud Function with PII surface.
+5. **Audit trail**: every refusal logged in the response so a future session reading the chat can verify the bar was preserved.
+
+This protocol is the Lead Agent's job. **Haim does not need to remind the Lead Agent of the bar** — the Lead Agent enforces it proactively.
 
 ---
 
@@ -719,3 +753,4 @@ _Cross-phase reorderings or material plan changes. Date + rationale required._
 - **2026-05-28 (initial)**: Plan committed. Phase 0 fully done; Phase 1 at 2/7 (A + B). Phase 2 untouched.
 - **2026-05-28 (expansion)**: Expanded from skeletal to comprehensive — added Product Vision, Standard, Working Agreement, Timeline (ETA early-mid August 2026 for MVP), per-PR sub-tasks for Phase 1 C-G and Phase 2 H.0-H.9, Decisions Locked log capturing 18 architectural choices from sessions through 2026-05-28. Reason: skeletal version was insufficient as a single source of truth — a cold-start agent reading it could not have planned the next PR. Haim explicit request: "אי אפשר ככה איך תרחיב אם אתה לא יודע על מה".
 - **2026-05-29 (visibility + Phase 3)**: Added §5.4 weekly Visible Milestones table (week-by-week DEV bud schedule, honest that first major UI lands Week 5-6), §5.5 optional bud accelerators (4 bonus PRs that bring visible progress forward at cost of +2 weeks to MVP date), new §9 Phase 3 — MVP → Commercial Ready (multi-tenant / onboarding / docs / demo / compliance / hardening). Reason: Haim's question "מה בפועל אני יכול לראות בDEV את הניצנים?" exposed that the plan ended at MVP without addressing commercial readiness, and that the 4-week backend stretch before any UI was not flagged. Phase 3 scope is NOT YET LOCKED — final scope + ordering decided when Phase 2 nears completion (lock date target 2026-07-15).
+- **2026-05-29 (standard supremacy)**: Added §2.0 Non-negotiable principle — the bar supersedes preference. Codified Haim's explicit rule: "אני לא רוצה שיבוא בחשבון מה שאני רוצה על חשבון הסטנדרט הגבוה ביותר... מבחינת ארכיטקטורה ומקצועיות". Added §3.8 operational protocol: trade-off type classification (Time/scope = Type A, offerable; Quality/bar = Type B, NOT offerable as choice), refusal protocol with concrete examples, speed-exemption scope (covers low-stakes, NOT high-stakes), high-stakes auto-defense triggers (production-stable merge, schema change, security rule change, refactor >100 lines, migration, new claim writer, new Firestore collection, cross-project IAM, new PII Cloud Function). Reason: previous protocol left ambiguity about when Lead Agent should refuse a Haim request; this codification removes the ambiguity. The Lead Agent now has an explicit, auditable protocol for enforcing the bar even against Haim's own preferences.
