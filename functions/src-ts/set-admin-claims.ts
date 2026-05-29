@@ -36,6 +36,7 @@ import * as admin from 'firebase-admin';
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 
+import { logCriticalAction } from './audit-critical';
 import * as logger from '../shared/logger';
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
@@ -55,35 +56,6 @@ export interface SetAdminClaimsResponse {
   role: 'admin';
   auditDocId: string;
   claimShapeWritten: { admin: true; role: 'admin' };
-}
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-const AUDIT_COLLECTION = 'audit_log'; // matches functions/shared/audit.js#logAction
-
-/**
- * Audit-first write helper. Rethrows on failure (unlike shared/audit.js#logAction
- * which swallows errors — that's intentional for legacy non-critical paths).
- * For admin-claim grants we want fail-secure: no claim without audit trail.
- *
- * @returns the new audit doc id
- * @throws if Firestore write fails for any reason
- */
-async function writeAuditOrThrow(
-  action: string,
-  actorUid: string,
-  payload: Record<string, unknown>
-): Promise<string> {
-  const db = admin.firestore();
-  const docRef = await db.collection(AUDIT_COLLECTION).add({
-    action,
-    userId: actorUid,
-    username: null, // intentionally null — UI joins on userId at display time
-    details: payload,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    userAgent: null,
-    ipAddress: null
-  });
-  return docRef.id;
 }
 
 /**
@@ -158,7 +130,7 @@ export async function setAdminClaimsHandler(
   // ─── (5) Audit FIRST — if this fails, claim is NOT written ────────────────
   let auditDocId: string;
   try {
-    auditDocId = await writeAuditOrThrow('SET_ADMIN_CLAIM', callerUid, {
+    auditDocId = await logCriticalAction('SET_ADMIN_CLAIM', callerUid, {
       targetUid,
       role,
       previousClaims,
@@ -191,7 +163,7 @@ export async function setAdminClaimsHandler(
     // Compensating audit doc — original audit said "granted" but claim write
     // failed. Best-effort: if THIS also fails, we still throw below.
     try {
-      await writeAuditOrThrow('SET_ADMIN_CLAIM_FAILED', callerUid, {
+      await logCriticalAction('SET_ADMIN_CLAIM_FAILED', callerUid, {
         targetUid,
         originalAuditDocId: auditDocId,
         errorCode: error.code

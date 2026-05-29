@@ -98,10 +98,14 @@ describe('setAdminClaims — static AST invariants', () => {
     expect(source).toMatch(dualShapePattern);
   });
 
-  it('writes to audit_log via the dedicated helper writeAuditOrThrow', () => {
-    expect(source).toContain('writeAuditOrThrow');
-    expect(source).toContain('collection(AUDIT_COLLECTION)');
-    expect(source).toContain('const AUDIT_COLLECTION = \'audit_log\'');
+  it('uses canonical logCriticalAction helper for audit writes (Pre-H.0.0.C)', () => {
+    // Pre-H.0.0.C canonicalized the local writeAuditOrThrow into a shared
+    // helper. Source MUST import + use the canonical and MUST NOT contain
+    // a local clone.
+    expect(source).toContain('logCriticalAction');
+    expect(source).toMatch(/from\s+['"]\.\/audit-critical['"]/);
+    expect(source).not.toContain('function writeAuditOrThrow');
+    expect(source).not.toContain('const AUDIT_COLLECTION');
   });
 
   it('blocks self-elevation explicitly', () => {

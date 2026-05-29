@@ -67,28 +67,11 @@ exports.initializeAdminClaimsHandler = initializeAdminClaimsHandler;
  */
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
+const audit_critical_1 = require("./audit-critical");
 const logger = __importStar(require("../shared/logger"));
 // ─── Constants ──────────────────────────────────────────────────────────────
-const AUDIT_COLLECTION = 'audit_log';
 const BOOTSTRAP_LOCK_PATH = 'system/admin_claims_init_lock';
 const LOCK_TTL_MS = 5 * 60 * 1000; // 5 minutes — long enough for a real run, short enough to recover from a crash
-/**
- * Audit-first helper. Same semantics as setAdminClaims.ts — rethrows on
- * failure so the caller can decide whether to skip the claim write.
- */
-async function writeAuditOrThrow(action, actorUid, payload) {
-    const db = admin.firestore();
-    const docRef = await db.collection(AUDIT_COLLECTION).add({
-        action,
-        userId: actorUid,
-        username: null,
-        details: payload,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        userAgent: null,
-        ipAddress: null
-    });
-    return docRef.id;
-}
 /**
  * Internal handler — exported separately for direct unit testing.
  */
@@ -183,7 +166,7 @@ async function initializeAdminClaimsHandler(request) {
             }
             // ─── (3c) Audit FIRST per employee ────────────────────────────────────
             try {
-                await writeAuditOrThrow('INIT_ADMIN_CLAIM', callerUid, {
+                await (0, audit_critical_1.logCriticalAction)('INIT_ADMIN_CLAIM', callerUid, {
                     targetUid: userRecord.uid,
                     targetEmail: email,
                     previousClaims: existingClaims,
@@ -226,7 +209,7 @@ async function initializeAdminClaimsHandler(request) {
                 });
                 // Compensating audit — best effort
                 try {
-                    await writeAuditOrThrow('INIT_ADMIN_CLAIM_FAILED', callerUid, {
+                    await (0, audit_critical_1.logCriticalAction)('INIT_ADMIN_CLAIM_FAILED', callerUid, {
                         targetUid: userRecord.uid,
                         errorCode: error.code
                     });

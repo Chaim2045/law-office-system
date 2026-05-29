@@ -31,10 +31,10 @@
 import * as admin from 'firebase-admin';
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 
+import { logCriticalAction } from './audit-critical';
 import * as logger from '../shared/logger';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-const AUDIT_COLLECTION = 'audit_log';
 const BOOTSTRAP_LOCK_PATH = 'system/admin_claims_init_lock';
 const LOCK_TTL_MS = 5 * 60 * 1000; // 5 minutes — long enough for a real run, short enough to recover from a crash
 
@@ -53,28 +53,6 @@ export interface InitializeAdminClaimsResponse {
   skippedAlreadyGranted: number;
   failed: number;
   results: EmployeeResult[];
-}
-
-/**
- * Audit-first helper. Same semantics as setAdminClaims.ts — rethrows on
- * failure so the caller can decide whether to skip the claim write.
- */
-async function writeAuditOrThrow(
-  action: string,
-  actorUid: string,
-  payload: Record<string, unknown>
-): Promise<string> {
-  const db = admin.firestore();
-  const docRef = await db.collection(AUDIT_COLLECTION).add({
-    action,
-    userId: actorUid,
-    username: null,
-    details: payload,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    userAgent: null,
-    ipAddress: null
-  });
-  return docRef.id;
 }
 
 /**
@@ -187,7 +165,7 @@ export async function initializeAdminClaimsHandler(
 
       // ─── (3c) Audit FIRST per employee ────────────────────────────────────
       try {
-        await writeAuditOrThrow('INIT_ADMIN_CLAIM', callerUid, {
+        await logCriticalAction('INIT_ADMIN_CLAIM', callerUid, {
           targetUid: userRecord.uid,
           targetEmail: email,
           previousClaims: existingClaims,
@@ -229,7 +207,7 @@ export async function initializeAdminClaimsHandler(
         });
         // Compensating audit — best effort
         try {
-          await writeAuditOrThrow('INIT_ADMIN_CLAIM_FAILED', callerUid, {
+          await logCriticalAction('INIT_ADMIN_CLAIM_FAILED', callerUid, {
             targetUid: userRecord.uid,
             errorCode: error.code
           });

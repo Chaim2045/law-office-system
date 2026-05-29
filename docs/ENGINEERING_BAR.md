@@ -103,7 +103,7 @@ Rather than rewrite the existing code (high risk, no business value), we set a h
 ### 9. Audit & monitoring
 
 - Any write path (CREATE / UPDATE / DELETE) gets a structured log on success AND failure (G3).
-- Critical mutations (claim changes, service creation, emergency overrides) use `functions/shared/logger.js` `info` with action name. Critical AUDIT mutations should use the (forthcoming PR-H.0.0.C) `logCriticalAction` that throws on audit failure.
+- Critical mutations (claim changes, service creation, emergency overrides) use `functions/shared/logger.js` `info` with action name. Critical AUDIT mutations MUST use the canonical `logCriticalAction` / `logCriticalActionInTxn` helpers from `functions/src-ts/audit-critical.ts` (Pre-H.0.0.C). The helpers write to `audit_log` with `schemaVersion:1`, validate `actorUid` (human UID or `sys:<name>` system actor), and throw on Firestore failure so the caller aborts the mutation (fail-secure). No new local `writeAuditOrThrow` clones — that pattern is now canonicalized.
 
 ### 10. Documentation
 

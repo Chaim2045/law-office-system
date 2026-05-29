@@ -128,4 +128,5 @@ See `docs/ENGINEERING_BAR.md` for the full standard. Highlights:
 - Logger shim: `functions/shared/logger.js`
 - TS config: `functions/src-ts/tsconfig.json`
 - Sample test asserting "no writes": `functions/src-ts/__tests__/verify-claims.test.ts`
+- Audit-FIRST primitive (use for every critical write path): `functions/src-ts/audit-critical.ts` (`logCriticalAction` + `logCriticalActionInTxn`)
 - Engineering standard: `docs/ENGINEERING_BAR.md`
