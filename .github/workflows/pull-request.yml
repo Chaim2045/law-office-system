@@ -238,7 +238,11 @@ jobs:
   test:
     name: 🧪 Run Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Bumped from 15 → 25 min in Pre-H.0.0.D (devils-advocate Attack #3):
+    # firebase emulators:exec cold-boots a Java-based Firestore emulator
+    # which adds ~15-30s before any rules test runs. 15-min ceiling was
+    # cutting it close on flaky cold starts.
+    timeout-minutes: 25
 
     steps:
       - name: 📥 Checkout PR Code
@@ -252,10 +256,29 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+      # PR-Pre-H.0.0.D: Java runtime required for the Firestore Emulator
+      # (devils-advocate Attack #4). Pin to a known-working JDK to avoid
+      # silent breakage when ubuntu-latest image rolls newer JDK versions.
+      - name: ☕ Setup Java (required by Firestore Emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: 📦 Install Dependencies
         run: npm ci --prefer-offline --no-audit
 
-      - name: 🧪 Run Vitest (root)
+      - name: 🔒 Verify Firestore Emulator binary is available
+        run: npx firebase --version
+
+      # PR-Pre-H.0.0.D: rules tests use `@firebase/rules-unit-testing` against
+      # the local emulator. `emulators:exec` auto-manages boot/teardown. The
+      # rules-test setup hard-fails if FIRESTORE_EMULATOR_HOST is not set —
+      # so this step IS the only sanctioned entry point.
+      - name: 🔐 Run Firestore Rules tests (emulator)
+        run: npm run test:rules:emulator
+
+      - name: 🧪 Run Vitest (root, non-rules)
         run: npm test
 
       - name: 📦 Install Functions dependencies

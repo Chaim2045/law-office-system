@@ -469,8 +469,8 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 |---|---|---|---|---|---|
 | A | `verifyClaims` callable | #336 | ✅ merged | (in Phase 0.1) | — |
 | B | Admin-claim endpoint lockdown | [#339](https://github.com/Chaim2045/law-office-system/pull/339) | ✅ merged | LARGE | A |
-| C | `logCriticalAction` audit primitive | _open_ | 🟡 in progress | LIGHT | B |
-| D | `isPartner()` helper in `firestore.rules` | _pending_ | ⏸️ pending | LIGHT | A |
+| C | `logCriticalAction` audit primitive | [#342](https://github.com/Chaim2045/law-office-system/pull/342) | ✅ merged | LIGHT | B |
+| D | `isPartner()` helper + rules-test infrastructure | _open_ | 🟡 in progress | MEDIUM | A |
 | E | Claim shape consolidation | _pending_ | ⏸️ pending | MEDIUM | B + D + auth.js:424 cleanup |
 | F | `syncRoleClaims` utility | _pending_ | ⏸️ pending | MEDIUM | C + D + E |
 | G | `employee_costs/{email}` schema | _pending_ | ⏸️ pending | MEDIUM | C |
@@ -500,23 +500,41 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 - `actorUid` validation (devils-advocate Attack #3): `/^[\w-]{6,128}$/` OR `sys:<name>` prefix for system actors (cron jobs, triggers).
 - Logger discipline: NEVER `error.message` in logger payload (devils-advocate Attack #4) — only `errorCode`.
 
-**Implementation status:** 🟡 In progress on branch `feat/pre-h-0-0-c-log-critical-action` (PR pending). 72 tests pass (21 new + 51 from Pre-H.0.0.B unchanged after refactor). lib/ committed per Pre-H.0.0.B decision.
+**Implementation status:** ✅ Merged in [PR #342](https://github.com/Chaim2045/law-office-system/pull/342) (2026-05-29). 72 tests pass (21 new + 51 from Pre-H.0.0.B unchanged after refactor). lib/ committed per Pre-H.0.0.B decision.
 
-### 7.3 Pre-H.0.0.D — `isPartner()` helper in `firestore.rules`
+### 7.3 Pre-H.0.0.D — `isPartner()` helper + rules-test infrastructure
 
-**Why:** Phase 2 needs partner-only paths (task budgeting approval, profitability dashboard visibility). Currently `firestore.rules` only knows `isAdmin()`. Without `isPartner()`, every partner-gated rule has to inline the check.
+**Why:** Phase 2 needs partner-only paths (task budgeting approval, profitability dashboard visibility). Currently `firestore.rules` only knows `isAdmin()`. Without `isPartner()`, every partner-gated rule has to inline the check. Also: the repo had ZERO automated `firestore.rules` testing — adding the helper without coverage would violate G4 (test proves customer scenario).
 
-**Scope:**
-- Add `function isPartner()` in `firestore.rules` that checks `request.auth.token.role == 'partner'`
-- Add unit tests via Firebase rules-unit-testing emulator
+**Scope (expanded at Pre-H.0.0.D checkpoint 2026-05-29):**
+- Add `function isPartner()` to `firestore.rules` with canonical-shape comment block + cross-reference to wildcard at `firestore.rules:239`
+- Update `firestore.rules` header docblock (add 2026-05-29 entry + role list `admin|partner|employee`)
+- Create `firestore.rules.test` (Strategy B — separate test ruleset; production rules stay clean)
+- NEW test infrastructure (was not in repo before this PR):
+  - Add `@firebase/rules-unit-testing@3.0.4` + `firebase-tools@14.20.0` (pinned) as devDeps
+  - Add `.npmrc` with `legacy-peer-deps=true` (rules-unit-testing peers `firebase@^10`; repo has `firebase@9.23.0`; removable when Dependabot PR #251 lands)
+  - Add `emulators` block to `firebase.json` (firestore:8080, auth:9099, ui:disabled)
+  - Scripts: `test:rules` + `test:rules:emulator` in root `package.json`
+  - `tests/rules/setup.ts` with HARD GUARDS (devils-advocate Attack #2): refuse to boot without `FIRESTORE_EMULATOR_HOST` + hardcoded `projectId: 'demo-rules-test'`
+  - `tests/rules/isPartner.test.ts` — 11 scenarios (7 string-typed + 4 type-confusion per devils-advocate Attack #5)
+  - `tests/unit/rules/rules-drift-guard.test.ts` — fast string-equality check between helper bodies in `firestore.rules` and `firestore.rules.test` (no emulator needed; runs as part of standard `npm test`)
+- CI updates to `.github/workflows/pull-request.yml`:
+  - JOB 5 timeout bumped 15→25min (Attack #3 — emulator cold-boot budget)
+  - `actions/setup-java@v4` JDK 17 step before emulator (Attack #4 — required by Firestore Emulator)
+  - `firebase emulators:exec` step running `npm run test:rules` BEFORE the existing root `npm test`
+- Update `docs/PARTNER_CLAIM_DIAGNOSTIC.md` with Pre-H.0.0.D section (canonical literal + "F is the writer" coordination note + test infrastructure summary)
 - **Does NOT yet write any `partner` claim** — that's F's job. D only defines the read-side helper.
-- Document the new helper in `docs/PARTNER_CLAIM_DIAGNOSTIC.md`
 
-**Estimated size:** LIGHT (~30 lines rules + tests).
+**Estimated size:** MEDIUM (~30 rules lines + ~150 test+infra lines + CI + docs ≈ 400 LOC).
 
 **Locked decisions:**
 - Claim shape: `{role: 'partner'}` — matches the canonical `{role: 'admin'}` shape from Phase 1 B.
 - No `{partner: true}` legacy shape — we are NOT introducing a new legacy.
+- Test runner: **Vitest at root** (not Jest in functions/) — rules testing is system-level.
+- Test ruleset location: **`firestore.rules.test`** at repo root (Strategy B — production rules stay free of test scaffolding).
+- HARD GUARD on emulator-only execution (devils-advocate Attack #2): refuse without `FIRESTORE_EMULATOR_HOST` + `projectId: 'demo-rules-test'` (Firebase reserves `demo-*` prefix for emulator-only).
+- Production-path sentinel test (devils-advocate Attack #1 partial defense): **DEFERRED** to the first PR that wires `isPartner()` into a real production rule (likely H.4 task budgeting or H.3 profitability). Until then, drift-guard + 11 helper scenarios cover the helper itself; production-path coverage comes when production consumers exist.
+- 11 scenarios cover: unauth / no-role / cross-role (admin) / canonical partner / employee / empty / whitespace / null / array / object / numeric.
 
 ### 7.4 Pre-H.0.0.E — Claim shape consolidation
 

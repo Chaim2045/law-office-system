@@ -5,8 +5,15 @@ rules_version = '2';
  * 🔐 FIRESTORE SECURITY RULES - ENHANCED VERSION
  * ════════════════════════════════════════════════════════════════════════════
  *
- * 📅 Last Updated: 2025-01-17
+ * 📅 Last Updated: 2026-05-29 (Pre-H.0.0.D — added isPartner() helper)
  * 🎯 Security Level: PRODUCTION-READY
+ *
+ * Canonical role model (Custom Claims, lowercase ASCII literals only):
+ *   - 'admin'    → isAdmin()    — full system access (verified Pre-H.0.0.A/B)
+ *   - 'partner'  → isPartner()  — partner-only paths. Helper defined Pre-H.0.0.D;
+ *                  the writer (Pre-H.0.0.F syncRoleClaims) is NOT yet merged.
+ *                  Until F lands, isPartner() returns false for every user.
+ *   - 'employee' → no helper; default authenticated state.
  *
  * ════════════════════════════════════════════════════════════════════════════
  * 🔧 CHANGES MADE:
@@ -74,6 +81,27 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null &&
              request.auth.token.role == 'admin';
+    }
+
+    // Check if user is a partner (Pre-H.0.0.D, 2026-05-29).
+    //
+    // CANONICAL CLAIM SHAPE: { role: 'partner' } — lowercase ASCII, exact literal.
+    //   ❌ 'Partner' / 'PARTNER' (capitalized) → strict == rejects.
+    //   ❌ ' partner ' (whitespace)            → strict == rejects.
+    //   ❌ ['partner'] / {partner: true}       → type mismatch, == returns false.
+    //
+    // Pre-H.0.0.F (syncRoleClaims) is the ONLY authorized writer. Until F merges,
+    // this helper returns false for every authenticated user — safe BY DESIGN
+    // (fail-secure: any future partner-gated rule denies until F is in place).
+    //
+    // Cross-reference: the wildcard at the messages rule below
+    // (`request.auth.token.role in resource.data.toRoles`) accepts ANY role
+    // in the toRoles array. Once partner claims are written by F, any messages
+    // doc with 'partner' in toRoles immediately grants read. Coordinate any
+    // toRoles content changes with the F deploy.
+    function isPartner() {
+      return request.auth != null &&
+             request.auth.token.role == 'partner';
     }
 
     // ==================== Collections ====================

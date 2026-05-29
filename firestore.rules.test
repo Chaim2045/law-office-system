@@ -1,0 +1,85 @@
+rules_version = '2';
+
+// ════════════════════════════════════════════════════════════════════════════
+// 🧪 TEST-ONLY FIRESTORE RULES — Pre-H.0.0.D Strategy B
+// ════════════════════════════════════════════════════════════════════════════
+//
+// This file exists ONLY to test the helper functions defined in firestore.rules
+// without polluting production rules with test scaffolding.
+//
+// Contents:
+//   1. EXACT COPIES of the helper functions from firestore.rules
+//      (isAuthenticated, isAdmin, isPartner).
+//   2. Test-only match paths (/_test_partner_only, /_test_admin_only)
+//      guarded by those helpers, used by tests/rules/*.test.ts.
+//
+// DRIFT PROTECTION: tests/rules/rules-drift-guard.test.ts asserts that the
+// helper bodies in this file are STRING-EQUAL to those in firestore.rules.
+// Any divergence breaks CI.
+//
+// This file is loaded into the Firestore Emulator at test time only. It is
+// NEVER deployed. firebase.json does not reference it.
+// ════════════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==================== Helper Functions (mirror of firestore.rules) ====================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is admin (FIXED: Using Custom Claims only)
+    // Required: User must have custom claim { role: 'admin' }
+    // Set via: Firebase Admin SDK setCustomUserClaims()
+    function isAdmin() {
+      return request.auth != null &&
+             request.auth.token.role == 'admin';
+    }
+
+    // Check if user is a partner (Pre-H.0.0.D, 2026-05-29).
+    //
+    // CANONICAL CLAIM SHAPE: { role: 'partner' } — lowercase ASCII, exact literal.
+    //   ❌ 'Partner' / 'PARTNER' (capitalized) → strict == rejects.
+    //   ❌ ' partner ' (whitespace)            → strict == rejects.
+    //   ❌ ['partner'] / {partner: true}       → type mismatch, == returns false.
+    //
+    // Pre-H.0.0.F (syncRoleClaims) is the ONLY authorized writer. Until F merges,
+    // this helper returns false for every authenticated user — safe BY DESIGN
+    // (fail-secure: any future partner-gated rule denies until F is in place).
+    //
+    // Cross-reference: the wildcard at the messages rule below
+    // (`request.auth.token.role in resource.data.toRoles`) accepts ANY role
+    // in the toRoles array. Once partner claims are written by F, any messages
+    // doc with 'partner' in toRoles immediately grants read. Coordinate any
+    // toRoles content changes with the F deploy.
+    function isPartner() {
+      return request.auth != null &&
+             request.auth.token.role == 'partner';
+    }
+
+    // ==================== Test-only Match Paths ====================
+
+    // Paths exist ONLY in this test ruleset; production rules do not have them.
+    // Tests assert succeed/fail on read+write under various auth contexts.
+
+    match /_test_partner_only/{docId} {
+      allow read, write: if isPartner();
+    }
+
+    match /_test_admin_only/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /_test_authenticated_only/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Deny everything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
