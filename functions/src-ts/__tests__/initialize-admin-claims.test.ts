@@ -121,6 +121,16 @@ describe('initializeAdminClaims — static AST invariants', () => {
   it('email-fallback path emits warning log', () => {
     expect(source).toContain('admin_claims.initialize.email_fallback');
   });
+
+  it('uses canonical logCriticalAction helper for audit writes (Pre-H.0.0.C)', () => {
+    // Pre-H.0.0.C canonicalized the local writeAuditOrThrow into a shared
+    // helper. Source MUST import + use the canonical and MUST NOT contain
+    // a local clone.
+    expect(source).toContain('logCriticalAction');
+    expect(source).toMatch(/from\s+['"]\.\/audit-critical['"]/);
+    expect(source).not.toContain('function writeAuditOrThrow');
+    expect(source).not.toContain('const AUDIT_COLLECTION');
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════

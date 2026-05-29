@@ -469,7 +469,7 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 |---|---|---|---|---|---|
 | A | `verifyClaims` callable | #336 | ✅ merged | (in Phase 0.1) | — |
 | B | Admin-claim endpoint lockdown | [#339](https://github.com/Chaim2045/law-office-system/pull/339) | ✅ merged | LARGE | A |
-| C | `logCriticalAction` audit primitive | _next_ | ⏸️ pending | LIGHT | B |
+| C | `logCriticalAction` audit primitive | _open_ | 🟡 in progress | LIGHT | B |
 | D | `isPartner()` helper in `firestore.rules` | _pending_ | ⏸️ pending | LIGHT | A |
 | E | Claim shape consolidation | _pending_ | ⏸️ pending | MEDIUM | B + D + auth.js:424 cleanup |
 | F | `syncRoleClaims` utility | _pending_ | ⏸️ pending | MEDIUM | C + D + E |
@@ -493,8 +493,14 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 **Estimated size:** LIGHT (~50-80 lines + small refactor of 2 callers).
 
 **Locked decisions:**
-- JS vs TS: TBD at investigation. JS matches `shared/audit.js` convention but TS gives proper types. Lean TS.
+- JS vs TS: TS (confirmed at investigation — backend-firebase-expert recommendation).
 - Collection: stays `audit_log` (canonical, set by `shared/audit.js`).
+- TWO exports (devils-advocate Attack #2): `logCriticalAction` (non-txn, safe for compensating audits) + `logCriticalActionInTxn` (transactional, pre-allocated doc id). Type-system prevents the compensating-audit-in-txn mistake.
+- `schemaVersion: 1` (devils-advocate Attack #5) — forward-compat anchor for future fields.
+- `actorUid` validation (devils-advocate Attack #3): `/^[\w-]{6,128}$/` OR `sys:<name>` prefix for system actors (cron jobs, triggers).
+- Logger discipline: NEVER `error.message` in logger payload (devils-advocate Attack #4) — only `errorCode`.
+
+**Implementation status:** 🟡 In progress on branch `feat/pre-h-0-0-c-log-critical-action` (PR pending). 72 tests pass (21 new + 51 from Pre-H.0.0.B unchanged after refactor). lib/ committed per Pre-H.0.0.B decision.
 
 ### 7.3 Pre-H.0.0.D — `isPartner()` helper in `firestore.rules`
 
