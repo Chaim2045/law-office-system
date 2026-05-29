@@ -21,7 +21,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "test:rules": "vitest run --dir tests/rules tests/rules/",
+    "test:rules": "vitest run --config vitest.rules.config.ts",
     "test:rules:emulator": "firebase emulators:exec --only firestore,auth \"npm run test:rules\"",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
