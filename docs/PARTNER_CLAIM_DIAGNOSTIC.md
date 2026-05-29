@@ -136,3 +136,47 @@ firebase deploy --only functions:verifyClaims --project law-office-system-e4801
 ```
 
 After redeploy, the `verifyClaims` callable is removed from the production endpoint surface.
+
+---
+
+## Pre-H.0.0.D — `isPartner()` rules helper (2026-05-29)
+
+The next step after `verifyClaims` diagnostic is to define the **read-side** for partner-gated rules. Pre-H.0.0.D adds `function isPartner()` to `firestore.rules`:
+
+```
+function isPartner() {
+  return request.auth != null &&
+         request.auth.token.role == 'partner';
+}
+```
+
+### Canonical claim shape — strict literal
+
+`{ role: 'partner' }` — **lowercase ASCII, exact literal**. Firestore Rules uses strict `==` for the comparison:
+
+- ❌ `'Partner'` / `'PARTNER'` (any capitalization) → rejected
+- ❌ `' partner '` (whitespace padding) → rejected
+- ❌ `['partner']` (array), `{partner: true}` (object), `1` (numeric), `null` → type mismatch, rejected
+
+11 automated rules tests (`tests/rules/isPartner.test.ts`) lock these semantics.
+
+### What D does NOT do — coordination with F
+
+Pre-H.0.0.D defines the read-side helper. **No production rule yet consumes `isPartner()`**, and **no user holds `{role:'partner'}` yet**. The helper safely returns false for every authenticated user until both:
+
+1. Pre-H.0.0.F (`syncRoleClaims`) — the ONLY authorized writer — actually grants the claim, and
+2. A future PR (likely H.4 task budgeting or H.3 profitability dashboard) adds a rule that consumes `isPartner()`.
+
+This staging is safe by design: fail-secure. Any partner-gated rule landing between D and F simply denies until F runs.
+
+### Cross-reference: the wildcard at the `messages` rule (firestore.rules:239)
+
+`(resource.data.toRoles != null && request.auth.token.role in resource.data.toRoles)` accepts ANY role in the `toRoles` array. Once F writes partner claims, any existing `messages` document with `'partner'` in `toRoles` immediately grants read access to partners. Always run `verifyClaims` first to detect any such docs before F's deploy.
+
+### Test infrastructure summary (Pre-H.0.0.D)
+
+- **Strategy B**: `firestore.rules.test` — a separate test ruleset mirroring the helpers and adding test-only paths (`/_test_partner_only`, `/_test_admin_only`, `/_test_authenticated_only`). Production `firestore.rules` stays free of test scaffolding.
+- **Drift-guard**: `tests/unit/rules/rules-drift-guard.test.ts` asserts string-equality of helper bodies across both files. Runs without emulator (fast).
+- **Helper tests**: `tests/rules/isPartner.test.ts` exercises 11 scenarios via `@firebase/rules-unit-testing` against the local Firestore Emulator.
+- **HARD GUARD**: `tests/rules/setup.ts` refuses to boot without `FIRESTORE_EMULATOR_HOST` env + uses the `demo-rules-test` projectId (Firebase reserves `demo-*` for emulator-only).
+- **CI integration**: `firebase emulators:exec --only firestore,auth "npm run test:rules"` in JOB 5 of `pull-request.yml` (JDK 17 via `actions/setup-java@v4`, JOB 5 timeout 25min).

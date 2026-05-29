@@ -22,6 +22,12 @@
   "database": {
     "rules": "database.rules.json"
   },
+  "emulators": {
+    "firestore": { "port": 8080 },
+    "auth": { "port": 9099 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  },
   "hosting": {
     "public": "apps/user-app",
     "ignore": [

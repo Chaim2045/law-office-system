@@ -27,6 +27,11 @@ export default defineConfig({
         statements: 60
       }
     },
+    // tests/rules/ is INTENTIONALLY excluded from the default include — those
+    // tests require a running Firestore Emulator (HARD GUARD in
+    // tests/rules/setup.ts refuses to boot without FIRESTORE_EMULATOR_HOST).
+    // Run rules tests via `npm run test:rules:emulator` (auto-manages
+    // emulator lifecycle via `firebase emulators:exec`).
     include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
     exclude: ['node_modules', 'dist', 'archive', 'tests/e2e/**'],
     testTimeout: 10000,
