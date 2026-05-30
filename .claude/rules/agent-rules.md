@@ -145,3 +145,29 @@ This is the explicit Anthropic anti-pattern: a sub-agent that spawns sub-agents 
 ## Decision-point rule
 
 See `.claude/rules/decision-point.md`. Before any `AskUserQuestion` choosing approach/scope/architecture — Lead Agent MUST consult the relevant specialist first and present the verdict alongside the choices.
+
+## Workflows vs direct agent invocation
+
+**Reusable orchestration scripts live in `.claude/workflows/`** (introduced PR-META-9, 2026-05-30). Full README at `.claude/workflows/README.md`. Decision tree:
+
+**Use a DIRECT agent invocation (`Agent({...})`) when:**
+- Task fits ONE specialist's perspective (e.g., "review this Firestore rule" → `security-access-expert` alone)
+- Task is small (single file / function, ≤ 50 lines of analysis)
+- You need a single answer fast (status check, quick question)
+- Cost of running a workflow (~500K–1M tokens) is disproportionate to the task
+
+**Use a WORKFLOW (`Workflow({name: '<name>', args})`) when:**
+- Task needs MULTIPLE perspectives running in parallel (e.g., 5 dimensions reviewing the same PR)
+- Task involves N independent items processed identically (e.g., verify 7 claims, audit 10 files)
+- Answer requires adversarial verification (one agent finds → another refutes — workflows have this built into the `Refute` phase pattern)
+- Task involves search → fetch → synthesize across many sources
+- Cost is justified by the depth needed (high-stakes decision, deep audit, fact-check before customer-facing claim)
+
+**Available workflows:**
+- `fact-check` — verify N factual claims against primary sources with adversarial refutation
+- `source-verify` — verify quotes in a document appear verbatim in cited sources (catches fabrication, misattribution)
+- `deep-audit` — multi-lens review of PR/module (correctness + security + performance + UX + business-logic, parallel, adversarially verified, deduped)
+
+**Workflows do NOT introduce new agent types.** They compose the existing 12 sub-agents via JS orchestration. If a workflow needs a capability not covered by the 12 agents, raise it to Haim — do not silently extend the workflow with one-off agent roles.
+
+**Research-preview dependency:** workflows depend on Anthropic's `Workflow` tool (research preview as of 2026-05-30). If the tool becomes unavailable, the Lead Agent can read the script and orchestrate the pattern manually via direct `Agent()` calls. Scripts are documentation as well as code.

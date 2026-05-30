@@ -142,6 +142,9 @@ If the change is not material — do NOT update.
 ## MASTER PLAN
 The multi-phase initiative (AI Management Layer + tofes-mecher bridge + profitability + cutover) is anchored in `docs/MASTER_PLAN.md`. **Read it first** when starting a new session and the request mentions Pre-H.0.0, the AI layer, profitability, or tofes-mecher. It is the source of truth that survives session resets. The Lead Agent is allowed to trust the file over its own working memory.
 
+## WORKFLOWS
+Reusable multi-agent orchestration scripts live in `.claude/workflows/` (`fact-check`, `source-verify`, `deep-audit`). They are PATTERNS for using the existing 12-agent team — they do NOT introduce new agents. Use a workflow when the task needs multiple parallel perspectives + adversarial verification; use direct agent invocation for single-perspective tasks. Full decision tree + cost guidance + research-preview disclosure: `.claude/workflows/README.md`. The decision tree also lives in `agent-rules.md`.
+
 # Imports
 
 @.claude/rules/feature-protocol.md
