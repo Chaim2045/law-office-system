@@ -31,9 +31,17 @@
 **Rule:** A new revision entry dated 2026-05-30 is appended to §14 Plan revisions, documenting the workflows-library addition + research-preview dependency disclosure.
 **Evidence required:** New entry in §14 with the date and rationale.
 
-### M6 — Workflows do NOT introduce new agents
-**Rule:** The 3 workflow scripts use ONLY existing sub-agent types: `general-purpose`, `security-access-expert`, `frontend-ui-expert`, `backend-firebase-expert`, `data-investigator`, `devils-advocate`, `outcomes-grader`, `testing-quality-expert`, `refactoring-expert`, `completeness-checker`, `evaluator-optimizer`, `effort-scaler`, `ops`. No new agentType references.
-**Evidence required:** grep `.claude/workflows/*.js` for `agentType:` — every value matches one of the 12 known agents. No new agent files in `.claude/agents/`.
+### M6 — Workflows do NOT introduce new agents; deep-audit uses ONLY the 12 custom specialists
+**Rule:** Workflow scripts may use two kinds of agentType values:
+- **12 custom project specialists** (in `.claude/agents/`): `backend-firebase-expert`, `frontend-ui-expert`, `data-investigator`, `security-access-expert`, `outcomes-grader`, `testing-quality-expert`, `devils-advocate`, `refactoring-expert`, `effort-scaler`, `completeness-checker`, `evaluator-optimizer`, `ops`.
+- **Anthropic default `general-purpose`** — ONLY for tasks no specialist covers (open-ended research, web search, multi-source synthesis, fact verification). NEVER for tasks a specialist exists for.
+
+**`deep-audit.js` SPECIFICALLY must NOT use `general-purpose`** — every code-review dimension must map to a project specialist for traceability ("who said this is a bug?"). Today's mapping: correctness → `testing-quality-expert`; security → `security-access-expert`; performance → `backend-firebase-expert`; ux → `frontend-ui-expert`; business → `backend-firebase-expert`. If a new dimension needs a specialist that doesn't exist, escalate to Haim — do NOT default to general-purpose.
+
+**`fact-check.js` and `source-verify.js` MAY use `general-purpose`** for search/synthesis/refute — these tasks have no project-specialist analog and require open-ended research capability.
+
+**No workflow may introduce a NEW agent type** (one not in either category above).
+**Evidence required:** grep `.claude/workflows/*.js` for `agentType:` — every value is either one of the 12 OR `general-purpose`. In `deep-audit.js`, ZERO `general-purpose` references. No new agent files in `.claude/agents/`.
 
 ### M7 — Each workflow has fallback documentation in README
 **Rule:** README documents how the Lead Agent should manually orchestrate the pattern if the `Workflow` tool becomes unavailable. Specifically: read the script → spawn equivalents via `Agent({...})` → synthesize manually.

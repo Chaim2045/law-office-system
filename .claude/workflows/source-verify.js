@@ -14,7 +14,9 @@ export const meta = {
 // EXPECTED args:
 // {
 //   documentPath: string,        // absolute path to the document to verify
-//   reportLanguage: 'he' | 'en'  // default 'he'
+//   reportLanguage: 'he' | 'en', // default 'he'
+//   maxCitations: number,        // default 50 — hard cap; if doc has more, only first N verified
+//   allowedSchemes: string[]     // default ['https:', 'http:'] — reject file:// / relative paths
 // }
 
 if (!args || !args.documentPath) {
@@ -23,6 +25,8 @@ if (!args || !args.documentPath) {
 
 const DOC_PATH = args.documentPath
 const REPORT_LANG = args.reportLanguage || 'he'
+const MAX_CITATIONS = args.maxCitations || 50
+const ALLOWED_SCHEMES = args.allowedSchemes || ['https:', 'http:']
 
 const EXTRACTION_SCHEMA = {
   type: 'object',
@@ -105,6 +109,42 @@ if (!extraction || !extraction.citations || extraction.citations.length === 0) {
       : `# Citation verification report\n\nNo documented citations found in ${DOC_PATH}.\n${extraction?.extractionNotes || ''}`
   }
 }
+
+// Safety gate: filter citations to allowed schemes + cap at MAX_CITATIONS.
+// Prevents runaway loops (e.g., citation to file:// or relative path that fetches a doc
+// with its own citations) and bounded resource use even on docs with hundreds of citations.
+// Plain JS — no agent involved in the gating decision.
+const seenUrls = new Set()
+const filteredCitations = []
+const skipped = []
+for (const cit of extraction.citations) {
+  if (filteredCitations.length >= MAX_CITATIONS) {
+    skipped.push({ citation: cit, reason: `over max-citations cap (${MAX_CITATIONS})` })
+    continue
+  }
+  let url
+  try { url = new URL(cit.sourceUrl) } catch (e) {
+    skipped.push({ citation: cit, reason: 'invalid URL — cannot parse' })
+    continue
+  }
+  if (!ALLOWED_SCHEMES.includes(url.protocol)) {
+    skipped.push({ citation: cit, reason: `disallowed scheme ${url.protocol} (allowed: ${ALLOWED_SCHEMES.join(', ')})` })
+    continue
+  }
+  if (seenUrls.has(url.href)) {
+    skipped.push({ citation: cit, reason: 'duplicate URL — already verified once in this run' })
+    continue
+  }
+  seenUrls.add(url.href)
+  filteredCitations.push(cit)
+}
+
+if (skipped.length > 0) {
+  log(`source-verify: skipped ${skipped.length} citations (scheme/cap/duplicate). See finalReport for detail.`)
+}
+
+// Replace the working list — all downstream phases operate on the filtered list only.
+extraction.citations = filteredCitations
 
 phase('Fetch')
 phase('Match')
@@ -246,7 +286,9 @@ ${JSON.stringify(combined, null, 2)}`,
 
 return {
   documentPath: DOC_PATH,
-  totalCitations: extraction.citations.length,
+  totalCitationsExtracted: extraction.citations.length + skipped.length,
+  totalCitationsVerified: extraction.citations.length,
+  citationsSkipped: skipped,
   problematicCount: problemCount,
   perCitation: combined,
   finalReport

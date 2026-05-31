@@ -45,10 +45,13 @@ if (TARGET.type === 'pr' && TARGET.prNumber) {
   throw new Error('Invalid target shape — need type=pr+prNumber, type=module+modulePath, or type=files+files[]')
 }
 
+// agentType values below must be one of the 12 custom agents defined in .claude/agents/.
+// Do NOT use 'general-purpose' here — deep-audit is a code-review workflow and every
+// dimension must map to a Project specialist for traceability ("who said this is a bug?").
 const DIMENSION_DEFINITIONS = {
   correctness: {
     name: 'Correctness',
-    agentType: 'general-purpose',
+    agentType: 'testing-quality-expert',
     prompt: 'Review for CORRECTNESS bugs: off-by-one, null handling, race conditions, wrong-value-returned, error-swallowing, state corruption, missing assertions, missing edge case handling. Focus on what would happen with PRODUCTION traffic, not happy path. For each bug found, cite file:line.',
   },
   security: {
@@ -58,8 +61,8 @@ const DIMENSION_DEFINITIONS = {
   },
   performance: {
     name: 'Performance',
-    agentType: 'general-purpose',
-    prompt: 'Review for PERFORMANCE issues: N+1 queries, missing indexes, unbounded loops, memory leaks, blocking I/O on hot path, excessive re-renders, large bundle additions, expensive computation on every render, missing pagination, missing cache. Cite file:line + estimated impact.',
+    agentType: 'backend-firebase-expert',
+    prompt: 'Review for PERFORMANCE issues: N+1 Firestore queries, missing indexes, unbounded loops, memory leaks, blocking I/O on hot path, excessive re-renders, large bundle additions, expensive computation on every render, missing pagination, missing cache. Cite file:line + estimated impact.',
   },
   ux: {
     name: 'UX',
@@ -68,7 +71,7 @@ const DIMENSION_DEFINITIONS = {
   },
   business: {
     name: 'Business-logic',
-    agentType: 'general-purpose',
+    agentType: 'backend-firebase-expert',
     prompt: 'Review for BUSINESS-LOGIC issues: violations of the 4 service shapes (hours / fixed / legal_procedure-hourly / legal_procedure-fixed), wrong handling of isFixedService, dual-write race conditions, aggregate drift potential, invariant violations (calcClientAggregates I1-I4), wrong status transitions, audit-log missing on critical write. Cite file:line + which invariant.',
   }
 }

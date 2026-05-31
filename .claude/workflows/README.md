@@ -66,10 +66,18 @@ Workflow({
   name: 'source-verify',
   args: {
     documentPath: '/absolute/path/to/document.md',
-    reportLanguage: 'he'
+    reportLanguage: 'he',
+    maxCitations: 50,                        // optional, default 50 — hard cap
+    allowedSchemes: ['https:', 'http:']      // optional, default ['https:', 'http:']
   }
 })
 ```
+
+**Safety gates (enforced in plain JS, not by an agent):**
+- Citations with disallowed URL scheme (e.g., `file://`, relative paths) are SKIPPED
+- Duplicate URLs are SKIPPED (de-duplication via `Set` of visited URLs)
+- Citations beyond `maxCitations` are SKIPPED
+- Skipped citations are reported in the final output so you can see what was dropped and why
 
 **Cost:** ~3 sub-agents per citation (match + adversarial) + 1 extraction + 1 synthesis. For a document with 4 citations = ~14 sub-agents.
 
@@ -156,7 +164,17 @@ The workflow scripts are **JavaScript** — they're readable as documentation of
 
 Workflows are **patterns for using the 12-agent team**. They are not new team members. The 12 sub-agents (defined in `.claude/agents/`) remain the authoritative team — workflows compose them in pre-defined orchestration scripts.
 
-If a workflow needs a capability not covered by the 12 agents, the right answer is to either (a) extend an existing agent's prompt, or (b) bring the gap to Haim for a team-composition discussion — NOT to silently extend the workflow with a one-off agent role.
+### When a workflow may use Anthropic's `general-purpose`
+
+`fact-check.js` and `source-verify.js` use `general-purpose` for tasks no project specialist covers (open-ended research, web search, multi-source synthesis, fact verification). This is intentional and allowed — the 12 custom agents are scoped to specific project domains; research tasks are orthogonal.
+
+### When `general-purpose` is FORBIDDEN
+
+`deep-audit.js` must NEVER use `general-purpose`. Every code-review dimension maps to a project specialist (correctness → `testing-quality-expert`; security → `security-access-expert`; performance + business → `backend-firebase-expert`; ux → `frontend-ui-expert`). Reason: traceability. When a deep-audit finds a bug, the chain of accountability must point to a named specialist, not an anonymous default.
+
+### If a workflow needs a capability not covered by anyone
+
+Either (a) extend an existing agent's prompt, or (b) bring the gap to Haim for a team-composition discussion — NOT silently add a one-off agent role to a workflow.
 
 ---
 
