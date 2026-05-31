@@ -77,6 +77,16 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // ==================== Production CF-only collection (Pre-H.0.0.G) ====================
+    // The REAL employee_costs path (not a _test_ path) — mirrors the production
+    // rule `allow read, write: if false` so tests/rules/employeeCosts.test.ts can
+    // assert it denies EVERY context (unauth / employee / admin / partner).
+    // This is the most sensitive collection in the system (salary-adjacent PII):
+    // access is exclusively via the getEmployeeCost callable, never the client SDK.
+    match /employee_costs/{email} {
+      allow read, write: if false;
+    }
+
     // Deny everything else.
     match /{document=**} {
       allow read, write: if false;

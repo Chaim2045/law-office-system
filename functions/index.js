@@ -88,6 +88,14 @@ exports.setAdminClaims = setAdminClaimsModule.setAdminClaims;
 const initializeAdminClaimsModule = require('./lib/initialize-admin-claims');
 exports.initializeAdminClaims = initializeAdminClaimsModule.initializeAdminClaims;
 
+// Employee Costs (TS — Pre-H.0.0.G). CF-only employee_costs/{email} collection.
+// setEmployeeCost: admin-gated write, audit-first. getEmployeeCost: admin-gated read.
+// Both compiled from functions/src-ts/. Consumed by Phase 2 H.2 (cost foundation).
+const setEmployeeCostModule = require('./lib/set-employee-cost');
+exports.setEmployeeCost = setEmployeeCostModule.setEmployeeCost;
+const getEmployeeCostModule = require('./lib/get-employee-cost');
+exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
+
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
 exports.createBudgetTask = budgetTasks.createBudgetTask;
