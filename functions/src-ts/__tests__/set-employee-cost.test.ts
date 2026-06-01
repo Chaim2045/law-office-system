@@ -64,11 +64,27 @@ beforeEach(() => {
 // ════════════════════════════════════════════════════════════════════════════
 // (a) Static AST invariants
 // ════════════════════════════════════════════════════════════════════════════
+/**
+ * Strip line comments (//...) and block comments (/* ... *\/) from TS source so
+ * AST-style regex guards inspect CODE ONLY, never documentation. Without this,
+ * a JSDoc line that *mentions* `logger` and `costPerHour` (the very thing we
+ * document as forbidden) would trip a naive `logger\.\w+\(...costPerHour` regex
+ * — a false positive. Stripping comments makes the PII guard STRICTER (it can
+ * only match real calls) while letting us keep explanatory comments.
+ */
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '') // block comments
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1'); // line comments (avoid matching http://)
+}
+
 describe('setEmployeeCost — static AST invariants', () => {
   let source: string;
+  let code: string;
 
   beforeAll(() => {
     source = fs.readFileSync(path.resolve(__dirname, '../set-employee-cost.ts'), 'utf8');
+    code = stripComments(source);
   });
 
   it('imports the canonical logCriticalAction (no local audit clone)', () => {
@@ -90,8 +106,10 @@ describe('setEmployeeCost — static AST invariants', () => {
   });
 
   it('NEVER logs the cost value via logger.* (PII discipline — Attack #3)', () => {
-    expect(source).not.toMatch(/logger\.\w+\([^)]*costPerHour/);
-    expect(source).not.toMatch(/logger\.\w+\([^)]*newCost/);
+    // Inspect CODE ONLY (comments stripped) — documentation may legitimately
+    // mention costPerHour/newCost when explaining the PII rule.
+    expect(code).not.toMatch(/logger\.\w+\([^)]*costPerHour/);
+    expect(code).not.toMatch(/logger\.\w+\([^)]*newCost/);
   });
 
   it('stamps updatedBy from caller UID, not email', () => {

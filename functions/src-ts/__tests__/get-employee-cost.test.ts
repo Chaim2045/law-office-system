@@ -42,28 +42,44 @@ beforeEach(() => {
 // ════════════════════════════════════════════════════════════════════════════
 // (a) Static AST invariants
 // ════════════════════════════════════════════════════════════════════════════
+/**
+ * Strip line + block comments so AST-style regex guards inspect CODE ONLY.
+ * A JSDoc line that documents the PII rule legitimately mentions `logger` and
+ * `costPerHour`; without stripping, a naive regex would false-positive on the
+ * documentation. Stripping makes the guard stricter (real calls only).
+ */
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
+
 describe('getEmployeeCost — static AST invariants', () => {
   let source: string;
+  let code: string;
 
   beforeAll(() => {
     source = fs.readFileSync(path.resolve(__dirname, '../get-employee-cost.ts'), 'utf8');
+    code = stripComments(source);
   });
 
   it('is admin-gated with NO self-read carve-out', () => {
     expect(source).toContain("claims.role === 'admin' || claims.admin === true");
     // There must be NO comparison of a target email against the caller's email
-    // (which would be a self-read exception). Guard against it.
-    expect(source).not.toMatch(/===\s*request\.auth\.token\.email/);
+    // (which would be a self-read exception). Inspect code only.
+    expect(code).not.toMatch(/===\s*request\.auth\.token\.email/);
     expect(source).not.toContain('self-read carve-out OK');
   });
 
   it('NEVER logs the cost value via logger.* (PII discipline)', () => {
-    expect(source).not.toMatch(/logger\.\w+\([^)]*costPerHour/);
+    expect(code).not.toMatch(/logger\.\w+\([^)]*costPerHour/);
   });
 
   it('is read-only — no audit write, no logCriticalAction', () => {
-    expect(source).not.toContain('logCriticalAction');
-    expect(source).not.toContain('.set(');
+    // Code-only: comments reference logCriticalAction/.set() to explain why
+    // this read path deliberately omits them.
+    expect(code).not.toContain('logCriticalAction');
+    expect(code).not.toMatch(/\.set\(/);
   });
 });
 
