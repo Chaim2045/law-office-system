@@ -96,6 +96,14 @@ exports.setEmployeeCost = setEmployeeCostModule.setEmployeeCost;
 const getEmployeeCostModule = require('./lib/get-employee-cost');
 exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
 
+// tofes-mecher bridge (TS — Phase 2 H.0 foundation). Admin-gated v2 onCall that
+// proves the cross-project wiring (Secret Manager → SA key → named app → 1 read).
+// ⚠️ DEPLOY PREREQUISITE: the secret TOFES_MECHER_SA_KEY must exist in Secret
+// Manager BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret).
+// ⚠️ REPURPOSE-OR-DELETE in H.1 once the real validateSalesRecordExists ships.
+const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
+exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
+
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
 exports.createBudgetTask = budgetTasks.createBudgetTask;

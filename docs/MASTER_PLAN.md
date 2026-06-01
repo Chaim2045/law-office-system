@@ -634,18 +634,24 @@ Until Phase 1 exit, no Phase 2 PR begins.
 - **AI chat**: read-only queries. No write actions through AI. MCP integration. Claude-backed with prompt caching.
 - **AI signature verification**: presence-only, not fraud detection.
 
-### 8.2 H.0 — Foundations
+### 8.2 H.0 — Foundations 🟡 IN PROGRESS
 
-**Goal:** Set up the infrastructure that H.1–H.9 will depend on.
+**Goal:** Set up the infrastructure that H.1–H.9 will depend on + prove the cross-project wiring works in the real deployed environment.
 
-**Sub-tasks:**
-- Cross-project service account: provision a service account in `law-office-sales-form` (tofes-mecher) project with `datastore.user` role; download key locally (gitignored) + load into `defineSecret` for Cloud Function use
-- Environment config: extend `functions/src-ts/config/` with typed env handling, separate DEV/PROD secrets
-- BigQuery dataset provisioning: create `law_office_analytics` dataset in `law-office-system-e4801`, define schemas for synced tables
-- CI extension: add a job that runs Phase 2 integration tests against a Firestore emulator
-- Documentation: `docs/PHASE_2_FOUNDATIONS.md` explaining the cross-project IAM setup so a future engineer can reproduce
+**Sub-tasks (refined by 4 Opus agents + devils-advocate at the H.0 checkpoint, 2026-05-31):**
+- Cross-project service account: provision a service account in `law-office-sales-form` (tofes-mecher) with **`roles/datastore.viewer`** (read-only — the bridge never writes to tofes-mecher; corrected from the original `datastore.user`). Key stored via `firebase functions:secrets:set TOFES_MECHER_SA_KEY` (Secret Manager); local dev copy at `functions/secrets/tofes-mecher-sa.json` (gitignored). **Console action by Haim.**
+- Typed config module: `functions/src-ts/config/index.ts` — cross-project IDs, region, secret name, dataset name. **Code.**
+- Named-app init: `functions/src-ts/tofes-mecher/app.ts` — concurrency-safe singleton, sanitized credential errors (no key fragment in logs). **Code.**
+- Connectivity-check: `functions/src-ts/tofes-mecher/connectivity-check.ts` — admin-gated v2 onCall, one read of tofes-mecher, `logger.*` (NOT `logCriticalAction` — read-only, G3 N/A). Proves Secret Manager + cross-project IAM (a local script can't). **⚠️ REPURPOSE-OR-DELETE in H.1** once `validateSalesRecordExists` ships — tracked debt.
+- BigQuery: Haim creates the EMPTY `law_office_analytics` dataset in Console with **principal-scoped IAM** (Haim/Guy/AI-chat SA, not project-wide); the SCHEMA is documented in `docs/PHASE_2_FOUNDATIONS.md`. The BigQuery **client code** (`@google-cloud/bigquery`) is deferred to **H.1** (large dep, lazy-imported; no consumer until the export job).
+- CI: NO new job — the mocked ts-jest tests ride the existing `functions/ npm test` (they need no emulator; no real tofes-mecher key in CI).
+- Documentation: `docs/PHASE_2_FOUNDATIONS.md` — Console steps (placeholders only), DEPLOY PREREQUISITE (secret-before-deploy), rotation runbook, BQ schema, UNVERIFIED tofes-mecher facts to confirm before H.1.
 
-**Estimated size:** MEDIUM.
+**⚠️ DEPLOY PREREQUISITE:** `defineSecret` requires `TOFES_MECHER_SA_KEY` to exist in Secret Manager BEFORE any functions deploy, else the WHOLE codebase deploy fails. Haim sets the secret BEFORE merge/next-deploy.
+
+**Security note (over-read):** `datastore.viewer` is project-level — Firestore IAM has no collection scoping and SAs bypass Security Rules, so the SA can read ALL of tofes-mecher. The control is key custody (Secret Manager + gitignored) + the rotation runbook, NOT IAM scoping. Documented in PHASE_2_FOUNDATIONS.md.
+
+**Estimated size:** MEDIUM (HEAVY-flagged by effort-scaler due to cross-project IAM + secrets, but the code surface is right-sized after the investigation contracted BigQuery + the bridge logic to H.1).
 
 ### 8.3 H.1 — Cross-project bridge to `tofes-mecher`
 
@@ -960,3 +966,4 @@ The bar revision protocol applies only when the **change affects how future PRs 
 
 The two evolve on different cadences. Plan changes happen as the project learns; bar changes happen as the standard itself evolves (industry, customer feedback, regulatory changes, internal learning about what "professional" means in this codebase). Mixing them in one log would conflate "we're now building H.10" with "we now require AST audit-FIRST scans" — these are not the same kind of change and shouldn't be grepped together.
 - **2026-05-31 (E deferred, G in progress)**: §7.1 — D→✅ merged (#343), E→⏸️ BLOCKED+deferred, G→🟡 in progress. §7.4 — added BLOCKED banner + 2 hard prerequisites (Haim runs verifyClaims-PROD; DEV/PROD share one Firebase project) + circular-reference fix (Option A one-shot migrate-claim-shape.js, not F) + expanded scope from completeness. §7.6 — locked G as single-doc model (a) + security-4 + devils-advocate-5 applied. §10 — 6 new Decisions-Locked rows. Reason: E investigation (3 Opus agents) found E blocked on a Haim PROD action + low-value/high-risk; G is unblocked and on the critical path to the profitability dashboard (first visible bud). Haim approved defer-E-do-G at checkpoint.
+- **2026-05-31 (G merged #345, H.0 in progress)**: G (employee_costs) merged via PR #345 → Phase 1 at 5/7 (A,B,C,D,G done; E,F blocked on the verifyClaims-PROD prerequisite). Haim approved deferring E+F and starting **Phase 2 H.0** (tofes-mecher foundations). §8.2 (H.0) **revised** — this is a **§14 plan revision, NOT a §15 bar revision** (§8.x is roadmap scope, not an acceptance-criteria source from §2.0.1; per §15's own "What is NOT a bar revision" list, plan/roadmap edits are §14). Changes to §8.2: (a) `datastore.user`→**`datastore.viewer`** (read-only least-privilege; security agent); (b) BigQuery client code + `@google-cloud/bigquery` dep deferred to H.1 (H.0 = Console-provision empty dataset + document schema); (c) dropped the "new CI job" line (mocked tests ride existing `functions/ npm test`); (d) added DEPLOY PREREQUISITE (secret-before-deploy), over-read security note, and REPURPOSE-OR-DELETE-in-H.1 debt marker for the connectivity-check. Reason: 4 Opus agents (security/backend/data/completeness) + mandatory devils-advocate (cross-project IAM+secrets+new-infra, §3.8.4) refined the original "everything at once" H.0 into a right-sized foundation; the bridge logic + BigQuery client move to H.1. Haim approved all 4 checkpoint decisions + the full-PR scope.
