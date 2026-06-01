@@ -51,6 +51,16 @@
     "**/*.spec.ts",
     "**/*.test.ts",
     "**/*.d.ts",
+    // PR-Pre-H.0.0.D-followup (2026-06-01): exclude root tool-config files.
+    // The include glob "*.ts" is meant to pick up the few root *.ts utilities,
+    // but it also sweeps in root-level tooling configs: vitest.config.ts,
+    // vitest.rules.config.ts (added in PR #343), and playwright.config.ts.
+    // Without this exclude, `npx tsc` emitted stray *.config.{js,d.ts,*.map}
+    // artifacts into apps/user-app/dist/ on every build. These configs are
+    // tooling, NOT shipped app code (the real app bundle is produced by Vite),
+    // so they have no business in the TS program's output. Excluding the
+    // "*.config.ts" pattern covers all current + future root tool configs.
+    "*.config.ts",
     // PR-Pre-H.0.0.B (2026-05-28): exclude the entire functions/src-ts/
     // sub-project. It has its OWN tsconfig (functions/src-ts/tsconfig.json)
     // that targets Node 20 CommonJS + uses functions/node_modules/. Letting
