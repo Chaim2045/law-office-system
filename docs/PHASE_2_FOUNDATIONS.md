@@ -77,33 +77,75 @@ console.log(r.data); // { ok: true, reachable: true, sawAtLeastOneDoc: <bool> }
 
 Dataset `law_office_analytics`, table **`sales_records`** (synced by H.1):
 
-| column | type | mode | PII |
-|---|---|---|---|
-| `sales_record_id` | STRING | REQUIRED | no |
-| `customer_name` | STRING | NULLABLE | **PII** |
-| `customer_email` | STRING | NULLABLE | **PII** (likely join key) |
-| `fee` | NUMERIC | NULLABLE | **PII** (financial — the revenue figure for §1.3 profitability) |
-| `currency` | STRING | NULLABLE | no |
-| `signed_pdf_url` | STRING | NULLABLE | sensitive |
-| `signed_at` | TIMESTAMP | NULLABLE | no |
-| `created_at` | TIMESTAMP | NULLABLE | no |
-| `synced_at` | TIMESTAMP | REQUIRED | no |
-| `raw_json` | JSON/STRING | NULLABLE | mixed — future-proofs unknown fields |
+| column | type | mode | PII | source field |
+|---|---|---|---|---|
+| `sales_record_id` | STRING | REQUIRED | no | doc id (auto-id 20) |
+| `id_number` | STRING | NULLABLE | **PII** | `idNumber` (ת"ז — cross-system join key) |
+| `client_name` | STRING | NULLABLE | **PII** | `clientName` |
+| `phone` | STRING | NULLABLE | **PII** | `phone` |
+| `email` | STRING | NULLABLE | **PII** | `email` |
+| `tofes_client_id` | STRING | NULLABLE | no | `clientId` (tofes-internal ref) |
+| `transaction_type` | STRING | NULLABLE | no | `transactionType` |
+| `amount_before_vat` | NUMERIC | NULLABLE | **PII** (financial — net revenue, §1.3) | `amountBeforeVat` |
+| `vat_amount` | NUMERIC | NULLABLE | **PII** (financial) | `vatAmount` |
+| `amount_with_vat` | NUMERIC | NULLABLE | **PII** (financial — gross) | `amountWithVat` |
+| `amount` | NUMERIC | NULLABLE | **PII** (financial — charged) | `amount` |
+| `payment_method` | STRING | NULLABLE | no | `paymentMethod` |
+| `payments_count` | INT64 | NULLABLE | no | `paymentsCount` (string→int) |
+| `months_count` | INT64 | NULLABLE | no | `monthsCount` (string→int) |
+| `attorney` | STRING | NULLABLE | no | `attorney` |
+| `branch` | STRING | NULLABLE | no | `branch` |
+| `record_date` | STRING | NULLABLE | no | `date` (format TBD) |
+| `record_timestamp` | TIMESTAMP | NULLABLE | no | `timestamp` |
+| `synced_at` | TIMESTAMP | REQUIRED | no | (export time) |
+| `raw_json` | JSON/STRING | NULLABLE | mixed — future-proofs the other ~20 fields | full doc |
 
 - **No partitioning/clustering** — <1,000 rows expected (200+ clients, 6 months). Revisit only at 6-7 figure volume.
-- **Binding obligation for H.1 (carried from Pre-H.0.0.G):** the `SET_EMPLOYEE_COST` audit_log entries hold salary figures and **MUST be redacted before any BigQuery export.** Likewise `customer_name`/`customer_email`/`fee` here are PII — the H.8 AI chat that queries this dataset must respect the principal-scoped IAM (Step 4).
+- **Binding obligation for H.1 (carried from Pre-H.0.0.G):** the `SET_EMPLOYEE_COST` audit_log entries hold salary figures and **MUST be redacted before any BigQuery export.** Likewise `client_name`/`id_number`/`phone`/`email` and all four amount columns (`amount_before_vat`/`vat_amount`/`amount_with_vat`/`amount`) here are PII — the H.8 AI chat that queries this dataset must respect the principal-scoped IAM (Step 4).
 
 ---
 
-## ⚠️ UNVERIFIED — confirm against the tofes-mecher console BEFORE H.1
+## ✅ VERIFIED — tofes-mecher `sales_records` schema (2026-06-01, read-only probe)
 
-The agent has NO access to the tofes-mecher project. These are inferred from `MASTER_PLAN.md §8.3` and MUST be confirmed before H.1 builds the real bridge:
-1. **Collection name** — assumed `sales_records` (config const `TOFES_SALES_COLLECTION`). Could be `salesRecords`, `sales-records`, or Hebrew.
-2. **Exact field names + types** of a sales record (only ~5 are semi-confirmed: `id`, `fee`, `customer`, `signedPdfUrl`, `signedAt`).
-3. **`customer` shape** — plain name string vs object `{name, email, id}`.
-4. **The join key** between a tofes-mecher sales_record and a law-office-system client (email? customer id? `sales_record_id` stored back on the client?).
-5. **Flat collection vs subcollections** — affects the H.1 read query.
-6. **`fee` semantics** — gross/net VAT, one-time vs installments.
+Confirmed by a one-time **read-only** schema probe against `law-office-sales-form`, using the developer machine's existing Application Default Credentials (NOT the production SA; the probe printed **field names + types + string lengths only — zero PII values**). This SUPERSEDES the earlier inferred assumptions — **two of which were wrong** (marked ❗).
+
+**Collection:** `sales_records` — ✅ exactly as assumed in `TOFES_SALES_COLLECTION`. **Top-level, flat documents**, no subcollections. Doc id = Firestore auto-id (20 chars).
+
+**Fields (37) — the identity + money fields H.1 needs:**
+
+| field | type | role |
+|---|---|---|
+| `clientName` | string | PII — customer name |
+| `idNumber` | string(9) | PII — **Israeli ID; the cross-system join-key candidate** |
+| `phone` / `email` / `address` | string | PII |
+| `clientId` | string(20) | ❗ tofes-mecher **internal** client ref (its own `clients` collection) — NOT the main-CRM client id |
+| `date` | string(10) | form date (exact format = non-PII follow-up) |
+| `transactionType` / `transactionDescription` | string | deal classification |
+| `amountBeforeVat` | number | net revenue |
+| `vatAmount` | number | VAT — **broken out, no inference needed** |
+| `amountWithVat` | number | gross |
+| `amount` | number | charged amount |
+| `paymentMethod` | string | enum (TBD) |
+| `paymentsCount` / `monthlyCharge` / `monthsCount` | string | installments (explicit) |
+| `creditCardStatus`, `checksCount`, `checksTotalAmount`, `depositDetails`, `temporaryCreditDetails`, `checkWillChange`, `checkReplacementDetails` | string | payment-instrument detail |
+| `attorney` / `branch` / `caseNumber` | string | routing |
+| `invoiceNumber` / `receiptNumber` | string | accounting links |
+| `formFillerName` | string | who filled the form |
+| `clientStatus` | string | enum (TBD) |
+| `hoursQuantity` / `hourlyRate` | string | hourly-deal fields (often empty) |
+| `timestamp` | Timestamp | server write time |
+
+**The 6 prior unknowns — now resolved:**
+1. **Collection name** → `sales_records` ✅ (config const was correct).
+2. **Field names + types** → table above (37 fields) ✅.
+3. **`customer` shape** → ❗**FLAT fields** (`clientName`/`phone`/`email`/`idNumber`/`address`) — NOT a nested `customer` object. Prior assumption was **wrong**.
+4. **Join key** → `clientId` references tofes-mecher's **own** `clients`, NOT the main CRM. The cross-system join must use a **natural key — `idNumber` (recommended) or `phone`**. ⏳ DECISION PENDING: confirm how the main `law-office-system` `clients` store `idNumber` (presence + format) before locking the join.
+5. **Flat vs subcollections** → **flat, top-level docs** ✅.
+6. **`fee`/VAT/installment semantics** → ❗**fully decomposed already** (`amountBeforeVat` + `vatAmount` + `amountWithVat` + `amount`) plus explicit installment fields. No gross/net inference needed ✅.
+
+**Remaining non-PII follow-up before H.1 code (safe — not PII):** exact `date` string format; enum value-sets for `transactionType` / `paymentMethod` / `clientStatus` / `creditCardStatus`; field-consistency across N>1 docs (Firestore is schemaless — one sample is not a guarantee).
+
+> **Probe provenance:** ad-hoc `functions/.tofes-probe.tmp.js` (firebase-admin + ADC, `listCollections` + `limit(1)` + recursive type-print), run once and **deleted** — never committed. Re-runnable any time the schema needs re-confirmation.
 
 ---
 
