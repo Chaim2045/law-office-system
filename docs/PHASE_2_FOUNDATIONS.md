@@ -40,7 +40,7 @@ Place the same JSON at:
 ```
 functions/secrets/tofes-mecher-sa.json
 ```
-This path is gitignored by the existing `service-account*.json` glob in `.gitignore`. **Verify it's ignored (`git status` must NOT show it) before any commit.** Never commit it.
+The whole `functions/secrets/` directory is gitignored (a directory-scoped rule in `.gitignore`, so ANY filename under it is safe — not only `service-account*`-prefixed names). **Verify before any commit:** `git check-ignore functions/secrets/tofes-mecher-sa.json` must print the path (= ignored). Never commit it.
 
 ### Step 4 — Provision the BigQuery dataset (MAIN project)
 In **BigQuery** (project `law-office-system-e4801`) create an EMPTY dataset:
@@ -114,4 +114,4 @@ The agent has NO access to the tofes-mecher project. These are inferred from `MA
 - `functions/src-ts/__tests__/{config,connectivity-check}.test.ts` — 24 mocked tests (no real cross-project call)
 - `functions/index.js` wiring + compiled `functions/lib/` (committed)
 
-**Deferred to H.1:** `@google-cloud/bigquery` dependency + client, Pattern A/D logic, real BigQuery table creation.
+**Deferred to H.1:** `@google-cloud/bigquery` dependency + client (⚠️ **lazy-import it** when added — it's a large dependency and this `functions/index.js` is shared by ~40 functions; a top-level import would bloat cold-start for all of them), Pattern A/D logic, real BigQuery table creation.
