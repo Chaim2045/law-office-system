@@ -470,10 +470,10 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 | A | `verifyClaims` callable | #336 | ✅ merged | (in Phase 0.1) | — |
 | B | Admin-claim endpoint lockdown | [#339](https://github.com/Chaim2045/law-office-system/pull/339) | ✅ merged | LARGE | A |
 | C | `logCriticalAction` audit primitive | [#342](https://github.com/Chaim2045/law-office-system/pull/342) | ✅ merged | LIGHT | B |
-| D | `isPartner()` helper + rules-test infrastructure | _open_ | 🟡 in progress | MEDIUM | A |
-| E | Claim shape consolidation | _pending_ | ⏸️ pending | MEDIUM | B + D + auth.js:424 cleanup |
+| D | `isPartner()` helper + rules-test infrastructure | [#343](https://github.com/Chaim2045/law-office-system/pull/343) | ✅ merged | MEDIUM | A |
+| E | Claim shape consolidation | _deferred_ | ⏸️ BLOCKED (see §7.4) | MEDIUM | B + D + verifyClaims-PROD-output |
 | F | `syncRoleClaims` utility | _pending_ | ⏸️ pending | MEDIUM | C + D + E |
-| G | `employee_costs/{email}` schema | _pending_ | ⏸️ pending | MEDIUM | C |
+| G | `employee_costs/{email}` schema | _open_ | 🟡 in progress | MEDIUM | C |
 
 **Critical path:** C → D → E (sequential). F and G are independent of each other but both need C.
 
@@ -538,10 +538,22 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 
 ### 7.4 Pre-H.0.0.E — Claim shape consolidation
 
-**Why:** After D, partner reads use `token.role`. After B, admin writes use `{admin:true, role:'admin'}` dual-shape. E retires the legacy `{admin:true}` field by:
+> **⏸️ STATUS: BLOCKED + DEFERRED (2026-05-31).** Investigated by 3 Opus agents (security / backend / data-investigator). E was deferred in favor of G (G is unblocked + on the critical path to the profitability dashboard, the first visible bud). **Two HARD PREREQUISITES before E can safely execute:**
+> 1. **Haim must run `verifyClaims` in PROD** and capture `claimShapeBreakdown`. GO/NO-GO = `admin_boolean_only === 0`. If 0 (likely — admins re-granted post-B are `both_shapes`), the migration is a near-no-op. If >0, an expand migration is load-bearing. The Lead Agent CANNOT run this — it needs a logged-in admin.
+> 2. **DEV and PROD share ONE Firebase project** (`law-office-system-e4801`) — confirmed by data-investigator. There is NO claim isolation; any `setCustomUserClaims` "in DEV" mutates PROD Auth. Only the Firestore Emulator (Pre-H.0.0.D) is safe for rehearsal.
+>
+> **Risk/value:** the `{admin:true}` residue is HARMLESS today (security audit: only consumer is `auth.js:424`, a fail-safe dual-read; rules/storage/User App use `token.role` only). E is cosmetic cleanup + drift-elimination, NOT a functional fix — hence safe to defer.
+>
+> **Circular-reference FIX:** the original step 3 below ("migrate via the F utility") was circular — F depends on E. Resolution (backend agent, adopted): **Option A** — E ships a one-shot `functions/scripts/migrate-claim-shape.js` (dry-run default + `--apply`, mirrors `grant-admin-emergency.js`). F remains the general partner+role sync utility, built later.
+>
+> **Expanded scope (completeness-checker NEEDS-EXPANSION):** beyond the 4-bullet original — (a) `grant-admin-emergency.js` is the 4th writer (must stop dual-writing); (b) 🔴 `initialize-admin-claims.ts` idempotency check (`existingClaims.admin === true && ...role==='admin'`) MUST change to `role`-only or it re-writes everyone post-contraction; (c) revoke-path semantics (`setAdminClaim` writes `{admin:false}` → decide `{}` full-removal); (d) `lib/` rebuild; (e) `master-admin-wrappers.js createUser/updateUser` already write `{role}`-only (E-compliant, self-healing); (f) G's callables (`set/get-employee-cost.ts`) dual-shape gate must be on E's consumer-sweep.
+>
+> **Expand-contract ordering (zero-downtime):** EXPAND (migrate-claim-shape.js ensures every admin has `role:'admin'`) → keep dual-read consumer → CONTRACT writers (drop `admin:true`) → CLEANUP (drop `auth.js:424` `admin:true` read + remove residue) as a SEPARATE follow-up PR after a token-refresh window. Removing the consumer's `admin:true` read in the SAME PR is unsafe (a not-yet-refreshed admin token loses its sole grant).
+
+**Why (original plan — see Circular-reference FIX above for the corrected step 3):** After D, partner reads use `token.role`. After B, admin writes use `{admin:true, role:'admin'}` dual-shape. E retires the legacy `{admin:true}` field by:
 1. Grepping all consumers — the only one is `apps/admin-panel/js/core/auth.js:424`
 2. Updating that consumer to read only `token.role === 'admin'`
-3. Migrating all existing admins to single-shape `{role:'admin'}` via the F utility
+3. ~~Migrating via the F utility~~ → **Option A: one-shot `migrate-claim-shape.js`** (F is circular — see fix above)
 4. Updating `setAdminClaim` (legacy singular) and the new TS endpoints to write only `{role:'admin'}` going forward
 5. Final `verifyClaims` run — confirm `claimShapeBreakdown.admin_boolean_only` = 0
 
@@ -586,6 +598,17 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 - Tests + documentation
 
 **Estimated size:** MEDIUM (~250 lines TS + tests + rules).
+
+**Implementation status (2026-05-31): 🟡 in progress** on branch `feat/pre-h-0-0-g-employee-costs`. Investigated by security + backend + completeness (Opus) + devils-advocate (MANDATORY §3.8.4).
+
+**Locked decisions:**
+- **Model (a) single-doc** `employee_costs/{email}` (Haim approved at checkpoint). NOT subcollection-with-history — completeness returned NEEDS-CONTRACTION: the snapshot-never-re-derive model (§1.3.7) means the app NEVER queries cost-as-of-past-date, so historical-lookup is YAGNI. Cost-CHANGE history lives in `audit_log`.
+- **Rule** `allow read, write: if false` — fully CF-only (stricter than `audit_log`'s admin-read). Admins access via `getEmployeeCost` callable, never client SDK. No self-read for employees.
+- **Security 4 required (all applied):** (1) fully CF-only rule; (2) `source` is a Zod enum `['accountant','manual','import']`; (3) cost figures FORBIDDEN in `logger.*`, ALLOWED in `audit_log` (forensic), `updatedBy`=UID; (4) `getEmployeeCost` NO self-read carve-out.
+- **Devils-advocate 5 (all applied):** (#1) email lowercased ONCE — same key for existence-check + write; (#3) cost values KEPT in audit_log (forensic necessity) + ⚠️ **audit_log is now a salary-PII surface — H.8 BigQuery export (§8.11) MUST redact `SET_EMPLOYEE_COST` details**; (#4) cost bounds min(1)/max(20000) — raised from 10000 to avoid rejecting a legitimate fully-burdened senior figure; (#5) App Check N/A for 10-user admin-trust model (system-wide decision, not G-only) + `validFrom` documented as informational metadata, not a selector.
+- **Deferred to H.2:** the shared `resolveEmployeeCost(email, date)` helper (YAGNI now — no consumer until H.2's timesheet trigger).
+- **Out of scope:** `deleteEmployeeCost`, subcollection/history, composite index.
+- **Files:** `functions/src-ts/schemas/employee-cost.ts` (Zod), `set-employee-cost.ts`, `get-employee-cost.ts`, 2 `__tests__/` ts-jest suites, `firestore.rules` block + `firestore.rules.test` mirror, `tests/rules/employeeCosts.test.ts` (8 deny scenarios), `functions/index.js` wiring, `functions/lib/` compiled (committed). 103 ts-jest tests pass (72 prior + 31 new); 367 root + 600 functions-legacy unchanged.
 
 ### 7.7 Phase 1 exit criteria
 
@@ -831,6 +854,11 @@ Each row: what was decided, when, why, what was rejected. New rows append-only.
 | 2026-05-28 | Recovery script `grant-admin-emergency.js` with `--apply` flag | All in-app paths require existing admin. Need break-glass tool. Devils-advocate finding #2. | No bootstrap recovery path |
 | 2026-05-28 | All sub-agents Opus, effort-scaler Haiku | "פטיש הכי מקצועי שיש". Haiku only where the task is trivial classification. | All Haiku; all Opus |
 | 2026-05-28 | Pre-PR must run BOTH root + functions typecheck | Pre-H.0.0.B CI miss: root tsc included functions/src-ts/*.ts. Lesson: mirror CI locally. | Functions-only typecheck pre-PR |
+| 2026-05-31 | Defer E, do G first | E BLOCKED on Haim running verifyClaims-PROD + DEV/PROD shared-Auth risk; residue harmless; G unblocked + on critical path to profitability dashboard | Do E next (blocked); reorder F before E |
+| 2026-05-31 | E migration via one-shot `migrate-claim-shape.js`, NOT F | §7.4 "migrate via F" was circular (F depends on E). Option A self-contained, mirrors grant-admin-emergency.js | Build F first (Option C — inflates E, same prod risk) |
+| 2026-05-31 | employee_costs = single-doc per employee, NOT subcollection-history | snapshot-never-re-derive (§1.3.7) means app never queries cost-as-of-past-date → history is YAGNI; audit_log holds change history. completeness NEEDS-CONTRACTION | (b) subcollection-with-history; (c) doc-per-period |
+| 2026-05-31 | employee_costs fully CF-only (`read,write:if false`) | Most sensitive collection (salary-PII); admins read via getEmployeeCost callable, employees never; smallest surface | admin-read like audit_log |
+| 2026-05-31 | Cost values KEPT in audit_log (not redacted) | Forensic audit useless without values; admins are authorized to see costs. ⚠️ H.8 BigQuery export MUST redact SET_EMPLOYEE_COST | Redact cost from audit (breaks forensic trail) |
 
 ---
 
@@ -931,3 +959,4 @@ The bar revision protocol applies only when the **change affects how future PRs 
 §15 logs bar revisions — changes to what makes the work *acceptable* (quality threshold, refusal rules, measurement classification).
 
 The two evolve on different cadences. Plan changes happen as the project learns; bar changes happen as the standard itself evolves (industry, customer feedback, regulatory changes, internal learning about what "professional" means in this codebase). Mixing them in one log would conflate "we're now building H.10" with "we now require AST audit-FIRST scans" — these are not the same kind of change and shouldn't be grepped together.
+- **2026-05-31 (E deferred, G in progress)**: §7.1 — D→✅ merged (#343), E→⏸️ BLOCKED+deferred, G→🟡 in progress. §7.4 — added BLOCKED banner + 2 hard prerequisites (Haim runs verifyClaims-PROD; DEV/PROD share one Firebase project) + circular-reference fix (Option A one-shot migrate-claim-shape.js, not F) + expanded scope from completeness. §7.6 — locked G as single-doc model (a) + security-4 + devils-advocate-5 applied. §10 — 6 new Decisions-Locked rows. Reason: E investigation (3 Opus agents) found E blocked on a Haim PROD action + low-value/high-risk; G is unblocked and on the critical path to the profitability dashboard (first visible bud). Haim approved defer-E-do-G at checkpoint.

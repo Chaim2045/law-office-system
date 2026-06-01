@@ -5,7 +5,8 @@ rules_version = '2';
  * 🔐 FIRESTORE SECURITY RULES - ENHANCED VERSION
  * ════════════════════════════════════════════════════════════════════════════
  *
- * 📅 Last Updated: 2026-05-29 (Pre-H.0.0.D — added isPartner() helper)
+ * 📅 Last Updated: 2026-05-31 (Pre-H.0.0.G — employee_costs CF-only collection)
+ *                  2026-05-29 (Pre-H.0.0.D — added isPartner() helper)
  * 🎯 Security Level: PRODUCTION-READY
  *
  * Canonical role model (Custom Claims, lowercase ASCII literals only):
@@ -215,6 +216,26 @@ service cloud.firestore {
     match /audit_log/{logId} {
       allow read: if isAdmin();
       allow write: if false; // Only through Cloud Functions
+    }
+
+    // 🔒 Employee Costs: FULLY CF-ONLY (Pre-H.0.0.G, 2026-05-31)
+    // Per-employee cost-per-hour, sourced from the external accountant.
+    // SENSITIVE FINANCIAL PII (salary-adjacent). Single-doc per employee,
+    // keyed by lowercased email: employee_costs/{email}.
+    //
+    // Why `read, write: if false` (stricter than audit_log's admin-read):
+    //   Admins access cost data EXCLUSIVELY through the getEmployeeCost callable
+    //   (Zod-validated, audited, admin-gated) — NEVER via the client SDK. An
+    //   employee may NOT read their own cost (confidential HR data). There is no
+    //   dashboard that streams costs live, so unlike audit_log there is no need
+    //   for client read. Fully locked = smallest surface for the most sensitive
+    //   collection in the system.
+    //
+    // Writer: setEmployeeCost callable (functions/src-ts/set-employee-cost.ts),
+    //   admin-gated + audit-FIRST via logCriticalAction. Cost-CHANGE history
+    //   lives in audit_log (snapshot-never-re-derive model, MASTER_PLAN §1.3.7).
+    match /employee_costs/{email} {
+      allow read, write: if false; // CF-only — access via getEmployeeCost callable
     }
 
     // ✅ System Settings: Read-only for authenticated users
