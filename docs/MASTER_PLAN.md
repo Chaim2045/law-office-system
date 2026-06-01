@@ -638,7 +638,7 @@ Until Phase 1 exit, no Phase 2 PR begins.
 
 ### 8.2 H.0 — Foundations ✅ MERGED (#346, 2026-05-31)
 
-> **⏭️ NEXT SESSION RESUME POINT (updated 2026-06-01):** H.0 merged. Phase 1 = 5/7 (A,B,C,D,G done; **E,F BLOCKED** on Haim running `verifyClaims` in PROD — see §7.4). **✅ H.1 IS NOW UNBLOCKED:** the 6 previously-UNVERIFIED tofes-mecher facts were resolved on 2026-06-01 via a one-time **read-only schema probe** of `law-office-sales-form` (developer ADC, field names+types only, zero PII, probe deleted/never committed). Full verified schema in `docs/PHASE_2_FOUNDATIONS.md` ("✅ VERIFIED" section). Headlines: collection = `sales_records` (flat, top-level, auto-id docs); client fields are **FLAT** (no nested `customer`); money is **fully decomposed** (`amountBeforeVat`/`vatAmount`/`amountWithVat`/`amount`) — no VAT inference; `clientId` is tofes-**internal**, so the cross-system join needs a natural key — **`idNumber` (ת"ז) recommended**. **ONE open decision before H.1 code:** confirm how the main `law-office-system` `clients` store `idNumber` (presence+format) to lock the join. **Pre-H.1 non-PII follow-up (safe):** exact `date` format + enum value-sets (`transactionType`/`paymentMethod`/`clientStatus`). **Also still pending from H.0:** the DEPLOY PREREQUISITE — `TOFES_MECHER_SA_KEY` must be set in Secret Manager before the next functions deploy. **E/F remain blocked** on Haim's verifyClaims-PROD run. So next steps: (a) verify the main-CRM `idNumber` side → lock the join, (b) run the H.1 Feature-Protocol cycle (effort-scaler → investigation → checkpoint → code).
+> **⏭️ NEXT SESSION RESUME POINT (updated 2026-06-01):** H.0 merged. Phase 1 = 5/7 (A,B,C,D,G done; **E,F BLOCKED** on Haim running `verifyClaims` in PROD — see §7.4). **✅ H.1 IS NOW UNBLOCKED:** the 6 previously-UNVERIFIED tofes-mecher facts were resolved on 2026-06-01 via a one-time **read-only schema probe** of `law-office-sales-form` (developer ADC, field names+types only, zero PII, probe deleted/never committed). Full verified schema in `docs/PHASE_2_FOUNDATIONS.md` ("✅ VERIFIED" section). Headlines: collection = `sales_records` (flat, top-level, auto-id docs); client fields are **FLAT** (no nested `customer`); money is **fully decomposed** (`amountBeforeVat`/`vatAmount`/`amountWithVat`/`amount`) — no VAT inference; `clientId` is tofes-**internal**, so the cross-system join needs a natural key — **`idNumber` (ת"ז) recommended**. **ONE open decision before H.1 code:** confirm how the main `law-office-system` `clients` store `idNumber` (presence+format) to lock the join. **Pre-H.1 non-PII follow-up (safe):** exact `date` format + enum value-sets (`transactionType`/`paymentMethod`/`clientStatus`). **Also still pending from H.0:** the DEPLOY PREREQUISITE — `TOFES_MECHER_SA_KEY` must be set in Secret Manager before the next functions deploy. **E/F remain blocked** on Haim's verifyClaims-PROD run. **UPDATE 2026-06-02:** the cross-system join was investigated (the main CRM does NOT store ת"ז today — verified) and the **cross-reference + fee-reconciliation architecture is now LOCKED in §8.2.5 ("DLR")** (Haim-approved). The H-sequence gained a prerequisite. **IMMEDIATE NEXT PR → Pre-H.1.0: add a validated, required, immutable `idNumber` (ת"ז check-digit) to client intake** (`createClient` + the Admin Panel wizard) — this is the join key the whole bridge needs, and a standalone data-quality win. Run it through the FULL Feature Protocol (effort-scaler → investigation → completeness-checker → checkpoint → plan → code → grader → PR).
 
 **Goal:** Set up the infrastructure that H.1–H.9 will depend on + prove the cross-project wiring works in the real deployed environment.
 
@@ -657,13 +657,52 @@ Until Phase 1 exit, no Phase 2 PR begins.
 
 **Estimated size:** MEDIUM (HEAVY-flagged by effort-scaler due to cross-project IAM + secrets, but the code surface is right-sized after the investigation contracted BigQuery + the bridge logic to H.1).
 
+### 8.2.5 Cross-Reference & Fee-Reconciliation Architecture — "DLR" (locked 2026-06-02)
+
+**Status:** ✅ Architecture locked by Haim 2026-06-02 ("as long as it serves the project and doesn't change direction + stick to the MD protocol"). This is the GOVERNING design for HOW the tofes-mecher bridge (H.1) is consumed at client/service intake (feeds H.3 Plan + H.6 cutover). It does NOT change the locked direction (Pattern A+D, snapshot-never-re-derive, tofes-mecher = fee source-of-truth) — it specifies the *how*. Designed via data-investigator (as-is map) + devils-advocate (14 attacks on the naive "block-at-intake" design); architect pass folded into the constraints.
+
+**Verified as-is reality this design must respect (data-investigator, 2026-06-02):**
+- "Client" = "Case", doc keyed by 7-digit caseNumber; created via Admin Panel `case-creation-dialog.js` → CF `createClient` (`functions/clients/index.js:63`, write `:517`). Canonical writer: `functions/shared/client-writer.js`.
+- **ת"ז is NOT captured at intake today**; phone/email only via `updateClient` (edit) → the join key does not yet exist on the law-office side.
+- **No fee field exists.** Money = `fixedPrice` (inside `services[]`) + `ratePerHour` (default 800). **No VAT anywhere.** "Fee agreement" = a PDF, no number.
+- A "service" = an element of the `services[]` array on the client doc; added via CF `addServiceToClient` (`functions/services/index.js:26`).
+- Existing `_reconciledAt`/`_reconciledBy` on clients = HOURS reconciliation (different semantics — do NOT reuse the `_reconciled*` namespace).
+
+**The principle (why it beats the naive design):**
+> **Intake NEVER blocks on tofes-mecher. The link + fee-check happen asynchronously, beside intake — not as a synchronous gate.**
+This one choice defuses most criticals: availability (a tofes outage can't stop client creation), VAT false-mismatches that would train users to dismiss the control, and the fee-spoofing death-spiral.
+
+**Locked design constraints (each closes a devils-advocate critical):**
+1. **Prerequisite — `idNumber` becomes a first-class, validated (ת"ז check-digit), immutable-after-link field on clients.** Without it there is nothing to join on. → new PR **Pre-H.1.0**.
+2. **The link is explicit, human-confirmed, per-service, many-to-many.** Store a link record, not "the sale for this ת"ז": `feeReconciliation: { salesRecordId, agreedFeeSnapshot, feeFieldUsed, salesRecordUpdatedAt, snapshotAt, confirmedBy, state }` — on the SERVICE/link, NOT the client root, NOT bare `_reconciled*`.
+3. **Reconciliation is a state machine:** `pending_match → matched | mismatch | overridden(reason,by,at) | no_sale(reason)`. `no_sale` (pro_bono/internal/retainer/pre_tofes_legacy) and `pending_match` are LEGITIMATE states, not errors.
+4. **The signed sale is authoritative for the fee.** Agreed fee = the sale's snapshot, never the typed number (typed = cross-check only). **Override is partner-only** (`isPartner()` from D) + mandatory reason + audit-FIRST (`logCriticalAction`).
+5. **VAT-explicit comparison:** canonical fee = **`amountBeforeVat`** (Decision D1) + small tolerance (₪1 rounding). Show all four amounts in the confirm UI; store `feeFieldUsed` so a future tofes schema change is detectable.
+6. **Discover via the Pattern-D synced mirror; COMMIT via one live Pattern-A read** of the specific sale (mirror for availability, live read for an authoritative snapshot). Commit in a Firestore transaction; idempotency key = `salesRecordId + serviceId`; a sale links to ≤1 service unless explicitly `split_fee`.
+7. **Drift job** re-checks each linked snapshot vs the live sale (cheap `salesRecordUpdatedAt` compare); divergence → `mismatch` + partner alert, never silent auto-update.
+8. **PII discipline (PUBLIC repo):** AST guard on the new files — never pass `idNumber`/`amount*`/`clientName` to `logger.*` (errorCode only); reuse the H.0 no-secret-in-logs serialization test.
+9. **Backfill (~200 legacy clients):** dry-run-by-default + `--apply`; auto-commit only exact single-sale + amount-matched + idNumber-present rows; everything else → partner manual queue; legacy with no sale → `no_sale: pre_tofes_legacy`.
+
+**The 3 product-owner decisions (recommended defaults accepted 2026-06-02; re-confirmable at each PR checkpoint):**
+- **D1 — which amount is "the fee"?** → **`amountBeforeVat`** (pre-VAT; VAT is a statutory pass-through, not firm revenue). _Haim to re-confirm net-vs-gross at the H.3 checkpoint._
+- **D2 — on mismatch?** → **do NOT block intake**; flag for partner; override partner-only + audited.
+- **D3 — signed sale mandatory?** → **No** — `no_sale` with a reason is allowed.
+
+**Sequence impact:**
+- **NEW → Pre-H.1.0 — `idNumber` on client intake** (validated ת"ז, required, immutable-after-link). Small, independent, also a data-quality win. **Immediate next PR.** Full Feature Protocol.
+- H.1 (§8.3) bridge: `validateSalesRecordExists` return shape = the VERIFIED schema (PHASE_2_FOUNDATIONS "✅ VERIFIED"), NOT the old `{fee, customer, signedPdfUrl}` guess; add the Pattern-D mirror as the discovery source.
+- H.3 (§8.5) Plan: `expectedRevenue` = the linked sale's `amountBeforeVat` snapshot.
+- H.6 (§8.8) cutover: becomes the human-confirm link/reconcile UI, governed by this state machine.
+
+**The single biggest risk to never regress (devils-advocate):** a non-privileged user silently overriding the signed amount while the UI shows a green "matched" badge — institutionalizing the exact fee-drift the product is sold to prevent. Constraint #4 makes this impossible.
+
 ### 8.3 H.1 — Cross-project bridge to `tofes-mecher`
 
-**Goal:** Pattern A live blocking + Pattern D analytical export.
+**Goal:** Pattern A live blocking + Pattern D analytical export. **Governed by §8.2.5 (DLR).**
 
 **Sub-tasks:**
 - **Pattern A — live blocking CF**:
-  - New CF `validateSalesRecordExists(salesRecordId)` — admin-gated, queries tofes-mecher Firestore via service account, returns `{exists, fee, customer, signedPdfUrl, signedAt}`
+  - New CF `validateSalesRecordExists(salesRecordId)` — admin-gated, queries tofes-mecher Firestore via service account, returns the VERIFIED `sales_records` shape (see PHASE_2_FOUNDATIONS "✅ VERIFIED": `idNumber`, `clientName`, `amountBeforeVat`/`vatAmount`/`amountWithVat`/`amount`, `transactionType`, `timestamp`, …) — NOT the old `{fee, customer, signedPdfUrl}` guess. (Note: `sales_records` has NO signed-PDF-URL field — the signed PDF lives elsewhere; H.5 must source it separately.)
   - Used by H.6 cutover flow before creating a client
   - Tests against fake tofes-mecher project (emulator)
 - **Pattern D — BigQuery export**:
