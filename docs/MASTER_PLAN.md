@@ -634,7 +634,9 @@ Until Phase 1 exit, no Phase 2 PR begins.
 - **AI chat**: read-only queries. No write actions through AI. MCP integration. Claude-backed with prompt caching.
 - **AI signature verification**: presence-only, not fraud detection.
 
-### 8.2 H.0 — Foundations 🟡 IN PROGRESS
+### 8.2 H.0 — Foundations ✅ MERGED (#346, 2026-05-31)
+
+> **⏭️ NEXT SESSION RESUME POINT (2026-05-31):** H.0 merged. Phase 1 = 5/7 (A,B,C,D,G done; **E,F BLOCKED** on Haim running `verifyClaims` in PROD — see §7.4). The natural next step is **H.1** (the real tofes-mecher bridge) — but H.1 is **BLOCKED on 6 UNVERIFIED tofes-mecher facts** the agent cannot access (collection name, exact field names+types, `customer` shape, the client↔sales_record join key, flat-vs-subcollection, `fee` VAT/installment semantics — full list in `docs/PHASE_2_FOUNDATIONS.md`). **To unblock H.1, Haim must either** (a) complete the H.0 Console steps (service account + `firebase functions:secrets:set TOFES_MECHER_SA_KEY` + BigQuery dataset — see PHASE_2_FOUNDATIONS.md) so the deployed `tofesMecherConnectivityCheck` can read real data, OR (b) paste one sample sales_record document (names can be redacted) so the 6 facts can be inferred. **Also pending from H.0:** the DEPLOY PREREQUISITE — the secret must be set in Secret Manager before the next functions deploy, else the whole deploy fails. There is NO unblocked Phase-2 work that doesn't depend on either the tofes-mecher facts (H.1+) or Haim's verifyClaims-PROD run (E/F). So the next session legitimately starts by asking Haim for one of: the tofes-mecher sample, the Console setup, or the verifyClaims-PROD output.
 
 **Goal:** Set up the infrastructure that H.1–H.9 will depend on + prove the cross-project wiring works in the real deployed environment.
 
