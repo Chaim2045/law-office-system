@@ -459,7 +459,7 @@ The cross-cutting standards that every later PR rests on.
 
 ---
 
-## 7. Phase 1 — Foundational Safety (Pre-H.0.0) 🟡 IN PROGRESS (2/7)
+## 7. Phase 1 — Foundational Safety (Pre-H.0.0) 🟡 IN PROGRESS (5/7)
 
 ### 7.1 Overview
 
@@ -473,7 +473,7 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 | D | `isPartner()` helper + rules-test infrastructure | [#343](https://github.com/Chaim2045/law-office-system/pull/343) | ✅ merged | MEDIUM | A |
 | E | Claim shape consolidation | _deferred_ | ⏸️ BLOCKED (see §7.4) | MEDIUM | B + D + verifyClaims-PROD-output |
 | F | `syncRoleClaims` utility | _pending_ | ⏸️ pending | MEDIUM | C + D + E |
-| G | `employee_costs/{email}` schema | _open_ | 🟡 in progress | MEDIUM | C |
+| G | `employee_costs/{email}` schema | [#345](https://github.com/Chaim2045/law-office-system/pull/345) | ✅ merged | MEDIUM | C |
 
 **Critical path:** C → D → E (sequential). F and G are independent of each other but both need C.
 
@@ -619,6 +619,8 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 - Per-employee cost data has a PII-safe home with CF-only access (G).
 
 Until Phase 1 exit, no Phase 2 PR begins.
+
+> **⚠️ APPROVED EXCEPTION (2026-05-31, H.0 checkpoint):** H.0 (Phase 2 foundations, #346) was allowed to land BEFORE Phase 1 fully exits. Rationale: the two open Phase-1 items (E, F) are **blocked on Haim** (a PROD `verifyClaims` run — see §7.4), not on engineering; H.0 is architecturally **independent** of the claim-shape work (it touches cross-project bridge scaffolding, not Auth claims). The gate's intent — "no Phase-2 PR that *depends* on un-landed Phase-1 safety work" — is preserved: H.0 has zero dependency on E/F. E and F must still land before any Phase-2 PR that writes claims (H.4 task budgeting, H.3 profitability gating).
 
 ---
 
