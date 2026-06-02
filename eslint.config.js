@@ -35,7 +35,15 @@ const commonIgnores = [
   '**/lib/**',    // ✅ Vendored third-party libraries (e.g. lucide.min.js)
   'vite.config.ts',
   'vitest.config.ts',
-  'playwright.config.ts'
+  'playwright.config.ts',
+  // PR #347: vitest.rules.config.ts (added in PR #343) is a root tool-config like
+  // the three above, but was never added to this ignore list. When PR #347
+  // excluded "*.config.ts" from tsconfig.json, the typed ESLint parser
+  // (parserOptions.project) could no longer resolve it → a "file was not found in
+  // any of the provided project(s)" parse ERROR that failed CI lint. Ignoring it
+  // here matches its siblings (tooling, not shipped code) and keeps ESLint and
+  // tsconfig consistent (both now exclude the root *.config.ts files).
+  'vitest.rules.config.ts'
 ];
 
 const commonJsRules = {

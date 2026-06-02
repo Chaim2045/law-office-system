@@ -17,12 +17,16 @@
 **Rule:** After the fix, a clean `npm run compile-ts` produces **zero** `apps/user-app/dist/*config*` files (`vitest.config.*`, `vitest.rules.config.*`, `playwright.config.*`). `tsc` still exits 0.
 **Evidence required:** `rm -f apps/user-app/dist/*config* && npm run compile-ts && ls apps/user-app/dist/*config*` → no matches, exit 0. (Captured in this session — reproduced before AND after.)
 
+### M2b — `npm run lint` still passes (a tsconfig exclude also affects typed-ESLint)
+**Rule (added after the PR #347 CI lint failure):** excluding `*.config.ts` from `tsconfig.json` removes those files from the `@typescript-eslint` typed program, so any `*.config.ts` that ESLint still lints (not in `eslint.config.js` `commonIgnores`) throws `Parsing error: "parserOptions.project" ... file was not found in any of the provided project(s)`. The fix adds the orphaned config file (`vitest.rules.config.ts`) to `commonIgnores`. **Any tsconfig include/exclude change MUST verify lint, not just `tsc`.**
+**Evidence required:** `npm run lint -- --max-warnings=2200` → `0 errors`, exit 0. (Verified 2026-06-02: `✖ N problems (0 errors, …warnings)`, exit 0.)
+
 ### M3 — Already-committed stray config artifacts removed
 **Rule:** The 8 tracked stray artifacts (`playwright.config.{d.ts,d.ts.map,js,js.map}` + `vitest.config.{d.ts,d.ts.map,js,js.map}`) are removed via `git rm`. No config artifact remains tracked under `apps/user-app/dist/`.
 **Evidence required:** `git ls-files 'apps/user-app/dist/*config*'` → 0 hits after the change is staged/committed.
 
 ### M4 — No scope creep
-**Rule:** The commit touches ONLY `tsconfig.json`, the 8 config-artifact deletions, and this rubric. Pre-existing working-tree noise (modified `node_modules/`, untracked diagnostic `scripts/`, the in-flight PR-META-9 `.claude/workflows/` work) is NOT included. The committed `apps/user-app/dist/` build-drift (regenerated `event-bus`/`schemas`/`firebase-service`/`types` outputs from a stale committed dist) is explicitly OUT OF SCOPE and restored to HEAD.
+**Rule:** The PR touches ONLY `tsconfig.json`, the 8 config-artifact deletions, `eslint.config.js` (the PR #347 lint follow-up — one `commonIgnores` entry), and this rubric. Pre-existing working-tree noise (modified `node_modules/`, untracked diagnostic `scripts/`, the in-flight PR-META-9 `.claude/workflows/` work) is NOT included. The committed `apps/user-app/dist/` build-drift (regenerated `event-bus`/`schemas`/`firebase-service`/`types` outputs from a stale committed dist) is explicitly OUT OF SCOPE and restored to HEAD.
 **Evidence required:** `git diff --cached --stat` shows exactly `tsconfig.json` + 8 deletions + 1 rubric, nothing else.
 
 ## SHOULD criteria (warning on FAIL)
