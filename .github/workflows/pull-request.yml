@@ -57,18 +57,35 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      # PR-CI-1: PR fields (title, head ref, author, …) are USER-CONTROLLED and
+      # must NOT be inlined as ${{ … }} into a run: shell. ${{ }} is substituted
+      # into the script *source* before the shell parses it, so a title that
+      # contains a double-quote breaks the step (this happened on PR #348 with a
+      # gershayim ת"ז written as ") and a crafted title/branch is an arbitrary-
+      # command injection vector. Pass each value through env: and reference it
+      # as a quoted shell variable — the runner sets the env var to the literal
+      # value and the shell never re-parses its contents as code.
+      # Ref: GitHub Docs — "Understanding the risk of script injections".
       - name: 📊 Display PR Details
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
         run: |
           echo "════════════════════════════════════════"
           echo "📝 Pull Request Information"
           echo "════════════════════════════════════════"
-          echo "PR Number: #${{ github.event.pull_request.number }}"
-          echo "Title: ${{ github.event.pull_request.title }}"
-          echo "Author: ${{ github.event.pull_request.user.login }}"
-          echo "Base Branch: ${{ github.event.pull_request.base.ref }}"
-          echo "Head Branch: ${{ github.event.pull_request.head.ref }}"
-          echo "Changed Files: ${{ github.event.pull_request.changed_files }}"
-          echo "Commits: ${{ github.event.pull_request.commits }}"
+          echo "PR Number: #${PR_NUMBER}"
+          echo "Title: ${PR_TITLE}"
+          echo "Author: ${PR_AUTHOR}"
+          echo "Base Branch: ${PR_BASE_REF}"
+          echo "Head Branch: ${PR_HEAD_REF}"
+          echo "Changed Files: ${PR_CHANGED_FILES}"
+          echo "Commits: ${PR_COMMITS}"
           echo "════════════════════════════════════════"
 
   # ═════════════════════════════════════════════════════════════
@@ -115,17 +132,24 @@ jobs:
             echo "⏭️  Skipped — no .ts files in functions/src-ts/ yet."
           fi
 
+      # PR-CI-1: base ref via env: (see JOB 1) — never inline a github.event.*
+      # value into a shell command. The ref-range is quoted as a single arg.
       - name: 📊 Changed Files Statistics
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           echo "📊 Files Changed in This PR:"
-          git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | head -20
+          git diff --name-only "origin/${PR_BASE_REF}...HEAD" | head -20
           echo ""
-          echo "Total files changed: $(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | wc -l)"
+          echo "Total files changed: $(git diff --name-only "origin/${PR_BASE_REF}...HEAD" | wc -l)"
 
+      # PR-CI-1: base ref via env: (see JOB 1).
       - name: 🔍 Check for New TODOs
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           echo "🔍 Checking for new TODO comments..."
-          NEW_TODOS=$(git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -i "^+.*TODO\|^+.*FIXME\|^+.*XXX" | wc -l || echo "0")
+          NEW_TODOS=$(git diff "origin/${PR_BASE_REF}...HEAD" | grep -i "^+.*TODO\|^+.*FIXME\|^+.*XXX" | wc -l || echo "0")
           echo "📝 New TODO comments added: $NEW_TODOS"
           if [ "$NEW_TODOS" -gt 5 ]; then
             echo "⚠️ Warning: Many new TODOs added ($NEW_TODOS)"
@@ -213,10 +237,13 @@ jobs:
           echo "⏸️ npm audit deferred to Phase 1.5 (firebase 11→12 upgrade)."
           echo "Continuous coverage handled by Dependabot — see .github/dependabot.yml"
 
+      # PR-CI-1: base ref via env: (see JOB 1).
       - name: 🔍 Scan for Exposed Secrets
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           echo "🔍 Scanning for exposed secrets in PR..."
-          if git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -i "password\|secret\|apikey.*:.*['\"]AIza" 2>/dev/null; then
+          if git diff "origin/${PR_BASE_REF}...HEAD" | grep -i "password\|secret\|apikey.*:.*['\"]AIza" 2>/dev/null; then
             echo "⚠️ Warning: Potential secrets detected in PR diff"
             echo "Please review and remove before merging!"
           else
