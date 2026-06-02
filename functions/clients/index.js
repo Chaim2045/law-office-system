@@ -4,7 +4,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
-const { sanitizeString, isValidIsraeliPhone, isValidEmail } = require('../shared/validators');
+const { sanitizeString, isValidIsraeliPhone, isValidEmail, isValidIsraeliId } = require('../shared/validators');
 const { generateCaseNumberWithTransaction } = require('../case-number-transaction');
 const { SYSTEM_CONSTANTS, isValidServiceType, isValidPricingType } = require('../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
@@ -96,6 +96,22 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         'invalid-argument',
         'סוג הליך חייב להיות "hours", "fixed" או "legal_procedure"'
       );
+    }
+
+    // Validation - תעודת זהות (Pre-H.1.0)
+    // ת"ז הוא מפתח הקישור הצולב לטופס-המכר (MASTER_PLAN §8.2.5). אופציונלי
+    // בשלב זה — אכיפת "חובה" + שדה ב-UI (User App) מגיעים ב-PR נפרד. אם סופק,
+    // חייב לעבור ספרת ביקורת. אינו ייחודי (לקוח=תיק → אותו ת"ז על מספר תיקים).
+    // ⚠️ הערך אינו מוחזר בהודעת השגיאה ואינו נכתב ל-logs/audit (PII, repo ציבורי).
+    let validatedIdNumber = '';
+    if (data.idNumber !== undefined && data.idNumber !== null && String(data.idNumber).trim() !== '') {
+      if (!isValidIsraeliId(String(data.idNumber))) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'מספר תעודת הזהות אינו תקין'
+        );
+      }
+      validatedIdNumber = String(data.idNumber).trim();
     }
 
     // Validation - שדות ספציפיים לסוג
@@ -193,6 +209,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       caseNumber: caseNumber,  // מספר תיק (גם Document ID)
       clientName: sanitizeString(data.clientName.trim()),
       fullName: sanitizeString(data.clientName.trim()), // ✅ גם fullName ל-backward compatibility
+
+      // ✅ Pre-H.1.0: תעודת זהות — מפתח הקישור הצולב לטופס-המכר (§8.2.5).
+      // '' כברירת מחדל (אופציונלי כעת); מאומת ספרת-ביקורת לעיל אם סופק.
+      // נוכח-תמיד-כ-'' מגן על קוראים קיימים (למשל ClientsDataManager שמריץ
+      // client.idNumber.includes(...)). אינו ייחודי (לקוח=תיק).
+      idNumber: validatedIdNumber,
 
       // ✅ מידע משפטי - כותרת התיק
       caseTitle: data.caseTitle ? sanitizeString(data.caseTitle.trim()) : '',
@@ -1023,6 +1045,19 @@ exports.updateClient = functions.https.onCall(async (data, context) => {
 
     // Validation
     const updates = {};
+
+    // Pre-H.1.0: ת"ז immutable — נקבע ביצירת הלקוח בלבד, לא ניתן לעדכון דרך
+    // updateClient (מפתח הקישור הצולב לטופס-המכר; §8.2.5 constraint #1/#4).
+    // דחייה מפורשת במקום התעלמות שקטה, כדי שניסיון שינוי יקבל משוב ברור.
+    // הזרמת ת"ז ללקוחות legacy מתבצעת ב-PR backfill ייעודי, לא דרך מסלול זה.
+    // (immutable-from-creation — מחמיר מ-immutable-after-link; ניתן להרפות
+    // בעתיד כשמושג ה-link יתקיים.)
+    if (data.idNumber !== undefined) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'לא ניתן לעדכן תעודת זהות לאחר יצירת הלקוח'
+      );
+    }
 
     if (data.fullName !== undefined) {
       if (!data.fullName || data.fullName.trim().length < 2) {

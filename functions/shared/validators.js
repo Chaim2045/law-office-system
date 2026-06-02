@@ -36,6 +36,36 @@ function isValidEmail(email) {
 }
 
 /**
+ * אימות תעודת זהות ישראלית — ספרת ביקורת לפי האלגוריתם הרשמי.
+ *
+ * Pre-H.1.0: ת"ז הוא מפתח הקישור הצולב לטופס-המכר (MASTER_PLAN §8.2.5).
+ *
+ * מקבל מחרוזת של עד 9 ספרות (אפסים מובילים משמעותיים — ת"ז בת 8 ספרות
+ * מרופדת אוטומטית ל-9). מחזיר true רק אם ספרת הביקורת תקינה.
+ *
+ * ⚠️ אינו בודק ייחודיות בכוונה: במערכת זו "לקוח" = "תיק", ואותו אדם/ת"ז
+ * יכול להופיע על מספר תיקים (many-to-many, §8.2.5 constraint #2). בדיקת
+ * תקינות פורמט + ספרת ביקורת בלבד — לא uniqueness.
+ *
+ * @param {string} id מחרוזת ספרות (ללא מקפים/רווחים; מתבצע trim).
+ * @returns {boolean} true אם ת"ז תקינה, אחרת false.
+ */
+function isValidIsraeliId(id) {
+  if (typeof id !== 'string') { return false; }
+  const digits = id.trim();
+  if (!/^\d{1,9}$/.test(digits)) { return false; }
+  const padded = digits.padStart(9, '0');
+  if (padded === '000000000') { return false; } // לא ת"ז אמיתית
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    let inc = Number(padded[i]) * ((i % 2) + 1); // משקלים 1,2,1,2,...
+    if (inc > 9) { inc -= 9; }
+    sum += inc;
+  }
+  return sum % 10 === 0;
+}
+
+/**
  * שליפת מגבלת תווים לתיאור מתוך system_config (Firestore).
  * Fallback ל-SYSTEM_CONSTANTS אם אין config.
  *
@@ -62,4 +92,4 @@ async function getDescriptionLimit(field) {
   return fallback;
 }
 
-module.exports = { sanitizeString, isValidIsraeliPhone, isValidEmail, getDescriptionLimit };
+module.exports = { sanitizeString, isValidIsraeliPhone, isValidEmail, isValidIsraeliId, getDescriptionLimit };
