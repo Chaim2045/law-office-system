@@ -87,6 +87,37 @@ export const HebrewTextSchema = z.string().min(2, {
 // ==================== Client Schema ====================
 
 /**
+ * Israeli ID (ת"ז) check-digit — Pre-H.1.0b drift-guard.
+ *
+ * SELF-CONTAINED mirror of the backend `isValidIsraeliId()`
+ * (functions/shared/validators.js, #348) and the frontend runtime helper
+ * (js/modules/israeli-id.js). This schema is NOT loaded at runtime (the live
+ * validator is israeli-id.js via the wizard); it is kept correct as the
+ * documented contract. The three impls are PINNED to identical verdicts by
+ * tests/unit/user-app/israeli-id-drift-guard.test.ts (the backend's 11 vectors).
+ * If you change the algorithm, change all three.
+ */
+function isValidIsraeliIdChecksum(value: string): boolean {
+  const digits = value.trim();
+  if (!/^\d{1,9}$/.test(digits)) {
+    return false;
+  }
+  const padded = digits.padStart(9, '0');
+  if (padded === '000000000') {
+    return false;
+  }
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    let inc = Number(padded[i]) * ((i % 2) + 1);
+    if (inc > 9) {
+      inc -= 9;
+    }
+    sum += inc;
+  }
+  return sum % 10 === 0;
+}
+
+/**
  * Client data structure
  */
 export const ClientSchema = z.object({
@@ -95,9 +126,14 @@ export const ClientSchema = z.object({
   phone: PhoneSchema.optional(),
   email: EmailSchema.optional(),
   address: z.string().optional(),
+  // ת"ז (Pre-H.1.0b): OPTIONAL, check-digit validated (NOT the old 9-digits-only
+  // regex, which wrongly rejected valid 8-digit IDs and accepted bad check digits).
+  // Empty string is treated as "not provided" (optional). See isValidIsraeliIdChecksum.
   idNumber: z
     .string()
-    .regex(/^\d{9}$/, { message: 'תעודת זהות חייבת להכיל 9 ספרות' })
+    .refine((val) => val.trim() === '' || isValidIsraeliIdChecksum(val), {
+      message: 'מספר תעודת הזהות אינו תקין'
+    })
     .optional(),
   notes: z.string().optional(),
   createdAt: DateStringSchema.optional(),

@@ -472,6 +472,32 @@
                       "></div>
                     </div>
                   </div>
+
+                  <!-- ת"ז (Israeli ID) — Pre-H.1.0b: OPTIONAL, check-digit validated (israeli-id.js). -->
+                  <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 14px;">
+                      תעודת זהות <span style="color: #9ca3af; font-weight: 400;">(לא חובה)</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="newClientIdNumber"
+                      inputmode="numeric"
+                      maxlength="9"
+                      placeholder="9 ספרות"
+                      autocomplete="off"
+                      style="
+                        width: 100%;
+                        padding: 10px 12px;
+                        border: 1px solid #d1d5db;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        transition: all 0.2s;
+                      "
+                    >
+                    <div style="margin-top: 6px; font-size: 12px; color: #9ca3af;">
+                      לא ניתן לעדכן את מספר תעודת הזהות לאחר פתיחת התיק
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Step 1: Select Client (Existing Client Mode) -->
@@ -913,6 +939,18 @@ serviceTitleField.style.display = 'block';
           } else {
             // טען מספר תיק אוטומטית לפני מעבר לשלב הבא
             await this.loadCaseNumber();
+          }
+
+          // ת"ז (Pre-H.1.0b): OPTIONAL — validate ONLY if the user entered something.
+          // Empty → wizard proceeds exactly as before (no regression for corporate/foreign clients).
+          // NEVER log idNumber (PUBLIC repo; console.error/warn survive the prod console override).
+          const idNumber = document.getElementById('newClientIdNumber')?.value?.trim();
+          if (idNumber) {
+            const idIsValid = window.IsraeliId?.isValidIsraeliId?.(idNumber);
+            // If the helper failed to load, idIsValid is undefined → skip (backend re-validates).
+            if (idIsValid === false) {
+              errors.push('מספר תעודת הזהות אינו תקין');
+            }
           }
         } else if (this.currentStep === 2) {
           // Step 2: Case Details
@@ -2216,7 +2254,9 @@ return text;
       // לקוח
       if (this.currentMode === 'new') {
         formData.client = {
-          name: document.getElementById('newClientName')?.value?.trim()
+          name: document.getElementById('newClientName')?.value?.trim(),
+          // ת"ז (Pre-H.1.0b): OPTIONAL — '' when not provided. Validated in validateCurrentStep.
+          idNumber: document.getElementById('newClientIdNumber')?.value?.trim() || ''
         };
       } else {
         const selectedClient = this.clientSelector?.getSelectedValues();
@@ -2582,6 +2622,8 @@ return text;
     buildFirebaseData(formData) {
       const data = {
         clientName: formData.client.name,
+        // ת"ז (Pre-H.1.0b): OPTIONAL join key; '' when not provided. Backend re-validates (#348).
+        idNumber: formData.client.idNumber || '',
         phone: formData.client.phone || '',
         email: formData.client.email || '',
         caseNumber: formData.case.caseNumber,
