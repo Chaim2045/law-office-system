@@ -26,7 +26,7 @@
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
     "e2e:ui": "playwright test --ui",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "keywords": [
     "law-office",
