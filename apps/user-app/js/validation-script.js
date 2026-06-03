@@ -187,8 +187,12 @@
 
         const testData = {
           clientName: 'בדיקת מערכת - TEST',
-          idType: 'passport',
-          idNumber: 'TEST-' + Date.now(),
+          // idNumber/idType intentionally omitted. Since Pre-H.1.0a (PR #348),
+          // createClient validates a non-empty idNumber with isValidIsraeliId and
+          // rejects anything that is not a check-digit-valid ת"ז (throws
+          // invalid-argument). idNumber is OPTIONAL on the backend (defaults to '')
+          // and idType is not read at all — so omitting both keeps this dev
+          // diagnostic passing without writing a synthetic ת"ז into the live DB.
           phone: '050-0000000',
           email: 'test@validation.test',
           address: 'כתובת בדיקה',
