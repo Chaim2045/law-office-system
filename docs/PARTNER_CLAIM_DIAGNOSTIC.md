@@ -9,10 +9,13 @@
 The AI Management Layer plan adds a `partner` custom claim to enable a profitability dashboard restricted to office partners (Guy, Haim). Before any code writes a partner claim, we MUST inspect the current state of the system:
 
 1. **What custom claims are actually set today** on every employee's auth user?
-2. **What shape are those claims?** Two coexisting shapes were found:
-   - `{role: 'admin'}` (string form — written by `setAdminClaims`)
-   - `{admin: true}` (boolean form — written by legacy `initializeAdminClaims`)
-   The admin panel reads BOTH. Future writes that pick one shape risk silently demoting users who hold only the other.
+2. **What shape are those claims?** The canonical shape is now `{role: 'admin'}`
+   (string form). **Pre-H.0.0.E (2026-06-04)** contracted all four claim writers
+   to emit `role`-only — the legacy `{admin: true}` boolean form is no longer
+   written by anything. A pre-E live token may still carry the legacy shape until
+   its next refresh, so the admin panel + auth gates still *read* both for one
+   refresh window (retired in the §7.4 follow-up). This diagnostic continues to
+   REPORT every shape so any residual legacy claim is visible.
 3. **Are there mismatches** between `employees/{email}.role` (Firestore field) and the actual token claim?
 4. **Are there any `messages` documents with `'partner'` already in their `toRoles` array?** If yes — setting a `partner` claim would grant immediate read access to those documents via the wildcard rule at `firestore.rules:239`.
 
@@ -84,9 +87,9 @@ Each element:
 
 ### Claim shapes
 
-- `role_string_only`: `{ role: 'admin' }` or `{ role: 'partner' }`. The current/intended shape.
-- `admin_boolean_only`: `{ admin: true }`. Legacy shape from `initializeAdminClaims`. Needs migration.
-- `both_shapes`: `{ admin: true, role: 'admin' }`. Belt-and-suspenders. Safe but redundant.
+- `role_string_only`: `{ role: 'admin' }` or `{ role: 'partner' }`. **The canonical shape** — the only shape any writer emits after Pre-H.0.0.E.
+- `admin_boolean_only`: `{ admin: true }`. Legacy shape; **no writer emits it post-E**. Any occurrence is pre-E residue on a not-yet-refreshed token → must read 0 in PROD (E's G6 evidence).
+- `both_shapes`: `{ admin: true, role: 'admin' }`. The transitional Pre-H.0.0.B dual-write; **no writer emits it post-E**. Harmless residue; clears on token refresh.
 - `no_claim`: no custom claims at all.
 
 ### Mismatch kinds

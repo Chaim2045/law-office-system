@@ -1,8 +1,15 @@
 # Admin Claims — Recovery Playbook
 
 **Created:** 2026-05-28 (Pre-H.0.0.B)
+**Updated:** 2026-06-04 (Pre-H.0.0.E — claim shape contracted to `{role:'admin'}` only)
 **Audience:** Haim, on-call engineer.
 **Goal:** restore admin access when the normal "admin promotes another user" flow is unavailable.
+
+> **Claim shape (Pre-H.0.0.E):** the canonical admin claim is **`{role: 'admin'}`**
+> — a single field, no `admin: true`. All four claim writers now emit role-only.
+> The auth gates + admin-panel consumer still *accept* a legacy `{admin: true}`
+> token for one token-refresh window (retired in the §7.4 follow-up PR), but you
+> should always WRITE the canonical `{role: 'admin'}` during recovery.
 
 ## The bootstrap problem
 
@@ -25,16 +32,16 @@ This playbook covers the three recovery paths.
 1. Open the [Firebase Console](https://console.firebase.google.com/) → project → Authentication.
 2. Find the target user. Copy the UID.
 3. Open the user's row → "Custom claims" → "Edit".
-4. Paste exactly:
+4. Paste exactly (canonical single-shape — Pre-H.0.0.E):
    ```json
-   {"admin": true, "role": "admin"}
+   {"role": "admin"}
    ```
 5. Save. Wait up to one hour OR sign the user out + back in to force a token refresh.
 
 > **Note:** the user must sign out and back in for `firestore.rules` to see the new `token.role`. Don't proceed to step 6 until that's done.
 
 6. From the Admin Panel, run `verifyClaims` (PR-H.0.0.A diagnostic) and confirm:
-   - `claimShapeBreakdown.both_shapes` increased by 1.
+   - `claimShapeBreakdown.role_string_only` increased by 1 (and `admin_boolean_only` stays 0).
    - The target user's `mismatch` field is `null`.
 
 ---
@@ -69,8 +76,8 @@ node scripts/grant-admin-emergency.js --apply
 ```
 
 The script:
-- Writes the dual-shape claim `{admin: true, role: 'admin'}`.
-- Refuses to run if the target already has the dual-shape (defensive).
+- Writes the canonical single-shape claim `{role: 'admin'}` (Pre-H.0.0.E).
+- Refuses to run if the target already has `role: 'admin'` (defensive idempotency).
 - Logs the resolved email vs the env-provided email so you can catch UID/email mismatches.
 
 ### After applying
@@ -89,7 +96,7 @@ If admin claims got wiped *and* `employees.isAdmin` was also lost:
 2. Confirm at least one document has `isAdmin: true`.
 3. Use path A or path B to grant an admin claim to ONE of those users.
 4. That user logs in → opens Admin Panel → triggers `initializeAdminClaims`.
-5. The function iterates `employees.isAdmin === true` and grants the dual-shape claim to each, idempotently (skips users who already have it).
+5. The function iterates `employees.isAdmin === true` and grants the `{role:'admin'}` claim to each, idempotently (skips users who already have `role: 'admin'`).
 
 ---
 
@@ -105,7 +112,7 @@ firebase.functions().httpsCallable('verifyClaims')({})
 Expected:
 - `summary.totalEmployees >= 1`
 - `summary.mismatchCount === 0` for the user you granted
-- `claimShapeBreakdown.both_shapes >= 1`
+- `claimShapeBreakdown.role_string_only >= 1` (canonical shape; `admin_boolean_only` stays 0)
 
 If `mismatch` shows `firestore_admin_no_claim` for your target, the claim isn't taking effect — likely because the user hasn't refreshed their token. Sign them out + back in.
 

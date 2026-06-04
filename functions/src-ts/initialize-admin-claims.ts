@@ -12,13 +12,17 @@
  *  2. Lock doc at `system/admin_claims_init_lock` with 5-minute TTL — prevents
  *     parallel runs (devils-advocate #4: noisy double-grant + metrics drift).
  *  3. Idempotency — for each employee with `isAdmin:true`:
- *       - Skip if existing claim already matches `{admin:true, role:'admin'}`.
+ *       - Skip if existing claim already has `role:'admin'` (Pre-H.0.0.E: the
+ *         check is `role`-only — an admin holding the post-contraction shape
+ *         must NOT be re-written, else every init run forces a token refresh).
  *       - Prefer `employees.authUID` over email lookup (devils-advocate #4: email
  *         drift means `getUserByEmail` could resolve to the wrong UID).
  *       - Warn on email fallback so future investigation can correlate.
  *  4. Audit-FIRST per employee — same fail-secure pattern as setAdminClaims.
- *  5. DUAL-WRITE `{admin: true, role: 'admin'}` — see setAdminClaims.ts for
- *     the rationale (admin-panel auth.js:424 still reads `claims.admin`).
+ *  5. SINGLE-SHAPE write `{role: 'admin'}` (Pre-H.0.0.E) — see setAdminClaims.ts
+ *     for the rationale. Consumer reads still accept the legacy `{admin:true}`
+ *     token shape for one refresh window; that read is retired in §7.4's
+ *     FOLLOW-UP PR, not here.
  *
  * ─── Bootstrap recovery path ────────────────────────────────────────────────
  * This function REQUIRES an existing admin caller. The first-ever admin grant
@@ -133,9 +137,13 @@ export async function initializeAdminClaimsHandler(
         if (authUidFromFirestore) {
           userRecord = await authSdk.getUser(authUidFromFirestore);
         } else {
+          // PII-safe (Pre-H.0.0.E): the employee doc ID IS an email, so it must
+          // NOT enter the world-readable logger. The operational signal here is
+          // "an employee doc is missing authUID and required email fallback";
+          // the specific employee identity stays in audit_log (targetEmail),
+          // which is the forensic surface — never logger.* (public repo).
           logger.warn('admin_claims.initialize.email_fallback', {
-            actor: { uid: callerUid },
-            employeeDocId: empDoc.id
+            actor: { uid: callerUid }
           });
           userRecord = await authSdk.getUserByEmail(email);
         }
@@ -150,10 +158,12 @@ export async function initializeAdminClaimsHandler(
         continue;
       }
 
-      // ─── (3b) Idempotency — skip if already dual-shape ────────────────────
-      const existingClaims = userRecord.customClaims ?? {};
-      const alreadyGranted =
-        existingClaims.admin === true && existingClaims.role === 'admin';
+      // ─── (3b) Idempotency — skip if already role:'admin' (Pre-H.0.0.E) ────
+      // Post-contraction the canonical shape is `{role:'admin'}` with no
+      // `admin:true` field, so the check is `role`-only. A `role`-only admin
+      // is left untouched (re-writing would needlessly invalidate their token).
+      const existingClaims = (userRecord.customClaims ?? {}) as { role?: string };
+      const alreadyGranted = existingClaims.role === 'admin';
       if (alreadyGranted) {
         results.push({
           email,
@@ -169,7 +179,7 @@ export async function initializeAdminClaimsHandler(
           targetUid: userRecord.uid,
           targetEmail: email,
           previousClaims: existingClaims,
-          newClaims: { admin: true, role: 'admin' }
+          newClaims: { role: 'admin' }
         });
       } catch (err: unknown) {
         const error = err as { code?: string };
@@ -187,10 +197,9 @@ export async function initializeAdminClaimsHandler(
         continue;
       }
 
-      // ─── (3d) Claim write ─────────────────────────────────────────────────
+      // ─── (3d) Claim write (single-shape: role:'admin' — Pre-H.0.0.E) ──────
       try {
         await authSdk.setCustomUserClaims(userRecord.uid, {
-          admin: true,
           role: 'admin'
         });
         results.push({
