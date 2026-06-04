@@ -91,11 +91,13 @@ describe('setAdminClaims — static AST invariants', () => {
     source = fs.readFileSync(sourcePath, 'utf8');
   });
 
-  it('contains a dual-shape claim literal admin:true role:admin', () => {
-    // The literal MUST appear (otherwise the dual-write contract is violated).
-    // Allow whitespace flexibility.
-    const dualShapePattern = /\{\s*admin:\s*true,\s*role:\s*'admin'\s*\}/;
-    expect(source).toMatch(dualShapePattern);
+  it('writes the single-shape claim {role:\'admin\'} (Pre-H.0.0.E contraction)', () => {
+    // The claim WRITE must be role-only. The legacy `{admin:true, role:'admin'}`
+    // dual-shape literal must be gone from the setCustomUserClaims payload.
+    // (The auth GATE at step 1 still reads `claims.admin === true` — that is a
+    // caller-token read, NOT a claim write, and is retired in the §7.4 follow-up.)
+    expect(source).toMatch(/setCustomUserClaims\(\s*targetUid,\s*\{\s*role:\s*'admin'\s*\}\s*\)/);
+    expect(source).not.toMatch(/setCustomUserClaims\([^)]*admin:\s*true/);
   });
 
   it('uses canonical logCriticalAction helper for audit writes (Pre-H.0.0.C)', () => {
@@ -148,7 +150,6 @@ describe('setAdminClaimsHandler — auth gates', () => {
     const result = await setAdminClaimsHandler(req);
     expect(result.success).toBe(true);
     expect(mockSetCustomUserClaims).toHaveBeenCalledWith(TARGET_UID, {
-      admin: true,
       role: 'admin'
     });
   });
@@ -248,7 +249,7 @@ describe('setAdminClaimsHandler — fail-secure ordering', () => {
 });
 
 describe('setAdminClaimsHandler — happy path', () => {
-  it('writes dual-shape claim, audit doc, and returns expected response', async () => {
+  it('writes single-shape claim, audit doc, and returns expected response', async () => {
     const req = makeRequest();
     const result = await setAdminClaimsHandler(req);
 
@@ -257,16 +258,15 @@ describe('setAdminClaimsHandler — happy path', () => {
       targetUid: TARGET_UID,
       role: 'admin',
       auditDocId: TEST_AUDIT_DOC_ID,
-      claimShapeWritten: { admin: true, role: 'admin' }
+      claimShapeWritten: { role: 'admin' }
     });
 
     // Ordering: audit FIRST, then claim
     expect(mockAuditAdd).toHaveBeenCalledTimes(1);
     expect(mockSetCustomUserClaims).toHaveBeenCalledTimes(1);
 
-    // Claim payload is dual-shape
+    // Claim payload is single-shape (Pre-H.0.0.E contraction)
     expect(mockSetCustomUserClaims).toHaveBeenCalledWith(TARGET_UID, {
-      admin: true,
       role: 'admin'
     });
 
@@ -275,6 +275,6 @@ describe('setAdminClaimsHandler — happy path', () => {
     expect(auditPayload.action).toBe('SET_ADMIN_CLAIM');
     expect(auditPayload.userId).toBe(ADMIN_UID);
     expect(auditPayload.details.targetUid).toBe(TARGET_UID);
-    expect(auditPayload.details.newClaims).toEqual({ admin: true, role: 'admin' });
+    expect(auditPayload.details.newClaims).toEqual({ role: 'admin' });
   });
 });

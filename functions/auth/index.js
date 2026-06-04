@@ -191,12 +191,17 @@ exports.linkAuthToEmployee = functions.https.onCall(async (data, context) => {
  *   What this PR fixes here:
  *     - Replaces the undefined `logActivity(...)` call (latent crash bug) with
  *       the canonical `logAction(...)` from `shared/audit.js`.
- *     - On GRANT, writes DUAL-SHAPE claim `{admin:true, role:'admin'}` to
- *       match the new TS endpoints; aligns this writer with PR-H.0.0.A's
- *       PARTNER_CLAIM_DIAGNOSTIC intent.
- *     - On REVOKE, preserves the legacy `{admin:false}` behavior.
+ *   Claim-shape contract (Pre-H.0.0.E, 2026-06-04 — writer contraction):
+ *     - On GRANT, writes the canonical single-shape claim `{role:'admin'}`.
+ *       The legacy dual-shape `{admin:true, role:'admin'}` was retired here;
+ *       all four claim writers now emit `role`-only (MASTER_PLAN §7.4).
+ *     - On REVOKE, writes `{}` (full claim removal via setCustomUserClaims's
+ *       replace semantics) — NOT the legacy `{admin:false}` residue.
+ *     - NOTE: consumer reads still ACCEPT the legacy `{admin:true}` token shape
+ *       (admin-panel auth.js + the v2 callable gates) for one token-refresh
+ *       window; that consumer-side read is retired in the §7.4 FOLLOW-UP PR.
  *   Future:
- *     - Pre-H.0.0.D/E/F may consolidate this into the TS module after the
+ *     - Pre-H.0.0.F may consolidate this into the TS module after the
  *       partner-claim flow is designed. Do NOT extend this function further
  *       without updating PARTNER_CLAIM_DIAGNOSTIC.md.
  */
@@ -231,10 +236,12 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
     // מצא את המשתמש לפי email
     const userRecord = await auth.getUserByEmail(email);
 
-    // הגדר את ה-custom claim — DUAL-SHAPE on grant, legacy revoke shape preserved
+    // הגדר את ה-custom claim — single-shape on grant (Pre-H.0.0.E), full
+    // removal on revoke. setCustomUserClaims REPLACES the entire claims object,
+    // so `{}` clears every residual claim (no lingering `{admin:false}`).
     const newClaims = isAdmin === true
-      ? { admin: true, role: 'admin' }
-      : { admin: false };
+      ? { role: 'admin' }
+      : {};
     await auth.setCustomUserClaims(userRecord.uid, newClaims);
 
     // רישום פעילות — uses logAction (canonical audit helper from shared/audit.js)

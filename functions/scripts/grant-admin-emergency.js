@@ -30,10 +30,11 @@
  * SAFETY
  * ──────
  *   - Defaults to DRY-RUN (logs intent, no write). `--apply` is required.
- *   - Refuses to run if the target ALREADY has the dual-shape claim
- *     ({admin:true, role:'admin'}) — prevents accidental re-runs.
- *   - Writes the dual-shape claim {admin:true, role:'admin'} matching the
- *     `setAdminClaims` and `initializeAdminClaims` production endpoints.
+ *   - Refuses to run if the target ALREADY has the admin claim ({role:'admin'})
+ *     — prevents accidental re-runs.
+ *   - Writes the single-shape claim {role:'admin'} (Pre-H.0.0.E) matching the
+ *     `setAdminClaims` and `initializeAdminClaims` production endpoints. The
+ *     legacy `{admin:true}` field was retired from all four claim writers.
  *   - The service account JSON is gitignored. Never commit it. CI does not
  *     run this script. The repo is PUBLIC.
  *
@@ -94,25 +95,28 @@ async function main() {
   }
 
   const existing = userRecord.customClaims || {};
-  const alreadyDualShape = existing.admin === true && existing.role === 'admin';
+  // Pre-H.0.0.E: the canonical shape is `{role:'admin'}`. Idempotency is
+  // `role`-only so a target already on the post-contraction shape is not
+  // needlessly re-written (which would invalidate their current token).
+  const alreadyAdmin = existing.role === 'admin';
 
   info(`Target UID: ${TARGET_UID}`);
   info(`Target email (per Auth):  ${userRecord.email || '<unknown>'}`);
   info(`Target email (per env):   ${TARGET_EMAIL_FOR_LOG}`);
   info(`Existing claims: ${JSON.stringify(existing)}`);
 
-  if (alreadyDualShape) {
-    info('Target ALREADY has dual-shape admin claim. No write needed.');
+  if (alreadyAdmin) {
+    info('Target ALREADY has role:admin claim. No write needed.');
     process.exit(0);
   }
 
   if (!APPLY) {
-    info('DRY-RUN: would write { admin: true, role: \'admin\' }. Re-run with --apply to commit.');
+    info('DRY-RUN: would write { role: \'admin\' }. Re-run with --apply to commit.');
     process.exit(0);
   }
 
-  await admin.auth().setCustomUserClaims(TARGET_UID, { admin: true, role: 'admin' });
-  info(`✅ Granted dual-shape admin claim to ${TARGET_UID}.`);
+  await admin.auth().setCustomUserClaims(TARGET_UID, { role: 'admin' });
+  info(`✅ Granted role:admin claim to ${TARGET_UID}.`);
   info('Document this in your incident log. Then run `verifyClaims` to confirm.');
   process.exit(0);
 }

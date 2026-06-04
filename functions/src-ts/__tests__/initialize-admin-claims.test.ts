@@ -104,18 +104,23 @@ describe('initializeAdminClaims — static AST invariants', () => {
     source = fs.readFileSync(sourcePath, 'utf8');
   });
 
-  it('contains dual-shape claim literal', () => {
-    expect(source).toMatch(/\{\s*admin:\s*true,\s*role:\s*'admin'\s*\}/);
+  it('writes the single-shape claim {role:\'admin\'} (Pre-H.0.0.E contraction)', () => {
+    // The claim WRITE must be role-only; the legacy dual-shape literal is gone.
+    // (The auth GATE still reads `claims.admin === true` — a caller-token read,
+    // NOT a claim write — retired in the §7.4 follow-up, not here.)
+    expect(source).toMatch(/setCustomUserClaims\([\s\S]*?\{\s*role:\s*'admin'\s*\}\s*\)/);
+    expect(source).not.toMatch(/setCustomUserClaims\([^)]*admin:\s*true/);
   });
 
   it('uses lock document at system/admin_claims_init_lock', () => {
     expect(source).toContain("'system/admin_claims_init_lock'");
   });
 
-  it('idempotency: checks alreadyGranted before writing', () => {
+  it('idempotency: checks alreadyGranted via role-only (Pre-H.0.0.E)', () => {
     expect(source).toContain('alreadyGranted');
-    expect(source).toContain('existingClaims.admin === true');
     expect(source).toContain("existingClaims.role === 'admin'");
+    // Contracted in E: the idempotency check no longer reads the legacy boolean.
+    expect(source).not.toContain('existingClaims.admin === true');
   });
 
   it('email-fallback path emits warning log', () => {
@@ -221,13 +226,13 @@ describe('initializeAdminClaimsHandler — lock contention', () => {
 // Idempotency
 // ════════════════════════════════════════════════════════════════════════════
 describe('initializeAdminClaimsHandler — idempotency', () => {
-  it('skips employees whose claim ALREADY matches dual-shape', async () => {
+  it('skips employees whose claim ALREADY has role:admin (Pre-H.0.0.E shape)', async () => {
     mockEmployeesGet.mockResolvedValueOnce(makeEmployeeSnapshot([
       { id: 'already@example.com', data: { email: 'already@example.com', authUID: 'uid-1', isAdmin: true } }
     ]));
     mockGetUser.mockResolvedValueOnce({
       uid: 'uid-1',
-      customClaims: { admin: true, role: 'admin' }
+      customClaims: { role: 'admin' }
     });
 
     const req = makeRequest();
@@ -239,21 +244,22 @@ describe('initializeAdminClaimsHandler — idempotency', () => {
     expect(mockAuditAdd).not.toHaveBeenCalled();
   });
 
-  it('grants to employee with only legacy {admin:true} (claim needs the new shape too)', async () => {
+  it('grants to employee with only legacy {admin:true} (contracts them to role-only)', async () => {
     mockEmployeesGet.mockResolvedValueOnce(makeEmployeeSnapshot([
       { id: 'legacy@example.com', data: { email: 'legacy@example.com', authUID: 'uid-2', isAdmin: true } }
     ]));
     mockGetUser.mockResolvedValueOnce({
       uid: 'uid-2',
-      customClaims: { admin: true } // missing role
+      customClaims: { admin: true } // legacy boolean-only — no role yet
     });
 
     const req = makeRequest();
     const result = await initializeAdminClaimsHandler(req);
 
+    // role-only idempotency → not "already granted" → re-written to the
+    // canonical single shape (drops the legacy admin:true field).
     expect(result.granted).toBe(1);
     expect(mockSetCustomUserClaims).toHaveBeenCalledWith('uid-2', {
-      admin: true,
       role: 'admin'
     });
   });
@@ -332,7 +338,7 @@ describe('initializeAdminClaimsHandler — happy path', () => {
 
     mockGetUser
       .mockResolvedValueOnce({ uid: 'uid-new', customClaims: {} })
-      .mockResolvedValueOnce({ uid: 'uid-exists', customClaims: { admin: true, role: 'admin' } })
+      .mockResolvedValueOnce({ uid: 'uid-exists', customClaims: { role: 'admin' } })
       .mockRejectedValueOnce({ code: 'auth/user-not-found' });
 
     const result = await initializeAdminClaimsHandler(makeRequest());
@@ -342,10 +348,9 @@ describe('initializeAdminClaimsHandler — happy path', () => {
     expect(result.skippedAlreadyGranted).toBe(1);
     expect(result.failed).toBe(1);
 
-    // Only the new one received the claim write
+    // Only the new one received the claim write (single-shape, Pre-H.0.0.E)
     expect(mockSetCustomUserClaims).toHaveBeenCalledTimes(1);
     expect(mockSetCustomUserClaims).toHaveBeenCalledWith('uid-new', {
-      admin: true,
       role: 'admin'
     });
   });

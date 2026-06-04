@@ -22,10 +22,12 @@
  *  5. Audit-FIRST, claim-SECOND, compensating-log-on-failure — if the audit
  *     doc cannot be written, the claim is NOT written. This is "fail-secure"
  *     against an audit-rule drift that would otherwise silently hide grants.
- *  6. DUAL-WRITE custom claims `{admin: true, role: 'admin'}` — transitional.
- *     Eliminating the legacy `admin:true` shape is deferred to a follow-up PR
- *     after we've grepped every consumer (apps/admin-panel/js/core/auth.js:424
- *     is the only known one today; rules already use only `token.role`).
+ *  6. SINGLE-SHAPE custom claim `{role: 'admin'}` (Pre-H.0.0.E, 2026-06-04).
+ *     The legacy `{admin: true}` field was retired from this writer — all four
+ *     admin-claim writers now emit `role`-only (MASTER_PLAN §7.4). Consumer
+ *     reads still ACCEPT the legacy `{admin:true}` token shape for one
+ *     token-refresh window (admin-panel auth.js + this file's own auth GATE at
+ *     step 1); that read is retired in the §7.4 FOLLOW-UP PR, never here.
  *
  * ─── PUBLIC-REPO SAFETY ─────────────────────────────────────────────────────
  * - No PII in `logger.*` fields — `actor` carries `uid` only, never email.
@@ -55,7 +57,7 @@ export interface SetAdminClaimsResponse {
   targetUid: string;
   role: 'admin';
   auditDocId: string;
-  claimShapeWritten: { admin: true; role: 'admin' };
+  claimShapeWritten: { role: 'admin' };
 }
 
 /**
@@ -134,7 +136,7 @@ export async function setAdminClaimsHandler(
       targetUid,
       role,
       previousClaims,
-      newClaims: { admin: true, role: 'admin' }
+      newClaims: { role: 'admin' }
     });
   } catch (err: unknown) {
     const error = err as { code?: string; message?: string };
@@ -149,9 +151,9 @@ export async function setAdminClaimsHandler(
     );
   }
 
-  // ─── (6) Claim write (dual-shape: admin:true + role:'admin') ──────────────
+  // ─── (6) Claim write (single-shape: role:'admin' — Pre-H.0.0.E) ───────────
   try {
-    await authSdk.setCustomUserClaims(targetUid, { admin: true, role: 'admin' });
+    await authSdk.setCustomUserClaims(targetUid, { role: 'admin' });
   } catch (err: unknown) {
     const error = err as { code?: string };
     logger.error('admin_claims.set.claim_write_failed', {
@@ -194,7 +196,7 @@ export async function setAdminClaimsHandler(
     targetUid,
     role,
     auditDocId,
-    claimShapeWritten: { admin: true, role: 'admin' }
+    claimShapeWritten: { role: 'admin' }
   };
 }
 
