@@ -538,7 +538,28 @@ Closes the security and audit gaps that block any commercial release. Every Phas
 
 ### 7.4 Pre-H.0.0.E — Claim shape consolidation
 
-> **⏸️ STATUS: BLOCKED + DEFERRED (2026-05-31).** Investigated by 3 Opus agents (security / backend / data-investigator). E was deferred in favor of G (G is unblocked + on the critical path to the profitability dashboard, the first visible bud). **Two HARD PREREQUISITES before E can safely execute:**
+> **✅ UNBLOCKED + SCOPED — READY TO CODE in a fresh session (2026-06-04).** The blocking pre-flight (PROD `verifyClaims`) is DONE: `claimShapeBreakdown = {role_string_only:11, admin_boolean_only:0, both_shapes:0, no_claim:1}` — **nobody holds `{admin:true}`; all 4 admins (haim@/guy@/office@/roi@) are `role:'admin'`.** So E's data-migration is a **near-no-op** (`migrate-claim-shape.js` never existed and is NOT needed). Re-investigated 2026-06-04 (backend + security + completeness + devils-advocate=GO-WITH-CHANGES). **Resume phrase: "המשך Pre-H.0.0.E לפי §7.4".**
+>
+> **LOCKED SCOPE = GO-WITH-SPLIT (writer-contraction ONLY).** Bar-mandated split (security + devils-advocate); backend's "one-PR" was OVERRULED — git `bd3ecd8` proves the legacy writers minted `admin:true`-only tokens, so a live JWT can be boolean-only until refresh → removing the consumer read in the same PR violates the §7.4 expand-contract = a §2.0 non-overridable bar item.
+>
+> **IN THIS E PR:**
+> 1. Stop the **4 writers** emitting `admin:true` → write `{role:'admin'}` only: `functions/auth/index.js:236` (legacy `setAdminClaim` grant); `functions/src-ts/set-admin-claims.ts:137`(audit)/`154`(grant)/`58`+`197`(`claimShapeWritten` type+return); `functions/src-ts/initialize-admin-claims.ts:172`(audit)/`192-195`(grant); `functions/scripts/grant-admin-emergency.js:114`(grant).
+> 2. **Fix 2 idempotency guards ATOMICALLY with the writers** (else every init/break-glass run re-writes all admins post-contraction → audit spam + forced token refresh): `initialize-admin-claims.ts:156` (`existingClaims.admin === true && role==='admin'` → `role`-only) + `grant-admin-emergency.js:97` (same).
+> 3. **Revoke residue → `{}`** (NOT `{admin:false}`): `auth/index.js:237` resolve to full-removal `{}`, **with a test** (the v1 `setAdminClaim` revoke is currently untested; `setCustomUserClaims` is a full replace).
+> 4. **Rebuild + commit 2 `lib/` files:** `lib/set-admin-claims.js` + `lib/initialize-admin-claims.js` (+ `.map`). (`auth/index.js` + `grant-admin-emergency.js` are not compiled.)
+> 5. **Update 8 writer-side test AST-guards** asserting the OLD `{admin:true,role:'admin'}` literal (else red CI): `set-admin-claims.test.ts:94-98,151,260,269,278` + `initialize-admin-claims.test.ts:107-109,117,230,248-258,335,348` → assert `{role:'admin'}`-only; flip the `:117` idempotency assertion.
+> 6. **Author `.claude/rubrics/pr-h-0-0-e.md`** (do NOT reuse the stale unrelated `pr-e.md`). Update stale docblocks in the 4 writer files; update `docs/PARTNER_CLAIM_DIAGNOSTIC.md` + `docs/ADMIN_CLAIMS_RECOVERY.md` (dual-shape → role-only). PII guard test (no claim values/emails into `logger.*`).
+> 7. **Final `verifyClaims` at merge-moment** → confirm `admin_boolean_only` stays 0 (G6 evidence).
+>
+> **DO NOT touch in E** (deferred consumer-read sweep — their AST guards assert the dual string; removing now = the bar-violation): `apps/admin-panel/js/core/auth.js:426`; backend gate halves `|| claims.admin === true` at `set-admin-claims.ts:75`, `initialize-admin-claims.ts:69`, `get-employee-cost.ts:54`, `set-employee-cost.ts:61`, `connectivity-check.ts:66`, `verifyClaims` gate `auth/index.js:328`; KEEP `verifyClaims:399` `adminBoolean` diagnostic permanently. `devtools/debug-scripts/browser-check-guy.js:69` rides the same follow-up.
+>
+> **FOLLOW-UP PR (after a ≥1h, ideally ≥24h token-refresh window):** remove `auth.js:426` + the gate halves — **MUST add a consumer-rejection test** (a `{admin:true}`-only token is rejected) or the guard is silently lost.
+>
+> **DEFER TO F (§7.5):** the **7 redundant `{role:'lawyer'}` claims** (`firestore_employee_has_elevated_claim`) — inert today (rules test only `=='admin'`/`=='partner'`) but a **DORMANT escalation**: the day a `messages` doc carries `toRoles:['lawyer',…]` (`firestore.rules:239` dynamic membership) they'd grant read. F's §7.5 entry gains a **"blocks any `toRoles`-containing-lawyer feature"** dependency; F must REMOVE (not rewrite) claims for employees whose canonical state is no-claim.
+>
+> **Branch clean before starting** (regenerable `apps/user-app/dist/**` drift — don't sweep into the diff). Tracker tasks #63-67 are mislabeled (tracked the 2026-05-31 deferred-investigation, not this execution).
+>
+> **⏸️ STATUS (HISTORICAL, 2026-05-31 — superseded by the READY block above): BLOCKED + DEFERRED.** Investigated by 3 Opus agents (security / backend / data-investigator). E was deferred in favor of G (G is unblocked + on the critical path to the profitability dashboard, the first visible bud). **Two HARD PREREQUISITES before E can safely execute:**
 > 1. **Haim must run `verifyClaims` in PROD** and capture `claimShapeBreakdown`. GO/NO-GO = `admin_boolean_only === 0`. If 0 (likely — admins re-granted post-B are `both_shapes`), the migration is a near-no-op. If >0, an expand migration is load-bearing. The Lead Agent CANNOT run this — it needs a logged-in admin.
 > 2. **DEV and PROD share ONE Firebase project** (`law-office-system-e4801`) — confirmed by data-investigator. There is NO claim isolation; any `setCustomUserClaims` "in DEV" mutates PROD Auth. Only the Firestore Emulator (Pre-H.0.0.D) is safe for rehearsal.
 >
