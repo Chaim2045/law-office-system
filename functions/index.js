@@ -101,8 +101,17 @@ exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
 // ⚠️ DEPLOY PREREQUISITE: the secret TOFES_MECHER_SA_KEY must exist in Secret
 // Manager BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret).
 // ⚠️ REPURPOSE-OR-DELETE in H.1 once the real validateSalesRecordExists ships.
-const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
-exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
+//
+// 🔴 TEMPORARILY DISABLED (2026-06-04 — deploy-unblock incident). Exporting this
+// function loaded connectivity-check.ts, whose top-level defineSecret('TOFES_MECHER_SA_KEY')
+// made EVERY PROD functions deploy abort ("In non-interactive mode but have no value
+// for the secret: TOFES_MECHER_SA_KEY") because the secret was never set. Both the
+// require AND the export are commented so the module is never loaded and defineSecret
+// never runs — restoring PROD deployability without the secret. The cross-project SA +
+// secret are provisioned in H.1; RE-ENABLE these two lines there, where this function
+// then validates the deployed wiring as originally designed (MASTER_PLAN §8.2).
+// const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
+// exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
 
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
