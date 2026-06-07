@@ -54,7 +54,8 @@ exports.connectivityCheckHandler = connectivityCheckHandler;
  *
  * ─── Design contract ────────────────────────────────────────────────────────
  *  1. v2 `onCall` with `{ secrets: [TOFES_KEY] }` — defineSecret is v2-only.
- *  2. Dual-shape admin gate (`claims.role==='admin' || claims.admin===true`).
+ *  2. Role-only admin gate (`claims.role === 'admin'`; the legacy `admin:true`
+ *     acceptance was retired in the Pre-H.0.0.E follow-up, 2026-06-05).
  *  3. Read-only → `logger.*`, NOT `logCriticalAction` (G3 N/A for reads;
  *     audit-on-read would invent a precedent not in the bar).
  *  4. NO PII / NO key material in any log: success logs actor uid only;
@@ -79,7 +80,7 @@ async function connectivityCheckHandler(request) {
         throw new https_1.HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
     }
     const claims = (request.auth.token ?? {});
-    const isAdmin = claims.role === 'admin' || claims.admin === true;
+    const isAdmin = claims.role === 'admin';
     if (!isAdmin) {
         throw new https_1.HttpsError('permission-denied', 'רק מנהל מערכת רשאי לבדוק את חיבור טופס המכר.');
     }

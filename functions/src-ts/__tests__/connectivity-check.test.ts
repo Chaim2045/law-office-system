@@ -164,10 +164,9 @@ describe('connectivityCheckHandler — auth gates', () => {
     expect(res.reachable).toBe(true);
   });
 
-  it('accepts admin via legacy admin:true (dual-shape gate)', async () => {
+  it('REJECTS legacy admin:true-only token (Pre-H.0.0.E follow-up — role-only gate)', async () => {
     const req = makeRequest({ auth: { uid: ADMIN_UID, token: { admin: true } } });
-    const res = await connectivityCheckHandler(req);
-    expect(res.ok).toBe(true);
+    await expect(connectivityCheckHandler(req)).rejects.toMatchObject({ code: 'permission-denied' });
   });
 });
 

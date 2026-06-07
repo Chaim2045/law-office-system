@@ -94,8 +94,8 @@ describe('setAdminClaims — static AST invariants', () => {
   it('writes the single-shape claim {role:\'admin\'} (Pre-H.0.0.E contraction)', () => {
     // The claim WRITE must be role-only. The legacy `{admin:true, role:'admin'}`
     // dual-shape literal must be gone from the setCustomUserClaims payload.
-    // (The auth GATE at step 1 still reads `claims.admin === true` — that is a
-    // caller-token read, NOT a claim write, and is retired in the §7.4 follow-up.)
+    // (The auth GATE at step 1 is now ALSO role-only — the legacy
+    // `claims.admin === true` acceptance was retired in the §7.4 follow-up.)
     expect(source).toMatch(/setCustomUserClaims\(\s*targetUid,\s*\{\s*role:\s*'admin'\s*\}\s*\)/);
     expect(source).not.toMatch(/setCustomUserClaims\([^)]*admin:\s*true/);
   });
@@ -154,13 +154,14 @@ describe('setAdminClaimsHandler — auth gates', () => {
     });
   });
 
-  it('accepts admin via legacy {admin:true} token shape (dual-shape gate)', async () => {
+  it('REJECTS a legacy {admin:true}-only token (Pre-H.0.0.E follow-up — role-only gate)', async () => {
     const req = makeRequest({
       auth: { uid: ADMIN_UID, token: { admin: true } }
     });
-    const result = await setAdminClaimsHandler(req);
-    expect(result.success).toBe(true);
-    expect(mockSetCustomUserClaims).toHaveBeenCalledTimes(1);
+    await expect(setAdminClaimsHandler(req)).rejects.toMatchObject({
+      code: 'permission-denied'
+    });
+    expect(mockSetCustomUserClaims).not.toHaveBeenCalled();
   });
 });
 

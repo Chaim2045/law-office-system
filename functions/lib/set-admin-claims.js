@@ -49,9 +49,10 @@ exports.setAdminClaimsHandler = setAdminClaimsHandler;
  *
  * ─── Design contract (derived from Pre-H.0.0.B checkpoint with Haim) ────────
  *  1. v2 `onCall` — built-in auth context, native CORS, App Check ready.
- *  2. Dual-shape admin gate — accepts both `{role:'admin'}` (canonical) and
- *     `{admin:true}` (legacy). Both real production admins are currently on
- *     one or the other; PR-H.0.0.A diagnostic data informs which.
+ *  2. Role-only admin gate — `claims.role === 'admin'`. The legacy `{admin:true}`
+ *     acceptance was removed in the Pre-H.0.0.E follow-up (2026-06-05) once PROD
+ *     `verifyClaims` confirmed `admin_boolean_only:0` and the token-refresh window
+ *     had elapsed; every admin holds `{role:'admin'}`.
  *  3. Zod schema validation — `{targetUid, role: 'admin'}` only. No email
  *     input (legacy hardcoded emails are removed; UID is unambiguous).
  *  4. Self-elevation BLOCKED — `request.auth.uid !== targetUid`. Devils-advocate
@@ -61,10 +62,10 @@ exports.setAdminClaimsHandler = setAdminClaimsHandler;
  *     against an audit-rule drift that would otherwise silently hide grants.
  *  6. SINGLE-SHAPE custom claim `{role: 'admin'}` (Pre-H.0.0.E, 2026-06-04).
  *     The legacy `{admin: true}` field was retired from this writer — all four
- *     admin-claim writers now emit `role`-only (MASTER_PLAN §7.4). Consumer
- *     reads still ACCEPT the legacy `{admin:true}` token shape for one
- *     token-refresh window (admin-panel auth.js + this file's own auth GATE at
- *     step 1); that read is retired in the §7.4 FOLLOW-UP PR, never here.
+ *     admin-claim writers emit `role`-only (MASTER_PLAN §7.4). The Pre-H.0.0.E
+ *     FOLLOW-UP (2026-06-05) then retired the legacy boolean from every consumer
+ *     READ + auth gate too (incl. this file's gate at step 1). One claim shape
+ *     now, end to end.
  *
  * ─── PUBLIC-REPO SAFETY ─────────────────────────────────────────────────────
  * - No PII in `logger.*` fields — `actor` carries `uid` only, never email.
@@ -91,12 +92,12 @@ const setAdminClaimsSchema = zod_1.z.object({
  * The exported `setAdminClaims` below wraps this in `onCall` for deployment.
  */
 async function setAdminClaimsHandler(request) {
-    // ─── (1) Auth gate — dual-shape claim acceptance ──────────────────────────
+    // ─── (1) Auth gate — role-only (Pre-H.0.0.E follow-up) ────────────────────
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
     }
     const claims = (request.auth.token ?? {});
-    const isAdmin = claims.role === 'admin' || claims.admin === true;
+    const isAdmin = claims.role === 'admin';
     if (!isAdmin) {
         throw new https_1.HttpsError('permission-denied', 'רק מנהל מערכת רשאי להעניק הרשאת admin.');
     }

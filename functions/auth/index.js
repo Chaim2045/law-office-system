@@ -324,7 +324,11 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
 // Auth: caller MUST be an admin (accepts BOTH claim shapes during the
 // transition, since this is the function diagnosing the transition).
 exports.verifyClaims = functions.https.onCall(async (data, context) => {
-  // ─── Auth gate — accepts BOTH legacy and current claim shapes ───
+  // ─── Auth gate — role-only (Pre-H.0.0.E follow-up) ───
+  // The transition is complete: all admins hold {role:'admin'} (verifyClaims
+  // 2026-06-05: admin_boolean_only:0). The legacy `admin:true` gate half was
+  // removed. NOTE: the `adminBoolean` field in the REPORT below is kept — it is
+  // the regression sensor that detects any future re-introduction of the boolean.
   if (!context.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -332,7 +336,7 @@ exports.verifyClaims = functions.https.onCall(async (data, context) => {
     );
   }
   const claims = context.auth.token || {};
-  const isAdmin = (claims.role === 'admin') || (claims.admin === true);
+  const isAdmin = (claims.role === 'admin');
   if (!isAdmin) {
     throw new functions.https.HttpsError(
       'permission-denied',

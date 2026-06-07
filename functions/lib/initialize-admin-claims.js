@@ -45,7 +45,8 @@ exports.initializeAdminClaimsHandler = initializeAdminClaimsHandler;
  * widens the attack surface to any authenticated session.
  *
  * ─── Design contract ────────────────────────────────────────────────────────
- *  1. v2 `onCall`, admin-gated (dual-shape claim check).
+ *  1. v2 `onCall`, admin-gated — role-only gate (`claims.role === 'admin'`;
+ *     the legacy `admin:true` acceptance was retired in the Pre-H.0.0.E follow-up).
  *  2. Lock doc at `system/admin_claims_init_lock` with 5-minute TTL — prevents
  *     parallel runs (devils-advocate #4: noisy double-grant + metrics drift).
  *  3. Idempotency — for each employee with `isAdmin:true`:
@@ -57,9 +58,8 @@ exports.initializeAdminClaimsHandler = initializeAdminClaimsHandler;
  *       - Warn on email fallback so future investigation can correlate.
  *  4. Audit-FIRST per employee — same fail-secure pattern as setAdminClaims.
  *  5. SINGLE-SHAPE write `{role: 'admin'}` (Pre-H.0.0.E) — see setAdminClaims.ts
- *     for the rationale. Consumer reads still accept the legacy `{admin:true}`
- *     token shape for one refresh window; that read is retired in §7.4's
- *     FOLLOW-UP PR, not here.
+ *     for the rationale. The Pre-H.0.0.E follow-up (2026-06-05) retired the legacy
+ *     `{admin:true}` read from every consumer + auth gate too — one shape now.
  *
  * ─── Bootstrap recovery path ────────────────────────────────────────────────
  * This function REQUIRES an existing admin caller. The first-ever admin grant
@@ -80,12 +80,12 @@ const LOCK_TTL_MS = 5 * 60 * 1000; // 5 minutes — long enough for a real run, 
  * Internal handler — exported separately for direct unit testing.
  */
 async function initializeAdminClaimsHandler(request) {
-    // ─── (1) Auth gate — dual-shape ───────────────────────────────────────────
+    // ─── (1) Auth gate — role-only (Pre-H.0.0.E follow-up) ────────────────────
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
     }
     const claims = (request.auth.token ?? {});
-    const isAdmin = claims.role === 'admin' || claims.admin === true;
+    const isAdmin = claims.role === 'admin';
     if (!isAdmin) {
         throw new https_1.HttpsError('permission-denied', 'רק מנהל מערכת רשאי להפעיל סנכרון הרשאות.');
     }

@@ -52,18 +52,19 @@ async function checkGuyAdminStatus() {
 
           // 3. Analysis
           console.log('\n📋 Analysis:');
+          // Pre-H.0.0.E follow-up: admin acceptance is role-only (custom-claim
+          // role === 'admin') OR the admin-panel Firestore fallback (Layer 3).
+          // The legacy `claims.admin === true` acceptance was retired everywhere.
           const hasCustomClaimRole = userRecord.customClaims?.role === 'admin';
-          const hasCustomClaimAdmin = userRecord.customClaims?.admin === true;
           const hasFirestoreRole = data.role === 'admin';
 
           console.log('   ✓ Custom Claims role === "admin":', hasCustomClaimRole);
-          console.log('   ✓ Custom Claims admin === true:', hasCustomClaimAdmin);
           console.log('   ✓ Firestore role === "admin":', hasFirestoreRole);
 
-          if (hasCustomClaimRole || hasCustomClaimAdmin || hasFirestoreRole) {
+          if (hasCustomClaimRole || hasFirestoreRole) {
             console.log('\n✅ Guy SHOULD be able to login as admin!');
 
-            if (!hasCustomClaimRole && !hasCustomClaimAdmin) {
+            if (!hasCustomClaimRole) {
               console.log('\n⚠️  WARNING: Custom Claims not set!');
               console.log('   Guy can login via Firestore fallback, but it\'s slower.');
               console.log('   Run this to fix:');
