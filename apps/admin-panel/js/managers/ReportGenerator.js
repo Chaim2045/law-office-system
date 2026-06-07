@@ -598,6 +598,90 @@ return true;
         }
 
         /**
+         * Resolve hours figures for a report, scoped to the SELECTED service/stage.
+         * מקור-אמת יחיד לחישוב שעות בדוח — לפי השירות/השלב שנבחר בלבד.
+         *
+         * Single source of truth shared by renderServiceInfo, renderTimesheetRows and
+         * renderFinalSummary, so the three sections of the report can never disagree.
+         *
+         * Resolution order. For a SINGLE service/stage selection this NEVER falls back
+         * to client-level totals (client.totalHours / client.hoursRemaining) — that
+         * fallback was the over-count bug, where a stage report showed the sum of ALL
+         * the client's services/stages instead of just the selected one:
+         *   (a) 'all' / 'כל השירותים' -> aggregate of billable (non-archived) services
+         *   (b) formData.stage set     -> the matching legal_procedure stage only
+         *   (c) top-level service match -> that service (hour packages / non-staged)
+         *   (d) no match               -> matchType 'none', zeros. The caller MAY derive
+         *       used-hours from its own service-scoped timesheet entries, but MUST NOT
+         *       borrow client.totalHours.
+         *
+         * @param {Object} client - client object (already loaded by ClientsDataManager)
+         * @param {Object} formData - { service, serviceId, stage, ... }
+         * @returns {{totalHours:number, usedHours:number, remainingHours:number, matchType:string}}
+         */
+        resolveServiceHours(client, formData) {
+            const services = Array.isArray(client && client.services) ? client.services : [];
+
+            // (a) All services — the ONLY path allowed to read client-level numbers,
+            // and only as a last resort when the services[] array is empty.
+            if (formData.service === 'all' || formData.service === 'כל השירותים') {
+                if (services.length > 0) {
+                    // PR-G.3.14: exclude archived services (consistent with aggregates.js).
+                    const billable = services.filter(s => (s && s.status || 'active') !== 'archived');
+                    const totalHours = billable.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
+                    const remainingHours = billable.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
+                    return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'all' };
+                }
+                const totalHours = client.totalHours || 0;
+                const remainingHours = client.hoursRemaining || 0;
+                return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'all' };
+            }
+
+            // (b) Legal-procedure stage — scope to the SELECTED stage only.
+            if (formData.stage) {
+                let selectedStage = null;
+                for (const s of services) {
+                    if (Array.isArray(s.stages)) {
+                        const match = s.stages.find(st => st.id === formData.stage);
+                        if (match) {
+                            selectedStage = match;
+                            break;
+                        }
+                    }
+                }
+                if (selectedStage) {
+                    const totalHours = selectedStage.totalHours || selectedStage.hours || 0;
+                    const remainingHours = (selectedStage.hoursRemaining !== undefined)
+                        ? selectedStage.hoursRemaining
+                        : (totalHours - (selectedStage.hoursUsed || 0));
+                    const usedHours = (selectedStage.hoursUsed !== undefined)
+                        ? selectedStage.hoursUsed
+                        : (totalHours - remainingHours);
+                    return { totalHours, usedHours, remainingHours, matchType: 'stage' };
+                }
+            }
+
+            // (c) Top-level service match (hour packages and any non-staged service).
+            const selectedService = services.find(s =>
+                s.name === formData.service ||
+                s.serviceName === formData.service ||
+                s.displayName === formData.service ||
+                (s.stage && formData.service.includes(s.stage)) ||
+                (s.displayName && s.displayName.includes(formData.service))
+            );
+            if (selectedService) {
+                const totalHours = selectedService.totalHours || selectedService.hours ||
+                                   selectedService.allocatedHours || selectedService.stageHours || 0;
+                const remainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
+                return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'service' };
+            }
+
+            // (d) No match — zeros. Caller may derive used-hours from service-scoped
+            // timesheet entries, but MUST NOT fall back to client.totalHours.
+            return { totalHours: 0, usedHours: 0, remainingHours: 0, matchType: 'none' };
+        }
+
+        /**
          * Render service info section
          * רינדור מידע על השירות
          *
@@ -627,146 +711,46 @@ return true;
          * ════════════════════════════════════════════════════════════════
          */
         renderServiceInfo(client, formData) {
-            let serviceTotalHours = 0;
-            let serviceUsedHours = 0;
-            let serviceRemainingHours = 0;
-            let purchaseDate = '-';
+            // SSOT: resolve hours scoped to the selected service/stage. For a single
+            // service/stage this NEVER borrows client-level totals (the over-count bug
+            // where a stage report showed the sum of all the client's services/stages).
+            const hours = this.resolveServiceHours(client, formData);
+            const serviceTotalHours = hours.totalHours;
+            let serviceUsedHours = hours.usedHours;
+            const serviceRemainingHours = hours.remainingHours;
 
-            // Handle "all services" option (hour packages only)
-            if (formData.service === 'all' || formData.service === 'כל השירותים') {
-                // Sum all services
-                // PR-G.3.14 (2026-05-27): exclude archived services from "כל השירותים"
-                // aggregation. Matches frontend table (ClientsDataManager) + backend SSOT
-                // (aggregates.js NON_AGGREGATING_STATUSES). Consistency across screens.
-                if (client.services && client.services.length > 0) {
-                    const billableServices = client.services.filter(s => (s?.status || 'active') !== 'archived');
-                    serviceTotalHours = billableServices.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
-                    serviceUsedHours = billableServices.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
-                    serviceRemainingHours = billableServices.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
-                } else {
-                    serviceTotalHours = client.totalHours || 0;
-                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
-                    serviceRemainingHours = client.hoursRemaining || 0;
-                }
-                purchaseDate = client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-';
-            }
+            // Purchase date (display-only; independent of the hours figures).
+            const dateService = client.services?.find(s =>
+                s.name === formData.service ||
+                s.serviceName === formData.service ||
+                s.displayName === formData.service ||
+                (s.stage && formData.service.includes(s.stage)) ||
+                (s.displayName && s.displayName.includes(formData.service)) ||
+                (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage)));
+            const purchaseDate = (dateService && dateService.purchasedAt)
+                ? this.formatDate(dateService.purchasedAt.toDate())
+                : (client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-');
 
-            if (formData.service !== 'all' && formData.service !== 'כל השירותים') {
-                // ═══ ENHANCED SERVICE MATCHING ═══
-                // Try multiple field combinations to find the service
-                // 🔍 CRITICAL: Check 'name' FIRST as it's the PRIMARY field in services array!
-                const selectedService = client.services?.find(s => {
-                    // Check name FIRST (this is the primary field!)
-                    if (s.name === formData.service) {
-return true;
-}
-
-                    // Check serviceName (alternative)
-                    if (s.serviceName === formData.service) {
-return true;
-}
-
-                    // Check displayName (legal procedures use this)
-                    if (s.displayName === formData.service) {
-return true;
-}
-
-                    // Check stage matching (for legal procedures)
-                    // formData.service might be "הליך משפטי - שלב א'" and s.stage might be "stage_a"
-                    if (s.stage && formData.service.includes(s.stage)) {
-return true;
-}
-
-                    // Check reverse: if service displayName contains the stage identifier
-                    if (s.displayName && s.displayName.includes(formData.service)) {
-return true;
-}
-
-                    return false;
-                });
-
-                if (selectedService) {
-                    console.log('✅ Found selected service:', {
-                        serviceName: selectedService.serviceName || selectedService.name || selectedService.displayName,
-                        totalHours: selectedService.totalHours || selectedService.hours,
-                        remainingHours: selectedService.hoursRemaining || selectedService.remainingHours,
-                        stage: selectedService.stage
-                    });
-
-                    // Get total hours with multiple field fallbacks
-                    serviceTotalHours = selectedService.totalHours ||
-                                      selectedService.hours ||
-                                      selectedService.allocatedHours ||
-                                      selectedService.stageHours || 0;
-
-                    // Get remaining hours
-                    serviceRemainingHours = selectedService.hoursRemaining ||
-                                          selectedService.remainingHours || 0;
-
-                    // Calculate used hours from total - remaining
-                    serviceUsedHours = serviceTotalHours - serviceRemainingHours;
-
-                    // Get purchase date
-                    purchaseDate = selectedService.purchasedAt ?
-                                 this.formatDate(selectedService.purchasedAt.toDate()) :
-                                 (client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-');
-                } else {
-                    // ═══ IMPROVED FALLBACK ═══
-                    console.warn(`⚠️ Service "${formData.service}" not found in client.services`);
-                    console.log('Available services:', client.services?.map(s => ({
-                        serviceName: s.serviceName,
-                        name: s.name,
-                        displayName: s.displayName,
-                        stage: s.stage
-                    })));
-
-                    // Try to calculate from timesheet entries for this specific service
-                    if (this.dataManager) {
-                        const timesheetEntries = this.dataManager.getClientTimesheetEntries(client.fullName);
-                        const serviceEntries = timesheetEntries.filter(entry => {
-                            // Match by service name
-                            if (entry.serviceName === formData.service) {
-return true;
-}
-                            if (entry.service === formData.service) {
-return true;
-}
-
-                            // Match by serviceId (for legal procedures: "stage_a", "stage_b", etc.)
-                            if (entry.serviceId === formData.service) {
-return true;
-}
-
-                            // Match by stage display name (for legal procedures: "שלב א", "שלב ב", etc.)
-                            if (entry.serviceId && formData.service) {
-                                const stageMapping = window.SYSTEM_CONSTANTS?.STAGE_NAMES || {
-                                    'stage_a': 'שלב א',
-                                    'stage_b': 'שלב ב',
-                                    'stage_c': 'שלב ג'
-                                };
-                                if (stageMapping[entry.serviceId] === formData.service) {
-return true;
-}
-                            }
-
-                            return false;
-                        });
-
-                        if (serviceEntries.length > 0) {
-                            const totalMinutes = serviceEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
-                            serviceUsedHours = totalMinutes / 60;
-                            console.log(`📊 Calculated ${serviceUsedHours.toFixed(2)} hours from ${serviceEntries.length} timesheet entries`);
-                        }
-                    }
-
-                    // If still no data, use client totals as last resort
-                    if (serviceUsedHours === 0) {
-                        serviceTotalHours = client.totalHours || 0;
-                        serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
-                        serviceRemainingHours = client.hoursRemaining || 0;
-                    }
-
-                    purchaseDate = client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-';
+            // (d) Service/stage not matched in client.services: derive USED hours from
+            // this service's own timesheet entries. NEVER borrow client.totalHours.
+            if (hours.matchType === 'none' && this.dataManager) {
+                console.warn(`Service "${formData.service}" not matched in client.services; deriving used-hours from timesheet (no client-total fallback).`);
+                const stageMapping = window.SYSTEM_CONSTANTS?.STAGE_NAMES || {
+                    'stage_a': 'שלב א',
+                    'stage_b': 'שלב ב',
+                    'stage_c': 'שלב ג'
+                };
+                const allEntries = this.dataManager.getClientTimesheetEntries(client.fullName);
+                const serviceEntries = allEntries.filter(entry =>
+                    entry.serviceName === formData.service ||
+                    entry.service === formData.service ||
+                    entry.serviceId === formData.service ||
+                    (formData.stage && entry.serviceId === formData.stage) ||
+                    (entry.serviceId && stageMapping[entry.serviceId] === formData.service)
+                );
+                if (serviceEntries.length > 0) {
+                    const totalMinutes = serviceEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+                    serviceUsedHours = totalMinutes / 60;
                 }
             }
 
@@ -810,62 +794,13 @@ return true;
 
             // Calculate initial balance based on selected service
             // ═══ ENHANCED SERVICE MATCHING (same as renderServiceInfo) ═══
+            // Initial balance = budget of the SELECTED service/stage only (SSOT helper).
+            // For a single service/stage this never uses client.totalHours (the over-count
+            // bug where the running balance counted down from the sum of all services).
             let serviceTotalMinutes = 0;
-
             if (client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') {
-                if (formData.service === 'all') {
-                    // If "all services" selected, sum up all service hours
-                    // PR-G.3.14: exclude archived services (consistent with aggregates.js).
-                    if (client.services && client.services.length > 0) {
-                        const billableServices = client.services.filter(s => (s?.status || 'active') !== 'archived');
-                        const totalHours = billableServices.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
-                        serviceTotalMinutes = totalHours * 60;
-                    } else {
-                        serviceTotalMinutes = (client.totalHours || 0) * 60;
-                    }
-                } else {
-                    // Find the specific service with enhanced matching
-                    const selectedService = client.services?.find(s => {
-                        // Check serviceName (original)
-                        if (s.serviceName === formData.service) {
-return true;
-}
-
-                        // Check name (common alternative)
-                        if (s.name === formData.service) {
-return true;
-}
-
-                        // Check displayName (legal procedures use this)
-                        if (s.displayName === formData.service) {
-return true;
-}
-
-                        // Check stage matching (for legal procedures)
-                        if (s.stage && formData.service.includes(s.stage)) {
-return true;
-}
-
-                        // Check reverse: if service displayName contains the stage identifier
-                        if (s.displayName && s.displayName.includes(formData.service)) {
-return true;
-}
-
-                        return false;
-                    });
-
-                    if (selectedService) {
-                        const totalHours = selectedService.totalHours ||
-                                         selectedService.hours ||
-                                         selectedService.allocatedHours ||
-                                         selectedService.stageHours || 0;
-                        serviceTotalMinutes = totalHours * 60;
-                    } else {
-                        // Fallback: if service not found, use client's total hours
-                        console.warn(`⚠️ Service "${formData.service}" not found for balance calculation. Using fallback.`);
-                        serviceTotalMinutes = (client.totalHours || 0) * 60;
-                    }
-                }
+                const hours = this.resolveServiceHours(client, formData);
+                serviceTotalMinutes = (hours.totalHours || 0) * 60;
             }
 
             let accumulatedMinutes = 0;
@@ -915,77 +850,18 @@ return true;
                 return '';
             }
 
-            // Calculate service totals (same logic as renderServiceInfo)
-            let serviceTotalHours = 0;
-            let serviceUsedHours = 0;
-            let serviceRemainingHours = 0;
+            // SSOT: resolve hours scoped to the selected service/stage (shared helper).
+            const hours = this.resolveServiceHours(client, formData);
+            let serviceTotalHours = hours.totalHours;
+            let serviceUsedHours = hours.usedHours;
+            let serviceRemainingHours = hours.remainingHours;
 
-            if (formData.service === 'all' || formData.service === 'כל השירותים') {
-                // PR-G.3.14: exclude archived services from "כל השירותים" totals.
-                if (client.services && client.services.length > 0) {
-                    const billableServices = client.services.filter(s => (s?.status || 'active') !== 'archived');
-                    serviceTotalHours = billableServices.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
-                    serviceUsedHours = billableServices.reduce((sum, s) => sum + ((s.totalHours || s.hours || 0) - (s.hoursRemaining || s.remainingHours || 0)), 0);
-                    serviceRemainingHours = billableServices.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
-                } else {
-                    serviceTotalHours = client.totalHours || 0;
-                    serviceUsedHours = (client.totalHours || 0) - (client.hoursRemaining || 0);
-                    serviceRemainingHours = client.hoursRemaining || 0;
-                }
-            } else {
-                // First try: legal_procedure stage (formData.stage holds e.g. "stage_a")
-                let selectedStage = null;
-                if (formData.stage && Array.isArray(client.services)) {
-                    for (const s of client.services) {
-                        if (Array.isArray(s.stages)) {
-                            const match = s.stages.find(st => st.id === formData.stage);
-                            if (match) {
-                                selectedStage = match;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (selectedStage) {
-                    serviceTotalHours = selectedStage.totalHours || selectedStage.hours || 0;
-                    serviceRemainingHours = (selectedStage.hoursRemaining !== undefined)
-                        ? selectedStage.hoursRemaining
-                        : (serviceTotalHours - (selectedStage.hoursUsed || 0));
-                    serviceUsedHours = selectedStage.hoursUsed !== undefined
-                        ? selectedStage.hoursUsed
-                        : (serviceTotalHours - serviceRemainingHours);
-                } else {
-                    const selectedService = client.services?.find(s => {
-                        if (s.name === formData.service) {
-return true;
-}
-                        if (s.serviceName === formData.service) {
-return true;
-}
-                        if (s.displayName === formData.service) {
-return true;
-}
-                        if (s.stage && formData.service.includes(s.stage)) {
-return true;
-}
-                        if (s.displayName && s.displayName.includes(formData.service)) {
-return true;
-}
-                        return false;
-                    });
-
-                    if (selectedService) {
-                        serviceTotalHours = selectedService.totalHours || selectedService.hours || selectedService.allocatedHours || selectedService.stageHours || 0;
-                        serviceRemainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
-                        serviceUsedHours = serviceTotalHours - serviceRemainingHours;
-                    } else {
-                        // Last resort: derive from filtered timesheetEntries (already service-scoped)
-                        serviceUsedHours = timesheetEntries.reduce((sum, e) => sum + ((e.minutes || 0) / 60), 0);
-                        serviceTotalHours = 0;
-                        serviceRemainingHours = -serviceUsedHours;
-                    }
-                }
+            // (d) Not matched: derive used-hours from the already service-scoped timesheet
+            // entries passed in (collectReportData filters them). NEVER borrow client.totalHours.
+            if (hours.matchType === 'none') {
+                serviceUsedHours = timesheetEntries.reduce((sum, e) => sum + ((e.minutes || 0) / 60), 0);
+                serviceTotalHours = 0;
+                serviceRemainingHours = -serviceUsedHours;
             }
 
             const hasOverdraft = serviceRemainingHours < 0;
