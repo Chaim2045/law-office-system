@@ -1335,6 +1335,8 @@
     <!-- Modern modular case creation system - currently in testing -->
     <script defer src="js/modules/case-creation/case-number-generator.js?v=esc5fix"></script>
     <script defer src="js/modules/case-creation/case-form-validator.js?v=esc5fix"></script>
+    <!-- Pre-H.1.0b: ת"ז (Israeli ID) check-digit validator. ES module → sets window.IsraeliId for the classic-script dialog below (read at click-time, so load order is safe). -->
+    <script type="module" src="js/modules/israeli-id.js?v=esc5fix"></script>
     <script defer src="js/modules/case-creation/case-creation-dialog.js?v=esc5fix"></script>
 
     <!-- ===== Smart Descriptions System ===== -->

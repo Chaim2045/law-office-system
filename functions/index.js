@@ -78,9 +78,40 @@ exports.onSystemHealthCheckCreated = systemReportsOutboxTrigger.onSystemHealthCh
 const authModule = require('./auth');
 exports.createAuthUser = authModule.createAuthUser;
 exports.linkAuthToEmployee = authModule.linkAuthToEmployee;
-exports.setAdminClaim = authModule.setAdminClaim;
-exports.initializeAdminClaims = authModule.initializeAdminClaims;
-exports.setAdminClaims = authModule.setAdminClaims;
+exports.setAdminClaim = authModule.setAdminClaim; // legacy onCall singular form (revoke + grant)
+exports.verifyClaims = authModule.verifyClaims; // PR-H.0.0.A — read-only diagnostic
+
+// Auth Functions (TS — Pre-H.0.0.B replacements for the legacy unauth'd setAdminClaims
+// and the under-auth'd initializeAdminClaims). Both compiled from functions/src-ts/.
+const setAdminClaimsModule = require('./lib/set-admin-claims');
+exports.setAdminClaims = setAdminClaimsModule.setAdminClaims;
+const initializeAdminClaimsModule = require('./lib/initialize-admin-claims');
+exports.initializeAdminClaims = initializeAdminClaimsModule.initializeAdminClaims;
+
+// Employee Costs (TS — Pre-H.0.0.G). CF-only employee_costs/{email} collection.
+// setEmployeeCost: admin-gated write, audit-first. getEmployeeCost: admin-gated read.
+// Both compiled from functions/src-ts/. Consumed by Phase 2 H.2 (cost foundation).
+const setEmployeeCostModule = require('./lib/set-employee-cost');
+exports.setEmployeeCost = setEmployeeCostModule.setEmployeeCost;
+const getEmployeeCostModule = require('./lib/get-employee-cost');
+exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
+
+// tofes-mecher bridge (TS — Phase 2 H.0 foundation). Admin-gated v2 onCall that
+// proves the cross-project wiring (Secret Manager → SA key → named app → 1 read).
+// ⚠️ DEPLOY PREREQUISITE: the secret TOFES_MECHER_SA_KEY must exist in Secret
+// Manager BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret).
+// ⚠️ REPURPOSE-OR-DELETE in H.1 once the real validateSalesRecordExists ships.
+//
+// 🔴 TEMPORARILY DISABLED (2026-06-04 — deploy-unblock incident). Exporting this
+// function loaded connectivity-check.ts, whose top-level defineSecret('TOFES_MECHER_SA_KEY')
+// made EVERY PROD functions deploy abort ("In non-interactive mode but have no value
+// for the secret: TOFES_MECHER_SA_KEY") because the secret was never set. Both the
+// require AND the export are commented so the module is never loaded and defineSecret
+// never runs — restoring PROD deployability without the secret. The cross-project SA +
+// secret are provisioned in H.1; RE-ENABLE these two lines there, where this function
+// then validates the deployed wiring as originally designed (MASTER_PLAN §8.2).
+// const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
+// exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
 
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');

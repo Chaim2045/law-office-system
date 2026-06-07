@@ -1,0 +1,55 @@
+{
+  // PR-META-6: TypeScript config for NEW backend code only.
+  // Existing JS in functions/ stays untouched (allowJs: false).
+  // Extends the EXISTING root tsconfig but overrides module system
+  // (Cloud Functions Node 20 runtime requires CommonJS).
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // === Module system — override root ESNext (frontend) for Node 20 CommonJS ===
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+
+    // === Output ===
+    "rootDir": "./",
+    "outDir": "../lib",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "removeComments": false,
+
+    // === Strictness (already strict from root; explicit for clarity) ===
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // === Interop — DO NOT inherit "bundler" moduleResolution from root ===
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    // === Type safety ===
+    "skipLibCheck": true,
+
+    // === Hard NO ===
+    "allowJs": false
+  },
+  "include": [
+    "./**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "../lib",
+    "../node_modules",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/__tests__/**"
+  ]
+}

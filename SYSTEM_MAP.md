@@ -46,7 +46,7 @@
 | 35 | `getUserActivity` | callable | `functions/admin/master-admin-wrappers.js` | 755 |
 | 36 | `getUserFullDetails` | callable | `functions/admin/master-admin-wrappers.js` | 569 |
 | 37 | `getUserMetrics` | callable | `functions/metrics/index.js` | 18 |
-| 38 | `initializeAdminClaims` | callable | `functions/auth/index.js` | 255 |
+| 38 | `initializeAdminClaims` | callable (v2) | `functions/src-ts/initialize-admin-claims.ts` | — |
 | 39 | `linkAuthToEmployee` | callable | `functions/auth/index.js` | 127 |
 | 40 | `logActivity` | callable | `functions/admin/index.js` | 35 |
 | 41 | `markNotificationAsRead` | callable | `functions/task-update-realtime.js` | 260 |
@@ -55,7 +55,7 @@
 | 44 | `sendBroadcastMessage` | callable | `functions/whatsapp/index.js` | 139 |
 | 45 | `sendWhatsAppApprovalNotification` | callable | `functions/whatsapp/index.js` | 313 |
 | 46 | `setAdminClaim` | callable | `functions/auth/index.js` | 183 |
-| 47 | `setAdminClaims` | http | `functions/auth/index.js` | 329 |
+| 47 | `setAdminClaims` | callable (v2) | `functions/src-ts/set-admin-claims.ts` | — |
 | 48 | `updateBudgetTask` | callable | `functions/task-update-realtime.js` | 98 |
 | 49 | `updateClient` | callable | `functions/clients/index.js` | 906 |
 | 50 | `updateMetricsOnTaskChange` | trigger | `functions/metrics/index.js` | 124 |
@@ -533,8 +533,8 @@
 | 3 | `createAuthUser` | callable | `functions/auth/index.js` |
 | 4 | `linkAuthToEmployee` | callable | `functions/auth/index.js` |
 | 5 | `setAdminClaim` | callable | `functions/auth/index.js` |
-| 6 | `initializeAdminClaims` | callable | `functions/auth/index.js` |
-| 7 | `setAdminClaims` | http | `functions/auth/index.js` |
+| 6 | `initializeAdminClaims` | callable (v2) | `functions/src-ts/initialize-admin-claims.ts` |
+| 7 | `setAdminClaims` | callable (v2) | `functions/src-ts/set-admin-claims.ts` |
 | 8 | `getBudgetTasks` | callable | `functions/budget-tasks/index.js` |
 | 9 | `getNextCaseNumber` | callable | `functions/clients/index.js` |
 | 10 | `deleteClient` | callable | `functions/clients/index.js` |

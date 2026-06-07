@@ -57,18 +57,35 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      # PR-CI-1: PR fields (title, head ref, author, …) are USER-CONTROLLED and
+      # must NOT be inlined as ${{ … }} into a run: shell. ${{ }} is substituted
+      # into the script *source* before the shell parses it, so a title that
+      # contains a double-quote breaks the step (this happened on PR #348 with a
+      # gershayim ת"ז written as ") and a crafted title/branch is an arbitrary-
+      # command injection vector. Pass each value through env: and reference it
+      # as a quoted shell variable — the runner sets the env var to the literal
+      # value and the shell never re-parses its contents as code.
+      # Ref: GitHub Docs — "Understanding the risk of script injections".
       - name: 📊 Display PR Details
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
         run: |
           echo "════════════════════════════════════════"
           echo "📝 Pull Request Information"
           echo "════════════════════════════════════════"
-          echo "PR Number: #${{ github.event.pull_request.number }}"
-          echo "Title: ${{ github.event.pull_request.title }}"
-          echo "Author: ${{ github.event.pull_request.user.login }}"
-          echo "Base Branch: ${{ github.event.pull_request.base.ref }}"
-          echo "Head Branch: ${{ github.event.pull_request.head.ref }}"
-          echo "Changed Files: ${{ github.event.pull_request.changed_files }}"
-          echo "Commits: ${{ github.event.pull_request.commits }}"
+          echo "PR Number: #${PR_NUMBER}"
+          echo "Title: ${PR_TITLE}"
+          echo "Author: ${PR_AUTHOR}"
+          echo "Base Branch: ${PR_BASE_REF}"
+          echo "Head Branch: ${PR_HEAD_REF}"
+          echo "Changed Files: ${PR_CHANGED_FILES}"
+          echo "Commits: ${PR_COMMITS}"
           echo "════════════════════════════════════════"
 
   # ═════════════════════════════════════════════════════════════
@@ -101,17 +118,38 @@ jobs:
       - name: 🎨 Lint CSS Files
         run: npm run css:lint
 
+      # PR-META-6: Lint new TypeScript backend code in functions/src-ts/.
+      # Existing JS in functions/ is intentionally NOT linted here — the
+      # commonIgnores in eslint.config.js still applies, so this step is a
+      # NO-OP if no .ts files exist under functions/src-ts/ yet.
+      # 0 errors blocks merge; warnings are reported but don't fail the step.
+      - name: 🟦 Lint functions/src-ts (PR-META-6)
+        run: |
+          if [ -d functions/src-ts ] && find functions/src-ts -name '*.ts' -not -path '*/node_modules/*' -print -quit | grep -q .; then
+            echo "Linting functions/src-ts/ TypeScript files..."
+            npx eslint 'functions/src-ts/**/*.ts'
+          else
+            echo "⏭️  Skipped — no .ts files in functions/src-ts/ yet."
+          fi
+
+      # PR-CI-1: base ref via env: (see JOB 1) — never inline a github.event.*
+      # value into a shell command. The ref-range is quoted as a single arg.
       - name: 📊 Changed Files Statistics
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           echo "📊 Files Changed in This PR:"
-          git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | head -20
+          git diff --name-only "origin/${PR_BASE_REF}...HEAD" | head -20
           echo ""
-          echo "Total files changed: $(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | wc -l)"
+          echo "Total files changed: $(git diff --name-only "origin/${PR_BASE_REF}...HEAD" | wc -l)"
 
+      # PR-CI-1: base ref via env: (see JOB 1).
       - name: 🔍 Check for New TODOs
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           echo "🔍 Checking for new TODO comments..."
-          NEW_TODOS=$(git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -i "^+.*TODO\|^+.*FIXME\|^+.*XXX" | wc -l || echo "0")
+          NEW_TODOS=$(git diff "origin/${PR_BASE_REF}...HEAD" | grep -i "^+.*TODO\|^+.*FIXME\|^+.*XXX" | wc -l || echo "0")
           echo "📝 New TODO comments added: $NEW_TODOS"
           if [ "$NEW_TODOS" -gt 5 ]; then
             echo "⚠️ Warning: Many new TODOs added ($NEW_TODOS)"
@@ -156,6 +194,20 @@ jobs:
       - name: 🏗️ Compile TypeScript
         run: npm run compile-ts
 
+      # PR-META-6: Typecheck + build new TS code under functions/src-ts/.
+      # Uses functions/src-ts/tsconfig.json which extends the root tsconfig
+      # but emits to functions/lib/ (Node 20 CommonJS).
+      - name: 📘 Typecheck functions/src-ts (PR-META-6)
+        run: |
+          if [ -d functions/src-ts ] && find functions/src-ts -name '*.ts' -not -path '*/node_modules/*' -print -quit | grep -q .; then
+            echo "Installing functions/ dependencies..."
+            cd functions && npm ci --prefer-offline --no-audit && cd ..
+            echo "Typechecking functions/src-ts/..."
+            cd functions && npm run typecheck:ts && cd ..
+          else
+            echo "⏭️  Skipped — no .ts files in functions/src-ts/ yet."
+          fi
+
       - name: ✅ TypeScript Validation Passed
         run: echo "✅ All TypeScript files compiled successfully!"
 
@@ -185,10 +237,13 @@ jobs:
           echo "⏸️ npm audit deferred to Phase 1.5 (firebase 11→12 upgrade)."
           echo "Continuous coverage handled by Dependabot — see .github/dependabot.yml"
 
+      # PR-CI-1: base ref via env: (see JOB 1).
       - name: 🔍 Scan for Exposed Secrets
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           echo "🔍 Scanning for exposed secrets in PR..."
-          if git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep -i "password\|secret\|apikey.*:.*['\"]AIza" 2>/dev/null; then
+          if git diff "origin/${PR_BASE_REF}...HEAD" | grep -i "password\|secret\|apikey.*:.*['\"]AIza" 2>/dev/null; then
             echo "⚠️ Warning: Potential secrets detected in PR diff"
             echo "Please review and remove before merging!"
           else
@@ -210,7 +265,11 @@ jobs:
   test:
     name: 🧪 Run Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Bumped from 15 → 25 min in Pre-H.0.0.D (devils-advocate Attack #3):
+    # firebase emulators:exec cold-boots a Java-based Firestore emulator
+    # which adds ~15-30s before any rules test runs. 15-min ceiling was
+    # cutting it close on flaky cold starts.
+    timeout-minutes: 25
 
     steps:
       - name: 📥 Checkout PR Code
@@ -224,10 +283,29 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+      # PR-Pre-H.0.0.D: Java runtime required for the Firestore Emulator
+      # (devils-advocate Attack #4). Pin to a known-working JDK to avoid
+      # silent breakage when ubuntu-latest image rolls newer JDK versions.
+      - name: ☕ Setup Java (required by Firestore Emulator)
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: 📦 Install Dependencies
         run: npm ci --prefer-offline --no-audit
 
-      - name: 🧪 Run Vitest (root)
+      - name: 🔒 Verify Firestore Emulator binary is available
+        run: npx firebase --version
+
+      # PR-Pre-H.0.0.D: rules tests use `@firebase/rules-unit-testing` against
+      # the local emulator. `emulators:exec` auto-manages boot/teardown. The
+      # rules-test setup hard-fails if FIRESTORE_EMULATOR_HOST is not set —
+      # so this step IS the only sanctioned entry point.
+      - name: 🔐 Run Firestore Rules tests (emulator)
+        run: npm run test:rules:emulator
+
+      - name: 🧪 Run Vitest (root, non-rules)
         run: npm test
 
       - name: 📦 Install Functions dependencies

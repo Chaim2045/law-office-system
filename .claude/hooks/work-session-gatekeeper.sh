@@ -60,10 +60,27 @@ if git rev-parse --verify origin/production-stable >/dev/null 2>&1 && git rev-pa
   [ -z "$DEPLOY_DRIFT" ] && DEPLOY_DRIFT=0
 fi
 
+# PROD deploy HEALTH (not just commit drift). The gap that hid the 2026-06-04
+# incident: the ci-cd-production `deploy-production` job was RED on every merge
+# to main for 6 days (two stacked blockers — a 1st->2nd-Gen function conflict
+# + an unset secret), freezing ~6 days of Cloud Functions + firestore.rules out
+# of PROD, while commit-drift looked normal and no session noticed. We surface
+# the latest ci-cd-production run conclusion so the next session is ALERTED.
+# NOTE: a MANUAL `firebase deploy` is out-of-band and won't register as a run,
+# so a stale failed run can over-alert until the next code push to main — that
+# is intentional (over-alert > under-alert on PROD deploy health; the Lead Agent
+# verifies the actual state before acting).
+DEPLOY_RUN_FAILED=0
+if command -v gh >/dev/null 2>&1; then
+  DEPLOY_RUN_CONCLUSION=$(gh run list --workflow=ci-cd-production.yml --branch main --limit 1 --json conclusion 2>/dev/null \
+    | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{const a=JSON.parse(d);process.stdout.write(String((a[0]&&a[0].conclusion)||""))}catch(e){process.stdout.write("")}})' 2>/dev/null || echo -n "")
+  [ "$DEPLOY_RUN_CONCLUSION" = "failure" ] && DEPLOY_RUN_FAILED=1
+fi
+
 # ── Build summary ──────────────────────────────────────────────
 SUMMARY=""
 
-if [ "$UNCOMMITTED_COUNT" = "0" ] && [ "$STASH_COUNT" = "0" ] && [ "$UNMERGED_BRANCHES" = "0" ] && [ "$EXTRA_WORKTREES" = "0" ] && [ "$AHEAD" = "0" ] && [ "$OPEN_PRS_COUNT" = "0" ] && [ "$DEPLOY_DRIFT" = "0" ]; then
+if [ "$UNCOMMITTED_COUNT" = "0" ] && [ "$STASH_COUNT" = "0" ] && [ "$UNMERGED_BRANCHES" = "0" ] && [ "$EXTRA_WORKTREES" = "0" ] && [ "$AHEAD" = "0" ] && [ "$OPEN_PRS_COUNT" = "0" ] && [ "$DEPLOY_DRIFT" = "0" ] && [ "$DEPLOY_RUN_FAILED" = "0" ]; then
   SUMMARY="🔒 Work Session Gatekeeper — clean state. Branch: $BRANCH. No open work detected. Safe to start new task."
 else
   SUMMARY="🔒 Work Session Gatekeeper — OPEN WORK DETECTED"
@@ -75,6 +92,7 @@ else
   [ "$AHEAD" != "0" ] && SUMMARY="$SUMMARY"$'\n'"- Commits ahead of origin: $AHEAD"
   [ "$OPEN_PRS_COUNT" != "0" ] && SUMMARY="$SUMMARY"$'\n'"- Open PRs: $OPEN_PRS_COUNT"$'\n'"$OPEN_PRS_SUMMARY"
   [ "$DEPLOY_DRIFT" != "0" ] && SUMMARY="$SUMMARY"$'\n'"- Deploy drift (commits on main not in production-stable): $DEPLOY_DRIFT"
+  [ "$DEPLOY_RUN_FAILED" = "1" ] && SUMMARY="$SUMMARY"$'\n'"- 🔴 LAST PROD PIPELINE RUN FAILED (ci-cd-production on main) — a Cloud Functions / firestore.rules deploy may be FROZEN in PROD. Investigate with \`gh run list --workflow=ci-cd-production.yml --branch main\` + the failed job's log BEFORE merging more code (this is the 2026-06-04 incident class)."
   SUMMARY="$SUMMARY"$'\n'$'\n'"⚠️ Lead Agent: before starting a new task, assess whether this open work overlaps with the new request. If yes — recommend continuing existing work instead. If no — flag the open work and ask Haim how to proceed."
 fi
 

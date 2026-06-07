@@ -527,15 +527,36 @@ jobs:
     if: always()
 
     steps:
+      # PR-CI-2: github.ref_name (the branch/tag name) and github.actor are
+      # NOT safe to inline as ${{ … }} into a run: shell. ${{ }} is substituted
+      # into the script *source* before the shell parses it, so a branch or tag
+      # name containing $(…), backticks, or ; would be executed as code — the
+      # same script-injection class fixed in pull-request.yml (PR #349).
+      # Severity is lower than that PR-title vector: this notify job DOES also
+      # run on pull_request events (if: always() fires even though its needs
+      # chain is skipped on a PR), but on a PR github.ref_name is the synthetic
+      # "<n>/merge" ref and the attacker-controlled head-branch name lands only
+      # in github.head_ref — which this step never references. The real vector
+      # is therefore a collaborator pushing a maliciously-named branch/tag,
+      # where github.ref_name CAN carry $, backticks, and parens. github.actor
+      # is charset-safe [A-Za-z0-9-] (defense-in-depth only). The mitigation is
+      # the same and free: pass each value through env: and reference it as a
+      # quoted shell variable, so the runner sets the var to the literal text
+      # and the shell never re-parses its contents as code. job.status /
+      # github.workflow / github.sha stay inline below — not user-controllable.
+      # Ref: GitHub Docs — "Understanding the risk of script injections".
       - name: 📧 Deployment Status Summary
+        env:
+          PR_REF_NAME: ${{ github.ref_name }}
+          PR_ACTOR: ${{ github.actor }}
         run: |
           echo "📊 Pipeline Execution Summary:"
           echo "════════════════════════════════"
           echo "Status: ${{ job.status }}"
           echo "Workflow: ${{ github.workflow }}"
-          echo "Branch: ${{ github.ref_name }}"
+          echo "Branch: ${PR_REF_NAME}"
           echo "Commit: ${{ github.sha }}"
-          echo "Author: ${{ github.actor }}"
+          echo "Author: ${PR_ACTOR}"
           echo "════════════════════════════════"
 
       - name: ✅ Success Notification

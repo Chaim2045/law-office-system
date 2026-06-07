@@ -8,6 +8,10 @@ serviceAccountKey.json
 service-account*.json
 firebase-admin-key.json
 service-account-key.json
+# Phase 2 H.0: ALL local credential files live under functions/secrets/ —
+# directory-scoped ignore so any key name (e.g. tofes-mecher-sa.json) is safe,
+# not just `service-account*`-prefixed names. (outcomes-grader H.0 finding.)
+functions/secrets/
 
 # Environment variables (contain API secrets)
 functions/.env
