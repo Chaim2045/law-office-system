@@ -6,9 +6,8 @@
  *
  * ─── Design contract (mirrors set-admin-claims.ts; Pre-H.0.0.G checkpoint) ──
  *  1. v2 `onCall` — handler exported separately for direct unit testing.
- *  2. Dual-shape admin gate — `claims.role==='admin' || claims.admin===true`.
- *     (The legacy `admin:true` branch dies after Pre-H.0.0.E retires it; G is on
- *     E's consumer-sweep list.)
+ *  2. Role-only admin gate — `claims.role === 'admin'`. The legacy `admin:true`
+ *     branch was removed in the Pre-H.0.0.E follow-up (2026-06-05).
  *  3. Zod `.strict()` input validation `{email, costPerHour, currency?,
  *     validFrom?, source?}`.
  *  4. Email normalized to lowercase ONCE — the SAME key is used for the
@@ -57,8 +56,8 @@ export async function setEmployeeCostHandler(
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
   }
-  const claims = (request.auth.token ?? {}) as { role?: string; admin?: boolean };
-  const isAdmin = claims.role === 'admin' || claims.admin === true;
+  const claims = (request.auth.token ?? {}) as { role?: string };
+  const isAdmin = claims.role === 'admin';
   if (!isAdmin) {
     throw new HttpsError(
       'permission-denied',

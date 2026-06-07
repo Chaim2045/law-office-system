@@ -63,8 +63,9 @@ describe('getEmployeeCost — static AST invariants', () => {
     code = stripComments(source);
   });
 
-  it('is admin-gated with NO self-read carve-out', () => {
-    expect(source).toContain("claims.role === 'admin' || claims.admin === true");
+  it('is admin-gated (role-only, Pre-H.0.0.E follow-up) with NO self-read carve-out', () => {
+    expect(code).toContain("const isAdmin = claims.role === 'admin'");
+    expect(code).not.toContain('claims.admin === true'); // legacy boolean gate retired
     // There must be NO comparison of a target email against the caller's email
     // (which would be a self-read exception). Inspect code only.
     expect(code).not.toMatch(/===\s*request\.auth\.token\.email/);
@@ -104,10 +105,9 @@ describe('getEmployeeCostHandler — auth gates', () => {
     expect(res.costPerHour).toBe(150);
   });
 
-  it('accepts admin via legacy admin:true (dual-shape gate)', async () => {
+  it('REJECTS legacy admin:true-only token (Pre-H.0.0.E follow-up — role-only gate)', async () => {
     const req = makeRequest({ auth: { uid: ADMIN_UID, token: { admin: true } } });
-    const res = await getEmployeeCostHandler(req);
-    expect(res.success).toBe(true);
+    await expect(getEmployeeCostHandler(req)).rejects.toMatchObject({ code: 'permission-denied' });
   });
 });
 

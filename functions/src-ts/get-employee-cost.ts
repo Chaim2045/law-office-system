@@ -8,7 +8,8 @@
  *
  * ─── Design contract (Pre-H.0.0.G checkpoint) ──────────────────────────────
  *  1. v2 `onCall` — handler exported separately for direct unit testing.
- *  2. Dual-shape admin gate — `claims.role==='admin' || claims.admin===true`.
+ *  2. Role-only admin gate — `claims.role === 'admin'` (the legacy `admin:true`
+ *     acceptance was retired in the Pre-H.0.0.E follow-up, 2026-06-05).
  *  3. NO self-read carve-out — an employee may NOT read their own cost. The gate
  *     is admin-only with no `targetEmail === caller.email` exception. An
  *     employee's internal cost-rate is confidential HR data (security req #4 /
@@ -50,8 +51,8 @@ export async function getEmployeeCostHandler(
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
   }
-  const claims = (request.auth.token ?? {}) as { role?: string; admin?: boolean };
-  const isAdmin = claims.role === 'admin' || claims.admin === true;
+  const claims = (request.auth.token ?? {}) as { role?: string };
+  const isAdmin = claims.role === 'admin';
   // NO self-read carve-out — admin-only, even for one's own cost.
   if (!isAdmin) {
     throw new HttpsError(

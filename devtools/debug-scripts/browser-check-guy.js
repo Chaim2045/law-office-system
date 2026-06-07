@@ -65,11 +65,10 @@
                 const tokenResult = await currentUser.getIdTokenResult();
                 console.log('   Custom Claims:', JSON.stringify(tokenResult.claims, null, 2));
 
+                // Pre-H.0.0.E follow-up: role-only is the canonical admin signal.
                 const isAdminRole = tokenResult.claims.role === 'admin';
-                const isAdminClaim = tokenResult.claims.admin === true;
 
                 console.log('   ✓ Has role="admin":', isAdminRole);
-                console.log('   ✓ Has admin=true:', isAdminClaim);
             } else {
                 console.log('ℹ️  Guy is not currently logged in');
                 console.log('   Cannot check Custom Claims without login');

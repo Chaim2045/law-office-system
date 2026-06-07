@@ -140,10 +140,10 @@ describe('setEmployeeCostHandler — auth gates', () => {
     expect(mockCostSet).toHaveBeenCalledTimes(1);
   });
 
-  it('accepts admin via legacy admin:true (dual-shape gate)', async () => {
+  it('REJECTS legacy admin:true-only token (Pre-H.0.0.E follow-up — role-only gate)', async () => {
     const req = makeRequest({ auth: { uid: ADMIN_UID, token: { admin: true } } });
-    const res = await setEmployeeCostHandler(req);
-    expect(res.success).toBe(true);
+    await expect(setEmployeeCostHandler(req)).rejects.toMatchObject({ code: 'permission-denied' });
+    expect(mockCostSet).not.toHaveBeenCalled();
   });
 });
 

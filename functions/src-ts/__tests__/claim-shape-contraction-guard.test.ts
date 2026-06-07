@@ -23,11 +23,12 @@
  * so a source-level invariant is the appropriate, in-pattern test layer (mirrors
  * the static AST guards the Pre-H.0.0.B suites already use for the writers).
  *
- * SCOPE NOTE — what this guard deliberately does NOT assert:
- *   The auth GATES that READ a caller's token (`claims.admin === true || ...`)
- *   and the consumer reads (admin-panel auth.js) are intentionally UNCHANGED in
- *   E — they keep accepting the legacy token shape for one token-refresh window
- *   and are retired in the §7.4 FOLLOW-UP PR. This guard targets WRITES only.
+ * GATE CONTRACTION (Pre-H.0.0.E FOLLOW-UP, 2026-06-05): the §7.4 follow-up
+ *   retired the legacy `claims.admin === true` acceptance from every consumer
+ *   READ + auth gate too (after PROD verifyClaims confirmed admin_boolean_only:0
+ *   and the token-refresh window elapsed). Group (5) below locks that: no gate
+ *   reads the boolean anymore — EXCEPT the `verifyClaims` `adminBoolean`
+ *   DIAGNOSTIC, which is kept permanently as the regression sensor.
  *
  * Public-repo safety: reads source files only; no PII, no network, no writes.
  */
@@ -40,6 +41,11 @@ const INIT_ADMIN_CLAIMS = path.resolve(__dirname, '../initialize-admin-claims.ts
 const AUTH_INDEX = path.resolve(__dirname, '../../auth/index.js');
 const GRANT_EMERGENCY = path.resolve(__dirname, '../../scripts/grant-admin-emergency.js');
 const MASTER_ADMIN_WRAPPERS = path.resolve(__dirname, '../../admin/master-admin-wrappers.js');
+// Consumer-gate files contracted in the Pre-H.0.0.E follow-up (group 5).
+const GET_EMPLOYEE_COST = path.resolve(__dirname, '../get-employee-cost.ts');
+const SET_EMPLOYEE_COST = path.resolve(__dirname, '../set-employee-cost.ts');
+const CONNECTIVITY_CHECK = path.resolve(__dirname, '../tofes-mecher/connectivity-check.ts');
+const ADMIN_PANEL_AUTH = path.resolve(__dirname, '../../../apps/admin-panel/js/core/auth.js');
 
 function read(file: string): string {
   return fs.readFileSync(file, 'utf8');
@@ -155,5 +161,36 @@ describe('claim-shape contraction — repo-wide: no writer emits admin:true', ()
   ])('%s never writes admin:true via setCustomUserClaims', (_name, file) => {
     const code = stripComments(read(file));
     expect(code).not.toMatch(/setCustomUserClaims\([^)]*admin:\s*true/);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// (5) Pre-H.0.0.E FOLLOW-UP — consumer GATES no longer read admin === true
+// ════════════════════════════════════════════════════════════════════════════
+// The 5 callable gates + the admin-panel Layer-1 read dropped the legacy boolean
+// acceptance. This backstop prevents the `claims.admin === true` fallback from
+// creeping back into any gate (the §7.4 "or the guard is silently lost" rule).
+// `auth/index.js` is asserted separately because it KEEPS the verifyClaims
+// `adminBoolean` DIAGNOSTIC (a report field, not a gate) as the regression sensor.
+describe('claim-shape contraction (follow-up) — gates no longer read admin === true', () => {
+  it.each([
+    ['set-admin-claims.ts', SET_ADMIN_CLAIMS],
+    ['initialize-admin-claims.ts', INIT_ADMIN_CLAIMS],
+    ['get-employee-cost.ts', GET_EMPLOYEE_COST],
+    ['set-employee-cost.ts', SET_EMPLOYEE_COST],
+    ['tofes-mecher/connectivity-check.ts', CONNECTIVITY_CHECK],
+    ['admin-panel/auth.js', ADMIN_PANEL_AUTH]
+  ])('%s gate no longer reads .admin === true', (_name, file) => {
+    expect(stripComments(read(file))).not.toMatch(/\.admin === true/);
+  });
+
+  it('verifyClaims gate is role-only BUT keeps the adminBoolean diagnostic', () => {
+    const code = stripComments(read(AUTH_INDEX));
+    // Gate contracted: the isAdmin gate is role-only (no boolean OR-clause).
+    expect(code).toMatch(/const isAdmin = \(claims\.role === 'admin'\);/);
+    expect(code).not.toMatch(/isAdmin = \(claims\.role === 'admin'\) \|\| \(claims\.admin === true\)/);
+    // Diagnostic preserved: the report still measures the boolean shape so a
+    // future regression (manual Console grant) stays detectable.
+    expect(code).toMatch(/adminBoolean/);
   });
 });

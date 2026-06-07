@@ -422,9 +422,13 @@ this.passwordInput.value = '';
                 //          existing admin caller. Recovery: docs/ADMIN_CLAIMS_RECOVERY.md
                 const tokenResult = await user.getIdTokenResult();
 
+                // Pre-H.0.0.E follow-up (2026-06-05): role-only. The legacy
+                // `claims.admin === true` fallback was removed — all admins hold
+                // {role:'admin'} (PROD verifyClaims admin_boolean_only:0), and the
+                // claim writers no longer emit the boolean. Layers 2-3 below remain
+                // as deprecated fallbacks, so this strands no admin.
                 const isAdminRole = tokenResult.claims.role === window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN;
-                const isAdminClaim = tokenResult.claims.admin === true;
-                if (isAdminRole || isAdminClaim) {
+                if (isAdminRole) {
                     console.log('✅ Admin verified (Custom Claims - SECURE):', user.email);
                     console.log('   🔐 Token-based verification (cannot be spoofed)');
                     return true;
@@ -434,8 +438,8 @@ this.passwordInput.value = '';
                 // LAYER 2: Email List (DEPRECATED - BACKWARDS COMPATIBILITY)
                 // ════════════════════════════════════════════════════════════
                 // Why deprecated: Client-side lists can be modified (low risk)
-                // Migration: invoke the setAdminClaims callable (Pre-H.0.0.B) to set
-                //            the dual-shape custom claim {admin:true, role:'admin'}.
+                // Migration: invoke the setAdminClaims callable to set the custom
+                //            claim {role:'admin'} (Pre-H.0.0.E single shape).
                 // Will be removed in: v3.0.0
                 if (this.adminEmails.includes(user.email.toLowerCase())) {
                     console.warn('⚠️ Admin verified (Email List - DEPRECATED):', user.email);
