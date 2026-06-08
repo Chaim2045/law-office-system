@@ -88,6 +88,14 @@ exports.setAdminClaims = setAdminClaimsModule.setAdminClaims;
 const initializeAdminClaimsModule = require('./lib/initialize-admin-claims');
 exports.initializeAdminClaims = initializeAdminClaimsModule.initializeAdminClaims;
 
+// syncRoleClaims (TS — Pre-H.0.0.F). Admin-gated v2 onCall that reconciles each
+// employee's Auth role claim to the employees.role SSOT: writes the first
+// {role:'partner'} claims, removes residual {role:'lawyer'}, read-merge-write
+// (never clobbers other claim fields). DRY-RUN by default; --apply is a
+// supervised PROD-Auth action. Closes Phase 1.
+const syncRoleClaimsModule = require('./lib/sync-role-claims');
+exports.syncRoleClaims = syncRoleClaimsModule.syncRoleClaims;
+
 // Employee Costs (TS — Pre-H.0.0.G). CF-only employee_costs/{email} collection.
 // setEmployeeCost: admin-gated write, audit-first. getEmployeeCost: admin-gated read.
 // Both compiled from functions/src-ts/. Consumed by Phase 2 H.2 (cost foundation).
