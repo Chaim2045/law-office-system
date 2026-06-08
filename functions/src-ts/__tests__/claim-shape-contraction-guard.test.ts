@@ -41,6 +41,7 @@ const INIT_ADMIN_CLAIMS = path.resolve(__dirname, '../initialize-admin-claims.ts
 const AUTH_INDEX = path.resolve(__dirname, '../../auth/index.js');
 const GRANT_EMERGENCY = path.resolve(__dirname, '../../scripts/grant-admin-emergency.js');
 const MASTER_ADMIN_WRAPPERS = path.resolve(__dirname, '../../admin/master-admin-wrappers.js');
+const SYNC_ROLE_CLAIMS = path.resolve(__dirname, '../sync-role-claims.ts'); // Pre-H.0.0.F
 // Consumer-gate files contracted in the Pre-H.0.0.E follow-up (group 5).
 const GET_EMPLOYEE_COST = path.resolve(__dirname, '../get-employee-cost.ts');
 const SET_EMPLOYEE_COST = path.resolve(__dirname, '../set-employee-cost.ts');
@@ -95,10 +96,12 @@ describe('claim-shape contraction — v1 setAdminClaim grant + revoke', () => {
   // Comment-stripped: the docblock legitimately mentions the retired shapes.
   beforeAll(() => { code = stripComments(read(AUTH_INDEX)); });
 
-  it('grant branch is {role:\'admin\'}, revoke branch is {} (full removal)', () => {
-    // The contracted ternary: grant → role-only; revoke → empty object.
+  it('grant uses mergeRoleClaim, revoke uses removeRoleClaim (Pre-H.0.0.F read-merge-write)', () => {
+    // Pre-H.0.0.F upgraded the v1 setAdminClaim from a blanket replace
+    // (grant {role:'admin'} / revoke {}) to read-merge-write: edit ONLY the
+    // role field, preserving any other claim the user holds.
     expect(code).toMatch(
-      /newClaims\s*=\s*isAdmin === true\s*\?\s*\{\s*role:\s*'admin'\s*\}\s*:\s*\{\s*\}/
+      /newClaims\s*=\s*isAdmin === true\s*\?\s*mergeRoleClaim\(existingClaims, 'admin'\)\s*:\s*removeRoleClaim\(existingClaims\)/
     );
   });
 
@@ -157,7 +160,8 @@ describe('claim-shape contraction — repo-wide: no writer emits admin:true', ()
     ['set-admin-claims.ts', SET_ADMIN_CLAIMS],
     ['initialize-admin-claims.ts', INIT_ADMIN_CLAIMS],
     ['grant-admin-emergency.js', GRANT_EMERGENCY],
-    ['admin/master-admin-wrappers.js', MASTER_ADMIN_WRAPPERS]
+    ['admin/master-admin-wrappers.js', MASTER_ADMIN_WRAPPERS],
+    ['sync-role-claims.ts', SYNC_ROLE_CLAIMS]
   ])('%s never writes admin:true via setCustomUserClaims', (_name, file) => {
     const code = stripComments(read(file));
     expect(code).not.toMatch(/setCustomUserClaims\([^)]*admin:\s*true/);

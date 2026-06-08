@@ -8,6 +8,9 @@ const admin = require('firebase-admin');
 const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString, isValidEmail } = require('../shared/validators');
+// Pre-H.0.0.F: canonical read-merge-write claim primitives — edit ONLY the
+// `role` field, never clobber a user's other claims (the §7.5 no-clobber rule).
+const { mergeRoleClaim, removeRoleClaim } = require('../shared/claim-writer');
 
 const db = admin.firestore();
 const auth = admin.auth();
@@ -236,12 +239,14 @@ exports.setAdminClaim = functions.https.onCall(async (data, context) => {
     // מצא את המשתמש לפי email
     const userRecord = await auth.getUserByEmail(email);
 
-    // הגדר את ה-custom claim — single-shape on grant (Pre-H.0.0.E), full
-    // removal on revoke. setCustomUserClaims REPLACES the entire claims object,
-    // so `{}` clears every residual claim (no lingering `{admin:false}`).
+    // הגדר את ה-custom claim — read-merge-write (Pre-H.0.0.F). setCustomUserClaims
+    // REPLACES the whole claims object, so we merge on top of the EXISTING claims:
+    // grant sets role:'admin' preserving other fields; revoke deletes ONLY the
+    // `role` key (not a blanket {}), so a user's other claims survive de-admining.
+    const existingClaims = userRecord.customClaims || {};
     const newClaims = isAdmin === true
-      ? { role: 'admin' }
-      : {};
+      ? mergeRoleClaim(existingClaims, 'admin')
+      : removeRoleClaim(existingClaims);
     await auth.setCustomUserClaims(userRecord.uid, newClaims);
 
     // רישום פעילות — uses logAction (canonical audit helper from shared/audit.js)
@@ -362,6 +367,10 @@ exports.verifyClaims = functions.https.onCall(async (data, context) => {
     },
     mismatches: [],
     messagesWithPartnerToRoles: { scanned: false, count: 0, samples: [], error: null },
+    // Pre-H.0.0.F: also surface 'lawyer' in toRoles — syncRoleClaims REMOVES the
+    // residual {role:'lawyer'} claims, so the diagnostic must show the dormant
+    // escalation surface (a messages doc with 'lawyer' in toRoles) before/after.
+    messagesWithLawyerToRoles: { scanned: false, count: 0, samples: [], error: null },
     summary: {},
     notes: []
   };
@@ -493,6 +502,33 @@ exports.verifyClaims = functions.https.onCall(async (data, context) => {
     report.notes.push(
       'messages scan failed — may indicate collection does not exist or index is missing. Not necessarily critical.'
     );
+  }
+
+  // ─── (4b) Scan messages for 'lawyer' in toRoles (Pre-H.0.0.F) ───
+  // syncRoleClaims removes the residual {role:'lawyer'} claims; this confirms
+  // whether any messages doc would have granted them read via dynamic membership.
+  try {
+    const lawyerSnap = await db.collection('messages')
+      .where('toRoles', 'array-contains', 'lawyer')
+      .limit(100)
+      .get();
+
+    report.messagesWithLawyerToRoles.scanned = true;
+    report.messagesWithLawyerToRoles.count = lawyerSnap.size;
+    report.messagesWithLawyerToRoles.samples = lawyerSnap.docs.slice(0, 10).map(d => {
+      const md = d.data() || {};
+      return {
+        id: d.id,
+        toRoles: md.toRoles || null,
+        createdAt: md.createdAt || md.timestamp || null
+      };
+    });
+    if (lawyerSnap.size === 100) {
+      report.notes.push('messages_with_lawyer_role: hit 100-doc limit; actual count may be higher');
+    }
+  } catch (err) {
+    report.messagesWithLawyerToRoles.scanned = false;
+    report.messagesWithLawyerToRoles.error = err.message || 'unknown';
   }
 
   // ─── (5) Summary ───
