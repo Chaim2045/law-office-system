@@ -47,13 +47,14 @@ exports.TOFES_MECHER_APP_NAME = 'tofes-mecher';
 /**
  * tofes-mecher Firestore collection holding sales records.
  *
- * ⚠️ UNVERIFIED (devils-advocate H.0 bonus + data-investigator): the exact
- * tofes-mecher collection name is NOT confirmed from the live project — it is
- * inferred from MASTER_PLAN §8.3. Candidates: 'sales_records' (assumed),
- * 'salesRecords', 'sales-records', or a Hebrew name. CONFIRM against the
- * tofes-mecher Firestore console BEFORE H.1 builds the real bridge. The H.0
- * connectivity check tolerates a wrong name (it reports `sawAtLeastOneDoc`
- * separately from `reachable`).
+ * ✅ VERIFIED 2026-06-01 (read-only schema probe against the live
+ * `law-office-sales-form` project — field names + types only, ZERO PII values):
+ * the collection IS exactly `sales_records` — top-level, flat documents with
+ * Firestore auto-ids. The earlier H.0 `UNVERIFIED` caveat is resolved; the probe
+ * confirmed the assumed const was correct. Full verified schema (37 fields) in
+ * docs/PHASE_2_FOUNDATIONS.md ("✅ VERIFIED"). The H.1 connectivity check still
+ * reports `sawAtLeastOneDoc` separately from `reachable`, so an empty/early
+ * collection is never misread as an unreachable-project failure.
  */
 exports.TOFES_SALES_COLLECTION = 'sales_records';
 /**

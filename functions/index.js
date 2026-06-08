@@ -108,18 +108,20 @@ exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
 // proves the cross-project wiring (Secret Manager → SA key → named app → 1 read).
 // ⚠️ DEPLOY PREREQUISITE: the secret TOFES_MECHER_SA_KEY must exist in Secret
 // Manager BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret).
-// ⚠️ REPURPOSE-OR-DELETE in H.1 once the real validateSalesRecordExists ships.
+// ⚠️ REPURPOSE-OR-DELETE in H.1.b: once the real validateSalesRecordExists ships
+// it proves the identical wiring AND does real work, making this diagnostic dead
+// weight — H.1.b deletes this export then.
 //
-// 🔴 TEMPORARILY DISABLED (2026-06-04 — deploy-unblock incident). Exporting this
-// function loaded connectivity-check.ts, whose top-level defineSecret('TOFES_MECHER_SA_KEY')
-// made EVERY PROD functions deploy abort ("In non-interactive mode but have no value
-// for the secret: TOFES_MECHER_SA_KEY") because the secret was never set. Both the
-// require AND the export are commented so the module is never loaded and defineSecret
-// never runs — restoring PROD deployability without the secret. The cross-project SA +
-// secret are provisioned in H.1; RE-ENABLE these two lines there, where this function
-// then validates the deployed wiring as originally designed (MASTER_PLAN §8.2).
-// const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
-// exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
+// ✅ RE-ENABLED in H.1.a (2026-06-08). The 2026-06-04 deploy-unblock incident had
+// commented these two lines because the top-level defineSecret('TOFES_MECHER_SA_KEY')
+// in connectivity-check.ts aborted EVERY PROD functions deploy while the secret was
+// unset ("In non-interactive mode but have no value for the secret"). H.0 Console
+// setup has since set the secret in Secret Manager (versions/1), so re-loading the
+// module + re-running defineSecret is safe. This function is the live-wiring proof
+// for H.1 (MASTER_PLAN §8.2/§8.3): a local script cannot exercise the DEPLOYED
+// secret-binding + cross-project IAM grant — only a live admin call can.
+const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
+exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
 
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
