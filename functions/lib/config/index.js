@@ -21,7 +21,7 @@
  * creep. Existing callables keep their literals; new code imports from here.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BIGQUERY_DATASET = exports.TOFES_SALES_COLLECTION = exports.TOFES_MECHER_APP_NAME = exports.TOFES_MECHER_SA_KEY_SECRET = exports.REGION = exports.TOFES_MECHER_PROJECT_ID = exports.MAIN_PROJECT_ID = void 0;
+exports.BIGQUERY_SALES_TABLE = exports.BIGQUERY_DATASET = exports.TOFES_SALES_COLLECTION = exports.TOFES_MECHER_APP_NAME = exports.TOFES_MECHER_SA_KEY_SECRET = exports.REGION = exports.TOFES_MECHER_PROJECT_ID = exports.MAIN_PROJECT_ID = void 0;
 /** The MAIN Firebase project (this app). Public; already in firebase.json. */
 exports.MAIN_PROJECT_ID = 'law-office-system-e4801';
 /**
@@ -63,4 +63,12 @@ exports.TOFES_SALES_COLLECTION = 'sales_records';
  * the export CODE lands in H.1. See docs/PHASE_2_FOUNDATIONS.md.
  */
 exports.BIGQUERY_DATASET = 'law_office_analytics';
+/**
+ * BigQuery table (within BIGQUERY_DATASET) holding the synced sales_records
+ * mirror. Created by the H.1.c exporter (create-if-not-exists); H.0 created only
+ * the empty dataset. The `raw_json` whole-doc column documented in H.0 was OMITTED
+ * in H.1.c (security default-deny — see docs/PHASE_2_FOUNDATIONS.md), so the table
+ * is the 19 typed columns only.
+ */
+exports.BIGQUERY_SALES_TABLE = 'sales_records';
 //# sourceMappingURL=index.js.map
