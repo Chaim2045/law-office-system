@@ -67,3 +67,12 @@ export const TOFES_SALES_COLLECTION = 'sales_records';
  * the export CODE lands in H.1. See docs/PHASE_2_FOUNDATIONS.md.
  */
 export const BIGQUERY_DATASET = 'law_office_analytics';
+
+/**
+ * BigQuery table (within BIGQUERY_DATASET) holding the synced sales_records
+ * mirror. Created by the H.1.c exporter (create-if-not-exists); H.0 created only
+ * the empty dataset. The `raw_json` whole-doc column documented in H.0 was OMITTED
+ * in H.1.c (security default-deny — see docs/PHASE_2_FOUNDATIONS.md), so the table
+ * is the 19 typed columns only.
+ */
+export const BIGQUERY_SALES_TABLE = 'sales_records';

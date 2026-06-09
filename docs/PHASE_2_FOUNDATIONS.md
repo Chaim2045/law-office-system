@@ -77,7 +77,9 @@ _Historical H.0 verification (the function no longer exists):_
 
 ## BigQuery schema (documented for H.1 — not created in H.0)
 
-Dataset `law_office_analytics`, table **`sales_records`** (synced by H.1):
+Dataset `law_office_analytics`, table **`sales_records`** — **synced by H.1.c (PR, 2026-06-09)**: 19 typed columns, WRITE_TRUNCATE full-reload hourly.
+
+> **⚠️ H.1.c CHANGE (raw_json OMITTED):** the H.0-documented `raw_json` whole-doc column was **dropped** at the H.1.c checkpoint (Haim-approved, security default-deny). The whole doc would re-import `address` + payment-instrument detail (which H.1.b deliberately excluded) and smuggle any FUTURE tofes field into PII-at-rest unreviewed. The mirror is the **19 typed columns below only** (was 20 with `raw_json`). A future analytics need on an unmapped field adds an explicit reviewed column — never a whole-doc blob.
 
 | column | type | mode | PII | source field |
 |---|---|---|---|---|
@@ -100,7 +102,7 @@ Dataset `law_office_analytics`, table **`sales_records`** (synced by H.1):
 | `record_date` | STRING | NULLABLE | no | `date` (format TBD) |
 | `record_timestamp` | TIMESTAMP | NULLABLE | no | `timestamp` |
 | `synced_at` | TIMESTAMP | REQUIRED | no | (export time) |
-| `raw_json` | JSON/STRING | NULLABLE | mixed — future-proofs the other ~20 fields | full doc |
+| ~~`raw_json`~~ | — | — | **OMITTED in H.1.c** (default-deny — see note above) | ~~full doc~~ |
 
 - **No partitioning/clustering** — <1,000 rows expected (200+ clients, 6 months). Revisit only at 6-7 figure volume.
 - **Binding obligation for H.1 (carried from Pre-H.0.0.G):** the `SET_EMPLOYEE_COST` audit_log entries hold salary figures and **MUST be redacted before any BigQuery export.** Likewise `client_name`/`id_number`/`phone`/`email` and all four amount columns (`amount_before_vat`/`vat_amount`/`amount_with_vat`/`amount`) here are PII — the H.8 AI chat that queries this dataset must respect the principal-scoped IAM (Step 4).

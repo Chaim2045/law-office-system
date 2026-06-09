@@ -238,6 +238,16 @@ service cloud.firestore {
       allow read, write: if false; // CF-only — access via getEmployeeCost callable
     }
 
+    // ✅ tofes_export_deadletter: CF-only operational log (Phase 2 H.1.c).
+    // The hourly BigQuery exporter (exportSalesToBigQuery) writes one doc here per
+    // sales_record that fails to map — { salesRecordId, errorCode, failedAt } only,
+    // NEVER PII. Default-deny like employee_costs: nothing reads/writes from a
+    // client SDK; the CF writes via the Admin SDK (bypasses rules). Forensics +
+    // alerting surface only.
+    match /tofes_export_deadletter/{entryId} {
+      allow read, write: if false; // CF-only (Admin SDK)
+    }
+
     // ✅ System Settings: Read-only for authenticated users
     // Note: Only admins can modify through Cloud Functions
     match /system_settings/{settingId} {

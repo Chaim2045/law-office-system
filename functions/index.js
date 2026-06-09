@@ -118,6 +118,16 @@ exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
 const validateSalesRecordModule = require('./lib/tofes-mecher/validate-sales-record');
 exports.validateSalesRecordExists = validateSalesRecordModule.validateSalesRecordExists;
 
+// tofes-mecher Pattern-D analytical export (TS — Phase 2 H.1.c). Scheduled hourly
+// CF: reads tofes-mecher sales_records (cross-project) → WRITE_TRUNCATE-loads the
+// BigQuery mirror law_office_analytics.sales_records (MAIN project, ADC). Hardened:
+// all-or-nothing read, never-truncate-to-empty, reconciliation counts + run audit,
+// dead-letter (non-PII), no-PII-in-logs. @google-cloud/bigquery is lazy-imported.
+// ⚠️ RUNTIME PREREQUISITE: the Functions runtime SA needs roles/bigquery.dataEditor
+// (dataset) + roles/bigquery.jobUser (project) — fails at FIRST RUN, not deploy.
+const exportSalesToBigQueryModule = require('./lib/tofes-mecher/export-sales-to-bigquery');
+exports.exportSalesToBigQuery = exportSalesToBigQueryModule.exportSalesToBigQuery;
+
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
 exports.createBudgetTask = budgetTasks.createBudgetTask;
