@@ -104,24 +104,19 @@ exports.setEmployeeCost = setEmployeeCostModule.setEmployeeCost;
 const getEmployeeCostModule = require('./lib/get-employee-cost');
 exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
 
-// tofes-mecher bridge (TS — Phase 2 H.0 foundation). Admin-gated v2 onCall that
-// proves the cross-project wiring (Secret Manager → SA key → named app → 1 read).
+// tofes-mecher bridge (TS — Phase 2 H.1.b, Pattern A live read). Admin-gated v2
+// onCall that reads ONE specific sales_record from the tofes-mecher project via
+// the cross-project named app and returns a FIELD-MINIMIZED snapshot for the H.6
+// cutover flow. Every lookup writes a NON-PII access audit (DLR §8.2.5).
 // ⚠️ DEPLOY PREREQUISITE: the secret TOFES_MECHER_SA_KEY must exist in Secret
 // Manager BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret).
-// ⚠️ REPURPOSE-OR-DELETE in H.1.b: once the real validateSalesRecordExists ships
-// it proves the identical wiring AND does real work, making this diagnostic dead
-// weight — H.1.b deletes this export then.
+// It is set (Secret Manager versions/1, H.0 console setup) — landmine disarmed.
 //
-// ✅ RE-ENABLED in H.1.a (2026-06-08). The 2026-06-04 deploy-unblock incident had
-// commented these two lines because the top-level defineSecret('TOFES_MECHER_SA_KEY')
-// in connectivity-check.ts aborted EVERY PROD functions deploy while the secret was
-// unset ("In non-interactive mode but have no value for the secret"). H.0 Console
-// setup has since set the secret in Secret Manager (versions/1), so re-loading the
-// module + re-running defineSecret is safe. This function is the live-wiring proof
-// for H.1 (MASTER_PLAN §8.2/§8.3): a local script cannot exercise the DEPLOYED
-// secret-binding + cross-project IAM grant — only a live admin call can.
-const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
-exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
+// This SUPERSEDES + DELETES the H.0 tofesMecherConnectivityCheck: it proves the
+// identical wiring (Secret → named app → tofes Firestore read) AND does real work
+// (the H.0 REPURPOSE-OR-DELETE debt, MASTER_PLAN §8.3, resolved here).
+const validateSalesRecordModule = require('./lib/tofes-mecher/validate-sales-record');
+exports.validateSalesRecordExists = validateSalesRecordModule.validateSalesRecordExists;
 
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');

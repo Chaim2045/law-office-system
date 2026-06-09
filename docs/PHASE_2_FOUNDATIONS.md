@@ -54,7 +54,7 @@ H.0 does NOT create tables — the schema is documented below; H.1's exporter cr
 ## Rotation runbook (if the SA key is compromised)
 1. In tofes-mecher Console → Service Accounts → create a NEW JSON key for `cross-project-reader`.
 2. `firebase functions:secrets:set TOFES_MECHER_SA_KEY` (paste the new key — creates a new secret version).
-3. Redeploy the function: `firebase deploy --only functions:tofesMecherConnectivityCheck`.
+3. Redeploy the bridge function: `firebase deploy --only functions:validateSalesRecordExists`. (H.1.b deleted the H.0 `tofesMecherConnectivityCheck`; `validateSalesRecordExists` now holds the `TOFES_MECHER_SA_KEY` secret binding.)
 4. In tofes-mecher Console → delete the OLD key.
 
 (Optional cleanup if the bridge is ever removed: `firebase functions:secrets:destroy TOFES_MECHER_SA_KEY`.)
@@ -62,14 +62,16 @@ H.0 does NOT create tables — the schema is documented below; H.1's exporter cr
 ---
 
 ## Verifying the wiring (after Steps 1-2 + deploy)
-From the MAIN Admin Panel browser console, logged in as an admin:
+
+> **⚠️ SUPERSEDED in H.1.b (2026-06-09):** the H.0 `tofesMecherConnectivityCheck` was the historical wiring proof (it returned `{ok, reachable, sawAtLeastOneDoc}`). It was validated live on 2026-06-08 (`{ok:true, reachable:true, sawAtLeastOneDoc:true}`) and then **DELETED** in H.1.b. The real bridge read `validateSalesRecordExists(salesRecordId)` now holds the secret binding and exercises the identical wiring while doing real work. To verify the wiring going forward, call it with a known `salesRecordId` (admin console) and expect `{ exists: true, ... }`.
+
+_Historical H.0 verification (the function no longer exists):_
 ```js
-const check = firebase.functions().httpsCallable('tofesMecherConnectivityCheck');
-const r = await check({});
-console.log(r.data); // { ok: true, reachable: true, sawAtLeastOneDoc: <bool> }
+// const check = firebase.functions().httpsCallable('tofesMecherConnectivityCheck');
+// const r = await check({}); // → { ok:true, reachable:true, sawAtLeastOneDoc:<bool> }
 ```
-- `ok: true, reachable: true` → IAM + secret + cross-project read all work. **This is the H.0 success criterion.**
-- `sawAtLeastOneDoc: false` is NOT a failure — it may mean the assumed collection name is wrong (see UNVERIFIED below) or the project is empty. Reachability is already proven.
+- `reachable: true` was the H.0 success criterion (proven 2026-06-08).
+- `sawAtLeastOneDoc: false` was never a failure — it only meant an empty/early collection. (`sales_records` is now VERIFIED to exist + hold data.)
 
 ---
 
@@ -152,8 +154,8 @@ Confirmed by a one-time **read-only** schema probe against `law-office-sales-for
 ## Files shipped by H.0
 - `functions/src-ts/config/index.ts` — typed cross-project constants
 - `functions/src-ts/tofes-mecher/app.ts` — concurrency-safe named-app init (sanitized credential errors)
-- `functions/src-ts/tofes-mecher/connectivity-check.ts` — admin-gated v2 onCall (logger only, Hebrew errors, no key/PII in logs)
-- `functions/src-ts/__tests__/{config,connectivity-check}.test.ts` — 24 mocked tests (no real cross-project call)
+- `functions/src-ts/tofes-mecher/connectivity-check.ts` — admin-gated v2 onCall (logger only, Hebrew errors, no key/PII in logs). **⚠️ DELETED in H.1.b** (superseded by `validate-sales-record.ts`).
+- `functions/src-ts/__tests__/{config,connectivity-check}.test.ts` — 24 mocked tests (no real cross-project call). **⚠️ `connectivity-check.test.ts` DELETED in H.1.b**; its named-app/credential/no-PII-log coverage migrated to `validate-sales-record.test.ts`.
 - `functions/index.js` wiring + compiled `functions/lib/` (committed)
 
 **Deferred to H.1:** `@google-cloud/bigquery` dependency + client (⚠️ **lazy-import it** when added — it's a large dependency and this `functions/index.js` is shared by ~40 functions; a top-level import would bloat cold-start for all of them), Pattern A/D logic, real BigQuery table creation.

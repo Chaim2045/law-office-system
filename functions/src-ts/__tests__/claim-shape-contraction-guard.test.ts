@@ -45,7 +45,7 @@ const SYNC_ROLE_CLAIMS = path.resolve(__dirname, '../sync-role-claims.ts'); // P
 // Consumer-gate files contracted in the Pre-H.0.0.E follow-up (group 5).
 const GET_EMPLOYEE_COST = path.resolve(__dirname, '../get-employee-cost.ts');
 const SET_EMPLOYEE_COST = path.resolve(__dirname, '../set-employee-cost.ts');
-const CONNECTIVITY_CHECK = path.resolve(__dirname, '../tofes-mecher/connectivity-check.ts');
+const VALIDATE_SALES_RECORD = path.resolve(__dirname, '../tofes-mecher/validate-sales-record.ts');
 const ADMIN_PANEL_AUTH = path.resolve(__dirname, '../../../apps/admin-panel/js/core/auth.js');
 
 function read(file: string): string {
@@ -182,7 +182,7 @@ describe('claim-shape contraction (follow-up) — gates no longer read admin ===
     ['initialize-admin-claims.ts', INIT_ADMIN_CLAIMS],
     ['get-employee-cost.ts', GET_EMPLOYEE_COST],
     ['set-employee-cost.ts', SET_EMPLOYEE_COST],
-    ['tofes-mecher/connectivity-check.ts', CONNECTIVITY_CHECK],
+    ['tofes-mecher/validate-sales-record.ts', VALIDATE_SALES_RECORD],
     ['admin-panel/auth.js', ADMIN_PANEL_AUTH]
   ])('%s gate no longer reads .admin === true', (_name, file) => {
     expect(stripComments(read(file))).not.toMatch(/\.admin === true/);
