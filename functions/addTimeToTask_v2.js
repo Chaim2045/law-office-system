@@ -182,6 +182,12 @@ const {
 const { SYSTEM_CONSTANTS } = require('./shared/constants');
 const { ERROR_CODES, buildAppError } = require('./shared/errors');
 const { writeClientWithCanonicalAggregates } = require('./shared/client-writer');
+// H.2 cost foundation — resolve + atomically stamp a CF-only cost doc per entry.
+const {
+  resolveEmployeeCost,
+  buildEntryCostDoc,
+  TIMESHEET_ENTRY_COSTS_COLLECTION
+} = require('./lib/employee-costs/resolve-employee-cost');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -296,6 +302,11 @@ function lookupServiceIds(clientData, taskData) {
 async function addTimeToTaskWithTransaction(db, data, user) {
   const MAX_RETRIES = 3;
   let lastError = null;
+
+  // H.2: resolve the employee cost-per-hour ONCE before the retry loop — a plain
+  // employee_costs read that never throws, so it never blocks task-time logging.
+  // Stamped into a CF-only timesheet_entry_costs doc atomically inside the txn.
+  const resolvedCost = await resolveEmployeeCost(user.email);
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -616,6 +627,14 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         const timesheetRef = db.collection('timesheet_entries').doc();
         transaction.set(timesheetRef, timesheetEntry);
         console.log(`✅ Timesheet entry created: ${timesheetRef.id}`);
+
+        // 5️⃣b (H.2): cost snapshot — CF-only timesheet_entry_costs/{entryId}, atomic
+        // with the entry; stored OFF the entry so the employee never sees their own
+        // confidential cost rate (§7.6 / Option A).
+        transaction.set(
+          db.collection(TIMESHEET_ENTRY_COSTS_COLLECTION).doc(timesheetRef.id),
+          buildEntryCostDoc(timesheetRef.id, user.email, resolvedCost)
+        );
 
         // 6️⃣ לוג פעולה
         const logRef = db.collection('action_logs').doc();

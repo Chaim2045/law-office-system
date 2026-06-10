@@ -10,6 +10,13 @@ const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const { ERROR_CODES, buildAppError } = require('../shared/errors');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// H.2 cost foundation — resolve the employee cost-per-hour + stamp a CF-only
+// timesheet_entry_costs/{entryId} doc atomically with each entry (Option A).
+const {
+  resolveEmployeeCost,
+  buildEntryCostDoc,
+  TIMESHEET_ENTRY_COSTS_COLLECTION
+} = require('../lib/employee-costs/resolve-employee-cost');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -150,6 +157,12 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('invalid-argument', e.message);
     }
     console.log('[Quick Log] Date normalized:', data.date, '→', dateString);
+
+    // H.2: resolve the employee cost-per-hour BEFORE the transaction — a plain
+    // read of employee_costs (independent of the txn docs), and it NEVER throws,
+    // so a missing/failed cost never blocks hour-logging. Stamped atomically into
+    // a CF-only timesheet_entry_costs doc inside the txn (Write #2b below).
+    const resolvedCost = await resolveEmployeeCost(user.email);
 
     // ═══════════════════════════════════════════════════════════════════
     // 4️⃣ TRANSACTION - All operations atomic
@@ -474,6 +487,15 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       transaction.set(timesheetRef, entryData);
       console.log(`✅ Timesheet entry will be created: ${timesheetRef.id}`);
 
+      // Write #2b (H.2): cost snapshot in a SEPARATE CF-only collection keyed by
+      // the entry id — atomic with the entry (no entry can exist without its cost
+      // doc). Stored OFF the entry doc so the employee, who can read their own
+      // entry, never sees their confidential cost rate (§7.6 / Option A).
+      transaction.set(
+        db.collection(TIMESHEET_ENTRY_COSTS_COLLECTION).doc(timesheetRef.id),
+        buildEntryCostDoc(timesheetRef.id, user.email, resolvedCost)
+      );
+
       // Write #3: Audit log
       const logRef = db.collection('audit_log').doc();
       transaction.set(logRef, {
@@ -637,6 +659,11 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
     const hoursWorked = data.minutes / 60;
     const minutesDelta = data.minutes;
     let timesheetEntryId = null;
+
+    // H.2: resolve the employee cost-per-hour BEFORE the transaction — a plain
+    // employee_costs read; never throws (a missing/failed cost → null, stamped into
+    // a CF-only timesheet_entry_costs doc atomically with the entry below).
+    const resolvedCost = await resolveEmployeeCost(user.email);
 
     const result = await db.runTransaction(async (transaction) => {
       // ── Phase 1: READS ──
@@ -925,6 +952,14 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
       const timesheetRef = db.collection('timesheet_entries').doc();
       timesheetEntryId = timesheetRef.id;
       transaction.set(timesheetRef, entryData);
+
+      // Write (H.2): cost snapshot in the CF-only timesheet_entry_costs collection,
+      // keyed by the entry id — atomic with the entry; stored OFF the entry so the
+      // employee never sees their own confidential cost rate (§7.6 / Option A).
+      transaction.set(
+        db.collection(TIMESHEET_ENTRY_COSTS_COLLECTION).doc(timesheetRef.id),
+        buildEntryCostDoc(timesheetRef.id, user.email, resolvedCost)
+      );
 
       console.log(`✅ [v2.0] נוצר רישום שעות: ${timesheetEntryId}`);
 
