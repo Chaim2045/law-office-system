@@ -227,11 +227,17 @@ describe('mapDocToRow', () => {
     }
   });
 
-  it('non-number amounts (string / NaN) → null (never a bogus 0)', () => {
-    const row = mapDocToRow('id', { amount: '1170', amountBeforeVat: NaN, vatAmount: null }, ISO);
-    expect(row.amount).toBeNull();           // a string is not a number → null
+  it('non-number / non-finite / out-of-range amounts → null (never a bogus 0 or exponential string)', () => {
+    const row = mapDocToRow('id', {
+      amount: '1170',              // a string is not a number → null
+      amountBeforeVat: NaN,        // non-finite → null
+      vatAmount: Infinity,         // non-finite → null
+      amountWithVat: 1e21          // beyond the magnitude guard → null (toFixed would emit "1e+21")
+    }, ISO);
+    expect(row.amount).toBeNull();
     expect(row.amount_before_vat).toBeNull();
     expect(row.vat_amount).toBeNull();
+    expect(row.amount_with_vat).toBeNull();
   });
 
   it('absent fields → null; throws on missing doc id', () => {

@@ -137,9 +137,18 @@ function strOrNull(v) {
  * column's currency semantics — NOT a business re-derivation: the sub-agora tail is
  * float artifact, never real precision. (Quoting NUMERIC as a string is also the
  * BigQuery-recommended form — it avoids float round-trips entirely.)
+ *
+ * Magnitude guard (defense-in-depth, mirrors the INT64 Number.isSafeInteger gate):
+ * for |v| ≥ 1e15, `toFixed` would emit exponential notation ("1e+21") — itself an
+ * INVALID NUMERIC token that would re-trigger the very load-abort this fixes. Real
+ * ILS sale amounts are ≤ low millions (~7 integer digits), so an out-of-range value
+ * is treated as unknown (null), NEVER a load-breaking string. 1e15 sits far below
+ * both the exponential threshold (1e21) and NUMERIC's precision-38 ceiling.
  */
 function numStrOrNull(v) {
-    return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(2) : null;
+    if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) >= 1e15)
+        return null;
+    return v.toFixed(2);
 }
 /**
  * tofes string-numeric (paymentsCount/monthsCount) → INT64 | null. The ONLY
