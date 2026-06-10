@@ -192,18 +192,46 @@ describe('mapDocToRow', () => {
     expect(row).toMatchObject({
       sales_record_id: 'AbCdEf0123456789wxyz',
       id_number: 'IDNUM-SENTINEL', client_name: 'NAME-SENTINEL',
-      amount_before_vat: 1000, payments_count: 3, months_count: 12,
+      amount_before_vat: '1000.00', vat_amount: '170.00', amount_with_vat: '1170.00',
+      payments_count: 3, months_count: 12,
       record_timestamp: '2026-01-02T03:04:05.000Z', record_date: '2026-01-02',
       synced_at: ISO
     });
   });
 
-  it('empty/non-numeric string-int → null (never 0); 0 amount stays 0', () => {
+  it('empty/non-numeric string-int → null (never 0); 0 amount → "0.00" (distinct from null)', () => {
     const row = mapDocToRow('id', { paymentsCount: '', monthsCount: 'abc', amount: 0, amountBeforeVat: undefined }, ISO);
     expect(row.payments_count).toBeNull();
     expect(row.months_count).toBeNull();
-    expect(row.amount).toBe(0);          // valid zero, NOT null
+    expect(row.amount).toBe('0.00');     // valid zero as a NUMERIC string, NOT null
     expect(row.amount_before_vat).toBeNull();
+  });
+
+  it('clamps source float-noise to a NUMERIC-safe 2dp string (the H.1.c load-failure fix)', () => {
+    // tofes stores 4249.69 as the float 4249.6900000000005 (13 fractional digits) —
+    // BigQuery NUMERIC (scale 9) rejected it, failing the WHOLE load. toFixed(2) fixes it.
+    const row = mapDocToRow('id', {
+      amountWithVat: 4249.6900000000005,
+      amountBeforeVat: 3632.2,
+      vatAmount: 617.4899999999999,
+      amount: -100        // negatives are valid currency
+    }, ISO);
+    expect(row.amount_with_vat).toBe('4249.69');
+    expect(row.amount_before_vat).toBe('3632.20');
+    expect(row.vat_amount).toBe('617.49');
+    expect(row.amount).toBe('-100.00');
+    // every amount column must be a string with exactly 2 decimals (NUMERIC scale ≤ 9)
+    for (const v of [row.amount_with_vat, row.amount_before_vat, row.vat_amount, row.amount]) {
+      expect(typeof v).toBe('string');
+      expect(v).toMatch(/^-?\d+\.\d{2}$/);
+    }
+  });
+
+  it('non-number amounts (string / NaN) → null (never a bogus 0)', () => {
+    const row = mapDocToRow('id', { amount: '1170', amountBeforeVat: NaN, vatAmount: null }, ISO);
+    expect(row.amount).toBeNull();           // a string is not a number → null
+    expect(row.amount_before_vat).toBeNull();
+    expect(row.vat_amount).toBeNull();
   });
 
   it('absent fields → null; throws on missing doc id', () => {
