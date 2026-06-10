@@ -238,6 +238,18 @@ service cloud.firestore {
       allow read, write: if false; // CF-only — access via getEmployeeCost callable
     }
 
+    // ✅ timesheet_entry_costs: CF-only per-entry cost snapshots (Phase 2 H.2).
+    // Keyed by the timesheet entry id; holds { entryId, employee, costPerHour,
+    // costSource } — the employee's confidential cost-per-hour. Stored HERE (not on
+    // the timesheet_entries doc, which the owning employee can read) precisely so an
+    // employee NEVER sees their own cost rate (MASTER_PLAN §7.6 "NOT exposed to
+    // employee self"; §10 revision 2026-06-10 "Option A"). Same lockdown as
+    // employee_costs: nothing reads/writes from a client SDK; the CF write paths +
+    // the H.3 forecast aggregation use the Admin SDK (which bypasses rules).
+    match /timesheet_entry_costs/{entryId} {
+      allow read, write: if false; // CF-only (Admin SDK)
+    }
+
     // ✅ tofes_export_deadletter: CF-only operational log (Phase 2 H.1.c).
     // The hourly BigQuery exporter (exportSalesToBigQuery) writes one doc here per
     // sales_record that fails to map — { salesRecordId, errorCode, failedAt } only,

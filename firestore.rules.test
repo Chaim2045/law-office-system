@@ -87,6 +87,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // The REAL timesheet_entry_costs path (Phase 2 H.2) — mirrors production
+    // `allow read, write: if false` so tests/rules/timesheetEntryCosts.test.ts can
+    // assert it denies EVERY context. Holds the employee's confidential cost-per-hour
+    // OFF the timesheet entry doc (§7.6 / §10 Option A); Admin-SDK access only.
+    match /timesheet_entry_costs/{entryId} {
+      allow read, write: if false;
+    }
+
     // Deny everything else.
     match /{document=**} {
       allow read, write: if false;
