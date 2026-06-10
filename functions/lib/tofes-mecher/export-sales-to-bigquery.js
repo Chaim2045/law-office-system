@@ -121,9 +121,34 @@ exports.BQ_SALES_SCHEMA = [
 function strOrNull(v) {
     return typeof v === 'string' && v.length > 0 ? v : null;
 }
-/** Absent/non-finite number → null (0 is a VALID amount; must stay distinct). */
-function numOrNull(v) {
-    return typeof v === 'number' && Number.isFinite(v) ? v : null;
+/**
+ * Currency → NUMERIC coercion. Absent/non-finite → null (0 is a VALID amount →
+ * "0.00", which must stay distinct from null). A finite number → a fixed 2-decimal
+ * DECIMAL STRING (ILS agorot).
+ *
+ * Why a 2dp STRING and not the raw JS number: the BigQuery column is NUMERIC
+ * (DECIMAL, max scale 9). tofes amounts arrive as JS floats that carry
+ * multiplication noise — e.g. amountWithVat = 4249.69 is stored as
+ * `4249.6900000000005` (13 fractional digits, a `base * 1.17` VAT artifact), which
+ * exceeds NUMERIC's scale and makes the ENTIRE WRITE_TRUNCATE load fail
+ * (maxBadRecords = 0 → one bad row aborts the whole mirror). `v.toFixed(2)` →
+ * `"4249.69"` clamps to currency scale (the agora is the smallest real ILS unit)
+ * and loads cleanly into NUMERIC. This is a representational normalization to the
+ * column's currency semantics — NOT a business re-derivation: the sub-agora tail is
+ * float artifact, never real precision. (Quoting NUMERIC as a string is also the
+ * BigQuery-recommended form — it avoids float round-trips entirely.)
+ *
+ * Magnitude guard (defense-in-depth, mirrors the INT64 Number.isSafeInteger gate):
+ * for |v| ≥ 1e15, `toFixed` would emit exponential notation ("1e+21") — itself an
+ * INVALID NUMERIC token that would re-trigger the very load-abort this fixes. Real
+ * ILS sale amounts are ≤ low millions (~7 integer digits), so an out-of-range value
+ * is treated as unknown (null), NEVER a load-breaking string. 1e15 sits far below
+ * both the exponential threshold (1e21) and NUMERIC's precision-38 ceiling.
+ */
+function numStrOrNull(v) {
+    if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) >= 1e15)
+        return null;
+    return v.toFixed(2);
 }
 /**
  * tofes string-numeric (paymentsCount/monthsCount) → INT64 | null. The ONLY
@@ -150,7 +175,10 @@ function tsIsoOrNull(v) {
 }
 /**
  * Maps one tofes sales_record doc → a typed BQ row (allowlist projection; raw
- * values; NO raw_json; NO VAT math; NO fee-pick; NO date reformat).
+ * values; NO raw_json; NO VAT math; NO fee-pick; NO date reformat). The only
+ * representational transforms are the column-dictated ones: Timestamp→ISO,
+ * string→INT64, and currency→2dp-DECIMAL-string (numStrOrNull — clamps source
+ * float noise to NUMERIC's currency scale; see its docstring).
  * @throws if the doc id is missing (a row with no key cannot be written).
  */
 function mapDocToRow(id, data, syncedAtIso) {
@@ -164,10 +192,10 @@ function mapDocToRow(id, data, syncedAtIso) {
         email: strOrNull(data.email),
         tofes_client_id: strOrNull(data.clientId),
         transaction_type: strOrNull(data.transactionType),
-        amount_before_vat: numOrNull(data.amountBeforeVat),
-        vat_amount: numOrNull(data.vatAmount),
-        amount_with_vat: numOrNull(data.amountWithVat),
-        amount: numOrNull(data.amount),
+        amount_before_vat: numStrOrNull(data.amountBeforeVat),
+        vat_amount: numStrOrNull(data.vatAmount),
+        amount_with_vat: numStrOrNull(data.amountWithVat),
+        amount: numStrOrNull(data.amount),
         payment_method: strOrNull(data.paymentMethod),
         payments_count: intStrOrNull(data.paymentsCount),
         months_count: intStrOrNull(data.monthsCount),
