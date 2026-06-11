@@ -10,6 +10,8 @@ const { SYSTEM_CONSTANTS, isValidServiceType, isValidPricingType } = require('..
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// H.3 PR1: the static Plan layer (derived from services[]).
+const { computeClientPlan } = require('../lib/profitability/client-plan');
 
 const db = admin.firestore();
 
@@ -533,6 +535,12 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         clientData.stages = [];
       }
     }
+
+    // H.3 PR1: stamp the static Plan (expectedHours/expectedRevenue, derived from
+    // services[]; NON-confidential — cost/profit live CF-only in client_profitability,
+    // never here). Mirrors writeClientWithCanonicalAggregates so the two intake routes
+    // (this .create() + the canonical writer) never drift.
+    clientData.plan = computeClientPlan(clientData.services || []);
 
     // ✅ יצירת המסמך עם מספר תיק כ-Document ID
     // שימוש ב-.create() במקום .set() - מונע דריסה ומבטיח ייחודיות
