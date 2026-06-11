@@ -48,6 +48,9 @@ const admin = require('firebase-admin');
 const { calcClientAggregates, assertClientAggregateInvariants, NON_AGGREGATING_STATUSES } = require('./aggregates');
 const { SYSTEM_CONSTANTS } = require('./constants');
 const { getEnforcementMode, VALID_MODES } = require('./enforcement-mode');
+// H.3 PR1: the static Plan layer — derived from services[] alongside the hours
+// aggregates so both intake routes (createClient + this canonical writer) stay in sync.
+const { computeClientPlan } = require('../lib/profitability/client-plan');
 
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
@@ -65,7 +68,8 @@ const RESTRICTED_KEYS = Object.freeze([
   'hoursRemaining',
   'minutesUsed',
   'minutesRemaining',
-  'totalHours' // derived: sum of billable services' totalHours
+  'totalHours', // derived: sum of billable services' totalHours
+  'plan' // H.3 PR1: derived from services[] by computeClientPlan — callers cannot set it
 ]);
 
 /**
@@ -221,7 +225,12 @@ async function writeClientWithCanonicalAggregates(
     minutesUsed: aggregates.minutesUsed,
     minutesRemaining: aggregates.minutesRemaining,
     isBlocked: aggregates.isBlocked,
-    isCritical: aggregates.isCritical
+    isCritical: aggregates.isCritical,
+    // H.3 PR1: the static Plan, derived from services[] (NON-confidential —
+    // expectedHours/expectedRevenue only; cost/profit live CF-only in
+    // client_profitability, NEVER here). Recomputed on every client write so the
+    // two intake routes never drift. See functions/src-ts/profitability/client-plan.ts.
+    plan: computeClientPlan(services)
   };
 
   if (auditMeta && typeof auditMeta === 'object') {
