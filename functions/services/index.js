@@ -70,6 +70,20 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           'סוג תמחור חייב להיות "hourly" או "fixed"'
         );
       }
+      // H.3 D-B (2026-06-11): תעריף שעתי אופציונלי נבחר (legal-hourly בלבד).
+      // Validate-if-present; כשאינו מסופק — אין ברירת מחדל (השירות נשמר ללא
+      // ratePerHour → ה-Plan מדווח pricing_missing). מסונכרן עם createClient.
+      if (
+        data.pricingType === PT.HOURLY &&
+        data.ratePerHour !== undefined &&
+        data.ratePerHour !== null &&
+        (typeof data.ratePerHour !== 'number' || !Number.isFinite(data.ratePerHour) || data.ratePerHour <= 0)
+      ) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תעריף שעתי חייב להיות מספר חיובי'
+        );
+      }
     } else if (data.serviceType === ST.FIXED) {
       if (data.fixedPrice == null || typeof data.fixedPrice !== 'number' || data.fixedPrice < 0) {
         throw new functions.https.HttpsError(
@@ -174,6 +188,12 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           newService.totalHours = newService.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
           newService.hoursUsed = 0;
           newService.hoursRemaining = newService.totalHours;
+          // H.3 D-B (2026-06-11): store an elected hourly rate when supplied (validated
+          // above). No silent 800 default — absent rate → Plan reports pricing_missing
+          // (mirrors createClient; real rate from tofes amountBeforeVat at H.6).
+          if (typeof data.ratePerHour === 'number' && data.ratePerHour > 0) {
+            newService.ratePerHour = data.ratePerHour;
+          }
         } else {
           newService.totalPrice = newService.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
           newService.totalPaid = 0;
